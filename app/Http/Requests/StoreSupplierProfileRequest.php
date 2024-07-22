@@ -1,0 +1,41 @@
+<?php
+
+namespace App\Http\Requests;
+
+use App\Models\SupplierProfile;
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Auth;
+
+class StoreSupplierProfileRequest extends FormRequest
+{
+    /**
+     * Determine if the user is authorized to make this request.
+     */
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    /**
+     * Get the validation rules that apply to the request.
+     *
+     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array|string>
+     */
+    public function rules(): array
+    {
+        return [
+            SupplierProfile::ACTIVITY_FIELD => 'nullable',
+            SupplierProfile::ACTIVITY_DESCRIPTION => 'nullable',
+            SupplierProfile::BRANDS => 'nullable',
+            SupplierProfile::BRANDS_NOT_RELATED => 'boolean',
+            SupplierProfile::ACTIVITY_HISTORY => 'nullable',
+            SupplierProfile::ACTIVITY_PROVINCES => 'nullable',
+            SupplierProfile::PRODUCTION_AMOUNT => 'nullable',
+            SupplierProfile::STANDARDS => 'nullable',
+            SupplierProfile::STANDARDS_NOT_RELATED => 'boolean',
+            SupplierProfile::WEBSITE => 'string|nullable',
+            SupplierProfile::WEBSITE_NOT_RELATED => 'boolean',
+
+        ];
+    }
+}

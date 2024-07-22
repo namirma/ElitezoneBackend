@@ -1,0 +1,50 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+/**
+ * @method static updateOrCreate(array $array, array $array1)
+ * @method static where(array $array)
+ */
+class EmployerProfile extends Model
+{
+    use HasFactory;
+
+    const
+        ID = 'id',
+        USER_ID = 'user_id',
+        PROJECT_DONE = 'project_done',
+        PROJECT_IN_PROGRESS = 'project_in_progress',
+        ACTIVITY_PROVINCES = 'activity_provinces';
+
+    protected $fillable = [
+      self::USER_ID,
+      self::PROJECT_DONE,
+      self::PROJECT_IN_PROGRESS,
+      self::ACTIVITY_PROVINCES
+    ];
+
+    public function getCreatedAtAttribute()
+    {
+        $this->appends[] = "created_at_p";
+        $this->appends[] = "created_at_diff";
+        return $this->attributes["created_at"];
+    }
+
+    public function getUpdatedAtAttribute()
+    {
+        $this->appends[] = "updated_at_p";
+        $this->appends[] = "updated_at_diff";
+        return $this->attributes["updated_at"];
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+}
