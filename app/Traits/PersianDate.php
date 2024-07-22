@@ -14,16 +14,6 @@ trait PersianDate
      */
     public function getCreatedAtPAttribute()
     {
-
-
-
-
-
-
-
-
-
-
         if (@$this->attributes["created_at"])
             return Verta(@$this->attributes["created_at"])->formatDatetime();
     }
