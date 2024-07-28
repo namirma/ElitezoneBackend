@@ -15,12 +15,19 @@ class Sanitizer
      */
     public function handle(Request $request, Closure $next): Response
     {
-        $sanitized = array_map(function ($input) {
-            return is_array($input) ? array_map('trim', $input) : trim($input);
-        }, $request->all());
+        $sanitized = $this->sanitize($request->all());
 
         $request->merge($sanitized);
 
         return $next($request);
+    }
+
+    private function sanitize($input)
+    {
+        if (is_array($input)) {
+            return array_map([$this, 'sanitize'], $input);
+        }
+
+        return is_string($input) ? trim($input) : $input;
     }
 }
