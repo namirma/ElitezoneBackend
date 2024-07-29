@@ -2,6 +2,7 @@
 
 namespace App\Http;
 
+use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
 
 class Kernel extends HttpKernel
@@ -66,5 +67,6 @@ class Kernel extends HttpKernel
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'cors' => \App\Http\Middleware\Cors::class,
+        'SecurityHeaders' => \App\Http\Middleware\SecurityHeaders::class
     ];
 }
