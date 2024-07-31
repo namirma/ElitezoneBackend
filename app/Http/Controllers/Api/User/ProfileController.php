@@ -65,7 +65,6 @@ class ProfileController extends Controller
     {
         $user = User::find(Auth::id());
         $role = Role::where('id', $user->type_id)->first();
-        dd($role);
         if ($role)
             $user->removeRole($role);
 
@@ -74,6 +73,7 @@ class ProfileController extends Controller
 
         $user->update([User::TYPE_ID => $request->validated('type_id')]);
         $user->addRole($request->validated('type_id'));
+        dd($user);
 
         return success(new UserResource($user->load('profile')), __('profile.userType'));
     }
