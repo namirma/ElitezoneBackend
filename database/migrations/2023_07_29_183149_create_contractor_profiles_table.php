@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('license_number', 32)->nullable()->comment('شماره پروانه اشتغال');
             $table->string('supervision_base', 32)->nullable()->comment('پایه نظارت');
             $table->string('design_base')->nullable()->comment('پایه طراحی');
-            $table->string('activity_history')->nullable()->comment('سابقه فعالیت');
+            $table->unsignedInteger('activity_history')->nullable()->comment('سابقه فعالیت');
             $table->string('project_done')->nullable();
             $table->string('project_in_progress')->nullable();
             $table->boolean('trusted_contractor')->nullable();

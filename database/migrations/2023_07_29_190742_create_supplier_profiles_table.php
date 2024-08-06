@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('activity_field', 128);
             $table->string('activity_description')->nullable();
             $table->string('brands')->nullable();
-            $table->string('activity_history')->nullable();
+            $table->unsignedInteger('activity_history')->nullable();
             $table->string('production_amount')->nullable()->comment('میزان تولید');
             $table->string('standards')->nullable()->comment('استاندارد‌های کسب شده');
             $table->string('website', 128)->nullable();

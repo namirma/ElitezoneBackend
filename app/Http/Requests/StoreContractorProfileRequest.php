@@ -29,7 +29,7 @@ class StoreContractorProfileRequest extends FormRequest
             ContractorProfile::LICENSE_NUMBER => 'string',
             ContractorProfile::SUPERVISION_BASE => 'string',
             ContractorProfile::DESIGN_BASE => 'string',
-            ContractorProfile::ACTIVITY_HISTORY => 'string',
+            ContractorProfile::ACTIVITY_HISTORY => 'integer',
             ContractorProfile::ACTIVITY_PROVINCES => 'string',
             ContractorProfile::PROJECT_DONE => 'string',
             ContractorProfile::PROJECT_IN_PROGRESS => 'string',
