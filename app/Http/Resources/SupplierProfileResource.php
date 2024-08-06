@@ -27,6 +27,7 @@ class SupplierProfileResource extends JsonResource
             SupplierProfile::STANDARDS_NOT_RELATED => $this->standards_not_related,
             SupplierProfile::WEBSITE => $this->website,
             SupplierProfile::WEBSITE_NOT_RELATED => $this->website_not_related,
+            SupplierProfile::COMPANY => $this->company,
             SupplierProfile::CREATED_AT => $this->created_at_,
             'created_at_p' => $this->created_at_p,
             'created_at_diff' => $this->created_at_diff,

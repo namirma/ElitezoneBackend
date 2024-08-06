@@ -35,6 +35,7 @@ class StoreSupplierProfileRequest extends FormRequest
             SupplierProfile::STANDARDS_NOT_RELATED => 'boolean',
             SupplierProfile::WEBSITE => 'string|nullable',
             SupplierProfile::WEBSITE_NOT_RELATED => 'boolean',
+            SupplierProfile::COMPANY => 'string',
 
         ];
     }

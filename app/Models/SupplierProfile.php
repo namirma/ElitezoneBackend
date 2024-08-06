@@ -28,6 +28,7 @@ class SupplierProfile extends Model
         STANDARDS_NOT_RELATED = 'standards_not_related',
         WEBSITE = 'website',
         WEBSITE_NOT_RELATED = 'website_not_related',
+        COMPANY = 'company',
         CREATED_AT = 'created_at',
         UPDATED_AT = 'updated_at';
 
@@ -50,6 +51,7 @@ class SupplierProfile extends Model
         self::STANDARDS_NOT_RELATED,
         self::WEBSITE,
         self::WEBSITE_NOT_RELATED,
+        self::COMPANY,
         self::CREATED_AT,
         self::UPDATED_AT
     ];
