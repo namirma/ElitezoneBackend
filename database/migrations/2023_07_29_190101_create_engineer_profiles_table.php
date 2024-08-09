@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('supervision_base', 32)->nullable()->comment('پایه نظارت');
             $table->string('design_base')->nullable()->comment('پایه طراحی');
             $table->string('member_number')->nullable()->comment('شماره عضویت');
-            $table->string('fields_of_study')->comment('رشته مهندسی');
+            $table->string('fields_of_study')->nullable()->comment('رشته مهندسی');
             $table->boolean('student');
             $table->unsignedBigInteger('province_id')->nullable();
             $table->unsignedBigInteger('city_id')->nullable();

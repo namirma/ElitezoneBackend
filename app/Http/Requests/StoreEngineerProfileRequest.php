@@ -24,11 +24,11 @@ class StoreEngineerProfileRequest extends FormRequest
     {
         return [
             EngineerProfile::ENGINEER_MEMBER => 'boolean',
-            EngineerProfile::LICENSE_MEMBER => '',
-            EngineerProfile::SUPERVISION_BASE => '',
-            EngineerProfile::DESIGN_BASE => '',
-            EngineerProfile::MEMBER_NUMBER => '',
-            EngineerProfile::FIELDS_OF_STUDY => '',
+            EngineerProfile::LICENSE_MEMBER => 'nullable',
+            EngineerProfile::SUPERVISION_BASE => 'nullable',
+            EngineerProfile::DESIGN_BASE => 'nullable',
+            EngineerProfile::MEMBER_NUMBER => 'nullable',
+            EngineerProfile::FIELDS_OF_STUDY => 'nullable',
             EngineerProfile::STUDENT => 'boolean',
             EngineerProfile::UNIVERSITY_NAME => 'required_if:student,1',
             EngineerProfile::PROVINCE_ID => '',
