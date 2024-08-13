@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('email', 64)->unique()->nullable();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('national_code', 16);
-            $table->string('birthday', 16);
+            $table->string('birthday', 16)->nullable();
             $table->string('national_id', 16)->nullable();
             $table->string('company', 64)->nullable();
             $table->string('register_id', 32)->nullable();

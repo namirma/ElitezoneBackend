@@ -27,7 +27,7 @@ class StoreUserProfileRequest extends FormRequest
             UserProfile::FAMILY => 'required|string',
             UserProfile::EMAIL => 'email:rfc,dns',
             UserProfile::NATIONAL_CODE => 'required|digits:10',
-            UserProfile::BIRTHDAY => 'required|string',
+            UserProfile::BIRTHDAY => 'string',
             UserProfile::COMPANY => 'string',
             UserProfile::ECONOMIC_CODE => 'required_with:company|string',
             UserProfile::NATIONAL_ID => 'required_with:company|string',
