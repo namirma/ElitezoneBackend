@@ -23,18 +23,18 @@ class StoreUserProfileRequest extends FormRequest
     public function rules(): array
     {
         return [
-            UserProfile::NAME => 'required|string',
-            UserProfile::FAMILY => 'required|string',
+            UserProfile::NAME => 'string',
+            UserProfile::FAMILY => 'string',
             UserProfile::EMAIL => 'email:rfc,dns',
-            UserProfile::NATIONAL_CODE => 'required|digits:10',
+            UserProfile::NATIONAL_CODE => 'digits:10',
             UserProfile::BIRTHDAY => 'string',
             UserProfile::COMPANY => 'string',
             UserProfile::ECONOMIC_CODE => 'required_with:company|string',
             UserProfile::NATIONAL_ID => 'required_with:company|string',
             UserProfile::REGISTER_ID => 'required_with:company|string',
             UserProfile::PHONE => 'required_with:company|string',
-            UserProfile::PROVINCE_ID => 'required|numeric',
-            UserProfile::CITY_ID => 'required|numeric',
+            UserProfile::PROVINCE_ID => 'numeric',
+            UserProfile::CITY_ID => 'numeric',
             UserProfile::ENTITY => 'in:real,legal',
         ];
     }

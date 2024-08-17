@@ -14,8 +14,8 @@ return new class extends Migration
         Schema::create('user_profiles', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('user_id');
-            $table->string('name', 32);
-            $table->string('family', 64);
+            $table->string('name', 32)->nullable();
+            $table->string('family', 64)->nullable();
             $table->string('email', 64)->unique()->nullable();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('national_code', 16);
@@ -24,8 +24,8 @@ return new class extends Migration
             $table->string('company', 64)->nullable();
             $table->string('register_id', 32)->nullable();
             $table->string('phone', 32)->nullable();
-            $table->unsignedBigInteger('province_id');
-            $table->unsignedBigInteger('city_id');
+            $table->unsignedBigInteger('province_id')->nullable();
+            $table->unsignedBigInteger('city_id')->nullable();
             $table->enum('entity', ['real', 'legal'])->default('real');
             $table->timestamps();
         });
