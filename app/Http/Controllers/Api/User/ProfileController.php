@@ -7,6 +7,7 @@ use App\Http\Requests\StorePasswordRequest;
 use App\Http\Requests\StoreUserProfileRequest;
 use App\Http\Requests\StoreUserTypeRequest;
 use App\Http\Requests\UpdateMobileRequest;
+use App\Http\Requests\UpdateUserProfileRequest;
 use App\Http\Resources\UserMessageResource;
 use App\Http\Resources\UserResource;
 use App\Models\ContractorProfile;
@@ -34,30 +35,32 @@ class ProfileController extends Controller
 
     public function setProfile(StoreUserProfileRequest $request): JsonResponse
     {
-        UserProfile::updateOrCreate(
-            [
-                UserProfile::USER_ID => Auth::id(),
-            ],
-            [
-                /* Personal information */
-                UserProfile::USER_ID => Auth::id(),
-                UserProfile::NAME => $request->validated('name'),
-                UserProfile::FAMILY => $request->validated('family'),
-                UserProfile::EMAIL => @$request->validated('email'),
-                UserProfile::NATIONAL_CODE => $request->validated('national_code'),
-                UserProfile::BIRTHDAY => $request->validated('birthday'),
-                /* Company information */
-                UserProfile::COMPANY => @$request->validated('company'),
-                UserProfile::ECONOMIC_CODE => @$request->validated('economic_code'),
-                UserProfile::NATIONAL_ID => @$request->validated('national_id'),
-                UserProfile::REGISTER_ID => @$request->validated('register_id'),
-                UserProfile::PHONE => @$request->validated('phone'),
-                UserProfile::PROVINCE_ID => $request->validated('province_id'),
-                UserProfile::CITY_ID => $request->validated('city_id'),
-                UserProfile::ENTITY => $request->validated('entity'),
-            ]
-        );
+        UserProfile::create([
+            /* Personal information */
+            UserProfile::USER_ID => Auth::id(),
+            UserProfile::NAME => @$request->validated('name'),
+            UserProfile::FAMILY => @$request->validated('family'),
+            UserProfile::EMAIL => @$request->validated('email'),
+            UserProfile::NATIONAL_CODE => @$request->validated('national_code'),
+            UserProfile::BIRTHDAY => @$request->validated('birthday'),
+            /* Company information */
+            UserProfile::COMPANY => @$request->validated('company'),
+            UserProfile::ECONOMIC_CODE => @$request->validated('economic_code'),
+            UserProfile::NATIONAL_ID => @$request->validated('national_id'),
+            UserProfile::REGISTER_ID => @$request->validated('register_id'),
+            UserProfile::PHONE => @$request->validated('phone'),
+            UserProfile::PROVINCE_ID => @$request->validated('province_id'),
+            UserProfile::CITY_ID => @$request->validated('city_id'),
+            UserProfile::ENTITY => @$request->validated('entity'),
+        ]);
 
+        return success(new UserResource(User::with('profile')->find(Auth::id())));
+    }
+
+    public function updateProfile(UpdateUserProfileRequest $request)
+    {
+        $profile = UserProfile::where([UserProfile::USER_ID => Auth::id()])->first();
+        $profile->update($request->validated());
         return success(new UserResource(User::with('profile')->find(Auth::id())));
     }
 

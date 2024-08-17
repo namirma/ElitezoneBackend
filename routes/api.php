@@ -79,6 +79,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('/', [ProfileController::class, 'getProfile']);
         Route::post('/', [ProfileController::class, 'setProfile']);
+        Route::put('/', [ProfileController::class, 'updateProfile']);
         Route::post('/password', [ProfileController::class, 'setPassword']);
         Route::get('/change-password/first-attempt', [ProfileController::class, 'changePasswordFirstAttempt']);
         Route::post('/type', [ProfileController::class, 'setUserType']);
