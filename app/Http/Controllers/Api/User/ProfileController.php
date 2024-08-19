@@ -35,7 +35,7 @@ class ProfileController extends Controller
 
     public function setProfile(StoreUserProfileRequest $request): JsonResponse
     {
-        $profile = UserProfile::findOrcreate([UserProfile::USER_ID => Auth::id()]);
+        $profile = UserProfile::firstOrCreate([UserProfile::USER_ID => Auth::id()]);
         dd($profile);
         UserProfile::updateOrCreate(
             [
