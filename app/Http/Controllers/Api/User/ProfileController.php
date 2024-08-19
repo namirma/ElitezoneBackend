@@ -56,7 +56,7 @@ class ProfileController extends Controller
             UserProfile::PHONE => @$request->validated('phone'),
             UserProfile::PROVINCE_ID => @$request->validated('province_id'),
             UserProfile::CITY_ID => @$request->validated('city_id'),
-            UserProfile::ENTITY => @$request->validated('entity'),
+            UserProfile::ENTITY => @$request->validated('entity', 'real'),
         ]);
 
         return success(new UserResource(User::with('profile')->find(Auth::id())));
