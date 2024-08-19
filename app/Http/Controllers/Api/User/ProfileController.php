@@ -42,21 +42,22 @@ class ProfileController extends Controller
 
             [
             /* Personal information */
-            UserProfile::USER_ID => Auth::id(),
-            UserProfile::NAME => @$request->validated('name'),
-            UserProfile::FAMILY => @$request->validated('family'),
-            UserProfile::EMAIL => @$request->validated('email'),
-            UserProfile::NATIONAL_CODE => @$request->validated('national_code'),
-            UserProfile::BIRTHDAY => @$request->validated('birthday'),
-            /* Company information */
-            UserProfile::COMPANY => @$request->validated('company'),
-            UserProfile::ECONOMIC_CODE => @$request->validated('economic_code'),
-            UserProfile::NATIONAL_ID => @$request->validated('national_id'),
-            UserProfile::REGISTER_ID => @$request->validated('register_id'),
-            UserProfile::PHONE => @$request->validated('phone'),
-            UserProfile::PROVINCE_ID => @$request->validated('province_id'),
-            UserProfile::CITY_ID => @$request->validated('city_id'),
-            UserProfile::ENTITY => @$request->validated('entity', 'real'),
+                $request->validated()
+//            UserProfile::USER_ID => Auth::id(),
+//            UserProfile::NAME => @$request->validated('name'),
+//            UserProfile::FAMILY => @$request->validated('family'),
+//            UserProfile::EMAIL => @$request->validated('email'),
+//            UserProfile::NATIONAL_CODE => @$request->validated('national_code'),
+//            UserProfile::BIRTHDAY => @$request->validated('birthday'),
+//            /* Company information */
+//            UserProfile::COMPANY => @$request->validated('company'),
+//            UserProfile::ECONOMIC_CODE => @$request->validated('economic_code'),
+//            UserProfile::NATIONAL_ID => @$request->validated('national_id'),
+//            UserProfile::REGISTER_ID => @$request->validated('register_id'),
+//            UserProfile::PHONE => @$request->validated('phone'),
+//            UserProfile::PROVINCE_ID => @$request->validated('province_id'),
+//            UserProfile::CITY_ID => @$request->validated('city_id'),
+//            UserProfile::ENTITY => @$request->validated('entity', 'real'),
         ]);
 
         return success(new UserResource(User::with('profile')->find(Auth::id())));
