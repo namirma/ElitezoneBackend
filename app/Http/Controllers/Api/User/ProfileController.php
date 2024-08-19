@@ -40,20 +40,20 @@ class ProfileController extends Controller
         $profile->update([
             /* Personal information */
             UserProfile::USER_ID => Auth::id(),
-            UserProfile::NAME => @$request->validated('name'),
-            UserProfile::FAMILY => @$request->validated('family'),
-            UserProfile::EMAIL => @$request->validated('email'),
-            UserProfile::NATIONAL_CODE => @$request->validated('national_code'),
-            UserProfile::BIRTHDAY => @$request->validated('birthday'),
+            UserProfile::NAME => @$request->validated('name', $profile->name),
+            UserProfile::FAMILY => @$request->validated('family', $profile->family),
+            UserProfile::EMAIL => @$request->validated('email', $profile->email),
+            UserProfile::NATIONAL_CODE => @$request->validated('national_code', $profile->national_code),
+            UserProfile::BIRTHDAY => @$request->validated('birthday', $profile->birthday),
             /* Company information */
-            UserProfile::COMPANY => @$request->validated('company'),
-            UserProfile::ECONOMIC_CODE => @$request->validated('economic_code'),
-            UserProfile::NATIONAL_ID => @$request->validated('national_id'),
-            UserProfile::REGISTER_ID => @$request->validated('register_id'),
-            UserProfile::PHONE => @$request->validated('phone'),
-            UserProfile::PROVINCE_ID => @$request->validated('province_id'),
-            UserProfile::CITY_ID => @$request->validated('city_id'),
-            UserProfile::ENTITY => @$request->validated('entity', 'real'),
+            UserProfile::COMPANY => @$request->validated('company', $profile->company),
+            UserProfile::ECONOMIC_CODE => @$request->validated('economic_code', $profile->economic_code),
+            UserProfile::NATIONAL_ID => @$request->validated('national_id', $profile->national_id),
+            UserProfile::REGISTER_ID => @$request->validated('register_id', $profile->register_id),
+            UserProfile::PHONE => @$request->validated('phone', $profile->phone),
+            UserProfile::PROVINCE_ID => @$request->validated('province_id', $profile->province_id),
+            UserProfile::CITY_ID => @$request->validated('city_id', $profile->province_id),
+            UserProfile::ENTITY => @$request->validated('entity', $profile->entity),
         ]);
 
         return success(new UserResource(User::with('profile')->find(Auth::id())));
