@@ -33,7 +33,7 @@ class SupplierController extends Controller
                 SupplierProfile::STANDARDS_NOT_RELATED => @$request->validated('standards_not_related'),
                 SupplierProfile::WEBSITE => @$request->validated('website'),
                 SupplierProfile::WEBSITE_NOT_RELATED => @$request->validated('website_not_related'),
-                SupplierProfile::COMPANY => @$request->validated('cmpany'),
+                SupplierProfile::COMPANY => @$request->validated('company'),
             ]);
 
         return success(new UserResource(User::with('supplier')->find(Auth::id())));
