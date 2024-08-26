@@ -70,6 +70,7 @@ class ProfileController extends Controller
     {
         $user = User::find(Auth::id());
         $role = Role::where('id', $user->type_id)->first();
+        dd($role);
         if ($role)
             $user->removeRole($role);
 
