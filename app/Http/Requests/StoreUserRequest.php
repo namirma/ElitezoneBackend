@@ -33,7 +33,8 @@ class StoreUserRequest extends FormRequest
     {
         return [
             'username' => 'required',
-            'code' => 'digits:6|exists:users,secret'
+            'code' => 'digits:6|exists:users,secret',
+            'forget_password' => 'nullable|boolean'
         ];
     }
 }

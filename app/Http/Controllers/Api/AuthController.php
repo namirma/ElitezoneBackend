@@ -52,10 +52,15 @@ class AuthController extends Controller
         $user = User::where([User::MOBILE => $request->validated('username'), User::SECRET => $request->validated('code')])->first();
 
         if (!Carbon::parse(@$user->secret_expires_at)->isPast()) {
-            Auth::login($user);
-            $user->tokens()->delete();
-            $token = $user->createToken('auth')->plainTextToken;
-            return success(['user' => new UserResource($user), 'token' => $token], __('auth.register_success'));
+            if ($request->has('forget_password') && $request->validated('forget_password')) {
+                return success([]);
+            }
+            else {
+                Auth::login($user);
+                $user->tokens()->delete();
+                $token = $user->createToken('auth')->plainTextToken;
+                return success(['user' => new UserResource($user), 'token' => $token], __('auth.register_success'));
+            }
         }
 
         return error(__('auth.verification_code_not_match'), [], 404);
@@ -74,5 +79,27 @@ class AuthController extends Controller
         }
 
         return error(__('auth.password_error'), [], 404);
+    }
+
+    public function forgetPassword(Request $request)
+    {
+        $request->validate([
+            'username' => 'required|exists:users,mobile'
+        ]);
+
+        $user = User::where([User::MOBILE => $request->input('username')])->where(User::PASSWORD, '!=', null)->first();
+        if (!is_null($user)) {
+
+            $mobileVerifyCode = generateVerifyCode();
+            $user->update([
+                User::SECRET => $mobileVerifyCode,
+                User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2)
+            ]);
+
+            (new SmsService())->send($request->input('username'), $mobileVerifyCode);
+            return success([], 'auth.forget_password_code_sent_successfully');
+        }
+
+        return error(__('auth.no_user_found'), [], 404);
     }
 }

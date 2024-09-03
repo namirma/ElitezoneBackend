@@ -8,5 +8,7 @@ return [
     'password_changed_successfully' => 'رمز عبور با موفقیت تغییر یافت.',
     'password_error' => 'رمز عبور اشتباه است.',
     'code_sent_recently' => 'کد براش شما ارسال شده است.',
-    'change_password_first_attempt' => 'درخواست تغییر رمز عبور با موفقیت ارسال شد.'
+    'change_password_first_attempt' => 'درخواست تغییر رمز عبور با موفقیت ارسال شد.',
+    'forget_password_code_sent_successfully' => 'کد یکبار مصرف جهت تغییر رمز عبور با موفقیت ارسال شد.',
+    'no_user_found' => 'اطلاعاتی یافت نشد.',
 ];
