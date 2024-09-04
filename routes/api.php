@@ -56,6 +56,7 @@ Route::controller(AuthController::class)->group(function () {
         Route::post('/password/check', 'checkPassword');
         Route::post('/forget-password', 'forgetPassword');
         Route::post('/change-password','changePassword');
+        Route::post('/send-code','sendVerificationCode');
     });
 });
 
