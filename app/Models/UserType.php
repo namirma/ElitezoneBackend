@@ -11,14 +11,17 @@ class UserType extends Model
     use HasFactory;
 
     public $timestamps = false;
+
     const
         ID = 'id',
         NAME = 'name',
-        SLUG = 'slug';
+        SLUG = 'slug',
+        ICON = 'icon';
 
     protected $fillable = [
         self::NAME,
         self::SLUG,
+        self::ICON
     ];
 
     public function user(): HasMany
