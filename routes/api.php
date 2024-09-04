@@ -55,10 +55,12 @@ Route::controller(AuthController::class)->group(function () {
         Route::post('/verify-code', 'verifyCode');
         Route::post('/password/check', 'checkPassword');
         Route::post('/forget-password', 'forgetPassword');
+        Route::post('/change-password','changePassword');
     });
 });
 
 Route::middleware('auth:sanctum')->group(function () {
+
     Route::group(['prefix' => 'province'], function () {
         Route::get('/', function () {
             return success(getProvince());

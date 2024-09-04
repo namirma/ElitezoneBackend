@@ -54,8 +54,7 @@ class AuthController extends Controller
         if (!Carbon::parse(@$user->secret_expires_at)->isPast()) {
             if ($request->has('forget_password') && $request->validated('forget_password')) {
                 return success([]);
-            }
-            else {
+            } else {
                 Auth::login($user);
                 $user->tokens()->delete();
                 $token = $user->createToken('auth')->plainTextToken;
@@ -93,7 +92,7 @@ class AuthController extends Controller
             $mobileVerifyCode = generateVerifyCode();
             $user->update([
                 User::SECRET => $mobileVerifyCode,
-                User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2)
+                User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(3)
             ]);
 
             (new SmsService())->send($request->input('username'), $mobileVerifyCode);
@@ -102,4 +101,31 @@ class AuthController extends Controller
 
         return error(__('auth.no_user_found'), [], 404);
     }
+
+    public function changePassword(Request $request)
+    {
+        $request->validate([
+            'username' => 'required|exists:users,mobile',
+            'code' => 'required',
+            User::PASSWORD => 'required|confirmed'
+        ]);
+
+        $user = User::where([
+            User::MOBILE => $request->input('username'),
+            User::SECRET => $request->input('code')
+        ])
+            ->where(User::PASSWORD, '!=', null)
+            ->first();
+
+        if (Carbon::parse(@$user->secret_expires_at)->isPast() && is_null($user))
+            return error('something went wrong', [], 400);
+
+        $user->update([User::PASSWORD => Hash::make($request->input('password'))]);
+
+        Auth::login($user);
+        $user->tokens()->delete();
+        $token = $user->createToken('auth')->plainTextToken;
+        return success(['user' => new UserResource($user), 'token' => $token], __('auth.password_changed_successfully'));
+    }
+
 }
