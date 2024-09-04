@@ -128,4 +128,24 @@ class AuthController extends Controller
         return success(['user' => new UserResource($user), 'token' => $token], __('auth.password_changed_successfully'));
     }
 
+    public function sendVerificationCode(Request $request)
+    {
+        $request->validate([
+            'username' => 'required|exists:users,mobile'
+        ]);
+
+        $user = User::where([User::MOBILE => $request->input('username')])->first();
+
+        $mobileVerifyCode = generateVerifyCode();
+        $user->update([
+            User::SECRET => $mobileVerifyCode,
+            User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2)
+        ]);
+
+        (new SmsService())->send($request->input('username'), $mobileVerifyCode);
+
+        return success([], __('auth.verification_code_sent_successfully'));
+
+    }
+
 }
