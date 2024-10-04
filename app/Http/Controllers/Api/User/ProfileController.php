@@ -29,7 +29,7 @@ use Illuminate\Support\Facades\Http;
 
 class ProfileController extends Controller
 {
-    public function getProfile(): JsonResponse
+    public function getProfile()
     {
         $response = Http::get('https://saze90.com/check-certificate?username=IsaM');
         return $response->getBody();
