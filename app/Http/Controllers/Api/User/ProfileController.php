@@ -29,10 +29,10 @@ use Illuminate\Support\Facades\Http;
 
 class ProfileController extends Controller
 {
-    public function getProfile()
+    public function getProfile(): JsonResponse
     {
-        $response = Http::get('https://saze90.com/check-certificate?username=IsaM');
-        dd($response);
+//        $response = Http::get('https://saze90.com/check-certificate?username=IsaM');
+//        dd($response);
 
         return success(new UserResource(User::with(['profile', 'engineer', 'contractor', 'supplier', 'employer'])->find(Auth::id())));
     }
