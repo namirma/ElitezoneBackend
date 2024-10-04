@@ -32,7 +32,7 @@ class ProfileController extends Controller
     public function getProfile()
     {
         $response = Http::get('https://saze90.com/check-certificate?username=IsaM');
-        return $response->getBody();
+        dd($response);
 
         return success(new UserResource(User::with(['profile', 'engineer', 'contractor', 'supplier', 'employer'])->find(Auth::id())));
     }
