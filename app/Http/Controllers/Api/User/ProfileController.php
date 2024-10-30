@@ -175,7 +175,6 @@ class ProfileController extends Controller
 
     public function getMessages()
     {
-        dd(Auth::id());
         return success(UserMessageResource::collection(
             UserNotification::where([UserNotification::USER_ID => Auth::id()])->get())
         );
