@@ -5,7 +5,9 @@ use App\Http\Controllers\Api\User\EmployerController;
 use App\Http\Controllers\Api\User\EngineerController;
 use App\Http\Controllers\Api\User\ProfileController;
 use App\Http\Controllers\Api\User\SupplierController;
+use App\Mail\UserNotificationMail;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 
@@ -107,6 +109,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user-types', [AuthController::class, 'types']);
     Route::get('/user', function (Request $request) {
         return $request->user();
+    });
+
+    Route::get('test-mail', function () {
+        $userData = [
+            'name' => 'Sajad',
+            'email' => 'sjdz1892@gmail.com',
+        ];
+
+        Mail::to('sjdz1892@gmail.com')->send(new UserNotificationMail($userData));
+
     });
 });
 
