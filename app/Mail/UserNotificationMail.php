@@ -3,61 +3,32 @@
 namespace App\Mail;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Content;
-use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
 class UserNotificationMail extends Mailable
 {
     use Queueable, SerializesModels;
-    public array $userData;
 
-    /**
-     * Create a new message instance.
-     */
-    public function __construct($userData)
+    public $data;
+
+    public function __construct($data)
     {
-        $this->userData = $userData;
+        $this->data = $data;
     }
 
-    /**
-     * Get the message envelope.
-     */
-    public function envelope(): Envelope
+    public function build()
     {
-        return new Envelope(
-            subject: 'User Notification Mail',
-        );
-    }
+        $address = 'zarsanjsajad@gmail.com';
+        $subject = 'This is a demo!';
+        $name = 'Sajad Zarsanj';
 
-    /**
-     * Get the message content definition.
-     */
-    public function content(): Content
-    {
-        return new Content(
-            view: 'view.name',
-        );
+        return $this->view('emails.test')
+            ->from($address, $name)
+            ->cc($address, $name)
+            ->bcc($address, $name)
+            ->replyTo($address, $name)
+            ->subject($subject)
+            ->with([ 'test_message' => $this->data['message'] ]);
     }
-
-    /**
-     * Get the attachments for the message.
-     *
-     * @return array<int, \Illuminate\Mail\Mailables\Attachment>
-     */
-    public function attachments(): array
-    {
-        return [];
-    }
-
-    public function build(): UserNotificationMail
-    {
-        return $this->from(config('mail.from.address'), config('mail.from.name'))
-            ->subject('Welcome to Our Service')
-            ->view('emails.user_notification')
-            ->with('userData', $this->userData);
-    }
-
 }
