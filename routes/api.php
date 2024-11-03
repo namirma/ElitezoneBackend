@@ -112,13 +112,8 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::get('test-mail', function () {
-        $userData = [
-            'name' => 'Sajad',
-            'email' => 'sjdz1892@gmail.com',
-        ];
-
-        Mail::to('sjdz1892@gmail.com')->send(new UserNotificationMail($userData));
-
+        $data = ['message' => 'This is a test!'];
+        Mail::to('john@example.com')->send(new UserNotificationMail($data));
     });
 });
 

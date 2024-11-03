@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html>
+<html lang="en-US">
 <head>
-    <title>Welcome!</title>
+    <meta charset="utf-8" />
 </head>
 <body>
-<h1>Hello, {{ $userData['name'] }}</h1>
-<p>Thank you for joining our service. We’re excited to have you with us!</p>
+<h2>Test Email</h2>
+<p>{{ $test_message }}</p>
 </body>
 </html>
