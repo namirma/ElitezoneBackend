@@ -16,10 +16,12 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
 //    return view('welcome');
-    echo json_encode([
-        'status' => 200
+    return json_encode([
+        'status' => 200,
+        'data' => [
+            'OK!'
+        ]
     ]);
-    exit();
 });
 
 
