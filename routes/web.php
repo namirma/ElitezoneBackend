@@ -16,10 +16,10 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
 //    return view('welcome');
-    return json_encode([
+    return response()->json([
         'status' => 200,
         'data' => [
-            'OK!'
+            'message' => 'Welcome to EliteZone API!'
         ]
     ]);
 });
