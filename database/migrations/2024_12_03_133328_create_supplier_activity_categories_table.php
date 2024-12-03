@@ -11,17 +11,20 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('activity_categories', function (Blueprint $table) {
+        Schema::create('supplier_activity_categories', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->string('slug')->nullable();
-            $table->foreignId('parent_id')->nullable()->constrained('activity_categories')->onDelete('cascade');
+            $table->foreignId('parent_id')->nullable()->constrained('supplier_activity_categories')->onDelete('cascade');
             $table->timestamps();
         });
     }
 
+    /**
+     * Reverse the migrations.
+     */
     public function down(): void
     {
-        Schema::dropIfExists('activity_categories');
+        Schema::dropIfExists('supplier_activity_categories');
     }
 };

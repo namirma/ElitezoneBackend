@@ -118,5 +118,6 @@ Route::middleware('auth:sanctum')->group(function () {
         $data = ['message' => 'This is a test!'];
         Mail::to('john@example.com')->send(new UserNotificationMail($data));
     });
+
 });
 

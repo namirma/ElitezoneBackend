@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreSupplierProfileRequest;
 use App\Http\Resources\SupplierCategoryResource;
 use App\Http\Resources\UserResource;
-use App\Models\ActivityCategory;
+use App\Models\SupplierActivityCategory;
 use App\Models\SupplierProfile;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
@@ -16,7 +16,7 @@ class SupplierController extends Controller
 
     public function getCategories()
     {
-        return success(SupplierCategoryResource::collection(ActivityCategory::getAll()));
+        return success(SupplierCategoryResource::collection(SupplierActivityCategory::getAll()));
     }
 
     public function store(StoreSupplierProfileRequest $request)

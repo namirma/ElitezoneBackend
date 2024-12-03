@@ -2,10 +2,18 @@
 
 namespace App\Http\Resources;
 
-use App\Models\ActivityCategory;
+use App\Models\SupplierActivityCategory;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/**
+ * @property mixed $id
+ * @property mixed $name
+ * @property mixed $slug
+ * @property mixed $parent_id
+ * @property mixed $children
+ * @method relationLoaded(string $string)
+ */
 class SupplierCategoryResource extends JsonResource
 {
     /**
@@ -16,10 +24,10 @@ class SupplierCategoryResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            ActivityCategory::ID => $this->id,
-            ActivityCategory::NAME => $this->name,
-            ActivityCategory::SLUG => $this->slug,
-            ActivityCategory::PARENT_ID => $this->parent_id,
+            SupplierActivityCategory::ID => $this->id,
+            SupplierActivityCategory::NAME => $this->name,
+            SupplierActivityCategory::SLUG => $this->slug,
+            SupplierActivityCategory::PARENT_ID => $this->parent_id,
             'children' => $this->when(
                 $this->relationLoaded('children') && $this->children->isNotEmpty(),
                 SupplierCategoryResource::collection($this->children)

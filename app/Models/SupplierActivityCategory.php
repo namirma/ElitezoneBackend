@@ -11,8 +11,9 @@ use Illuminate\Support\Facades\Cache;
 /**
  * @method static create(array $array)
  * @method static where(string $string, string $string1)
+ * @method static parentStatus($null)
  */
-class ActivityCategory extends Model
+class SupplierActivityCategory extends Model
 {
     use HasFactory;
 
@@ -31,8 +32,6 @@ class ActivityCategory extends Model
         self::CREATED_AT,
         self::UPDATED_AT,
     ];
-
-    protected $guarded  = ['name', 'parent_id', 'slug'];
     protected $with = ['children'];
 
 
@@ -66,6 +65,6 @@ class ActivityCategory extends Model
 
     public function children(): HasMany
     {
-        return $this->hasMany(ActivityCategory::class, 'parent_id')->with('children');
+        return $this->hasMany(SupplierActivityCategory::class, 'parent_id')->with('children');
     }
 }

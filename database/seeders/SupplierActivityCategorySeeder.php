@@ -2,13 +2,13 @@
 
 namespace Database\Seeders;
 
-use App\Models\ActivityCategory;
+use App\Models\SupplierActivityCategory;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
-class ActivityCategorySeeder extends Seeder
+class SupplierActivityCategorySeeder extends Seeder
 {
     /**
      * Run the database seeds.
@@ -16,12 +16,12 @@ class ActivityCategorySeeder extends Seeder
 
     public function run(): void
     {
-        /*$constructionMaterials = ActivityCategory::create(['name' => 'MasalehSakhtemani']);
-        $decorativeMaterials = ActivityCategory::create(['name' => 'TazeenatSakhtemani']);
-        $fittingsMaterials = ActivityCategory::create(['name' => 'YaraghAlat']);
-        $electronicEquipments = ActivityCategory::create(['name' => 'TajhizatElectronic']);
-        $bathroomEquipments = ActivityCategory::create(['name' => 'TajhizatHamamDastShoie']);
-        $kitchenEquipments = ActivityCategory::create(['name' => 'TajhizatAshpazKhane']);
+        /*$constructionMaterials = SupplierActivityCategory::create(['name' => 'MasalehSakhtemani']);
+        $decorativeMaterials = SupplierActivityCategory::create(['name' => 'TazeenatSakhtemani']);
+        $fittingsMaterials = SupplierActivityCategory::create(['name' => 'YaraghAlat']);
+        $electronicEquipments = SupplierActivityCategory::create(['name' => 'TajhizatElectronic']);
+        $bathroomEquipments = SupplierActivityCategory::create(['name' => 'TajhizatHamamDastShoie']);
+        $kitchenEquipments = SupplierActivityCategory::create(['name' => 'TajhizatAshpazKhane']);
 
 
         $childCategorys1 = [
@@ -37,7 +37,7 @@ class ActivityCategorySeeder extends Seeder
         ];
 
         foreach ($childCategorys1 as $name) {
-            ActivityCategory::create(['name' => $name, 'parent_id' => $constructionMaterials->id, 'slug' => Str::slug($name)]);
+            SupplierActivityCategory::create(['name' => $name, 'parent_id' => $constructionMaterials->id, 'slug' => Str::slug($name)]);
         }
 
 
@@ -56,7 +56,7 @@ class ActivityCategorySeeder extends Seeder
         ];
 
         foreach ($childCategorys2 as $name) {
-            ActivityCategory::create(['name' => $name, 'parent_id' => $decorativeMaterials->id, 'slug' => Str::slug($name)]);
+            SupplierActivityCategory::create(['name' => $name, 'parent_id' => $decorativeMaterials->id, 'slug' => Str::slug($name)]);
         }
 
         $childCategorys3 = [
@@ -79,7 +79,7 @@ class ActivityCategorySeeder extends Seeder
         ];
 
         foreach ($childCategorys3 as $name) {
-            ActivityCategory::create(['name' => $name, 'parent_id' => $fittingsMaterials->id, 'slug' => Str::slug($name)]);
+            SupplierActivityCategory::create(['name' => $name, 'parent_id' => $fittingsMaterials->id, 'slug' => Str::slug($name)]);
         }
 
         $childCategorys4 = [
@@ -102,7 +102,7 @@ class ActivityCategorySeeder extends Seeder
         ];
 
         foreach ($childCategorys4 as $name) {
-            ActivityCategory::create(['name' => $name, 'parent_id' => $electronicEquipments->id, 'slug' => Str::slug($name)]);
+            SupplierActivityCategory::create(['name' => $name, 'parent_id' => $electronicEquipments->id, 'slug' => Str::slug($name)]);
         }
 
         $childCategorys5 = [
@@ -127,7 +127,7 @@ class ActivityCategorySeeder extends Seeder
             "استخر و سونا"
         ];
         foreach ($childCategorys5 as $name) {
-            ActivityCategory::create(['name' => $name, 'parent_id' => $bathroomEquipments->id, 'slug' => Str::slug($name)]);
+            SupplierActivityCategory::create(['name' => $name, 'parent_id' => $bathroomEquipments->id, 'slug' => Str::slug($name)]);
         }
 
         $childCategorys6 = [
@@ -139,10 +139,10 @@ class ActivityCategorySeeder extends Seeder
             "کابینت آشپرخانه"
         ];
         foreach ($childCategorys6 as $name) {
-            ActivityCategory::create(['name' => $name, 'parent_id' => $kitchenEquipments->id, 'slug' => Str::slug($name)]);
+            SupplierActivityCategory::create(['name' => $name, 'parent_id' => $kitchenEquipments->id, 'slug' => Str::slug($name)]);
         }*/
 
-        $constructionMaterials = ActivityCategory::create([
+        $constructionMaterials = SupplierActivityCategory::create([
             'name' => 'MasalehSakhtemani',
             'slug' => Str::slug('Masaleh Sakhtemani', '-')
         ]);
@@ -158,13 +158,13 @@ class ActivityCategorySeeder extends Seeder
             'ضایعات فلزی'
         ];
         foreach ($childCategory1 as $childName) {
-            ActivityCategory::create([
+            SupplierActivityCategory::create([
                 'name' => $childName,
                 'slug' => '',
                 'parent_id' => $constructionMaterials->id
             ]);
         }
-        $stoneCategory = ActivityCategory::where('name', 'سنگ')->first();
+        $stoneCategory = SupplierActivityCategory::where('name', 'سنگ')->first();
         $stoneSubCategories = [
             'سنگ مرمر',
             'سنگ گرانیت',
@@ -172,14 +172,14 @@ class ActivityCategorySeeder extends Seeder
         ];
 
         foreach ($stoneSubCategories as $subCategoryName) {
-            ActivityCategory::create([
+            SupplierActivityCategory::create([
                 'name' => $subCategoryName,
                 'slug' => '',
                 'parent_id' => $stoneCategory->id
             ]);
         }
 
-        $decorativeMaterials = ActivityCategory::create([
+        $decorativeMaterials = SupplierActivityCategory::create([
             'name' => 'TazeenatSakhtemani',
             'slug' => Str::slug('Tazeenat Sakhtemani', '-')
         ]);
@@ -197,14 +197,14 @@ class ActivityCategorySeeder extends Seeder
             'ابزار پیش ساخته'
         ];
         foreach ($childCategory2 as $childName2) {
-            ActivityCategory::create([
+            SupplierActivityCategory::create([
                 'name' => $childName2,
                 'slug' => '',
                 'parent_id' => $decorativeMaterials->id
             ]);
         }
 
-        $fittingsMaterials = ActivityCategory::create([
+        $fittingsMaterials = SupplierActivityCategory::create([
             'name' => 'YaraghAlat',
             'slug' => Str::slug('Yaragh Alat', '-')
         ]);
@@ -227,14 +227,14 @@ class ActivityCategorySeeder extends Seeder
             "لوله 5 لایه"
         ];
         foreach ($childCategory3 as $childName3) {
-            ActivityCategory::create([
+            SupplierActivityCategory::create([
                 'name' => $childName3,
                 'slug' => '',
                 'parent_id' => $fittingsMaterials->id
             ]);
         }
 
-        $electronicEquipments = ActivityCategory::create([
+        $electronicEquipments = SupplierActivityCategory::create([
             'name' => 'TajhizatElectronic',
             'slug' => Str::slug('Tajhizat Electronic', '-')
         ]);
@@ -257,14 +257,14 @@ class ActivityCategorySeeder extends Seeder
             "پوش باتن"
         ];
         foreach ($childCategory4 as $childName4) {
-            ActivityCategory::create([
+            SupplierActivityCategory::create([
                 'name' => $childName4,
                 'slug' => '',
                 'parent_id' => $electronicEquipments->id
             ]);
         }
 
-        $bathroomEquipments = ActivityCategory::create([
+        $bathroomEquipments = SupplierActivityCategory::create([
             'name' => 'TajhizatHamamDastShoie',
             'slug' => Str::slug('Tajhizat HamamDastShoie', '-')
         ]);
@@ -290,14 +290,14 @@ class ActivityCategorySeeder extends Seeder
             "استخر و سونا"
         ];
         foreach ($childCategory5 as $childName5) {
-            ActivityCategory::create([
+            SupplierActivityCategory::create([
                 'name' => $childName5,
                 'slug' => '',
                 'parent_id' => $bathroomEquipments->id
             ]);
         }
 
-        $kitchenEquipments = ActivityCategory::create([
+        $kitchenEquipments = SupplierActivityCategory::create([
             'name' => 'TajhizatAshpazKhane',
             'slug' => Str::slug('Tajhizat-AshpazKhane', '-')
         ]);
@@ -310,7 +310,7 @@ class ActivityCategorySeeder extends Seeder
             "کابینت آشپرخانه"
         ];
         foreach ($childCategory6 as $childName6) {
-            ActivityCategory::create([
+            SupplierActivityCategory::create([
                 'name' => $childName6,
                 'slug' => '',
                 'parent_id' => $kitchenEquipments->id
