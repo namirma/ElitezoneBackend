@@ -63,7 +63,6 @@ Route::controller(AuthController::class)->group(function () {
     });
 });
 
-    Route::get('/activity-categories', [SupplierController::class, 'index']);
 Route::middleware('auth:sanctum')->group(function () {
 
     Route::group(['prefix' => 'province'], function () {
@@ -76,6 +75,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::group(['prefix' => 'profile'], function () {
+
         Route::get('/messages', [ProfileController::class, 'getMessages']);
         Route::get('/messages/read-all', [ProfileController::class, 'updateAllMessageStatus']);
         Route::get('/messages/{userNotification}', [ProfileController::class, 'updateMessageStatus']);
@@ -100,6 +100,7 @@ Route::middleware('auth:sanctum')->group(function () {
         });
 
         Route::group(['prefix' => 'supplier'], function () {
+            Route::get('/activity-categories', [SupplierController::class, 'getCategories']);
             Route::post('/', [SupplierController::class, 'store']);
         });
 

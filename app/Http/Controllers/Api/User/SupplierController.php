@@ -4,40 +4,21 @@ namespace App\Http\Controllers\Api\User;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreSupplierProfileRequest;
-use App\Http\Resources\ActivityCategoryResource;
+use App\Http\Resources\SupplierCategoryResource;
 use App\Http\Resources\UserResource;
 use App\Models\ActivityCategory;
 use App\Models\SupplierProfile;
 use App\Models\User;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Auth;
 
 class SupplierController extends Controller
 {
-    public function index(): JsonResponse
+
+    public function getCategories()
     {
-        return $this->getCategories();
+        return success(SupplierCategoryResource::collection(ActivityCategory::getAll()));
     }
 
-    private function getCategories(): JsonResponse
-    {
-        $categories = ActivityCategory::with('children')->where('parent_id', null)->get();
-
-        return response()->json($this->formatCategories($categories));
-    }
-
-    private function formatCategories($categories)
-    {
-        return $categories->map(function ($category) {
-            return [
-                'id' => $category->id,
-                'name' => $category->name,
-                'slug' => $category->slug,
-                'children' => $this->formatCategories($category->children)
-            ];
-        });
-    }
     public function store(StoreSupplierProfileRequest $request)
     {
         if (!SupplierProfile::where([SupplierProfile::USER_ID => Auth::id()])->exists())

@@ -2,12 +2,11 @@
 
 namespace App\Models;
 
-use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * @method static create(array $array)
@@ -17,31 +16,56 @@ class ActivityCategory extends Model
 {
     use HasFactory;
 
+    const
+        ID = 'id',
+        NAME = 'name',
+        SLUG = 'slug',
+        PARENT_ID = 'parent_id',
+        CREATED_AT = 'created_at',
+        UPDATED_AT = 'updated_at';
+
+    protected $fillable = [
+        self::NAME,
+        self::SLUG,
+        self::PARENT_ID,
+        self::CREATED_AT,
+        self::UPDATED_AT,
+    ];
+
     protected $guarded  = ['name', 'parent_id', 'slug'];
-    //protected $hidden = ['created_at', 'updated_at'];
+    protected $with = ['children'];
 
-    public function subcategories(): HasMany
+
+    protected static function booted(): void
     {
-        return $this->hasMany(ActivityCategory::class, 'parent_id');
+        static::saved(function () {
+            Cache::forget((new static)->getCacheKey());
+        });
+
+        static::deleted(function () {
+            Cache::forget((new static)->getCacheKey());
+        });
+
+    }
+    public function scopeParentStatus(Builder $query, int|null $value): void
+    {
+        $query->where(self::PARENT_ID, $value);
     }
 
-    public function parent(): BelongsTo
+    public static function getCacheKey(): string
     {
-        return $this->belongsTo(ActivityCategory::class, 'parent_id');
+        return (new static)->getMorphClass() . '_all';
     }
+
+    public static function getAll()
+    {
+        return Cache::rememberForever(self::getCacheKey(), function () {
+            return self::parentStatus(null)->get();
+        });
+    }
+
     public function children(): HasMany
     {
-        return $this->hasMany(ActivityCategory::class, 'parent_id');
+        return $this->hasMany(ActivityCategory::class, 'parent_id')->with('children');
     }
-    /*protected array $dates = ['created_at', 'updated_at'];
-    public function getCreatedAtAttribute($value): string
-    {
-        return Carbon::parse($value)->format('Y-m-d\h:i:s.v');
-    }
-
-    public function getUpdatedAtAttribute($value): string
-    {
-        return Carbon::parse($value)->format('Y-m-d\h:i:s.v');
-    }*/
-
 }
