@@ -1,5 +1,7 @@
 <?php
 
+use App\Providers\ResponseServiceProvider;
+use Artisaninweb\SoapWrapper\SoapWrapper;
 use Illuminate\Support\Facades\Facade;
 use Illuminate\Support\ServiceProvider;
 
@@ -175,7 +177,7 @@ return [
         // App\Providers\BroadcastServiceProvider::class,
         App\Providers\EventServiceProvider::class,
         App\Providers\RouteServiceProvider::class,
-        \App\Providers\ResponseServiceProvider::class
+        ResponseServiceProvider::class
     ])->toArray(),
 
     /*
@@ -191,7 +193,7 @@ return [
 
     'aliases' => Facade::defaultAliases()->merge([
         // 'Example' => App\Facades\Example::class,
-        'SoapWrapper' => \Artisaninweb\SoapWrapper\SoapWrapper::class,
+        'SoapWrapper' => SoapWrapper::class,
     ])->toArray(),
 
 ];

@@ -36,5 +36,5 @@ function getProvince(): Collection
 
 function getCities(): Collection
 {
-    return is_null(\request('provinceID')) ? DB::table('province_city')->get() : DB::table('province_city')->where(['ProvinceID' => \request('provinceID')])->get();
+    return is_null(request('provinceID')) ? DB::table('province_city')->get() : DB::table('province_city')->where(['ProvinceID' => request('provinceID')])->get();
 }

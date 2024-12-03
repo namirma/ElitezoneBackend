@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\User\ProfileController;
 use App\Http\Controllers\Api\User\SupplierController;
 use App\Mail\UserNotificationMail;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
@@ -22,7 +23,7 @@ use App\Http\Controllers\Api\AuthController;
 |
 */
 
-Route::get('check-certificate', function (){
+/*Route::get('check-certificate', function (){
 
      $auth = array(
         "User"=>"SpidtechCRM",
@@ -47,9 +48,9 @@ Route::get('check-certificate', function (){
     return $response;
 
 
-    $response = \Illuminate\Support\Facades\Http::get('https://www.saze90.com/api/?wsdl');
+    $response = Http::get('https://www.saze90.com/api/?wsdl');
     dd($response->getBody());
-});
+});*/
 
 Route::controller(AuthController::class)->group(function () {
     Route::group(['prefix' => 'authenticate'], function () {
@@ -57,11 +58,12 @@ Route::controller(AuthController::class)->group(function () {
         Route::post('/verify-code', 'verifyCode');
         Route::post('/password/check', 'checkPassword');
         Route::post('/forget-password', 'forgetPassword');
-        Route::post('/change-password','changePassword');
-        Route::post('/send-code','sendVerificationCode');
+        Route::post('/change-password', 'changePassword');
+        Route::post('/send-code', 'sendVerificationCode');
     });
 });
 
+    Route::get('/activity-categories', [SupplierController::class, 'index']);
 Route::middleware('auth:sanctum')->group(function () {
 
     Route::group(['prefix' => 'province'], function () {

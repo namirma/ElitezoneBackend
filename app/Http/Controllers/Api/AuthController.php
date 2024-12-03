@@ -22,8 +22,10 @@ class AuthController extends Controller
 
         if ($user && @$user->password)
             return success([], __('auth.login_success'));
-        else if (!Carbon::parse(@$user->secret_expires_at)->isPast())
+        else if ($user && isset($user->secret_expires_at) && !Carbon::parse($user->secret_expires_at)->isPast()) {
             return success($user, __('auth.code_sent_recently'), 202);
+        }
+
 
         $mobileVerifyCode = generateVerifyCode();
 

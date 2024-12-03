@@ -13,6 +13,7 @@ use Laravel\Sanctum\HasApiTokens;
  * @method static updateOrCreate(array $array, array $array1)
  * @method static create(array $array)
  * @method static where(array $array)
+ * @method static firstOrCreate(array $array)
  */
 class UserProfile extends Model
 {

@@ -19,7 +19,7 @@ use App\Models\User;
 use App\Models\UserNotification;
 use App\Models\UserProfile;
 use App\Services\SmsService;
-use \Illuminate\Http\Request;
+use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -171,6 +171,7 @@ class ProfileController extends Controller
         EmployerProfile::where([EmployerProfile::USER_ID => Auth::id()])->delete();
         EngineerProfile::where([EngineerProfile::USER_ID => Auth::id()])->delete();
         SupplierProfile::where([SupplierProfile::USER_ID => Auth::id()])->delete();
+
     }
 
     public function getMessages()
