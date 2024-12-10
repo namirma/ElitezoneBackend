@@ -7,6 +7,9 @@ use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 
+/**
+ * @property mixed $activity_category_id
+ */
 class StoreSupplierProfileRequest extends FormRequest
 {
     /**
@@ -25,7 +28,6 @@ class StoreSupplierProfileRequest extends FormRequest
     public function rules(): array
     {
         return [
-            SupplierProfile::ACTIVITY_FIELD => 'nullable',
             SupplierProfile::ACTIVITY_DESCRIPTION => 'nullable',
             SupplierProfile::BRANDS => 'nullable',
             SupplierProfile::BRANDS_NOT_RELATED => 'boolean',
@@ -37,6 +39,8 @@ class StoreSupplierProfileRequest extends FormRequest
             SupplierProfile::WEBSITE => 'string|nullable',
             SupplierProfile::WEBSITE_NOT_RELATED => 'boolean',
             SupplierProfile::COMPANY => 'string',
+            'activity_category_id' => 'required|array',
+            'activity_category_id.*' => 'exists:supplier_activity_categories,id',
 
         ];
     }

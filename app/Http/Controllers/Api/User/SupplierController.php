@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\User;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreSupplierProfileRequest;
 use App\Http\Resources\SupplierCategoryResource;
+use App\Http\Resources\SupplierProfileResource;
 use App\Http\Resources\UserResource;
 use App\Models\SupplierActivityCategory;
 use App\Models\SupplierProfile;
@@ -13,7 +14,14 @@ use Illuminate\Support\Facades\Auth;
 
 class SupplierController extends Controller
 {
+    public function getProfile($id): SupplierProfileResource
+    {
+        $supplier = SupplierProfile::with(['activities' => function ($query) {
+            $query->withoutChildren();
+        }])->findOrFail($id);
 
+        return new SupplierProfileResource($supplier);
+    }
     public function getCategories()
     {
         return success(SupplierCategoryResource::collection(SupplierActivityCategory::getAll()));
@@ -24,13 +32,12 @@ class SupplierController extends Controller
         if (!SupplierProfile::where([SupplierProfile::USER_ID => Auth::id()])->exists())
             ProfileController::removeProfile();
 
-        SupplierProfile::updateOrCreate(
+        $supplierProfile = SupplierProfile::updateOrCreate(
             [
                 SupplierProfile::USER_ID => Auth::id(),
             ],
             [
                 SupplierProfile::USER_ID => Auth::id(),
-                SupplierProfile::ACTIVITY_FIELD => @$request->validated('activity_field'),
                 SupplierProfile::ACTIVITY_DESCRIPTION => @$request->validated('activity_description'),
                 SupplierProfile::BRANDS => @$request->validated('brands'),
                 SupplierProfile::BRANDS_NOT_RELATED => @$request->validated('brands_not_related'),
@@ -42,8 +49,11 @@ class SupplierController extends Controller
                 SupplierProfile::WEBSITE => @$request->validated('website'),
                 SupplierProfile::WEBSITE_NOT_RELATED => @$request->validated('website_not_related'),
                 SupplierProfile::COMPANY => @$request->validated('company'),
-            ]);
 
+            ]);
+        if ($request->has('activity_category_id')) {
+            $supplierProfile->activities()->syncWithoutDetaching($request->activity_category_id);
+        }
         return success(new UserResource(User::with('supplier')->find(Auth::id())));
 
     }

@@ -5,10 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * @method static updateOrCreate(array $array, array $array1)
  * @method static where(array $array)
+ * @method static withoutChildren()
  */
 class SupplierProfile extends Model
 {
@@ -17,7 +20,6 @@ class SupplierProfile extends Model
     const
         ID = 'id',
         USER_ID = 'user_id',
-        ACTIVITY_FIELD = 'activity_field',
         ACTIVITY_DESCRIPTION = 'activity_description',
         BRANDS = 'brands',
         BRANDS_NOT_RELATED = 'brands_not_related',
@@ -40,7 +42,6 @@ class SupplierProfile extends Model
      */
     protected $fillable = [
         self::USER_ID,
-        self::ACTIVITY_FIELD,
         self::ACTIVITY_DESCRIPTION,
         self::BRANDS,
         self::BRANDS_NOT_RELATED,
@@ -75,4 +76,8 @@ class SupplierProfile extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function activities(): BelongsToMany
+    {
+        return $this->belongsToMany(SupplierActivityCategory::class, 'supplier_activities', 'supplier_id', 'activity_category_id');
+    }
 }

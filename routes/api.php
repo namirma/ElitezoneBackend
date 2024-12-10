@@ -63,6 +63,7 @@ Route::controller(AuthController::class)->group(function () {
     });
 });
 
+
 Route::middleware('auth:sanctum')->group(function () {
 
     Route::group(['prefix' => 'province'], function () {
@@ -102,6 +103,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::group(['prefix' => 'supplier'], function () {
             Route::get('/activity-categories', [SupplierController::class, 'getCategories']);
             Route::post('/', [SupplierController::class, 'store']);
+            Route::get('/{id}', [SupplierController::class, 'getProfile']);
         });
 
         Route::group(['prefix' => 'employer'], function () {

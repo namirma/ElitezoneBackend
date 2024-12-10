@@ -14,7 +14,6 @@ return new class extends Migration
         Schema::create('supplier_profiles', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('user_id');
-            $table->text('activity_field')->nullable();
             $table->string('activity_description')->nullable();
             $table->string('brands')->nullable();
             $table->unsignedInteger('activity_history')->nullable();

@@ -2,10 +2,14 @@
 
 namespace App\Http\Resources;
 
+use App\Models\SupplierActivityCategory;
 use App\Models\SupplierProfile;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/**
+ * @property mixed $activities
+ */
 class SupplierProfileResource extends JsonResource
 {
     /**
@@ -16,7 +20,6 @@ class SupplierProfileResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            SupplierProfile::ACTIVITY_FIELD => $this->activity_field,
             SupplierProfile::ACTIVITY_DESCRIPTION => $this->activity_description,
             SupplierProfile::BRANDS => $this->brands,
             SupplierProfile::BRANDS_NOT_RELATED => $this->brands_not_related,
@@ -32,6 +35,7 @@ class SupplierProfileResource extends JsonResource
             'created_at_p' => $this->created_at_p,
             'created_at_diff' => $this->created_at_diff,
 
+            'activity_categories' => SupplierCategoryResource::collection($this->activities)
         ];
     }
 }
