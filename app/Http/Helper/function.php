@@ -39,6 +39,20 @@ function getCities(): Collection
     return is_null(request('provinceID')) ? DB::table('province_city')->get() : DB::table('province_city')->where(['ProvinceID' => request('provinceID')])->get();
 }
 
+function getSupplierId(): Collection
+{
+    // Check if 'activity_category_id' is provided in the request
+    if (is_null(request('activity_category_id'))) {
+        // If not provided, get all activity_category_ids
+        return DB::table('supplier_activities')->pluck('activity_category_id');
+    } else {
+        // If provided, get the specific activity_category_ids based on the request
+        return DB::table('supplier_activities')
+            ->where('activity_category_id', request('activity_category_id'))
+            ->pluck('activity_category_id');
+    }
+}
+
 function getSupplierCategoryId(): Collection
 {
     if (is_null(request('activity_category_id'))) {
