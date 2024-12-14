@@ -61,7 +61,7 @@ class SupplierController extends Controller
 
             ]);
         if ($request->has('activity_category_id')) {
-            $supplierProfile->activities()->syncWithoutDetaching($request->activity_category_id);
+            $supplierProfile->activities()->sync($request->activity_category_id);
         }
         return success(new UserResource(User::with('supplier')->find(Auth::id())));
 
