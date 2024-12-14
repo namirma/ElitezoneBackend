@@ -103,7 +103,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::group(['prefix' => 'supplier'], function () {
             Route::get('/activity-categories', [SupplierController::class, 'getCategories']);
             Route::post('/', [SupplierController::class, 'store']);
-            Route::get('/{id}', [SupplierController::class, 'getProfile']);
+            Route::get('/{id}', function (){
+                return (getSupplierCategoryId());
+            });
+            Route::get('/activity-categories', [SupplierController::class, 'index']);
         });
 
         Route::group(['prefix' => 'employer'], function () {

@@ -38,3 +38,14 @@ function getCities(): Collection
 {
     return is_null(request('provinceID')) ? DB::table('province_city')->get() : DB::table('province_city')->where(['ProvinceID' => request('provinceID')])->get();
 }
+
+function getSupplierCategoryId(): Collection
+{
+    if (is_null(request('activity_category_id'))) {
+        return DB::table('supplier_activities')->pluck('activity_category_id');
+    } else {
+        return DB::table('supplier_activities')
+            ->where('activity_category_id', request('activity_category_id'))
+            ->pluck('activity_category_id');
+    }
+}

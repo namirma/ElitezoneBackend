@@ -5,15 +5,24 @@ namespace App\Http\Controllers\Api\User;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreSupplierProfileRequest;
 use App\Http\Resources\SupplierCategoryResource;
+use App\Http\Resources\SupplierDataResource;
 use App\Http\Resources\SupplierProfileResource;
 use App\Http\Resources\UserResource;
 use App\Models\SupplierActivityCategory;
 use App\Models\SupplierProfile;
 use App\Models\User;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Auth;
 
 class SupplierController extends Controller
 {
+    public function index()
+    {
+        $categories = SupplierActivityCategory::with('children')->get();
+
+        return success(SupplierCategoryResource::collection($categories));
+    }
+
     public function getProfile($id): SupplierProfileResource
     {
         $supplier = SupplierProfile::with(['activities' => function ($query) {
