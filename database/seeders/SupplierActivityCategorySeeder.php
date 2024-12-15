@@ -17,8 +17,6 @@ class SupplierActivityCategorySeeder extends Seeder
 
     public function run(): void
     {
-        DB::table('supplier_activity_categories')->delete();
-
 
         /*$constructionMaterials = SupplierActivityCategory::create(['name' => 'MasalehSakhtemani']);
         $decorativeMaterials = SupplierActivityCategory::create(['name' => 'TazeenatSakhtemani']);
@@ -247,7 +245,7 @@ class SupplierActivityCategorySeeder extends Seeder
         }
 
         $InsulationMaterials = SupplierActivityCategory::create([
-            'name' => 'مصالح تاسیسات مکانیکی',
+            'name' => 'مصالح عایق بندی',
             'slug' => Str::slug('Insulation Materials', '-')
         ]);
         $childCategory3 = [
