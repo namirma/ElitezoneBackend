@@ -23,37 +23,6 @@ use App\Http\Controllers\Api\AuthController;
 |
 */
 
-/*Route::get('check-certificate', function (){
-
-     $auth = array(
-        "User"=>"SpidtechCRM",
-        "Pass"=>"ha@s86h8a8l9#ha5f8t6pas5s8wo_rd"
-    );
-
-    $this->soapWrapper = new \Artisaninweb\SoapWrapper\SoapWrapper();
-
-    $response = $this->soapWrapper->call('https://www.saze90.com/api/?wsdl');
-
-    dd($response);
-
-
-    if (is_soap_fault($client)) {
-        trigger_error("SOAP Fault: (faultcode: {$client->faultcode}, faultstring: {$client->faultstring})", E_USER_ERROR);
-    }
-    $params = array("Auth" => $auth, "UserID" => 1, 'CustomerType' => 2);
-
-    $response = $client->getUser(json_encode($params));
-    dd($response);
-    $response = json_decode($response);
-    return $response;
-
-
-    $response = Http::get('https://www.saze90.com/api/?wsdl');
-    dd($response->getBody());
-});*/
-
-
-
 Route::get('test-mail', function () {
     $mail = Mail::to('sjdz1892@gmail.com')->send(new TestEmail());
     dd($mail);
