@@ -52,6 +52,13 @@ use App\Http\Controllers\Api\AuthController;
     dd($response->getBody());
 });*/
 
+
+
+Route::get('test-mail', function () {
+    $mail = Mail::to('sjdz1892@gmail.com')->send(new TestEmail());
+    dd($mail);
+});
+
 Route::controller(AuthController::class)->group(function () {
     Route::group(['prefix' => 'authenticate'], function () {
         Route::post('/', 'register');
@@ -117,12 +124,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
-
-    Route::get('test-mail', function () {
-        $mail = Mail::to('sjdz1892@gmail.com')->send(new TestEmail());
-        dd($mail);
-    });
-
 
 });
 
