@@ -5,9 +5,9 @@ use App\Http\Controllers\Api\User\EmployerController;
 use App\Http\Controllers\Api\User\EngineerController;
 use App\Http\Controllers\Api\User\ProfileController;
 use App\Http\Controllers\Api\User\SupplierController;
+use App\Mail\TestEmail;
 use App\Mail\UserNotificationMail;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
@@ -119,8 +119,8 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::get('test-mail', function () {
-        $data = ['message' => 'This is a test!'];
-        Mail::to('john@example.com')->send(new UserNotificationMail($data));
+        $mail = Mail::to('sjdz1892@gmail.com')->send(new TestEmail());
+        dd($mail);
     });
 
 });
