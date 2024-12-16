@@ -123,5 +123,6 @@ Route::middleware('auth:sanctum')->group(function () {
         dd($mail);
     });
 
+
 });
 
