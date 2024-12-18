@@ -5,9 +5,9 @@ use App\Http\Controllers\Api\User\EmployerController;
 use App\Http\Controllers\Api\User\EngineerController;
 use App\Http\Controllers\Api\User\ProfileController;
 use App\Http\Controllers\Api\User\SupplierController;
-use App\Http\Controllers\EmailVerificationController;
 use App\Mail\TestEmail;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
@@ -65,7 +65,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/', [ProfileController::class, 'getProfile']);
         Route::post('/', [ProfileController::class, 'setProfile']);
         Route::put('/', [ProfileController::class, 'updateProfile']);
-        Route::post('/verify-email', [EmailVerificationController::class, 'verify']);
+        Route::post('/verify-email', [ProfileController::class, 'setEmail']);
         Route::post('/password', [ProfileController::class, 'setPassword']);
         Route::get('/change-password/first-attempt', [ProfileController::class, 'changePasswordFirstAttempt']);
         Route::post('/type', [ProfileController::class, 'setUserType']);
@@ -96,5 +96,12 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
 
+});
+
+Route::get('/test-log', function () {
+    Log::info('This is an info message.');
+    Log::error('This is an error message.');
+
+    return 'Logs have been written.';
 });
 

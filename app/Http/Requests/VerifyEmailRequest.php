@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Models\UserProfile;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Auth;
 
 class VerifyEmailRequest extends FormRequest
 {
@@ -13,7 +14,11 @@ class VerifyEmailRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return true;
+        $user = Auth::user();
+
+        $profile = $user->profile;
+
+        return $profile && $this->email === $profile->email && is_null($profile->email_verified_at);
     }
 
     /**
@@ -24,14 +29,8 @@ class VerifyEmailRequest extends FormRequest
     public function rules(): array
     {
         return [
-            UserProfile::EMAIL=>'required|email:rfc,dns',
+            UserProfile::EMAIL => 'required|email:rfc,dns',
         ];
     }
-    public function messages(): array
-    {
-        return [
-            UserProfile::EMAIL . '.email'  => 'لطفاً یک ایمیل معتبر وارد کنید.',
-            UserProfile::EMAIL . '.required'  => 'وارد کردن ایمیل الزامی است',
-        ];
-    }
+
 }

@@ -8,8 +8,11 @@ use App\Http\Requests\StoreUserProfileRequest;
 use App\Http\Requests\StoreUserTypeRequest;
 use App\Http\Requests\UpdateMobileRequest;
 use App\Http\Requests\UpdateUserProfileRequest;
+use App\Http\Requests\VerifyEmailRequest;
 use App\Http\Resources\UserMessageResource;
 use App\Http\Resources\UserResource;
+use App\Mail\TestEmail;
+use App\Mail\VerifyEmail;
 use App\Models\ContractorProfile;
 use App\Models\EmployerProfile;
 use App\Models\EngineerProfile;
@@ -26,6 +29,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 class ProfileController extends Controller
 {
@@ -192,6 +197,27 @@ class ProfileController extends Controller
     {
         UserNotification::where([UserNotification::USER_ID => Auth::id()])
             ->update([UserNotification::READ_AT => Carbon::now()->toDateTimeString()]);
+
+        return success([]);
+    }
+
+    public function setEmail(VerifyEmailRequest $request)
+    {
+        UserProfile::updateOrCreate(
+            [
+                UserProfile::USER_ID => Auth::id()
+            ],
+            [
+                UserProfile::EMAIL => $request->validated('email'),
+                UserProfile::EMAIL_VERIFIED_AT => null
+            ]
+        );
+
+        $token = Str::uuid();
+
+        //TODO Store token in database.
+
+        Mail::to($request->validated('email'))->send(new VerifyEmail($token));
 
         return success([]);
     }
