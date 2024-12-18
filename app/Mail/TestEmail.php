@@ -13,5 +13,6 @@ class TestEmail extends Mailable
     {
         return $this->subject('Test Email')
         ->view('emails.test');
+
     }
 }

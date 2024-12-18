@@ -17,7 +17,7 @@ class UserNotificationMail extends Mailable
         $this->data = $data;
     }
 
-    public function build()
+    public function build(): UserNotificationMail
     {
         $address = 'zarsanjsajad@gmail.com';
         $subject = 'This is a demo!';
