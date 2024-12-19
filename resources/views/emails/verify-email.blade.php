@@ -6,6 +6,6 @@
 </head>
 <body>
 <h2>Verify Email</h2>
-<a href="https://elitezone.me/verify-email/{{ $linlk }}">Verification link</a>
+<a href="https://elitezone.me/verify-email/{{ $link }}">Verification link</a>
 </body>
 </html>

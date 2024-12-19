@@ -203,21 +203,21 @@ class ProfileController extends Controller
 
     public function setEmail(VerifyEmailRequest $request)
     {
+        $token = Str::uuid();
         UserProfile::updateOrCreate(
             [
                 UserProfile::USER_ID => Auth::id()
             ],
             [
                 UserProfile::EMAIL => $request->validated('email'),
-                UserProfile::EMAIL_VERIFIED_AT => null
+                UserProfile::EMAIL_VERIFIED_AT => null,
+                UserProfile::EMAIL_VERIFICATION_TOKEN => $token
             ]
         );
 
-        $token = Str::uuid();
-
         //TODO Store token in database.
 
-        Mail::to($request->validated('email'))->send(new VerifyEmail($token));
+        /*Mail::to($request->validated('email'))->send(new VerifyEmail($token));*/
 
         return success([]);
     }
