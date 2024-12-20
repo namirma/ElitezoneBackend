@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::post('/question', [QuestionController::class, 'submitQuestion']);
+Route::post('/new-question', [QuestionController::class, 'submitQuestion']);
 
 Route::controller(AuthController::class)->group(function () {
     Route::group(['prefix' => 'authenticate'], function () {
