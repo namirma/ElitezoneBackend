@@ -56,12 +56,22 @@ class AuthController extends Controller
         $user = User::where([User::MOBILE => $request->validated('username'), User::SECRET => $request->validated('code')])->first();
 
         if (!Carbon::parse(@$user->secret_expires_at)->isPast()) {
+
+            $isNewUser = $user->wasRecentlyCreated || $user->created_at->diffInSeconds(now()) < 60;
+
             if ($request->has('forget_password') && $request->validated('forget_password')) {
                 return success([]);
             } else {
                 Auth::login($user);
                 $user->tokens()->delete();
                 $token = $user->createToken('auth')->plainTextToken;
+
+                if ($isNewUser) {
+                    // Send welcome SMS for new users
+                    (new SmsService())->send($request->validated('username'), __('sms.newRegisterUser'));
+                }
+
+
                 return success(['user' => new UserResource($user), 'token' => $token], __('auth.register_success'));
             }
         }

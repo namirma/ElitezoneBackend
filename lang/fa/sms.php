@@ -3,5 +3,7 @@
 return [
   'loginMessage' => 'پلتفرم EliteZone
   کد تایید:
-  :code'
+  :code',
+
+    'newRegisterUser' => 'خوش آمدید'
 ];
