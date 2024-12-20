@@ -14,7 +14,7 @@ class Question extends Model
 
     const
         NAME = 'name',
-        PHONE = 'phone',
+        MOBILE = 'mobile',
         EMAIL = 'email',
         SUBJECT = 'subject',
         MESSAGE = 'message';
@@ -29,7 +29,7 @@ class Question extends Model
 
     protected $fillable = [
         self::NAME,
-        self::PHONE,
+        self::MOBILE,
         self::EMAIL,
         self::SUBJECT,
         self::MESSAGE
