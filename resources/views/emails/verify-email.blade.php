@@ -117,7 +117,7 @@
                 <!-- Footer -->
                 <div class="footer">
                     <p>شماره تماس: 34005000-031</p>
-                    <p>ایمیل: Info@EliteZone.me</p>
+                    <p>Info@EliteZone.me</p>
                     <div class="social-icons">
                         <a href="https://www.instagram.com/sazesoftwaregroup" target="_blank">
                             <img src="https://s3.ir-thr-at1.arvanstorage.ir/emailimg/Instagram.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=8900bd10-6b0a-44ad-b504-3dc7e151d41b%2F20241220%2Fir-thr-at1%2Fs3%2Faws4_request&X-Amz-Date=20241220T123500Z&X-Amz-Expires=86400&X-Amz-SignedHeaders=host&versionId=&X-Amz-Signature=236fcbb792edf95689c46f8f139c749a02d4a26a89a0304d17125986303be12f" alt="Instagram">
@@ -127,7 +127,7 @@
                             <img src="https://s3.ir-thr-at1.arvanstorage.ir/emailimg/Telegram.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=8900bd10-6b0a-44ad-b504-3dc7e151d41b%2F20241220%2Fir-thr-at1%2Fs3%2Faws4_request&X-Amz-Date=20241220T123430Z&X-Amz-Expires=86400&X-Amz-SignedHeaders=host&versionId=&X-Amz-Signature=d83db63039a020acf15a336ded231ab4417cd90da05883a11bc2ba0c3693ac70" alt="Telegram">
                         </a>
                     </div>
-                    <p>کلیه حقوق برای شرکت نرم افزاری اسپادانا (SAZE90.COM) محفوظ است.</p>
+                    <p>کلیه حقوق برای شرکت نرم افزاری اسپادانا محفوظ است.</p>
                 </div>
             </div>
         </td>
