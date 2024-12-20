@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * @method static where(array $array)
+ * @method static create(array $array)
  */
 class UserNotification extends Model
 {

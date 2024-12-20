@@ -75,6 +75,7 @@ class AuthController extends Controller
 
                 if ($isNewUser) {
                     (new SmsService())->send($request->validated('username'), __('sms.newRegisterUser'));
+
                     UserNotification::create([
                        UserNotification::USER_ID => Auth::id(),
                        UserNotification::SUBJECT => __('global.newUserNotificationSubject'),
