@@ -14,16 +14,9 @@ return new class extends Migration
         Schema::create('questions', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->string('phone');
+            $table->string('mobile');
             $table->string('email');
-            $table->enum('subject', [
-                'انتقاد و شکایات',
-                'مدیریت',
-                'حسابداری و امور مالی',
-                'پیشنهاد',
-                'گزارش خطا در نحوه عملکرد وب سایت',
-                'سایر موضوعات'
-            ]);
+            $table->string('subject', 128);
             $table->text('message');
             $table->timestamps();
         });
