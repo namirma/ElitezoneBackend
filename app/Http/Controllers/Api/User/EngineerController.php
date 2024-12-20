@@ -31,7 +31,9 @@ class EngineerController extends Controller
                 EngineerProfile::STUDENT => @$request->validated('student'),
                 EngineerProfile::UNIVERSITY_NAME => @$request->validated('university_name'),
                 EngineerProfile::PROVINCE_ID => @$request->validated('province_id'),
+                EngineerProfile::ACTIVITY_PROVINCE_ID => @$request->validated('activity_province_id'),
                 EngineerProfile::CITY_ID => @$request->validated('city_id'),
+                EngineerProfile::ACTIVITY_CITY_ID => @$request->validated('activity_city_id'),
             ]);
 
         return success(new UserResource(User::with('engineer')->find(Auth::id())));

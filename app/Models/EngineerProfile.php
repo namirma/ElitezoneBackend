@@ -28,7 +28,9 @@ class EngineerProfile extends Model
         STUDENT = 'student',
         UNIVERSITY_NAME = 'university_name',
         PROVINCE_ID = 'province_id',
+        ACTIVITY_PROVINCE_ID = 'activity_province_id',
         CITY_ID = 'city_id',
+        ACTIVITY_CITY_ID = 'activity_city_id',
         CREATED_AT = 'created_at',
         UPDATED_AT = 'updated_at';
 
@@ -49,6 +51,9 @@ class EngineerProfile extends Model
         self::STUDENT,
         self::UNIVERSITY_NAME,
         self::PROVINCE_ID,
+        self::ACTIVITY_PROVINCE_ID,
+        self::CITY_ID,
+        self::ACTIVITY_CITY_ID,
         self::CREATED_AT,
         self::UPDATED_AT
     ];
