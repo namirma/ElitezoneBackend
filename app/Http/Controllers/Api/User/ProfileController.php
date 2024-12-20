@@ -215,9 +215,7 @@ class ProfileController extends Controller
             ]
         );
 
-        //TODO Store token in database.
-
-        /*Mail::to($request->validated('email'))->send(new VerifyEmail($token));*/
+        Mail::to($request->validated('email'))->send(new VerifyEmail($token));
 
         return success([]);
     }

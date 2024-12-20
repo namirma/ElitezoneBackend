@@ -23,10 +23,6 @@ use App\Http\Controllers\Api\AuthController;
 |
 */
 
-Route::get('test-mail', function () {
-    $mail = Mail::to('navidm632@gmail.com')->send(new TestEmail());
-    dd($mail);
-});
 
 Route::controller(AuthController::class)->group(function () {
     Route::group(['prefix' => 'authenticate'], function () {

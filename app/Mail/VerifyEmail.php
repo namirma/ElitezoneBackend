@@ -13,7 +13,7 @@ class VerifyEmail extends Mailable
 {
     use SerializesModels;
 
-    public $token;
+    public mixed $token;
 
     public function __construct($token = null)
     {
