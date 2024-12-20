@@ -166,11 +166,4 @@ class AuthController extends Controller
 
     }
 
-    public function submitQuestion(StoreQuestionRequest $request)
-    {
-        $question = Question::create($request->validated());
-
-        return success([], __('global.received_successfully'));
-    }
-
 }

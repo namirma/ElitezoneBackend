@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\QuestionController;
 use App\Http\Controllers\Api\User\ContractorController;
 use App\Http\Controllers\Api\User\EmployerController;
 use App\Http\Controllers\Api\User\EngineerController;
@@ -21,7 +22,8 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::post('form-question', [AuthController::class, 'submitQuestion']);
+Route::post('form-question', [QuestionController::class, 'submitQuestion']);
+
 Route::controller(AuthController::class)->group(function () {
     Route::group(['prefix' => 'authenticate'], function () {
         Route::post('/', 'register');
