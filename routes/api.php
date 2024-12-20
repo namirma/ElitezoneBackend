@@ -1,16 +1,14 @@
 <?php
 
+use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\User\ContractorController;
 use App\Http\Controllers\Api\User\EmployerController;
 use App\Http\Controllers\Api\User\EngineerController;
 use App\Http\Controllers\Api\User\ProfileController;
 use App\Http\Controllers\Api\User\SupplierController;
-use App\Mail\TestEmail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\AuthController;
 
 /*
 |--------------------------------------------------------------------------
@@ -93,6 +91,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
 
 });
+
+Route::post('/check-email-token',[ProfileController::class, 'checkToken']);
 
 Route::get('/test-log', function () {
     Log::info('This is an info message.');

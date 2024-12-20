@@ -219,4 +219,20 @@ class ProfileController extends Controller
 
         return success([], 'global.verificationEmailSentSuccessfully');
     }
+
+    public function checkToken(Request $request)
+    {
+        $profile = UserProfile::where([
+            UserProfile::EMAIL_VERIFICATION_TOKEN => $request->input('token'),
+            UserProfile::EMAIL_VERIFIED_AT => null
+        ])->first();
+
+        if ($profile) {
+            $profile->update([UserProfile::EMAIL_VERIFIED_AT => Carbon::now()]);
+            return success([], 'global.emailVerifiedSuccessfully');
+        }
+
+        return error('global.notFound', [], 404);
+
+    }
 }
