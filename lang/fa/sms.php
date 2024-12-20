@@ -1,5 +1,8 @@
 <?php
 
 return [
-  'loginMessage' => 'پلتفرم EliteZone <br/>کد تایید:<br />'
+  'loginMessage' => 'پلتفرم EliteZone
+  <br />
+  کد تایید:
+  <br />'
 ];
