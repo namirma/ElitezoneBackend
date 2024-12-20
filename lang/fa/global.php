@@ -6,5 +6,9 @@ return [
     'verificationEmailSentSuccessfully' => 'ایمیل تایید با موفقیت ارسال شد.',
     'emailVerifiedSuccessfully' => 'پست الکترونیکی با موفقیت تایید شد.',
     'notFound' => 'موردی یافت نشد.',
-
+    'newUserNotificationSubject' => 'به پلتفرم EliteZone خوش آمدید!',
+    'newUserNotificationBody' => '   از ثبت نام شما سپاسگزاریم.
+    در حال مذاکره با سوپلایر‌های محترم هستیم.
+    برای قدم های بعدی به شما اطلاع رسانی خواهیم کرد.
+    تیم EliteZone'
 ];

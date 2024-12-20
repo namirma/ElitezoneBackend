@@ -19,6 +19,7 @@ class UserProfileResource extends JsonResource
             UserProfile::NAME => $this->name,
             UserProfile::FAMILY => $this->family,
             UserProfile::EMAIL => $this->email,
+            UserProfile::EMAIL_VERIFIED_AT => $this->email_verified_at,
             UserProfile::NATIONAL_CODE => $this->national_code,
             UserProfile::NATIONAL_ID => $this->national_id,
             UserProfile::BIRTHDAY => $this->birthday,

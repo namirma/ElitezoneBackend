@@ -7,7 +7,9 @@ use App\Http\Requests\StoreQuestionRequest;
 use App\Mail\QuestionEmail;
 use App\Mail\VerifyEmail;
 use App\Models\Question;
+use App\Models\UserNotification;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Mail;
 
 class QuestionController extends Controller
@@ -15,7 +17,7 @@ class QuestionController extends Controller
     public function submitQuestion(StoreQuestionRequest $request)
     {
         Question::create($request->validated());
-        Mail::to('info@elitezone.me')->send(new QuestionEmail());
+        Mail::to(Config::get('companyInfoEmailAddress'))->send(new QuestionEmail());
 
         return success([], __('global.received_successfully'));
     }

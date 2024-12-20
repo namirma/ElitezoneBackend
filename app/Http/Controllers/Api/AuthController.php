@@ -8,6 +8,7 @@ use App\Http\Requests\StoreUserRequest;
 use App\Http\Resources\UserResource;
 use App\Models\Question;
 use App\Models\User;
+use App\Models\UserNotification;
 use App\Models\UserType;
 use App\Services\SmsService;
 use Illuminate\Http\JsonResponse;
@@ -72,8 +73,14 @@ class AuthController extends Controller
                 $user->tokens()->delete();
                 $token = $user->createToken('auth')->plainTextToken;
 
-                if ($isNewUser)
+                if ($isNewUser) {
                     (new SmsService())->send($request->validated('username'), __('sms.newRegisterUser'));
+                    UserNotification::create([
+                       UserNotification::USER_ID => Auth::id(),
+                       UserNotification::SUBJECT => __('global.newUserNotificationSubject'),
+                        UserNotification::BODY => __('global.newUserNotificationBody')
+                    ]);
+                }
 
 
                 return success(['user' => new UserResource($user), 'token' => $token], __('auth.register_success'));
