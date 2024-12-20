@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-
+Route::post('form-question', [AuthController::class, 'submitQuestion']);
 Route::controller(AuthController::class)->group(function () {
     Route::group(['prefix' => 'authenticate'], function () {
         Route::post('/', 'register');

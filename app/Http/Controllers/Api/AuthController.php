@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreQuestionRequest;
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Resources\UserResource;
+use App\Models\Question;
 use App\Models\User;
 use App\Models\UserType;
 use App\Services\SmsService;
@@ -162,6 +164,13 @@ class AuthController extends Controller
 
         return success([], __('auth.verification_code_sent_successfully'));
 
+    }
+
+    public function submitQuestion(StoreQuestionRequest $request)
+    {
+        $question = Question::create($request->validated());
+
+        return success([], __('global.received_successfully'));
     }
 
 }
