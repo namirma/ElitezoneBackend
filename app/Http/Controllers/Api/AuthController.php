@@ -66,10 +66,8 @@ class AuthController extends Controller
                 $user->tokens()->delete();
                 $token = $user->createToken('auth')->plainTextToken;
 
-                if ($isNewUser) {
-                    // Send welcome SMS for new users
+                if ($isNewUser)
                     (new SmsService())->send($request->validated('username'), __('sms.newRegisterUser'));
-                }
 
 
                 return success(['user' => new UserResource($user), 'token' => $token], __('auth.register_success'));
