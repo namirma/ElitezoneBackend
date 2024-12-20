@@ -171,11 +171,10 @@
     <div class="content">
         <h1> به اِلیت زون خوش آمدید</h1>
         <p>
-            سلام <br>
-            از ثبت نام شما ممنونیم. با کلیک بر روی دکمه زیر ایمیل خود تایید نمایید
+            آدرس ایمیل شما را دریافت کردیم. برای تایید این آدرس لطفا روی دکمه زیر کلیک کنید.
         </p>
         <div class="button-container">
-            <a href="{{ Request::root() . '/profile/verify-email/' .$link }}" class="button">تایید ایمیل</a>
+            <a href="{{ env('FRONT_APP_URL') . '/verify-email/' .$link }}" class="button">تایید ایمیل</a>
         </div>
     </div>
 

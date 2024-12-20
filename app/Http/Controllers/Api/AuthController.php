@@ -40,8 +40,9 @@ class AuthController extends Controller
             ]
         );
 
-        $verificationMessage = __('sms.loginMessage', ['code' => $mobileVerifyCode]);
-        (new SmsService())->send($request->validated('username'), $verificationMessage);
+        (new SmsService())->send($request->validated('username'),
+            __('sms.loginMessage', ['code' => $mobileVerifyCode]));
+
         return success([], __('auth.verification_code_sent_successfully'), 202);
     }
 
