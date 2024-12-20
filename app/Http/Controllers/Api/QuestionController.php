@@ -15,7 +15,7 @@ class QuestionController extends Controller
     public function submitQuestion(StoreQuestionRequest $request)
     {
         Question::create($request->validated());
-        Mail::to(config('companyEmailAddress'))->send(new QuestionEmail());
+        Mail::to('info@elitezone.me')->send(new QuestionEmail());
 
         return success([], __('global.received_successfully'));
     }
