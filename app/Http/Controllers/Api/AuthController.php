@@ -61,7 +61,7 @@ class AuthController extends Controller
                 ? $user->created_at
                 : Carbon::parse($user->created_at);
 
-            $isNewUser = $user->wasRecentlyCreated || $createdAt->diffInSeconds(now()) < 60;
+            $isNewUser = $user->wasRecentlyCreated || $createdAt->diffInMinutes(now()) < 2;
 
             if ($request->has('forget_password') && $request->validated('forget_password')) {
                 return success([]);
