@@ -57,7 +57,11 @@ class AuthController extends Controller
 
         if (!Carbon::parse(@$user->secret_expires_at)->isPast()) {
 
-            $isNewUser = $user->wasRecentlyCreated || $user->created_at->diffInSeconds(now()) < 60;
+            $createdAt = $user->created_at instanceof Carbon
+                ? $user->created_at
+                : Carbon::parse($user->created_at);
+
+            $isNewUser = $user->wasRecentlyCreated || $createdAt->diffInSeconds(now()) < 60;
 
             if ($request->has('forget_password') && $request->validated('forget_password')) {
                 return success([]);
