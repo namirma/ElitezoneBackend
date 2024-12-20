@@ -217,6 +217,6 @@ class ProfileController extends Controller
 
         Mail::to($request->validated('email'))->send(new VerifyEmail($token));
 
-        return success([]);
+        return success([], 'global.verificationEmailSentSuccessfully');
     }
 }
