@@ -57,7 +57,7 @@ class AuthController extends Controller
     public function verifyCode(StoreUserRequest $request): JsonResponse
     {
         $user = User::where([User::MOBILE => $request->validated('username'), User::SECRET => $request->validated('code')])->first();
-
+//        dd($user);
         if (!Carbon::parse(@$user->secret_expires_at)->isPast()) {
 
             $createdAt = $user->created_at instanceof Carbon

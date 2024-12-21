@@ -9,7 +9,7 @@ class TestEmail extends Mailable
 {
     use SerializesModels;
 
-    public function build()
+    public function build(): TestEmail
     {
         return $this->subject('Test Email')
         ->view('emails.test');
