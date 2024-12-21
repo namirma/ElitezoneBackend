@@ -33,7 +33,7 @@ class UserNotification extends Model
     protected $fillable = [
         self::USER_ID,
         self::SENDER_ID,
-        self::SUBJECT.
+        self::SUBJECT,
         self::BODY,
         self::READ_AT,
         self::CREATED_AT,
