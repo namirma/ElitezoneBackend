@@ -121,8 +121,7 @@ class AuthController extends Controller
                 User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(3)
             ]);
 
-            (new SmsService())->send($request->validated('username'),
-                __('sms.loginMessage', ['code' => $mobileVerifyCode]));
+            (new SmsService())->send($request->input('username'), $mobileVerifyCode);
             return success([], 'auth.forget_password_code_sent_successfully');
         }
 
@@ -169,8 +168,7 @@ class AuthController extends Controller
             User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2)
         ]);
 
-        (new SmsService())->send($request->validated('username'),
-            __('sms.loginMessage', ['code' => $mobileVerifyCode]));
+        (new SmsService())->send($request->input('username'), $mobileVerifyCode);
 
         return success([], __('auth.verification_code_sent_successfully'));
 
