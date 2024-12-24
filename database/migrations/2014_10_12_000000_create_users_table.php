@@ -18,6 +18,11 @@ return new class extends Migration
             $table->string('password', 128)->nullable();
             $table->rememberToken();
             $table->timestamps();
+            $table->foreign('type_id')
+                ->references('id')
+                ->on('user_types')
+                ->onDelete('cascade')
+                ->onUpdate('cascade');
         });
     }
 
