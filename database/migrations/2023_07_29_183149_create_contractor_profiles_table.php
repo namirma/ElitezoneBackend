@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('contractor_profiles', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('user_id');
+            $table->foreignId('user_id')->constrained('users')->cascadeOnDelete()->cascadeOnUpdate();
             $table->boolean('engineer_member');
             $table->string('company_name', 64)->nullable();
             $table->string('license_number', 32)->nullable()->comment('شماره پروانه اشتغال');

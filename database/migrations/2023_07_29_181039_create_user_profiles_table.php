@@ -13,7 +13,7 @@ return new class extends Migration
         {
             Schema::create('user_profiles', function (Blueprint $table) {
                 $table->id();
-                $table->unsignedBigInteger('user_id');
+                $table->foreignId('user_id')->constrained('users')->cascadeOnDelete()->cascadeOnUpdate();
                 $table->string('name', 32)->nullable();
                 $table->string('family', 64)->nullable();
                 $table->string('email', 64)->unique()->nullable();
@@ -28,11 +28,6 @@ return new class extends Migration
                 $table->unsignedBigInteger('city_id')->nullable();
                 $table->enum('entity', ['real', 'legal'])->default('real');
                 $table->timestamps();
-                $table->foreign('user_id')
-                    ->references('id')
-                    ->on('users')
-                    ->onDelete('cascade')
-                    ->onUpdate('cascade');
             });
         }
 

@@ -13,16 +13,11 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
-            $table->unsignedSmallInteger('type_id')->nullable();
+            $table->foreignId('type_id')->constrained('user_types')->cascadeOnDelete()->cascadeOnUpdate();
             $table->string('mobile', 16)->unique();
             $table->string('password', 128)->nullable();
             $table->rememberToken();
             $table->timestamps();
-            $table->foreign('type_id')
-                ->references('id')
-                ->on('user_types')
-                ->onDelete('cascade')
-                ->onUpdate('cascade');
         });
     }
 
