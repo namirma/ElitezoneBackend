@@ -23,7 +23,7 @@ class VerifyEmail extends Mailable
 
     public function build(): VerifyEmail
     {
-        return $this->view('emails.verify-email')->with(['link' => $this->token,]);
+        return $this->view('emails.verify-email')->with(['link' => $this->token]);
     }
 
 }
