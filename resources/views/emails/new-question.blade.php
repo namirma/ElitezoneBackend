@@ -119,7 +119,7 @@
                         تلفن همراه: {{ $data['mobile'] }}
                     </p>
                     <p>
-                        موضع: {{ $data['$subject'] }}
+                        موضع: {{ $data['subject'] }}
                     </p>
                     <p>
                         پیام: {{ $data['message'] }}
