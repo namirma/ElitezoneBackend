@@ -13,8 +13,15 @@ class QuestionEmail extends Mailable
 {
     use SerializesModels;
 
+    public array $data;
+
+    public function __construct($data = null)
+    {
+        $this->data = $data;
+    }
+
     public function build(): QuestionEmail
     {
-        return $this->view('emails.new-question');
+        return $this->view('emails.new-question')->with(['data' => $this->data]);
     }
 }

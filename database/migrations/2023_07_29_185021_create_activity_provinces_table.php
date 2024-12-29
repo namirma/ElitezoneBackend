@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('activity_provinces', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('user_id');
+            $table->foreignId('user_id')->constrained('users')->cascadeOnDelete()->cascadeOnUpdate();
             $table->unsignedBigInteger('province_id');
             $table->timestamps();
         });

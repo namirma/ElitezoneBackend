@@ -121,7 +121,8 @@ class AuthController extends Controller
                 User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(3)
             ]);
 
-            (new SmsService())->send($request->input('username'), $mobileVerifyCode);
+            (new SmsService())->send($request->input('username'),
+                __('sms.loginMessage', ['code' => $mobileVerifyCode]));;
             return success([], 'auth.forget_password_code_sent_successfully');
         }
 
@@ -154,7 +155,7 @@ class AuthController extends Controller
         return success(['user' => new UserResource($user), 'token' => $token], __('auth.password_changed_successfully'));
     }
 
-    public function sendVerificationCode(Request $request)
+    public function sendVerificationCode(StoreUserRequest $request)
     {
         $request->validate([
             'username' => 'required|exists:users,mobile'
@@ -168,7 +169,8 @@ class AuthController extends Controller
             User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2)
         ]);
 
-        (new SmsService())->send($request->input('username'), $mobileVerifyCode);
+        (new SmsService())->send($request->validated('username'),
+            __('sms.loginMessage', ['code' => $mobileVerifyCode]));
 
         return success([], __('auth.verification_code_sent_successfully'));
 

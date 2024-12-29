@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('supplier_profiles', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('user_id');
+            $table->foreignId('user_id')->constrained('users')->cascadeOnDelete()->cascadeOnUpdate();
             $table->string('activity_description')->nullable();
             $table->string('brands')->nullable();
             $table->unsignedInteger('activity_history')->nullable();
