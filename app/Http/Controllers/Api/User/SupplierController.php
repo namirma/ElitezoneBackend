@@ -47,17 +47,17 @@ class SupplierController extends Controller
             ],
             [
                 SupplierProfile::USER_ID => Auth::id(),
-                SupplierProfile::ACTIVITY_DESCRIPTION => @$request->validated('activity_description'),
-                SupplierProfile::BRANDS => @$request->validated('brands'),
-                SupplierProfile::BRANDS_NOT_RELATED => @$request->validated('brands_not_related'),
-                SupplierProfile::ACTIVITY_HISTORY => @$request->validated('activity_history'),
-                SupplierProfile::ACTIVITY_PROVINCES => @$request->validated('activity_provinces'),
-                SupplierProfile::PRODUCTION_AMOUNT => @$request->validated('production_amount'),
-                SupplierProfile::STANDARDS => @$request->validated('standards'),
-                SupplierProfile::STANDARDS_NOT_RELATED => @$request->validated('standards_not_related'),
-                SupplierProfile::WEBSITE => @$request->validated('website'),
-                SupplierProfile::WEBSITE_NOT_RELATED => @$request->validated('website_not_related'),
-                SupplierProfile::COMPANY => @$request->validated('company'),
+                SupplierProfile::ACTIVITY_DESCRIPTION => $request->validated('activity_description') ?? $this->activity_description ?? null,
+                SupplierProfile::BRANDS => $request->validated('brands') ?? null,
+                SupplierProfile::BRANDS_NOT_RELATED => $request->validated('brands_not_related') ?? 1, // default to true
+                SupplierProfile::ACTIVITY_HISTORY => $request->validated('activity_history') ?? null,
+                SupplierProfile::ACTIVITY_PROVINCES => $request->validated('activity_provinces') ?? null,
+                SupplierProfile::PRODUCTION_AMOUNT => $request->validated('production_amount') ?? null,
+                SupplierProfile::STANDARDS => $request->validated('standards') ?? null,
+                SupplierProfile::STANDARDS_NOT_RELATED => $request->validated('standards_not_related') ?? 1, // default to true
+                SupplierProfile::WEBSITE => $request->validated('website') ?? null,
+                SupplierProfile::WEBSITE_NOT_RELATED => $request->validated('website_not_related') ?? 1, // default to true
+                SupplierProfile::COMPANY => $request->validated('company') ?? null,
 
             ]);
         if ($request->has('activity_category_id')) {

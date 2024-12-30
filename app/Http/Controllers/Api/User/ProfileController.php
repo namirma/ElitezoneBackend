@@ -49,20 +49,23 @@ class ProfileController extends Controller
         $profile->update([
             /* Personal information */
             UserProfile::USER_ID => Auth::id(),
-            UserProfile::NAME => @$request->validated('name', $profile->name),
-            UserProfile::FAMILY => @$request->validated('family', $profile->family),
-            UserProfile::EMAIL => @$request->validated('email', $profile->email),
-            UserProfile::NATIONAL_CODE => @$request->validated('national_code', $profile->national_code),
-            UserProfile::BIRTHDAY => @$request->validated('birthday', $profile->birthday),
+            UserProfile::NAME => $request->validated('name') ?? $this->name ?? null,
+            UserProfile::FAMILY => $request->validated('family') ?? $profile->family ?? null,
+            UserProfile::EMAIL => $request->validated('email') ?? $profile->email ?? null,
+            UserProfile::NATIONAL_CODE => $request->validated('') ?? $profile->national_code ,
+            UserProfile::BIRTHDAY => $request->validated('birthday') ?? $profile->birthday ?? null,
+
             /* Company information */
-            UserProfile::COMPANY => @$request->validated('company', $profile->company),
-            UserProfile::ECONOMIC_CODE => @$request->validated('economic_code', $profile->economic_code),
-            UserProfile::NATIONAL_ID => @$request->validated('national_id', $profile->national_id),
-            UserProfile::REGISTER_ID => @$request->validated('register_id', $profile->register_id),
-            UserProfile::PHONE => @$request->validated('phone', $profile->phone),
-            UserProfile::PROVINCE_ID => @$request->validated('province_id', $profile->province_id),
-            UserProfile::CITY_ID => @$request->validated('city_id', $profile->province_id),
-            UserProfile::ENTITY => @$request->validated('entity', $profile->entity),
+            UserProfile::COMPANY => $request->validated('company') ?? $profile->company ?? null ,
+            UserProfile::ECONOMIC_CODE => $request->validated('economic_code') ?? $profile->economic_code ?? null ,
+            UserProfile::NATIONAL_ID => $request->validated('national_id') ?? $profile->national_id ?? null ,
+            UserProfile::REGISTER_ID => $request->validated('register_id') ?? $profile->register_id ?? null ,
+            UserProfile::PHONE => $request->validated('phone') ?? $profile->phone ?? null ,
+
+            /* Location and other info */
+            UserProfile::PROVINCE_ID => $request->validated('province_id') ?? $profile->province_id ?? null ,
+            UserProfile::CITY_ID => $request->validated('city_id') ?? $profile->city_id ?? null ,
+            UserProfile::ENTITY => $request->validated('entity') ?? $profile->entity ,
         ]);
 
         return success(new UserResource(User::with('profile')->find(Auth::id())));
@@ -138,7 +141,7 @@ class ProfileController extends Controller
         $user = Auth::user();
 
         if ((int)$user->secret === $request->validated('code') &&
-            !Carbon::parse(@$user->secret_expires_at)->isPast() && $request->has('username')) {
+            ($user->secret_expires_at && !Carbon::parse($user->secret_expires_at)->isPast()) && $request->has('username')) {
 
             $mobileVerifyCode = generateVerifyCode();
             (new SmsService())->send($request->validated('username'), $mobileVerifyCode);
@@ -157,7 +160,7 @@ class ProfileController extends Controller
     {
         $user = Auth::user();
         if ((int)$user->secret === $request->input('code') &&
-            !Carbon::parse(@$user->secret_expires_at)->isPast() && $request->has('username')) {
+            ($user->secret_expires_at && !Carbon::parse($user->secret_expires_at)->isPast()) && $request->has('username')) {
 
             DB::table('users')
                 ->where(['id' => $user->id])

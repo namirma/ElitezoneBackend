@@ -22,9 +22,9 @@ class EmployerController extends Controller
             ],
             [
                 EmployerProfile::USER_ID => Auth::id(),
-                EmployerProfile::ACTIVITY_PROVINCES => @$request->validated('activity_provinces'),
-                EmployerProfile::PROJECT_DONE => @$request->validated('project_done'),
-                EmployerProfile::PROJECT_IN_PROGRESS => @$request->validated('project_in_progress'),
+                EmployerProfile::ACTIVITY_PROVINCES => $request->validated('activity_provinces') ?? $this->activity_provinces ?? null,
+                EmployerProfile::PROJECT_DONE => $request->validated('project_done') ?? $this->project_done ?? null,
+                EmployerProfile::PROJECT_IN_PROGRESS => $request->validated('project_in_progress') ?? $this->project_in_progress ?? null,
             ]);
 
         return success(new UserResource(User::with('employer')->find(Auth::id())));
