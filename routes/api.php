@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\User\EmployerController;
 use App\Http\Controllers\Api\User\EngineerController;
 use App\Http\Controllers\Api\User\ProfileController;
 use App\Http\Controllers\Api\User\SupplierController;
+use App\Http\Controllers\SearchController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
@@ -21,7 +22,7 @@ use Illuminate\Support\Facades\Route;
 | be assigned to the "api" middleware group. Make something great!
 |
 */
-
+Route::get('/search', [SearchController::class, 'search']);
 Route::post('/new-question', [QuestionController::class, 'submitQuestion']);
 
 Route::controller(AuthController::class)->group(function () {
@@ -76,7 +77,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::group(['prefix' => 'supplier'], function () {
             Route::get('/activity-categories', [SupplierController::class, 'getCategories']);
             Route::post('/', [SupplierController::class, 'store']);
-            Route::get('/activityCategory-getId', function (){
+            Route::get('/activityCategory-getId', function () {
                 return getSupplierCategoryId();
             });
         });
@@ -90,11 +91,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
-
-
 });
 
-Route::post('/check-email-token',[ProfileController::class, 'checkToken']);
+Route::post('/check-email-token', [ProfileController::class, 'checkToken']);
 
 Route::get('/test-log', function () {
     Log::info('This is an info message.');
@@ -102,4 +101,3 @@ Route::get('/test-log', function () {
 
     return 'Logs have been written.';
 });
-
