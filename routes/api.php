@@ -33,11 +33,13 @@ Route::controller(AuthController::class)->group(function () {
         Route::post('/forget-password', 'forgetPassword');
         Route::post('/change-password', 'changePassword');
         Route::post('/send-code', 'sendVerificationCode');
+        Route::middleware('auth:sanctum')->post('/logout', 'logout');
     });
 });
 
 
 Route::middleware('auth:sanctum')->group(function () {
+
 
     Route::group(['prefix' => 'province'], function () {
         Route::get('/', function () {

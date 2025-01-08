@@ -16,6 +16,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class AuthController extends Controller
 {
@@ -43,8 +45,10 @@ class AuthController extends Controller
             ]
         );
 
-        (new SmsService())->send($request->validated('username'),
-            __('sms.loginMessage', ['code' => $mobileVerifyCode]));
+        (new SmsService())->send(
+            $request->validated('username'),
+            __('sms.loginMessage', ['code' => $mobileVerifyCode])
+        );
 
         return success([], __('auth.verification_code_sent_successfully'), 202);
     }
@@ -57,7 +61,7 @@ class AuthController extends Controller
     public function verifyCode(StoreUserRequest $request): JsonResponse
     {
         $user = User::where([User::MOBILE => $request->validated('username'), User::SECRET => $request->validated('code')])->first();
-//        dd($user);
+        //        dd($user);
         if (!Carbon::parse(@$user->secret_expires_at)->isPast()) {
 
             $createdAt = $user->created_at instanceof Carbon
@@ -77,8 +81,8 @@ class AuthController extends Controller
                     (new SmsService())->send($request->validated('username'), __('sms.newRegisterUser'));
 
                     UserNotification::create([
-                       UserNotification::USER_ID => Auth::id(),
-                       UserNotification::SUBJECT => __('global.newUserNotificationSubject'),
+                        UserNotification::USER_ID => Auth::id(),
+                        UserNotification::SUBJECT => __('global.newUserNotificationSubject'),
                         UserNotification::BODY => __('global.newUserNotificationBody')
                     ]);
                 }
@@ -121,8 +125,10 @@ class AuthController extends Controller
                 User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(3)
             ]);
 
-            (new SmsService())->send($request->input('username'),
-                __('sms.loginMessage', ['code' => $mobileVerifyCode]));;
+            (new SmsService())->send(
+                $request->input('username'),
+                __('sms.loginMessage', ['code' => $mobileVerifyCode])
+            );;
             return success([], 'auth.forget_password_code_sent_successfully');
         }
 
@@ -169,11 +175,18 @@ class AuthController extends Controller
             User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2)
         ]);
 
-        (new SmsService())->send($request->validated('username'),
-            __('sms.loginMessage', ['code' => $mobileVerifyCode]));
+        (new SmsService())->send(
+            $request->validated('username'),
+            __('sms.loginMessage', ['code' => $mobileVerifyCode])
+        );
 
         return success([], __('auth.verification_code_sent_successfully'));
-
     }
 
+    public function logout(): JsonResponse
+    {
+        $user = Auth::user();
+        $user->tokens()->delete();
+        return success([], __('auth.logout_success'));
+    }
 }
