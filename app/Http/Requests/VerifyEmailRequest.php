@@ -2,23 +2,16 @@
 
 namespace App\Http\Requests;
 
-use App\Models\UserProfile;
+
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 
 class VerifyEmailRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
     public function authorize(): bool
     {
-        $user = Auth::user();
-
-        $profile = $user->profile;
-
-        return is_null($profile) || (is_null($profile->email_verified_at ?? null));
+        return Auth::check();
     }
 
     /**
@@ -29,8 +22,7 @@ class VerifyEmailRequest extends FormRequest
     public function rules(): array
     {
         return [
-            UserProfile::EMAIL => 'required|email:rfc,dns',
+            'email' => 'required|email:rfc,dns|unique:user_profiles,email,' . Auth::id() . ',user_id',
         ];
     }
-
 }

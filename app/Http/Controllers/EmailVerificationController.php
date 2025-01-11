@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Mail;
 class EmailVerificationController extends Controller
 {
     //
-    public function verify(VerifyEmailRequest $request): JsonResponse
+    public function verify(VerifyEmailRequest $request)
     {
         $email = $request->input('email');
 
