@@ -14,16 +14,18 @@ class VerifyEmail extends Mailable
     use SerializesModels;
 
     public mixed $token;
+     public string $link;
 
-    public function __construct($token = null)
+     public function __construct(?string $token)
+     {
+         $this->link = env('FRONT_APP_URL') . '/verify-email/' . $token;
+     }
+
+     public function build(): VerifyEmail
     {
-        $this->token = $token;
-    }
-
-
-    public function build(): VerifyEmail
-    {
-        return $this->view('emails.verify-email')->with(['link' => $this->token]);
+        return $this->subject('تایید ایمیل شما در الیت زون')
+                   ->view('emails.verify-email')
+                   ->with(['link' => $this->link]);
     }
 
 }

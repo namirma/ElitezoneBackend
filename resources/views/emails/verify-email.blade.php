@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,7 +9,6 @@
             margin: 0;
             padding: 0;
             background-color: #f4f4f9;
-            font-family: 'Yekan Bakh', Arial, sans-serif;
             direction: rtl;
             color: #024376;
         }
@@ -92,47 +90,33 @@
 
     </style>
 </head>
-
 <body>
-<table>
-    <tr>
-        <td>
-            <div class="container">
-                <!-- Header -->
-                <div class="header">
-                    <img src="https://s3.ir-thr-at1.arvanstorage.ir/emailimg/Email.jpg?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=8900bd10-6b0a-44ad-b504-3dc7e151d41b%2F20241220%2Fir-thr-at1%2Fs3%2Faws4_request&X-Amz-Date=20241220T123326Z&X-Amz-Expires=86400&X-Amz-SignedHeaders=host&versionId=&X-Amz-Signature=445a478790eb91fcff98ed9b76211e2c8ea7e25cbd729b1093eae4d5a39ee6c2" alt="Welcome Image">
-                </div>
+    <div class="container">
 
-                <!-- Content -->
-                <div class="content">
-                    <h1> به اِلیت زون خوش آمدید</h1>
-                    <p>
-                        آدرس ایمیل شما را دریافت کردیم. برای تایید این آدرس لطفا روی دکمه زیر کلیک کنید.
-                    </p>
-                    <div class="button-container">
-                        <a href="{{ env('FRONT_APP_URL') . '/verify-email/' .$link }}" class="button">تایید ایمیل</a>
-                    </div>
-                </div>
+        <div class="header">
+            <img src="https://emailverification.s3.ir-thr-at1.arvanstorage.ir/Email.jpg" alt="Welcome Image">
+        </div>
 
-                <!-- Footer -->
-                <div class="footer">
-                    <p>شماره تماس: 34005000-031</p>
-                    <p>Info@EliteZone.me</p>
-                    <div class="social-icons">
-                        <a href="https://www.instagram.com/sazesoftwaregroup" target="_blank">
-                            <img src="https://s3.ir-thr-at1.arvanstorage.ir/emailimg/Instagram.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=8900bd10-6b0a-44ad-b504-3dc7e151d41b%2F20241220%2Fir-thr-at1%2Fs3%2Faws4_request&X-Amz-Date=20241220T123500Z&X-Amz-Expires=86400&X-Amz-SignedHeaders=host&versionId=&X-Amz-Signature=236fcbb792edf95689c46f8f139c749a02d4a26a89a0304d17125986303be12f" alt="Instagram">
-                        </a>
 
-                        <a href="https://t.me/SAZESoftwareGroup" target="_blank">
-                            <img src="https://s3.ir-thr-at1.arvanstorage.ir/emailimg/Telegram.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=8900bd10-6b0a-44ad-b504-3dc7e151d41b%2F20241220%2Fir-thr-at1%2Fs3%2Faws4_request&X-Amz-Date=20241220T123430Z&X-Amz-Expires=86400&X-Amz-SignedHeaders=host&versionId=&X-Amz-Signature=d83db63039a020acf15a336ded231ab4417cd90da05883a11bc2ba0c3693ac70" alt="Telegram">
-                        </a>
-                    </div>
-                    <p>کلیه حقوق برای شرکت نرم افزاری اسپادانا محفوظ است.</p>
-                </div>
+        <div class="content">
+            <h1>به اِلیت زون خوش آمدید</h1>
+            <p>برای تایید آدرس ایمیل خود، لطفا روی دکمه زیر کلیک کنید.</p>
+            <a href="{{ $link }}" class="button">تایید ایمیل</a>
+        </div>
+
+        
+        <div class="footer">
+            <p>تماس: 34005000-031</p>
+            <p>ایمیل: Info@EliteZone.me</p>
+            <div class="social-icons">
+                <a href="https://www.instagram.com/sazesoftwaregroup">
+                    <img src="https://emailverification.s3.ir-thr-at1.arvanstorage.ir/Instagram.png" alt="Instagram">
+                </a>
+                <a href="https://t.me/SAZESoftwareGroup">
+                    <img src="https://emailverification.s3.ir-thr-at1.arvanstorage.ir/Telegram.png" alt="Telegram">
+                </a>
             </div>
-        </td>
-    </tr>
-</table>
+        </div>
+    </div>
 </body>
-
 </html>
