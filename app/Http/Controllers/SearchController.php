@@ -13,60 +13,75 @@ class SearchController extends Controller
 {
     public function search(SearchRequest $request)
     {
-        $query = $request->input('query');
+        $query = $request->input('query', ''); // Default to an empty string if no query is provided
 
+        // If the query is empty, fetch popular searches directly
+        if (empty($query)) {
+            $popularSearches = Search::select('query')
+                ->whereIn('query', function ($q) {
+                    $q->select('name')
+                        ->from('supplier_activity_categories')
+                        ->union(
+                            SupplierActivityCategory::select('name')
+                                ->whereHas('children')
+                                ->getQuery()
+                        );
+                })
+                ->groupBy('query')
+                ->orderByRaw('COUNT(*) DESC')
+                ->limit(5)
+                ->pluck('query');
+
+            return new SearchResource([
+                'related_searches' => [],
+                'latest_searches' => [],
+                'popular_searches' => $popularSearches,
+            ]);
+        }
+
+        // Save the search query for logged-in users or guests
         if (Auth::check()) {
             // Check if the search query already exists for the authenticated user
             $existingSearch = Search::where('user_id', Auth::id())
                 ->where('query', $query)
                 ->first();
 
-            // Save the search query only if it doesn't already exist for the authenticated user
             if (!$existingSearch) {
                 Search::create([
                     Search::QUERY => $query,
-                    Search::USER_ID => Auth::id(), // Set the authenticated user's ID
+                    Search::USER_ID => Auth::id(),
                 ]);
             }
         } else {
-            // For guest users, check if the search query already exists for any user
+            // For guest users
             $existingSearch = Search::where('query', $query)
-                ->whereNull('user_id') // Check for guest searches
+                ->whereNull('user_id')
                 ->first();
 
-            // Save the search query only if it doesn't already exist for guest users
             if (!$existingSearch) {
                 Search::create([
                     Search::QUERY => $query,
-                    Search::USER_ID => null, // Set user_id to null for guest users
+                    Search::USER_ID => null,
                 ]);
             }
         }
 
-        // Fetch search results
-        // $results = Search::where('query', 'like', "%$query%")
-        //     ->get()->all();
-
-
-        // Fetch related searches from the searches table
-
+        // Fetch related searches
         $relatedSearches = SupplierActivityCategory::query()
             ->where(function ($q) use ($query) {
-                $q->where('name', 'like', "%$query%") // Match parent categories
+                $q->where('name', 'like', "%$query%")
                     ->orWhereHas('children', function ($q) use ($query) {
-                        $q->where('name', 'like', "%$query%"); // Match child categories
+                        $q->where('name', 'like', "%$query%");
                     });
             })
-            ->with('children') // Eager load child categories
+            ->with('children')
             ->get()
             ->flatMap(function ($category) use ($query) {
-                // Include parent category if it matches the query
                 $matches = collect();
                 if (Str::contains($category->name, $query)) {
                     $matches->push($category->name);
                 }
 
-                // Include child categories that match the query
                 $matches = $matches->merge(
                     $category->children->filter(function ($child) use ($query) {
                         return Str::contains($child->name, $query);
@@ -75,26 +90,24 @@ class SearchController extends Controller
 
                 return $matches;
             })
-            ->unique() // Remove duplicates
-            ->take(5); // Limit to 5 results
-
+            ->unique()
+            ->take(5);
 
         // Fetch latest searches
         $latestSearches = Auth::check()
             ? Search::where('user_id', Auth::id())
-            ->select('query') // Select only the query column
-            ->distinct() // Remove duplicates
-            ->orderBy('created_at', 'desc')
-            ->limit(5)
-            ->pluck('query')
-            : Search::select('query') // Select only the query column
-            ->distinct() // Remove duplicates
-            ->orderBy('created_at', 'desc')
-            ->limit(5)
-            ->pluck('query');
+                ->select('query')
+                ->distinct()
+                ->orderBy('created_at', 'desc')
+                ->limit(5)
+                ->pluck('query')
+            : Search::select('query')
+                ->distinct()
+                ->orderBy('created_at', 'desc')
+                ->limit(5)
+                ->pluck('query');
 
-
-        // Fetch popular searches (most searched terms by all users)
+        // Fetch popular searches
         $popularSearches = Search::select('query')
             ->whereIn('query', function ($q) {
                 $q->select('name')
@@ -111,12 +124,11 @@ class SearchController extends Controller
             ->pluck('query');
 
         $data = [
-            // 'results' => $results,
             'related_searches' => $relatedSearches,
             'latest_searches' => $latestSearches,
             'popular_searches' => $popularSearches,
         ];
-        // Return the response as JSON
+
         return new SearchResource($data);
     }
 }
