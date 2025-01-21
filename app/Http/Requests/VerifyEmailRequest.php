@@ -14,12 +14,7 @@ class VerifyEmailRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        $user = Auth::user();
-
-        $profile = $user->profile;
-
-        dd($profile);
-        return is_null($profile) || (is_null($profile->email_verified_at ?? null));
+        return true;
     }
 
     /**
