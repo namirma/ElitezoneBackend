@@ -97,6 +97,5 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::post('/check-email-token', [ProfileController::class, 'checkToken']);
 
 Route::post('/check-saze-user', function (Request $request) {
-    dd('a');
-    $user = User::where(['mobile' => $request->input('mobile')])->exists();
+    return User::where(['mobile' => $request->input('mobile')])->exists();
 });
