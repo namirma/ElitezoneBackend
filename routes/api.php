@@ -98,6 +98,6 @@ Route::post('/check-email-token', [ProfileController::class, 'checkToken']);
 
 Route::post('/check-saze-user', function (Request $request) {
     return [
-        'result' => User::query()->where(['mobile' => $request->input('mobile')])->exists()
+        'result' => (int)User::query()->where(['mobile' => $request->input('mobile')])->exists()
     ] ;
 });
