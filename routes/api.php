@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\User\EngineerController;
 use App\Http\Controllers\Api\User\ProfileController;
 use App\Http\Controllers\Api\User\SupplierController;
 use App\Http\Controllers\SearchController;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
@@ -96,8 +97,9 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::post('/check-email-token', [ProfileController::class, 'checkToken']);
 
 Route::post('/check-saze-user', function (Request $request) {
-    Log::info('This is an info message.');
-    Log::error('This is an error message.');
+    $exists = User::where(['mobile' => $request->input('mobile')])->exists();
 
-    return 'Logs have been written.';
+    return response()->json([
+        'exists' => $exists,
+    ]);
 });
