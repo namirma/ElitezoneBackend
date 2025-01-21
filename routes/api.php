@@ -100,6 +100,6 @@ Route::post('/check-saze-user', function (Request $request) {
     $exists = User::where(['mobile' => $request->input('mobile')])->exists();
 
     return response()->json([
-        'exists' => 123,
+        'exists' => $exists,
     ]);
 });
