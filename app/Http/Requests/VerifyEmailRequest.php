@@ -18,6 +18,7 @@ class VerifyEmailRequest extends FormRequest
 
         $profile = $user->profile;
 
+        dd($profile);
         return is_null($profile) || (is_null($profile->email_verified_at ?? null));
     }
 
