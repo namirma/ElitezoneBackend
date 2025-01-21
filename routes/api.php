@@ -96,6 +96,8 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::post('/check-email-token', [ProfileController::class, 'checkToken']);
 
 Route::post('/check-saze-user', function (Request $request) {
+    Log::info('This is an info message.');
+    Log::error('This is an error message.');
 
-    return 'EliteZone.me';
+    return 'Logs have been written.';
 });
