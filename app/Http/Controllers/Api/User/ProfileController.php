@@ -52,7 +52,7 @@ class ProfileController extends Controller
             UserProfile::NAME => $request->validated('name') ?? $this->name ?? null,
             UserProfile::FAMILY => $request->validated('family') ?? $profile->family ?? null,
             UserProfile::EMAIL => $request->validated('email') ?? $profile->email ?? null,
-            UserProfile::NATIONAL_CODE => $request->validated('') ?? $profile->national_code ,
+            UserProfile::NATIONAL_CODE => $request->validated('national_code') ?? $profile->national_code ,
             UserProfile::BIRTHDAY => $request->validated('birthday') ?? $profile->birthday ?? null,
 
             /* Company information */
