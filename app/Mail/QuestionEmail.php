@@ -14,14 +14,20 @@ class QuestionEmail extends Mailable
     use SerializesModels;
 
     public array $data;
+    public $type;
 
-    public function __construct($data = null)
+    public function __construct($data = null, $type = 'support')
     {
         $this->data = $data;
+        $this->type = $type;
     }
 
     public function build(): QuestionEmail
     {
-        return $this->view('emails.new-question')->with(['data' => $this->data]);
+        $view = $this->type === 'user'
+            ? 'emails.user-new-question'
+            : 'emails.support-new-question';
+
+        return $this->view($view)->subject('پیام شما دریافت شد')->with(['data' => $this->data]);
     }
 }

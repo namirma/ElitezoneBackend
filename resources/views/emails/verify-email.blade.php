@@ -1,122 +1,102 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EliteZone</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            background-color: #f4f4f9;
-            direction: rtl;
-            color: #024376;
-        }
 
-        table {
-            border-spacing: 0;
-            border-collapse: collapse;
-            width: 100%;
-        }
-
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            background-color: #ffffff;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-
-        .header img {
-            display: block;
-            max-width: 100%;
-            height: auto;
-        }
-
-        .content {
-            padding: 20px;
-            text-align: center;
-        }
-
-        .content h1 {
-            font-size: 20px;
-            margin-bottom: 15px;
-            line-height: 1.5;
-        }
-
-        .content p {
-            font-size: 14px;
-            margin-bottom: 20px;
-            line-height: 1.5;
-        }
-
-        .button-container {
-            margin: 20px 0;
-        }
-
-        .button {
-            display: inline-block;
-            background-color: #0a69d6;
-            color: #ffffff !important;
-            padding: 12px 20px;
-            font-size: 14px;
+    <style type="text/css">
+        a {
+            color: inherit;
             text-decoration: none;
-            border-radius: 5px;
-            text-align: center;
-            width: 100%;
-            box-sizing: border-box;
         }
 
-        .footer {
-            background-color: #0a69d633;
-            padding: 15px;
-            text-align: center;
-            font-size: 12px;
-            color: #ffffff;
+        a:visited {
+            color: inherit;
         }
 
-        .footer p {
-            margin: 5px 0;
-            line-height: 1.5;
+        @font-face {
+            font-family: 'Yekan Bakh';
+            src: url('https://yekanbakh-font.s3.ir-thr-at1.arvanstorage.ir/YekanBakh%2Fwoff%2FYekanBakh-Regular.woff?versionId=') format('woff'),
+                url('https://yekanbakh-font.s3.ir-thr-at1.arvanstorage.ir/YekanBakh%2Fwoff2%2FYekanBakh-Regular.woff2?versionId=') format('woff2'),
+                url('https://yekanbakh-font.s3.ir-thr-at1.arvanstorage.ir/YekanBakh%2Fttf%2FYekanBakh-Regular.ttf?versionId=') format('truetype');
+            font-weight: 300;
+            font-style: normal;
         }
-
-        .social-icons img {
-            width: 32px;
-            margin: 0 5px;
-            vertical-align: middle;
-        }
-
     </style>
+
 </head>
-<body>
-    <div class="container">
 
-        <div class="header">
-            <img src="https://emailverification.s3.ir-thr-at1.arvanstorage.ir/Email.jpg" alt="Welcome Image">
-        </div>
+<body
+    style="margin: 0; padding: 0; background-color: #ffffff; font-family: 'Yekan Bakh', Tahoma, Arial, sans-serif; direction: rtl; color: #024376;">
+    <table
+        style="border-spacing: 0; border-collapse: collapse; width: 100%; background-color: #ffffff; margin: 0; padding: 0;">
+        <tr>
+            <td align="center">
+                <table
+                    style="width: 100%; max-width: 600px; background-color: #ffffff; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
 
+                    <!-- Header -->
+                    <tr>
+                        <td style="text-align: center; padding: 0;">
+                            <img src="https://emailverification.s3.ir-thr-at1.arvanstorage.ir/Email.jpg?versionId="
+                                 style="display: block; width: 100%; height: auto;">
+                        </td>
+                    </tr>
 
-        <div class="content">
-            <h1>به اِلیت زون خوش آمدید</h1>
-            <p>برای تایید آدرس ایمیل خود، لطفا روی دکمه زیر کلیک کنید.</p>
-            <a href="{{ $link }}" class="button">تایید ایمیل</a>
-        </div>
+                    <!-- Content -->
+                    <tr>
+                        <td style="padding: 24px; text-align: center;">
 
-        
-        <div class="footer">
-            <p>تماس: 34005000-031</p>
-            <p>ایمیل: Info@EliteZone.me</p>
-            <div class="social-icons">
-                <a href="https://www.instagram.com/sazesoftwaregroup">
-                    <img src="https://emailverification.s3.ir-thr-at1.arvanstorage.ir/Instagram.png" alt="Instagram">
-                </a>
-                <a href="https://t.me/SAZESoftwareGroup">
-                    <img src="https://emailverification.s3.ir-thr-at1.arvanstorage.ir/Telegram.png" alt="Telegram">
-                </a>
-            </div>
-        </div>
-    </div>
+                            <h1 style="font-size: 20px; margin-bottom: 15px; line-height: 1.5;">به اِلیت زون خوش آمدید
+                            </h1>
+
+                            <p style="font-size: 14px; margin-bottom: 20px; line-height: 2;  ">
+                                سلام
+                                <br />
+                                ممنونیم. با کلیک بر روی دکمه زیر ایمیل خود را تایید نمایید.
+                            </p>
+
+                            <div style="margin-bottom: 20px;">
+                                <a href="{{ $link }}"
+                                    style="display: inline-block; background-color: #0a69d6; color: #ffffff !important; padding: 12px 20px; font-size: 14px; text-decoration: none; border-radius: 5px; text-align: center; width: 100%; box-sizing: border-box;">تایید
+                                    ایمیل</a>
+                            </div>
+
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td
+                            style="background-color: #99BFED; padding: 15px; text-align: center; font-size: 12px; color: #ffffff; border-radius: 0 0 8px 8px;">
+                            <p style="margin: 5px 0;">شماره تماس: 34005000-031</p>
+                            <p style="margin: 5px 0;">ایمیل: Info@EliteZone.me</p>
+                            <div style="margin: 10px 0;">
+                                <a href="https://www.instagram.com/sazesoftwaregroup" target="_blank"
+                                    style="text-decoration: none;">
+                                    <img src="https://emailverification.s3.ir-thr-at1.arvanstorage.ir/Instagram.png?versionId="
+                                        alt="Instagram" style="width: 32px; margin: 0 5px;">
+                                </a>
+                                <a href="https://t.me/SAZESoftwareGroup" target="_blank" style="text-decoration: none;">
+                                    <img src="https://emailverification.s3.ir-thr-at1.arvanstorage.ir/Telegram.png?versionId="
+                                        alt="Telegram" style="width: 32px; margin: 0 5px;">
+                                </a>
+                            </div>
+                            <p style="margin: 5px 0; line-height: 2;  ">
+                                کلیه حقوق برای شرکت نرم افزاری اسپادانا
+                                <a href="https://saze90.com"
+                                    style="color: #ffffff; text-decoration: none;">(SAZE90.COM)</a>
+                                محفوظ است.
+                            </p>
+                        </td>
+                    </tr>
+
+                </table>
+            </td>
+        </tr>
+    </table>
 </body>
+
 </html>
