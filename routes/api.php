@@ -10,7 +10,6 @@ use App\Http\Controllers\Api\User\SupplierController;
 use App\Http\Controllers\SearchController;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -23,6 +22,7 @@ use Illuminate\Support\Facades\Route;
 | be assigned to the "api" middleware group. Make something great!
 |
 */
+
 Route::get('/search', [SearchController::class, 'search']);
 Route::post('/new-question', [QuestionController::class, 'submitQuestion']);
 
@@ -101,5 +101,5 @@ Route::post('/check-email-token', [ProfileController::class, 'checkToken']);
 Route::post('/check-saze-user', function (Request $request) {
     return [
         'result' => (int)User::query()->where(['mobile' => $request->input('mobile')])->exists()
-    ] ;
+    ];
 });

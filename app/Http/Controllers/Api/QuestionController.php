@@ -20,7 +20,7 @@ class QuestionController extends Controller
 
         Mail::to($request->email)->send(new QuestionEmail($request->validated(), 'user'));
 
-        Mail::to(Config::get('app.companyInfoEmailAddress'))->send(new QuestionEmail($request->validated(), 'support'));
+        // Mail::to(Config::get('app.companyInfoEmailAddress'))->send(new QuestionEmail($request->validated(), 'support'));
 
         return success([], __('global.received_successfully'));
     }

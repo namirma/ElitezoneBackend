@@ -2,11 +2,7 @@
 
 namespace App\Mail;
 
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Content;
-use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
 class QuestionEmail extends Mailable
@@ -31,7 +27,7 @@ class QuestionEmail extends Mailable
 
         $subject = $this->type === 'user'
             ? 'پیام شما دریافت شد'
-            : 'پیام جدیدی دریافت شد';
+            : 'پیام جدید از کاربر دریافت شد';
 
         return $this->view($view)
             ->subject($subject)
