@@ -44,13 +44,13 @@
                                 <tr>
                                     <td style="padding: 8px 0; border-bottom: 1px solid #ddd; word-wrap: break-word; overflow-wrap: break-word; text-align: right;">
                                         <strong style="font-size: 14px; display: inline-block; margin-bottom: 6px;">پست الکترونیکی:</strong>
-                                        <span style="font-size: 14px; line-height: 2;">{{ $data['email'] }}</span>
+                                        <span style="font-size: 12px; line-height: 2;">{{ $data['email'] }}</span>
                                     </td>
                                 </tr>
                                 <tr>
                                     <td style="padding: 8px 0; border-bottom: 1px solid #ddd; word-wrap: break-word; overflow-wrap: break-word; text-align: right;">
                                         <strong style="font-size: 14px; display: inline-block; margin-bottom: 6px;">تلفن همراه:</strong>
-                                        <span style="font-size: 14px; line-height: 2;">{{ $data['mobile'] }}</span>
+                                        <span style="font-size: 12px; line-height: 2;">{{ $data['mobile'] }}</span>
                                     </td>
                                 </tr>
                                 <tr>

@@ -28,6 +28,13 @@ class QuestionEmail extends Mailable
             ? 'emails.user-new-question'
             : 'emails.support-new-question';
 
-        return $this->view($view)->subject('پیام شما دریافت شد')->with(['data' => $this->data]);
+
+        $subject = $this->type === 'user'
+            ? 'پیام شما دریافت شد'
+            : 'پیام جدیدی دریافت شد';
+
+        return $this->view($view)
+            ->subject($subject)
+            ->with(['data' => $this->data]);
     }
 }
