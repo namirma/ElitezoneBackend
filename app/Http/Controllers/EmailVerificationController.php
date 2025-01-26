@@ -10,15 +10,10 @@ use Illuminate\Support\Facades\Mail;
 
 class EmailVerificationController extends Controller
 {
-    //
-    public function verify(VerifyEmailRequest $request)
+    public function verify(VerifyEmailRequest $request): void
     {
         $email = $request->input('email');
 
         Mail::to($email)->send(new TestEmail());
-        /*return response()->json([
-            'message' => 'ایمیل با موفقیت ارسال شد.',
-            'email' => $email,
-        ]);*/
     }
 }
