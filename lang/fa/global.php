@@ -10,5 +10,6 @@ return [
     'newUserNotificationBody' => '   از ثبت نام شما سپاسگزاریم.
     در حال مذاکره با سوپلایر‌های محترم هستیم.
     برای قدم های بعدی به شما اطلاع رسانی خواهیم کرد.
-    تیم EliteZone'
+    تیم EliteZone',
+    'listopherSavedSuccessfully' => 'اطلاعات لیستوفر با موفقیت ذخیره شد.'
 ];

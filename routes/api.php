@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\ListopherController;
 use App\Http\Controllers\Api\QuestionController;
 use App\Http\Controllers\Api\User\ContractorController;
 use App\Http\Controllers\Api\User\EmployerController;
@@ -22,6 +23,8 @@ use Illuminate\Support\Facades\Route;
 | be assigned to the "api" middleware group. Make something great!
 |
 */
+
+Route::post('/listophers', [ListopherController::class, 'store']);
 
 Route::get('/search', [SearchController::class, 'search']);
 Route::post('/new-question', [QuestionController::class, 'submitQuestion']);
