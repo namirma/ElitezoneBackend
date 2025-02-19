@@ -15,6 +15,8 @@ class ListopherItem extends Model
         ID = 'id',
         LISTOPHER_ID = 'listopher_id',
         POS = 'pos',
+        B = 'b',
+        H = 'h',
         SHAPE = 'shape',
         LENGTH = 'length',
         SIZE = 'size',
@@ -26,6 +28,8 @@ class ListopherItem extends Model
     protected $fillable = [
         self::LISTOPHER_ID,
         self::POS,
+        self::B,
+        self::H,
         self::SHAPE,
         self::LENGTH,
         self::SIZE,

@@ -15,10 +15,12 @@ class Listopher extends Model
 
     const
         ID = 'id',
-        PROJECT_CODE = 'project_code';
+        PROJECT_CODE = 'project_code',
+        TYPE = 'type';
 
     protected $fillable = [
-        self::PROJECT_CODE
+        self::PROJECT_CODE,
+        self::TYPE
     ];
 
     public function items(): HasMany

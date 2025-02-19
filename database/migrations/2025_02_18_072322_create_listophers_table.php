@@ -17,12 +17,12 @@ return new class extends Migration {
             $table->foreignId('listopher_id')->constrained()->onDelete('cascade');
             $table->integer('pos');
             $table->integer('shape');
-            $table->decimal('length', 8, 2);
+            $table->decimal('length');
             $table->integer('size');
-            $table->decimal('hook', 8, 2);
-            $table->decimal('overlap', 8, 2);
+            $table->decimal('hook')->nullable();
+            $table->decimal('overlap')->nullable();
             $table->integer('quantity');
-            $table->decimal('length_total', 8, 2);
+            $table->decimal('length_total')->nullable();
         });
     }
 

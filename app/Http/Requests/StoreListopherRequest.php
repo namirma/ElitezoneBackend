@@ -24,15 +24,18 @@ class StoreListopherRequest extends FormRequest
     {
         return [
             Listopher::PROJECT_CODE => 'required|string',
-            'items' => 'required|array',
-            'items.*.pos' => 'required|integer',
-            'items.*.shape' => 'required|integer',
-            'items.*.length' => 'required|numeric',
-            'items.*.size' => 'required|integer',
-            'items.*.hook' => 'required|numeric',
-            'items.*.overlap' => 'required|numeric',
-            'items.*.quantity' => 'required|integer',
-            'items.*.lengthTotal' => 'required|numeric',
+            Listopher::TYPE => 'required|in:stirrups,rebars',
+            'items' => 'nullable|array',
+            'items.*.pos' => 'nullable|integer',
+            'items.*.shape' => 'nullable|integer',
+            'items.*.length' => 'nullable|numeric',
+            'items.*.size' => 'nullable|integer',
+            'items.*.hook' => 'nullable|numeric',
+            'items.*.overlap' => 'nullable|numeric',
+            'items.*.quantity' => 'nullable|integer',
+            'items.*.lengthTotal' => 'nullable|numeric',
+            'items.*.b' => 'nullable|numeric',
+            'items.*.h' => 'nullable|numeric',
         ];
     }
 }
