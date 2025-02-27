@@ -11,13 +11,23 @@ class ListopherController extends Controller
 {
     public function store(StoreListopherRequest $request)
     {
-        $listopher = Listopher::updateOrCreate(
-            [
-                Listopher::PROJECT_CODE => $request->validated('project_code'),
-                Listopher::TYPE => $request->validated('type')
-            ],
-            []
-        );
+
+        if (Listopher::where([
+            Listopher::PROJECT_CODE => $request->validated('project_code'),
+            Listopher::TYPE => $request->validated('type'),
+        ])->exists()) {
+            $listopher = Listopher::where(
+                [
+                    Listopher::PROJECT_CODE => $request->validated('project_code'),
+                    Listopher::TYPE => $request->validated('type')
+                ],
+            )->first();
+            $listopher->items()->delete();
+
+        }
+        else {
+            $listopher = Listopher::create([Listopher::PROJECT_CODE => $request->validated('project_code'), Listopher::TYPE => $request->validated('type')],);
+        }
 
         $items = collect($request->validated('items'))->map(function ($item) {
             return [
@@ -34,7 +44,6 @@ class ListopherController extends Controller
             ];
         });
 
-        $listopher->items()->delete();
         $listopher->items()->createMany($items);
 
         return success([], 'global.listopherSavedSuccessfully');
