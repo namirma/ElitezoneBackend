@@ -21,12 +21,12 @@ class ListopherController extends Controller
 
         $items = collect($request->validated('items'))->map(function ($item) {
             return [
-                'pos' => $item['pos'],
+                'pos' => (string)$item['pos'],
                 'b' => $item['b'] ?? null,
                 'h' => $item['h'] ?? null,
-                'shape' => $item['shape'],
+                'shape' => (string)$item['shape'],
                 'length' => $item['length'],
-                'size' => $item['size'],
+                'size' => (string)$item['size'],
                 'hook' => $item['hook'] ?? null,
                 'overlap' => $item['overlap'] ?? null,
                 'quantity' => $item['quantity'],
