@@ -15,10 +15,10 @@ return new class extends Migration {
         Schema::create('listopher_items', function (Blueprint $table) {
             $table->id();
             $table->foreignId('listopher_id')->constrained()->onDelete('cascade');
-            $table->integer('pos');
-            $table->integer('shape');
+            $table->string('pos', 64);
+            $table->string('shape', 64);
             $table->decimal('length');
-            $table->integer('size');
+            $table->string('size', 64);
             $table->decimal('hook')->nullable();
             $table->decimal('overlap')->nullable();
             $table->integer('quantity');
