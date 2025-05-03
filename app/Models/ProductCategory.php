@@ -1,0 +1,44 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+
+class ProductCategory extends Model
+{
+    // ثابت‌ها
+    const ID = 'id';
+    const NAME = 'name';
+    const SLUG = 'slug';
+    const DESCRIPTION = 'description';
+    const IMAGE = 'image';
+    const IS_ACTIVE = 'is_active';
+
+    protected $fillable = [
+        self::NAME,
+        self::SLUG,
+        self::DESCRIPTION,
+        self::IMAGE,
+        self::IS_ACTIVE,
+    ];
+
+    /**
+     * Get the products for the category.
+     */
+    public function products(): HasMany
+    {
+        return $this->hasMany(Product::class, 'category_id');
+    }
+
+    /**
+     * Get the attribute types associated with the category.
+     */
+    public function attributeTypes(): BelongsToMany
+    {
+        return $this->belongsToMany(AttributeType::class, 'category_attributes')
+            ->withPivot('is_required', 'is_filterable', 'sort_order')
+            ->withTimestamps();
+    }
+}

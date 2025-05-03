@@ -3,6 +3,8 @@
 namespace Database\Seeders;
 
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+
+use App\Models\PurchaseParameterGroup;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -19,5 +21,7 @@ class DatabaseSeeder extends Seeder
         //     'name' => 'Test UserResource',
         //     'email' => 'test@example.com',
         // ]);
+        $this->call(ProductSeeder::class);
+        $this->call(PurchaseParameterSeeder::class);
     }
 }

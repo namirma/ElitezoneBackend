@@ -8,6 +8,13 @@ use App\Http\Controllers\Api\User\EmployerController;
 use App\Http\Controllers\Api\User\EngineerController;
 use App\Http\Controllers\Api\User\ProfileController;
 use App\Http\Controllers\Api\User\SupplierController;
+use App\Http\Controllers\CartController;
+use App\Http\Controllers\CustomerTypeController;
+use App\Http\Controllers\FactoryController;
+use App\Http\Controllers\ParameterDetectionController;
+use App\Http\Controllers\PriceFilterController;
+use App\Http\Controllers\ProductController;
+use App\Http\Controllers\PurchaseParameterController;
 use App\Http\Controllers\SearchController;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -23,6 +30,51 @@ use Illuminate\Support\Facades\Route;
 | be assigned to the "api" middleware group. Make something great!
 |
 */
+
+Route::prefix('products')->group(function () {
+    Route::get('/', [ProductController::class, 'index']);
+    Route::get('/{slug}', [ProductController::class, 'show']);
+    Route::get('/{slug}/variants', [ProductController::class, 'variants']);
+    Route::get('/{slug}/filters', [ProductController::class, 'filters']);
+    Route::post('/variant-price', [ProductController::class, 'getVariantPrice']);
+    Route::post('/calculate-price', [ProductController::class, 'calculateOrderPrice']);
+});
+
+//مسیر های مربوط به پارامترهای خرید
+Route::prefix('purchase-parameters')->group(function () {
+    Route::get('/groups', [PurchaseParameterController::class, 'getGroups']);
+    Route::get('/user', [PurchaseParameterController::class, 'getUserParameters']);
+    Route::post('/user', [PurchaseParameterController::class, 'saveUserParameters']);
+    Route::post('/detect-price-filters', [ParameterDetectionController::class, 'detectPriceFilters']);
+});
+
+// مسیرهای مربوط به کارخانه و محل‌های تحویل
+Route::prefix('factories')->group(function () {
+    Route::get('/', [FactoryController::class, 'index']);
+    Route::get('/{id}/locations', [FactoryController::class, 'getLocations']);
+});
+
+// مسیرهای مربوط به انواع مشتری و نشان‌ها
+Route::prefix('customer-types')->group(function () {
+    Route::get('/', [CustomerTypeController::class, 'index']);
+    Route::get('/badges', [CustomerTypeController::class, 'getBadges']);
+});
+
+// مسیرهای مربوط به فیلترهای قیمت
+Route::prefix('price-filters')->group(function () {
+    Route::get('/categories', [PriceFilterController::class, 'getCategories']);
+    Route::get('/types', [PriceFilterController::class, 'getFilterTypes']);
+});
+
+//مسیر های مربوط به سبد خرید
+Route::prefix('cart')->group(function() {
+    Route::get('/', [CartController::class, 'getCart']);
+    Route::post('/items', [CartController::class, 'addToCart']);
+    Route::put('/items/{item}', [CartController::class, 'updateCartItem']);
+    Route::delete('/items/{item}', [CartController::class, 'removeCartItem']);
+    Route::patch('/customer', [CartController::class, 'updateCustomerType']);
+    Route::patch('/filters', [CartController::class, 'updateCartFilters']);
+});
 
 Route::post('/listophers', [ListopherController::class, 'store']);
 

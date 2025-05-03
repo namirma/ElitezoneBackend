@@ -1,0 +1,28 @@
+<?php
+
+namespace App\Http\Resources;
+
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
+use App\Models\Factory;
+
+class FactoryResource extends JsonResource
+{
+    public function toArray(Request $request): array
+    {
+        return [
+            Factory::ID          => $this->id,
+            Factory::NAME        => $this->name,
+            Factory::SLUG        => $this->slug,
+            Factory::DESCRIPTION => $this->description,
+            Factory::LOGO        => $this->logo,
+            Factory::API_KEY     => $this->api_key,
+            Factory::API_URL     => $this->api_url,
+            Factory::IS_ACTIVE   => (bool) $this->is_active,
+            Factory::CREATED_AT  => $this->created_at?->format('Y-m-d H:i:s'),
+            Factory::UPDATED_AT  => $this->updated_at?->format('Y-m-d H:i:s'),
+
+            'locations' => FactoryLocationResource::collection($this->whenLoaded('locations')),
+        ];
+    }
+}
