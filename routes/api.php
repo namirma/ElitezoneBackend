@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\User\ProfileController;
 use App\Http\Controllers\Api\User\SupplierController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CustomerTypeController;
+use App\Http\Controllers\EduixController;
 use App\Http\Controllers\FactoryController;
 use App\Http\Controllers\ParameterDetectionController;
 use App\Http\Controllers\PriceFilterController;
@@ -31,27 +32,31 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+
+Route::prefix('eduix')->group(function () {
+    Route::post('/fetch', [EduixController::class, 'fetch']);
+});
 Route::prefix('products')->group(function () {
     Route::get('/', [ProductController::class, 'index']);
-    Route::get('/{slug}', [ProductController::class, 'show']);
-    Route::get('/{slug}/variants', [ProductController::class, 'variants']);
-    Route::get('/{slug}/filters', [ProductController::class, 'filters']);
-    Route::post('/variant-price', [ProductController::class, 'getVariantPrice']);
+    Route::get('/{product:cuid}', [ProductController::class, 'show']);
+    Route::get('/{product:cuid}/variants', [ProductController::class, 'variants']);
+    Route::get('/{product:cuid}/filters', [ProductController::class, 'filters']);
+    Route::post('/variant-price',   [ProductController::class, 'getVariantPrice']);
     Route::post('/calculate-price', [ProductController::class, 'calculateOrderPrice']);
 });
 
 //مسیر های مربوط به پارامترهای خرید
 Route::prefix('purchase-parameters')->group(function () {
-    Route::get('/groups', [PurchaseParameterController::class, 'getGroups']);
-    Route::get('/user', [PurchaseParameterController::class, 'getUserParameters']);
-    Route::post('/user', [PurchaseParameterController::class, 'saveUserParameters']);
+    Route::get('/groups', [PurchaseParameterController::class, 'groups']);
+    Route::get('/user', [PurchaseParameterController::class, 'userParameters']);
+    Route::post('/user', [PurchaseParameterController::class, 'store']);
     Route::post('/detect-price-filters', [ParameterDetectionController::class, 'detectPriceFilters']);
 });
 
 // مسیرهای مربوط به کارخانه و محل‌های تحویل
 Route::prefix('factories')->group(function () {
-    Route::get('/', [FactoryController::class, 'index']);
-    Route::get('/{id}/locations', [FactoryController::class, 'getLocations']);
+    Route::get('/', [FactoryController::class, 'listFactories']);
+    Route::get('/{id}/locations', [FactoryController::class, 'listLocations']);
 });
 
 // مسیرهای مربوط به انواع مشتری و نشان‌ها
@@ -67,7 +72,7 @@ Route::prefix('price-filters')->group(function () {
 });
 
 //مسیر های مربوط به سبد خرید
-Route::prefix('cart')->group(function() {
+Route::prefix('cart')->group(function () {
     Route::get('/', [CartController::class, 'getCart']);
     Route::post('/items', [CartController::class, 'addToCart']);
     Route::put('/items/{item}', [CartController::class, 'updateCartItem']);

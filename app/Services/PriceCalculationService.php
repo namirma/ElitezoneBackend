@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services;
 
 use App\Models\ProductVariant;
@@ -15,122 +16,135 @@ use Illuminate\Support\Facades\Cache;
 class PriceCalculationService
 {
     /**
-     * محاسبه قیمت واریانت محصول با اعمال فیلترها
+     * 
+     *
+     * @param ProductVariant
+     * @param Factory
+     * @param FactoryLocation
+     * @param CustomerType|null
+     * @param Badge|null
+     * @param int[]|null
+     * @param bool
+     *
+     * @return array
      */
     public function calculatePrice(
-        ProductVariant $variant,
-        Factory $factory,
+        ProductVariant  $variant,
+        Factory         $factory,
         FactoryLocation $location,
-        CustomerType $customerType,
-        ?Badge $badge = null,
-        ?array $filterCategories = null,
-        bool $withVAT = false
+        ?CustomerType   $customerType     = null,
+        ?Badge          $badge            = null,
+        ?array          $filterCategories = null,
+        bool            $withVAT          = false
     ): array {
-        // 1) قیمت پایه
+        // دریافت قیمت پایه
         $base = $this->getBasePrice($variant, $factory, $location);
 
-        // 2) اعمال فیلترها روی general و special
-        $generalWith = $this->applyGeneralFilters($base['general_price'], $filterCategories);
-        $specialWith = $this->applySpecialFilters($base['special_price'], $filterCategories);
+        // جمع‌آوری فیلترها
+        $filters = $this->getAllFilters($filterCategories);
 
-        // 3) تنظیم مشتری/نشان
-        $adj = $this->getPriceAdjustment($customerType, $badge);
+        // جداسازی فیلترها
+        $generalFilters    = $filters->filter(fn($f) => $f->filterType->apply_on === 'general');
+        $specialFilters    = $filters->filter(fn($f) => $f->filterType->apply_on === 'special');
+        $adjustmentFilters = $filters->filter(fn($f) => $f->filterType->apply_on === 'both');
 
-        // 4) قیمت نهایی بدون VAT
-        $final = $specialWith - $adj;
+        // اعمال فیلترهای عمومی
+        $generalWith = $this->applyFilters((float)$base['general_price'], $generalFilters);
 
-        // 5) VAT
-        $vatAmount = 0;
+        // اعمال فیلترهای اختصاصی
+        $specialWith = $this->applyFilters((float)$base['special_price'], $specialFilters);
+
+        // محاسبه تنظیم قیمت مشتری
+        $adjustment = $this->applyFilters(0, $adjustmentFilters);
+
+        // قیمت نهایی بدون VAT
+        $final = max(0, $specialWith - $adjustment);
+
+        // محاسبه VAT
+        $vatAmount      = 0;
+        $vatRatePercent = 0;
         if ($withVAT) {
-            $rate = PriceSetting::getValueAsFloat('vat_rate', 10) / 100;
-            $vatAmount = $final * $rate;
+            $vatRatePercent = PriceSetting::getValueAsFloat('vat_rate', 10);
+            $vatAmount      = $final * ($vatRatePercent / 100);
         }
 
+        // بازگردانی مقادیر به صورت رشته
         return [
-            'base_general_price'           => $base['general_price'],
-            'base_special_price'           => $base['special_price'],
-            'golden_figure'                => $base['golden_figure'],
-            'general_price_with_filters'   => $generalWith,
-            'special_price_with_filters'   => $specialWith,
-            'customer_adjustment'          => $adj,
-            'final_price'                  => $final,
-            'vat_amount'                   => $vatAmount,
-            'vat_rate'                     => $withVAT ? PriceSetting::getValueAsFloat('vat_rate', 10) : 0,
-            'price_with_vat'               => $final + $vatAmount,
-            'with_vat'                     => $withVAT,
+            'base_general_price'         => (string)$base['general_price'],
+            'base_special_price'         => (string)$base['special_price'],
+            'general_price_with_filters' => (string)$generalWith,
+            'special_price_with_filters' => (string)$specialWith,
+            'customer_adjustment'        => (string)$adjustment,
+            'final_price'                => (string)$final,
+            'vat_amount'                 => (string)$vatAmount,
+            'vat_rate'                   => (string)($withVAT ? $vatRatePercent : 0),
+            'price_with_vat'             => (string)($final + $vatAmount),
+            'with_vat'                   => $withVAT,
         ];
     }
 
-    private function getBasePrice(ProductVariant $variant, Factory $factory, FactoryLocation $location): array
+    /**
+     * دریافت فیلترها از دسته‌های قیمت
+     */
+    private function getAllFilters(?array $catIds): Collection
     {
-        $key = "price_{$variant->id}_{$factory->id}_{$location->id}";
-        if (Cache::has($key)) {
-            return Cache::get($key);
+        if (empty($catIds)) {
+            return collect();
         }
 
-        $price = $variant->prices()
-            ->where('factory_id', $factory->id)
-            ->where('factory_location_id', $location->id)
-            ->latest('last_updated_at')
-            ->first()
-            ?: $this->fetchPriceFromFactoryApi($variant, $factory, $location);
-
-        $data = [
-            'general_price' => $price->general_price,
-            'special_price' => $price->special_price,
-            'golden_figure' => $price->golden_figure,
-        ];
-
-        Cache::put($key, $data, now()->addMinutes(15));
-        return $data;
-    }
-
-    private function applyGeneralFilters(float $price, ?array $cats): float
-    {
-        if (empty($cats)) return $price;
-        $filters = $this->getFiltersFromCategories($cats, 'general');
-        foreach ($filters as $f) {
-            $price += $f->is_percentage
-                ? $price * ($f->amount / 100)
-                : $f->amount;
-        }
-        return max(0, $price);
-    }
-
-    private function applySpecialFilters(float $price, ?array $cats): float
-    {
-        if (empty($cats)) return $price;
-        $filters = $this->getFiltersFromCategories($cats, 'special');
-        foreach ($filters as $f) {
-            $price += $f->is_percentage
-                ? $price * ($f->amount / 100)
-                : $f->amount;
-        }
-        return max(0, $price);
-    }
-
-    private function getFiltersFromCategories(array $cats, string $type): Collection
-    {
-        return PriceFilterCategory::whereIn('id', $cats)
+        return PriceFilterCategory::whereIn('id', $catIds)
             ->active()
             ->with(['filters.filterType'])
             ->get()
             ->flatMap->filters
-            ->filter(fn($f) => $f->filterType->apply_on === $type)
             ->unique('id');
     }
 
-    private function getPriceAdjustment(CustomerType $ct, ?Badge $badge): int
+    /**
+     * اعمال فیلترها روی قیمت
+     */
+    private function applyFilters(float $startPrice, Collection $filters): float
     {
-        return \App\Models\PriceAdjustment::where('customer_type_id', $ct->id)
-            ->where(fn($q) => $q
-                ->where('badge_id', $badge?->id)
-                ->orWhereNull('badge_id')
-            )
-            ->where('is_active', true)
-            ->value('adjustment_amount') ?: 0;
+        $price = $startPrice;
+        foreach ($filters as $filter) {
+            $price += $filter->is_percentage
+                ? $price * ($filter->amount / 100)
+                : $filter->amount;
+        }
+        return max(0, $price);
     }
 
+    /**
+     * دریافت قیمت پایه
+     */
+    private function getBasePrice(ProductVariant $variant, Factory $factory, FactoryLocation $location): array
+    {
+        $cacheKey = "price_{$variant->id}_{$factory->id}_{$location->id}";
+        if (Cache::has($cacheKey)) {
+            return Cache::get($cacheKey);
+        }
+
+        $model = $variant->prices()
+            ->where('factory_id', $factory->id)
+            ->where('factory_location_id', $location->id)
+            ->latest('last_updated_at')
+            ->first();
+
+        $data = ['general_price' => 0.0, 'special_price' => 0.0];
+        if ($model) {
+            $data = [
+                'general_price' => (float)$model->general_price,
+                'special_price' => (float)$model->special_price,
+            ];
+            Cache::put($cacheKey, $data, now()->addMinutes(15));
+        }
+
+        return $data;
+    }
+
+    /**
+     * محاسبهٔ قیمت کل با VAT و جزئیات واحدها
+     */
     public function calculateTotalPrice(array $quantities, float $unitPrice, bool $withVAT = false): array
     {
         $totalCount  = 0;
@@ -141,40 +155,37 @@ class PriceCalculationService
             $unit = OrderUnit::find($unitId);
             if (! $unit) continue;
 
-            $w = (float) $unit->amount;  // وزن هر واحد
+            $weight       = (float)$unit->amount;
             $totalCount  += $qty;
-            $totalWeight += $qty * $w;
+            $totalWeight += $qty * $weight;
 
             $breakdown[] = [
                 'unit_id'      => $unit->id,
                 'unit_name'    => $unit->name,
-                'quantity'     => $qty,
-                'unit_weight'  => $w,
-                'total_weight' => $qty * $w,
+                'quantity'     => (string)$qty,
+                'unit_weight'  => (string)$weight,
+                'total_weight' => (string)($qty * $weight),
             ];
         }
 
-        // **دقت کنید**: مبلغ کل = totalWeight × unitPrice
-        $subtotal = $totalWeight * $unitPrice;
-
-        $vatAmount = 0;
+        $subtotal      = $totalWeight * $unitPrice;
+        $vatAmount     = 0;
+        $vatRatePercent = 0;
         if ($withVAT) {
-            $rate = PriceSetting::getValueAsFloat('vat_rate', 10) / 100;
-            $vatAmount = $subtotal * $rate;
+            $vatRatePercent = PriceSetting::getValueAsFloat('vat_rate', 10);
+            $vatAmount      = $subtotal * ($vatRatePercent / 100);
         }
 
         return [
-            'total_count'    => $totalCount,
-            'total_weight'   => $totalWeight,
-            'unit_price'     => $unitPrice,
-            'subtotal'       => $subtotal,
-            'vat_rate'       => $withVAT ? PriceSetting::getValueAsFloat('vat_rate', 10) : 0,
-            'vat_amount'     => $vatAmount,
-            'total_with_vat' => $subtotal + $vatAmount,
+            'total_count'    => (string)$totalCount,
+            'total_weight'   => (string)$totalWeight,
+            'unit_price'     => (string)$unitPrice,
+            'subtotal'       => (string)$subtotal,
+            'vat_rate'       => (string)($withVAT ? $vatRatePercent : 0),
+            'vat_amount'     => (string)$vatAmount,
+            'total_with_vat' => (string)($subtotal + $vatAmount),
             'with_vat'       => $withVAT,
             'breakdown'      => $breakdown,
         ];
     }
-
-    // ... بقیهٔ متدهای fetchPriceFromFactoryApi و غیره بدون تغییر
 }

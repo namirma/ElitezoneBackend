@@ -5,6 +5,7 @@ namespace App\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use App\Models\Factory;
+use Carbon\Carbon;
 
 class FactoryResource extends JsonResource
 {
@@ -19,8 +20,8 @@ class FactoryResource extends JsonResource
             Factory::API_KEY     => $this->api_key,
             Factory::API_URL     => $this->api_url,
             Factory::IS_ACTIVE   => (bool) $this->is_active,
-            Factory::CREATED_AT  => $this->created_at?->format('Y-m-d H:i:s'),
-            Factory::UPDATED_AT  => $this->updated_at?->format('Y-m-d H:i:s'),
+            Factory::CREATED_AT  => $this->created_at ? Carbon::parse($this->created_at)->format('Y-m-d H:i:s') : null,
+            Factory::UPDATED_AT  => $this->updated_at ? Carbon::parse($this->updated_at)->format('Y-m-d H:i:s') : null,
 
             'locations' => FactoryLocationResource::collection($this->whenLoaded('locations')),
         ];

@@ -3,38 +3,36 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\FactoryLocationResource;
 use App\Http\Resources\FactoryResource;
 use App\Models\Factory;
+use Illuminate\Http\Request;
 
 class FactoryController extends Controller
 {
-    public function index()
+    public function listFactories(Request $request)
     {
-        $query = Factory::query()->active();
+        $factories = Factory::active()
+            ->when(
+                $request->filled('search'),
+                fn ($q) => $q->where(Factory::NAME, 'like', '%' . $request->search . '%')
+            )
+            ->get();
 
-        if (request()->filled('search')) {
-            $search = request()->input('search');
-            $query->where(function ($q) use ($search) {
-                $q->where(Factory::NAME, 'like', "%{$search}%");
-            });
+        return success(FactoryResource::collection($factories)); 
+    }
+    public function listLocations(int $factoryId)
+    {
+        $factory = Factory::active()
+            ->with(['locations' => fn ($q) => $q->active()])
+            ->find($factoryId);
+
+        if (!$factory) {
+            return error('global.notFound', [], 404);
         }
 
-        $factories = $query->get();
-
-        return response()->json([
-            'status' => 'success',
-            'data'   => FactoryResource::collection($factories),
-        ]);
-    }
-
-    public function getLocations($id)
-    {
-        $factory = Factory::findOrFail($id);
-        $locations = $factory->locations()->active()->get();
-
-        return response()->json([
-            'status' => 'success',
-            'data' => $locations
-        ]);
+        return success(
+            FactoryLocationResource::collection($factory->locations)
+        );
     }
 }

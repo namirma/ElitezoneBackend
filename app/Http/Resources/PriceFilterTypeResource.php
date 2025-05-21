@@ -11,14 +11,16 @@ class PriceFilterTypeResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            PriceFilterType::ID         => $this->id,
+            PriceFilterType::ID         => (string) $this->id,
             PriceFilterType::NAME       => $this->name,
             PriceFilterType::CODE       => $this->code,
             PriceFilterType::APPLY_ON   => $this->apply_on,
-            PriceFilterType::IS_ACTIVE  => (bool) $this->is_active,
-            PriceFilterType::SORT_ORDER => $this->sort_order,
-            PriceFilterType::CREATED_AT => $this->created_at,
-            PriceFilterType::UPDATED_AT => $this->updated_at,
+            PriceFilterType::IS_ACTIVE  => (bool)   $this->is_active,
+            PriceFilterType::SORT_ORDER => (string) $this->sort_order,
+            PriceFilterType::CREATED_AT => optional($this->created_at)
+                ->format('Y-m-d H:i:s'),
+            PriceFilterType::UPDATED_AT => optional($this->updated_at)
+                ->format('Y-m-d H:i:s'),
         ];
     }
 }

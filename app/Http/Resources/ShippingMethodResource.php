@@ -13,8 +13,8 @@ class ShippingMethodResource extends JsonResource
             ShippingMethod::ID         => $this->id,
             ShippingMethod::NAME       => $this->name,
             ShippingMethod::CODE       => $this->code,
-            ShippingMethod::CREATED_AT => $this->created_at,
-            ShippingMethod::UPDATED_AT => $this->updated_at,
+            ShippingMethod::CREATED_AT => optional($this->created_at)->format('Y-m-d H:i:s'),
+            ShippingMethod::UPDATED_AT => optional($this->updated_at)->format('Y-m-d H:i:s'),
         ];
     }
 }

@@ -3,41 +3,38 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\PriceFilterCategoryResource;
+use App\Http\Resources\PriceFilterTypeResource;
 use App\Models\PriceFilterCategory;
 use App\Models\PriceFilterType;
-use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 
 class PriceFilterController extends Controller
 {
 
-    public function getCategories()
+    public function getCategories(): JsonResponse
     {
         $categories = PriceFilterCategory::active()
-            ->with(['filters' => function($query) {
-                $query->active()->with('filterType');
+            ->with(['filters' => function ($q) {
+                $q->active()->with('filterType');
             }])
             ->orderBy('sort_order')
             ->get();
 
-        return response()->json([
-            'status' => 'success',
-            'data' => $categories
-        ]);
+        return success(
+            PriceFilterCategoryResource::collection($categories)
+        );
     }
 
-    
-    public function getFilterTypes()
+    public function getFilterTypes(): JsonResponse
     {
-        $filterTypes = PriceFilterType::active()
-            ->with(['filters' => function($query) {
-                $query->active();
-            }])
+        $types = PriceFilterType::active()
+            ->with(['filters' => fn($q) => $q->active()])
             ->orderBy('sort_order')
             ->get();
 
-        return response()->json([
-            'status' => 'success',
-            'data' => $filterTypes
-        ]);
+        return success(
+            PriceFilterTypeResource::collection($types)
+        );
     }
 }

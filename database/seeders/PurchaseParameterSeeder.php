@@ -2,177 +2,125 @@
 
 namespace Database\Seeders;
 
+use Illuminate\Database\Seeder;
 use App\Models\PriceFilterCategory;
 use App\Models\PurchaseParameterGroup;
 use App\Models\PurchaseParameterValue;
-use Illuminate\Database\Seeder;
+use App\Models\CustomerType;
 
 class PurchaseParameterSeeder extends Seeder
 {
-    public function run()
+    public function run(): void
     {
-        // گروه نوع مشتری
-        $customerTypeGroup = PurchaseParameterGroup::updateOrCreate(
-            ['code' => 'customer_type'],
-            [
-                'name' => 'نوع مشتری',
-                'description' => 'نوع مشتری شما چیست؟',
-                'order' => 1,
-                'is_active' => true,
-            ]
-        );
-
-        // گروه وضعیت مشاور
-        $consultantGroup = PurchaseParameterGroup::updateOrCreate(
-            ['code' => 'consultant_status'],
-            [
-                'name' => 'وضعیت مشاور',
-                'description' => 'آیا مشاور دارید؟',
-                'order' => 2,
-                'is_active' => true,
-            ]
-        );
-
-        // گروه هدف خرید
-        $purposeGroup = PurchaseParameterGroup::updateOrCreate(
-            ['code' => 'purchase_purpose'],
-            [
-                'name' => 'هدف خرید',
-                'description' => 'هدف شما از خرید چیست؟',
-                'order' => 3,
-                'is_active' => true,
-            ]
-        );
-
-        // دریافت دسته‌بندی‌های فیلتر قیمت با بررسی وجودشان
-        $customerWithoutConsultant = PriceFilterCategory::firstOrCreate(
-            ['code' => 'customer_without_consultant'],
-            ['name' => 'Customer Without Consultant'] // Add a default name
-        );
-        $customerWithConsultant = PriceFilterCategory::firstOrCreate(
-            ['code' => 'customer_with_consultant'],
-            ['name' => 'Customer With Consultant'] // Add a default name
-        );
-        $engineerWithoutConsultant = PriceFilterCategory::firstOrCreate(
-            ['code' => 'engineer_without_consultant'],
-            ['name' => 'Engineer Without Consultant'] // Add a default name
-        );
-        $engineerWithConsultant = PriceFilterCategory::firstOrCreate(
-            ['code' => 'engineer_with_consultant'],
-            ['name' => 'Engineer With Consultant'] // Add a default name
-        );
-        $contractorWithoutConsultant = PriceFilterCategory::firstOrCreate(
-            ['code' => 'contractor_without_consultant'],
-            ['name' => 'Contractor Without Consultant'] // Add a default name
-        );
-        $contractorWithConsultant = PriceFilterCategory::firstOrCreate(
-            ['code' => 'contractor_with_consultant'],
-            ['name' => 'Contractor With Consultant'] // Add a default name
-        );
-
-        // مقادیر پارامتر نوع مشتری
-        $customerTypeValues = [
-            [
-                'name' => 'کارفرما',
-                'slug' => 'Employer',
-                'code' => 'employer',
-                'description' => 'شما کارفرما هستید',
-                'order' => 1,
-                'price_filter_category_id' => $customerWithoutConsultant->id, // Example logic for assigning price filter category
-            ],
-            [
-                'name' => 'مهندس',
-                'slug' => 'Engineer',
-                'code' => 'engineer',
-                'description' => 'شما مهندس هستید',
-                'order' => 2,
-                'price_filter_category_id' => $engineerWithConsultant->id, // Example logic
-            ],
-            [
-                'name' => 'پیمانکار',
-                'slug' => 'Contractor',
-                'code' => 'contractor',
-                'description' => 'شما پیمانکار هستید',
-                'order' => 3,
-                'price_filter_category_id' => $contractorWithConsultant->id, // Example logic
-            ],
+        // 1) دسته‌های فیلتر قیمت
+        $filterCats = [
+            ['code' => 'employer_without_consultant', 'name' => 'کارفرما بدون مشاور',       'sort_order' => 1],
+            ['code' => 'employer_with_consultant',    'name' => 'کارفرما با مشاور',       'sort_order' => 2],
+            ['code' => 'engineer_with_consultant',    'name' => 'مهندس با مشاور',        'sort_order' => 3],
+            ['code' => 'contractor_with_consultant',  'name' => 'پیمانکار با مشاور',     'sort_order' => 4],
         ];
-
-        foreach ($customerTypeValues as $value) {
-            PurchaseParameterValue::updateOrCreate(
+        foreach ($filterCats as $cat) {
+            PriceFilterCategory::updateOrCreate(
+                ['code' => $cat['code']],
                 [
-                    'group_id' => $customerTypeGroup->id,
-                    'code' => $value['code'],
-                ],
-                array_merge(['group_id' => $customerTypeGroup->id], $value)
+                    'name'        => $cat['name'],
+                    'description' => "فیلترهای قیمت برای {$cat['name']}",
+                    'sort_order'  => $cat['sort_order'],
+                    'is_active'   => true,
+                ]
             );
         }
 
-        // مقادیر پارامتر وضعیت مشاور
+        // 2) گروه‌های پارامتر خرید
+        $groups = [
+            ['code' => 'customer_type',      'name' => 'نوع مشتری',     'order' => 1],
+            ['code' => 'consultant_status',  'name' => 'وضعیت مشاور',  'order' => 2],
+            ['code' => 'purchase_purpose',   'name' => 'هدف خرید',      'order' => 3],
+        ];
+        foreach ($groups as $g) {
+            PurchaseParameterGroup::updateOrCreate(
+                ['code' => $g['code']],
+                ['name' => $g['name'], 'description' => "{$g['name']} شما چیست؟", 'order' => $g['order'], 'is_active' => true]
+            );
+        }
+
+        // 3) مقادیر گروه "نوع مشتری"
+        $customerTypeGroup = PurchaseParameterGroup::where('code','customer_type')->first();
+        $customerValues = [
+            ['code' => 'employer',   'name' => 'کارفرما',   'order' => 1, 'filter_cat' => 'employer_without_consultant'],
+            ['code' => 'engineer',   'name' => 'مهندس',     'order' => 2, 'filter_cat' => 'engineer_with_consultant'],
+            ['code' => 'contractor', 'name' => 'پیمانکار',  'order' => 3, 'filter_cat' => 'contractor_with_consultant'],
+        ];
+        foreach ($customerValues as $v) {
+            $pfId = PriceFilterCategory::where('code', $v['filter_cat'])->value('id');
+            PurchaseParameterValue::updateOrCreate(
+                ['group_id' => $customerTypeGroup->id, 'code' => $v['code']],
+                [
+                    'group_id'                 => $customerTypeGroup->id,
+                    'name'                     => $v['name'],
+                    'slug'                     => $v['code'],
+                    'code'                     => $v['code'],
+                    'order'                    => $v['order'],
+                    'is_active'                => true,
+                    'price_filter_category_id' => $pfId,
+                ]
+            );
+        }
+
+        // 4) مقادیر گروه "وضعیت مشاور"
+        $consultantGroup = PurchaseParameterGroup::where('code','consultant_status')->first();
         $consultantValues = [
-            [
-                'name' => 'دارای مشاور',
-                'slug' => 'Consultant_Yes',
-                'code' => 'with_consultant',
-                'description' => 'شما دارای مشاور هستید',
-                'order' => 1,
-                'price_filter_category_id' => $customerWithConsultant->id, // Example logic
-            ],
-            [
-                'name' => 'بدون مشاور',
-                'slug' => 'Consultant_No',
-                'code' => 'without_consultant',
-                'description' => 'شما بدون مشاور هستید',
-                'order' => 2,
-                'price_filter_category_id' => $customerWithoutConsultant->id, // Example logic
-            ],
+            ['code' => 'with_consultant',    'name' => 'دارای مشاور',     'order' => 1],
+            ['code' => 'without_consultant', 'name' => 'بدون مشاور',      'order' => 2],
         ];
-
-        foreach ($consultantValues as $value) {
+        foreach ($consultantValues as $v) {
             PurchaseParameterValue::updateOrCreate(
+                ['group_id' => $consultantGroup->id, 'code' => $v['code']],
                 [
-                    'group_id' => $consultantGroup->id,
-                    'code' => $value['code'],
-                ],
-                array_merge(['group_id' => $consultantGroup->id], $value)
+                    'group_id'                 => $consultantGroup->id,
+                    'name'                     => $v['name'],
+                    'slug'                     => $v['code'],
+                    'code'                     => $v['code'],
+                    'order'                    => $v['order'],
+                    'is_active'                => true,
+                    // برای مشاور، نگاشت به همان دسته فیلتر price_filter_category نداریم:
+                    'price_filter_category_id' => null,
+                ]
             );
         }
 
-        // مقادیر پارامتر هدف خرید
+        // 5) مقادیر گروه "هدف خرید"
+        $purposeGroup = PurchaseParameterGroup::where('code','purchase_purpose')->first();
         $purposeValues = [
-            [
-                'name' => 'برای خودم',
-                'slug' => 'Buy_For_Myself',
-                'code' => 'for_myself',
-                'description' => 'خرید برای استفاده شخصی',
-                'order' => 1,
-                'price_filter_category_id' => null,
-            ],
-            [
-                'name' => 'برای پروژه',
-                'slug' => 'Buy_For_Project',
-                'code' => 'for_project',
-                'description' => 'خرید برای استفاده در پروژه',
-                'order' => 2,
-                'price_filter_category_id' => null,
-            ],
-            [
-                'name' => 'برای فروش مجدد',
-                'slug' => 'Buy_For_Resale',
-                'code' => 'for_resale',
-                'description' => 'خرید برای فروش مجدد',
-                'order' => 3,
-                'price_filter_category_id' => null,
-            ],
+            ['code' => 'for_myself',  'name' => 'برای خودم',        'order' => 1],
+            ['code' => 'for_project', 'name' => 'برای دیگری',       'order' => 2],
         ];
-
-        foreach ($purposeValues as $value) {
+        foreach ($purposeValues as $v) {
             PurchaseParameterValue::updateOrCreate(
+                ['group_id' => $purposeGroup->id, 'code' => $v['code']],
                 [
-                    'group_id' => $purposeGroup->id,
-                    'code' => $value['code'],
-                ],
-                array_merge(['group_id' => $purposeGroup->id], $value)
+                    'group_id'                 => $purposeGroup->id,
+                    'name'                     => $v['name'],
+                    'slug'                     => $v['code'],
+                    'code'                     => $v['code'],
+                    'order'                    => $v['order'],
+                    'is_active'                => true,
+                    'price_filter_category_id' => null,
+                ]
+            );
+        }
+
+        // 6) جدول customer_types (برای گزارش‌گیری و نگاشت در Cart)
+        $cts = [
+            ['code' => 'employer_without_consultant', 'name' => 'کارفرما بدون مشاور', 'has_consultant' => false],
+            ['code' => 'employer_with_consultant',    'name' => 'کارفرما با مشاور',   'has_consultant' => true],
+            ['code' => 'engineer_with_consultant',    'name' => 'مهندس با مشاور',    'has_consultant' => true],
+            ['code' => 'contractor_with_consultant',  'name' => 'پیمانکار با مشاور', 'has_consultant' => true],
+        ];
+        foreach ($cts as $c) {
+            CustomerType::updateOrCreate(
+                ['code' => $c['code']],
+                ['name' => $c['name'], 'has_consultant' => $c['has_consultant']]
             );
         }
     }

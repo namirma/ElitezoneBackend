@@ -21,10 +21,6 @@ class CartResource extends JsonResource
             'customer_type'           => new CustomerTypeResource($this->whenLoaded('customerType')),
             // رابطهٔ نشان (Badge)
             'badge'                   => new BadgeResource($this->whenLoaded('badge')),
-            // فیلترهای قیمت
-            'price_filter_categories' => PriceFilterCategoryResource::collection(
-                $this->whenLoaded('priceFilterCategories')
-            ),
 
             // ** کل آیتم‌ها **
             'items' => CartItemResource::collection(

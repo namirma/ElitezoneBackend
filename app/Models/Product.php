@@ -8,6 +8,9 @@ use App\Traits\PersianDate;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Visus\Cuid2\Cuid2;
+
 
 class Product extends Model
 {
@@ -25,7 +28,8 @@ class Product extends Model
         VIEW_COUNT = 'view_count',
         ITEMS_PER_PAGE = 'items_per_page',
         CREATED_AT = 'created_at',
-        UPDATED_AT = 'updated_at';
+        UPDATED_AT = 'updated_at',
+        CUID = 'cuid';
 
     protected $fillable = [
         self::CATEGORY_ID,
@@ -37,7 +41,22 @@ class Product extends Model
         self::IS_FEATURED,
         self::VIEW_COUNT,
         self::ITEMS_PER_PAGE,
+        self::CUID
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (Product $model) {
+            // تولید CUID و ذخیره به صورت رشته
+            $model->{self::CUID} = (string) new Cuid2();
+        });
+    }
+
+    /* --- Route-Model binding را روی CUID می‌بریم ------------------ */
+    public function getRouteKeyName(): string
+    {
+        return self::CUID;
+    }
 
     public function category(): BelongsTo
     {
@@ -72,7 +91,17 @@ class Product extends Model
             'product_id',
             'order_unit_id'
         )
-        ->withPivot('max_quantity');
+            ->withPivot('max_quantity');
+    }
+
+     public function variantPrices(): HasManyThrough
+    {
+        return $this->hasManyThrough(
+            ProductPrice::class,   // مدل مقصد
+            ProductVariant::class, // مدل واسطه
+            'product_id',          // FK در جدول variants
+            'product_variant_id'   // FK در جدول prices
+        );
     }
 
     public function offers(): BelongsToMany

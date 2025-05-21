@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Http\Resources\AttributeResource;
 use App\Models\AttributeType;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -16,8 +17,8 @@ class AttributeTypeResource extends JsonResource
             AttributeType::NAME         => $this->name,
             AttributeType::DISPLAY_NAME => $this->display_name,
             AttributeType::INPUT_TYPE   => $this->input_type,
-            AttributeType::CREATED_AT   => $this->created_at,
-            AttributeType::UPDATED_AT   => $this->updated_at,
+            AttributeType::CREATED_AT   => $this->created_at ? Carbon::parse($this->created_at)->format('Y-m-d H:i:s') : null,
+            AttributeType::UPDATED_AT   => $this->updated_at ? Carbon::parse($this->created_at)->format('Y-m-d H:i:s') : null,
             'attributes'                => AttributeResource::collection($this->whenLoaded('attributes')),
         ];
     }

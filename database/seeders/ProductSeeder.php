@@ -288,6 +288,12 @@ class ProductSeeder extends Seeder
                 'unit' => 'kg',
                 'amount' => 5000,
             ],
+            [
+                'name' => 'خرده فروشی ',
+                'code' => 'bundle',
+                'unit' => 'kg',
+                'amount' => 1000,
+            ]
         ];
 
         foreach ($orderUnits as $unit) {
@@ -318,10 +324,6 @@ class ProductSeeder extends Seeder
             [
                 'name' => 'ارسال استاندارد',
                 'code' => 'standard',
-            ],
-            [
-                'name' => 'ارسال سریع',
-                'code' => 'express',
             ],
             [
                 'name' => 'تحویل در محل',
@@ -445,7 +447,7 @@ class ProductSeeder extends Seeder
             $customerTypeFilters = [
                 [
                     'name' => 'کارفرما',
-                    'code' => 'customer',
+                    'code' => 'employer',
                     'amount' => 0, // بدون تخفیف (قیمت پایه)
                     'is_percentage' => false,
                     'is_active' => true,
@@ -517,54 +519,54 @@ class ProductSeeder extends Seeder
         $categories = [
             [
                 'name' => 'کارفرمای بدون مشاور',
-                'code' => 'customer_without_consultant',
+                'code' => 'employer_without_consultant',
                 'description' => 'فیلترهای قیمت برای کارفرمای بدون مشاور',
                 'is_active' => true,
                 'sort_order' => 1,
                 'filters' => [
                     'base_profit',
                     'regular_policy',
-                    'customer',
+                    'employer',
                     'without_consultant'
                 ],
             ],
             [
                 'name' => 'کارفرمای دارای مشاور',
-                'code' => 'customer_with_consultant',
+                'code' => 'employer_with_consultant',
                 'description' => 'فیلترهای قیمت برای کارفرمای دارای مشاور',
                 'is_active' => true,
                 'sort_order' => 2,
                 'filters' => [
                     'base_profit',
                     'regular_policy',
-                    'customer',
+                    'employer',
                     'with_consultant'
                 ],
             ],
             [
-                'name' => 'مهندس بدون مشاور',
-                'code' => 'engineer_without_consultant',
-                'description' => 'فیلترهای قیمت برای مهندس بدون مشاور',
+                'name' => 'مهندس دارای مشاور',
+                'code' => 'engineer_with_consultant',
+                'description' => 'فیلترهای قیمت برای مهندس دارای مشاور',
                 'is_active' => true,
                 'sort_order' => 3,
                 'filters' => [
                     'base_profit',
                     'competitive_policy',
                     'engineer',
-                    'without_consultant'
+                    'with_consultant'
                 ],
             ],
             [
-                'name' => 'پیمانکار بدون مشاور',
-                'code' => 'contractor_without_consultant',
-                'description' => 'فیلترهای قیمت برای پیمانکار بدون مشاور',
+                'name' => 'پیمانکار دارای مشاور',
+                'code' => 'contractor_with_consultant',
+                'description' => 'فیلترهای قیمت برای پیمانکار دارای مشاور',
                 'is_active' => true,
                 'sort_order' => 4,
                 'filters' => [
                     'special_profit',
                     'competitive_policy',
                     'contractor',
-                    'without_consultant'
+                    'with_consultant'
                 ],
             ],
         ];
@@ -578,11 +580,9 @@ class ProductSeeder extends Seeder
                 $categoryData
             );
 
-            // پیدا کردن و اختصاص فیلترها به دسته‌بندی
             $filters = PriceFilter::whereIn('code', $filterCodes)->get();
             $category->filters()->sync($filters->pluck('id'));
         }
-
         $settings = [
             [
                 'name' => 'نرخ مالیات بر ارزش افزوده',
@@ -707,23 +707,23 @@ class ProductSeeder extends Seeder
         $customerTypes = [
             [
                 'name' => 'کارفرمای بدون مشاور',
-                'code' => 'customer_without_consultant',
+                'code' => 'employer_without_consultant',
                 'has_consultant' => false,
             ],
             [
                 'name' => 'کارفرمای دارای مشاور',
-                'code' => 'customer_with_consultant',
+                'code' => 'employer_with_consultant',
                 'has_consultant' => true,
             ],
             [
-                'name' => 'مهندس بدون مشاور',
-                'code' => 'engineer_without_consultant',
-                'has_consultant' => false,
+                'name' => 'مهندس دارای مشاور',
+                'code' => 'engineer_with_consultant',
+                'has_consultant' => true,
             ],
             [
-                'name' => 'پیمانکار بدون مشاور',
-                'code' => 'contractor_without_consultant',
-                'has_consultant' => false,
+                'name' => 'پیمانکار دارای مشاور',
+                'code' => 'contractor_with_consultant',
+                'has_consultant' => true,
             ],
         ];
 
@@ -759,12 +759,11 @@ class ProductSeeder extends Seeder
             );
         }
 
-        // کارفرمای بدون مشاور (قیمت پایه - بدون تخفیف)
-        $customerWithoutConsultant = CustomerType::where('code', 'customer_without_consultant')->first();
-        if ($customerWithoutConsultant) {
+        $employerWithoutConsultant = CustomerType::where('code', 'employer_without_consultant')->first();
+        if ($employerWithoutConsultant) {
             PriceAdjustment::updateOrCreate(
                 [
-                    'customer_type_id' => $customerWithoutConsultant->id,
+                    'customer_type_id' => $employerWithoutConsultant->id,
                     'badge_id' => null,
                 ],
                 [
@@ -775,30 +774,15 @@ class ProductSeeder extends Seeder
         }
 
         // کارفرمای دارای مشاور (1000 تومان تخفیف)
-        $customerWithConsultant = CustomerType::where('code', 'customer_with_consultant')->first();
-        if ($customerWithConsultant) {
+        $employerWithConsultant = CustomerType::where('code', 'employer_with_consultant')->first();
+        if ($employerWithConsultant) {
             PriceAdjustment::updateOrCreate(
                 [
-                    'customer_type_id' => $customerWithConsultant->id,
+                    'customer_type_id' => $employerWithConsultant->id,
                     'badge_id' => null,
                 ],
                 [
-                    'adjustment_amount' => 1000, // 1000 تومان تخفیف
-                    'is_active' => true,
-                ]
-            );
-        }
-
-        // مهندس بدون مشاور (1500 تومان تخفیف)
-        $engineerWithoutConsultant = CustomerType::where('code', 'engineer_without_consultant')->first();
-        if ($engineerWithoutConsultant) {
-            PriceAdjustment::updateOrCreate(
-                [
-                    'customer_type_id' => $engineerWithoutConsultant->id,
-                    'badge_id' => null,
-                ],
-                [
-                    'adjustment_amount' => 1500, // 1500 تومان تخفیف
+                    'adjustment_amount' => 1000,
                     'is_active' => true,
                 ]
             );
@@ -813,22 +797,7 @@ class ProductSeeder extends Seeder
                     'badge_id' => null,
                 ],
                 [
-                    'adjustment_amount' => 2000, // 2000 تومان تخفیف
-                    'is_active' => true,
-                ]
-            );
-        }
-
-        // پیمانکار بدون مشاور (2500 تومان تخفیف)
-        $contractorWithoutConsultant = CustomerType::where('code', 'contractor_without_consultant')->first();
-        if ($contractorWithoutConsultant) {
-            PriceAdjustment::updateOrCreate(
-                [
-                    'customer_type_id' => $contractorWithoutConsultant->id,
-                    'badge_id' => null,
-                ],
-                [
-                    'adjustment_amount' => 2500, // 2500 تومان تخفیف
+                    'adjustment_amount' => 2000,
                     'is_active' => true,
                 ]
             );
@@ -843,7 +812,7 @@ class ProductSeeder extends Seeder
                     'badge_id' => null,
                 ],
                 [
-                    'adjustment_amount' => 3000, // 3000 تومان تخفیف
+                    'adjustment_amount' => 3000,
                     'is_active' => true,
                 ]
             );
@@ -907,13 +876,13 @@ class ProductSeeder extends Seeder
         $offers = [
             [
                 'title' => 'تخفیف ویژه میلگرد',
-                'description' => '10% تخفیف برای خرید بیش از 10 بندیل میلگرد',
+                'description' => '10% تخفیف برای خرید بیش از 1 محصول میلگرد',
                 'code' => 'REBAR10',
                 'type' => 'percentage',
                 'value' => 10,
                 'start_date' => now(),
                 'end_date' => now()->addDays(30),
-                'minimum_quantity' => 10,
+                'minimum_quantity' => 1,
                 'is_active' => true,
             ],
             [
@@ -953,35 +922,35 @@ class ProductSeeder extends Seeder
         }
 
         // دریافت ویژگی‌های مورد نیاز
-        $shakheh = Attribute::whereHas('attributeType', function($q) {
+        $shakheh = Attribute::whereHas('attributeType', function ($q) {
             $q->where('name', 'type');
         })->where('name', 'شاخه')->first();
 
-        $kalaf = Attribute::whereHas('attributeType', function($q) {
+        $kalaf = Attribute::whereHas('attributeType', function ($q) {
             $q->where('name', 'type');
         })->where('name', 'کلاف')->first();
 
-        $gradeA1 = Attribute::whereHas('attributeType', function($q) {
+        $gradeA1 = Attribute::whereHas('attributeType', function ($q) {
             $q->where('name', 'grade');
         })->where('name', 'A1')->first();
 
-        $gradeA2 = Attribute::whereHas('attributeType', function($q) {
+        $gradeA2 = Attribute::whereHas('attributeType', function ($q) {
             $q->where('name', 'grade');
         })->where('name', 'A2')->first();
 
-        $gradeA3 = Attribute::whereHas('attributeType', function($q) {
+        $gradeA3 = Attribute::whereHas('attributeType', function ($q) {
             $q->where('name', 'grade');
         })->where('name', 'A3')->first();
 
-        $size8 = Attribute::whereHas('attributeType', function($q) {
+        $size8 = Attribute::whereHas('attributeType', function ($q) {
             $q->where('name', 'size');
         })->where('name', '8')->first();
 
-        $size12 = Attribute::whereHas('attributeType', function($q) {
+        $size12 = Attribute::whereHas('attributeType', function ($q) {
             $q->where('name', 'size');
         })->where('name', '12')->first();
 
-        $size16 = Attribute::whereHas('attributeType', function($q) {
+        $size16 = Attribute::whereHas('attributeType', function ($q) {
             $q->where('name', 'size');
         })->where('name', '16')->first();
 
@@ -1152,7 +1121,5 @@ class ProductSeeder extends Seeder
                 $this->command->info("قیمت واریانت {$variant->name} در {$location->name} ثبت شد: عمومی {$generalPrice}، ویژه {$specialPrice}");
             }
         }
-
-
     }
 }

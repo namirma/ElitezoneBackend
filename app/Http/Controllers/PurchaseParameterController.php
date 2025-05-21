@@ -2,74 +2,102 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Controller;
+use App\Http\Requests\SavePurchaseParametersRequest;
+use App\Http\Resources\PurchaseParameterValueResource;
+use App\Http\Resources\PurchaseParameterGroupResource;
+use App\Http\Controllers\ParameterDetectionController;
 use App\Models\Cart;
+use App\Models\CustomerType;
+use App\Models\PriceFilterCategory;
 use App\Models\PurchaseParameterGroup;
-use App\Models\PurchaseParameterValue;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class PurchaseParameterController extends Controller
 {
-
-    public function getGroups()
+    /**
+     * POST /api/purchase-parameters/user
+     */
+    public function store(SavePurchaseParametersRequest $request): JsonResponse
     {
-        $groups = PurchaseParameterGroup::active()
-            ->ordered()
-            ->with(['values' => function ($query) {
-                $query->active()->ordered();
-            }])
-            ->get();
+        $cart = $this->resolveCart($request);
+        $ids  = $request->validated('parameters');
 
-        return response()->json([
-            'status' => 'success',
-            'data' => $groups
-        ]);
-    }
+        $cart->purchaseParameters()->sync($ids);
 
+        $priceCat = app(ParameterDetectionController::class)
+            ->detectPriceFilterCategoryFromValues($ids)
+            ?? PriceFilterCategory::where('code', 'employer_without_consultant')->first();
 
-    public function getUserParameters(Request $request)
-    {
-        $cart = $this->getCart();
-        $cartParameters = $cart->purchaseParameters;
-
-        return response()->json([
-            'status' => 'success',
-            'data' => $cartParameters
-        ]);
-    }
-
-
-    public function saveUserParameters(Request $request)
-    {
-        $validated = $request->validate([
-            'parameters' => ['required', 'array'],
-            'parameters.*' => ['integer', 'exists:purchase_parameter_values,id'],
-        ]);
-
-        $cart = $this->getCart();
-        $cart->purchaseParameters()->sync($validated['parameters']);
-
-        $detection = app(ParameterDetectionController::class)->detectPriceFilters($request);
-        $category = $detection->original['data']['price_filter_category'] ?? null;
-
-        if ($category) {
-            $cart->priceFilterCategories()->sync([$category['id']]);
+        if ($priceCat) {
+            $cart->priceFilterCategories()->sync([$priceCat->id]);
+            $ct = CustomerType::where('code', $priceCat->code)->first();
+            if ($ct) {
+                $cart->update(['customer_type_id' => $ct->id]);
+            }
         } else {
             $cart->priceFilterCategories()->detach();
         }
+        
+        $values = $cart->purchaseParameters()->with('group')->get();
 
-        return response()->json([
-            'status' => 'success',
-            'message' => 'پارامترهای خرید با موفقیت ذخیره شد',
-        ]);
+        return success(
+            PurchaseParameterValueResource::collection($values),
+            'global.received_successfully'
+        )->cookie('cart_session_id', $cart->session_id, 60 * 24 * 30);
     }
 
-    protected function getCart(): Cart
+    /**
+     * GET /api/purchase-parameters/user
+     */
+    public function userParameters(Request $request): JsonResponse
     {
-        $sessionId = session()->getId();
+        $cart   = $this->resolveCart($request);
+        $values = $cart->purchaseParameters()->with('group')->get();
 
-        return Cart::firstOrCreate(
-            ['session_id' => $sessionId],
-            ['user_id' => auth()->id()]
+        return success(
+            PurchaseParameterValueResource::collection($values)
         );
+    }
+
+    /**
+     * GET /api/purchase-parameters/groups
+     */
+    public function groups(): JsonResponse
+    {
+        $groups = PurchaseParameterGroup::active()
+            ->ordered()
+            ->with(['values' => fn($q) => $q->active()->ordered()])
+            ->get();
+
+        return success(
+            PurchaseParameterGroupResource::collection($groups)
+        );
+    }
+
+    /**
+     * Resolve or create a cart for current user or guest
+     */
+    protected function resolveCart(Request $request): Cart
+    {
+        if (Auth::check()) {
+            $cart = Cart::firstOrCreate(['user_id' => Auth::id()]);
+        } else {
+            $sessionId = $request->cookie('cart_session_id', session()->getId());
+            $cart = Cart::firstOrCreate(
+                ['session_id' => $sessionId],
+                ['user_id' => null]
+            );
+            cookie()->queue('cart_session_id', $sessionId, 60 * 24 * 30);
+        }
+
+        if (! $cart->customer_type_id) {
+            $default = CustomerType::where('code', 'employer_without_consultant')->first();
+            $cart->update(['customer_type_id' => $default->id]);
+        }
+
+        return $cart;
     }
 }
