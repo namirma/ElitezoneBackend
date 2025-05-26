@@ -14,6 +14,7 @@ use App\Http\Controllers\EduixController;
 use App\Http\Controllers\FactoryController;
 use App\Http\Controllers\ParameterDetectionController;
 use App\Http\Controllers\PriceFilterController;
+use App\Http\Controllers\ProductCategoryController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\PurchaseParameterController;
 use App\Http\Controllers\SearchController;
@@ -37,6 +38,7 @@ Route::prefix('eduix')->group(function () {
     Route::post('/fetch', [EduixController::class, 'fetch']);
 });
 Route::prefix('products')->group(function () {
+    Route::get('/categories', [ProductCategoryController::class, 'index']);
     Route::get('/', [ProductController::class, 'index']);
     Route::get('/{product:cuid}', [ProductController::class, 'show']);
     Route::get('/{product:cuid}/variants', [ProductController::class, 'variants']);
@@ -45,7 +47,6 @@ Route::prefix('products')->group(function () {
     Route::post('/calculate-price', [ProductController::class, 'calculateOrderPrice']);
 });
 
-//مسیر های مربوط به پارامترهای خرید
 Route::prefix('purchase-parameters')->group(function () {
     Route::get('/groups', [PurchaseParameterController::class, 'groups']);
     Route::get('/user', [PurchaseParameterController::class, 'userParameters']);
@@ -53,25 +54,21 @@ Route::prefix('purchase-parameters')->group(function () {
     Route::post('/detect-price-filters', [ParameterDetectionController::class, 'detectPriceFilters']);
 });
 
-// مسیرهای مربوط به کارخانه و محل‌های تحویل
 Route::prefix('factories')->group(function () {
     Route::get('/', [FactoryController::class, 'listFactories']);
     Route::get('/{id}/locations', [FactoryController::class, 'listLocations']);
 });
 
-// مسیرهای مربوط به انواع مشتری و نشان‌ها
 Route::prefix('customer-types')->group(function () {
     Route::get('/', [CustomerTypeController::class, 'index']);
     Route::get('/badges', [CustomerTypeController::class, 'getBadges']);
 });
 
-// مسیرهای مربوط به فیلترهای قیمت
 Route::prefix('price-filters')->group(function () {
     Route::get('/categories', [PriceFilterController::class, 'getCategories']);
     Route::get('/types', [PriceFilterController::class, 'getFilterTypes']);
 });
 
-//مسیر های مربوط به سبد خرید
 Route::prefix('cart')->group(function () {
     Route::get('/', [CartController::class, 'getCart']);
     Route::post('/items', [CartController::class, 'addToCart']);

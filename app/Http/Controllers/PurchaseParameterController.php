@@ -4,9 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\SavePurchaseParametersRequest;
-use App\Http\Resources\PurchaseParameterValueResource;
 use App\Http\Resources\PurchaseParameterGroupResource;
-use App\Http\Controllers\ParameterDetectionController;
+use App\Http\Resources\PurchaseParameterValueResource;
 use App\Models\Cart;
 use App\Models\CustomerType;
 use App\Models\PriceFilterCategory;
@@ -14,33 +13,33 @@ use App\Models\PurchaseParameterGroup;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 
 class PurchaseParameterController extends Controller
 {
-    /**
-     * POST /api/purchase-parameters/user
-     */
     public function store(SavePurchaseParametersRequest $request): JsonResponse
     {
         $cart = $this->resolveCart($request);
-        $ids  = $request->validated('parameters');
+        $parameterIds = $request->validated('parameters');
 
-        $cart->purchaseParameters()->sync($ids);
+        $cart->purchaseParameters()->sync($parameterIds);
 
-        $priceCat = app(ParameterDetectionController::class)
-            ->detectPriceFilterCategoryFromValues($ids)
-            ?? PriceFilterCategory::where('code', 'employer_without_consultant')->first();
+        $priceCategory = app(ParameterDetectionController::class)
+            ->detectPriceFilterCategoryFromValues($parameterIds)
+            ?? PriceFilterCategory::where(PriceFilterCategory::CODE, 'employer_without_consultant')->first();
 
-        if ($priceCat) {
-            $cart->priceFilterCategories()->sync([$priceCat->id]);
-            $ct = CustomerType::where('code', $priceCat->code)->first();
-            if ($ct) {
-                $cart->update(['customer_type_id' => $ct->id]);
+        if ($priceCategory) {
+            $cart->priceFilterCategories()->sync([$priceCategory->id]);
+            $customerType = CustomerType::where(CustomerType::CODE, $priceCategory->code)->first();
+            if ($customerType) {
+                $cart->update([Cart::CUSTOMER_TYPE_ID => $customerType->id]);
             }
         } else {
             $cart->priceFilterCategories()->detach();
+            $defaultCustomerType = CustomerType::where(CustomerType::CODE, 'employer_without_consultant')->firstOrFail();
+            $cart->update([Cart::CUSTOMER_TYPE_ID => $defaultCustomerType->id]);
         }
-        
+
         $values = $cart->purchaseParameters()->with('group')->get();
 
         return success(
@@ -49,53 +48,49 @@ class PurchaseParameterController extends Controller
         )->cookie('cart_session_id', $cart->session_id, 60 * 24 * 30);
     }
 
-    /**
-     * GET /api/purchase-parameters/user
-     */
     public function userParameters(Request $request): JsonResponse
     {
-        $cart   = $this->resolveCart($request);
+        $cart = $this->resolveCart($request);
         $values = $cart->purchaseParameters()->with('group')->get();
 
         return success(
-            PurchaseParameterValueResource::collection($values)
+            PurchaseParameterValueResource::collection($values),
+            'global.received_successfully'
         );
     }
 
-    /**
-     * GET /api/purchase-parameters/groups
-     */
     public function groups(): JsonResponse
     {
-        $groups = PurchaseParameterGroup::active()
+        $groups = PurchaseParameterGroup::query()
+            ->active()
             ->ordered()
-            ->with(['values' => fn($q) => $q->active()->ordered()])
+            ->with(['values' => fn($query) => $query->active()->ordered()])
             ->get();
 
         return success(
-            PurchaseParameterGroupResource::collection($groups)
+            PurchaseParameterGroupResource::collection($groups),
+            'global.received_successfully'
         );
     }
 
-    /**
-     * Resolve or create a cart for current user or guest
-     */
     protected function resolveCart(Request $request): Cart
     {
-        if (Auth::check()) {
-            $cart = Cart::firstOrCreate(['user_id' => Auth::id()]);
+        $userId = Auth::id();
+
+        if ($userId) {
+            $cart = Cart::firstOrCreate([Cart::USER_ID => $userId]);
         } else {
-            $sessionId = $request->cookie('cart_session_id', session()->getId());
+            $sessionId = $request->cookie('cart_session_id', (string) Str::uuid());
             $cart = Cart::firstOrCreate(
-                ['session_id' => $sessionId],
-                ['user_id' => null]
+                [Cart::SESSION_ID => $sessionId],
+                [Cart::USER_ID    => null]
             );
-            cookie()->queue('cart_session_id', $sessionId, 60 * 24 * 30);
+             cookie()->queue('cart_session_id', $sessionId, 60 * 24 * 30);
         }
 
-        if (! $cart->customer_type_id) {
-            $default = CustomerType::where('code', 'employer_without_consultant')->first();
-            $cart->update(['customer_type_id' => $default->id]);
+        if (!$cart->{Cart::CUSTOMER_TYPE_ID}) {
+            $defaultCustomerType = CustomerType::where(CustomerType::CODE, 'employer_without_consultant')->firstOrFail();
+            $cart->update([Cart::CUSTOMER_TYPE_ID => $defaultCustomerType->id]);
         }
 
         return $cart;

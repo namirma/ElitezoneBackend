@@ -1012,8 +1012,6 @@ class ProductSeeder extends Seeder
                     ->variantAttributes()
                     ->syncWithoutDetaching([$data['size']->id]);
             }
-
-            $this->command->info("واریانت {$data['name']} با موفقیت ایجاد شد.");
         }
 
         $kavirFactory = Factory::where('slug', 'kavir-steel')->first();
@@ -1118,7 +1116,6 @@ class ProductSeeder extends Seeder
                 $variant = ProductVariant::find($variantId);
                 $location = FactoryLocation::find($locationId);
 
-                $this->command->info("قیمت واریانت {$variant->name} در {$location->name} ثبت شد: عمومی {$generalPrice}، ویژه {$specialPrice}");
             }
         }
     }

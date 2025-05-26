@@ -3,38 +3,74 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use App\Models\PurchaseParameterValue;
+use Illuminate\Validation\Validator;
 
 class SavePurchaseParametersRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
     public function authorize(): bool
     {
         return true;
     }
 
-    /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
-     */
     public function rules(): array
     {
         return [
-            'parameters'   => ['required', 'array'],
+            'parameters'   => ['required', 'array', 'min:2'],
             'parameters.*' => ['integer', 'exists:purchase_parameter_values,id'],
         ];
     }
 
-    public function withValidator($validator): void
+    public function messages(): array
     {
-        $validator->after(function ($v) {
-            $values = \App\Models\PurchaseParameterValue::whereIn('id', $this->parameters)->get();
-            $dupGrp = $values->groupBy('group_id')->first(fn($g) => $g->count() > 1);
+        return [
+            'parameters.required' => 'انتخاب پارامترها الزامی است.',
+            'parameters.min'      => 'حداقل باید پارامترهای نوع مشتری و وضعیت مشاور انتخاب شوند.',
+            'parameters.*.exists' => 'یکی از پارامترهای انتخاب شده معتبر نیست.',
+        ];
+    }
 
-            if ($dupGrp) {
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $v) {
+            $parameterIds = $this->input('parameters', []);
+
+            $valuesCollection = PurchaseParameterValue::with('group')
+                ->whereIn('id', $parameterIds)
+                ->get();
+
+            $groupedValues = $valuesCollection->groupBy('group_id');
+            $duplicateGroup = $groupedValues->first(fn($group) => $group->count() > 1);
+
+            if ($duplicateGroup) {
                 $v->errors()->add('parameters', 'برای هر گروه فقط یک گزینه مجاز است.');
+                return;
+            }
+
+            $valuesByCode = $valuesCollection->keyBy(fn($value) => $value->group->code);
+
+            $customerType = $valuesByCode['customer_type'] ?? null;
+            $consultantStatus = $valuesByCode['consultant_status'] ?? null;
+
+            if (!$customerType || !$consultantStatus) {
+                $v->errors()->add(
+                    'parameters',
+                    'لطفاً هم "نوع مشتری" و هم "وضعیت مشاور" را انتخاب کنید.'
+                );
+                return;
+            }
+
+            $customerTypeCode = $customerType->code;
+            $consultantStatusCode = $consultantStatus->code;
+
+            $isEngineerOrContractor = in_array($customerTypeCode, ['engineer', 'contractor']);
+            $isWithoutConsultant = $consultantStatusCode === 'without_consultant';
+
+            if ($isEngineerOrContractor && $isWithoutConsultant) {
+                $v->errors()->add(
+                    'parameters',
+                    'مهندسان و پیمانکاران حتماً باید گزینه "دارای مشاور" را انتخاب کنند.'
+                );
             }
         });
     }

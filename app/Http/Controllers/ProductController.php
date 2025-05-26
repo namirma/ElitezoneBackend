@@ -21,11 +21,14 @@ use App\Models\Factory;
 use App\Models\FactoryLocation;
 use App\Models\PriceFilterCategory;
 use App\Models\Product;
+use App\Models\ProductImage;
+use App\Models\ProductPrice;
 use App\Models\ProductVariant;
+use App\Models\Offer;
 use App\Services\PriceCalculationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Dotenv\Exception\ValidationException;
+use Illuminate\Support\Facades\Auth;
 
 class ProductController extends Controller
 {
@@ -33,22 +36,25 @@ class ProductController extends Controller
 
     public function index(ProductIndexRequest $request): JsonResponse
     {
-        $query = Product::active()
-            ->with(['category', 'images' => fn($q) => $q->where('is_primary', true)])
-            ->when($request->filled('category'), fn($q) => $q->where(Product::CATEGORY_ID, $request->validated('category')))
-            ->when($request->filled('search'), fn($q) => $q->where(
-                fn($q2) => $q2
-                    ->where(Product::NAME, 'like', '%' . $request->validated('search') . '%')
-                    ->orWhere(Product::DESCRIPTION, 'like', '%' . $request->validated('search') . '%')
+        $validatedData = $request->validated();
+
+        $productsQuery = Product::query()->active()
+            ->with(['category', 'images' => fn($imageQuery) => $imageQuery->where(ProductImage::IS_PRIMARY, true)])
+            ->when($request->filled('category'), fn($query) => $query->where(Product::CATEGORY_ID, $validatedData['category']))
+            ->when($request->filled('search'), fn($query) => $query->where(
+                fn($subQuery) => $subQuery
+                    ->where(Product::NAME, 'like', '%' . $validatedData['search'] . '%')
+                    ->orWhere(Product::DESCRIPTION, 'like', '%' . $validatedData['search'] . '%')
             ));
 
-        $this->applySorting($query, $request->validated('sort') ?? null);
+        $this->applySorting($productsQuery, $validatedData['sort'] ?? null);
 
-        $products = $query->paginate($request->integer('per_page', 12));
+        $products = $productsQuery->paginate($request->integer('per_page', 12));
 
         return success(
             ProductResource::collection($products)
-                ->additional($this->paginationMeta($products))
+                ->additional($this->paginationMeta($products)),
+            'global.received_successfully'
         );
     }
 
@@ -63,98 +69,102 @@ class ProductController extends Controller
             'offers'
         ])->incrementViewCount();
 
-        $factories = Factory::whereHas('prices.productVariant.product', fn($q) => $q->where(Product::ID, $product->id))
+        $factories = Factory::query()
+            ->whereHas('prices.productVariant.product', fn($query) => $query->where(Product::ID, $product->id))
             ->with('locations')
             ->get();
 
         return success([
             'product'   => new ProductDetailResource($product),
             'factories' => FactoryResource::collection($factories),
-        ]);
+        ], 'global.received_successfully');
     }
 
     public function filters(Product $product): JsonResponse
     {
         $typeIds = $product->variants
-            ->flatMap(fn($v) => $v->variantAttributes->pluck('attribute_type_id'))
+            ->flatMap(fn(ProductVariant $variant) => $variant->variantAttributes->pluck('attribute_type_id'))
             ->unique();
 
-        $attributes = AttributeType::whereIn(AttributeType::ID, $typeIds)
+        $attributes = AttributeType::query()
+            ->whereIn(AttributeType::ID, $typeIds)
             ->with('attributes')
             ->get();
 
-        return success(AttributeTypeResource::collection($attributes));
+        return success(AttributeTypeResource::collection($attributes), 'global.received_successfully');
     }
 
     public function variants(ProductVariantFilterRequest $request, Product $product): JsonResponse
     {
-        $variants = $product->variants()
+        $validatedData = $request->validated();
+        $filterCategories = $validatedData['filter_categories'] ?? null;
+        $sortOption = $validatedData['sort'] ?? null;
+
+        $variantsQuery = $product->variants()
             ->with([
                 'prices.factory',
                 'prices.factoryLocation',
                 'variantAttributes.attributeType',
                 'cartItems'
             ])
-
             ->when(
-                $request->filled('filter_categories'),
-                fn($q) => $q->whereHas(
+                $filterCategories,
+                fn($query) => $query->whereHas(
                     'variantAttributes',
-                    fn($qq) => $qq->whereIn('attribute_id', $request->validated('filter_categories'))
+                    fn($attributeQuery) => $attributeQuery->whereIn('attribute_id', $filterCategories)
                 )
-            )
-            ->tap(function ($q) use ($request) {
-                match ($request->input('sort')) {
-                    'cheapest' => $q
-                        ->withMin('prices as min_price', 'special_price')
-                        ->orderBy('min_price', 'asc'),
+            );
 
-                    'most_expensive' => $q
-                        ->withMax('prices as max_price', 'special_price')
-                        ->orderBy('max_price', 'desc'),
+        match ($sortOption) {
+            'cheapest' => $variantsQuery
+                ->withMin('prices as min_price', ProductPrice::SPECIAL_PRICE)
+                ->orderBy('min_price', 'asc'),
+            'most_expensive' => $variantsQuery
+                ->withMax('prices as max_price', ProductPrice::SPECIAL_PRICE)
+                ->orderBy('max_price', 'desc'),
+            'newest' => $variantsQuery->latest(ProductVariant::CREATED_AT),
+            default  => $variantsQuery->latest(ProductVariant::CREATED_AT),
+        };
 
-                    'newest' => $q->latest(),
-                    default  => null,
-                };
-            })
-
-            ->paginate($request->integer('per_page', 10));
+        $variants = $variantsQuery->paginate($request->integer('per_page', 10));
 
         return success(
             ProductVariantResource::collection($variants)
-                ->additional($this->paginationMeta($variants))
+                ->additional($this->paginationMeta($variants)),
+            'global.received_successfully'
         );
     }
 
     public function getVariantPrice(ProductVariantPriceRequest $request): JsonResponse
     {
-        try {
-            $v = $request->validated();
-        } catch (ValidationException $e) {
-            throw $e;
-        }
+        $validatedData = $request->validated();
 
-        $variant  = ProductVariant::find($v['variant_id'])    ?: abort(404, __('global.variant_not_found'));
-        $factory  = Factory::find($v['factory_id'])          ?: abort(404, __('global.factory_not_found'));
-        $location = FactoryLocation::find($v['location_id']) ?: abort(404, __('global.location_not_found'));
+        $variant = ProductVariant::find($validatedData['variant_id']);
+        if (!$variant) return error('global.variant_not_found', [], 404);
 
-        $cart = auth()->check()
-            ? Cart::firstOrCreate(['user_id' => auth()->id()])
-            : Cart::firstOrCreate(['session_id' => $request->cookie('cart_session_id', session()->getId())], ['user_id' => null]);
+        $factory = Factory::find($validatedData['factory_id']);
+        if (!$factory) return error('global.factory_not_found', [], 404);
 
-        if (! auth()->check()) {
+        $location = FactoryLocation::find($validatedData['location_id']);
+        if (!$location) return error('global.location_not_found', [], 404);
+
+
+        $sessionId = $request->cookie('cart_session_id', \Illuminate\Support\Str::uuid()->toString());
+        $cart = Auth::check()
+            ? Cart::firstOrCreate([Cart::USER_ID => Auth::id()])
+            : Cart::firstOrCreate([Cart::SESSION_ID => $sessionId], [Cart::USER_ID => null]);
+
+        if (!Auth::check()) {
             cookie()->queue('cart_session_id', $cart->session_id, 60 * 24 * 30);
         }
 
-        $customerType = $v['customer_type_id'] ?? null
-            ? CustomerType::find($v['customer_type_id'])
-            : CustomerType::find($cart->customer_type_id);
+        $customerTypeId = $validatedData['customer_type_id'] ?? $cart->{Cart::CUSTOMER_TYPE_ID};
+        $customerType = CustomerType::find($customerTypeId);
+        $badge = $cart->{Cart::BADGE_ID} ? Badge::find($cart->{Cart::BADGE_ID}) : null;
 
-        $badge = $cart->badge_id ? Badge::find($cart->badge_id) : null;
-
-        $filterCatIds = $cart->priceFilterCategories()->pluck('id')->toArray();
+        $filterCatIds = $cart->priceFilterCategories()->pluck(PriceFilterCategory::ID)->toArray();
         if (empty($filterCatIds)) {
-            $fallback = PriceFilterCategory::where('code', 'employer_without_consultant')->value('id');
+            $fallback = PriceFilterCategory::where(PriceFilterCategory::CODE, 'employer_without_consultant')->value(PriceFilterCategory::ID);
             $filterCatIds = $fallback ? [$fallback] : [];
         }
 
@@ -165,90 +175,98 @@ class ProductController extends Controller
             $customerType,
             $badge,
             $filterCatIds,
-            (bool)($v['with_vat'] ?? false)
+            (bool)($validatedData['with_vat'] ?? false)
         );
 
-        return success($price);
+        return success($price, 'global.received_successfully');
     }
 
     public function calculateOrderPrice(OrderPriceRequest $request): JsonResponse
     {
-        $v        = $request->validated();
-        $variant  = ProductVariant::findOrFail($v['variant_id']);
-        $factory  = Factory::findOrFail($v['factory_id']);
-        $location = FactoryLocation::findOrFail($v['location_id']);
-        $badge    = isset($v['badge_id']) ? Badge::find($v['badge_id']) : null;
+        $validatedData = $request->validated();
 
-        $paramIds = $v['parameters'] ?? [];
+        $variant = ProductVariant::find($validatedData['variant_id']);
+        if (!$variant) return error('global.variant_not_found', [], 404);
+
+        $factory = Factory::find($validatedData['factory_id']);
+        if (!$factory) return error('global.factory_not_found', [], 404);
+
+        $location = FactoryLocation::find($validatedData['location_id']);
+        if (!$location) return error('global.location_not_found', [], 404);
+
+        $badge = $validatedData['badge_id'] ?? null ? Badge::find($validatedData['badge_id']) : null;
+
+        $paramIds = $validatedData['parameters'] ?? [];
         if (empty($paramIds)) {
-            $paramIds = auth()->check()
-                ? auth()->user()->purchaseParameters()->pluck('purchase_parameter_values.id')->toArray()
-                : Cart::firstOrCreate(['session_id' => request()->cookie('cart_session_id', session()->getId())], ['user_id' => null])
-                ->purchaseParameters()->pluck('purchase_parameter_values.id')->toArray();
+
+            $sessionIdForCart = $request->cookie('cart_session_id', \Illuminate\Support\Str::uuid()->toString());
+            $cart = Auth::check()
+                ? Cart::firstOrCreate([Cart::USER_ID => Auth::id()])
+                : Cart::firstOrCreate([Cart::SESSION_ID => $sessionIdForCart], [Cart::USER_ID => null]);
+            if(!Auth::check()) cookie()->queue('cart_session_id', $cart->session_id, 60 * 24 * 30); 
+            $paramIds = $cart->purchaseParameters()->pluck('purchase_parameter_values.id')->toArray();
         }
 
         $priceFilterCat = app(ParameterDetectionController::class)
             ->detectPriceFilterCategoryFromValues($paramIds)
-            ?? PriceFilterCategory::where('code', 'employer_without_consultant')->first();
+            ?? PriceFilterCategory::where(PriceFilterCategory::CODE, 'employer_without_consultant')->firstOrFail();
 
-        $customerType = CustomerType::where('code', $priceFilterCat->code)->first();
+        $customerType = CustomerType::where(CustomerType::CODE, $priceFilterCat->code)->firstOrFail();
 
-        $unit  = $this->priceService->calculatePrice($variant, $factory, $location, $customerType, $badge, [$priceFilterCat->id], (bool)$v['with_vat']);
-        $order = $this->priceService->calculateTotalPrice($v['quantities'], $unit['final_price'], (bool)$v['with_vat']);
+        $withVat = (bool)($validatedData['with_vat'] ?? false);
+        $unitPriceDetails  = $this->priceService->calculatePrice($variant, $factory, $location, $customerType, $badge, [$priceFilterCat->id], $withVat);
+        $orderDetails = $this->priceService->calculateTotalPrice($validatedData['quantities'], $unitPriceDetails['final_price'], $withVat);
 
-        $offers     = $this->checkEligibleOffers($variant->product, $order['total_count']);
-        $discounted = $this->applyDiscounts($order['subtotal'], $offers);
-        $vatAmount  = $v['with_vat'] ? $discounted * ($order['vat_rate'] / 100) : 0;
+        $offers     = $this->checkEligibleOffers($variant->product, $orderDetails['total_count']);
+        $discountedPrice = $this->applyDiscounts($orderDetails['subtotal'], $offers);
+        $vatAmount  = $withVat ? $discountedPrice * ($orderDetails['vat_rate'] / 100) : 0;
+        $finalPrice = $discountedPrice + $vatAmount;
 
         return success([
-            'unit_price'         => (string)$unit['final_price'],
-            'unit_price_details' => $unit,
-            'order_details'      => $order,
+            'unit_price'         => (string)$unitPriceDetails['final_price'],
+            'unit_price_details' => $unitPriceDetails,
+            'order_details'      => $orderDetails,
             'offers'             => OfferResource::collection($offers),
-            'discount_amount'    => (string)($order['subtotal'] - $discounted),
-            'discounted_price'   => (string)$discounted,
+            'discount_amount'    => (string)($orderDetails['subtotal'] - $discountedPrice),
+            'discounted_price'   => (string)$discountedPrice,
             'vat_amount'         => (string)$vatAmount,
-            'vat_rate'           => (string)($v['with_vat'] ? $order['vat_rate'] : 0),
-            'final_price'        => (string)($discounted + $vatAmount),
-            'with_vat'           => (bool)$v['with_vat'],
-        ]);
+            'vat_rate'           => (string)($withVat ? $orderDetails['vat_rate'] : 0),
+            'final_price'        => (string)$finalPrice,
+            'with_vat'           => $withVat,
+        ], 'global.received_successfully');
     }
 
     private function applySorting($query, ?string $sort): void
     {
         match ($sort) {
             'cheapest' => $query
-                ->withMin('variantPrices', 'special_price')
+                ->withMin('variantPrices', ProductPrice::SPECIAL_PRICE)
                 ->orderBy('variant_prices_min_special_price', 'asc'),
-
             'most_expensive' => $query
-                ->withMax('variantPrices', 'special_price')
+                ->withMax('variantPrices', ProductPrice::SPECIAL_PRICE)
                 ->orderBy('variant_prices_max_special_price', 'desc'),
-
             'most_viewed'  => $query->orderBy(Product::VIEW_COUNT, 'desc'),
             'best_selling' => $query->withCount('orderItems as sold_count')
                 ->orderBy('sold_count', 'desc'),
             'newest'       => $query->orderBy(Product::CREATED_AT, 'desc'),
-            default        => $query->latest(),
+            default        => $query->latest(Product::CREATED_AT),
         };
     }
 
-    private function checkEligibleOffers($product, int $totalQuantity)
+    private function checkEligibleOffers(Product $product, int $totalQuantity)
     {
         return $product->offers()
-            ->active()
-            ->where('start_date', '<=', now())
-            ->where(fn($q) => $q->where('end_date', '>=', now())->orWhereNull('end_date'))
-            ->where('minimum_quantity', '<=', $totalQuantity)
+            ->current()
+            ->where(Offer::MINIMUM_QUANTITY, '<=', $totalQuantity)
             ->get();
     }
 
     private function applyDiscounts(float $price, $offers): float
     {
         foreach ($offers as $offer) {
-            $price = match ($offer->type) {
-                'percentage'   => $price - ($price * $offer->value / 100),
-                'fixed_amount' => $price - $offer->value,
+            $price = match ($offer->{Offer::TYPE}) {
+                'percentage'   => $price - ($price * $offer->{Offer::VALUE} / 100),
+                'fixed_amount' => $price - $offer->{Offer::VALUE},
                 default        => $price,
             };
         }

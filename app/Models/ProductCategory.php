@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class ProductCategory extends Model
 {
-    // ثابت‌ها
     const ID = 'id';
     const NAME = 'name';
     const SLUG = 'slug';
@@ -24,21 +23,24 @@ class ProductCategory extends Model
         self::IS_ACTIVE,
     ];
 
-    /**
-     * Get the products for the category.
-     */
+    protected $casts = [
+        self::IS_ACTIVE => 'boolean',
+    ];
+
     public function products(): HasMany
     {
         return $this->hasMany(Product::class, 'category_id');
     }
 
-    /**
-     * Get the attribute types associated with the category.
-     */
     public function attributeTypes(): BelongsToMany
     {
         return $this->belongsToMany(AttributeType::class, 'category_attributes')
             ->withPivot('is_required', 'is_filterable', 'sort_order')
             ->withTimestamps();
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where(self::IS_ACTIVE, true);
     }
 }

@@ -9,75 +9,80 @@ use App\Models\PriceFilterCategory;
 use App\Models\PurchaseParameterValue;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class ParameterDetectionController extends Controller
 {
-    /**
-     * تشخیص مدل PriceFilterCategory بر اساس پارامترهای خرید
-     *
-     * @param int[] $paramIds
-     * @return PriceFilterCategory|null
-     */
-    public function detectPriceFilterCategoryFromValues(array $paramIds): ?PriceFilterCategory
+    public function detectPriceFilterCategoryFromValues(array $parameterIds): ?PriceFilterCategory
     {
-        $values = PurchaseParameterValue::with(['group', 'priceFilterCategory'])
-            ->whereIn('id', $paramIds)
+        $parameterValues = PurchaseParameterValue::with(['group', 'priceFilterCategory'])
+            ->whereIn(PurchaseParameterValue::ID, $parameterIds)
             ->get()
-            ->keyBy(fn($v) => $v->group->code);
+            ->keyBy(fn($value) => $value->group->code);
 
-        $ct = $values['customer_type'] ?? null;
-        $cs = $values['consultant_status'] ?? null;
-        $pp = $values['purchase_purpose'] ?? null;
+        $customerTypeValue = $parameterValues['customer_type'] ?? null;
+        $consultantStatusValue = $parameterValues['consultant_status'] ?? null;
+        $purchasePurposeValue = $parameterValues['purchase_purpose'] ?? null;
 
-        if ($ct && $cs) {
-            if ($cs->code === 'with_consultant') {
-                $prefix = strstr($ct->code, '_', true) ?: $ct->code;
-                if ($combo = PriceFilterCategory::where('code', "{$prefix}_with_consultant")->first()) {
-                    return $combo;
+        if ($customerTypeValue && $consultantStatusValue) {
+            if ($consultantStatusValue->code === 'with_consultant') {
+                $prefix = strstr($customerTypeValue->code, '_', true) ?: $customerTypeValue->code;
+                $category = PriceFilterCategory::where(PriceFilterCategory::CODE, "{$prefix}_with_consultant")->first();
+                if ($category) {
+                    return $category;
                 }
             } else {
-                if ($ct->priceFilterCategory) {
-                    return $ct->priceFilterCategory;
+                if ($customerTypeValue->priceFilterCategory) {
+                    return $customerTypeValue->priceFilterCategory;
                 }
 
-                $fallbackCode = "{$ct->code}_without_consultant";
-                if ($fallback = PriceFilterCategory::where('code', $fallbackCode)->first()) {
-                    return $fallback;
+                $fallbackCode = "{$customerTypeValue->code}_without_consultant";
+                $category = PriceFilterCategory::where(PriceFilterCategory::CODE, $fallbackCode)->first();
+                if ($category) {
+                    return $category;
                 }
 
-                if ($fallback = PriceFilterCategory::where('code', $ct->code)->first()) {
-                    return $fallback;
+                $category = PriceFilterCategory::where(PriceFilterCategory::CODE, $customerTypeValue->code)->first();
+                if ($category) {
+                    return $category;
                 }
             }
         }
 
-        foreach ([$cs, $ct, $pp] as $v) {
-            if ($v && $v->priceFilterCategory) {
-                return $v->priceFilterCategory;
+        foreach ([$consultantStatusValue, $customerTypeValue, $purchasePurposeValue] as $value) {
+            if ($value && $value->priceFilterCategory) {
+                return $value->priceFilterCategory;
             }
         }
 
-        return PriceFilterCategory::where('code', 'employer_without_consultant')->first();
+        return PriceFilterCategory::where(PriceFilterCategory::CODE, 'employer_without_consultant')->first();
     }
 
-    /**
-     * GET /api/price-filters/detect
-     */
     public function detectPriceFilters(Request $request): JsonResponse
     {
-        if ($request->filled('parameters') && is_array($request->input('parameters'))) {
-            $ids = $request->input('parameters');
-        } else {
-            $cart = Cart::with('purchaseParameters')
-                ->where('session_id', session()->getId())
-                ->first();
+        $parameterIds = $request->input('parameters');
 
-            $ids = $cart?->purchaseParameters->pluck('id')->all() ?? [];
+        if (!$request->filled('parameters') || !is_array($parameterIds)) {
+            $cart = null;
+            $userId = Auth::id();
+            $sessionId = $request->cookie('cart_session_id');
+
+            if ($userId) {
+                $cart = Cart::with('purchaseParameters')->where(Cart::USER_ID, $userId)->first();
+            } elseif ($sessionId) {
+                $cart = Cart::with('purchaseParameters')->where(Cart::SESSION_ID, $sessionId)->first();
+            }
+
+            $parameterIds = $cart?->purchaseParameters->pluck(PurchaseParameterValue::ID)->all() ?? [];
         }
 
-        $category = $this->detectPriceFilterCategoryFromValues($ids)
-            ?? PriceFilterCategory::where('code', 'employer_without_consultant')->first();
+        $category = $this->detectPriceFilterCategoryFromValues($parameterIds)
+            ?? PriceFilterCategory::where(PriceFilterCategory::CODE, 'employer_without_consultant')->first();
 
-        return success(new PriceFilterCategoryResource($category));
+        if (!$category) {
+            return error('global.notFound', [], 404);
+        }
+
+        return success(new PriceFilterCategoryResource($category), 'global.received_successfully');
     }
 }

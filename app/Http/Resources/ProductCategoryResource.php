@@ -5,6 +5,7 @@ namespace App\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use App\Models\ProductCategory;
+use Carbon\Carbon;
 
 class ProductCategoryResource extends JsonResource
 {
@@ -17,8 +18,8 @@ class ProductCategoryResource extends JsonResource
             ProductCategory::DESCRIPTION  => $this->description,
             ProductCategory::IMAGE        => $this->image,
             ProductCategory::IS_ACTIVE    => (bool) $this->is_active,
-            ProductCategory::CREATED_AT   => $this->created_at,
-            ProductCategory::UPDATED_AT   => $this->updated_at,
+            ProductCategory::CREATED_AT   => $this->created_at ? Carbon::parse($this->created_at)->format('Y-m-d H:i:s') : null,
+            ProductCategory::UPDATED_AT   => $this->updated_at ? Carbon::parse($this->updated_at)->format('Y-m-d H:i:s') : null,
         ];
     }
 }
