@@ -9,8 +9,7 @@ class CartItemResource extends JsonResource
 {
     public function toArray($request): array
     {
-        /* فیلتر فقط قیمت مخصوص همین کارخانه و لوکیشن */
-        $variant = $this->productVariant->replicate();          // کپی سبک
+        $variant = $this->productVariant->replicate();
         $variant->setRelation(
             'prices',
             $this->productVariant->prices
@@ -21,8 +20,6 @@ class CartItemResource extends JsonResource
         return [
             CartItem::ID      => (string)$this->id,
             CartItem::CART_ID => (string)$this->cart_id,
-
-            // واریانت با prices فیلترشده
             'product_variant'  => new ProductVariantResource($variant),
 
             'factory'          => new FactoryResource($this->whenLoaded('factory')),

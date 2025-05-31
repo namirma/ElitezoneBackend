@@ -16,10 +16,7 @@ class ProductCategoryResource extends JsonResource
             ProductCategory::NAME         => $this->name,
             ProductCategory::SLUG         => $this->slug,
             ProductCategory::DESCRIPTION  => $this->description,
-            ProductCategory::IMAGE        => $this->image,
-            ProductCategory::IS_ACTIVE    => (bool) $this->is_active,
-            ProductCategory::CREATED_AT   => $this->created_at ? Carbon::parse($this->created_at)->format('Y-m-d H:i:s') : null,
-            ProductCategory::UPDATED_AT   => $this->updated_at ? Carbon::parse($this->updated_at)->format('Y-m-d H:i:s') : null,
+            ProductCategory::IMAGE        => $this->image
         ];
     }
 }

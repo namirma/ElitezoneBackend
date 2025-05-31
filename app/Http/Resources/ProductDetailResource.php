@@ -19,7 +19,6 @@ class ProductDetailResource extends JsonResource
             Product::SLUG           => $this->slug,
             Product::DESCRIPTION    => $this->description,
             Product::SKU            => $this->sku,
-            Product::IS_ACTIVE      => (bool)$this->is_active,
             Product::IS_FEATURED    => (bool)$this->is_featured,
             Product::VIEW_COUNT     => $this->view_count,
             Product::ITEMS_PER_PAGE => $this->items_per_page,

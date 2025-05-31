@@ -83,6 +83,6 @@ class ParameterDetectionController extends Controller
             return error('global.notFound', [], 404);
         }
 
-        return success(new PriceFilterCategoryResource($category), 'global.received_successfully');
+        return success([], 'global.received_successfully');
     }
 }

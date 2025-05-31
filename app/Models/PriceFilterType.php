@@ -10,7 +10,7 @@ class PriceFilterType extends Model
 {
     use HasFactory;
 
-    public const
+    const
         ID         = 'id',
         NAME       = 'name',
         CODE       = 'code',
@@ -44,17 +44,17 @@ class PriceFilterType extends Model
 
     public function scopeForGeneral($query)
     {
-        return $query->where(function($q) {
+        return $query->where(function ($q) {
             $q->where(self::APPLY_ON, 'general')
-              ->orWhere(self::APPLY_ON, 'both');
+                ->orWhere(self::APPLY_ON, 'both');
         });
     }
 
     public function scopeForSpecial($query)
     {
-        return $query->where(function($q) {
+        return $query->where(function ($q) {
             $q->where(self::APPLY_ON, 'special')
-              ->orWhere(self::APPLY_ON, 'both');
+                ->orWhere(self::APPLY_ON, 'both');
         });
     }
 }

@@ -93,7 +93,7 @@ class PurchaseParameterSeeder extends Seeder
         $purposeGroup = PurchaseParameterGroup::where('code','purchase_purpose')->first();
         $purposeValues = [
             ['code' => 'for_myself',  'name' => 'برای خودم',        'order' => 1],
-            ['code' => 'for_project', 'name' => 'برای دیگری',       'order' => 2],
+            ['code' => 'for_other', 'name' => 'برای دیگری',       'order' => 2],
         ];
         foreach ($purposeValues as $v) {
             PurchaseParameterValue::updateOrCreate(

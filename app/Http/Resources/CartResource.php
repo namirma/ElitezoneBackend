@@ -19,10 +19,7 @@ class CartResource extends JsonResource
             Cart::CREATED_AT => $this->created_at?->format('Y-m-d H:i:s'),
             Cart::UPDATED_AT => $this->updated_at?->format('Y-m-d H:i:s'),
             'customer_type'           => new CustomerTypeResource($this->whenLoaded('customerType')),
-            // رابطهٔ نشان (Badge)
             'badge'                   => new BadgeResource($this->whenLoaded('badge')),
-
-            // ** کل آیتم‌ها **
             'items' => CartItemResource::collection(
                 $this->whenLoaded('items')
             ),

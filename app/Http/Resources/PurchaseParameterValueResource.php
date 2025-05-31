@@ -18,7 +18,6 @@ class PurchaseParameterValueResource extends JsonResource
             PurchaseParameterValue::SLUG                   => $this->slug,
             PurchaseParameterValue::CODE                   => $this->code,
             PurchaseParameterValue::ORDER                  => $this->order,
-            PurchaseParameterValue::IS_ACTIVE              => (bool) $this->is_active,
             PurchaseParameterValue::PRICE_FILTER_CATEGORY_ID => $this->price_filter_category_id,
             PurchaseParameterValue::CREATED_AT             => $this->created_at
                 ? Carbon::parse($this->created_at)->format('Y-m-d H:i:s')

@@ -7,10 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ProductPrice extends Model
 {
-    /**
-     * Constants for table columns.
-     */
-    public const
+    const
         ID = 'id',
         PRODUCT_VARIANT_ID = 'product_variant_id',
         FACTORY_ID = 'factory_id',
@@ -22,11 +19,6 @@ class ProductPrice extends Model
         CREATED_AT = 'created_at',
         UPDATED_AT = 'updated_at';
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
     protected $fillable = [
         self::PRODUCT_VARIANT_ID,
         self::FACTORY_ID,
@@ -37,37 +29,23 @@ class ProductPrice extends Model
         self::LAST_UPDATED_AT
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array<string, string>
-     */
     protected $casts = [
         self::LAST_UPDATED_AT => 'datetime',
-        self::GENERAL_PRICE   => 'float', // پیشنهاد: قیمت‌ها را cast کنید
-        self::SPECIAL_PRICE   => 'float', // پیشنهاد: قیمت‌ها را cast کنید
-        self::GOLDEN_FIGURE   => 'float', // پیشنهاد: قیمت‌ها را cast کنید
+        self::GENERAL_PRICE   => 'float',
+        self::SPECIAL_PRICE   => 'float',
+        self::GOLDEN_FIGURE   => 'float',
     ];
 
-    /**
-     * Get the product variant that owns the price.
-     */
     public function productVariant(): BelongsTo
     {
         return $this->belongsTo(ProductVariant::class, self::PRODUCT_VARIANT_ID);
     }
 
-    /**
-     * Get the factory that owns the price.
-     */
     public function factory(): BelongsTo
     {
         return $this->belongsTo(Factory::class, self::FACTORY_ID);
     }
 
-    /**
-     * Get the factory location that owns the price.
-     */
     public function factoryLocation(): BelongsTo
     {
         return $this->belongsTo(FactoryLocation::class, self::FACTORY_LOCATION_ID);

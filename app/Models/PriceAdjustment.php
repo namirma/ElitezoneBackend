@@ -8,22 +8,41 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class PriceAdjustment extends Model
 {
+    use HasFactory;
+
+    const
+        ID = 'id',
+        CUSTOMER_TYPE_ID = 'customer_type_id',
+        BADGE_ID = 'badge_id',
+        ADJUSTMENT_AMOUNT = 'adjustment_amount',
+        IS_ACTIVE = 'is_active',
+        CREATED_AT = 'created_at',
+        UPDATED_AT = 'updated_at';
+
     protected $fillable = [
-        'customer_type_id', 'badge_id', 'adjustment_amount', 'is_active'
+        self::CUSTOMER_TYPE_ID,
+        self::BADGE_ID,
+        self::ADJUSTMENT_AMOUNT,
+        self::IS_ACTIVE,
+    ];
+
+    protected $casts = [
+        self::ADJUSTMENT_AMOUNT => 'float',
+        self::IS_ACTIVE => 'boolean',
     ];
 
     public function customerType(): BelongsTo
     {
-        return $this->belongsTo(CustomerType::class);
+        return $this->belongsTo(CustomerType::class, self::CUSTOMER_TYPE_ID, CustomerType::ID);
     }
 
     public function badge(): BelongsTo
     {
-        return $this->belongsTo(Badge::class);
+        return $this->belongsTo(Badge::class, self::BADGE_ID, Badge::ID);
     }
 
     public function scopeActive($query)
     {
-        return $query->where('is_active', true);
+        return $query->where(self::IS_ACTIVE, true);
     }
 }

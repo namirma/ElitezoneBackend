@@ -11,11 +11,19 @@ class ProductVariantResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            ProductVariant::PRODUCT_ID     => (string)$this->product_id,
-            ProductVariant::NAME           => $this->name,
-            ProductVariant::SKU            => $this->sku,
-            ProductVariant::IS_ACTIVE      => (bool)$this->is_active,
-            ProductVariant::STOCK_QUANTITY => (string)$this->stock_quantity,
+            ProductVariant::ID => (string)$this->id,
+            ProductVariant::PRODUCT_ID => (string)$this->{ProductVariant::PRODUCT_ID},
+            ProductVariant::NAME => $this->{ProductVariant::NAME},
+            ProductVariant::SKU => $this->{ProductVariant::SKU},
+            ProductVariant::STOCK_QUANTITY => (string)$this->{ProductVariant::STOCK_QUANTITY},
+            ProductVariant::VIEW_COUNT => (string)$this->{ProductVariant::VIEW_COUNT},
+
+            // اطلاعات تخفیف مستقیم واریانت
+            ProductVariant::DISCOUNT_VALUE => $this->whenNotNull($this->{ProductVariant::DISCOUNT_VALUE}),
+            ProductVariant::DISCOUNT_TYPE => $this->whenNotNull($this->{ProductVariant::DISCOUNT_TYPE}),
+            ProductVariant::DISCOUNT_START_DATE => optional($this->{ProductVariant::DISCOUNT_START_DATE})->format('Y-m-d H:i:s'),
+            ProductVariant::DISCOUNT_END_DATE => optional($this->{ProductVariant::DISCOUNT_END_DATE})->format('Y-m-d H:i:s'),
+            'active_discount_details' => $this->getActiveDiscountDetails(),
 
             'attributes' => ProductVariantAttributeResource::collection(
                 $this->whenLoaded('variantAttributes', $this->variantAttributes)
@@ -40,8 +48,8 @@ class ProductVariantResource extends JsonResource
                 })->values();
             }),
 
-            ProductVariant::CREATED_AT => optional($this->created_at)->format('Y-m-d H:i:s'),
-            ProductVariant::UPDATED_AT => optional($this->updated_at)->format('Y-m-d H:i:s'),
+            ProductVariant::CREATED_AT => optional($this->{ProductVariant::CREATED_AT})->format('Y-m-d H:i:s'),
+            ProductVariant::UPDATED_AT => optional($this->{ProductVariant::UPDATED_AT})->format('Y-m-d H:i:s'),
         ];
     }
 }

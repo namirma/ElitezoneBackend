@@ -18,17 +18,6 @@ class OrderUnitResource extends JsonResource
             OrderUnit::AMOUNT     => $this->amount,
             OrderUnit::CREATED_AT => $this->created_at?->format('Y-m-d H:i:s'),
             OrderUnit::UPDATED_AT => $this->updated_at?->format('Y-m-d H:i:s'),
-
-            // فقط اگر رابطه‌ی pivot لود شده بود و فیلد زمان داشت، برگردان
-            'pivot' => $this->whenPivotLoaded('product_order_unit', function () {
-                return [
-                    'product_id'    => $this->pivot->product_id,
-                    'order_unit_id' => $this->pivot->order_unit_id,
-                    'max_quantity'  => $this->pivot->max_quantity,
-                    'created_at' => optional($this->pivot->created_at)->format('Y-m-d H:i:s'),
-                    'updated_at' => optional($this->pivot->updated_at)->format('Y-m-d H:i:s'),
-                ];
-            }),
         ];
     }
 }

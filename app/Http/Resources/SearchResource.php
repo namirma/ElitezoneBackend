@@ -15,7 +15,6 @@ class SearchResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            // 'results' => $this['results'],
             'related_searches' => $this['related_searches'],
             'latest_searches' => $this['latest_searches'],
             'popular_searches' => $this['popular_searches'],

@@ -11,7 +11,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Visus\Cuid2\Cuid2;
 
-
 class Product extends Model
 {
     use HasFactory, PersianDate;
@@ -27,6 +26,9 @@ class Product extends Model
         IS_FEATURED = 'is_featured',
         VIEW_COUNT = 'view_count',
         ITEMS_PER_PAGE = 'items_per_page',
+        AGGREGATE_MIN_ORDER_VALUE = 'aggregate_min_order_value',
+        AGGREGATE_MAX_ORDER_VALUE = 'aggregate_max_order_value',
+        AGGREGATE_LIMIT_ORDER_UNIT_ID = 'aggregate_limit_order_unit_id',
         CREATED_AT = 'created_at',
         UPDATED_AT = 'updated_at',
         CUID = 'cuid';
@@ -41,18 +43,28 @@ class Product extends Model
         self::IS_FEATURED,
         self::VIEW_COUNT,
         self::ITEMS_PER_PAGE,
+        self::AGGREGATE_MIN_ORDER_VALUE,
+        self::AGGREGATE_MAX_ORDER_VALUE,
+        self::AGGREGATE_LIMIT_ORDER_UNIT_ID,
         self::CUID
+    ];
+
+    protected $casts = [
+        self::IS_ACTIVE => 'boolean',
+        self::IS_FEATURED => 'boolean',
+        self::VIEW_COUNT => 'integer',
+        self::ITEMS_PER_PAGE => 'integer',
+        self::AGGREGATE_MIN_ORDER_VALUE => 'float',
+        self::AGGREGATE_MAX_ORDER_VALUE => 'float',
     ];
 
     protected static function booted(): void
     {
         static::creating(function (Product $model) {
-            // تولید CUID و ذخیره به صورت رشته
             $model->{self::CUID} = (string) new Cuid2();
         });
     }
 
-    /* --- Route-Model binding را روی CUID می‌بریم ------------------ */
     public function getRouteKeyName(): string
     {
         return self::CUID;
@@ -65,49 +77,53 @@ class Product extends Model
 
     public function prices(): HasMany
     {
-        return $this->hasMany(ProductPrice::class);
+        return $this->hasMany(ProductPrice::class, ProductPrice::PRODUCT_VARIANT_ID, self::ID);
     }
 
     public function images(): HasMany
     {
-        return $this->hasMany(ProductImage::class);
+        return $this->hasMany(ProductImage::class, ProductImage::PRODUCT_ID, self::ID);
     }
 
     public function videos(): HasMany
     {
-        return $this->hasMany(ProductVideo::class);
+        return $this->hasMany(ProductVideo::class, ProductVideo::PRODUCT_ID, self::ID);
     }
 
     public function variants(): HasMany
     {
-        return $this->hasMany(ProductVariant::class);
+        return $this->hasMany(ProductVariant::class, ProductVariant::PRODUCT_ID, self::ID);
     }
 
     public function orderUnits(): BelongsToMany
     {
-        return $this->belongsToMany(
-            OrderUnit::class,
-            'product_order_units',
-            'product_id',
-            'order_unit_id'
-        )
-            ->withPivot('max_quantity');
+        return $this->belongsToMany(OrderUnit::class, 'product_order_units', self::ID, OrderUnit::ID, 'product_id', 'order_unit_id')
+            ->withPivot('max_quantity')
+            ->withTimestamps();
     }
 
-     public function variantPrices(): HasManyThrough
+    public function variantPrices(): HasManyThrough
     {
         return $this->hasManyThrough(
-            ProductPrice::class,   // مدل مقصد
-            ProductVariant::class, // مدل واسطه
-            'product_id',          // FK در جدول variants
-            'product_variant_id'   // FK در جدول prices
+            ProductPrice::class,
+            ProductVariant::class,
+            self::ID,
+            ProductPrice::PRODUCT_VARIANT_ID,
+            self::ID,
+            ProductVariant::ID
         );
     }
 
     public function offers(): BelongsToMany
     {
-        return $this->belongsToMany(Offer::class, 'product_offers')
-            ->withPivot('associated_at');
+        return $this->belongsToMany(Offer::class, 'product_offers', 'product_id', 'offer_id')
+            ->withPivot('associated_at')
+            ->withTimestamps();
+    }
+
+    public function aggregateLimitOrderUnit(): BelongsTo
+    {
+        return $this->belongsTo(OrderUnit::class, self::AGGREGATE_LIMIT_ORDER_UNIT_ID);
     }
 
     public function scopeActive($query)
@@ -125,17 +141,17 @@ class Product extends Model
         $this->increment(self::VIEW_COUNT);
     }
 
-    public function getCreatedAtAttribute()
+    public function getCreatedAtAttribute($value)
     {
-        $this->appends[] = "created_at_p";
-        $this->appends[] = "created_at_diff";
-        return $this->attributes[self::CREATED_AT];
+        if (!in_array("created_at_p", $this->appends)) $this->appends[] = "created_at_p";
+        if (!in_array("created_at_diff", $this->appends)) $this->appends[] = "created_at_diff";
+        return $value;
     }
 
-    public function getUpdatedAtAttribute()
+    public function getUpdatedAtAttribute($value)
     {
-        $this->appends[] = "updated_at_p";
-        $this->appends[] = "updated_at_diff";
-        return $this->attributes[self::UPDATED_AT];
+        if (!in_array("updated_at_p", $this->appends)) $this->appends[] = "updated_at_p";
+        if (!in_array("updated_at_diff", $this->appends)) $this->appends[] = "updated_at_diff";
+        return $value;
     }
 }

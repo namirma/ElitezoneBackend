@@ -13,9 +13,6 @@ class EduixController extends Controller
 {
     public function __construct(protected EduixScraperService $scraper) {}
 
-    /**
-     * POST /api/eduix/fetch
-     */
     public function fetch(Request $request): JsonResponse
     {
         $v = $request->validate([

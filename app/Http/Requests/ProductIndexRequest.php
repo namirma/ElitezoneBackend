@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class ProductIndexRequest extends FormRequest
 {
@@ -13,12 +14,28 @@ class ProductIndexRequest extends FormRequest
 
     public function rules(): array
     {
+        $validSortOptions = [
+            'cheapest',
+            'most_expensive',
+            'most_viewed',
+            'best_selling',
+            'newest',
+        ];
+
         return [
-            'category' => 'nullable|exists:product_categories,id',
-            'search' => 'nullable|string|max:255',
-            'sort' => 'nullable|in:most_viewed,newest,best_selling,cheapest,most_expensive',
-            'per_page' => 'nullable|integer|min:1|max:100',
+            'category' => ['sometimes', 'nullable', 'integer', 'exists:product_categories,id'],
+            'search'   => ['sometimes', 'nullable', 'string', 'max:255'],
+            'per_page' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:100'],
+            'sort'     => ['sometimes', 'nullable', 'string', Rule::in($validSortOptions)],
         ];
     }
 
+    protected function prepareForValidation(): void
+    {
+        if (!$this->has('sort') || empty($this->input('sort'))) {
+            $this->merge([
+                'sort' => 'newest',
+            ]);
+        }
+    }
 }
