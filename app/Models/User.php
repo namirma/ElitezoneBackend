@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Models\Search;
+use App\Models\Wishlist;
 use App\Traits\PersianDate;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -118,4 +119,8 @@ class User extends Authenticatable implements LaratrustUser
     {
         return $this->hasMany(Search::class);
     }
+    public function wishlists(): HasMany
+{
+    return $this->hasMany(Wishlist::class, Wishlist::USER_ID);
+}
 }

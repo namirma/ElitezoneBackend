@@ -120,6 +120,12 @@ class ProductVariant extends Model
         return $this->hasMany(CartItem::class, CartItem::PRODUCT_VARIANT_ID, self::ID);
     }
 
+    public function wishlists(): BelongsToMany
+    {
+        return $this->belongsToMany(Wishlist::class, 'product_wishlist', 'product_variant_id', 'wishlist_id')
+            ->withTimestamps();
+    }
+
     public function scopeActive($query)
     {
         return $query->where(self::IS_ACTIVE, true);

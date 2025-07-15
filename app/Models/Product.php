@@ -97,11 +97,10 @@ class Product extends Model
 
     public function orderUnits(): BelongsToMany
     {
-        return $this->belongsToMany(OrderUnit::class, 'product_order_units', self::ID, OrderUnit::ID, 'product_id', 'order_unit_id')
+        return $this->belongsToMany(OrderUnit::class, 'product_order_units', 'product_id', 'order_unit_id')
             ->withPivot('max_quantity')
             ->withTimestamps();
     }
-
     public function variantPrices(): HasManyThrough
     {
         return $this->hasManyThrough(

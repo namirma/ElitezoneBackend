@@ -18,6 +18,7 @@ use App\Http\Controllers\ProductCategoryController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\PurchaseParameterController;
 use App\Http\Controllers\SearchController;
+use App\Http\Controllers\WishlistController;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -76,6 +77,19 @@ Route::prefix('cart')->group(function () {
     Route::delete('/items/{item}', [CartController::class, 'removeCartItem']);
     Route::patch('/customer', [CartController::class, 'updateCustomerType']);
     Route::patch('/filters', [CartController::class, 'updateCartFilters']);
+});
+
+Route::prefix('wishlists')->middleware('auth:sanctum')->as('wishlists.')->group(function () {
+    Route::get('/', [WishlistController::class, 'index'])->name('index');
+    Route::post('/', [WishlistController::class, 'store'])->name('store');
+    Route::get('/{wishlist}', [WishlistController::class, 'show'])->name('show');
+    Route::put('/{wishlist}', [WishlistController::class, 'update'])->name('update');
+    Route::delete('/{wishlist}', [WishlistController::class, 'destroy'])->name('destroy');
+
+    Route::post('/toggle-variant', [WishlistController::class, 'toggleVariant'])->name('toggleVariant');
+
+    Route::post('/{wishlist}/variants/{variant}', [WishlistController::class, 'addVariant'])->name('variants.add');
+    Route::delete('/{wishlist}/variants/{variant}', [WishlistController::class, 'removeVariant'])->name('variants.remove');
 });
 
 Route::post('/listophers', [ListopherController::class, 'store']);
