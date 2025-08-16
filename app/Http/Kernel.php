@@ -2,6 +2,7 @@
 
 namespace App\Http;
 
+use App\Http\Middleware\AttachActivePriceCategory;
 use App\Http\Middleware\Authenticate;
 use App\Http\Middleware\Cors;
 use App\Http\Middleware\EncryptCookies;
@@ -50,7 +51,8 @@ class Kernel extends HttpKernel
         ConvertEmptyStringsToNull::class,
         StartSession::class,
         ShareErrorsFromSession::class,
-        Sanitizer::class
+        Sanitizer::class,
+
     ];
 
     /**
@@ -93,6 +95,7 @@ class Kernel extends HttpKernel
         'throttle' => ThrottleRequests::class,
         'verified' => EnsureEmailIsVerified::class,
         'cors' => Cors::class,
-        'SecurityHeaders' => SecurityHeaders::class
+        'SecurityHeaders' => SecurityHeaders::class,
+        'attach.price.category' => AttachActivePriceCategory::class,
     ];
 }

@@ -23,6 +23,7 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\PurchaseParameterValue;
 use App\Services\PriceCalculationService;
+use App\Services\PricingRoleResolver;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -38,6 +39,17 @@ class CartController extends Controller
 
     public function __construct(private readonly PriceCalculationService $priceService) {}
 
+    private function activeCode(): string
+    {
+        if (app()->bound('active_price_filter_category_code')) {
+            return app('active_price_filter_category_code');
+        }
+        if (Auth::check()) {
+            return app(PricingRoleResolver::class)->resolve(Auth::user());
+        }
+        // مهمان نداریم؛ ولی برای اطمینان:
+        return 'employer_without_consultant';
+    }
     private function getOrderUnitsMap(): Collection
     {
         if ($this->orderUnitsMapCache === null) {
@@ -189,7 +201,19 @@ class CartController extends Controller
         $cartLevelOfferDiscountAmount = $this->calculateCartLevelOfferDiscountAmount($subtotalAfterVariantDiscounts, $offers->collection);
         $shippingCost = 0;
         $totals = $this->formatTotals($subtotalAfterVariantDiscounts, $vatAmount, $cartLevelOfferDiscountAmount, $shippingCost, true, $totalAppliedVariantDiscount);
-        return success(['cart' => new CartResource($cart), 'offers' => $offers, 'totals' => $totals], 'global.received_successfully');
+        $activeCode = $this->activeCode();
+        $pfId       = PriceFilterCategory::where(PriceFilterCategory::CODE, $activeCode)->value('id');
+        $ctId       = CustomerType::where(CustomerType::CODE, $activeCode)->value('id');
+        return success([
+            'cart'    => new CartResource($cart),
+            'offers'  => $offers,
+            'totals'  => $totals,
+            'pricing' => [
+                'code' => $activeCode,
+                'price_filter_category_id' => $pfId,
+                'customer_type_id' => $ctId,
+            ],
+        ], 'global.received_successfully');
     }
 
     private function calculatePricesAndDiscounts(Cart $cart, bool $withVat): array
@@ -198,39 +222,54 @@ class CartController extends Controller
         $totalVatAmount = 0.0;
         $totalAppliedVariantDiscount = 0.0;
         $orderUnitsMap = $this->getOrderUnitsMap();
+        $activeCode   = $this->activeCode();
+        $pfId         = PriceFilterCategory::where(PriceFilterCategory::CODE, $activeCode)->value('id');
+        $filterIds    = $pfId ? [$pfId] : $cart->priceFilterCategories->pluck(PriceFilterCategory::ID)->all();
+        $customerType = CustomerType::where(CustomerType::CODE, $activeCode)->first() ?: $cart->customerType;
+
         foreach ($cart->items as $item) {
             $pricingDetails = $this->priceService->calculatePrice(
                 $item->productVariant,
                 $item->factory,
                 $item->factoryLocation,
-                $cart->customerType,
+                $customerType,
                 $cart->badge,
-                $cart->priceFilterCategories->pluck(PriceFilterCategory::ID)->all(),
+                $filterIds,
                 $withVat
             );
+
             $itemTotalWeight = 0;
             foreach ($item->{CartItem::QUANTITIES} as $unitId => $qty) {
                 $unit = $orderUnitsMap->get((int)$unitId);
-                if ($unit) {
-                    $itemTotalWeight += (float)$qty * $unit->{OrderUnit::AMOUNT};
-                }
+                if ($unit) $itemTotalWeight += (float)$qty * $unit->{OrderUnit::AMOUNT};
             }
+
             $variantDiscountAmountFromService = isset($pricingDetails['variant_discount_amount']) ? (float)$pricingDetails['variant_discount_amount'] : 0.0;
             $totalAppliedVariantDiscount += $variantDiscountAmountFromService * $itemTotalWeight;
+
             $itemFinalPrice = $itemTotalWeight * (float)$pricingDetails['final_price'];
             $itemVatAmount = 0.0;
             if ($withVat && isset($pricingDetails['vat_rate']) && (float)$pricingDetails['vat_rate'] > 0) {
                 $itemVatAmount = $itemFinalPrice * ((float)$pricingDetails['vat_rate'] / 100);
             }
+            $item->setAttribute('pricing_context', [
+                'code' => $activeCode,
+                'price_filter_category_id' => $pfId,
+                'customer_type_id' => optional($customerType)->id,
+            ]);
+            $item->setAttribute('unit_price_details', $pricingDetails);
+
             $item->fill([
-                CartItem::PRICE => $pricingDetails['final_price'],
-                CartItem::FINAL_PRICE => $itemFinalPrice,
-                CartItem::VAT_AMOUNT => $itemVatAmount,
+                CartItem::PRICE          => $pricingDetails['final_price'],
+                CartItem::FINAL_PRICE    => $itemFinalPrice,
+                CartItem::VAT_AMOUNT     => $itemVatAmount,
                 CartItem::TOTAL_WITH_VAT => $itemFinalPrice + $itemVatAmount,
             ]);
+
             $subtotalAfterVariantDiscounts += $itemFinalPrice;
             $totalVatAmount += $itemVatAmount;
         }
+
         return [$cart->items, $subtotalAfterVariantDiscounts, $totalVatAmount, $totalAppliedVariantDiscount];
     }
 
@@ -270,77 +309,130 @@ class CartController extends Controller
 
     public function addToCart(AddToCartRequest $request): JsonResponse
     {
-        $validatedData = $request->validated();
-        $cart = $this->resolveCart($request);
-        $orderUnitsMap = $this->getOrderUnitsMap();
+        $validatedData   = $request->validated();
+        $cart            = $this->resolveCart($request);
+        $orderUnitsMap   = $this->getOrderUnitsMap();
         $cartItemToReturn = null;
+
         try {
-            $variant = ProductVariant::with(['product.orderUnits', 'product.aggregateLimitOrderUnit', 'limitOrderUnit'])->findOrFail($validatedData['variant_id']);
-            $factory = Factory::findOrFail($validatedData['factory_id']);
+            $variant  = ProductVariant::with(['product.orderUnits', 'product.aggregateLimitOrderUnit', 'limitOrderUnit'])
+                ->findOrFail($validatedData['variant_id']);
+            $factory  = Factory::findOrFail($validatedData['factory_id']);
             $location = FactoryLocation::findOrFail($validatedData['location_id']);
         } catch (ModelNotFoundException $e) {
             $modelClass = $e->getModel();
-            if (str_contains($modelClass, 'ProductVariant')) return error('global.variant_not_found', [], 404);
-            if (str_contains($modelClass, 'Factory')) return error('global.factory_not_found', [], 404);
-            if (str_contains($modelClass, 'FactoryLocation')) return error('global.location_not_found', [], 404);
+            if (str_contains($modelClass, 'ProductVariant'))   return error('global.variant_not_found', [], 404);
+            if (str_contains($modelClass, 'Factory'))          return error('global.factory_not_found', [], 404);
+            if (str_contains($modelClass, 'FactoryLocation'))  return error('global.location_not_found', [], 404);
             return error('global.notFound', [], 404);
         }
 
         return DB::transaction(function () use ($cart, $variant, $factory, $location, $validatedData, $orderUnitsMap, &$cartItemToReturn) {
             $identifyingAttributes = [
-                CartItem::PRODUCT_VARIANT_ID => $variant->id,
-                CartItem::FACTORY_ID => $factory->id,
-                CartItem::FACTORY_LOCATION_ID => $location->id,
-                CartItem::SHIPPING_METHOD_ID => $validatedData['shipping_method_id'],
+                CartItem::PRODUCT_VARIANT_ID   => $variant->id,
+                CartItem::FACTORY_ID           => $factory->id,
+                CartItem::FACTORY_LOCATION_ID  => $location->id,
+                CartItem::SHIPPING_METHOD_ID   => $validatedData['shipping_method_id'],
             ];
+
             $existingCartItem = $cart->items()->where($identifyingAttributes)->first();
             $withVat = true;
+
+            $activeCode = $this->activeCode();
+            $pf         = PriceFilterCategory::where('code', $activeCode)->first();
+            $filterIds  = $pf ? [$pf->id] : [];
+            $customerType = CustomerType::where('code', $activeCode)->first() ?: $cart->customerType;
+            $badge          = $cart->badge;
 
             $this->validateOrderUnitCounts($variant, $validatedData['quantities'], $cart, $existingCartItem);
 
             if ($existingCartItem) {
                 $currentQuantities = $existingCartItem->{CartItem::QUANTITIES};
-                $quantitiesToAdd = $validatedData['quantities'];
-                $mergedQuantities = $currentQuantities;
+                $quantitiesToAdd   = $validatedData['quantities'];
+                $mergedQuantities  = $currentQuantities;
+
                 foreach ($quantitiesToAdd as $unitId => $qtyToAdd) {
-                    $mergedQuantities[(string)$unitId] = ($currentQuantities[(string)$unitId] ?? ($currentQuantities[(int)$unitId] ?? 0)) + (float)$qtyToAdd;
+                    $mergedQuantities[(string)$unitId] =
+                        ($currentQuantities[(string)$unitId] ?? ($currentQuantities[(int)$unitId] ?? 0))
+                        + (float) $qtyToAdd;
                 }
+
                 $this->checkVariantAggregateLimits($variant, $mergedQuantities, $orderUnitsMap);
-                $pricingDetails = $this->priceService->calculatePrice($variant, $factory, $location, $cart->customerType, $cart->badge, $validatedData['filter_categories'] ?? [], $withVat);
-                $totalDetails = $this->priceService->calculateTotalPrice($mergedQuantities, (float)$pricingDetails['final_price'], $withVat);
+
+                $pricingDetails = $this->priceService->calculatePrice(
+                    $variant,
+                    $factory,
+                    $location,
+                    $customerType,
+                    $badge,
+                    $filterIds,
+                    $withVat
+                );
+
+                $totalDetails = $this->priceService->calculateTotalPrice(
+                    $mergedQuantities,
+                    (float) $pricingDetails['final_price'],
+                    $withVat
+                );
+
                 $existingCartItem->update([
-                    CartItem::QUANTITIES => $mergedQuantities,
-                    CartItem::PRICE => $pricingDetails['final_price'],
-                    CartItem::FINAL_PRICE => $totalDetails['subtotal'],
-                    CartItem::VAT_AMOUNT => $totalDetails['vat_amount'],
+                    CartItem::QUANTITIES     => $mergedQuantities,
+                    CartItem::PRICE          => $pricingDetails['final_price'],
+                    CartItem::FINAL_PRICE    => $totalDetails['subtotal'],
+                    CartItem::VAT_AMOUNT     => $totalDetails['vat_amount'],
                     CartItem::TOTAL_WITH_VAT => $totalDetails['total_with_vat'],
-                    CartItem::WITH_VAT => $withVat,
+                    CartItem::WITH_VAT       => $withVat,
                 ]);
+
                 $cartItemToReturn = $existingCartItem;
             } else {
                 $this->checkVariantAggregateLimits($variant, $validatedData['quantities'], $orderUnitsMap);
-                $pricingDetails = $this->priceService->calculatePrice($variant, $factory, $location, $cart->customerType, $cart->badge, $validatedData['filter_categories'] ?? [], $withVat);
-                $totalDetails = $this->priceService->calculateTotalPrice($validatedData['quantities'], (float)$pricingDetails['final_price'], $withVat);
+
+                $pricingDetails = $this->priceService->calculatePrice(
+                    $variant,
+                    $factory,
+                    $location,
+                    $customerType,
+                    $badge,
+                    $filterIds,
+                    $withVat
+                );
+
+                $totalDetails = $this->priceService->calculateTotalPrice(
+                    $validatedData['quantities'],
+                    (float) $pricingDetails['final_price'],
+                    $withVat
+                );
+
                 $cartItemToReturn = CartItem::create([
-                    CartItem::CART_ID => $cart->id,
-                    CartItem::PRODUCT_VARIANT_ID => $variant->id,
-                    CartItem::FACTORY_ID => $factory->id,
+                    CartItem::CART_ID             => $cart->id,
+                    CartItem::PRODUCT_VARIANT_ID  => $variant->id,
+                    CartItem::FACTORY_ID          => $factory->id,
                     CartItem::FACTORY_LOCATION_ID => $location->id,
-                    CartItem::SHIPPING_METHOD_ID => $validatedData['shipping_method_id'],
-                    CartItem::QUANTITIES => $validatedData['quantities'],
-                    CartItem::PRICE => $pricingDetails['final_price'],
-                    CartItem::FINAL_PRICE => $totalDetails['subtotal'],
-                    CartItem::VAT_AMOUNT => $totalDetails['vat_amount'],
-                    CartItem::TOTAL_WITH_VAT => $totalDetails['total_with_vat'],
-                    CartItem::WITH_VAT => $withVat,
+                    CartItem::SHIPPING_METHOD_ID  => $validatedData['shipping_method_id'],
+                    CartItem::QUANTITIES          => $validatedData['quantities'],
+                    CartItem::PRICE               => $pricingDetails['final_price'],
+                    CartItem::FINAL_PRICE         => $totalDetails['subtotal'],
+                    CartItem::VAT_AMOUNT          => $totalDetails['vat_amount'],
+                    CartItem::TOTAL_WITH_VAT      => $totalDetails['total_with_vat'],
+                    CartItem::WITH_VAT            => $withVat,
                 ]);
             }
+
             $reloadedCart = $cart->fresh(['items.productVariant.product.aggregateLimitOrderUnit']);
             $this->checkProductLineAggregateLimits($reloadedCart, $variant->product, $orderUnitsMap);
-            $cartItemToReturn->load(['productVariant.variantAttributes.attributeType', 'factory', 'factoryLocation', 'shippingMethod']);
-            return success([], 'global.received_successfully')->cookie('cart_session_id', $cart->session_id, 60 * 24 * 30);
+
+            $cartItemToReturn->load([
+                'productVariant.variantAttributes.attributeType',
+                'factory',
+                'factoryLocation',
+                'shippingMethod'
+            ]);
+            return success([], 'global.received_successfully')
+                ->cookie('cart_session_id', $cart->session_id, 60 * 24 * 30);
         });
     }
+
 
     public function updateCartItem(UpdateCartItemRequest $request, CartItem $item): JsonResponse
     {
@@ -367,7 +459,9 @@ class CartController extends Controller
             $this->checkVariantAggregateLimits($productVariant, $validatedData['quantities'], $orderUnitsMap);
 
             $withVat = true;
-            $filterIds = $validatedData['filter_categories'] ?? [];
+            $activeCode = $this->activeCode();
+            $pf         = PriceFilterCategory::where('code', $activeCode)->first();
+            $filterIds  = $pf ? [$pf->id] : [];
             $pricingDetails = $this->priceService->calculatePrice($productVariant, $item->factory, $location, $cart->customerType, $cart->badge, $filterIds, $withVat);
             $totalDetails = $this->priceService->calculateTotalPrice($validatedData['quantities'], (float)$pricingDetails['final_price'], $withVat);
             $item->update([
@@ -432,7 +526,6 @@ class CartController extends Controller
     protected function resolveCart(Request $request): Cart
     {
         $userId = Auth::id();
-        $cart = null;
         if ($userId) {
             $cart = Cart::firstOrCreate([Cart::USER_ID => $userId]);
         } else {
@@ -440,26 +533,32 @@ class CartController extends Controller
             $cart = Cart::firstOrCreate([Cart::SESSION_ID => $sessionId], [Cart::USER_ID => null]);
             cookie()->queue('cart_session_id', $sessionId, 60 * 24 * 30);
         }
-        if (!$cart->{Cart::CUSTOMER_TYPE_ID}) {
-            $defaultCustomerType = CustomerType::where(CustomerType::CODE, 'employer_without_consultant')->firstOrFail();
-            $cart->update([Cart::CUSTOMER_TYPE_ID => $defaultCustomerType->id]);
-        }
-        $cart->loadMissing('purchaseParameters');
-        $paramIds = $cart->purchaseParameters->pluck(PurchaseParameterValue::ID)->all();
 
-        $priceCategory = app(ParameterDetectionController::class)->detectPriceFilterCategoryFromValues($paramIds) ?? PriceFilterCategory::where(PriceFilterCategory::CODE, 'employer_without_consultant')->first();
-        if ($priceCategory) {
-            $cart->loadMissing('priceFilterCategories');
-            if (!$cart->priceFilterCategories->contains($priceCategory->id)) {
-                $cart->priceFilterCategories()->syncWithoutDetaching([$priceCategory->id]);
-            }
-            $customerTypeModel = CustomerType::where(CustomerType::CODE, $priceCategory->code)->first();
-            if ($customerTypeModel && $cart->{Cart::CUSTOMER_TYPE_ID} !== $customerTypeModel->id) {
-                $cart->update([Cart::CUSTOMER_TYPE_ID => $customerTypeModel->id]);
-            }
+        if (!$cart->{Cart::CUSTOMER_TYPE_ID}) {
+            $default = CustomerType::where(CustomerType::CODE, 'employer_without_consultant')->firstOrFail();
+            $cart->forceFill([Cart::CUSTOMER_TYPE_ID => $default->id])->save();
         }
-        return $cart->loadMissing(['customerType', 'badge', 'priceFilterCategories', 'items.productVariant.product.aggregateLimitOrderUnit', 'items.productVariant.limitOrderUnit', 'items.productVariant.product.orderUnits']);
+        $activeCode = $this->activeCode();
+        $pf  = PriceFilterCategory::where(PriceFilterCategory::CODE, $activeCode)->first();
+        $ct  = CustomerType::where(CustomerType::CODE, $activeCode)->first();
+
+        if ($pf) {
+            $cart->priceFilterCategories()->sync([$pf->id]);
+        }
+        if ($ct && $cart->{Cart::CUSTOMER_TYPE_ID} !== $ct->id) {
+            $cart->forceFill([Cart::CUSTOMER_TYPE_ID => $ct->id])->save();
+        }
+
+        return $cart->loadMissing([
+            'customerType',
+            'badge',
+            'priceFilterCategories',
+            'items.productVariant.product.aggregateLimitOrderUnit',
+            'items.productVariant.limitOrderUnit',
+            'items.productVariant.product.orderUnits',
+        ]);
     }
+
 
     private function loadRelations(Cart $cart): void
     {

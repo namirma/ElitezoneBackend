@@ -2,29 +2,22 @@
 
 namespace App\Http\Requests;
 
-use App\Models\User;
-use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreUserTypeRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
     public function authorize(): bool
     {
-        return true;
+        return auth()->check();
     }
 
-    /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array<string, ValidationRule|array|string>
-     */
     public function rules(): array
     {
         return [
-            User::TYPE_ID => 'required|integer|exists:user_types,id'
+            'roles'                   => 'required_without:type_id|array|min:1',
+            'roles.*'                 => 'in:engineer,contractor,employer,supplier',
+            'employer_has_consultant' => 'nullable|boolean',
+            'type_id'                 => 'nullable|integer|exists:user_types,id',
         ];
     }
 }

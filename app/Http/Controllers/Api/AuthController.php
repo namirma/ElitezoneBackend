@@ -71,6 +71,18 @@ class AuthController extends Controller
                 return success([]);
             } else {
                 Auth::login($user);
+                $roles = (array) $request->input('roles', []);
+                $user  = Auth::user();
+
+                foreach ($roles as $role) {
+                    match ($role) {
+                        'engineer'   => $user->engineer()->firstOrCreate([]),
+                        'contractor' => $user->contractor()->firstOrCreate([]),
+                        'employer'   => $user->employer()->firstOrCreate([]),
+                        'supplier'   => $user->supplier()->firstOrCreate([]),
+                        default      => null,
+                    };
+                }
                 $user->tokens()->delete();
                 $token = $user->createToken('auth')->plainTextToken;
 

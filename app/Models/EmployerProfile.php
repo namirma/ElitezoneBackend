@@ -19,13 +19,16 @@ class EmployerProfile extends Model
         USER_ID = 'user_id',
         PROJECT_DONE = 'project_done',
         PROJECT_IN_PROGRESS = 'project_in_progress',
-        ACTIVITY_PROVINCES = 'activity_provinces';
+        ACTIVITY_PROVINCES = 'activity_provinces',
+        HAS_CONSULTANT = 'has_consultant';
+
 
     protected $fillable = [
       self::USER_ID,
       self::PROJECT_DONE,
       self::PROJECT_IN_PROGRESS,
-      self::ACTIVITY_PROVINCES
+      self::ACTIVITY_PROVINCES,
+      self::HAS_CONSULTANT
     ];
 
     public function getCreatedAtAttribute()

@@ -73,12 +73,25 @@ class ProductSeeder extends Seeder
         }
 
         if ($typeAttributeType) {
-            $typeAttributesData = [['name' => 'شاخه', 'display_name' => 'شاخه'], ['name' => 'کلاف', 'display_name' => 'کلاف'], ['name' => 'صنعتی', 'display_name' => 'صنعتی']];
-            foreach ($typeAttributesData as $attrData) { Attribute::updateOrCreate([Attribute::ATTRIBUTE_TYPE_ID => $typeAttributeType->id, Attribute::NAME => $attrData['name']], $attrData); }
+            $typeAttributesData = [
+                ['name' => 'شاخه', 'display_name' => 'شاخه'],
+                ['name' => 'کلاف', 'display_name' => 'کلاف'],
+                ['name' => 'صنعتی', 'display_name' => 'صنعتی']
+            ];
+            foreach ($typeAttributesData as $attrData) {
+                Attribute::updateOrCreate([Attribute::ATTRIBUTE_TYPE_ID => $typeAttributeType->id, Attribute::NAME => $attrData['name']], $attrData);
+            }
         }
         if ($gradeAttributeType) {
-            $gradeAttributesData = [['name' => 'A1', 'display_name' => 'A1'], ['name' => 'A2', 'display_name' => 'A2'], ['name' => 'A3', 'display_name' => 'A3'], ['name' => 'A4', 'display_name' => 'A4']];
-            foreach ($gradeAttributesData as $attrData) { Attribute::updateOrCreate([Attribute::ATTRIBUTE_TYPE_ID => $gradeAttributeType->id, Attribute::NAME => $attrData['name']], $attrData); }
+            $gradeAttributesData = [
+                ['name' => 'A1', 'display_name' => 'A1'],
+                ['name' => 'A2', 'display_name' => 'A2'],
+                ['name' => 'A3', 'display_name' => 'A3'],
+                ['name' => 'A4', 'display_name' => 'A4']
+            ];
+            foreach ($gradeAttributesData as $attrData) {
+                Attribute::updateOrCreate([Attribute::ATTRIBUTE_TYPE_ID => $gradeAttributeType->id, Attribute::NAME => $attrData['name']], $attrData);
+            }
         }
         if ($sizeAttributeType) {
             $sizeAttributesData = [
@@ -87,7 +100,9 @@ class ProductSeeder extends Seeder
                 ['name' => '22', 'display_name' => '22'], ['name' => '25', 'display_name' => '25'], ['name' => '28', 'display_name' => '28'], ['name' => '30', 'display_name' => '30'],
                 ['name' => '32', 'display_name' => '32'], ['name' => '36', 'display_name' => '36'], ['name' => '40', 'display_name' => '40'], ['name' => '50', 'display_name' => '50'],
             ];
-            foreach ($sizeAttributesData as $attrData) { Attribute::updateOrCreate([Attribute::ATTRIBUTE_TYPE_ID => $sizeAttributeType->id, Attribute::NAME => $attrData['name']], $attrData); }
+            foreach ($sizeAttributesData as $attrData) {
+                Attribute::updateOrCreate([Attribute::ATTRIBUTE_TYPE_ID => $sizeAttributeType->id, Attribute::NAME => $attrData['name']], $attrData);
+            }
         }
 
         $orderUnitsData = [
@@ -95,21 +110,29 @@ class ProductSeeder extends Seeder
             [OrderUnit::NAME => 'بندیل', OrderUnit::CODE => 'bundle', OrderUnit::UNIT => 'kg', OrderUnit::AMOUNT => 5000],
             [OrderUnit::NAME => 'خرده فروشی', OrderUnit::CODE => 'retail', OrderUnit::UNIT => 'kg', OrderUnit::AMOUNT => 1],
         ];
-        foreach ($orderUnitsData as $unitDetails) { OrderUnit::updateOrCreate([OrderUnit::CODE => $unitDetails[OrderUnit::CODE]], $unitDetails); }
+        foreach ($orderUnitsData as $unitDetails) {
+            OrderUnit::updateOrCreate([OrderUnit::CODE => $unitDetails[OrderUnit::CODE]], $unitDetails);
+        }
 
         $kgUnit = OrderUnit::where(OrderUnit::CODE, 'retail')->first();
 
         if (!$rebarCategory || !$kgUnit) {
-            $this->command->error('Rebar category or KG unit not found, cannot seed rebar product and variants.'); return;
+            return;
         }
 
         $rebarProduct = Product::updateOrCreate(
             [Product::SLUG => 'rebar'],
             [
-                Product::CATEGORY_ID => $rebarCategory->id, Product::NAME => 'میلگرد آجدار',
+                Product::CATEGORY_ID => $rebarCategory->id,
+                Product::NAME => 'میلگرد آجدار',
                 Product::DESCRIPTION => 'میلگرد آجدار با کیفیت عالی مناسب برای ساخت و ساز. انواع میلگرد در سایزها و گریدهای مختلف.',
-                Product::SKU => 'RBR-001', Product::IS_ACTIVE => true, Product::IS_FEATURED => true, Product::VIEW_COUNT => 0, Product::ITEMS_PER_PAGE => 12,
-                Product::AGGREGATE_MIN_ORDER_VALUE => null, Product::AGGREGATE_MAX_ORDER_VALUE => 5000000,
+                Product::SKU => 'RBR-001',
+                Product::IS_ACTIVE => true,
+                Product::IS_FEATURED => true,
+                Product::VIEW_COUNT => 0,
+                Product::ITEMS_PER_PAGE => 12,
+                Product::AGGREGATE_MIN_ORDER_VALUE => null,
+                Product::AGGREGATE_MAX_ORDER_VALUE => 5000000,
                 Product::AGGREGATE_LIMIT_ORDER_UNIT_ID => $kgUnit->id,
             ]
         );
@@ -125,18 +148,18 @@ class ProductSeeder extends Seeder
             }
             $capacityUnit = OrderUnit::where(OrderUnit::CODE, 'capacity')->first();
             $bundleUnit = OrderUnit::where(OrderUnit::CODE, 'bundle')->first();
-            if ($capacityUnit) { $rebarProduct->orderUnits()->syncWithoutDetaching([$capacityUnit->id => ['max_quantity' => 5]]);}
-            if ($bundleUnit) { $rebarProduct->orderUnits()->syncWithoutDetaching([$bundleUnit->id => ['max_quantity' => 30]]);}
-            if ($kgUnit) { $rebarProduct->orderUnits()->syncWithoutDetaching([$kgUnit->id => ['max_quantity' => 2000000]]);} // حداکثر ۲۰۰۰ تن خرده فروشی
+            if ($capacityUnit) { $rebarProduct->orderUnits()->syncWithoutDetaching([$capacityUnit->id => ['max_quantity' => 5]]); }
+            if ($bundleUnit)  { $rebarProduct->orderUnits()->syncWithoutDetaching([$bundleUnit->id => ['max_quantity' => 30]]); }
+            if ($kgUnit)      { $rebarProduct->orderUnits()->syncWithoutDetaching([$kgUnit->id => ['max_quantity' => 2000000]]); }
 
             $shakhehAttr = Attribute::where(Attribute::ATTRIBUTE_TYPE_ID, $typeAttributeType?->id)->where(Attribute::NAME, 'شاخه')->first();
-            $kalafAttr = Attribute::where(Attribute::ATTRIBUTE_TYPE_ID, $typeAttributeType?->id)->where(Attribute::NAME, 'کلاف')->first();
+            $kalafAttr   = Attribute::where(Attribute::ATTRIBUTE_TYPE_ID, $typeAttributeType?->id)->where(Attribute::NAME, 'کلاف')->first();
             $gradeA1Attr = Attribute::where(Attribute::ATTRIBUTE_TYPE_ID, $gradeAttributeType?->id)->where(Attribute::NAME, 'A1')->first();
             $gradeA2Attr = Attribute::where(Attribute::ATTRIBUTE_TYPE_ID, $gradeAttributeType?->id)->where(Attribute::NAME, 'A2')->first();
             $gradeA3Attr = Attribute::where(Attribute::ATTRIBUTE_TYPE_ID, $gradeAttributeType?->id)->where(Attribute::NAME, 'A3')->first();
-            $size8Attr = Attribute::where(Attribute::ATTRIBUTE_TYPE_ID, $sizeAttributeType?->id)->where(Attribute::NAME, '8')->first();
-            $size12Attr = Attribute::where(Attribute::ATTRIBUTE_TYPE_ID, $sizeAttributeType?->id)->where(Attribute::NAME, '12')->first();
-            $size16Attr = Attribute::where(Attribute::ATTRIBUTE_TYPE_ID, $sizeAttributeType?->id)->where(Attribute::NAME, '16')->first();
+            $size8Attr   = Attribute::where(Attribute::ATTRIBUTE_TYPE_ID, $sizeAttributeType?->id)->where(Attribute::NAME, '8')->first();
+            $size12Attr  = Attribute::where(Attribute::ATTRIBUTE_TYPE_ID, $sizeAttributeType?->id)->where(Attribute::NAME, '12')->first();
+            $size16Attr  = Attribute::where(Attribute::ATTRIBUTE_TYPE_ID, $sizeAttributeType?->id)->where(Attribute::NAME, '16')->first();
 
             $variantsSeedData = [
                 [ProductVariant::SKU => 'RBR-A2-12-SH', ProductVariant::NAME => 'میلگرد شاخه A2 سایز 12', 'attrs_ids' => [$shakhehAttr?->id, $gradeA2Attr?->id, $size12Attr?->id], ProductVariant::STOCK_QUANTITY => 200000, ProductVariant::MIN_ORDER_VALUE => 2000, ProductVariant::MAX_ORDER_VALUE => 100000, ProductVariant::DISCOUNT_VALUE => 10.00, ProductVariant::DISCOUNT_TYPE => 'percentage', ProductVariant::DISCOUNT_START_DATE => Carbon::now(), ProductVariant::DISCOUNT_END_DATE => Carbon::now()->addMonth()],
@@ -147,10 +170,16 @@ class ProductSeeder extends Seeder
                 $variant = ProductVariant::updateOrCreate(
                     [ProductVariant::PRODUCT_ID => $rebarProduct->id, ProductVariant::SKU => $data[ProductVariant::SKU]],
                     [
-                        ProductVariant::NAME => $data[ProductVariant::NAME], ProductVariant::IS_ACTIVE => true, ProductVariant::STOCK_QUANTITY => $data[ProductVariant::STOCK_QUANTITY],
-                        ProductVariant::MIN_ORDER_VALUE => $data[ProductVariant::MIN_ORDER_VALUE], ProductVariant::MAX_ORDER_VALUE => $data[ProductVariant::MAX_ORDER_VALUE], ProductVariant::LIMIT_ORDER_UNIT_ID => $kgUnit->id,
-                        ProductVariant::DISCOUNT_VALUE => $data[ProductVariant::DISCOUNT_VALUE], ProductVariant::DISCOUNT_TYPE => $data[ProductVariant::DISCOUNT_TYPE],
-                        ProductVariant::DISCOUNT_START_DATE => $data[ProductVariant::DISCOUNT_START_DATE], ProductVariant::DISCOUNT_END_DATE => $data[ProductVariant::DISCOUNT_END_DATE],
+                        ProductVariant::NAME => $data[ProductVariant::NAME],
+                        ProductVariant::IS_ACTIVE => true,
+                        ProductVariant::STOCK_QUANTITY => $data[ProductVariant::STOCK_QUANTITY],
+                        ProductVariant::MIN_ORDER_VALUE => $data[ProductVariant::MIN_ORDER_VALUE],
+                        ProductVariant::MAX_ORDER_VALUE => $data[ProductVariant::MAX_ORDER_VALUE],
+                        ProductVariant::LIMIT_ORDER_UNIT_ID => $kgUnit->id,
+                        ProductVariant::DISCOUNT_VALUE => $data[ProductVariant::DISCOUNT_VALUE],
+                        ProductVariant::DISCOUNT_TYPE => $data[ProductVariant::DISCOUNT_TYPE],
+                        ProductVariant::DISCOUNT_START_DATE => $data[ProductVariant::DISCOUNT_START_DATE],
+                        ProductVariant::DISCOUNT_END_DATE => $data[ProductVariant::DISCOUNT_END_DATE],
                     ]
                 );
                 $variant->variantAttributes()->sync(array_filter($data['attrs_ids']));
@@ -161,7 +190,9 @@ class ProductSeeder extends Seeder
             [ShippingMethod::NAME => 'ارسال استاندارد', ShippingMethod::CODE => 'standard'],
             [ShippingMethod::NAME => 'تحویل در محل', ShippingMethod::CODE => 'pickup'],
         ];
-        foreach ($shippingMethodsData as $methodDetails) { ShippingMethod::updateOrCreate([ShippingMethod::CODE => $methodDetails[ShippingMethod::CODE]], $methodDetails); }
+        foreach ($shippingMethodsData as $methodDetails) {
+            ShippingMethod::updateOrCreate([ShippingMethod::CODE => $methodDetails[ShippingMethod::CODE]], $methodDetails);
+        }
 
         $kavirFactory = Factory::updateOrCreate(
             [Factory::SLUG => 'kavir-steel'],
@@ -178,49 +209,70 @@ class ProductSeeder extends Seeder
             ['name' => 'انبار تهران', 'type' => 'warehouse', 'city' => 'تهران', 'address' => 'تهران، شادآباد، خیابان صنعت'],
             ['name' => 'انبار شیراز', 'type' => 'warehouse', 'city' => 'شیراز', 'address' => 'شیراز، شهرک صنعتی'],
         ];
-        if($kavirFactory) { foreach ($kavirLocationsData as $locDetails) { FactoryLocation::updateOrCreate([FactoryLocation::FACTORY_ID => $kavirFactory->id, FactoryLocation::NAME => $locDetails['name'], FactoryLocation::TYPE => $locDetails['type']], $locDetails); } }
+        if ($kavirFactory) {
+            foreach ($kavirLocationsData as $locDetails) {
+                FactoryLocation::updateOrCreate(
+                    [FactoryLocation::FACTORY_ID => $kavirFactory->id, FactoryLocation::NAME => $locDetails['name'], FactoryLocation::TYPE => $locDetails['type']],
+                    $locDetails
+                );
+            }
+        }
 
         $zobAhanLocationsData = [
             ['name' => 'درب کارخانه', 'type' => 'factory_door', 'city' => 'اصفهان', 'address' => 'اصفهان، ذوب آهن'],
             ['name' => 'انبار مرکزی', 'type' => 'warehouse', 'city' => 'اصفهان', 'address' => 'اصفهان، شهرک صنعتی'],
         ];
-        if($zobAhanFactory) { foreach ($zobAhanLocationsData as $locDetails) { FactoryLocation::updateOrCreate([FactoryLocation::FACTORY_ID => $zobAhanFactory->id, FactoryLocation::NAME => $locDetails['name'], FactoryLocation::TYPE => $locDetails['type']], $locDetails); } }
+        if ($zobAhanFactory) {
+            foreach ($zobAhanLocationsData as $locDetails) {
+                FactoryLocation::updateOrCreate(
+                    [FactoryLocation::FACTORY_ID => $zobAhanFactory->id, FactoryLocation::NAME => $locDetails['name'], FactoryLocation::TYPE => $locDetails['type']],
+                    $locDetails
+                );
+            }
+        }
 
         $customerTypesData = [
             [CustomerType::NAME => 'کارفرمای بدون مشاور', CustomerType::CODE => 'employer_without_consultant', CustomerType::HAS_CONSULTANT => false],
-            [CustomerType::NAME => 'کارفرمای دارای مشاور', CustomerType::CODE => 'employer_with_consultant', CustomerType::HAS_CONSULTANT => true],
             [CustomerType::NAME => 'مهندس دارای مشاور', CustomerType::CODE => 'engineer_with_consultant', CustomerType::HAS_CONSULTANT => true],
-            [CustomerType::NAME => 'پیمانکار دارای مشاور', CustomerType::CODE => 'contractor_with_consultant', CustomerType::HAS_CONSULTANT => true],
         ];
-        foreach ($customerTypesData as $typeDetails) { CustomerType::updateOrCreate([CustomerType::CODE => $typeDetails[CustomerType::CODE]], $typeDetails); }
+        foreach ($customerTypesData as $typeDetails) {
+            CustomerType::updateOrCreate([CustomerType::CODE => $typeDetails[CustomerType::CODE]], $typeDetails);
+        }
 
         $badgesData = [
             [Badge::NAME => 'برنزی', Badge::CODE => 'bronze', Badge::ICON => 'badges/bronze.svg'],
             [Badge::NAME => 'نقره‌ای', Badge::CODE => 'silver', Badge::ICON => 'badges/silver.svg'],
             [Badge::NAME => 'طلایی', Badge::CODE => 'gold', Badge::ICON => 'badges/gold.svg'],
         ];
-        foreach ($badgesData as $badgeDetails) { Badge::updateOrCreate([Badge::CODE => $badgeDetails[Badge::CODE]], $badgeDetails); }
+        foreach ($badgesData as $badgeDetails) {
+            Badge::updateOrCreate([Badge::CODE => $badgeDetails[Badge::CODE]], $badgeDetails);
+        }
 
         $customerTypeInstances = CustomerType::all()->keyBy(CustomerType::CODE);
         $badgeInstances = Badge::all()->keyBy(Badge::CODE);
 
         $priceAdjustmentsData = [
-            ['c_code' => 'employer_without_consultant', 'b_code' => null, 'amount' => 0], ['c_code' => 'employer_with_consultant', 'b_code' => null, 'amount' => 1000],
-            ['c_code' => 'engineer_with_consultant', 'b_code' => null, 'amount' => 2000], ['c_code' => 'contractor_with_consultant', 'b_code' => null, 'amount' => 3000],
+            ['c_code' => 'employer_without_consultant', 'b_code' => null, 'amount' => 0],
+            ['c_code' => 'engineer_with_consultant', 'b_code' => null, 'amount' => 2000],
         ];
         foreach ($priceAdjustmentsData as $adj) {
-            if(isset($customerTypeInstances[$adj['c_code']])) {
+            if (isset($customerTypeInstances[$adj['c_code']])) {
                 PriceAdjustment::updateOrCreate(
                     [PriceAdjustment::CUSTOMER_TYPE_ID => $customerTypeInstances[$adj['c_code']]->id, PriceAdjustment::BADGE_ID => null],
                     [PriceAdjustment::ADJUSTMENT_AMOUNT => $adj['amount'], PriceAdjustment::IS_ACTIVE => true]
                 );
             }
         }
-        $badgeAdjustments = [['b_code' => 'bronze', 'add' => 500], ['b_code' => 'silver', 'add' => 1000], ['b_code' => 'gold', 'add' => 1500]];
+
+        $badgeAdjustments = [
+            ['b_code' => 'bronze', 'add' => 500],
+            ['b_code' => 'silver', 'add' => 1000],
+            ['b_code' => 'gold',  'add' => 1500]
+        ];
         foreach ($customerTypeInstances as $ctInstance) {
             $baseAdj = PriceAdjustment::where(PriceAdjustment::CUSTOMER_TYPE_ID, $ctInstance->id)->whereNull(PriceAdjustment::BADGE_ID)->value(PriceAdjustment::ADJUSTMENT_AMOUNT) ?? 0;
             foreach ($badgeAdjustments as $bAdj) {
-                if(isset($badgeInstances[$bAdj['b_code']])) {
+                if (isset($badgeInstances[$bAdj['b_code']])) {
                     PriceAdjustment::updateOrCreate(
                         [PriceAdjustment::CUSTOMER_TYPE_ID => $ctInstance->id, PriceAdjustment::BADGE_ID => $badgeInstances[$bAdj['b_code']]->id],
                         [PriceAdjustment::ADJUSTMENT_AMOUNT => $baseAdj + $bAdj['add'], PriceAdjustment::IS_ACTIVE => true]
@@ -230,69 +282,126 @@ class ProductSeeder extends Seeder
         }
 
         $filterTypesData = [
-            [PriceFilterType::NAME => 'سود', PriceFilterType::CODE => 'profit', PriceFilterType::APPLY_ON => 'both', PriceFilterType::IS_ACTIVE => true, PriceFilterType::SORT_ORDER => 1],
-            [PriceFilterType::NAME => 'سیاست قیمت‌گذاری', PriceFilterType::CODE => 'policy', PriceFilterType::APPLY_ON => 'general', PriceFilterType::IS_ACTIVE => true, PriceFilterType::SORT_ORDER => 2],
-            [PriceFilterType::NAME => 'نوع مشتری', PriceFilterType::CODE => 'customer_type', PriceFilterType::APPLY_ON => 'special', PriceFilterType::IS_ACTIVE => true, PriceFilterType::SORT_ORDER => 3],
-            [PriceFilterType::NAME => 'وضعیت مشاور', PriceFilterType::CODE => 'consultant_status', PriceFilterType::APPLY_ON => 'special', PriceFilterType::IS_ACTIVE => true, PriceFilterType::SORT_ORDER => 4],
+            [PriceFilterType::NAME => 'سود', PriceFilterType::CODE => 'profit',             PriceFilterType::APPLY_ON => 'both',    PriceFilterType::IS_ACTIVE => true, PriceFilterType::SORT_ORDER => 1],
+            [PriceFilterType::NAME => 'سیاست قیمت‌گذاری', PriceFilterType::CODE => 'policy',            PriceFilterType::APPLY_ON => 'general', PriceFilterType::IS_ACTIVE => true, PriceFilterType::SORT_ORDER => 2],
+            [PriceFilterType::NAME => 'نوع مشتری',       PriceFilterType::CODE => 'customer_type',      PriceFilterType::APPLY_ON => 'special', PriceFilterType::IS_ACTIVE => true, PriceFilterType::SORT_ORDER => 3],
+            [PriceFilterType::NAME => 'وضعیت مشاور',     PriceFilterType::CODE => 'consultant_status', PriceFilterType::APPLY_ON => 'special', PriceFilterType::IS_ACTIVE => true, PriceFilterType::SORT_ORDER => 4],
         ];
-        foreach ($filterTypesData as $typeDetails) { PriceFilterType::updateOrCreate([PriceFilterType::CODE => $typeDetails[PriceFilterType::CODE]], $typeDetails); }
+        foreach ($filterTypesData as $typeDetails) {
+            PriceFilterType::updateOrCreate([PriceFilterType::CODE => $typeDetails[PriceFilterType::CODE]], $typeDetails);
+        }
 
         $priceFilterTypeInstances = PriceFilterType::all()->keyBy(PriceFilterType::CODE);
+
         $priceFiltersData = [
-            'profit' => [[PriceFilter::NAME => 'سود پایه', PriceFilter::CODE => 'base_profit', PriceFilter::AMOUNT => 1000, PriceFilter::IS_PERCENTAGE => false, PriceFilter::IS_ACTIVE => true, PriceFilter::SORT_ORDER => 1],[PriceFilter::NAME => 'سود ویژه', PriceFilter::CODE => 'special_profit', PriceFilter::AMOUNT => 2000, PriceFilter::IS_PERCENTAGE => false, PriceFilter::IS_ACTIVE => true, PriceFilter::SORT_ORDER => 2]],
-            'policy' => [[PriceFilter::NAME => 'سیاست قیمت‌گذاری عادی', PriceFilter::CODE => 'regular_policy', PriceFilter::AMOUNT => 500, PriceFilter::IS_PERCENTAGE => false, PriceFilter::IS_ACTIVE => true, PriceFilter::SORT_ORDER => 1],[PriceFilter::NAME => 'سیاست قیمت‌گذاری رقابتی', PriceFilter::CODE => 'competitive_policy', PriceFilter::AMOUNT => -200, PriceFilter::IS_PERCENTAGE => false, PriceFilter::IS_ACTIVE => true, PriceFilter::SORT_ORDER => 2]],
-            'customer_type' => [[PriceFilter::NAME => 'کارفرما', PriceFilter::CODE => 'employer', PriceFilter::AMOUNT => 0, PriceFilter::IS_PERCENTAGE => false, PriceFilter::IS_ACTIVE => true, PriceFilter::SORT_ORDER => 1],[PriceFilter::NAME => 'مهندس', PriceFilter::CODE => 'engineer', PriceFilter::AMOUNT => -1000, PriceFilter::IS_PERCENTAGE => false, PriceFilter::IS_ACTIVE => true, PriceFilter::SORT_ORDER => 2],[PriceFilter::NAME => 'پیمانکار', PriceFilter::CODE => 'contractor', PriceFilter::AMOUNT => -2000, PriceFilter::IS_PERCENTAGE => false, PriceFilter::IS_ACTIVE => true, PriceFilter::SORT_ORDER => 3]],
-            'consultant_status' => [[PriceFilter::NAME => 'بدون مشاور', PriceFilter::CODE => 'without_consultant', PriceFilter::AMOUNT => 0, PriceFilter::IS_PERCENTAGE => false, PriceFilter::IS_ACTIVE => true, PriceFilter::SORT_ORDER => 1],[PriceFilter::NAME => 'دارای مشاور', PriceFilter::CODE => 'with_consultant', PriceFilter::AMOUNT => -800, PriceFilter::IS_PERCENTAGE => false, PriceFilter::IS_ACTIVE => true, PriceFilter::SORT_ORDER => 2]],
+            'profit' => [
+                [PriceFilter::NAME => 'سود پایه',      PriceFilter::CODE => 'base_profit',      PriceFilter::AMOUNT => 1000,  PriceFilter::IS_PERCENTAGE => false, PriceFilter::IS_ACTIVE => true, PriceFilter::SORT_ORDER => 1],
+                [PriceFilter::NAME => 'سود ویژه',      PriceFilter::CODE => 'special_profit',    PriceFilter::AMOUNT => 2000,  PriceFilter::IS_PERCENTAGE => false, PriceFilter::IS_ACTIVE => true, PriceFilter::SORT_ORDER => 2],
+            ],
+            'policy' => [
+                [PriceFilter::NAME => 'سیاست عادی',    PriceFilter::CODE => 'regular_policy',    PriceFilter::AMOUNT => 500,   PriceFilter::IS_PERCENTAGE => false, PriceFilter::IS_ACTIVE => true, PriceFilter::SORT_ORDER => 1],
+                [PriceFilter::NAME => 'سیاست رقابتی',  PriceFilter::CODE => 'competitive_policy',PriceFilter::AMOUNT => -200,  PriceFilter::IS_PERCENTAGE => false, PriceFilter::IS_ACTIVE => true, PriceFilter::SORT_ORDER => 2],
+            ],
+            'customer_type' => [
+                [PriceFilter::NAME => 'کارفرما',       PriceFilter::CODE => 'employer',          PriceFilter::AMOUNT => 0,     PriceFilter::IS_PERCENTAGE => false, PriceFilter::IS_ACTIVE => true, PriceFilter::SORT_ORDER => 1],
+                [PriceFilter::NAME => 'مهندس',         PriceFilter::CODE => 'engineer',          PriceFilter::AMOUNT => -1000, PriceFilter::IS_PERCENTAGE => false, PriceFilter::IS_ACTIVE => true, PriceFilter::SORT_ORDER => 2],
+            ],
+            'consultant_status' => [
+                [PriceFilter::NAME => 'بدون مشاور',    PriceFilter::CODE => 'without_consultant',PriceFilter::AMOUNT => 0,     PriceFilter::IS_PERCENTAGE => false, PriceFilter::IS_ACTIVE => true, PriceFilter::SORT_ORDER => 1],
+                [PriceFilter::NAME => 'دارای مشاور',   PriceFilter::CODE => 'with_consultant',   PriceFilter::AMOUNT => -800,  PriceFilter::IS_PERCENTAGE => false, PriceFilter::IS_ACTIVE => true, PriceFilter::SORT_ORDER => 2],
+            ],
         ];
-        foreach($priceFiltersData as $typeCode => $filters){
-            if(isset($priceFilterTypeInstances[$typeCode])){
-                foreach($filters as $filterDetails){
-                    PriceFilter::updateOrCreate([PriceFilter::PRICE_FILTER_TYPE_ID => $priceFilterTypeInstances[$typeCode]->id, PriceFilter::CODE => $filterDetails[PriceFilter::CODE]], array_merge([PriceFilter::PRICE_FILTER_TYPE_ID => $priceFilterTypeInstances[$typeCode]->id], $filterDetails));
+
+        foreach ($priceFiltersData as $typeCode => $filters) {
+            if (isset($priceFilterTypeInstances[$typeCode])) {
+                foreach ($filters as $filterDetails) {
+                    PriceFilter::updateOrCreate(
+                        [PriceFilter::PRICE_FILTER_TYPE_ID => $priceFilterTypeInstances[$typeCode]->id, PriceFilter::CODE => $filterDetails[PriceFilter::CODE]],
+                        array_merge([PriceFilter::PRICE_FILTER_TYPE_ID => $priceFilterTypeInstances[$typeCode]->id], $filterDetails)
+                    );
                 }
             }
         }
 
         $priceFilterCategoriesData = [
-            [PriceFilterCategory::NAME => 'کارفرمای بدون مشاور', PriceFilterCategory::CODE => 'employer_without_consultant', PriceFilterCategory::DESCRIPTION => 'فیلترهای قیمت برای کارفرمای بدون مشاور', PriceFilterCategory::IS_ACTIVE => true, PriceFilterCategory::SORT_ORDER => 1, 'filters' => ['base_profit', 'regular_policy', 'employer', 'without_consultant']],
-            [PriceFilterCategory::NAME => 'کارفرمای دارای مشاور', PriceFilterCategory::CODE => 'employer_with_consultant', PriceFilterCategory::DESCRIPTION => 'فیلترهای قیمت برای کارفرمای دارای مشاور', PriceFilterCategory::IS_ACTIVE => true, PriceFilterCategory::SORT_ORDER => 2, 'filters' => ['base_profit', 'regular_policy', 'employer', 'with_consultant']],
-            [PriceFilterCategory::NAME => 'مهندس دارای مشاور', PriceFilterCategory::CODE => 'engineer_with_consultant', PriceFilterCategory::DESCRIPTION => 'فیلترهای قیمت برای مهندس دارای مشاور', PriceFilterCategory::IS_ACTIVE => true, PriceFilterCategory::SORT_ORDER => 3, 'filters' => ['base_profit', 'competitive_policy', 'engineer', 'with_consultant']],
-            [PriceFilterCategory::NAME => 'پیمانکار دارای مشاور', PriceFilterCategory::CODE => 'contractor_with_consultant', PriceFilterCategory::DESCRIPTION => 'فیلترهای قیمت برای پیمانکار دارای مشاور', PriceFilterCategory::IS_ACTIVE => true, PriceFilterCategory::SORT_ORDER => 4, 'filters' => ['special_profit', 'competitive_policy', 'contractor', 'with_consultant']],
+            [
+                PriceFilterCategory::NAME => 'کارفرمای بدون مشاور',
+                PriceFilterCategory::CODE => 'employer_without_consultant',
+                PriceFilterCategory::DESCRIPTION => 'فیلترهای قیمت برای کارفرمای بدون مشاور',
+                PriceFilterCategory::IS_ACTIVE => true,
+                PriceFilterCategory::SORT_ORDER => 1,
+                'filters' => ['base_profit', 'regular_policy', 'employer', 'without_consultant']
+            ],
+            [
+                PriceFilterCategory::NAME => 'مهندس دارای مشاور',
+                PriceFilterCategory::CODE => 'engineer_with_consultant',
+                PriceFilterCategory::DESCRIPTION => 'فیلترهای قیمت برای مهندس دارای مشاور',
+                PriceFilterCategory::IS_ACTIVE => true,
+                PriceFilterCategory::SORT_ORDER => 2,
+                'filters' => ['base_profit', 'competitive_policy', 'engineer', 'with_consultant']
+            ],
         ];
+
         foreach ($priceFilterCategoriesData as $categoryDetails) {
-            $filterCodes = $categoryDetails['filters']; unset($categoryDetails['filters']);
-            $category = PriceFilterCategory::updateOrCreate([PriceFilterCategory::CODE => $categoryDetails[PriceFilterCategory::CODE]], $categoryDetails);
+            $filterCodes = $categoryDetails['filters'];
+            unset($categoryDetails['filters']);
+
+            $category = PriceFilterCategory::updateOrCreate(
+                [PriceFilterCategory::CODE => $categoryDetails[PriceFilterCategory::CODE]],
+                $categoryDetails
+            );
+
             $filtersToSync = PriceFilter::whereIn(PriceFilter::CODE, $filterCodes)->pluck(PriceFilter::ID);
             $category->filters()->sync($filtersToSync);
         }
 
+        PriceFilterCategory::whereNotIn(PriceFilterCategory::CODE, ['engineer_with_consultant', 'employer_without_consultant'])
+            ->update([PriceFilterCategory::IS_ACTIVE => false]);
+
         $settingsData = [
-            [PriceSetting::NAME => 'نرخ مالیات بر ارزش افزوده', PriceSetting::CODE => PriceSetting::CODE_VAT_RATE, PriceSetting::VALUE => '10', PriceSetting::DESCRIPTION => 'نرخ مالیات بر ارزش افزوده به درصد'],
+            [PriceSetting::NAME => 'نرخ مالیات بر ارزش افزوده', PriceSetting::CODE => PriceSetting::CODE_VAT_RATE, PriceSetting::VALUE => '10',   PriceSetting::DESCRIPTION => 'نرخ مالیات بر ارزش افزوده به درصد'],
             [PriceSetting::NAME => 'نمایش پیش‌فرض قیمت با ارزش افزوده', PriceSetting::CODE => PriceSetting::CODE_SHOW_PRICES_WITH_VAT, PriceSetting::VALUE => 'false', PriceSetting::DESCRIPTION => 'آیا قیمت‌ها به صورت پیش‌فرض با احتساب ارزش افزوده نمایش داده شوند؟'],
         ];
-        foreach ($settingsData as $settingDetails) { PriceSetting::updateOrCreate([PriceSetting::CODE => $settingDetails[PriceSetting::CODE]], $settingDetails); }
+        foreach ($settingsData as $settingDetails) {
+            PriceSetting::updateOrCreate([PriceSetting::CODE => $settingDetails[PriceSetting::CODE]], $settingDetails);
+        }
 
         $offerData = [
-            Offer::TITLE => 'ارسال رایگان میلگرد', Offer::DESCRIPTION => 'ارسال رایگان برای خرید بیش از 3 ظرفیت میلگرد',
-            Offer::CODE => 'FREESHIP', Offer::TYPE => 'free_shipping', Offer::VALUE => null,
-            Offer::START_DATE => Carbon::now(), Offer::END_DATE => Carbon::now()->addDays(15),
-            Offer::MINIMUM_QUANTITY => 3, Offer::IS_ACTIVE => true,
+            Offer::TITLE => 'ارسال رایگان میلگرد',
+            Offer::DESCRIPTION => 'ارسال رایگان برای خرید بیش از 3 ظرفیت میلگرد',
+            Offer::CODE => 'FREESHIP',
+            Offer::TYPE => 'free_shipping',
+            Offer::VALUE => null,
+            Offer::START_DATE => Carbon::now(),
+            Offer::END_DATE => Carbon::now()->addDays(15),
+            Offer::MINIMUM_QUANTITY => 3,
+            Offer::IS_ACTIVE => true,
         ];
         $offer = Offer::updateOrCreate([Offer::CODE => $offerData[Offer::CODE]], $offerData);
-        if ($rebarProduct && $offer) { $rebarProduct->offers()->syncWithoutDetaching([$offer->id => ['associated_at' => now()]]); }
+        if ($rebarProduct && $offer) {
+            $rebarProduct->offers()->syncWithoutDetaching([$offer->id => ['associated_at' => now()]]);
+        }
 
-        if (!$kavirFactory) { $this->command->error('Kavir factory not found for pricing!'); return; }
-        $factoryDoorKavir = FactoryLocation::where(FactoryLocation::FACTORY_ID, $kavirFactory->id)->where(FactoryLocation::TYPE, 'factory_door')->first();
+        if (!$kavirFactory) {
+            return;
+        }
+
+        $factoryDoorKavir      = FactoryLocation::where(FactoryLocation::FACTORY_ID, $kavirFactory->id)->where(FactoryLocation::TYPE, 'factory_door')->first();
         $isfahanWarehouseKavir = FactoryLocation::where(FactoryLocation::FACTORY_ID, $kavirFactory->id)->where(FactoryLocation::TYPE, 'warehouse')->where(FactoryLocation::CITY, 'اصفهان')->first();
-        $tehranWarehouseKavir = FactoryLocation::where(FactoryLocation::FACTORY_ID, $kavirFactory->id)->where(FactoryLocation::TYPE, 'warehouse')->where(FactoryLocation::CITY, 'تهران')->first();
-        $shirazWarehouseKavir = FactoryLocation::where(FactoryLocation::FACTORY_ID, $kavirFactory->id)->where(FactoryLocation::TYPE, 'warehouse')->where(FactoryLocation::CITY, 'شیراز')->first();
+        $tehranWarehouseKavir  = FactoryLocation::where(FactoryLocation::FACTORY_ID, $kavirFactory->id)->where(FactoryLocation::TYPE, 'warehouse')->where(FactoryLocation::CITY, 'تهران')->first();
+        $shirazWarehouseKavir  = FactoryLocation::where(FactoryLocation::FACTORY_ID, $kavirFactory->id)->where(FactoryLocation::TYPE, 'warehouse')->where(FactoryLocation::CITY, 'شیراز')->first();
 
-        if (!$factoryDoorKavir || !$isfahanWarehouseKavir || !$tehranWarehouseKavir || !$shirazWarehouseKavir) { $this->command->error('One of Kavir factory locations not found for pricing!'); return; }
+        if (!$factoryDoorKavir || !$isfahanWarehouseKavir || !$tehranWarehouseKavir || !$shirazWarehouseKavir) {
+            return;
+        }
 
         $variantA2_12 = ProductVariant::where(ProductVariant::SKU, 'RBR-A2-12-SH')->first();
         $variantA3_16 = ProductVariant::where(ProductVariant::SKU, 'RBR-A3-16-SH')->first();
-        $variantA1_8 = ProductVariant::where(ProductVariant::SKU, 'RBR-A1-8-KL')->first();
+        $variantA1_8  = ProductVariant::where(ProductVariant::SKU, 'RBR-A1-8-KL')->first();
 
-        if (!$variantA2_12 || !$variantA3_16 || !$variantA1_8) { $this->command->error('One of rebar product variants not found for pricing!'); return; }
+        if (!$variantA2_12 || !$variantA3_16 || !$variantA1_8) {
+            return;
+        }
 
         $variantBasePrices = [
             $variantA2_12->id => ['base_general' => 46500, 'base_special' => 42500],

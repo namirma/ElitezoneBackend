@@ -8,6 +8,7 @@ use App\Http\Resources\UserResource;
 use App\Models\EmployerProfile;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Request;
 
 class EmployerController extends Controller
 {
@@ -29,5 +30,15 @@ class EmployerController extends Controller
         );
 
         return success(new UserResource(User::with('employer')->find(Auth::id())));
+    }
+
+    public function updateConsultant(Request $request)
+    {
+        $request->validate(['has_consultant' => ['required', 'boolean']]);
+
+        $profile = EmployerProfile::firstOrCreate([EmployerProfile::USER_ID => Auth::id()]);
+        $profile->update([EmployerProfile::HAS_CONSULTANT => $request->boolean('has_consultant')]);
+
+        return success(['employer' => $profile->fresh()]);
     }
 }

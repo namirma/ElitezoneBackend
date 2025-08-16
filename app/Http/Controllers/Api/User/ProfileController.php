@@ -13,6 +13,8 @@ use App\Http\Resources\UserMessageResource;
 use App\Http\Resources\UserResource;
 use App\Mail\TestEmail;
 use App\Mail\VerifyEmail;
+use App\Services\PricingRoleResolver; // ← اضافه
+use Illuminate\Support\Facades\Schema;
 use App\Models\ContractorProfile;
 use App\Models\EmployerProfile;
 use App\Models\EngineerProfile;
@@ -29,6 +31,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
+
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
@@ -36,8 +39,8 @@ class ProfileController extends Controller
 {
     public function getProfile(): JsonResponse
     {
-//        $response = Http::get('https://saze90.com/check-certificate?username=IsaM');
-//        dd($response);
+        //        $response = Http::get('https://saze90.com/check-certificate?username=IsaM');
+        //        dd($response);
 
         return success(new UserResource(User::with(['profile', 'engineer', 'contractor', 'supplier', 'employer'])->find(Auth::id())));
     }
@@ -52,20 +55,20 @@ class ProfileController extends Controller
             UserProfile::NAME => $request->validated('name') ?? $this->name ?? null,
             UserProfile::FAMILY => $request->validated('family') ?? $profile->family ?? null,
             UserProfile::EMAIL => $request->validated('email') ?? $profile->email ?? null,
-            UserProfile::NATIONAL_CODE => $request->validated('national_code') ?? $profile->national_code ,
+            UserProfile::NATIONAL_CODE => $request->validated('national_code') ?? $profile->national_code,
             UserProfile::BIRTHDAY => $request->validated('birthday') ?? $profile->birthday ?? null,
 
             /* Company information */
-            UserProfile::COMPANY => $request->validated('company') ?? $profile->company ?? null ,
-            UserProfile::ECONOMIC_CODE => $request->validated('economic_code') ?? $profile->economic_code ?? null ,
-            UserProfile::NATIONAL_ID => $request->validated('national_id') ?? $profile->national_id ?? null ,
-            UserProfile::REGISTER_ID => $request->validated('register_id') ?? $profile->register_id ?? null ,
-            UserProfile::PHONE => $request->validated('phone') ?? $profile->phone ?? null ,
+            UserProfile::COMPANY => $request->validated('company') ?? $profile->company ?? null,
+            UserProfile::ECONOMIC_CODE => $request->validated('economic_code') ?? $profile->economic_code ?? null,
+            UserProfile::NATIONAL_ID => $request->validated('national_id') ?? $profile->national_id ?? null,
+            UserProfile::REGISTER_ID => $request->validated('register_id') ?? $profile->register_id ?? null,
+            UserProfile::PHONE => $request->validated('phone') ?? $profile->phone ?? null,
 
             /* Location and other info */
-            UserProfile::PROVINCE_ID => $request->validated('province_id') ?? $profile->province_id ?? null ,
-            UserProfile::CITY_ID => $request->validated('city_id') ?? $profile->city_id ?? null ,
-            UserProfile::ENTITY => $request->validated('entity') ?? $profile->entity ,
+            UserProfile::PROVINCE_ID => $request->validated('province_id') ?? $profile->province_id ?? null,
+            UserProfile::CITY_ID => $request->validated('city_id') ?? $profile->city_id ?? null,
+            UserProfile::ENTITY => $request->validated('entity') ?? $profile->entity,
         ]);
 
         return success(new UserResource(User::with('profile')->find(Auth::id())));
@@ -80,16 +83,86 @@ class ProfileController extends Controller
 
     public function setUserType(StoreUserTypeRequest $request): JsonResponse
     {
-        $user = User::find(Auth::id());
-        $role = Role::where('id', $user->type_id)->first();
-        if ($role)
-            $user->removeRole($role);
+        $user = User::findOrFail(Auth::id());
+        $validated = $request->validated();
 
-        if (@$user->type_id)
+        if (!empty($validated['roles'])) {
+            $aliasMap = [
+                'engineer'   => 'engineer',
+                'contractor' => 'contractor',
+                'employer'   => 'employer',
+                'supplier'   => 'supplier',
+            ];
+
+            $roleNames = collect($validated['roles'])
+                ->map(fn($r) => $aliasMap[strtolower($r)] ?? null)
+                ->filter()
+                ->unique()
+                ->values();
+
+            if ($roleNames->isEmpty()) {
+                return error('validation_error', ['roles' => ['at least one valid role is required']], 422);
+            }
+
+            DB::transaction(function () use ($user, $roleNames, $validated) {
+                $roleIds = $roleNames
+                    ->map(fn(string $name) => Role::firstOrCreate(
+                        ['name' => $name],
+                        ['display_name' => ucfirst($name), 'description' => null]
+                    )->id)
+                    ->values()
+                    ->all();
+
+                if (method_exists($user, 'syncRoles')) {
+                    $user->syncRoles($roleIds);
+                } else {
+                    $user->roles()->sync($roleIds);
+                }
+
+                if ($roleNames->contains('employer') && array_key_exists('employer_has_consultant', $validated)) {
+                    EmployerProfile::updateOrCreate(
+                        [EmployerProfile::USER_ID => $user->id],
+                        [EmployerProfile::HAS_CONSULTANT => (bool) $validated['employer_has_consultant']]
+                    );
+                }
+
+                if (Schema::hasColumn('users', User::TYPE_ID)) {
+                    $priority = ['engineer', 'contractor', 'employer', 'supplier'];
+                    $primary = collect($priority)->first(fn($p) => $roleNames->contains($p));
+                    $typeId = null;
+
+                    if ($primary) {
+                        $typeId = DB::table('user_types')->where('slug', $primary)->value('id')
+                            ?? DB::table('user_types')->where('name', ucfirst($primary))->value('id');
+                    }
+
+                    $user->forceFill([User::TYPE_ID => $typeId])->save();
+                }
+            });
+
+            $user->refresh();
+
+            return success([
+                'user'  => new UserResource($user->load('profile')),
+                'roles' => $user->roles()->pluck('name')->values()->all(),
+                'active_price_filter_category_code' => app(PricingRoleResolver::class)->resolve($user),
+            ], __('profile.userType'));
+        }
+
+        $previousRole = Role::where('id', $user->type_id)->first();
+        if ($previousRole) {
+            $user->removeRole($previousRole);
+        }
+
+        if (!empty($user->type_id) && method_exists($this, 'removeProfile')) {
             self::removeProfile();
+        }
 
-        $user->update([User::TYPE_ID => $request->validated('type_id')]);
-        $user->addRole($request->validated('type_id'));
+        $user->update([User::TYPE_ID => $validated['type_id'] ?? null]);
+
+        if (!empty($validated['type_id'])) {
+            $user->addRole($validated['type_id']);
+        }
 
         return success(new UserResource($user->load('profile')), __('profile.userType'));
     }
@@ -140,8 +213,10 @@ class ProfileController extends Controller
     {
         $user = Auth::user();
 
-        if ((int)$user->secret === $request->validated('code') &&
-            ($user->secret_expires_at && !Carbon::parse($user->secret_expires_at)->isPast()) && $request->has('username')) {
+        if (
+            (int)$user->secret === $request->validated('code') &&
+            ($user->secret_expires_at && !Carbon::parse($user->secret_expires_at)->isPast()) && $request->has('username')
+        ) {
 
             $mobileVerifyCode = generateVerifyCode();
             (new SmsService())->send($request->validated('username'), $mobileVerifyCode);
@@ -159,8 +234,10 @@ class ProfileController extends Controller
     public function confirmUpdateMobile(Request $request)
     {
         $user = Auth::user();
-        if ((int)$user->secret === $request->input('code') &&
-            ($user->secret_expires_at && !Carbon::parse($user->secret_expires_at)->isPast()) && $request->has('username')) {
+        if (
+            (int)$user->secret === $request->input('code') &&
+            ($user->secret_expires_at && !Carbon::parse($user->secret_expires_at)->isPast()) && $request->has('username')
+        ) {
 
             DB::table('users')
                 ->where(['id' => $user->id])
@@ -170,7 +247,6 @@ class ProfileController extends Controller
         }
 
         return error(__('auth.verification_code_not_match'), [], 404);
-
     }
 
     public static function removeProfile(): void
@@ -179,13 +255,14 @@ class ProfileController extends Controller
         EmployerProfile::where([EmployerProfile::USER_ID => Auth::id()])->delete();
         EngineerProfile::where([EngineerProfile::USER_ID => Auth::id()])->delete();
         SupplierProfile::where([SupplierProfile::USER_ID => Auth::id()])->delete();
-
     }
 
     public function getMessages()
     {
-        return success(UserMessageResource::collection(
-            UserNotification::where([UserNotification::USER_ID => Auth::id()])->get())
+        return success(
+            UserMessageResource::collection(
+                UserNotification::where([UserNotification::USER_ID => Auth::id()])->get()
+            )
         );
     }
 
@@ -236,6 +313,5 @@ class ProfileController extends Controller
         }
 
         return error('global.notFound', [], 404);
-
     }
 }

@@ -13,7 +13,7 @@ use App\Http\Resources\OfferResource;
 use App\Http\Resources\ProductDetailResource;
 use App\Http\Resources\ProductResource;
 use App\Http\Resources\ProductVariantResource;
-use App\Models\Attribute; 
+use App\Models\Attribute;
 use App\Models\AttributeType;
 use App\Models\Badge;
 use App\Models\Cart;
@@ -137,14 +137,12 @@ class ProductController extends Controller
         if (!Auth::check()) {
             cookie()->queue('cart_session_id', $cart->session_id, 60 * 24 * 30);
         }
-        $customerTypeId = $validatedData['customer_type_id'] ?? $cart->{Cart::CUSTOMER_TYPE_ID};
-        $customerType = CustomerType::find($customerTypeId);
-        $badge = $cart->{Cart::BADGE_ID} ? Badge::find($cart->{Cart::BADGE_ID}) : null;
-        $filterCatIds = $cart->priceFilterCategories()->pluck(PriceFilterCategory::ID)->toArray();
-        if (empty($filterCatIds)) {
-            $fallbackCat = PriceFilterCategory::where(PriceFilterCategory::CODE, 'employer_without_consultant')->first();
-            $filterCatIds = $fallbackCat ? [$fallbackCat->id] : [];
-        }
+        $activeCode   = app('active_price_filter_category_code');
+        $pf           = PriceFilterCategory::where('code', $activeCode)->first();
+        $filterCatIds = $pf ? [$pf->id] : [];
+
+        $customerType = CustomerType::where('code', $activeCode)->first();
+        $badge        = $cart->badge_id ? Badge::find($cart->badge_id) : null;
         $price = $this->priceService->calculatePrice(
             $variant,
             $factory,
@@ -159,45 +157,58 @@ class ProductController extends Controller
 
     public function calculateOrderPrice(OrderPriceRequest $request): JsonResponse
     {
-        $validatedData = $request->validated();
-        $variant = ProductVariant::find($validatedData['variant_id']);
+        $v = $request->validated();
+
+        $variant = ProductVariant::find($v['variant_id']);
         if (!$variant) return error('global.variant_not_found', [], 404);
-        $factory = Factory::find($validatedData['factory_id']);
+
+        $factory = Factory::find($v['factory_id']);
         if (!$factory) return error('global.factory_not_found', [], 404);
-        $location = FactoryLocation::find($validatedData['location_id']);
+
+        $location = FactoryLocation::find($v['location_id']);
         if (!$location) return error('global.location_not_found', [], 404);
-        $badge = $validatedData['badge_id'] ?? null ? Badge::find($validatedData['badge_id']) : null;
-        $paramIds = $validatedData['parameters'] ?? [];
-        if (empty($paramIds)) {
-            $sessionIdForCart = $request->cookie('cart_session_id', Str::uuid()->toString());
-            $cart = Auth::check()
-                ? Cart::firstOrCreate([Cart::USER_ID => Auth::id()])
-                : Cart::firstOrCreate([Cart::SESSION_ID => $sessionIdForCart], [Cart::USER_ID => null]);
-            if (!Auth::check()) cookie()->queue('cart_session_id', $cart->session_id, 60 * 24 * 30);
-            $paramIds = $cart->purchaseParameters()->pluck(PurchaseParameterValue::ID)->toArray();
-        }
-        $priceFilterCat = app(ParameterDetectionController::class)
-            ->detectPriceFilterCategoryFromValues($paramIds)
+
+        $badge = !empty($v['badge_id']) ? Badge::find($v['badge_id']) : null;
+        $activeCode = app('active_price_filter_category_code') ?? 'employer_without_consultant';
+
+        $priceFilterCat = PriceFilterCategory::where(PriceFilterCategory::CODE, $activeCode)->first()
             ?? PriceFilterCategory::where(PriceFilterCategory::CODE, 'employer_without_consultant')->firstOrFail();
-        $customerType = CustomerType::where(CustomerType::CODE, $priceFilterCat->code)->firstOrFail();
-        $withVat = (bool)($validatedData['with_vat'] ?? false);
-        $unitPriceDetails  = $this->priceService->calculatePrice($variant, $factory, $location, $customerType, $badge, [$priceFilterCat->id], $withVat);
-        $orderDetails = $this->priceService->calculateTotalPrice($validatedData['quantities'], (float)$unitPriceDetails['final_price'], $withVat);
-        $offers     = $this->checkEligibleOffers($variant->product, $orderDetails['total_count']);
+        $customerType = CustomerType::where(CustomerType::CODE, $activeCode)->first()
+            ?? CustomerType::where(CustomerType::CODE, 'employer_without_consultant')->firstOrFail();
+
+        $withVat = (bool)($v['with_vat'] ?? false);
+        $unitPriceDetails = $this->priceService->calculatePrice(
+            $variant,
+            $factory,
+            $location,
+            $customerType,
+            $badge,
+            [$priceFilterCat->id],
+            $withVat
+        );
+        $orderDetails = $this->priceService->calculateTotalPrice(
+            $v['quantities'],
+            (float)$unitPriceDetails['final_price'],
+            $withVat
+        );
+        $offers = $this->checkEligibleOffers($variant->product, $orderDetails['total_count']);
         $discountedPrice = $this->applyDiscounts((float)$orderDetails['subtotal'], $offers);
-        $vatAmount  = $withVat ? $discountedPrice * ((float)$orderDetails['vat_rate'] / 100) : 0;
+
+        // مالیات
+        $vatAmount  = $withVat ? $discountedPrice * ((float)$orderDetails['vat_rate'] / 100) : 0.0;
         $finalPrice = $discountedPrice + $vatAmount;
+
         return success([
-            'unit_price' => (string)$unitPriceDetails['final_price'],
+            'unit_price'         => (string)$unitPriceDetails['final_price'],
             'unit_price_details' => $unitPriceDetails,
-            'order_details' => $orderDetails,
-            'offers' => OfferResource::collection($offers),
-            'discount_amount' => (string)($orderDetails['subtotal'] - $discountedPrice),
-            'discounted_price' => (string)$discountedPrice,
-            'vat_amount' => (string)$vatAmount,
-            'vat_rate' => (string)($withVat ? $orderDetails['vat_rate'] : 0.0),
-            'final_price' => (string)$finalPrice,
-            'with_vat' => $withVat,
+            'order_details'      => $orderDetails,
+            'offers'             => OfferResource::collection($offers),
+            'discount_amount'    => (string)($orderDetails['subtotal'] - $discountedPrice),
+            'discounted_price'   => (string)$discountedPrice,
+            'vat_amount'         => (string)$vatAmount,
+            'vat_rate'           => (string)($withVat ? $orderDetails['vat_rate'] : 0.0),
+            'final_price'        => (string)$finalPrice,
+            'with_vat'           => $withVat,
         ], 'global.received_successfully');
     }
 

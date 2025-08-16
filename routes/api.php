@@ -38,8 +38,8 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('eduix')->group(function () {
     Route::post('/fetch', [EduixController::class, 'fetch']);
 });
-Route::prefix('products')->group(function () {
-    Route::get('/categories', [ProductCategoryController::class, 'index']);
+Route::prefix('products')->middleware(['auth:sanctum', 'attach.price.category'])->group(function () {
+    Route::get('categories', [ProductCategoryController::class, 'index']);
     Route::get('/', [ProductController::class, 'index']);
     Route::get('/{product:cuid}', [ProductController::class, 'show']);
     Route::get('/{product:cuid}/variants', [ProductController::class, 'variants']);
@@ -70,13 +70,13 @@ Route::prefix('price-filters')->group(function () {
     Route::get('/types', [PriceFilterController::class, 'getFilterTypes']);
 });
 
-Route::prefix('cart')->group(function () {
-    Route::get('/', [CartController::class, 'getCart']);
-    Route::post('/items', [CartController::class, 'addToCart']);
-    Route::put('/items/{item}', [CartController::class, 'updateCartItem']);
+Route::prefix('cart')->middleware(['auth:sanctum','attach.price.category'])->group(function () {
+    Route::get('/',                [CartController::class, 'getCart']);
+    Route::post('/items',          [CartController::class, 'addToCart']);         
+    Route::patch('/items/{item}',  [CartController::class, 'updateCartItem']);
     Route::delete('/items/{item}', [CartController::class, 'removeCartItem']);
+    Route::patch('/filters',       [CartController::class, 'updateCartFilters']);
     Route::patch('/customer', [CartController::class, 'updateCustomerType']);
-    Route::patch('/filters', [CartController::class, 'updateCartFilters']);
 });
 
 Route::prefix('wishlists')->middleware('auth:sanctum')->as('wishlists.')->group(function () {
