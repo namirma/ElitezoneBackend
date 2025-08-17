@@ -95,10 +95,22 @@ class ProductSeeder extends Seeder
         }
         if ($sizeAttributeType) {
             $sizeAttributesData = [
-                ['name' => '5.5', 'display_name' => '5.5'], ['name' => '8', 'display_name' => '8'], ['name' => '10', 'display_name' => '10'], ['name' => '12', 'display_name' => '12'],
-                ['name' => '14', 'display_name' => '14'], ['name' => '16', 'display_name' => '16'], ['name' => '18', 'display_name' => '18'], ['name' => '20', 'display_name' => '20'],
-                ['name' => '22', 'display_name' => '22'], ['name' => '25', 'display_name' => '25'], ['name' => '28', 'display_name' => '28'], ['name' => '30', 'display_name' => '30'],
-                ['name' => '32', 'display_name' => '32'], ['name' => '36', 'display_name' => '36'], ['name' => '40', 'display_name' => '40'], ['name' => '50', 'display_name' => '50'],
+                ['name' => '5.5', 'display_name' => '5.5'],
+                ['name' => '8', 'display_name' => '8'],
+                ['name' => '10', 'display_name' => '10'],
+                ['name' => '12', 'display_name' => '12'],
+                ['name' => '14', 'display_name' => '14'],
+                ['name' => '16', 'display_name' => '16'],
+                ['name' => '18', 'display_name' => '18'],
+                ['name' => '20', 'display_name' => '20'],
+                ['name' => '22', 'display_name' => '22'],
+                ['name' => '25', 'display_name' => '25'],
+                ['name' => '28', 'display_name' => '28'],
+                ['name' => '30', 'display_name' => '30'],
+                ['name' => '32', 'display_name' => '32'],
+                ['name' => '36', 'display_name' => '36'],
+                ['name' => '40', 'display_name' => '40'],
+                ['name' => '50', 'display_name' => '50'],
             ];
             foreach ($sizeAttributesData as $attrData) {
                 Attribute::updateOrCreate([Attribute::ATTRIBUTE_TYPE_ID => $sizeAttributeType->id, Attribute::NAME => $attrData['name']], $attrData);
@@ -148,9 +160,15 @@ class ProductSeeder extends Seeder
             }
             $capacityUnit = OrderUnit::where(OrderUnit::CODE, 'capacity')->first();
             $bundleUnit = OrderUnit::where(OrderUnit::CODE, 'bundle')->first();
-            if ($capacityUnit) { $rebarProduct->orderUnits()->syncWithoutDetaching([$capacityUnit->id => ['max_quantity' => 5]]); }
-            if ($bundleUnit)  { $rebarProduct->orderUnits()->syncWithoutDetaching([$bundleUnit->id => ['max_quantity' => 30]]); }
-            if ($kgUnit)      { $rebarProduct->orderUnits()->syncWithoutDetaching([$kgUnit->id => ['max_quantity' => 2000000]]); }
+            if ($capacityUnit) {
+                $rebarProduct->orderUnits()->syncWithoutDetaching([$capacityUnit->id => ['max_quantity' => 5]]);
+            }
+            if ($bundleUnit) {
+                $rebarProduct->orderUnits()->syncWithoutDetaching([$bundleUnit->id => ['max_quantity' => 30]]);
+            }
+            if ($kgUnit) {
+                $rebarProduct->orderUnits()->syncWithoutDetaching([$kgUnit->id => ['max_quantity' => 2000000]]);
+            }
 
             $shakhehAttr = Attribute::where(Attribute::ATTRIBUTE_TYPE_ID, $typeAttributeType?->id)->where(Attribute::NAME, 'شاخه')->first();
             $kalafAttr   = Attribute::where(Attribute::ATTRIBUTE_TYPE_ID, $typeAttributeType?->id)->where(Attribute::NAME, 'کلاف')->first();
@@ -300,14 +318,14 @@ class ProductSeeder extends Seeder
             ],
             'policy' => [
                 [PriceFilter::NAME => 'سیاست عادی',    PriceFilter::CODE => 'regular_policy',    PriceFilter::AMOUNT => 500,   PriceFilter::IS_PERCENTAGE => false, PriceFilter::IS_ACTIVE => true, PriceFilter::SORT_ORDER => 1],
-                [PriceFilter::NAME => 'سیاست رقابتی',  PriceFilter::CODE => 'competitive_policy',PriceFilter::AMOUNT => -200,  PriceFilter::IS_PERCENTAGE => false, PriceFilter::IS_ACTIVE => true, PriceFilter::SORT_ORDER => 2],
+                [PriceFilter::NAME => 'سیاست رقابتی',  PriceFilter::CODE => 'competitive_policy', PriceFilter::AMOUNT => -200,  PriceFilter::IS_PERCENTAGE => false, PriceFilter::IS_ACTIVE => true, PriceFilter::SORT_ORDER => 2],
             ],
             'customer_type' => [
                 [PriceFilter::NAME => 'کارفرما',       PriceFilter::CODE => 'employer',          PriceFilter::AMOUNT => 0,     PriceFilter::IS_PERCENTAGE => false, PriceFilter::IS_ACTIVE => true, PriceFilter::SORT_ORDER => 1],
                 [PriceFilter::NAME => 'مهندس',         PriceFilter::CODE => 'engineer',          PriceFilter::AMOUNT => -1000, PriceFilter::IS_PERCENTAGE => false, PriceFilter::IS_ACTIVE => true, PriceFilter::SORT_ORDER => 2],
             ],
             'consultant_status' => [
-                [PriceFilter::NAME => 'بدون مشاور',    PriceFilter::CODE => 'without_consultant',PriceFilter::AMOUNT => 0,     PriceFilter::IS_PERCENTAGE => false, PriceFilter::IS_ACTIVE => true, PriceFilter::SORT_ORDER => 1],
+                [PriceFilter::NAME => 'بدون مشاور',    PriceFilter::CODE => 'without_consultant', PriceFilter::AMOUNT => 0,     PriceFilter::IS_PERCENTAGE => false, PriceFilter::IS_ACTIVE => true, PriceFilter::SORT_ORDER => 1],
                 [PriceFilter::NAME => 'دارای مشاور',   PriceFilter::CODE => 'with_consultant',   PriceFilter::AMOUNT => -800,  PriceFilter::IS_PERCENTAGE => false, PriceFilter::IS_ACTIVE => true, PriceFilter::SORT_ORDER => 2],
             ],
         ];
