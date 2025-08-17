@@ -35,6 +35,11 @@ use Illuminate\Support\Facades\Route;
 */
 
 
+
+Route::post('/payment/result', function (){
+    return response()->json(['message' => 'Callback URL.']);
+});
+
 Route::prefix('eduix')->group(function () {
     Route::post('/fetch', [EduixController::class, 'fetch']);
 });
