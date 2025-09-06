@@ -13,6 +13,8 @@ use App\Http\Controllers\CustomerTypeController;
 use App\Http\Controllers\EduixController;
 use App\Http\Controllers\FactoryController;
 use App\Http\Controllers\ParameterDetectionController;
+use App\Http\Controllers\PodiumBalanceController;
+use App\Http\Controllers\PodiumBatchSettlementController;
 use App\Http\Controllers\PriceFilterController;
 use App\Http\Controllers\ProductCategoryController;
 use App\Http\Controllers\ProductController;
@@ -22,6 +24,9 @@ use App\Http\Controllers\WishlistController;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\PodiumSettlementController;
+use App\Http\Controllers\PodiumSettlementInquiryController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -34,9 +39,19 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+Route::prefix('v1/podium')->group(function () {
+    Route::post('/settlements/single', [PodiumSettlementController::class, 'single'])
+        ->name('podium.settlement.single');
+    Route::get('/balances', [PodiumBalanceController::class, 'index'])
+        ->name('podium.balances.index');
+    Route::post('/settlements/batch', [PodiumBatchSettlementController::class, 'store'])
+        ->name('podium.settlements.batch');
+    Route::get('/settlements/inquiry', [PodiumSettlementInquiryController::class, 'index'])
+        ->name('podium.settlements.inquiry');
+});
 
 
-Route::post('/payment/result', function (){
+Route::post('/payment/result', function () {
     return response()->json(['message' => 'Callback URL.']);
 });
 
@@ -75,9 +90,9 @@ Route::prefix('price-filters')->group(function () {
     Route::get('/types', [PriceFilterController::class, 'getFilterTypes']);
 });
 
-Route::prefix('cart')->middleware(['auth:sanctum','attach.price.category'])->group(function () {
+Route::prefix('cart')->middleware(['auth:sanctum', 'attach.price.category'])->group(function () {
     Route::get('/',                [CartController::class, 'getCart']);
-    Route::post('/items',          [CartController::class, 'addToCart']);         
+    Route::post('/items',          [CartController::class, 'addToCart']);
     Route::patch('/items/{item}',  [CartController::class, 'updateCartItem']);
     Route::delete('/items/{item}', [CartController::class, 'removeCartItem']);
     Route::patch('/filters',       [CartController::class, 'updateCartFilters']);

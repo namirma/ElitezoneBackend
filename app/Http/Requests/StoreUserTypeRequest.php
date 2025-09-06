@@ -20,4 +20,21 @@ class StoreUserTypeRequest extends FormRequest
             'type_id'                 => 'nullable|integer|exists:user_types,id',
         ];
     }
+
+    protected function prepareForValidation(): void
+    {
+        $roles = $this->input('roles');
+        if (in_array('supplier', $roles)) {
+            $roles = ['supplier'];
+        }
+        else {
+            $allowedRoles = ['engineer', 'contractor', 'employer'];
+            $roles = array_intersect($roles, $allowedRoles);
+        }
+        $validRoles = ['engineer', 'contractor', 'employer', 'supplier'];
+        $roles = array_intersect($roles, $validRoles);
+        $this->merge([
+            'roles' => $roles,
+        ]);
+    }
 }
