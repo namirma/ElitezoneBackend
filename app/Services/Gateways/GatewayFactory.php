@@ -11,7 +11,7 @@ class GatewayFactory
     {
         $config = Config::get('services.' . $serviceName);
 
-        //TODO errors should handle better
+        //TODO errors should handle better in development
         if (!$config || !isset($config['class']))
             throw new \Exception("Service {$serviceName} not configured properly.");
 
