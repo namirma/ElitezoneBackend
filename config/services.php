@@ -31,4 +31,14 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'tesna' => [
+        'class' => \App\Services\Gateways\TesnaService::class,
+        'url' => env('TESNA_BASE_URL', 'https://gateway.tesna.ir'),
+        'headers' => [
+            'x-api-key' => env('TESNA_API_KEY'),
+            'Accept' => 'application/json',
+            'Authorization' => env('TESNA_BEARER_TOKEN', ''),
+        ]
+    ]
+
 ];

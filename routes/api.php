@@ -22,6 +22,7 @@ use App\Http\Controllers\PurchaseParameterController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\WishlistController;
 use App\Models\User;
+use App\Services\Gateways\GatewayFactory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PodiumSettlementController;
@@ -193,4 +194,12 @@ Route::post('/check-saze-user', function (Request $request) {
     return [
         'result' => (int)User::query()->where(['mobile' => $request->input('mobile')])->exists()
     ];
+});
+
+Route::get('kavir-products', function () {
+
+    $gateway = GatewayFactory::make('tesna');
+    $response = $gateway->getRequest('/api/v1/wh/AllStoreCodes');
+
+    return response()->json($response);
 });
