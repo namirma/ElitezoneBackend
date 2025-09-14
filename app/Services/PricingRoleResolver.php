@@ -8,6 +8,8 @@ class PricingRoleResolver
 {
     public function resolve(User $user): string
     {
+        $user = $user->fresh(['roles', 'employer']);
+
         $hasRole = function (string $name) use ($user): bool {
             if (method_exists($user, 'hasRole')) {
                 return $user->hasRole($name);
@@ -16,9 +18,11 @@ class PricingRoleResolver
                 ? $user->roles()->where('name', $name)->exists()
                 : false;
         };
+
         $isEngineer   = $hasRole('engineer');
         $isContractor = $hasRole('contractor');
         $isEmployer   = $hasRole('employer');
+
         if ($isEngineer || $isContractor) {
             return 'engineer_with_consultant';
         }
