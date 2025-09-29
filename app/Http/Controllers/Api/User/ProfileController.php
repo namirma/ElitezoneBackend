@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api\User;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StorePasswordRequest;
 use App\Http\Requests\StoreUserProfileRequest;
-use App\Http\Requests\StoreUserTypeRequest;
 use App\Http\Requests\UpdateMobileRequest;
 use App\Http\Requests\UpdateUserProfileRequest;
 use App\Http\Requests\VerifyEmailRequest;
@@ -15,16 +14,15 @@ use App\Mail\VerifyEmail;
 use App\Models\ContractorProfile;
 use App\Models\EmployerProfile;
 use App\Models\EngineerProfile;
-use App\Models\Role;
 use App\Models\SupplierProfile;
 use App\Models\User;
 use App\Models\UserNotification;
 use App\Models\UserProfile;
-use App\Services\PricingRoleResolver;
 use App\Services\SmsService;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -38,7 +36,7 @@ class ProfileController extends Controller
     public function getProfile(): JsonResponse
     {
         $user = Auth::user();
-        if (!$user) {
+        if (! $user) {
             return response()->json(['status' => false, 'message' => 'کاربر یافت نشد.'], 404);
         }
 
@@ -50,7 +48,9 @@ class ProfileController extends Controller
         if ($roleNames->contains('contractor')) $relations[] = 'contractor';
         if ($roleNames->contains('supplier'))   $relations[] = 'supplier';
         if ($roleNames->contains('employer'))   $relations[] = 'employer';
-        if ($relations) $user->load($relations);
+        if (! empty($relations)) {
+            $user->load($relations);
+        }
 
         $resolvedTypeId = $user->type_id ?? $this->resolveTypeIdFromRoleNames($roleNames->all());
         if (is_null($user->type_id) && $resolvedTypeId && Schema::hasColumn('users', User::TYPE_ID)) {
@@ -77,121 +77,92 @@ class ProfileController extends Controller
 
     public function setProfile(StoreUserProfileRequest $request): JsonResponse
     {
-        $data    = $request->validated();
         $profile = UserProfile::firstOrCreate([UserProfile::USER_ID => Auth::id()]);
+        $data    = $request->validated();
 
-        $profile->update([
+        $locked = [
+            UserProfile::NAME,
+            UserProfile::FAMILY,
+            UserProfile::NATIONAL_CODE,
+            UserProfile::BIRTHDAY,
+        ];
+
+        $mutable = [
+            UserProfile::EMAIL,
+            UserProfile::COMPANY,
+            UserProfile::ECONOMIC_CODE,
+            UserProfile::NATIONAL_ID,
+            UserProfile::REGISTER_ID,
+            UserProfile::PHONE,
+            UserProfile::PROVINCE_ID,
+            UserProfile::CITY_ID,
+            UserProfile::ENTITY,
+        ];
+
+        $safe = Arr::except($data, $locked);
+
+        $updates = [
             UserProfile::USER_ID       => Auth::id(),
-            UserProfile::NAME          => $data['name']          ?? $profile->name,
-            UserProfile::FAMILY        => $data['family']        ?? $profile->family,
-            UserProfile::EMAIL         => $data['email']         ?? $profile->email,
-            UserProfile::NATIONAL_CODE => $data['national_code'] ?? $profile->national_code,
-            UserProfile::BIRTHDAY      => $data['birthday']      ?? $profile->birthday,
-            UserProfile::COMPANY       => $data['company']       ?? $profile->company,
-            UserProfile::ECONOMIC_CODE => $data['economic_code'] ?? $profile->economic_code,
-            UserProfile::NATIONAL_ID   => $data['national_id']   ?? $profile->national_id,
-            UserProfile::REGISTER_ID   => $data['register_id']   ?? $profile->register_id,
-            UserProfile::PHONE         => $data['phone']         ?? $profile->phone,
-            UserProfile::PROVINCE_ID   => $data['province_id']   ?? $profile->province_id,
-            UserProfile::CITY_ID       => $data['city_id']       ?? $profile->city_id,
-            UserProfile::ENTITY        => $data['entity']        ?? $profile->entity,
-        ]);
+            UserProfile::NAME          => $profile->name,
+            UserProfile::FAMILY        => $profile->family,
+            UserProfile::NATIONAL_CODE => $profile->national_code,
+            UserProfile::BIRTHDAY      => $profile->birthday,
+        ];
+
+        foreach ($mutable as $key) {
+            $updates[$key] = array_key_exists($key, $safe) ? $safe[$key] : $profile->{$key};
+        }
+
+        $profile->update($updates);
 
         return success(new UserResource(User::with('profile')->find(Auth::id())));
     }
 
     public function updateProfile(UpdateUserProfileRequest $request): JsonResponse
     {
-        $profile = UserProfile::where(UserProfile::USER_ID, Auth::id())->firstOrFail();
-        $profile->update($request->validated());
-        return success(new UserResource(User::with('profile')->find(Auth::id())));
-    }
+        $profile = UserProfile::where([UserProfile::USER_ID, Auth::id()])->firstOrFail();
+        $data    = $request->validated();
 
-    public function setUserType(StoreUserTypeRequest $request): JsonResponse
-    {
-        $user      = User::findOrFail(Auth::id());
-        $validated = $request->validated();
+        $locked = [
+            UserProfile::NAME,
+            UserProfile::FAMILY,
+            UserProfile::NATIONAL_CODE,
+            UserProfile::BIRTHDAY,
+        ];
 
-        if (!empty($validated['roles']) && is_array($validated['roles'])) {
-            $normalizedRoles = collect($validated['roles'])
-                ->map(fn ($r) => strtolower(trim((string) $r)))
-                ->filter()
-                ->unique()
-                ->values();
+        $allowed = [
+            UserProfile::EMAIL,
+            UserProfile::COMPANY,
+            UserProfile::ECONOMIC_CODE,
+            UserProfile::NATIONAL_ID,
+            UserProfile::REGISTER_ID,
+            UserProfile::PHONE,
+            UserProfile::PROVINCE_ID,
+            UserProfile::CITY_ID,
+            UserProfile::ENTITY,
+        ];
 
-            if ($normalizedRoles->contains('supplier') && $normalizedRoles->count() > 1) {
-                return error('validation_error', ['roles' => ['supplier نمی‌تواند همزمان با نقش‌های دیگر باشد.']], 422);
+        $safe    = Arr::except($data, $locked);
+        $payload = [];
+
+        foreach ($allowed as $key) {
+            if (array_key_exists($key, $safe)) {
+                $payload[$key] = $safe[$key];
             }
-
-            DB::transaction(function () use ($user, $normalizedRoles, $validated) {
-                $roleIds = $normalizedRoles->map(function (string $name) {
-                    return Role::firstOrCreate(
-                        ['name' => $name],
-                        ['display_name' => ucfirst($name), 'description' => null]
-                    )->id;
-                })->values()->all();
-
-                if (method_exists($user, 'syncRoles')) {
-                    $user->syncRoles($roleIds);
-                } else {
-                    $user->roles()->sync($roleIds);
-                }
-
-                $this->purgeObsoleteProfiles($user, $normalizedRoles);
-
-                if ($normalizedRoles->contains('employer') && array_key_exists('employer_has_consultant', $validated)) {
-                    EmployerProfile::updateOrCreate(
-                        [EmployerProfile::USER_ID => $user->id],
-                        [EmployerProfile::HAS_CONSULTANT => (bool) $validated['employer_has_consultant']]
-                    );
-                }
-
-                if (Schema::hasColumn('users', User::TYPE_ID)) {
-                    $resolvedTypeId = $this->resolveTypeIdFromRoleNames($normalizedRoles->all());
-                    $user->forceFill([User::TYPE_ID => $resolvedTypeId])->save();
-                }
-            });
-
-            $user = $user->fresh(['profile', 'roles:id,name', 'employer']);
-
-            return success([
-                'user'                              => new UserResource($user),
-                'roles'                             => $user->roles->pluck('name')->values()->all(),
-                'active_price_filter_category_code' => app(PricingRoleResolver::class)->resolve($user),
-            ], __('profile.userType'));
         }
 
-        DB::transaction(function () use ($user, $validated) {
-            if (!empty($user->type_id)) {
-                if (method_exists($user, 'removeRole')) {
-                    $prev = Role::where('id', $user->type_id)->first();
-                    if ($prev) $user->removeRole($prev);
-                }
-                self::removeProfile();
-            }
+        if (! empty($payload)) {
+            $profile->update($payload);
+        }
 
-            $user->update([User::TYPE_ID => $validated['type_id'] ?? null]);
-
-            if (!empty($validated['type_id'])) {
-                if (method_exists($user, 'addRole')) {
-                    $user->addRole($validated['type_id']);
-                } else {
-                    $role = Role::find($validated['type_id']);
-                    if ($role) {
-                        $user->roles()->syncWithoutDetaching([$role->id]);
-                    }
-                }
-            }
-        });
-
-        $user->load(['profile', 'roles:id,name']);
-        return success(new UserResource($user), __('profile.userType'));
+        return success(new UserResource(User::with('profile')->find(Auth::id())));
     }
 
     public function setPassword(StorePasswordRequest $request): JsonResponse
     {
         $user = User::findOrFail(Auth::id());
         $user->update([User::PASSWORD => Hash::make($request->validated()['password'])]);
+
         return success(new UserResource($user->load('profile')), __('auth.password_changed_successfully'));
     }
 
@@ -200,12 +171,12 @@ class ProfileController extends Controller
         $user = User::findOrFail(Auth::id());
         $code = generateVerifyCode();
 
-        $notExpired = $user->secret_expires_at ? !Carbon::parse($user->secret_expires_at)->isPast() : false;
+        $notExpired = $user->secret_expires_at ? ! Carbon::parse($user->secret_expires_at)->isPast() : false;
         if ($notExpired) {
             return success(new UserResource($user->load('profile')), __('auth.code_sent_recently'), 202);
         }
 
-        User::where(User::ID, $user->id)->update([
+        User::where([User::ID, $user->id])->update([
             User::SECRET            => $code,
             User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2),
         ]);
@@ -220,12 +191,12 @@ class ProfileController extends Controller
         $user = Auth::user();
         $code = generateVerifyCode();
 
-        $notExpired = $user->secret_expires_at ? !Carbon::parse($user->secret_expires_at)->isPast() : false;
+        $notExpired = $user->secret_expires_at ? ! Carbon::parse($user->secret_expires_at)->isPast() : false;
         if ($notExpired) {
             return success([], __('auth.code_sent_recently'), 202);
         }
 
-        User::where(User::ID, $user->id)->update([
+        User::where([User::ID => $user->id])->update([
             User::SECRET            => $code,
             User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2),
         ]);
@@ -240,17 +211,17 @@ class ProfileController extends Controller
         $user = Auth::user();
         $data = $request->validated();
 
-        $notExpired = $user->secret_expires_at ? !Carbon::parse($user->secret_expires_at)->isPast() : false;
+        $notExpired = $user->secret_expires_at ? ! Carbon::parse($user->secret_expires_at)->isPast() : false;
 
         if (
-            (int)($user->secret ?? 0) === (int)$data['code'] &&
+            (int) ($user->secret ?? 0) === (int) $data['code'] &&
             $notExpired &&
-            !empty($data['username'])
+            ! empty($data['username'])
         ) {
             $code = generateVerifyCode();
             (new SmsService())->send($data['username'], $code);
 
-            User::where(User::ID, $user->id)->update([
+            User::where([User::ID, $user->id])->update([
                 User::SECRET            => $code,
                 User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2),
             ]);
@@ -267,12 +238,12 @@ class ProfileController extends Controller
         $code     = $request->input('code');
         $username = $request->input('username');
 
-        $notExpired = $user->secret_expires_at ? !Carbon::parse($user->secret_expires_at)->isPast() : false;
+        $notExpired = $user->secret_expires_at ? ! Carbon::parse($user->secret_expires_at)->isPast() : false;
 
         if (
-            (int)($user->secret ?? 0) === (int)$code &&
+            (int) ($user->secret ?? 0) === (int) $code &&
             $notExpired &&
-            !empty($username)
+            ! empty($username)
         ) {
             DB::table('users')->where('id', $user->id)->update([
                 'mobile'            => $username,
@@ -289,15 +260,15 @@ class ProfileController extends Controller
     public static function removeProfile(): void
     {
         $uid = Auth::id();
-        ContractorProfile::where(ContractorProfile::USER_ID, $uid)->delete();
-        EmployerProfile::where(EmployerProfile::USER_ID, $uid)->delete();
-        EngineerProfile::where(EngineerProfile::USER_ID, $uid)->delete();
-        SupplierProfile::where(SupplierProfile::USER_ID, $uid)->delete();
+        ContractorProfile::where([ContractorProfile::USER_ID, $uid])->delete();
+        EmployerProfile::where([EmployerProfile::USER_ID, $uid])->delete();
+        EngineerProfile::where([EngineerProfile::USER_ID, $uid])->delete();
+        SupplierProfile::where(array: [SupplierProfile::USER_ID, $uid])->delete();
     }
 
     public function getMessages(): JsonResponse
     {
-        $items = UserNotification::where(UserNotification::USER_ID, Auth::id())->latest()->get();
+        $items = UserNotification::where([UserNotification::USER_ID, Auth::id()])->latest()->get();
         return success(UserMessageResource::collection($items));
     }
 
@@ -309,7 +280,7 @@ class ProfileController extends Controller
 
     public function updateAllMessageStatus(): JsonResponse
     {
-        UserNotification::where(UserNotification::USER_ID, Auth::id())
+        UserNotification::where([UserNotification::USER_ID, Auth::id()])
             ->update([UserNotification::READ_AT => Carbon::now()->toDateTimeString()]);
         return success([]);
     }
@@ -349,17 +320,17 @@ class ProfileController extends Controller
     {
         $keep = $roleNames->map(fn ($r) => strtolower($r))->unique()->values()->all();
 
-        if (!in_array('engineer', $keep, true)) {
-            EngineerProfile::where(EngineerProfile::USER_ID, $user->id)->delete();
+        if (! in_array('engineer', $keep, true)) {
+            EngineerProfile::where([EngineerProfile::USER_ID, $user->id])->delete();
         }
-        if (!in_array('contractor', $keep, true)) {
-            ContractorProfile::where(ContractorProfile::USER_ID, $user->id)->delete();
+        if (! in_array('contractor', $keep, true)) {
+            ContractorProfile::where([ContractorProfile::USER_ID, $user->id])->delete();
         }
-        if (!in_array('supplier', $keep, true)) {
-            SupplierProfile::where(SupplierProfile::USER_ID, $user->id)->delete();
+        if (! in_array('supplier', $keep, true)) {
+            SupplierProfile::where([SupplierProfile::USER_ID, $user->id])->delete();
         }
-        if (!in_array('employer', $keep, true)) {
-            EmployerProfile::where(EmployerProfile::USER_ID, $user->id)->delete();
+        if (! in_array('employer', $keep, true)) {
+            EmployerProfile::where([EmployerProfile::USER_ID, $user->id])->delete();
         }
     }
 
@@ -367,8 +338,9 @@ class ProfileController extends Controller
     {
         $priority = ['engineer', 'contractor', 'employer', 'supplier'];
         $primary  = collect($priority)->first(fn ($r) => in_array($r, $roleNames, true));
-        if (!$primary) return null;
-
+        if (! $primary) {
+            return null;
+        }
         return DB::table('user_types')->where('slug', $primary)->value('id')
             ?: DB::table('user_types')->where('name', ucfirst($primary))->value('id');
     }

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ListopherController;
+use App\Http\Controllers\IdentityInquirySc2Controller;
 use App\Http\Controllers\Api\QuestionController;
 use App\Http\Controllers\Api\User\ContractorController;
 use App\Http\Controllers\Api\User\EmployerController;
@@ -12,6 +13,7 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\CustomerTypeController;
 use App\Http\Controllers\EduixController;
 use App\Http\Controllers\FactoryController;
+use App\Http\Controllers\MobileNidMatchController;
 use App\Http\Controllers\ParameterDetectionController;
 use App\Http\Controllers\PodiumBalanceController;
 use App\Http\Controllers\PodiumBatchSettlementController;
@@ -41,14 +43,12 @@ use App\Http\Controllers\PodiumSettlementInquiryController;
 */
 
 Route::prefix('v1/podium')->group(function () {
-    Route::post('/settlements/single', [PodiumSettlementController::class, 'single'])
-        ->name('podium.settlement.single');
-    Route::get('/balances', [PodiumBalanceController::class, 'index'])
-        ->name('podium.balances.index');
-    Route::post('/settlements/batch', [PodiumBatchSettlementController::class, 'store'])
-        ->name('podium.settlements.batch');
-    Route::get('/settlements/inquiry', [PodiumSettlementInquiryController::class, 'index'])
-        ->name('podium.settlements.inquiry');
+    Route::post('/settlements/single', [PodiumSettlementController::class, 'single']);
+    Route::get('/balances', [PodiumBalanceController::class, 'index']);
+    Route::post('/settlements/batch', [PodiumBatchSettlementController::class, 'store']);
+    Route::get('/settlements/inquiry', [PodiumSettlementInquiryController::class, 'index']);
+    Route::post('/identity-inquiry-sc2', IdentityInquirySc2Controller::class);
+    Route::post('mobile-nid-match', [MobileNidMatchController::class, 'store']);
 });
 
 

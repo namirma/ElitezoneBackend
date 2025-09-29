@@ -8,100 +8,210 @@ use App\Http\Requests\StoreUserRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Models\UserNotification;
+use App\Models\UserProfile;
 use App\Models\UserType;
+use App\Services\PodiumClient;
 use App\Services\SmsService;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Throwable;
 
 class AuthController extends Controller
 {
     public function register(StoreUserRequest $request): JsonResponse
     {
-        $user = User::where([User::MOBILE => $request->validated('username')])->first();
+        $mobile       = $this->mobileTo09($request->validated('username'));
+        $nationalCode = (string) $request->validated('national_code');
+        $birthDate    = str_replace('-', '', (string) $request->validated('birth_date')); // 13790922
 
-        if ($user && @$user->password)
-            return success([], __('auth.login_success'));
-        else if ($user && isset($user->secret_expires_at) && !Carbon::parse($user->secret_expires_at)->isPast()) {
-            return success($user, __('auth.code_sent_recently'), 202);
+        $user = User::where([User::MOBILE => $mobile])->first();
+
+        if ($user && @$user->password) {
+            return response()->json(['status' => true, 'message' => __('auth.login_success')], 200);
         }
 
+        if ($user && isset($user->secret_expires_at) && ! Carbon::parse($user->secret_expires_at)->isPast()) {
+            return response()->json(['status' => true, 'message' => __('auth.code_sent_recently')], 202);
+        }
 
-        $mobileVerifyCode = generateVerifyCode();
+        $client = app(PodiumClient::class);
+
+        $matchPayload = [
+            'apiKey'          => (string) config('podium.services.nid_mobile_match.sc_api_key'),
+            'productEntityId' => (int)    config('podium.services.nid_mobile_match.sc_product_id'),
+            'providerParameters' => [
+                'body' => [
+                    'nationalCode' => $nationalCode,
+                    'mobileNumber' => $mobile,
+                ],
+            ],
+            'asyncCall' => false,
+            'wrapper'   => true,
+        ];
+
+        try {
+            $matchRes = PodiumClient::normalize($client->callSc2($matchPayload));
+        } catch (Throwable $e) {
+            return response()->json(['status' => false, 'message' => __('auth.mobile_check_failed')], 502);
+        }
+
+        $matched   = data_get($matchRes, 'result.matched');
+        $matchCode = (string) data_get($matchRes, 'result.resultCode', '');
+        $isMatch   = ($matched === true || $matched === 'true' || $matchCode === '1');
+
+        if (! $isMatch) {
+            return response()->json(['status' => false, 'message' => __('auth.mobile_nid_mismatch')], 422);
+        }
+
+        $idenPayload = [
+            'apiKey'             => (string) config('podium.services.identity_inquiry.sc_api_key'),
+            'productEntityId'    => (int)    config('podium.services.identity_inquiry.sc_product_id'),
+            'providerParameters' => [
+                'nationalCode' => $nationalCode,
+                'birthDate'    => $birthDate,
+            ],
+            'asyncCall' => false,
+            'wrapper'   => true,
+        ];
+
+        try {
+            $idenRes = PodiumClient::normalize($client->callSc2($idenPayload));
+        } catch (Throwable $e) {
+            return response()->json(['status' => false, 'message' => __('auth.birthdate_check_failed')], 502);
+        }
+
+        $srvBirth = (string) data_get($idenRes, 'result.identityInfo.birthDate', data_get($idenRes, 'result.birthDate', ''));
+        if ($srvBirth === '' || $srvBirth !== $birthDate) {
+            return response()->json(['status' => false, 'message' => __('auth.birthdate_mismatch')], 422);
+        }
+
+        $verifyCode = generateVerifyCode();
 
         User::updateOrCreate(
+            [User::MOBILE => $mobile],
             [
-                User::MOBILE => $request->validated('username')
-            ],
-            [
-                User::MOBILE => $request->validated('username'),
-                User::SECRET => $mobileVerifyCode,
-                User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2)
+                User::MOBILE            => $mobile,
+                User::NATIONAL_CODE     => $nationalCode,
+                User::BIRTH_DATE        => $birthDate,
+                User::SECRET            => $verifyCode,
+                User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2),
             ]
         );
 
-        (new SmsService())->send(
-            $request->validated('username'),
-            __('sms.loginMessage', ['code' => $mobileVerifyCode])
-        );
+        (new SmsService())->send($mobile, __('sms.loginMessage', ['code' => $verifyCode]));
 
-        return success([], __('auth.verification_code_sent_successfully'), 202);
+        return response()->json(['status' => true, 'message' => __('auth.verification_code_sent_successfully')], 202);
     }
-
+    private function mobileTo09(string $input): string
+    {
+        $m = preg_replace('/\D/', '', $input);
+        if (str_starts_with($m, '0098')) $m = substr($m, 2);
+        if (str_starts_with($m, '98'))   return '0' . substr($m, 2);
+        if (str_starts_with($m, '9'))    return '0' . $m;
+        return $m;
+    }
     public function types(): JsonResponse
     {
         return success(UserType::all(), __('global.information_received_successfully'));
     }
 
-    public function verifyCode(StoreUserRequest $request): JsonResponse
+    private function syncIdentityToProfile(User $user): void
     {
-        $user = User::where([User::MOBILE => $request->validated('username'), User::SECRET => $request->validated('code')])->first();
-        //        dd($user);
-        if (!Carbon::parse(@$user->secret_expires_at)->isPast()) {
-
-            $createdAt = $user->created_at instanceof Carbon
-                ? $user->created_at
-                : Carbon::parse($user->created_at);
-
-            $isNewUser = $user->wasRecentlyCreated || $createdAt->diffInMinutes(now()) < 2;
-
-            if ($request->has('forget_password') && $request->validated('forget_password')) {
-                return success([]);
-            } else {
-                Auth::login($user);
-                $roles = (array) $request->input('roles', []);
-                $user  = Auth::user();
-
-                foreach ($roles as $role) {
-                    match ($role) {
-                        'engineer'   => $user->engineer()->firstOrCreate([]),
-                        'contractor' => $user->contractor()->firstOrCreate([]),
-                        'employer'   => $user->employer()->firstOrCreate([]),
-                        'supplier'   => $user->supplier()->firstOrCreate([]),
-                        default      => null,
-                    };
-                }
-                $user->tokens()->delete();
-                $token = $user->createToken('auth')->plainTextToken;
-
-                if ($isNewUser) {
-                    (new SmsService())->send($request->validated('username'), __('sms.newRegisterUser'));
-
-                    UserNotification::create([
-                        UserNotification::USER_ID => Auth::id(),
-                        UserNotification::SUBJECT => __('global.newUserNotificationSubject'),
-                        UserNotification::BODY => __('global.newUserNotificationBody')
-                    ]);
-                }
-
-
-                return success(['user' => new UserResource($user), 'token' => $token], __('auth.register_success'));
-            }
+        if (empty($user->national_code) || empty($user->birth_date)) {
+            return;
         }
 
-        return error(__('auth.verification_code_not_match'), [], 404);
+        $client  = app(PodiumClient::class);
+        $payload = [
+            'apiKey'             => (string) config('podium.services.identity_inquiry.sc_api_key'),
+            'productEntityId'    => (int)    config('podium.services.identity_inquiry.sc_product_id'),
+            'providerParameters' => [
+                'nationalCode' => (string) $user->national_code,
+                'birthDate'    => (string) $user->birth_date, // 13790922
+            ],
+            'asyncCall' => false,
+            'wrapper'   => true,
+        ];
+
+        try {
+            $norm = PodiumClient::normalize($client->callSc2($payload));
+        } catch (Throwable $e) {
+            return;
+        }
+
+        $info  = data_get($norm, 'result.identityInfo', []);
+        $fname = (string) data_get($info, 'firstName', '');
+        $lname = (string) data_get($info, 'lastName', '');
+        $bdate = (string) data_get($info, 'birthDate', data_get($norm, 'result.birthDate', ''));
+
+        if (preg_match('/^\d{8}$/', $bdate)) {
+            $bdate = substr($bdate, 0, 4) . '-' . substr($bdate, 4, 2) . '-' . substr($bdate, 6, 2); // 1379-09-22
+        }
+        $values = [
+            UserProfile::USER_ID       => $user->id,
+            UserProfile::NAME          => $fname !== '' ? $fname : '—',
+            UserProfile::FAMILY        => $lname !== '' ? $lname : '—',
+            UserProfile::NATIONAL_CODE => (string) $user->national_code,
+            UserProfile::BIRTHDAY      => $bdate !== '' ? $bdate : '0000-00-00',
+            UserProfile::PHONE         => $user->mobile,
+        ];
+
+        UserProfile::updateOrCreate(
+            [UserProfile::USER_ID => $user->id],
+            $values
+        );
+    }
+    public function verifyCode(StoreUserRequest $request): JsonResponse
+    {
+        $user = User::where([
+            User::MOBILE => $request->validated('username'),
+            User::SECRET => $request->validated('code'),
+        ])->first();
+
+        if (! $user || Carbon::parse(@$user->secret_expires_at)->isPast()) {
+            return error(__('auth.verification_code_not_match'), [], 404);
+        }
+
+        $createdAt = $user->created_at instanceof Carbon ? $user->created_at : Carbon::parse($user->created_at);
+        $isNewUser = $user->wasRecentlyCreated || $createdAt->diffInMinutes(now()) < 2;
+
+        if ($request->has('forget_password') && $request->validated('forget_password')) {
+            return success([]);
+        }
+
+        Auth::login($user);
+        $roles = (array) $request->input('roles', []);
+        $user  = Auth::user();
+
+        foreach ($roles as $role) {
+            match ($role) {
+                'engineer'   => $user->engineer()->firstOrCreate([]),
+                'contractor' => $user->contractor()->firstOrCreate([]),
+                'employer'   => $user->employer()->firstOrCreate([]),
+                'supplier'   => $user->supplier()->firstOrCreate([]),
+                default      => null,
+            };
+        }
+
+        $this->syncIdentityToProfile($user);
+
+        $user->tokens()->delete();
+        $token = $user->createToken('auth')->plainTextToken;
+
+        if ($isNewUser) {
+            (new SmsService())->send($request->validated('username'), __('sms.newRegisterUser'));
+            UserNotification::create([
+                UserNotification::USER_ID => Auth::id(),
+                UserNotification::SUBJECT => __('global.newUserNotificationSubject'),
+                UserNotification::BODY    => __('global.newUserNotificationBody'),
+            ]);
+        }
+
+        return success(['user' => new UserResource($user->fresh('profile')), 'token' => $token], __('auth.register_success'));
     }
 
     public function checkPassword(Request $request)

@@ -27,10 +27,12 @@ class User extends Authenticatable implements LaratrustUser
 {
     use HasApiTokens, HasFactory, Notifiable, PersianDate, HasRolesAndPermissions;
 
-    CONST
+    const
         ID = 'id',
         TYPE_ID = 'type_id',
         MOBILE = 'mobile',
+        NATIONAL_CODE = 'national_code',
+        BIRTH_DATE = 'birth_date',
         SECRET = 'secret',
         SECRET_EXPIRES_AT = 'secret_expires_at',
         PASSWORD = 'password',
@@ -38,19 +40,16 @@ class User extends Authenticatable implements LaratrustUser
         CREATED_AT = 'created_at',
         UPDATED_AT = 'updated_at';
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
     protected $fillable = [
         self::MOBILE,
+        self::NATIONAL_CODE,
+        self::BIRTH_DATE,
         self::SECRET,
         self::SECRET_EXPIRES_AT,
         self::TYPE_ID,
         self::PASSWORD,
         self::CREATED_AT,
-        self::UPDATED_AT
+        self::UPDATED_AT,
     ];
 
     /**
@@ -120,7 +119,7 @@ class User extends Authenticatable implements LaratrustUser
         return $this->hasMany(Search::class);
     }
     public function wishlists(): HasMany
-{
-    return $this->hasMany(Wishlist::class, Wishlist::USER_ID);
-}
+    {
+        return $this->hasMany(Wishlist::class, Wishlist::USER_ID);
+    }
 }
