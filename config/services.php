@@ -39,6 +39,14 @@ return [
             'Accept' => 'application/json',
             'Authorization' => env('TESNA_BEARER_TOKEN', ''),
         ]
-    ]
+    ],
+    'podium_sc2' => [
+        'class' => \App\Services\Gateways\PodiumScService::class,
+        'url'   => env('PODIUM_BASE_URL', 'https://api.pod.ir'),
+        'headers' => [
+            'Authorization' => 'Bearer ' . env('PODIUM_BUSINESS_TOKEN'),
+            'Content-Type'  => 'application/json',
+        ],
+    ],
 
 ];
