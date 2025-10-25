@@ -16,4 +16,5 @@ return [
     'mobile_nid_mismatch' => '.مالکیت شماره موبایل با کد ملی مطابقت ندارد',
     'birthdate_check_failed' => '.خطا در استعلام تاریخ تولد',
     'birthdate_mismatch' => '.تاریخ تولد با کد ملی مطابقت ندارد',
+    'unauthenticated' => 'شما احراز هویت نشده‌اید.',
 ];

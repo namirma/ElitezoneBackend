@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\PersianDate;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,7 +16,7 @@ use Illuminate\Database\Eloquent\Builder;
  */
 class SupplierProfile extends Model
 {
-    use HasFactory;
+    use HasFactory, PersianDate;
 
     const
         ID = 'id',
@@ -56,20 +57,6 @@ class SupplierProfile extends Model
         self::CREATED_AT,
         self::UPDATED_AT
     ];
-
-    public function getCreatedAtAttribute()
-    {
-        $this->appends[] = "created_at_p";
-        $this->appends[] = "created_at_diff";
-        return $this->attributes["created_at"];
-    }
-
-    public function getUpdatedAtAttribute()
-    {
-        $this->appends[] = "updated_at_p";
-        $this->appends[] = "updated_at_diff";
-        return $this->attributes["updated_at"];
-    }
 
     public function user(): BelongsTo
     {

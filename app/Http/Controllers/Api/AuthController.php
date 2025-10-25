@@ -25,69 +25,69 @@ class AuthController extends Controller
     public function register(StoreUserRequest $request): JsonResponse
     {
         $mobile       = $this->mobileTo09($request->validated('username'));
-        $nationalCode = (string) $request->validated('national_code');
-        $birthDate    = str_replace('-', '', (string) $request->validated('birth_date')); // 13790922
+        // $nationalCode = (string) $request->validated('national_code');
+        // $birthDate    = str_replace('-', '', (string) $request->validated('birth_date')); // 13790922
 
-        $user = User::where([User::MOBILE => $mobile])->first();
+        // $user = User::where([User::MOBILE => $mobile])->first();
 
-        if ($user && @$user->password) {
-            return response()->json(['status' => true, 'message' => __('auth.login_success')], 200);
-        }
+        // if ($user && @$user->password) {
+        //     return response()->json(['status' => true, 'message' => __('auth.login_success')], 200);
+        // }
 
-        if ($user && isset($user->secret_expires_at) && ! Carbon::parse($user->secret_expires_at)->isPast()) {
-            return response()->json(['status' => true, 'message' => __('auth.code_sent_recently')], 202);
-        }
+        // if ($user && isset($user->secret_expires_at) && ! Carbon::parse($user->secret_expires_at)->isPast()) {
+        //     return response()->json(['status' => true, 'message' => __('auth.code_sent_recently')], 202);
+        // }
 
-        $client = app(PodiumClient::class);
+        // $client = app(PodiumClient::class);
 
-        $matchPayload = [
-            'apiKey'          => (string) config('podium.services.nid_mobile_match.sc_api_key'),
-            'productEntityId' => (int)    config('podium.services.nid_mobile_match.sc_product_id'),
-            'providerParameters' => [
-                'body' => [
-                    'nationalCode' => $nationalCode,
-                    'mobileNumber' => $mobile,
-                ],
-            ],
-            'asyncCall' => false,
-            'wrapper'   => true,
-        ];
+        // $matchPayload = [
+        //     'apiKey'          => (string) config('podium.services.nid_mobile_match.sc_api_key'),
+        //     'productEntityId' => (int)    config('podium.services.nid_mobile_match.sc_product_id'),
+        //     'providerParameters' => [
+        //         'body' => [
+        //             'nationalCode' => $nationalCode,
+        //             'mobileNumber' => $mobile,
+        //         ],
+        //     ],
+        //     'asyncCall' => false,
+        //     'wrapper'   => true,
+        // ];
 
-        try {
-            $matchRes = PodiumClient::normalize($client->callSc2($matchPayload));
-        } catch (Throwable $e) {
-            return response()->json(['status' => false, 'message' => __('auth.mobile_check_failed')], 502);
-        }
+        // try {
+        //     $matchRes = PodiumClient::normalize($client->callSc2($matchPayload));
+        // } catch (Throwable $e) {
+        //     return response()->json(['status' => false, 'message' => __('auth.mobile_check_failed')], 502);
+        // }
 
-        $matched   = data_get($matchRes, 'result.matched');
-        $matchCode = (string) data_get($matchRes, 'result.resultCode', '');
-        $isMatch   = ($matched === true || $matched === 'true' || $matchCode === '1');
+        // $matched   = data_get($matchRes, 'result.matched');
+        // $matchCode = (string) data_get($matchRes, 'result.resultCode', '');
+        // $isMatch   = ($matched === true || $matched === 'true' || $matchCode === '1');
 
-        if (! $isMatch) {
-            return response()->json(['status' => false, 'message' => __('auth.mobile_nid_mismatch')], 422);
-        }
+        // if (! $isMatch) {
+        //     return response()->json(['status' => false, 'message' => __('auth.mobile_nid_mismatch')], 422);
+        // }
 
-        $idenPayload = [
-            'apiKey'             => (string) config('podium.services.identity_inquiry.sc_api_key'),
-            'productEntityId'    => (int)    config('podium.services.identity_inquiry.sc_product_id'),
-            'providerParameters' => [
-                'nationalCode' => $nationalCode,
-                'birthDate'    => $birthDate,
-            ],
-            'asyncCall' => false,
-            'wrapper'   => true,
-        ];
+        // $idenPayload = [
+        //     'apiKey'             => (string) config('podium.services.identity_inquiry.sc_api_key'),
+        //     'productEntityId'    => (int)    config('podium.services.identity_inquiry.sc_product_id'),
+        //     'providerParameters' => [
+        //         'nationalCode' => $nationalCode,
+        //         'birthDate'    => $birthDate,
+        //     ],
+        //     'asyncCall' => false,
+        //     'wrapper'   => true,
+        // ];
 
-        try {
-            $idenRes = PodiumClient::normalize($client->callSc2($idenPayload));
-        } catch (Throwable $e) {
-            return response()->json(['status' => false, 'message' => __('auth.birthdate_check_failed')], 502);
-        }
+        // try {
+        //     $idenRes = PodiumClient::normalize($client->callSc2($idenPayload));
+        // } catch (Throwable $e) {
+        //     return response()->json(['status' => false, 'message' => __('auth.birthdate_check_failed')], 502);
+        // }
 
-        $srvBirth = (string) data_get($idenRes, 'result.identityInfo.birthDate', data_get($idenRes, 'result.birthDate', ''));
-        if ($srvBirth === '' || $srvBirth !== $birthDate) {
-            return response()->json(['status' => false, 'message' => __('auth.birthdate_mismatch')], 422);
-        }
+        // $srvBirth = (string) data_get($idenRes, 'result.identityInfo.birthDate', data_get($idenRes, 'result.birthDate', ''));
+        // if ($srvBirth === '' || $srvBirth !== $birthDate) {
+        //     return response()->json(['status' => false, 'message' => __('auth.birthdate_mismatch')], 422);
+        // }
 
         $verifyCode = generateVerifyCode();
 
@@ -95,8 +95,8 @@ class AuthController extends Controller
             [User::MOBILE => $mobile],
             [
                 User::MOBILE            => $mobile,
-                User::NATIONAL_CODE     => $nationalCode,
-                User::BIRTH_DATE        => $birthDate,
+                // User::NATIONAL_CODE     => $nationalCode,
+                // User::BIRTH_DATE        => $birthDate,
                 User::SECRET            => $verifyCode,
                 User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2),
             ]

@@ -16,6 +16,8 @@ use App\Models\EmployerProfile;
 use App\Models\EngineerProfile;
 use App\Models\SupplierProfile;
 use App\Models\User;
+use App\Models\UserType;
+use App\Http\Requests\StoreUserTypeRequest;
 use App\Models\UserNotification;
 use App\Models\UserProfile;
 use App\Services\SmsService;
@@ -27,6 +29,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -37,311 +40,280 @@ class ProfileController extends Controller
     {
         $user = Auth::user();
         if (! $user) {
-            return response()->json(['status' => false, 'message' => 'کاربر یافت نشد.'], 404);
+            return response()->json(['status' => false, 'message' => __('auth.no_user_found')], 404);
         }
 
-        $user->load(['profile', 'roles:id,name']);
+        $user->load(['profile', 'roles:id,name', 'type']);
+
         $roleNames = $user->roles->pluck('name')->map(fn ($n) => strtolower($n))->unique()->values();
 
         $relations = [];
-        if ($roleNames->contains('engineer'))   $relations[] = 'engineer';
-        if ($roleNames->contains('contractor')) $relations[] = 'contractor';
-        if ($roleNames->contains('supplier'))   $relations[] = 'supplier';
-        if ($roleNames->contains('employer'))   $relations[] = 'employer';
+        $resolvedTypeId = $user->{User::TYPE_ID};
+
+        $expertTypeId = UserType::where(UserType::SLUG, 'expert')->value(UserType::ID);
+
+        if ($user->{User::TYPE_ID} == $expertTypeId) {
+            $resolvedTypeId = $expertTypeId;
+            if ($roleNames->contains('engineer'))   $relations[] = 'engineer';
+            if ($roleNames->contains('contractor')) $relations[] = 'contractor';
+            if ($roleNames->contains('employer'))   $relations[] = 'employer';
+        } elseif ($user->{User::TYPE_ID}) {
+            if ($roleNames->contains('supplier'))   $relations[] = 'supplier';
+            if ($roleNames->contains('employer'))   $relations[] = 'employer';
+        } else {
+            $resolvedTypeId = null;
+        }
+
         if (! empty($relations)) {
             $user->load($relations);
         }
 
-        $resolvedTypeId = $user->type_id ?? $this->resolveTypeIdFromRoleNames($roleNames->all());
-        if (is_null($user->type_id) && $resolvedTypeId && Schema::hasColumn('users', User::TYPE_ID)) {
-            $user->forceFill([User::TYPE_ID => $resolvedTypeId])->save();
+        return success(new UserResource($user), __('global.received_successfully'));
+    }
+
+    public function setUserType(StoreUserTypeRequest $request): JsonResponse
+    {
+        $user = Auth::user();
+        $validated = $request->validated();
+        $displayRolesInput = $validated['roles'];
+
+        $userTypes = UserType::query()
+            ->whereIn(UserType::SLUG, ['expert', 'employer', 'supplier'])
+            ->pluck(UserType::ID, UserType::SLUG);
+
+        $requiredSlugs = ['expert', 'employer', 'supplier'];
+        foreach ($requiredSlugs as $slug) {
+            if (!$userTypes->has($slug)) {
+                Log::error("Missing required UserType slug in database: '{$slug}'.");
+                return error(__('profile.usertype_missing', ['slug' => $slug]), [], 500);
+            }
         }
 
-        $payload = [
-            'type_id'         => $resolvedTypeId,
-            'mobile'          => $user->mobile,
-            'created_at'      => $user->created_at instanceof Carbon ? $user->created_at->format('Y-m-d H:i:s') : $user->created_at,
-            'password'        => false,
-            'created_at_p'    => $user->created_at_p ?? null,
-            'created_at_diff' => $user->created_at_diff ?? null,
-            'profile'         => $user->profile,
-            'engineer'        => $roleNames->contains('engineer')   ? $user->engineer   : null,
-            'contractor'      => $roleNames->contains('contractor') ? $user->contractor : null,
-            'supplier'        => $roleNames->contains('supplier')   ? $user->supplier   : null,
-            'employer'        => $roleNames->contains('employer')   ? $user->employer   : null,
-            'roles'           => $roleNames->values()->all(),
-        ];
+        $expertTypeId = $userTypes->get('expert');
+        $employerTypeId = $userTypes->get('employer');
+        $supplierTypeId = $userTypes->get('supplier');
 
-        return success($payload, 'اطلاعات با موفقیت دریافت شد.');
+        $targetTypeId = null;
+        if (in_array('expert', $displayRolesInput)) {
+            $targetTypeId = $expertTypeId;
+        } elseif (in_array('employer', $displayRolesInput)) {
+            $targetTypeId = $employerTypeId;
+        } elseif (in_array('supplier', $displayRolesInput)) {
+            $targetTypeId = $supplierTypeId;
+        }
+
+        if (is_null($targetTypeId)) {
+             Log::warning('setUserType targetTypeId became null despite validation.', ['roles' => $displayRolesInput]);
+             return error(__('profile.invalid_role_selection'), [], 422);
+        }
+        if ($user->{User::TYPE_ID} !== $targetTypeId) {
+            $user->forceFill([User::TYPE_ID => $targetTypeId])->save();
+        }
+
+        $functionalRolesMap = ['employer' => 'employer', 'supplier' => 'supplier'];
+        $targetFunctionalRoles = [];
+        foreach ($displayRolesInput as $displayRole) {
+            if (isset($functionalRolesMap[$displayRole])) {
+                $targetFunctionalRoles[] = $functionalRolesMap[$displayRole];
+            }
+        }
+        $targetFunctionalRoles = array_unique($targetFunctionalRoles);
+
+        $currentManagedRoles = $user->roles()
+                                    ->whereNotIn('name', ['engineer', 'contractor'])
+                                    ->pluck('name')
+                                    ->all();
+        $rolesToAdd = array_diff($targetFunctionalRoles, $currentManagedRoles);
+        $rolesToRemove = array_diff($currentManagedRoles, $targetFunctionalRoles);
+        if (!empty($rolesToAdd)) {
+            $user->addRoles($rolesToAdd);
+        }
+        if (!empty($rolesToRemove)) {
+            $user->removeRoles($rolesToRemove);
+        }
+
+        $user = $user->fresh('roles');
+        $finalFunctionalRoles = $user->roles->pluck('name')->all();
+
+        if (in_array('employer', $finalFunctionalRoles)) {
+            $user->employer()->firstOrCreate([EmployerProfile::USER_ID => $user->id]);
+        } else {
+            $user->employer()->where(EmployerProfile::USER_ID, $user->id)->delete();
+        }
+        if (in_array('supplier', $finalFunctionalRoles)) {
+            $user->supplier()->firstOrCreate([SupplierProfile::USER_ID => $user->id]);
+        } else {
+            $user->supplier()->where(SupplierProfile::USER_ID, $user->id)->delete();
+        }
+
+        return success(
+            new UserResource($user->load(['profile', 'type', 'employer', 'supplier', 'engineer', 'contractor'])),
+            __('profile.type_set_successfully')
+        );
     }
 
     public function setProfile(StoreUserProfileRequest $request): JsonResponse
     {
         $profile = UserProfile::firstOrCreate([UserProfile::USER_ID => Auth::id()]);
         $data    = $request->validated();
-
-        $locked = [
-            UserProfile::NAME,
-            UserProfile::FAMILY,
-            UserProfile::NATIONAL_CODE,
-            UserProfile::BIRTHDAY,
-        ];
-
-        $mutable = [
-            UserProfile::EMAIL,
-            UserProfile::COMPANY,
-            UserProfile::ECONOMIC_CODE,
-            UserProfile::NATIONAL_ID,
-            UserProfile::REGISTER_ID,
-            UserProfile::PHONE,
-            UserProfile::PROVINCE_ID,
-            UserProfile::CITY_ID,
-            UserProfile::ENTITY,
-        ];
-
+        $locked = [ UserProfile::NAME, UserProfile::FAMILY, UserProfile::NATIONAL_CODE, UserProfile::BIRTHDAY ];
+        $mutable = [ UserProfile::EMAIL, UserProfile::COMPANY, UserProfile::ECONOMIC_CODE, UserProfile::NATIONAL_ID, UserProfile::REGISTER_ID, UserProfile::PHONE, UserProfile::PROVINCE_ID, UserProfile::CITY_ID, UserProfile::ENTITY ];
         $safe = Arr::except($data, $locked);
 
         $updates = [
             UserProfile::USER_ID       => Auth::id(),
-            UserProfile::NAME          => $profile->name,
-            UserProfile::FAMILY        => $profile->family,
-            UserProfile::NATIONAL_CODE => $profile->national_code,
-            UserProfile::BIRTHDAY      => $profile->birthday,
+            UserProfile::NAME          => $profile->{UserProfile::NAME} ?? ($safe[UserProfile::NAME] ?? null),
+            UserProfile::FAMILY        => $profile->{UserProfile::FAMILY} ?? ($safe[UserProfile::FAMILY] ?? null),
+            UserProfile::NATIONAL_CODE => $profile->{UserProfile::NATIONAL_CODE} ?? ($safe[UserProfile::NATIONAL_CODE] ?? null),
+            UserProfile::BIRTHDAY      => $profile->{UserProfile::BIRTHDAY} ?? ($safe[UserProfile::BIRTHDAY] ?? null),
         ];
-
-        foreach ($mutable as $key) {
-            $updates[$key] = array_key_exists($key, $safe) ? $safe[$key] : $profile->{$key};
-        }
+        foreach ($mutable as $key) { $updates[$key] = array_key_exists($key, $safe) ? $safe[$key] : $profile->{$key}; }
+        foreach ($locked as $key) { if (isset($safe[$key]) && $key !== UserProfile::USER_ID) { $updates[$key] = $profile->{$key}; } elseif (is_null($updates[$key]) && !is_null($profile->{$key})) { $updates[$key] = $profile->{$key}; } }
 
         $profile->update($updates);
-
-        return success(new UserResource(User::with('profile')->find(Auth::id())));
+        return success(new UserResource(User::with('profile')->find(Auth::id())), __('profile.updated_successfully'));
     }
 
     public function updateProfile(UpdateUserProfileRequest $request): JsonResponse
     {
-        $profile = UserProfile::where([UserProfile::USER_ID, Auth::id()])->firstOrFail();
+        $profile = UserProfile::where([UserProfile::USER_ID], Auth::id())->firstOrFail();
         $data    = $request->validated();
-
-        $locked = [
-            UserProfile::NAME,
-            UserProfile::FAMILY,
-            UserProfile::NATIONAL_CODE,
-            UserProfile::BIRTHDAY,
-        ];
-
-        $allowed = [
-            UserProfile::EMAIL,
-            UserProfile::COMPANY,
-            UserProfile::ECONOMIC_CODE,
-            UserProfile::NATIONAL_ID,
-            UserProfile::REGISTER_ID,
-            UserProfile::PHONE,
-            UserProfile::PROVINCE_ID,
-            UserProfile::CITY_ID,
-            UserProfile::ENTITY,
-        ];
-
-        $safe    = Arr::except($data, $locked);
+        $allowed = [ UserProfile::EMAIL, UserProfile::COMPANY, UserProfile::ECONOMIC_CODE, UserProfile::NATIONAL_ID, UserProfile::REGISTER_ID, UserProfile::PHONE, UserProfile::PROVINCE_ID, UserProfile::CITY_ID, UserProfile::ENTITY ];
         $payload = [];
-
-        foreach ($allowed as $key) {
-            if (array_key_exists($key, $safe)) {
-                $payload[$key] = $safe[$key];
-            }
-        }
-
-        if (! empty($payload)) {
-            $profile->update($payload);
-        }
-
-        return success(new UserResource(User::with('profile')->find(Auth::id())));
+        foreach ($allowed as $key) { if (array_key_exists($key, $data)) { $payload[$key] = $data[$key]; } }
+        if (! empty($payload)) { $profile->update($payload); }
+        return success(new UserResource(User::with('profile')->find(Auth::id())), __('profile.updated_successfully'));
     }
 
     public function setPassword(StorePasswordRequest $request): JsonResponse
     {
         $user = User::findOrFail(Auth::id());
-        $user->update([User::PASSWORD => Hash::make($request->validated()['password'])]);
-
-        return success(new UserResource($user->load('profile')), __('auth.password_changed_successfully'));
+        $user->update([User::PASSWORD => Hash::make($request->validated()[User::PASSWORD])]);
+        return success(new UserResource($user), __('auth.password_changed_successfully'));
     }
 
     public function changePasswordFirstAttempt(): JsonResponse
     {
         $user = User::findOrFail(Auth::id());
         $code = generateVerifyCode();
-
-        $notExpired = $user->secret_expires_at ? ! Carbon::parse($user->secret_expires_at)->isPast() : false;
-        if ($notExpired) {
-            return success(new UserResource($user->load('profile')), __('auth.code_sent_recently'), 202);
-        }
-
-        User::where([User::ID, $user->id])->update([
-            User::SECRET            => $code,
-            User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2),
-        ]);
-
-        (new SmsService())->send($user->mobile, $code);
-
-        return success(new UserResource($user->load('profile')), __('auth.change_password_first_attempt'));
+        $notExpired = $user->{User::SECRET_EXPIRES_AT} ? ! Carbon::parse($user->{User::SECRET_EXPIRES_AT})->isPast() : false;
+        if ($notExpired) { return success([], __('auth.code_sent_recently'), 202); }
+        User::where([User::ID], $user->id)->update([ User::SECRET => $code, User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2), ]);
+        (new SmsService())->send($user->{User::MOBILE}, $code);
+        return success([], __('auth.change_password_first_attempt'), 200);
     }
 
     public function updateMobile(): JsonResponse
     {
         $user = Auth::user();
+        if (!$user) return error(__('auth.unauthenticated'), [], 401);
         $code = generateVerifyCode();
-
-        $notExpired = $user->secret_expires_at ? ! Carbon::parse($user->secret_expires_at)->isPast() : false;
-        if ($notExpired) {
-            return success([], __('auth.code_sent_recently'), 202);
-        }
-
-        User::where([User::ID => $user->id])->update([
-            User::SECRET            => $code,
-            User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2),
-        ]);
-
-        (new SmsService())->send($user->mobile, $code);
-
-        return success([], __('auth.verification_code_sent_successfully'), 202);
+        $notExpired = $user->{User::SECRET_EXPIRES_AT} ? ! Carbon::parse($user->{User::SECRET_EXPIRES_AT})->isPast() : false;
+        if ($notExpired) { return success([], __('auth.code_sent_recently'), 202); }
+        User::where([User::ID], $user->id)->update([ User::SECRET => $code, User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2), ]);
+        (new SmsService())->send($user->{User::MOBILE}, $code);
+        return success([], __('auth.verification_code_sent_successfully'), 200);
     }
 
     public function verifyCode(UpdateMobileRequest $request): JsonResponse
     {
         $user = Auth::user();
+        if (!$user) return error(__('auth.unauthenticated'), [], 401);
         $data = $request->validated();
-
-        $notExpired = $user->secret_expires_at ? ! Carbon::parse($user->secret_expires_at)->isPast() : false;
-
-        if (
-            (int) ($user->secret ?? 0) === (int) $data['code'] &&
-            $notExpired &&
-            ! empty($data['username'])
-        ) {
-            $code = generateVerifyCode();
-            (new SmsService())->send($data['username'], $code);
-
-            User::where([User::ID, $user->id])->update([
-                User::SECRET            => $code,
-                User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2),
-            ]);
-
-            return success([], __('auth.verification_code_sent_successfully'), 202);
+        $currentMobileCode = $data['code'] ?? null;
+        $newMobile = $data['username'] ?? null;
+        if (is_null($currentMobileCode) || is_null($newMobile)) { return error(__('validation.required'), ['code', 'username'], 422); }
+        $notExpired = $user->{User::SECRET_EXPIRES_AT} ? ! Carbon::parse($user->{User::SECRET_EXPIRES_AT})->isPast() : false;
+        if ((int) ($user->{User::SECRET} ?? 0) === (int) $currentMobileCode && $notExpired) {
+            $newCode = generateVerifyCode();
+            (new SmsService())->send($newMobile, $newCode);
+            User::where([User::ID], $user->id)->update([ User::SECRET => $newCode, User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2), ]);
+            session(['pending_mobile_update' => $newMobile]);
+            return success(['new_mobile' => $newMobile], __('auth.verification_code_sent_successfully_to_new_mobile'), 200);
         }
-
-        return error(__('auth.verification_code_not_match'), [], 404);
+        return error(__('auth.verification_code_not_match'), [], 400);
     }
 
     public function confirmUpdateMobile(Request $request): JsonResponse
     {
-        $user     = Auth::user();
+        $user = Auth::user();
+        if (!$user) return error(__('auth.unauthenticated'), [], 401);
         $code     = $request->input('code');
-        $username = $request->input('username');
-
-        $notExpired = $user->secret_expires_at ? ! Carbon::parse($user->secret_expires_at)->isPast() : false;
-
-        if (
-            (int) ($user->secret ?? 0) === (int) $code &&
-            $notExpired &&
-            ! empty($username)
-        ) {
-            DB::table('users')->where('id', $user->id)->update([
-                'mobile'            => $username,
-                'secret'            => null,
-                'secret_expires_at' => null,
-            ]);
-
-            return success([], __('profile.mobileUpdateSuccessfully'), 202);
+        $newMobile = session('pending_mobile_update');
+        if (is_null($code) || is_null($newMobile)) { return error(__('validation.required'), ['code', 'username'], 422); }
+        $notExpired = $user->{User::SECRET_EXPIRES_AT} ? ! Carbon::parse($user->{User::SECRET_EXPIRES_AT})->isPast() : false;
+        if ((int) ($user->{User::SECRET} ?? 0) === (int) $code && $notExpired) {
+            DB::table('users')->where(User::ID, $user->id)->update([ User::MOBILE => $newMobile, User::SECRET => null, User::SECRET_EXPIRES_AT => null, ]);
+            session()->forget('pending_mobile_update');
+            return success(['mobile' => $newMobile], __('profile.mobileUpdateSuccessfully'), 200);
         }
-
-        return error(__('auth.verification_code_not_match'), [], 404);
+        return error(__('auth.verification_code_not_match_or_expired'), [], 400);
     }
 
-    public static function removeProfile(): void
-    {
-        $uid = Auth::id();
-        ContractorProfile::where([ContractorProfile::USER_ID, $uid])->delete();
-        EmployerProfile::where([EmployerProfile::USER_ID, $uid])->delete();
-        EngineerProfile::where([EngineerProfile::USER_ID, $uid])->delete();
-        SupplierProfile::where(array: [SupplierProfile::USER_ID, $uid])->delete();
-    }
+     public static function removeProfile(): void
+     {
+         $uid = Auth::id();
+         ContractorProfile::where([ContractorProfile::USER_ID], $uid)->delete();
+         EmployerProfile::where([EmployerProfile::USER_ID], $uid)->delete();
+         EngineerProfile::where([EngineerProfile::USER_ID], $uid)->delete();
+         SupplierProfile::where([SupplierProfile::USER_ID], $uid)->delete();
+     }
 
     public function getMessages(): JsonResponse
     {
-        $items = UserNotification::where([UserNotification::USER_ID, Auth::id()])->latest()->get();
-        return success(UserMessageResource::collection($items));
+         $user = Auth::user();
+         if (!$user) return error(__('auth.unauthenticated'), [], 401);
+         $items = UserNotification::where([UserNotification::USER_ID], $user->id)->latest()->get();
+         return success(UserMessageResource::collection($items), __('global.received_successfully'));
     }
 
     public function updateMessageStatus(UserNotification $userNotification): JsonResponse
     {
-        $userNotification->update([UserNotification::READ_AT => Carbon::now()->toDateTimeString()]);
-        return success(new UserMessageResource($userNotification));
+        $user = Auth::user();
+        if (!$user || $userNotification->{UserNotification::USER_ID} !== $user->id) { return error(__('auth.forbidden'), [], 403); }
+        if (is_null($userNotification->{UserNotification::READ_AT})) { $userNotification->update([UserNotification::READ_AT => Carbon::now()]); }
+        return success(new UserMessageResource($userNotification), __('profile.message_marked_read'));
     }
 
     public function updateAllMessageStatus(): JsonResponse
     {
-        UserNotification::where([UserNotification::USER_ID, Auth::id()])
-            ->update([UserNotification::READ_AT => Carbon::now()->toDateTimeString()]);
-        return success([]);
+        $user = Auth::user();
+        if (!$user) return error(__('auth.unauthenticated'), [], 401);
+        $updatedCount = UserNotification::where([UserNotification::USER_ID], $user->id)
+            ->whereNull(UserNotification::READ_AT)
+            ->update([UserNotification::READ_AT => Carbon::now()]);
+        return success(['updated_count' => $updatedCount], __('profile.all_messages_marked_read'));
     }
 
     public function setEmail(VerifyEmailRequest $request): JsonResponse
     {
+        $user = Auth::user();
+        if (!$user) return error(__('auth.unauthenticated'), [], 401);
         $token = Str::uuid()->toString();
-
-        $profile = UserProfile::firstOrCreate([UserProfile::USER_ID => Auth::id()]);
-        $profile->update([
-            UserProfile::EMAIL                    => $request->validated()['email'],
-            UserProfile::EMAIL_VERIFIED_AT        => null,
-            UserProfile::EMAIL_VERIFICATION_TOKEN => $token,
-        ]);
-
-        Mail::to($request->validated()['email'])->send(new VerifyEmail($token));
-
-        return success([], 'global.verificationEmailSentSuccessfully');
+        $email = $request->validated()['email'];
+        $profile = UserProfile::firstOrCreate(
+             [UserProfile::USER_ID => $user->id],
+             [ UserProfile::NATIONAL_CODE => $user->{User::NATIONAL_CODE}, UserProfile::BIRTHDAY => $user->{User::BIRTH_DATE} ? Carbon::parse($user->{User::BIRTH_DATE})->format('Y-m-d') : null, ]
+         );
+        $profile->update([ UserProfile::EMAIL => $email, UserProfile::EMAIL_VERIFIED_AT => null, UserProfile::EMAIL_VERIFICATION_TOKEN => $token, ]);
+        try {
+             Mail::to($email)->send(new VerifyEmail($token));
+             return success(['email' => $email], __('global.verificationEmailSentSuccessfully'));
+         } catch (\Throwable $e) {
+             Log::error("Failed to send verification email to {$email}: " . $e->getMessage());
+             return error(__('profile.email_send_failed'), [], 500);
+         }
     }
 
     public function checkToken(Request $request): JsonResponse
     {
-        $profile = UserProfile::where([
-            UserProfile::EMAIL_VERIFICATION_TOKEN => $request->input('token'),
-            UserProfile::EMAIL_VERIFIED_AT        => null,
-        ])->first();
-
+        $token = $request->input('token');
+        if (!$token) { return error(__('validation.required'), ['token'], 422); }
+        $profile = UserProfile::where([UserProfile::EMAIL_VERIFICATION_TOKEN], $token) ->whereNull(UserProfile::EMAIL_VERIFIED_AT)->first();
         if ($profile) {
-            $profile->update([UserProfile::EMAIL_VERIFIED_AT => Carbon::now()]);
-            return success([], 'global.emailVerifiedSuccessfully');
+            $profile->update([ UserProfile::EMAIL_VERIFIED_AT => Carbon::now(), UserProfile::EMAIL_VERIFICATION_TOKEN => null, ]);
+            return success(['email' => $profile->{UserProfile::EMAIL}], __('global.emailVerifiedSuccessfully'));
         }
-
-        return error('global.notFound', [], 404);
-    }
-
-    private function purgeObsoleteProfiles(User $user, Collection $roleNames): void
-    {
-        $keep = $roleNames->map(fn ($r) => strtolower($r))->unique()->values()->all();
-
-        if (! in_array('engineer', $keep, true)) {
-            EngineerProfile::where([EngineerProfile::USER_ID, $user->id])->delete();
-        }
-        if (! in_array('contractor', $keep, true)) {
-            ContractorProfile::where([ContractorProfile::USER_ID, $user->id])->delete();
-        }
-        if (! in_array('supplier', $keep, true)) {
-            SupplierProfile::where([SupplierProfile::USER_ID, $user->id])->delete();
-        }
-        if (! in_array('employer', $keep, true)) {
-            EmployerProfile::where([EmployerProfile::USER_ID, $user->id])->delete();
-        }
-    }
-
-    private function resolveTypeIdFromRoleNames(array $roleNames): ?int
-    {
-        $priority = ['engineer', 'contractor', 'employer', 'supplier'];
-        $primary  = collect($priority)->first(fn ($r) => in_array($r, $roleNames, true));
-        if (! $primary) {
-            return null;
-        }
-        return DB::table('user_types')->where('slug', $primary)->value('id')
-            ?: DB::table('user_types')->where('name', ucfirst($primary))->value('id');
+        return error(__('global.invalid_verification_token'), [], 400);
     }
 }

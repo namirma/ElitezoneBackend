@@ -7,6 +7,7 @@ use App\Models\Search;
 use App\Models\Wishlist;
 use App\Traits\PersianDate;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -110,9 +111,11 @@ class User extends Authenticatable implements LaratrustUser
         return $this->hasOne(EmployerProfile::class);
     }
 
-    public function type(): HasOne
+    public function type(): BelongsTo // <-- تغییر به BelongsTo
     {
-        return $this->hasOne(UserType::class);
+        // Foreign key is 'type_id' on the 'users' table
+        // Owner key is 'id' on the 'user_types' table (پیش‌فرض لاراول)
+        return $this->belongsTo(UserType::class, 'type_id'); // <-- تغییر به belongsTo و مشخص کردن کلید خارجی
     }
     public function searches(): HasMany
     {

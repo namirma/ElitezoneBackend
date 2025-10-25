@@ -7,12 +7,18 @@ use App\Http\Requests\StoreContractorProfileRequest;
 use App\Http\Resources\UserResource;
 use App\Models\ContractorProfile;
 use App\Models\User;
+use App\Models\UserType; // اضافه شد
 use Illuminate\Support\Facades\Auth;
 
 class ContractorController extends Controller
 {
     public function store(StoreContractorProfileRequest $request)
     {
+        $user = Auth::user();
+        $expertTypeId = UserType::where('slug', 'consultant')->value('id');
+        if ($user->type_id == $expertTypeId && !$user->hasRole('contractor')) {
+            $user->addRole('contractor');
+        }
         if (!ContractorProfile::where([ContractorProfile::USER_ID => Auth::id()])->exists())
             ProfileController::removeProfile();
 
@@ -33,9 +39,9 @@ class ContractorController extends Controller
                 ContractorProfile::PROJECT_DONE => $request->validated('project_done') ?? $this->project_done ?? null,
                 ContractorProfile::PROJECT_IN_PROGRESS => $request->validated('project_in_progress') ?? $this->project_in_progress ?? null,
                 ContractorProfile::TRUSTED_CONTRACTOR => $request->validated('trusted_contractor') ?? $this->trusted_contractor ?? null,
-            ]);
+            ]
+        );
 
         return success(new UserResource(User::with('contractor')->find(Auth::id())));
-
     }
 }

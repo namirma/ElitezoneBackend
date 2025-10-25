@@ -7,12 +7,18 @@ use App\Http\Requests\StoreEngineerProfileRequest;
 use App\Http\Resources\UserResource;
 use App\Models\EngineerProfile;
 use App\Models\User;
+use App\Models\UserType;
 use Illuminate\Support\Facades\Auth;
 
 class EngineerController extends Controller
 {
     public function store(StoreEngineerProfileRequest $request)
     {
+        $user = Auth::user();
+        $expertTypeId = UserType::where('slug', 'consultant')->value('id');
+        if ($user->type_id == $expertTypeId && !$user->hasRole('engineer')) {
+            $user->addRole('engineer');
+        }
         if (!EngineerProfile::where([EngineerProfile::USER_ID => Auth::id()])->exists())
             ProfileController::removeProfile();
 
@@ -33,7 +39,8 @@ class EngineerController extends Controller
                 EngineerProfile::ACTIVITY_PROVINCE_ID => $request->validated('activity_province_id') ?? $this->activity_province_id ?? null,
                 EngineerProfile::CITY_ID => $request->validated('city_id') ?? $this->city_id ?? null,
                 EngineerProfile::ACTIVITY_CITY_ID => $request->validated('activity_city_id') ?? $this->activity_city_id ?? null,
-            ]);
+            ]
+        );
 
         return success(new UserResource(User::with('engineer')->find(Auth::id())));
     }

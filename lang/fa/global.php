@@ -23,4 +23,5 @@ return [
     'variant_added_successfully'     => 'محصول با موفقیت به لیست اضافه شد.',
     'variant_removed_successfully'   => 'محصول با موفقیت از لیست حذف شد.',
     'toggle_successfully'            => 'وضعیت محصول در علاقه‌مندی‌ها با موفقیت تغییر کرد.',
+    'invalid_verification_token' => 'توکن تایید نامعتبر است یا قبلا استفاده شده است.',
 ];

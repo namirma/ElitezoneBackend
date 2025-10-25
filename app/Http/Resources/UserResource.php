@@ -28,6 +28,10 @@ class UserResource extends JsonResource
             'supplier' => $this->whenNotNull(new SupplierProfileResource($this->whenLoaded('supplier'))),
             'employer' => $this->whenNotNull(new EmployerProfileResource($this->whenLoaded('employer'))),
             'type' => $this->whenNotNull(new UserTypeResource($this->whenLoaded('type'))),
+            'roles' => $this->whenLoaded('roles', function () {
+                // فقط نام نقش‌ها را برگردان
+                return $this->roles->pluck('name');
+            }),
         ];
     }
 }
