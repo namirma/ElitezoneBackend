@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Builder;
+use App\Traits\PersianDate;
 
 /**
  * @method static updateOrCreate(array $array, array $array1)
@@ -15,7 +16,7 @@ use Illuminate\Database\Eloquent\Builder;
  */
 class SupplierProfile extends Model
 {
-    use HasFactory;
+    use HasFactory, PersianDate;
 
     const
         ID = 'id',
@@ -56,20 +57,26 @@ class SupplierProfile extends Model
         self::CREATED_AT,
         self::UPDATED_AT
     ];
+    protected $appends = [
+    'created_at_p',
+    'created_at_diff',
+    'updated_at_p',
+    'updated_at_diff',
+];
 
-    public function getCreatedAtAttribute()
-    {
-        $this->appends[] = "created_at_p";
-        $this->appends[] = "created_at_diff";
-        return $this->attributes["created_at"];
-    }
+    // public function getCreatedAtAttribute()
+    // {
+    //     $this->appends[] = "created_at_p";
+    //     $this->appends[] = "created_at_diff";
+    //     return $this->attributes["created_at"];
+    // }
 
-    public function getUpdatedAtAttribute()
-    {
-        $this->appends[] = "updated_at_p";
-        $this->appends[] = "updated_at_diff";
-        return $this->attributes["updated_at"];
-    }
+    // public function getUpdatedAtAttribute()
+    // {
+    //     $this->appends[] = "updated_at_p";
+    //     $this->appends[] = "updated_at_diff";
+    //     return $this->attributes["updated_at"];
+    // }
 
     public function user(): BelongsTo
     {
