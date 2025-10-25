@@ -176,7 +176,7 @@ class ProfileController extends Controller
 
     public function updateProfile(UpdateUserProfileRequest $request): JsonResponse
     {
-        $profile = UserProfile::where([UserProfile::USER_ID, Auth::id()])->firstOrFail();
+        $profile = UserProfile::where([UserProfile::USER_ID => Auth::id()])->firstOrFail();
         $data    = $request->validated();
 
         $locked = [
@@ -232,7 +232,7 @@ class ProfileController extends Controller
             return success(new UserResource($user->load('profile')), __('auth.code_sent_recently'), 202);
         }
 
-        User::where([User::ID, $user->id])->update([
+        User::where([User::ID => $user->id])->update([
             User::SECRET            => $code,
             User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2),
         ]);
@@ -252,8 +252,8 @@ class ProfileController extends Controller
             return success([], __('auth.code_sent_recently'), 202);
         }
 
-        User::where([User::ID => $user->id])->update([
-            User::SECRET            => $code,
+        User::where(User::ID, $user->id)->update([
+            User::SECRET => $code,
             User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2),
         ]);
 
@@ -277,10 +277,11 @@ class ProfileController extends Controller
             $code = generateVerifyCode();
             (new SmsService())->send($data['username'], $code);
 
-            User::where([User::ID, $user->id])->update([
-                User::SECRET            => $code,
+            User::where(User::ID, $user->id)->update([
+                User::SECRET => $code,
                 User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2),
             ]);
+
 
             return success([], __('auth.verification_code_sent_successfully'), 202);
         }
@@ -316,15 +317,15 @@ class ProfileController extends Controller
     public static function removeProfile(): void
     {
         $uid = Auth::id();
-        ContractorProfile::where([ContractorProfile::USER_ID, $uid])->delete();
-        EmployerProfile::where([EmployerProfile::USER_ID, $uid])->delete();
-        EngineerProfile::where([EngineerProfile::USER_ID, $uid])->delete();
-        SupplierProfile::where(array: [SupplierProfile::USER_ID, $uid])->delete();
+        ContractorProfile::where([ContractorProfile::USER_ID => $uid])->delete();
+        EmployerProfile::where([EmployerProfile::USER_ID => $uid])->delete();
+        EngineerProfile::where([EngineerProfile::USER_ID => $uid])->delete();
+        SupplierProfile::where([SupplierProfile::USER_ID => $uid])->delete();
     }
 
     public function getMessages(): JsonResponse
     {
-        $items = UserNotification::where([UserNotification::USER_ID, Auth::id()])->latest()->get();
+        $items = UserNotification::where([UserNotification::USER_ID => Auth::id()])->latest()->get();
         return success(UserMessageResource::collection($items));
     }
 
@@ -336,7 +337,7 @@ class ProfileController extends Controller
 
     public function updateAllMessageStatus(): JsonResponse
     {
-        UserNotification::where([UserNotification::USER_ID, Auth::id()])
+        UserNotification::where([UserNotification::USER_ID => Auth::id()])
             ->update([UserNotification::READ_AT => Carbon::now()->toDateTimeString()]);
         return success([]);
     }
