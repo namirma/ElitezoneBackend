@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\User;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StorePasswordRequest;
 use App\Http\Requests\StoreUserProfileRequest;
+use App\Http\Requests\StoreUserTypeRequest;
 use App\Http\Requests\UpdateMobileRequest;
 use App\Http\Requests\UpdateUserProfileRequest;
 use App\Http\Requests\VerifyEmailRequest;
@@ -14,10 +15,12 @@ use App\Mail\VerifyEmail;
 use App\Models\ContractorProfile;
 use App\Models\EmployerProfile;
 use App\Models\EngineerProfile;
+use App\Models\Role;
 use App\Models\SupplierProfile;
 use App\Models\User;
 use App\Models\UserNotification;
 use App\Models\UserProfile;
+use App\Services\PricingRoleResolver;
 use App\Services\SmsService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -41,7 +44,7 @@ class ProfileController extends Controller
         }
 
         $user->load(['profile', 'roles:id,name']);
-        $roleNames = $user->roles->pluck('name')->map(fn ($n) => strtolower($n))->unique()->values();
+        $roleNames = $user->roles->pluck('name')->map(fn($n) => strtolower($n))->unique()->values();
 
         $relations = [];
         if ($roleNames->contains('engineer'))   $relations[] = 'engineer';
@@ -116,6 +119,59 @@ class ProfileController extends Controller
         $profile->update($updates);
 
         return success(new UserResource(User::with('profile')->find(Auth::id())));
+    }
+    public function setUserType(StoreUserTypeRequest $request): JsonResponse
+    {
+        $user = User::findOrFail(Auth::id());
+        $validated = $request->validated();
+
+        if (!empty($validated['roles'])) {
+            $roleNames = collect($validated['roles'])
+                ->map(fn($r) => strtolower($r))
+                ->filter(fn($r) => in_array($r, ['engineer', 'contractor', 'employer', 'supplier'], true))
+                ->unique()
+                ->values();
+
+            DB::transaction(function () use ($user, $roleNames, $validated) {
+                $roleIds = $roleNames
+                    ->map(fn(string $name) => Role::firstOrCreate(
+                        ['name' => $name],
+                        ['display_name' => ucfirst($name), 'description' => null]
+                    )->id)
+                    ->values()
+                    ->all();
+
+                if (method_exists($user, 'syncRoles')) {
+                    $user->syncRoles($roleIds);
+                } else {
+                    $user->roles()->sync($roleIds);
+                }
+
+                $this->purgeObsoleteProfiles($user, $roleNames);
+
+                $typeId = $this->resolveTypeIdFromRoleNames($roleNames->all());
+                $user->forceFill([User::TYPE_ID => $typeId])->save();
+
+                if ($roleNames->contains('employer') && array_key_exists('employer_has_consultant', $validated)) {
+                    EmployerProfile::updateOrCreate(
+                        ['user_id' => $user->id],
+                        ['has_consultant' => (bool) $validated['employer_has_consultant']]
+                    );
+                }
+            });
+
+            $user->refresh();
+
+            return success([
+                'user'  => new UserResource($user->load('profile')),
+                'roles' => $user->roles()->pluck('name')->values()->all(),
+                'active_price_filter_category_code' => app(PricingRoleResolver::class)->resolve($user),
+            ], __('profile.userType'));
+        }
+
+        $user->update([User::TYPE_ID => $validated['type_id'] ?? null]);
+
+        return success(new UserResource($user->load('profile')), __('profile.userType'));
     }
 
     public function updateProfile(UpdateUserProfileRequest $request): JsonResponse
@@ -318,26 +374,26 @@ class ProfileController extends Controller
 
     private function purgeObsoleteProfiles(User $user, Collection $roleNames): void
     {
-        $keep = $roleNames->map(fn ($r) => strtolower($r))->unique()->values()->all();
+        $keep = $roleNames->map(fn($r) => strtolower($r))->unique()->values()->all();
 
         if (! in_array('engineer', $keep, true)) {
-            EngineerProfile::where([EngineerProfile::USER_ID, $user->id])->delete();
+            EngineerProfile::where(EngineerProfile::USER_ID, $user->id)->delete();
         }
         if (! in_array('contractor', $keep, true)) {
-            ContractorProfile::where([ContractorProfile::USER_ID, $user->id])->delete();
+            ContractorProfile::where(ContractorProfile::USER_ID, $user->id)->delete();
         }
         if (! in_array('supplier', $keep, true)) {
-            SupplierProfile::where([SupplierProfile::USER_ID, $user->id])->delete();
+            SupplierProfile::where(SupplierProfile::USER_ID, $user->id)->delete();
         }
         if (! in_array('employer', $keep, true)) {
-            EmployerProfile::where([EmployerProfile::USER_ID, $user->id])->delete();
+            EmployerProfile::where(EmployerProfile::USER_ID, $user->id)->delete();
         }
     }
 
     private function resolveTypeIdFromRoleNames(array $roleNames): ?int
     {
         $priority = ['engineer', 'contractor', 'employer', 'supplier'];
-        $primary  = collect($priority)->first(fn ($r) => in_array($r, $roleNames, true));
+        $primary  = collect($priority)->first(fn($r) => in_array($r, $roleNames, true));
         if (! $primary) {
             return null;
         }
