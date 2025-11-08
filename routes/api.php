@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\Api\ListopherController;
 use App\Http\Controllers\IdentityInquirySc2Controller;
 use App\Http\Controllers\Api\QuestionController;
@@ -14,6 +15,7 @@ use App\Http\Controllers\CustomerTypeController;
 use App\Http\Controllers\EduixController;
 use App\Http\Controllers\FactoryController;
 use App\Http\Controllers\MobileNidMatchController;
+use App\Http\Controllers\OrderActionController;
 use App\Http\Controllers\ParameterDetectionController;
 use App\Http\Controllers\PodiumBalanceController;
 use App\Http\Controllers\PodiumBatchSettlementController;
@@ -29,7 +31,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PodiumSettlementController;
 use App\Http\Controllers\PodiumSettlementInquiryController;
-
+use App\Http\Controllers\OrderController;
+use App\Http\Controllers\OrderSurveyController;
+use App\Http\Controllers\WalletController;
 
 /*
 |--------------------------------------------------------------------------
@@ -51,10 +55,48 @@ Route::prefix('v1/podium')->group(function () {
     Route::post('mobile-nid-match', [MobileNidMatchController::class, 'store']);
 });
 
+Route::middleware('auth:sanctum')->group(function () {
+    // ... other routes ...
+    Route::post('/checkout', [CheckoutController::class, 'placeOrder']);
 
-Route::post('/payment/result', function () {
-    return response()->json(['message' => 'Callback URL.']);
+    // روت‌های مربوط به پرداخت (فعلا Placeholder، نیاز به اتصال به درگاه)
+    Route::post('/orders/{order}/pay-hold-fee', [OrderController::class, 'payHoldFee']); // تمدید رزرو
+    Route::post('/orders/{order}/pay-full', [OrderController::class, 'payFullOrder']); // پرداخت کامل
+    // Order Routes
+    Route::get('/orders', [OrderController::class, 'index']);
+    Route::get('/orders/{order}', [OrderController::class, 'show']);
+    Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel']);
+    Route::get('/orders/{order}/invoice/{type}', [OrderController::class, 'downloadInvoice'])
+        ->whereIn('type', ['initial', 'final', 'tax']); // Use whereIn for clarity
+
+    // Supplier Order Action Routes
+    Route::post('/orders/{order}/prepare', [OrderController::class, 'markAsPrepared']);
+    Route::post('/orders/{order}/waybill', [OrderController::class, 'addWaybill']);
+    Route::post('/orders/{order}/espadana', [OrderController::class, 'issueEspadanaCommand']);
+    Route::post('/orders/{order}/receipt', [OrderController::class, 'attachPaymentReceipt']);
+
+    Route::group(['prefix' => 'beneficiaries', 'as' => 'beneficiaries.'], function () {
+        // مرحله 1: اعتبارسنجی ذی‌نفع و ارسال کد
+        Route::post('/start-verification', [\App\Http\Controllers\BeneficiaryController::class, 'startVerification'])->name('startVerification');
+
+        // مرحله 2: تایید کد توسط خریدار
+        Route::post('/confirm-verification', [\App\Http\Controllers\BeneficiaryController::class, 'confirmVerification'])->name('confirmVerification');
+    });
+
+    Route::post('/orders/{order}/survey', [OrderSurveyController::class, 'store'])->name('orders.survey.store');
+
+    Route::post('/admin/orders/{order}/finalize-invoice', [OrderActionController::class, 'finalizeInvoice'])
+        ->name('admin.orders.finalize');
+
+    Route::prefix('wallet')->controller(WalletController::class)->as('wallet.')->group(function () {
+        Route::get('/', 'getWallet')->name('show'); // نمایش موجودی‌ها
+        Route::get('/transactions', 'getTransactions')->name('transactions'); // تاریخچه
+        Route::post('/deposit', 'requestDeposit')->name('deposit'); // درخواست واریز
+        Route::post('/withdraw', 'requestWithdrawal')->name('withdraw'); // درخواست برداشت
+    });
 });
+
+Route::post('/payment/result', action: fn() => response()->json(['message' => 'Callback URL.']));
 
 Route::prefix('eduix')->group(function () {
     Route::post('/fetch', [EduixController::class, 'fetch']);
@@ -121,6 +163,7 @@ Route::post('/new-question', [QuestionController::class, 'submitQuestion']);
 Route::controller(AuthController::class)->group(function () {
     Route::group(['prefix' => 'authenticate'], function () {
         Route::post('/', 'register');
+        Route::post('/check-user', 'checkUserAndSendCode');
         Route::post('/verify-code', 'verifyCode');
         Route::post('/password/check', 'checkPassword');
         Route::post('/forget-password', 'forgetPassword');
@@ -135,12 +178,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
 
     Route::group(['prefix' => 'province'], function () {
-        Route::get('/', function () {
-            return success(getProvince());
-        });
-        Route::get('/cities/{provinceID?}', function () {
-            return success(getCities());
-        });
+        Route::get('/', action: fn() => success(getProvince()));
+        Route::get('/cities/{provinceID?}', fn() => success(getCities()));
     });
 
     Route::group(['prefix' => 'profile'], function () {

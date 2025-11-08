@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Factory extends Model
@@ -17,7 +18,8 @@ class Factory extends Model
         API_URL = 'api_url',
         IS_ACTIVE = 'is_active',
         CREATED_AT = 'created_at',
-        UPDATED_AT = 'updated_at';
+        UPDATED_AT = 'updated_at',
+        SUPPLIER_USER_ID = 'supplier_user_id';
 
     protected $fillable = [
         self::NAME,
@@ -26,7 +28,8 @@ class Factory extends Model
         self::LOGO,
         self::API_KEY,
         self::API_URL,
-        self::IS_ACTIVE
+        self::IS_ACTIVE,
+        self::SUPPLIER_USER_ID,
     ];
 
     public function locations(): HasMany
@@ -42,5 +45,10 @@ class Factory extends Model
     public function scopeActive($query)
     {
         return $query->where(self::IS_ACTIVE, true);
+    }
+
+    public function supplier(): BelongsTo
+    {
+        return $this->belongsTo(User::class, self::SUPPLIER_USER_ID);
     }
 }

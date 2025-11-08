@@ -200,9 +200,9 @@ class ProductController extends Controller
             $location,
             $customerType,
             $badge,
-            null, // filterCategoryIds (legacy)
+            null,
             (bool)($v['with_vat'] ?? false),
-            $activeCode // نقش فعال بر اساس رول
+            $activeCode
         );
 
         return success($price, 'global.received_successfully');
@@ -268,14 +268,9 @@ class ProductController extends Controller
         if (!Auth::check()) {
             return 'employer_without_consultant';
         }
-        // تازه‌سازی برای جلوگیری از کش نقش
         $user = Auth::user()->fresh(['roles', 'employer']);
         return $this->roleResolver->resolve($user);
     }
-
-    /**
-     * محاسبه و چسباندن فیلدهای قیمتِ نقش‌محور به هر رکورد price و ست کردن min_price واریانت
-     */
     private function hydrateVariantPrices(ProductVariant $variant, string $activeCode, bool $withDebug = false): void
     {
         $variant->prices->each(function ($price) use ($variant, $activeCode, $withDebug) {

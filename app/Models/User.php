@@ -125,4 +125,9 @@ class User extends Authenticatable implements LaratrustUser
     {
         return $this->hasMany(Wishlist::class, Wishlist::USER_ID);
     }
+    public function wallet(): HasOne
+    {
+        // هر کاربر یک کیف پول دارد. اگر ندارد، خودکار ایجاد می‌شود
+        return $this->hasOne(Wallet::class)->withDefault();
+    }
 }
