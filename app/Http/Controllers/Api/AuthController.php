@@ -32,6 +32,13 @@ class AuthController extends Controller
         $user = User::where(User::MOBILE, $mobile)->first();
 
         if ($user) {
+            if ($user->{User::PASSWORD}) {
+                return response()->json([
+                    'status' => true,
+                    'message' => __('auth.user_has_password'),
+                    'action' => 'login_with_password'
+                ], 200);
+            }
             if (isset($user->{User::SECRET_EXPIRES_AT}) && ! Carbon::parse($user->{User::SECRET_EXPIRES_AT})->isPast()) {
                 return response()->json(['status' => true, 'message' => __('auth.code_sent_recently')], 202);
             }
@@ -48,20 +55,13 @@ class AuthController extends Controller
         } else {
 
             $client = app(PodiumClient::class);
-
             $matchPayload = [
                 'apiKey'          => (string) config('podium.services.nid_mobile_match.sc_api_key'),
                 'productEntityId' => (int)    config('podium.services.nid_mobile_match.sc_product_id'),
-                'providerParameters' => [
-                    'body' => [
-                        'nationalCode' => $nationalCode,
-                        'mobileNumber' => $mobile,
-                    ],
-                ],
+                'providerParameters' => ['body' => ['nationalCode' => $nationalCode, 'mobileNumber' => $mobile]],
                 'asyncCall' => false,
                 'wrapper'   => true,
             ];
-
             try {
                 $matchRes = PodiumClient::normalize($client->callSc2($matchPayload));
             } catch (Throwable $e) {
@@ -71,7 +71,6 @@ class AuthController extends Controller
             $matched   = data_get($matchRes, 'result.matched');
             $matchCode = (string) data_get($matchRes, 'result.resultCode', '');
             $isMatch   = $matched === true || $matched === 'true' || $matchCode === '1';
-
             if (! $isMatch) {
                 return response()->json(['status' => false, 'message' => __('auth.mobile_nid_mismatch')], 422);
             }
@@ -79,14 +78,10 @@ class AuthController extends Controller
             $idenPayload = [
                 'apiKey'             => (string) config('podium.services.identity_inquiry.sc_api_key'),
                 'productEntityId'    => (int)    config('podium.services.identity_inquiry.sc_product_id'),
-                'providerParameters' => [
-                    'nationalCode' => $nationalCode,
-                    'birthDate'    => $birthDate,
-                ],
+                'providerParameters' => ['nationalCode' => $nationalCode, 'birthDate' => $birthDate],
                 'asyncCall' => false,
                 'wrapper'   => true,
             ];
-
             try {
                 $idenRes = PodiumClient::normalize($client->callSc2($idenPayload));
             } catch (Throwable $e) {
@@ -99,7 +94,6 @@ class AuthController extends Controller
             }
 
             $verifyCode = generateVerifyCode();
-
             User::create(
                 [
                     User::MOBILE            => $mobile,
@@ -110,9 +104,7 @@ class AuthController extends Controller
                     User::TYPE_ID           => null,
                 ]
             );
-
             (new SmsService())->send($mobile, __('sms.loginMessage', ['code' => $verifyCode]));
-
             return response()->json(['status' => true, 'message' => __('auth.verification_code_sent_successfully')], 202);
         }
     }
@@ -128,12 +120,17 @@ class AuthController extends Controller
 
         if ($user) {
             if ($user->{User::PASSWORD}) {
+                return response()->json([
+                    'status' => true,
+                    'message' => __('auth.user_has_password'),
+                    'action' => 'login_with_password'
+                ], 200);
             }
             if (isset($user->{User::SECRET_EXPIRES_AT}) && ! Carbon::parse($user->{User::SECRET_EXPIRES_AT})->isPast()) {
                 return response()->json([
                     'status' => true,
                     'message' => __('auth.code_sent_recently'),
-                    'action' => 'login'
+                    'action' => 'login_with_code'
                 ], 202);
             }
 
@@ -148,10 +145,9 @@ class AuthController extends Controller
             return response()->json([
                 'status' => true,
                 'message' => __('auth.verification_code_sent_successfully'),
-                'action' => 'login'
+                'action' => 'login_with_code'
             ], 200);
         } else {
-
             return response()->json([
                 'status' => false,
                 'message' => __('auth.no_user_found_register_required'),
@@ -233,13 +229,15 @@ class AuthController extends Controller
         $isNewUser = $user->wasRecentlyCreated || $createdAt->diffInMinutes(now()) < 2;
 
         if ($request->has('forget_password') && $request->validated('forget_password')) {
-            return success([]);
+            $user->update([User::SECRET_EXPIRES_AT => null]);
+            return success([
+                'reset_token' => $user->{User::SECRET}
+            ], __('auth.code_verified_proceed_to_password'));
         }
 
         Auth::login($user);
         $roles = (array) $request->input('roles', []);
         $user  = Auth::user();
-
         foreach ($roles as $role) {
             match ($role) {
                 'engineer'   => $user->engineer()->firstOrCreate([]),
@@ -251,10 +249,8 @@ class AuthController extends Controller
         }
 
         $this->syncIdentityToProfile($user);
-
         $user->tokens()->delete();
         $token = $user->createToken('auth')->plainTextToken;
-
         if ($isNewUser) {
             (new SmsService())->send($request->validated('username'), __('sms.newRegisterUser'));
             UserNotification::create([
@@ -263,14 +259,17 @@ class AuthController extends Controller
                 UserNotification::BODY    => __('global.newUserNotificationBody'),
             ]);
         }
-
         return success(['user' => new UserResource($user->fresh('profile')), 'token' => $token], __('auth.register_success'));
     }
 
     public function checkPassword(Request $request)
     {
-        $user = User::where([User::MOBILE => $request->input('username')])->firstOrFail();
+        $user = User::where([User::MOBILE => $request->input('username')])->first();
+        if (!$user) {
+            return error(__('auth.no_user_found'), [], 404);
+        }
 
+        // 🚀 2. بررسی صحت رمز
         if (Hash::check($request->input('password'), $user->password)) {
             Auth::login($user);
             $user->tokens()->delete();
@@ -314,33 +313,45 @@ class AuthController extends Controller
             'code' => 'required',
             User::PASSWORD => 'required|confirmed'
         ]);
-
         $user = User::where([
             User::MOBILE => $request->input('username'),
             User::SECRET => $request->input('code')
         ])
             ->where(User::PASSWORD, '!=', null)
             ->first();
-
-        if (Carbon::parse(@$user->secret_expires_at)->isPast() && is_null($user))
-            return error('something went wrong', [], 400);
-
-        $user->update([User::PASSWORD => Hash::make($request->input('password'))]);
-
+        if ($user === null) {
+            return error(__('auth.invalid_reset_token'), [], 400);
+        }
+        if ($user->{User::SECRET_EXPIRES_AT} !== null) {
+            return error(__('auth.code_not_verified_yet'), [], 400);
+        }
+        $user->update([
+            User::PASSWORD => Hash::make($request->input('password')),
+            User::SECRET => null
+        ]);
         Auth::login($user);
         $user->tokens()->delete();
         $token = $user->createToken('auth')->plainTextToken;
         return success(['user' => new UserResource($user), 'token' => $token], __('auth.password_changed_successfully'));
     }
 
-    public function sendVerificationCode(StoreUserRequest $request)
+   public function sendVerificationCode(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'username' => 'required|exists:users,mobile'
+        ], [
+            'username.required' => __('auth.username_required'),
+            'username.exists'   => __('auth.no_user_found'),
         ]);
 
-        $user = User::where([User::MOBILE => $request->input('username')])->first();
+        $user = User::where([User::MOBILE => $validated['username']])->first();
+        if (isset($user->{User::SECRET_EXPIRES_AT}) && ! Carbon::parse($user->{User::SECRET_EXPIRES_AT})->isPast()) {
 
+            return response()->json([
+                'status' => true,
+                'message' => __('auth.code_sent_recently'),
+            ], 202);
+        }
         $mobileVerifyCode = generateVerifyCode();
         $user->update([
             User::SECRET => $mobileVerifyCode,
@@ -348,13 +359,12 @@ class AuthController extends Controller
         ]);
 
         (new SmsService())->send(
-            $request->validated('username'),
+            $validated['username'],
             __('sms.loginMessage', ['code' => $mobileVerifyCode])
         );
 
         return success([], __('auth.verification_code_sent_successfully'));
     }
-
     public function logout(Request $request): JsonResponse
     {
         $user = $request->user();

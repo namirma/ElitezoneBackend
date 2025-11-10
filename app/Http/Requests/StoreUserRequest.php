@@ -34,4 +34,18 @@ class StoreUserRequest extends FormRequest
             'roles.*' => ['in:employer,supplier,expert'],
         ];
     }
+
+    public function messages(): array
+    {
+        return [
+            'code.digits' => __('auth.code_digits'),
+            'code.exists' => __('auth.code_exists'),
+            'username.required' => __('auth.username_required'),
+            'username.regex' => __('auth.username_regex'),
+            'national_code.required' => __('auth.national_code_required'),
+            'national_code.regex' => __('auth.national_code_regex'),
+            'birth_date.required' => __('auth.birth_date_required'),
+            'birth_date.regex' => __('auth.birth_date_regex'),
+        ];
+    }
 }

@@ -88,10 +88,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/admin/orders/{order}/finalize-invoice', [OrderActionController::class, 'finalizeInvoice'])
         ->name('admin.orders.finalize');
 
-    Route::prefix('wallet')->controller(WalletController::class)->as('wallet.')->group(function () {
+    Route::prefix('wallet')->controller(WalletController::class)->group(function () {
         Route::get('/', 'getWallet')->name('show'); // نمایش موجودی‌ها
         Route::get('/transactions', 'getTransactions')->name('transactions'); // تاریخچه
         Route::post('/deposit', 'requestDeposit')->name('deposit'); // درخواست واریز
+        Route::post('/deposit/{transaction}/upload-receipt', 'uploadDepositReceipt')->name('deposit.upload');
         Route::post('/withdraw', 'requestWithdrawal')->name('withdraw'); // درخواست برداشت
     });
 });
@@ -162,13 +163,13 @@ Route::post('/new-question', [QuestionController::class, 'submitQuestion']);
 
 Route::controller(AuthController::class)->group(function () {
     Route::group(['prefix' => 'authenticate'], function () {
-        Route::post('/', 'register');
+        Route::post('/', 'register')->middleware('throttle:sms');
         Route::post('/check-user', 'checkUserAndSendCode');
         Route::post('/verify-code', 'verifyCode');
         Route::post('/password/check', 'checkPassword');
-        Route::post('/forget-password', 'forgetPassword');
+        Route::post('/forget-password', 'forgetPassword')->middleware('throttle:sms');
         Route::post('/change-password', 'changePassword');
-        Route::post('/send-code', 'sendVerificationCode');
+        Route::post('/send-code', 'sendVerificationCode')->middleware('throttle:sms');
         Route::middleware('auth:sanctum')->post('/logout', 'logout');
     });
 });
