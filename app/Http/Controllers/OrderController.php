@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\PayHoldFeeRequest;
 use App\Models\Order;
 use App\Models\OrderItem;
 use Illuminate\Http\Request;
@@ -44,6 +45,7 @@ class OrderController extends Controller
         // ... (ادامه کد: تعریف $currentStatuses و $historyStatuses) ...
         $currentStatuses = [
             Order::STATUS_PENDING,
+            Order::STATUS_RESERVED_EXTENDED,
             Order::STATUS_PROCESSING,
             Order::STATUS_PREPARING,
             Order::STATUS_WEIGHBRIDGE_DONE,
@@ -71,13 +73,19 @@ class OrderController extends Controller
             'placer.profile',
             'beneficiary.profile'
         ])->latest();
-
-        // ... (کد switch ($viewType) بدون تغییر) ...
         switch ($viewType) {
             case 'supplier_fulfillment':
                 $query->whereHas('items', function ($itemQuery) use ($userId) {
                     $itemQuery->where(OrderItem::SUPPLIER_USER_ID, $userId);
                 });
+                break;
+            case 'pending_surveys':
+                $query->where(function ($q) use ($userId) {
+                    $q->where(Order::PLACER_USER_ID, $userId)
+                        ->orWhere(Order::BENEFICIARY_USER_ID, $userId);
+                })
+                    ->where(Order::STATUS, Order::STATUS_DELIVERED)
+                    ->where(Order::SURVEY_STATUS, '!=', Order::SURVEY_COMPLETED);
                 break;
             case 'my_direct':
                 $query->where(Order::PLACER_USER_ID, $userId)
@@ -96,8 +104,7 @@ class OrderController extends Controller
                     ->where(Order::PLACER_USER_ID, '!=', $userId);
                 break;
             default:
-                // این حالت نباید رخ دهد چون $viewType در بالا مدیریت شد
-                $query->whereRaw('1 = 0'); // برگرداندن لیست خالی
+                $query->whereRaw('1 = 0');
                 break;
         }
 
@@ -109,12 +116,6 @@ class OrderController extends Controller
 
         $perPage = $request->query('per_page', 10);
         $orders = $query->paginate($perPage);
-
-        // --- حذف بلاک فیلتر تکراری (رفع خطای IDE) ---
-        // if ($viewType === 'supplier_fulfillment') {
-        //     $orders->getCollection()->transform( ... ); // <-- این بلاک حذف شود
-        // }
-
         return OrderResource::collection($orders);
     }
 
@@ -227,11 +228,8 @@ class OrderController extends Controller
         if (!$user->hasRole('supplier') || !$order->items()->where(OrderItem::SUPPLIER_USER_ID, $user->id)->exists()) {
             return error(__('auth.forbidden'), [], 403);
         }
-
-        // --- اصلاح شرط ---
-        // تامین‌کننده فقط سفارش‌هایی را می‌تواند تایید کند که پرداخت شده‌اند
-        if ($order->{Order::STATUS} === Order::STATUS_PROCESSING) { // منتظر تایید
-            $order->{Order::STATUS} = Order::STATUS_PREPARING; // تغییر به "جاری" (آماده‌سازی)
+        if ($order->{Order::STATUS} === Order::STATUS_PROCESSING) {
+            $order->{Order::STATUS} = Order::STATUS_PREPARING;
             $order->{Order::PREPARED_AT} = now();
             $order->save();
 
@@ -239,8 +237,6 @@ class OrderController extends Controller
 
             return success(new OrderResource($order->fresh()), __('orders.marked_as_prepared'));
         }
-
-        // اگر وضعیت چیز دیگری بود (مثلاً 'pending' یا 'preparing')
         return error(__('orders.cannot_prepare_in_current_state'), [], 400);
     }
 
@@ -286,33 +282,27 @@ class OrderController extends Controller
         $order->save();
         return success(new OrderResource($order->fresh()), __('orders.receipt_attached'));
     }
-
-    /**
-     * پرداخت هزینه تمدید رزرو (مرحله تمدید)
-     */
-    public function payHoldFee(Request $request, Order $order): JsonResponse
+    public function payHoldFee(PayHoldFeeRequest $request, Order $order): JsonResponse
     {
-        // 1. چک کردن دسترسی
-        if ($order->{Order::PLACER_USER_ID} !== Auth::id()) {
-            return error(__('auth.forbidden'), [], 403);
-        }
-
-        // 2. چک کردن وضعیت (فقط سفارش‌های رزرو شده قابل تمدید هستند)
+        $validated = $request->validated();
+        $paymentAmount = $validated['amount'];
         if ($order->{Order::STATUS} !== Order::STATUS_PENDING) {
-            return error(__('orders.cannot_extend_reservation'), [], 400);
+            return error(__('orders.cannot_extend_reservation_status'), [], 400);
         }
-
-        // 3. شبیه‌سازی پرداخت (دریافت ۲۰۰ میلیون و ...)
-        $paymentAmount = 200000000; // مثال
-
-        // 4. آپدیت سفارش
+        if ($order->{Order::RESERVATION_EXPIRES_AT} < now()) {
+            return error(__('orders.cannot_extend_reservation_expired'), [], 400);
+        }
+        // TODO: اتصال به درگاه پرداخت (Podium/Shaparak) برای دریافت مبلغ
         $order->update([
             Order::STATUS => Order::STATUS_RESERVED_EXTENDED,
-            Order::RESERVATION_EXPIRES_AT => now()->addDay(), // تمدید برای ۱ روز
+            Order::RESERVATION_EXPIRES_AT => now()->addDay(),
             Order::PARTIAL_PAYMENT_AMOUNT => $paymentAmount,
         ]);
 
-        return success(new OrderResource($order), __('orders.reservation_extended'));
+        // 6. TODO: ارسال پیامک تمدید رزرو
+        // (new SmsService())->send($user->mobile, __('sms.order_reservation_extended', ['hours' => 24]));
+
+        return success(new OrderResource($order->fresh()), __('orders.reservation_extended'));
     }
 
     /**

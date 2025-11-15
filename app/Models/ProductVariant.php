@@ -130,4 +130,9 @@ class ProductVariant extends Model
     {
         return $query->where(self::IS_ACTIVE, true);
     }
+
+    public function stockSubscriptions(): HasMany
+    {
+        return $this->hasMany(StockSubscription::class, StockSubscription::PRODUCT_VARIANT_ID);
+    }
 }

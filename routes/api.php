@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\User\EngineerController;
 use App\Http\Controllers\Api\User\ProfileController;
 use App\Http\Controllers\Api\User\SupplierController;
 use App\Http\Controllers\CartController;
+use App\Http\Controllers\ConsultantRelationController;
 use App\Http\Controllers\CustomerTypeController;
 use App\Http\Controllers\EduixController;
 use App\Http\Controllers\FactoryController;
@@ -33,6 +34,8 @@ use App\Http\Controllers\PodiumSettlementController;
 use App\Http\Controllers\PodiumSettlementInquiryController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\OrderSurveyController;
+use App\Http\Controllers\StockSubscriptionController;
+use App\Http\Controllers\UserBankAccountController;
 use App\Http\Controllers\WalletController;
 
 /*
@@ -56,31 +59,27 @@ Route::prefix('v1/podium')->group(function () {
 });
 
 Route::middleware('auth:sanctum')->group(function () {
-    // ... other routes ...
     Route::post('/checkout', [CheckoutController::class, 'placeOrder']);
-
-    // روت‌های مربوط به پرداخت (فعلا Placeholder، نیاز به اتصال به درگاه)
-    Route::post('/orders/{order}/pay-hold-fee', [OrderController::class, 'payHoldFee']); // تمدید رزرو
-    Route::post('/orders/{order}/pay-full', [OrderController::class, 'payFullOrder']); // پرداخت کامل
-    // Order Routes
+    Route::post('/orders/{order}/pay-hold-fee', [OrderController::class, 'payHoldFee']);
+    Route::post('/orders/{order}/pay-full', [OrderController::class, 'payFullOrder']);
     Route::get('/orders', [OrderController::class, 'index']);
     Route::get('/orders/{order}', [OrderController::class, 'show']);
     Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel']);
     Route::get('/orders/{order}/invoice/{type}', [OrderController::class, 'downloadInvoice'])
-        ->whereIn('type', ['initial', 'final', 'tax']); // Use whereIn for clarity
-
-    // Supplier Order Action Routes
+        ->whereIn('type', ['initial', 'final', 'tax']);
     Route::post('/orders/{order}/prepare', [OrderController::class, 'markAsPrepared']);
     Route::post('/orders/{order}/waybill', [OrderController::class, 'addWaybill']);
     Route::post('/orders/{order}/espadana', [OrderController::class, 'issueEspadanaCommand']);
     Route::post('/orders/{order}/receipt', [OrderController::class, 'attachPaymentReceipt']);
 
-    Route::group(['prefix' => 'beneficiaries', 'as' => 'beneficiaries.'], function () {
-        // مرحله 1: اعتبارسنجی ذی‌نفع و ارسال کد
+    Route::group(['prefix' => 'beneficiaries'], function () {
         Route::post('/start-verification', [\App\Http\Controllers\BeneficiaryController::class, 'startVerification'])->name('startVerification');
-
-        // مرحله 2: تایید کد توسط خریدار
         Route::post('/confirm-verification', [\App\Http\Controllers\BeneficiaryController::class, 'confirmVerification'])->name('confirmVerification');
+    });
+
+    Route::prefix('stock-subscriptions')->controller(StockSubscriptionController::class)->as('stock.')->group(function () {
+        Route::get('/', 'index')->name('index'); 
+        Route::post('/toggle', 'toggle')->name('toggle');
     });
 
     Route::post('/orders/{order}/survey', [OrderSurveyController::class, 'store'])->name('orders.survey.store');
@@ -88,13 +87,29 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/admin/orders/{order}/finalize-invoice', [OrderActionController::class, 'finalizeInvoice'])
         ->name('admin.orders.finalize');
 
-    Route::prefix('wallet')->controller(WalletController::class)->group(function () {
-        Route::get('/', 'getWallet')->name('show'); // نمایش موجودی‌ها
-        Route::get('/transactions', 'getTransactions')->name('transactions'); // تاریخچه
-        Route::post('/deposit', 'requestDeposit')->name('deposit'); // درخواست واریز
+    Route::prefix('wallet')->controller(WalletController::class)->as('wallet.')->group(function () {
+        Route::get('/', 'getWallet')->name('show');
+        Route::get('/transactions', 'getTransactions')->name('transactions');
+        Route::post('/deposit', 'requestDeposit')->name('deposit');
         Route::post('/deposit/{transaction}/upload-receipt', 'uploadDepositReceipt')->name('deposit.upload');
-        Route::post('/withdraw', 'requestWithdrawal')->name('withdraw'); // درخواست برداشت
+        Route::post('/withdraw', 'requestWithdrawal')->name('withdraw');
     });
+
+    Route::prefix('consultants')->controller(ConsultantRelationController::class)->group(function () {
+
+        // --- سمت کارفرما (Employer) ---
+        Route::get('/', 'listMyConsultants')->name('list');
+        Route::post('/invite', 'inviteConsultant')->name('invite');
+        Route::delete('/{consultant}', 'removeConsultant')->name('remove');
+
+        // --- سمت مشاور فنی (Consultant) ---
+        Route::get('/invitations', 'listMyInvitations')->name('invitations');
+        Route::post('/invitations/{employer}/accept', 'acceptInvitation')->name('accept');
+        Route::post('/invitations/{employer}/reject', 'rejectInvitation')->name('reject');
+    });
+
+    Route::apiResource('/bank-accounts', UserBankAccountController::class)
+        ->except(['show', 'update']);
 });
 
 Route::post('/payment/result', action: fn() => response()->json(['message' => 'Callback URL.']));

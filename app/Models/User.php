@@ -6,8 +6,10 @@ namespace App\Models;
 use App\Models\Search;
 use App\Models\Wishlist;
 use App\Traits\PersianDate;
+use App\Models\UserBankAccount;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -39,6 +41,7 @@ class User extends Authenticatable implements LaratrustUser
         PASSWORD = 'password',
         REMEMBER_TOKEN = 'remember_token',
         CREATED_AT = 'created_at',
+        BADGE_ID = 'badge_id',
         UPDATED_AT = 'updated_at';
 
     protected $fillable = [
@@ -111,11 +114,9 @@ class User extends Authenticatable implements LaratrustUser
         return $this->hasOne(EmployerProfile::class);
     }
 
-    public function type(): BelongsTo // <-- تغییر به BelongsTo
+    public function type(): BelongsTo
     {
-        // Foreign key is 'type_id' on the 'users' table
-        // Owner key is 'id' on the 'user_types' table (پیش‌فرض لاراول)
-        return $this->belongsTo(UserType::class, 'type_id'); // <-- تغییر به belongsTo و مشخص کردن کلید خارجی
+        return $this->belongsTo(UserType::class, 'type_id');
     }
     public function searches(): HasMany
     {
@@ -127,7 +128,41 @@ class User extends Authenticatable implements LaratrustUser
     }
     public function wallet(): HasOne
     {
-        // هر کاربر یک کیف پول دارد. اگر ندارد، خودکار ایجاد می‌شود
         return $this->hasOne(Wallet::class)->withDefault();
+    }
+
+    public function technicalConsultants(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'employer_consultant', EmployerConsultant::EMPLOYER_ID, EmployerConsultant::CONSULTANT_ID)
+            ->using(EmployerConsultant::class)
+            ->withPivot(EmployerConsultant::STATUS)
+            ->withTimestamps();
+    }
+    public function associatedEmployers(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'employer_consultant', EmployerConsultant::CONSULTANT_ID, EmployerConsultant::EMPLOYER_ID)
+            ->using(EmployerConsultant::class)
+            ->withPivot(EmployerConsultant::STATUS)
+            ->withTimestamps();
+    }
+
+    public function bankAccounts(): HasMany
+    {
+        return $this->hasMany(UserBankAccount::class, UserBankAccount::USER_ID);
+    }
+
+    public function stockSubscriptions(): HasMany
+    {
+        return $this->hasMany(StockSubscription::class, 'user_id');
+    }
+
+    public function badge(): BelongsTo
+    {
+        return $this->belongsTo(Badge::class, self::BADGE_ID);
+    }
+
+    public function addresses(): HasMany
+    {
+        return $this->hasMany(Address::class, Address::USER_ID);
     }
 }

@@ -43,9 +43,9 @@ class ProfileController extends Controller
             return response()->json(['status' => false, 'message' => __('auth.no_user_found')], 404);
         }
 
-        $user->load(['profile', 'roles:id,name', 'type']);
+        $user->load(['profile', 'roles:id,name', 'type', 'badge']);
 
-        $roleNames = $user->roles->pluck('name')->map(fn ($n) => strtolower($n))->unique()->values();
+        $roleNames = $user->roles->pluck('name')->map(fn($n) => strtolower($n))->unique()->values();
 
         $relations = [];
         $resolvedTypeId = $user->{User::TYPE_ID};
@@ -103,8 +103,8 @@ class ProfileController extends Controller
         }
 
         if (is_null($targetTypeId)) {
-             Log::warning('setUserType targetTypeId became null despite validation.', ['roles' => $displayRolesInput]);
-             return error(__('profile.invalid_role_selection'), [], 422);
+            Log::warning('setUserType targetTypeId became null despite validation.', ['roles' => $displayRolesInput]);
+            return error(__('profile.invalid_role_selection'), [], 422);
         }
         if ($user->{User::TYPE_ID} !== $targetTypeId) {
             $user->forceFill([User::TYPE_ID => $targetTypeId])->save();
@@ -120,9 +120,9 @@ class ProfileController extends Controller
         $targetFunctionalRoles = array_unique($targetFunctionalRoles);
 
         $currentManagedRoles = $user->roles()
-                                    ->whereNotIn('name', ['engineer', 'contractor'])
-                                    ->pluck('name')
-                                    ->all();
+            ->whereNotIn('name', ['engineer', 'contractor'])
+            ->pluck('name')
+            ->all();
         $rolesToAdd = array_diff($targetFunctionalRoles, $currentManagedRoles);
         $rolesToRemove = array_diff($currentManagedRoles, $targetFunctionalRoles);
         if (!empty($rolesToAdd)) {
@@ -156,8 +156,8 @@ class ProfileController extends Controller
     {
         $profile = UserProfile::firstOrCreate([UserProfile::USER_ID => Auth::id()]);
         $data    = $request->validated();
-        $locked = [ UserProfile::NAME, UserProfile::FAMILY, UserProfile::NATIONAL_CODE, UserProfile::BIRTHDAY ];
-        $mutable = [ UserProfile::EMAIL, UserProfile::COMPANY, UserProfile::ECONOMIC_CODE, UserProfile::NATIONAL_ID, UserProfile::REGISTER_ID, UserProfile::PHONE, UserProfile::PROVINCE_ID, UserProfile::CITY_ID, UserProfile::ENTITY ];
+        $locked = [UserProfile::NAME, UserProfile::FAMILY, UserProfile::NATIONAL_CODE, UserProfile::BIRTHDAY];
+        $mutable = [UserProfile::EMAIL, UserProfile::COMPANY, UserProfile::ECONOMIC_CODE, UserProfile::NATIONAL_ID, UserProfile::REGISTER_ID, UserProfile::PHONE, UserProfile::PROVINCE_ID, UserProfile::CITY_ID, UserProfile::ENTITY];
         $safe = Arr::except($data, $locked);
 
         $updates = [
@@ -167,8 +167,16 @@ class ProfileController extends Controller
             UserProfile::NATIONAL_CODE => $profile->{UserProfile::NATIONAL_CODE} ?? ($safe[UserProfile::NATIONAL_CODE] ?? null),
             UserProfile::BIRTHDAY      => $profile->{UserProfile::BIRTHDAY} ?? ($safe[UserProfile::BIRTHDAY] ?? null),
         ];
-        foreach ($mutable as $key) { $updates[$key] = array_key_exists($key, $safe) ? $safe[$key] : $profile->{$key}; }
-        foreach ($locked as $key) { if (isset($safe[$key]) && $key !== UserProfile::USER_ID) { $updates[$key] = $profile->{$key}; } elseif (is_null($updates[$key]) && !is_null($profile->{$key})) { $updates[$key] = $profile->{$key}; } }
+        foreach ($mutable as $key) {
+            $updates[$key] = array_key_exists($key, $safe) ? $safe[$key] : $profile->{$key};
+        }
+        foreach ($locked as $key) {
+            if (isset($safe[$key]) && $key !== UserProfile::USER_ID) {
+                $updates[$key] = $profile->{$key};
+            } elseif (is_null($updates[$key]) && !is_null($profile->{$key})) {
+                $updates[$key] = $profile->{$key};
+            }
+        }
 
         $profile->update($updates);
         return success(new UserResource(User::with('profile')->find(Auth::id())), __('profile.updated_successfully'));
@@ -178,10 +186,16 @@ class ProfileController extends Controller
     {
         $profile = UserProfile::where([UserProfile::USER_ID], Auth::id())->firstOrFail();
         $data    = $request->validated();
-        $allowed = [ UserProfile::EMAIL, UserProfile::COMPANY, UserProfile::ECONOMIC_CODE, UserProfile::NATIONAL_ID, UserProfile::REGISTER_ID, UserProfile::PHONE, UserProfile::PROVINCE_ID, UserProfile::CITY_ID, UserProfile::ENTITY ];
+        $allowed = [UserProfile::EMAIL, UserProfile::COMPANY, UserProfile::ECONOMIC_CODE, UserProfile::NATIONAL_ID, UserProfile::REGISTER_ID, UserProfile::PHONE, UserProfile::PROVINCE_ID, UserProfile::CITY_ID, UserProfile::ENTITY];
         $payload = [];
-        foreach ($allowed as $key) { if (array_key_exists($key, $data)) { $payload[$key] = $data[$key]; } }
-        if (! empty($payload)) { $profile->update($payload); }
+        foreach ($allowed as $key) {
+            if (array_key_exists($key, $data)) {
+                $payload[$key] = $data[$key];
+            }
+        }
+        if (! empty($payload)) {
+            $profile->update($payload);
+        }
         return success(new UserResource(User::with('profile')->find(Auth::id())), __('profile.updated_successfully'));
     }
 
@@ -197,8 +211,10 @@ class ProfileController extends Controller
         $user = User::findOrFail(Auth::id());
         $code = generateVerifyCode();
         $notExpired = $user->{User::SECRET_EXPIRES_AT} ? ! Carbon::parse($user->{User::SECRET_EXPIRES_AT})->isPast() : false;
-        if ($notExpired) { return success([], __('auth.code_sent_recently'), 202); }
-        User::where([User::ID], $user->id)->update([ User::SECRET => $code, User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2), ]);
+        if ($notExpired) {
+            return success([], __('auth.code_sent_recently'), 202);
+        }
+        User::where([User::ID], $user->id)->update([User::SECRET => $code, User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2),]);
         (new SmsService())->send($user->{User::MOBILE}, $code);
         return success([], __('auth.change_password_first_attempt'), 200);
     }
@@ -209,8 +225,10 @@ class ProfileController extends Controller
         if (!$user) return error(__('auth.unauthenticated'), [], 401);
         $code = generateVerifyCode();
         $notExpired = $user->{User::SECRET_EXPIRES_AT} ? ! Carbon::parse($user->{User::SECRET_EXPIRES_AT})->isPast() : false;
-        if ($notExpired) { return success([], __('auth.code_sent_recently'), 202); }
-        User::where([User::ID], $user->id)->update([ User::SECRET => $code, User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2), ]);
+        if ($notExpired) {
+            return success([], __('auth.code_sent_recently'), 202);
+        }
+        User::where([User::ID], $user->id)->update([User::SECRET => $code, User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2),]);
         (new SmsService())->send($user->{User::MOBILE}, $code);
         return success([], __('auth.verification_code_sent_successfully'), 200);
     }
@@ -222,12 +240,14 @@ class ProfileController extends Controller
         $data = $request->validated();
         $currentMobileCode = $data['code'] ?? null;
         $newMobile = $data['username'] ?? null;
-        if (is_null($currentMobileCode) || is_null($newMobile)) { return error(__('validation.required'), ['code', 'username'], 422); }
+        if (is_null($currentMobileCode) || is_null($newMobile)) {
+            return error(__('validation.required'), ['code', 'username'], 422);
+        }
         $notExpired = $user->{User::SECRET_EXPIRES_AT} ? ! Carbon::parse($user->{User::SECRET_EXPIRES_AT})->isPast() : false;
         if ((int) ($user->{User::SECRET} ?? 0) === (int) $currentMobileCode && $notExpired) {
             $newCode = generateVerifyCode();
             (new SmsService())->send($newMobile, $newCode);
-            User::where([User::ID], $user->id)->update([ User::SECRET => $newCode, User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2), ]);
+            User::where([User::ID], $user->id)->update([User::SECRET => $newCode, User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2),]);
             session(['pending_mobile_update' => $newMobile]);
             return success(['new_mobile' => $newMobile], __('auth.verification_code_sent_successfully_to_new_mobile'), 200);
         }
@@ -240,38 +260,44 @@ class ProfileController extends Controller
         if (!$user) return error(__('auth.unauthenticated'), [], 401);
         $code     = $request->input('code');
         $newMobile = session('pending_mobile_update');
-        if (is_null($code) || is_null($newMobile)) { return error(__('validation.required'), ['code', 'username'], 422); }
+        if (is_null($code) || is_null($newMobile)) {
+            return error(__('validation.required'), ['code', 'username'], 422);
+        }
         $notExpired = $user->{User::SECRET_EXPIRES_AT} ? ! Carbon::parse($user->{User::SECRET_EXPIRES_AT})->isPast() : false;
         if ((int) ($user->{User::SECRET} ?? 0) === (int) $code && $notExpired) {
-            DB::table('users')->where(User::ID, $user->id)->update([ User::MOBILE => $newMobile, User::SECRET => null, User::SECRET_EXPIRES_AT => null, ]);
+            DB::table('users')->where(User::ID, $user->id)->update([User::MOBILE => $newMobile, User::SECRET => null, User::SECRET_EXPIRES_AT => null,]);
             session()->forget('pending_mobile_update');
             return success(['mobile' => $newMobile], __('profile.mobileUpdateSuccessfully'), 200);
         }
         return error(__('auth.verification_code_not_match_or_expired'), [], 400);
     }
 
-     public static function removeProfile(): void
-     {
-         $uid = Auth::id();
-         ContractorProfile::where([ContractorProfile::USER_ID], $uid)->delete();
-         EmployerProfile::where([EmployerProfile::USER_ID], $uid)->delete();
-         EngineerProfile::where([EngineerProfile::USER_ID], $uid)->delete();
-         SupplierProfile::where([SupplierProfile::USER_ID], $uid)->delete();
-     }
+    public static function removeProfile(): void
+    {
+        $uid = Auth::id();
+        ContractorProfile::where([ContractorProfile::USER_ID], $uid)->delete();
+        EmployerProfile::where([EmployerProfile::USER_ID], $uid)->delete();
+        EngineerProfile::where([EngineerProfile::USER_ID], $uid)->delete();
+        SupplierProfile::where([SupplierProfile::USER_ID], $uid)->delete();
+    }
 
     public function getMessages(): JsonResponse
     {
-         $user = Auth::user();
-         if (!$user) return error(__('auth.unauthenticated'), [], 401);
-         $items = UserNotification::where([UserNotification::USER_ID], $user->id)->latest()->get();
-         return success(UserMessageResource::collection($items), __('global.received_successfully'));
+        $user = Auth::user();
+        if (!$user) return error(__('auth.unauthenticated'), [], 401);
+        $items = UserNotification::where([UserNotification::USER_ID], $user->id)->latest()->get();
+        return success(UserMessageResource::collection($items), __('global.received_successfully'));
     }
 
     public function updateMessageStatus(UserNotification $userNotification): JsonResponse
     {
         $user = Auth::user();
-        if (!$user || $userNotification->{UserNotification::USER_ID} !== $user->id) { return error(__('auth.forbidden'), [], 403); }
-        if (is_null($userNotification->{UserNotification::READ_AT})) { $userNotification->update([UserNotification::READ_AT => Carbon::now()]); }
+        if (!$user || $userNotification->{UserNotification::USER_ID} !== $user->id) {
+            return error(__('auth.forbidden'), [], 403);
+        }
+        if (is_null($userNotification->{UserNotification::READ_AT})) {
+            $userNotification->update([UserNotification::READ_AT => Carbon::now()]);
+        }
         return success(new UserMessageResource($userNotification), __('profile.message_marked_read'));
     }
 
@@ -292,26 +318,28 @@ class ProfileController extends Controller
         $token = Str::uuid()->toString();
         $email = $request->validated()['email'];
         $profile = UserProfile::firstOrCreate(
-             [UserProfile::USER_ID => $user->id],
-             [ UserProfile::NATIONAL_CODE => $user->{User::NATIONAL_CODE}, UserProfile::BIRTHDAY => $user->{User::BIRTH_DATE} ? Carbon::parse($user->{User::BIRTH_DATE})->format('Y-m-d') : null, ]
-         );
-        $profile->update([ UserProfile::EMAIL => $email, UserProfile::EMAIL_VERIFIED_AT => null, UserProfile::EMAIL_VERIFICATION_TOKEN => $token, ]);
+            [UserProfile::USER_ID => $user->id],
+            [UserProfile::NATIONAL_CODE => $user->{User::NATIONAL_CODE}, UserProfile::BIRTHDAY => $user->{User::BIRTH_DATE} ? Carbon::parse($user->{User::BIRTH_DATE})->format('Y-m-d') : null,]
+        );
+        $profile->update([UserProfile::EMAIL => $email, UserProfile::EMAIL_VERIFIED_AT => null, UserProfile::EMAIL_VERIFICATION_TOKEN => $token,]);
         try {
-             Mail::to($email)->send(new VerifyEmail($token));
-             return success(['email' => $email], __('global.verificationEmailSentSuccessfully'));
-         } catch (\Throwable $e) {
-             Log::error("Failed to send verification email to {$email}: " . $e->getMessage());
-             return error(__('profile.email_send_failed'), [], 500);
-         }
+            Mail::to($email)->send(new VerifyEmail($token));
+            return success(['email' => $email], __('global.verificationEmailSentSuccessfully'));
+        } catch (\Throwable $e) {
+            Log::error("Failed to send verification email to {$email}: " . $e->getMessage());
+            return error(__('profile.email_send_failed'), [], 500);
+        }
     }
 
     public function checkToken(Request $request): JsonResponse
     {
         $token = $request->input('token');
-        if (!$token) { return error(__('validation.required'), ['token'], 422); }
-        $profile = UserProfile::where([UserProfile::EMAIL_VERIFICATION_TOKEN], $token) ->whereNull(UserProfile::EMAIL_VERIFIED_AT)->first();
+        if (!$token) {
+            return error(__('validation.required'), ['token'], 422);
+        }
+        $profile = UserProfile::where([UserProfile::EMAIL_VERIFICATION_TOKEN], $token)->whereNull(UserProfile::EMAIL_VERIFIED_AT)->first();
         if ($profile) {
-            $profile->update([ UserProfile::EMAIL_VERIFIED_AT => Carbon::now(), UserProfile::EMAIL_VERIFICATION_TOKEN => null, ]);
+            $profile->update([UserProfile::EMAIL_VERIFIED_AT => Carbon::now(), UserProfile::EMAIL_VERIFICATION_TOKEN => null,]);
             return success(['email' => $profile->{UserProfile::EMAIL}], __('global.emailVerifiedSuccessfully'));
         }
         return error(__('global.invalid_verification_token'), [], 400);

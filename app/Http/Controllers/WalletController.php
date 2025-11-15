@@ -10,144 +10,203 @@ use App\Models\WalletTransaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-// 🚀 ایمپورت کردن Request هایی که ساختیم
 use App\Http\Requests\WalletDepositRequest;
 use App\Http\Requests\WalletWithdrawalRequest;
+use App\Models\UserBankAccount;
 use App\Models\UserProfile;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Carbon;
 
 class WalletController extends Controller
 {
     /**
-     * دریافت موجودی کیف پول (قابل برداشت و رزرو شده)
-     * مطابق با UI کارت کیف پول
+     * دریافت موجودی کیف پول
      */
     public function getWallet(): JsonResponse
     {
         $user = Auth::user();
-        $wallet = $user->wallet; // (رابطه withDefault در مدل User، آن را می‌سازد)
+        $wallet = $user->wallet()->firstOrCreate();
 
         return success(new WalletResource($wallet), 'موجودی کیف پول دریافت شد.');
     }
 
     /**
-     * دریافت تاریخچه تراکنش‌ها (با قابلیت فیلتر)
-     * مطابق با UI لیست تراکنش‌ها
+     * دریافت تاریخچه تراکنش‌ها (با فیلتر)
      */
     public function getTransactions(Request $request): JsonResponse
     {
         $user = Auth::user();
-        $walletId = $user->wallet->id;
+        $wallet = $user->wallet()->firstOrCreate();
+        $walletId = $wallet->id;
 
         $query = WalletTransaction::where('wallet_id', $walletId)
-            ->latest(); // مرتب‌سازی بر اساس جدیدترین
+            ->latest();
 
-        // 1. فیلتر بر اساس نوع تراکنش
         if ($request->filled('type')) {
             match ($request->input('type')) {
-                'withdraw' => $query->where('type', WalletTransaction::TYPE_WITHDRAW),
                 'deposit'  => $query->where('type', WalletTransaction::TYPE_DEPOSIT),
+                'withdraw' => $query->where('type', WalletTransaction::TYPE_WITHDRAW),
                 'fee'      => $query->whereIn('type', [WalletTransaction::TYPE_FEE_HOLD, WalletTransaction::TYPE_FEE_RELEASE]),
                 default    => null,
             };
         }
-
-        // 2. فیلتر بر اساس وضعیت
+        // فیلتر وضعیت
         if ($request->filled('status')) {
             match ($request->input('status')) {
                 'confirmed' => $query->where('status', WalletTransaction::STATUS_CONFIRMED),
                 'pending'   => $query->where('status', WalletTransaction::STATUS_PENDING),
+                'failed'    => $query->where('status', WalletTransaction::STATUS_FAILED),
                 default     => null,
             };
         }
-
-        // 3. فیلتر بر اساس بازه زمانی (فعلا کامنت)
-        if ($request->filled('from_date')) {
-            // $gregorianFrom = ...
-            // $query->where('created_at', '>=', $gregorianFrom);
+        // فیلتر بازه زمانی
+        if ($request->filled('range')) {
+            $now = Carbon::now();
+            match ($request->input('range')) {
+                '1_month'  => $query->where('created_at', '>=', $now->subMonth()),
+                '3_months' => $query->where('created_at', '>=', $now->subMonths(3)),
+                '1_year'   => $query->where('created_at', '>=', $now->subYear()),
+                default    => null,
+            };
         }
-        if ($request->filled('to_date')) {
-            // $gregorianTo = ...
-            // $query->where('created_at', '<=', $gregorianTo);
-        }
 
-        $transactions = $query->paginate(10); // صفحه‌بندی
+        $transactions = $query->paginate(10);
 
-        // 🚀 2. اصلاح: بسته‌بندی خروجی با Helper `success`
-        // این کار باعث می‌شود خروجی نهایی یک JsonResponse باشد
         return success(
             WalletTransactionResource::collection($transactions)->response()->getData(true),
             'تاریخچه تراکنش‌ها دریافت شد.'
         );
     }
-
-    /**
-     * ثبت درخواست افزایش موجودی (واریز)
-     * (مطابق با UI افزودن موجودی)
-     */
     public function requestDeposit(WalletDepositRequest $request): JsonResponse
     {
         $user = Auth::user();
-        $wallet = $user->wallet;
-        $amount = $request->validated('amount');
+        $wallet = $user->wallet()->firstOrCreate();
+        $validated = $request->validated();
+        $amount = $validated['amount'];
+        $method = $validated['payment_method'];
 
-        // 1. یک تراکنش "در انتظار" می‌سازیم.
         $transaction = $wallet->transactions()->create([
             'amount'      => $amount,
             'type'        => WalletTransaction::TYPE_DEPOSIT,
             'status'      => WalletTransaction::STATUS_PENDING,
             'description' => 'درخواست افزایش موجودی توسط کاربر',
+            'meta'        => ['payment_method' => $method]
         ]);
 
-        // 2. TODO: اطلاعات حساب مقصد (الیت زون) را به کاربر نشان دهید
-        $paymentInfo = [
-            'message' => 'درخواست شما ثبت شد. لطفاً مبلغ ' . number_format($amount) . ' تومان را به حساب ... واریز و رسید را بارگذاری نمایید.',
-            'transaction_id' => $transaction->id,
-        ];
+        switch ($method) {
 
-        return success($paymentInfo, 'درخواست واریز ثبت شد.');
+            case 'bank_transfer':
+                $paymentInfo = [
+                    'transaction_id' => $transaction->id,
+                    'type' => 'manual_payment',
+                    'message' => 'درخواست شما ثبت شد. لطفاً مبلغ ' . number_format($amount) . ' تومان را به حساب ... واریز و رسید را بارگذاری نمایید.',
+
+                    // 🚀 3. اصلاحیه اصلی اینجاست (ارسال پارامتر transaction)
+                    'upload_url' => route('wallet.deposit.upload', ['transaction' => $transaction->id])
+                ];
+                return success($paymentInfo, 'درخواست واریز ثبت شد.');
+
+            case 'shaparak':
+                $redirectUrl = 'https://shaparak.example.com/payment/' . $transaction->id; // Placeholder
+                $paymentInfo = [
+                    'transaction_id' => $transaction->id,
+                    'type' => 'gateway_redirect',
+                    'redirect_url' => $redirectUrl,
+                ];
+                return success($paymentInfo, 'در حال انتقال به درگاه پرداخت...');
+
+            case 'podium':
+                $redirectUrl = 'https://podium.example.com/payment/' . $transaction->id; // Placeholder
+                $paymentInfo = [
+                    'transaction_id' => $transaction->id,
+                    'type' => 'gateway_redirect',
+                    'redirect_url' => $redirectUrl,
+                ];
+                return success($paymentInfo, 'در حال انتقال به درگاه پرداخت پادیوم...');
+        }
+
+        return error('متد پرداخت نامعتبر است.', [], 400); // Failsafe
+    }
+
+    /**
+     * 🚀 جدید: آپلود فیش واریزی برای تراکنش‌های 'bank_transfer'
+     */
+    public function uploadDepositReceipt(Request $request, WalletTransaction $transaction): JsonResponse
+    {
+        $user = Auth::user();
+
+        if ($transaction->wallet->user_id !== $user->id) {
+            return error('شما مجاز به این کار نیستید.', [], 403);
+        }
+
+        if (
+            $transaction->type !== WalletTransaction::TYPE_DEPOSIT ||
+            $transaction->status !== WalletTransaction::STATUS_PENDING ||
+            data_get($transaction->meta, 'payment_method') !== 'bank_transfer'
+        ) {
+            return error('امکان بارگذاری رسید برای این تراکنش وجود ندارد.', [], 400);
+        }
+
+        $validated = $request->validate([
+            'receipt' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048']
+        ]);
+
+        $path = $validated['receipt']->store('wallet_receipts', 'public');
+
+        $transaction->update([
+            'description' => $transaction->description . ' | رسید بارگذاری شد.',
+            'meta' => array_merge($transaction->meta ?? [], ['receipt_path' => $path])
+        ]);
+
+        return success(
+            new WalletTransactionResource($transaction),
+            'رسید شما با موفقیت بارگذاری شد و در انتظار تایید ادمین است.'
+        );
     }
 
     /**
      * ثبت درخواست برداشت از کیف پول
-     * (مطابق با UI برداشت از کیف پول)
      */
     public function requestWithdrawal(WalletWithdrawalRequest $request): JsonResponse
     {
         $user = Auth::user();
-        $wallet = $user->wallet;
+        $wallet = $user->wallet()->firstOrCreate();
         $validated = $request->validated();
+
         $amount = $validated['amount'];
-        $shaba = $validated['shaba'];
+        $bankAccountId = $validated['user_bank_account_id'];
+        $bankAccount = UserBankAccount::find($bankAccountId);
+        if (!$bankAccount) {
+            return error('حساب بانکی یافت نشد.', [], 404);
+        }
+        $shaba = $bankAccount->{UserBankAccount::SHABA};
 
-        // 1. موجودی قابل برداشت کاربر را قفل می‌کنیم
         try {
-            $transaction = DB::transaction(function () use ($wallet, $user, $amount, $shaba) {
+            $transaction = DB::transaction(function () use ($wallet, $user, $amount, $shaba, $bankAccount) {
 
-                // 2. قفل کردن ردیف کیف پول و کاهش موجودی
                 $wallet->lockForUpdate()->decrement('balance', $amount);
 
-                // 3. ثبت تراکنش برداشت در حالت "در انتظار"
                 $transaction = $wallet->transactions()->create([
                     'amount'      => $amount,
                     'type'        => WalletTransaction::TYPE_WITHDRAW,
                     'status'      => WalletTransaction::STATUS_PENDING,
-                    'description' => 'درخواست برداشت توسط کاربر به شبا: ' . $shaba,
+                    'description' => 'درخواست برداشت به شبا: ' . $shaba . ' (بانک: ' . $bankAccount->{UserBankAccount::BANK_NAME} . ')',
                     'meta'        => [
                         'shaba'      => $shaba,
+                        'bank_name'  => $bankAccount->{UserBankAccount::BANK_NAME},
+                        'account_holder_name' => $bankAccount->{UserBankAccount::ACCOUNT_HOLDER_NAME},
                         'first_name' => $user->profile->{UserProfile::NAME} ?? '',
                         'last_name'  => $user->profile->{UserProfile::FAMILY} ?? '',
                     ]
                 ]);
 
                 return $transaction;
-            }, 5); // 5 بار تلاش
-
+            }, 5);
         } catch (\Throwable $e) {
             return error('خطا در ثبت درخواست. لطفاً دوباره تلاش کنید.', ['db_error' => $e->getMessage()], 500);
         }
 
-        // 4. TODO: (در آینده) ارسال درخواست به Podium یا صف ادمین
+        // 4. TODO: ارسال درخواست به Podium (یا صف برای بررسی ادمین)
 
         return success(
             new WalletTransactionResource($transaction),
