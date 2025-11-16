@@ -88,7 +88,14 @@ class ProfileController extends Controller
                 'key' => 'expert_and_employer',
                 'name' => __('auth.expert_and_employer'),
                 'backend_roles' => ['expert', 'employer']
-            ]
+            ],
+            [
+                'key' => 'supplier',
+                'name' => __('auth.supplier'),
+                'backend_roles' => ['supplier']
+            ],
+
+
         ];
 
         return success($roleOptions, __('global.received_successfully'));
