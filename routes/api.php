@@ -15,6 +15,7 @@ use App\Http\Controllers\ConsultantRelationController;
 use App\Http\Controllers\CustomerTypeController;
 use App\Http\Controllers\EduixController;
 use App\Http\Controllers\FactoryController;
+use App\Http\Controllers\JobExperienceController;
 use App\Http\Controllers\MobileNidMatchController;
 use App\Http\Controllers\OrderActionController;
 use App\Http\Controllers\ParameterDetectionController;
@@ -78,7 +79,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::prefix('stock-subscriptions')->controller(StockSubscriptionController::class)->as('stock.')->group(function () {
-        Route::get('/', 'index')->name('index'); 
+        Route::get('/', 'index')->name('index');
         Route::post('/toggle', 'toggle')->name('toggle');
     });
 
@@ -114,8 +115,13 @@ Route::middleware('auth:sanctum')->group(function () {
 
 Route::post('/payment/result', action: fn() => response()->json(['message' => 'Callback URL.']));
 
-Route::prefix('eduix')->group(function () {
-    Route::post('/fetch', [EduixController::class, 'fetch']);
+Route::middleware('auth:sanctum')->group(function () {
+    Route::prefix('education-credentials')->controller(EduixController::class)->as('education.')->group(function () {
+        Route::get('/', 'index')->name('list');
+        Route::delete('/{record}', 'destroy')->name('destroy');
+    });
+    Route::apiResource('job-experiences', JobExperienceController::class)
+        ->except(['show', 'update']);
 });
 Route::prefix('products')->middleware(['auth:sanctum', 'attach.price.category'])->group(function () {
     Route::get('categories', [ProductCategoryController::class, 'index']);
@@ -200,6 +206,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::group(['prefix' => 'profile'], function () {
 
+        Route::get('/role-options', [ProfileController::class, 'getRoleOptions']);
         Route::get('/messages', [ProfileController::class, 'getMessages']);
         Route::get('/messages/read-all', [ProfileController::class, 'updateAllMessageStatus']);
         Route::get('/messages/{userNotification}', [ProfileController::class, 'updateMessageStatus']);

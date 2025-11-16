@@ -71,6 +71,29 @@ class ProfileController extends Controller
         return success(new UserResource($user), __('global.received_successfully'));
     }
 
+    public function getRoleOptions(): JsonResponse
+    {
+        $roleOptions = [
+            [
+                'key' => 'employer',
+                'name' => __('auth.employer'),
+                'backend_roles' => ['employer']
+            ],
+            [
+                'key' => 'expert',
+                'name' => __('auth.expert'),
+                'backend_roles' => ['expert']
+            ],
+            [
+                'key' => 'expert_and_employer',
+                'name' => __('auth.expert_and_employer'),
+                'backend_roles' => ['expert', 'employer']
+            ]
+        ];
+
+        return success($roleOptions, __('global.received_successfully'));
+    }
+
     public function setUserType(StoreUserTypeRequest $request): JsonResponse
     {
         $user = Auth::user();
