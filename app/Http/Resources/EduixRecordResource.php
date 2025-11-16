@@ -11,7 +11,14 @@ class EduixRecordResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        $statusText = match ($this->{EduixRecord::ADMIN_STATUS}) {
+            EduixRecord::STATUS_PENDING => 'در انتظار تایید',
+            EduixRecord::STATUS_APPROVED => 'تایید شده',
+            EduixRecord::STATUS_REJECTED => 'رد شده',
+            default => $this->{EduixRecord::ADMIN_STATUS},
+        };
         return [
+            EduixRecord::ID          => $this->id,
             EduixRecord::NAME          => $this->name,
             EduixRecord::FAMILY        => $this->family,
             EduixRecord::FATHER_NAME   => $this->father_name,
@@ -24,6 +31,9 @@ class EduixRecordResource extends JsonResource
             EduixRecord::GRADUATE_DATE => $this->graduate_date,
             EduixRecord::GPA           => $this->gpa,
             EduixRecord::STATUS        => $this->status,
+            'admin_status' => $statusText,
+            'admin_status_code' => $this->{EduixRecord::ADMIN_STATUS},
+            EduixRecord::REJECTION_REASON => $this->{EduixRecord::REJECTION_REASON},
             'retrieved_at'             => Carbon::parse($this->updated_at)->format('Y-m-d H:i:s'),
         ];
     }

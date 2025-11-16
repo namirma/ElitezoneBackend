@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class EduixRecord extends Model
 {
@@ -11,6 +12,7 @@ class EduixRecord extends Model
 
     const
         ID            = 'id',
+        USER_ID       = 'user_id',
         NATIONAL_CODE = 'national_code',
         TRACE_CODE    = 'trace_code',
         NAME          = 'name',
@@ -25,10 +27,16 @@ class EduixRecord extends Model
         GRADUATE_DATE = 'graduate_date',
         GPA           = 'gpa',
         STATUS        = 'status',
+        ADMIN_STATUS  = 'admin_status',
+        REJECTION_REASON = 'rejection_reason',
         CREATED_AT    = 'created_at',
-        UPDATED_AT    = 'updated_at';
+        UPDATED_AT    = 'updated_at',
+        STATUS_PENDING = 'pending',
+        STATUS_APPROVED = 'approved',
+        STATUS_REJECTED = 'rejected';
 
     protected $fillable = [
+        self::USER_ID,
         self::NATIONAL_CODE,
         self::TRACE_CODE,
         self::NAME,
@@ -43,5 +51,12 @@ class EduixRecord extends Model
         self::GRADUATE_DATE,
         self::GPA,
         self::STATUS,
+        self::ADMIN_STATUS,
+        self::REJECTION_REASON,
     ];
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class, self::USER_ID);
+    }
 }

@@ -17,7 +17,6 @@ class StockSubscriptionController extends Controller
     {
         $user = Auth::user();
         $variants = ProductVariant::whereHas('stockSubscriptions', function ($query) use ($user) {
-            // 🚀 استفاده از ثابت‌ها
             $query->where(StockSubscription::USER_ID, $user->id)
                 ->whereNull(StockSubscription::NOTIFIED_AT);
         })
@@ -26,11 +25,9 @@ class StockSubscriptionController extends Controller
                 'variantAttributes.attributeType'
             ])
             ->paginate(10);
-
-        // 🚀 استفاده از هلپر success و خواندن پیام از lang
         return success(
             SubscribedVariantResource::collection($variants)->response()->getData(true),
-            __('auth.stock.list_success')
+            __('stock.list_success')
         );
     }
 
@@ -47,13 +44,13 @@ class StockSubscriptionController extends Controller
         if ($subscription) {
             $subscription->delete();
             $isSubscribed = false;
-            $message = __('auth.stock.unsubscribed');
+            $message = __('stock.unsubscribed');
         } else {
             $user->stockSubscriptions()->create([
                 StockSubscription::PRODUCT_VARIANT_ID => $variantId
             ]);
             $isSubscribed = true;
-            $message = __('auth.stock.subscribed');
+            $message = __('stock.subscribed');
         }
 
         return success(['is_subscribed' => $isSubscribed], $message);

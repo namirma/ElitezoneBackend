@@ -17,7 +17,7 @@ class AddressController extends Controller
     {
         $user = Auth::user();
         $addresses = $user->addresses()->latest()->get();
-        return success(AddressResource::collection($addresses), __('global.address.list_success'));
+        return success(AddressResource::collection($addresses), __('address.list_success'));
     }
     public function store(StoreAddressRequest $request): JsonResponse
     {
@@ -48,14 +48,14 @@ class AddressController extends Controller
             return $address;
         });
 
-        return success(new AddressResource($address), __('global.address.store_success'), 201);
+        return success(new AddressResource($address), __('address.store_success'), 201);
     }
     public function update(UpdateAddressRequest $request, Address $address): JsonResponse
     {
         $data = $request->validated();
         $address->update($data);
 
-        return success(new AddressResource($address), __('global.address.update_success'));
+        return success(new AddressResource($address), __('address.update_success'));
     }
     public function destroy(Address $address): JsonResponse
     {
@@ -64,11 +64,11 @@ class AddressController extends Controller
         }
 
         if ($address->{Address::IS_DEFAULT}) {
-            return error(__('global.address.delete_default_denied'), [], 400);
+            return error(__('address.delete_default_denied'), [], 400);
         }
 
         $address->delete();
-        return success([], __('global.address.deleted_success'));
+        return success([], __('address.deleted_success'));
     }
 
     public function setDefault(Address $address): JsonResponse
@@ -83,6 +83,6 @@ class AddressController extends Controller
             $address->update([Address::IS_DEFAULT => true]);
         });
 
-        return success(new AddressResource($address), __('global.address.set_default_success'));
+        return success(new AddressResource($address), __('address.set_default_success'));
     }
 }

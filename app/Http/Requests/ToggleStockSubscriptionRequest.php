@@ -20,8 +20,8 @@ class ToggleStockSubscriptionRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'variant_id.required' => __('auth.stock.variant_id_required'),
-            'variant_id.exists'   => __('auth.stock.variant_not_found'),
+            'variant_id.required' => __('stock.variant_id_required'),
+            'variant_id.exists'   => __('stock.variant_not_found'),
         ];
     }
 }

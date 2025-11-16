@@ -165,4 +165,9 @@ class User extends Authenticatable implements LaratrustUser
     {
         return $this->hasMany(Address::class, Address::USER_ID);
     }
+
+    public function eduixRecords(): HasMany
+    {
+        return $this->hasMany(EduixRecord::class, EduixRecord::USER_ID);
+    }
 }

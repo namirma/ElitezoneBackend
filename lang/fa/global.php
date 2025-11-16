@@ -26,18 +26,4 @@ return [
     'invalid_verification_token' => '.توکن تایید نامعتبر است یا قبلا استفاده شده است',
     'model_not_found' => '. درخواستی یافت نشد',
     'consultantInvitationSubject' => 'درخواست همکاری جدید',
-
-    'address.postal_address.required' => '.وارد کردن آدرس پستی الزامی است',
-    'address.receiver_name.required' => '.وارد کردن نام گیرنده الزامی است',
-    'address.receiver_mobile.required' => '.وارد کردن موبایل گیرنده الزامی است',
-    'address.receiver_mobile.regex' => '.فرمت موبایل گیرنده نامعتبر است',
-    'address.postal_code.regex' => '.کد پستی باید 10 رقمی باشد',
-    'address.province_id.exists' => '.استان انتخاب شده معتبر نیست',
-    'address.city_id.exists' => '.شهر انتخاب شده معتبر نیست',
-    'address.set_default_success' => '.آدرس با موفقیت به عنوان پیش‌فرض تنظیم شد',
-    'address.deleted_success' => '.آدرس با موفقیت حذف شد',
-    'address.store_success' => '.آدرس جدید با موفقیت ثبت شد',
-    'address.update_success' => '.آدرس با موفقیت به‌روزرسانی شد',
-    'address.list_success' => '.لیست آدرس‌ها دریافت شد',
-    'address.delete_default_denied' => '.امکان حذف آدرس پیش‌فرض وجود ندارد',
 ];
