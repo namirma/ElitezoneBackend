@@ -19,8 +19,8 @@ class ContractorController extends Controller
         if ($user->type_id == $expertTypeId && !$user->hasRole('contractor')) {
             $user->addRole('contractor');
         }
-        if (!ContractorProfile::where([ContractorProfile::USER_ID => Auth::id()])->exists())
-            ProfileController::removeProfile();
+        // if (!ContractorProfile::where([ContractorProfile::USER_ID => Auth::id()])->exists())
+        //     ProfileController::removeProfile();
 
         ContractorProfile::updateOrCreate(
             [

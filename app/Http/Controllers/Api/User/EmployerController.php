@@ -14,8 +14,8 @@ class EmployerController extends Controller
 {
     public function store(StoreEmployerProfileRequest $request)
     {
-        if (!EmployerProfile::where([EmployerProfile::USER_ID => Auth::id()])->exists())
-            ProfileController::removeProfile();
+        // if (!EmployerProfile::where([EmployerProfile::USER_ID => Auth::id()])->exists())
+        //     ProfileController::removeProfile();
 
         EmployerProfile::updateOrCreate(
             [

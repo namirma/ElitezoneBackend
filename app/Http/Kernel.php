@@ -31,6 +31,8 @@ use Illuminate\Session\Middleware\AuthenticateSession;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
+use App\Http\Middleware\EnsureRoleIsSelected;
+use App\Http\Middleware\EnsureUserIsExpert;
 
 class Kernel extends HttpKernel
 {
@@ -70,8 +72,9 @@ class Kernel extends HttpKernel
 
         'api' => [
             EnsureFrontendRequestsAreStateful::class,
-            ThrottleRequests::class.':api',
+            ThrottleRequests::class . ':api',
             SubstituteBindings::class,
+            EnsureRoleIsSelected::class,
         ],
     ];
 
@@ -97,5 +100,6 @@ class Kernel extends HttpKernel
         'cors' => Cors::class,
         'SecurityHeaders' => SecurityHeaders::class,
         'attach.price.category' => AttachActivePriceCategory::class,
+        'role.expert' => EnsureUserIsExpert::class,
     ];
 }

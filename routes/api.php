@@ -116,12 +116,17 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::post('/payment/result', action: fn() => response()->json(['message' => 'Callback URL.']));
 
 Route::middleware('auth:sanctum')->group(function () {
-    Route::prefix('education-credentials')->controller(EduixController::class)->as('education.')->group(function () {
-        Route::get('/', 'index')->name('list');
-        Route::delete('/{record}', 'destroy')->name('destroy');
+    Route::middleware(['role.expert'])->group(function () {
+
+        Route::prefix('education-credentials')->controller(EduixController::class)->as('education.')->group(function () {
+            Route::post('/fetch', [EduixController::class, 'fetch']);
+            Route::get('/', 'index')->name('list');
+            Route::delete('/{record}', 'destroy')->name('destroy');
+        });
+
+        Route::apiResource('job-experiences', JobExperienceController::class)
+            ->except(['show', 'update']);
     });
-    Route::apiResource('job-experiences', JobExperienceController::class)
-        ->except(['show', 'update']);
 });
 Route::prefix('products')->middleware(['auth:sanctum', 'attach.price.category'])->group(function () {
     Route::get('categories', [ProductCategoryController::class, 'index']);

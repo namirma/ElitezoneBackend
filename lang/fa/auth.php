@@ -12,6 +12,7 @@ return [
     'forget_password_code_sent_successfully' => '.کد یکبار مصرف جهت تغییر رمز عبور با موفقیت ارسال شد',
     'no_user_found' => '.اطلاعاتی یافت نشد',
     'logout_success' => '.خروج با موفقیت انجام شد',
+    'role_selection_timeout' => 'مهلت شما برای انتخاب نقش به پایان رسیده است. لطفاً دوباره وارد شوید و نقش خود را انتخاب کنید.',
     'mobile_check_failed' => '.خطا در اعتبارسنجی موبایل',
     'mobile_nid_mismatch' => '.مالکیت شماره موبایل با کد ملی مطابقت ندارد',
     'birthdate_check_failed' => '.خطا در استعلام تاریخ تولد',

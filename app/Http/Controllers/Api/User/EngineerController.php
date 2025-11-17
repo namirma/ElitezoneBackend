@@ -19,8 +19,8 @@ class EngineerController extends Controller
         if ($user->type_id == $expertTypeId && !$user->hasRole('engineer')) {
             $user->addRole('engineer');
         }
-        if (!EngineerProfile::where([EngineerProfile::USER_ID => Auth::id()])->exists())
-            ProfileController::removeProfile();
+        // if (!EngineerProfile::where([EngineerProfile::USER_ID => Auth::id()])->exists())
+        //     ProfileController::removeProfile();
 
         EngineerProfile::updateOrCreate(
             [

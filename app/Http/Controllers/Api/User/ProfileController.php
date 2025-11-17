@@ -40,32 +40,33 @@ class ProfileController extends Controller
     {
         $user = Auth::user();
         if (! $user) {
-            return response()->json(['status' => false, 'message' => __('auth.no_user_found')], 404);
+            return error(__('auth.no_user_found'), [], 404);
         }
 
-        $user->load(['profile', 'roles:id,name', 'type', 'badge']);
+        $user->load([
+            User::RELATION_PROFILE,
+            User::RELATION_ROLES . ':id,name',
+            User::RELATION_TYPE,
+            User::RELATION_BADGE
+        ]);
 
         $roleNames = $user->roles->pluck('name')->map(fn($n) => strtolower($n))->unique()->values();
+        $relationsToLoad = [];
 
-        $relations = [];
-        $resolvedTypeId = $user->{User::TYPE_ID};
+        $isExpert = $roleNames->contains('engineer') || $roleNames->contains('contractor');
 
-        $expertTypeId = UserType::where(UserType::SLUG, 'expert')->value(UserType::ID);
+        if ($roleNames->contains('engineer'))   $relationsToLoad[] = User::RELATION_ENGINEER;
+        if ($roleNames->contains('contractor')) $relationsToLoad[] = User::RELATION_CONTRACTOR;
+        if ($roleNames->contains('employer'))   $relationsToLoad[] = User::RELATION_EMPLOYER;
+        if ($roleNames->contains('supplier'))   $relationsToLoad[] = User::RELATION_SUPPLIER;
 
-        if ($user->{User::TYPE_ID} == $expertTypeId) {
-            $resolvedTypeId = $expertTypeId;
-            if ($roleNames->contains('engineer'))   $relations[] = 'engineer';
-            if ($roleNames->contains('contractor')) $relations[] = 'contractor';
-            if ($roleNames->contains('employer'))   $relations[] = 'employer';
-        } elseif ($user->{User::TYPE_ID}) {
-            if ($roleNames->contains('supplier'))   $relations[] = 'supplier';
-            if ($roleNames->contains('employer'))   $relations[] = 'employer';
-        } else {
-            $resolvedTypeId = null;
+        if ($isExpert) {
+            $relationsToLoad[] = User::RELATION_EDUIX_RECORDS;
+            $relationsToLoad[] = User::RELATION_JOB_EXPERIENCES;
         }
 
-        if (! empty($relations)) {
-            $user->load($relations);
+        if (! empty($relationsToLoad)) {
+            $user->load($relationsToLoad);
         }
 
         return success(new UserResource($user), __('global.received_successfully'));
@@ -94,8 +95,6 @@ class ProfileController extends Controller
                 'name' => __('auth.supplier'),
                 'backend_roles' => ['supplier']
             ],
-
-
         ];
 
         return success($roleOptions, __('global.received_successfully'));
@@ -105,83 +104,87 @@ class ProfileController extends Controller
     {
         $user = Auth::user();
         $validated = $request->validated();
-        $displayRolesInput = $validated['roles'];
+        $newDisplayRoles = collect($validated['roles']);
 
         $userTypes = UserType::query()
             ->whereIn(UserType::SLUG, ['expert', 'employer', 'supplier'])
             ->pluck(UserType::ID, UserType::SLUG);
 
-        $requiredSlugs = ['expert', 'employer', 'supplier'];
-        foreach ($requiredSlugs as $slug) {
-            if (!$userTypes->has($slug)) {
-                Log::error("Missing required UserType slug in database: '{$slug}'.");
-                return error(__('profile.usertype_missing', ['slug' => $slug]), [], 500);
-            }
-        }
-
         $expertTypeId = $userTypes->get('expert');
         $employerTypeId = $userTypes->get('employer');
         $supplierTypeId = $userTypes->get('supplier');
 
+        if (!$expertTypeId || !$employerTypeId || !$supplierTypeId) {
+            Log::error("Missing required UserType slugs in database (expert, employer, supplier). Check UserTypeSeeder.");
+            return error(__('profile.usertype_missing'), [], 500);
+        }
+
         $targetTypeId = null;
-        if (in_array('expert', $displayRolesInput)) {
+        if ($newDisplayRoles->contains('expert')) {
             $targetTypeId = $expertTypeId;
-        } elseif (in_array('employer', $displayRolesInput)) {
+        } elseif ($newDisplayRoles->contains('employer')) {
             $targetTypeId = $employerTypeId;
-        } elseif (in_array('supplier', $displayRolesInput)) {
+        } elseif ($newDisplayRoles->contains('supplier')) {
             $targetTypeId = $supplierTypeId;
         }
 
         if (is_null($targetTypeId)) {
-            Log::warning('setUserType targetTypeId became null despite validation.', ['roles' => $displayRolesInput]);
             return error(__('profile.invalid_role_selection'), [], 422);
         }
         if ($user->{User::TYPE_ID} !== $targetTypeId) {
             $user->forceFill([User::TYPE_ID => $targetTypeId])->save();
         }
 
-        $functionalRolesMap = ['employer' => 'employer', 'supplier' => 'supplier'];
-        $targetFunctionalRoles = [];
-        foreach ($displayRolesInput as $displayRole) {
-            if (isset($functionalRolesMap[$displayRole])) {
-                $targetFunctionalRoles[] = $functionalRolesMap[$displayRole];
+        $currentRoles = $user->roles->pluck('name');
+
+        if ($newDisplayRoles->contains('employer')) {
+            if (!$currentRoles->contains('employer')) {
+                $user->addRole('employer');
             }
-        }
-        $targetFunctionalRoles = array_unique($targetFunctionalRoles);
-
-        $currentManagedRoles = $user->roles()
-            ->whereNotIn('name', ['engineer', 'contractor'])
-            ->pluck('name')
-            ->all();
-        $rolesToAdd = array_diff($targetFunctionalRoles, $currentManagedRoles);
-        $rolesToRemove = array_diff($currentManagedRoles, $targetFunctionalRoles);
-        if (!empty($rolesToAdd)) {
-            $user->addRoles($rolesToAdd);
-        }
-        if (!empty($rolesToRemove)) {
-            $user->removeRoles($rolesToRemove);
-        }
-
-        $user = $user->fresh('roles');
-        $finalFunctionalRoles = $user->roles->pluck('name')->all();
-
-        if (in_array('employer', $finalFunctionalRoles)) {
             $user->employer()->firstOrCreate([EmployerProfile::USER_ID => $user->id]);
         } else {
+            $user->removeRole('employer');
             $user->employer()->where(EmployerProfile::USER_ID, $user->id)->delete();
         }
-        if (in_array('supplier', $finalFunctionalRoles)) {
+
+        if ($newDisplayRoles->contains('supplier')) {
+            if (!$currentRoles->contains('supplier')) {
+                $user->addRole('supplier');
+            }
             $user->supplier()->firstOrCreate([SupplierProfile::USER_ID => $user->id]);
         } else {
+            $user->removeRole('supplier');
             $user->supplier()->where(SupplierProfile::USER_ID, $user->id)->delete();
         }
 
+        if (!$newDisplayRoles->contains('expert')) {
+            $user->removeRoles(['engineer', 'contractor']);
+            $user->engineer()->where(EngineerProfile::USER_ID, $user->id)->delete();
+            $user->contractor()->where(ContractorProfile::USER_ID, $user->id)->delete();
+            $user->eduixRecords()->delete();
+
+            // TODO: حذف فایل‌های فیزیکی jobExperiences قبل از اجرای delete
+            $user->jobExperiences()->delete();
+        }
+
+        $user = $user->fresh([
+            User::RELATION_ROLES,
+            User::RELATION_TYPE,
+            User::RELATION_EMPLOYER,
+            User::RELATION_SUPPLIER,
+            User::RELATION_ENGINEER,
+            User::RELATION_CONTRACTOR,
+            User::RELATION_PROFILE,
+            User::RELATION_BADGE,
+            User::RELATION_EDUIX_RECORDS,
+            User::RELATION_JOB_EXPERIENCES
+        ]);
+
         return success(
-            new UserResource($user->load(['profile', 'type', 'employer', 'supplier', 'engineer', 'contractor'])),
+            new UserResource($user),
             __('profile.type_set_successfully')
         );
     }
-
     public function setProfile(StoreUserProfileRequest $request): JsonResponse
     {
         $profile = UserProfile::firstOrCreate([UserProfile::USER_ID => Auth::id()]);
@@ -304,11 +307,14 @@ class ProfileController extends Controller
 
     public static function removeProfile(): void
     {
-        $uid = Auth::id();
-        ContractorProfile::where([ContractorProfile::USER_ID], $uid)->delete();
-        EmployerProfile::where([EmployerProfile::USER_ID], $uid)->delete();
-        EngineerProfile::where([EngineerProfile::USER_ID], $uid)->delete();
-        SupplierProfile::where([SupplierProfile::USER_ID], $uid)->delete();
+        // $uid = Auth::id();
+        // ContractorProfile::where([ContractorProfile::USER_ID], $uid)->delete();
+        // EmployerProfile::where([EmployerProfile::USER_ID], $uid)->delete();
+        // EngineerProfile::where([EngineerProfile::USER_ID], $uid)->delete();
+        // SupplierProfile::where([SupplierProfile::USER_ID], $uid)->delete();
+
+        // 🚀 هشدار: این متد منسوخ شده است
+        Log::warning("Deprecated method ProfileController::removeProfile() was called.");
     }
 
     public function getMessages(): JsonResponse

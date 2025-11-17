@@ -26,6 +26,14 @@ class JobExperienceController extends Controller
     public function store(StoreJobExperienceRequest $request): JsonResponse
     {
         $user = Auth::user();
+        
+        $hasActiveJob = $user->jobExperiences()
+            ->whereIn(JobExperience::STATUS, [JobExperience::STATUS_PENDING, JobExperience::STATUS_APPROVED])
+            ->exists();
+
+        if ($hasActiveJob) {
+            return error(__('job.already_has_active_request'), [], 403);
+        }
         $data = $request->validated();
 
         $path = $data['file']->store('job_experiences', 'public');
