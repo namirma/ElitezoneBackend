@@ -11,15 +11,12 @@ use App\Services\SmsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\JsonResponse;
 use Throwable;
 
 class BeneficiaryController extends Controller
 {
-    /**
-     * مرحله 1: اعتبارسنجی اطلاعات ذی‌نفع و ارسال کد تایید به موبایل او.
-     * (الگو گرفته شده از AuthController@register و MobileNidMatchController)
-     */
-    public function startVerification(Request $request, PodiumClient $client)
+    public function startVerification(Request $request, PodiumClient $client): JsonResponse
     {
         $data = $request->validate([
             'national_code' => ['required', 'regex:/^\d{10}$/'],
@@ -32,12 +29,10 @@ class BeneficiaryController extends Controller
         $nationalCode = (string) $data['national_code'];
         $birthDate = str_replace('-', '', (string) $data['birth_date']);
 
-        // 1. چک کردن که ذی‌نفع همان خریدار نباشد
         if ($buyer->{User::MOBILE} == $mobile || $buyer->{User::NATIONAL_CODE} == $nationalCode) {
             return error(__('beneficiary.cannot_be_self'), [], 422);
         }
 
-        // 2. اعتبارسنجی تطابق موبایل و کد ملی (شبیه MobileNidMatchController)
         $matchPayload = [
             'apiKey'          => (string) config('podium.services.nid_mobile_match.sc_api_key'),
             'productEntityId' => (int)    config('podium.services.nid_mobile_match.sc_product_id'),
@@ -50,13 +45,12 @@ class BeneficiaryController extends Controller
             $matched   = data_get($matchRes, 'result.matched');
             $matchCode = (string) data_get($matchRes, 'result.resultCode', '');
             if (!($matched === true || $matched === 'true' || $matchCode === '1')) {
-                 return error(__('auth.mobile_nid_mismatch'), [], 422);
+                 return error(__('beneficiary.mobile_nid_mismatch'), [], 422); // 🚀 Updated key
             }
         } catch (Throwable $e) {
-            return error(__('auth.mobile_check_failed'), [], 502);
+            return error(__('beneficiary.mobile_check_failed'), [], 502); // 🚀 Updated key
         }
 
-        // 3. اعتبارسنجی تطابق کد ملی و تاریخ تولد (شبیه IdentityInquirySc2Controller)
         $idenPayload = [
             'apiKey'             => (string) config('podium.services.identity_inquiry.sc_api_key'),
             'productEntityId'    => (int)    config('podium.services.identity_inquiry.sc_product_id'),
@@ -68,26 +62,25 @@ class BeneficiaryController extends Controller
             $idenRes = PodiumClient::normalize($client->callSc2($idenPayload));
             $srvBirth = (string) data_get($idenRes, 'result.identityInfo.birthDate', data_get($idenRes, 'result.birthDate', ''));
             if ($srvBirth === '' || $srvBirth !== $birthDate) {
-                return error(__('auth.birthdate_mismatch'), [], 422);
+                return error(__('beneficiary.birthdate_mismatch'), [], 422); // 🚀 Updated key
             }
         } catch (Throwable $e) {
-            return error(__('auth.birthdate_check_failed'), [], 502);
+            return error(__('beneficiary.birthdate_check_failed'), [], 502); // 🚀 Updated key
         }
 
-        // 4. یافتن یا ایجاد کاربر ذی‌نفع
         $beneficiaryUser = User::firstOrCreate(
             [User::MOBILE => $mobile],
             [
                 User::NATIONAL_CODE => $nationalCode,
                 User::BIRTH_DATE    => $birthDate,
-                User::TYPE_ID       => UserType::where('slug', 'employer')->value('id'), // یا هر پیش‌فرض دیگر
+                User::TYPE_ID       => UserType::where('slug', 'employer')->value('id'),
             ]
         );
 
-        // 5. پر کردن پروفایل ذی‌nفع (شبیه AuthController@syncIdentityToProfile)
         $info  = data_get($idenRes, 'result.identityInfo', []);
         $fname = (string) data_get($info, 'firstName', '');
         $lname = (string) data_get($info, 'lastName', '');
+
         UserProfile::updateOrCreate(
             [UserProfile::USER_ID => $beneficiaryUser->id],
             [
@@ -98,15 +91,14 @@ class BeneficiaryController extends Controller
             ]
         );
 
-        // 6. ارسال کد تایید به ذی‌nفع
-        $verifyCode = generateVerifyCode(); // از app/Http/Helper/function.php
+        $verifyCode = generateVerifyCode();
         $beneficiaryUser->update([
             User::SECRET            => $verifyCode,
             User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(3),
         ]);
 
         $buyerName = $buyer->profile->{UserProfile::NAME} ?? $buyer->{User::MOBILE};
-        $smsMessage = __("sms.beneficiary_verification", ['name' => $buyerName, 'code' => $verifyCode]);
+        $smsMessage = __('beneficiary.sms_verification_body', ['name' => $buyerName, 'code' => $verifyCode]);
         (new SmsService())->send($mobile, $smsMessage);
 
         return success([
@@ -116,11 +108,7 @@ class BeneficiaryController extends Controller
         ], __('beneficiary.code_sent_successfully'));
     }
 
-    /**
-     * مرحله 2: تایید کد وارد شده توسط خریدار.
-     * (الگو گرفته شده از AuthController@verifyCode)
-     */
-    public function confirmVerification(Request $request)
+    public function confirmVerification(Request $request): JsonResponse
     {
         $data = $request->validate([
             'beneficiary_user_id' => 'required|exists:users,id',
@@ -136,7 +124,6 @@ class BeneficiaryController extends Controller
             return error(__('auth.verification_code_not_match'), [], 400);
         }
 
-        // کد صحیح بود، آن را منقضی می‌کنیم
         $beneficiaryUser->update([
             User::SECRET => null,
             User::SECRET_EXPIRES_AT => null,
@@ -151,9 +138,6 @@ class BeneficiaryController extends Controller
         ], __('beneficiary.verification_successful'));
     }
 
-    /**
-     * Helper (کپی شده از AuthController)
-     */
     private function mobileTo09(string $input): string
     {
         $m = preg_replace('/\D/', '', $input);

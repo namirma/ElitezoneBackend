@@ -52,26 +52,27 @@ class Order extends Model
         UPDATED_AT = 'updated_at';
 
     // Status Constants
-    public const STATUS_PENDING = 'pending';
-    public const STATUS_RESERVED_EXTENDED = 'reserved_extended';
-    public const STATUS_PROCESSING = 'processing';
-    public const STATUS_PREPARING = 'preparing';
-    public const STATUS_WEIGHBRIDGE_DONE = 'weighbridge_done';
-    public const STATUS_WAYBILL_ISSUED = 'waybill_issued';
-    public const STATUS_SHIPPED = 'shipped';
-    public const STATUS_DELIVERED = 'delivered';
-    public const STATUS_CANCELLED = 'cancelled';
-    public const STATUS_FAILED = 'failed';
-    public const PAYMENT_PENDING = 'pending';
-    public const PAYMENT_PAID = 'paid';
-    public const PAYMENT_FAILED = 'failed';
-    public const PAYMENT_REFUND_PENDING = 'refund_pending';
-    public const PAYMENT_REFUNDED = 'refunded';
-    public const FEE_PAYMENT_PENDING = 'pending';
-    public const FEE_PAYMENT_PAID = 'paid';
-    public const SURVEY_PENDING = 'pending';
-    public const SURVEY_REQUESTED = 'requested';
-    public const SURVEY_COMPLETED = 'completed';
+    public const
+    STATUS_PENDING = 'pending',
+    STATUS_RESERVED_EXTENDED = 'reserved_extended',
+    STATUS_PROCESSING = 'processing',
+    STATUS_PREPARING = 'preparing',
+    STATUS_WEIGHBRIDGE_DONE = 'weighbridge_done',
+    STATUS_WAYBILL_ISSUED = 'waybill_issued',
+    STATUS_SHIPPED = 'shipped',
+    STATUS_DELIVERED = 'delivered',
+    STATUS_CANCELLED = 'cancelled',
+    STATUS_FAILED = 'failed',
+    PAYMENT_PENDING = 'pending',
+    PAYMENT_PAID = 'paid',
+    PAYMENT_FAILED = 'failed',
+    PAYMENT_REFUND_PENDING = 'refund_pending',
+    PAYMENT_REFUNDED = 'refunded',
+    FEE_PAYMENT_PENDING = 'pending',
+    FEE_PAYMENT_PAID = 'paid',
+    SURVEY_PENDING = 'pending',
+    SURVEY_REQUESTED = 'requested',
+    SURVEY_COMPLETED = 'completed';
 
     protected $fillable = [
         self::PLACER_USER_ID,

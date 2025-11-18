@@ -15,8 +15,9 @@ class UserBankAccountController extends Controller
     public function index(): JsonResponse
     {
         $accounts = Auth::user()->bankAccounts()->latest()->get();
-        return success(UserBankAccountResource::collection($accounts), 'حساب‌های بانکی دریافت شد.');
+        return success(UserBankAccountResource::collection($accounts), __('bank.list_received'));
     }
+
     public function store(StoreUserBankAccountRequest $request): JsonResponse
     {
         $user = Auth::user();
@@ -34,25 +35,28 @@ class UserBankAccountController extends Controller
                 UserBankAccount::STATUS => UserBankAccount::STATUS_PENDING,
             ]);
 
-            // TODO: ارسال نوتیفیکیشن به ادمین برای بررسی این حساب جدید
+            // TODO: ارسال نوتیفیکیشن به ادمین
         });
 
-        return success([], '.حساب بانکی شما ثبت شد و پس از احراز هویت توسط بک آفیس تایید خواهد شد');
+        return success([], __('bank.store_success'));
     }
+
     public function destroy(UserBankAccount $bankAccount): JsonResponse
     {
         if ($bankAccount->{UserBankAccount::USER_ID} !== Auth::id()) {
             return error(__('auth.forbidden'), [], 403);
         }
+
         if ($bankAccount->{UserBankAccount::STATUS} === UserBankAccount::STATUS_APPROVED) {
-             return error('.امکان حذف حساب تایید شده وجود ندارد', [], 400);
+             return error(__('bank.delete_approved_error'), [], 400);
         }
+
         if ($bankAccount->{UserBankAccount::IS_DEFAULT}) {
-             return error('.امکان حذف حساب پیش‌فرض وجود ندارد', [], 400);
+             return error(__('bank.delete_default_error'), [], 400);
         }
 
         $bankAccount->delete();
 
-        return success([], '.حساب بانکی با موفقیت حذف شد');
+        return success([], __('bank.delete_success'));
     }
 }

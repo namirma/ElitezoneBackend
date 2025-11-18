@@ -16,7 +16,6 @@ use Illuminate\Support\Facades\Auth;
 
 class ConsultantRelationController extends Controller
 {
-    // --- سمت کارفرما (Employer) ---
 
     public function listMyConsultants(Request $request): JsonResponse
     {
@@ -63,11 +62,7 @@ class ConsultantRelationController extends Controller
             UserNotification::BODY    => $smsMessage,
         ]);
 
-        // ب) ارسال پیامک به مشاور فنی
         (new SmsService())->send($consultant->{User::MOBILE}, $smsMessage);
-
-        // 🚀 END: ارسال نوتیفیکیشن
-
         return success([], 'درخواست همکاری برای مشاور فنی ارسال شد و در انتظار تایید است.');
     }
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\User;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ChangeMobileRequest;
 use App\Http\Requests\StorePasswordRequest;
 use App\Http\Requests\StoreUserProfileRequest;
 use App\Http\Requests\UpdateMobileRequest;
@@ -18,8 +19,11 @@ use App\Models\SupplierProfile;
 use App\Models\User;
 use App\Models\UserType;
 use App\Http\Requests\StoreUserTypeRequest;
+use App\Http\Requests\UpdateLegalProfileRequest;
+use App\Http\Requests\UpdateRealProfileRequest;
 use App\Models\UserNotification;
 use App\Models\UserProfile;
+use App\Services\PodiumClient;
 use App\Services\SmsService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -27,12 +31,14 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use function is_null;
 
 class ProfileController extends Controller
 {
@@ -215,21 +221,34 @@ class ProfileController extends Controller
         return success(new UserResource(User::with('profile')->find(Auth::id())), __('profile.updated_successfully'));
     }
 
-    public function updateProfile(UpdateUserProfileRequest $request): JsonResponse
+    public function updateRealProfile(UpdateRealProfileRequest $request): JsonResponse
     {
-        $profile = UserProfile::where([UserProfile::USER_ID], Auth::id())->firstOrFail();
-        $data    = $request->validated();
-        $allowed = [UserProfile::EMAIL, UserProfile::COMPANY, UserProfile::ECONOMIC_CODE, UserProfile::NATIONAL_ID, UserProfile::REGISTER_ID, UserProfile::PHONE, UserProfile::PROVINCE_ID, UserProfile::CITY_ID, UserProfile::ENTITY];
-        $payload = [];
-        foreach ($allowed as $key) {
-            if (array_key_exists($key, $data)) {
-                $payload[$key] = $data[$key];
-            }
+        $user = Auth::user();
+        $profile = $user->profile()->firstOrCreate([UserProfile::USER_ID => $user->id]);
+        $data = $request->validated();
+
+        if (isset($data[UserProfile::EMAIL]) && $data[UserProfile::EMAIL] !== $profile->{UserProfile::EMAIL}) {
+            $profile->{UserProfile::EMAIL_VERIFIED_AT} = null;
+            $profile->{UserProfile::EMAIL_VERIFICATION_TOKEN} = null;
         }
-        if (! empty($payload)) {
-            $profile->update($payload);
-        }
-        return success(new UserResource(User::with('profile')->find(Auth::id())), __('profile.updated_successfully'));
+
+        $profile->fill(array_filter($data));
+        $profile->{UserProfile::ENTITY} = 'real';
+        $profile->save();
+
+        return success(new UserResource($user->fresh('profile')), __('profile.updated_successfully'));
+    }
+    public function updateLegalProfile(UpdateLegalProfileRequest $request): JsonResponse
+    {
+        $user = Auth::user();
+        $profile = $user->profile()->firstOrCreate([UserProfile::USER_ID => $user->id]);
+        $data = $request->validated();
+
+        $profile->fill($data);
+        $profile->{UserProfile::ENTITY} = 'legal';
+        $profile->save();
+
+        return success(new UserResource($user->fresh('profile')), __('profile.updated_successfully'));
     }
 
     public function setPassword(StorePasswordRequest $request): JsonResponse
@@ -252,41 +271,90 @@ class ProfileController extends Controller
         return success([], __('auth.change_password_first_attempt'), 200);
     }
 
-    public function updateMobile(): JsonResponse
+    public function requestChangeMobile(ChangeMobileRequest $request): JsonResponse
     {
         $user = Auth::user();
-        if (!$user) return error(__('auth.unauthenticated'), [], 401);
+        $validated = $request->validated();
+
+        $currentProfile = $user->profile;
+        if (
+            !$currentProfile ||
+            $currentProfile->{UserProfile::NATIONAL_CODE} !== $validated['national_code'] ||
+            $currentProfile->{UserProfile::BIRTHDAY} !== $validated['birth_date']
+        ) {
+            return error(__('auth.identity_mismatch'), [], 403);
+        }
+        try {
+            $client = app(PodiumClient::class);
+            $newMobile09 = $this->mobileTo09($validated['new_mobile']);
+
+            $matchPayload = [
+                'apiKey'          => (string) config('podium.services.nid_mobile_match.sc_api_key'),
+                'productEntityId' => (int)    config('podium.services.nid_mobile_match.sc_product_id'),
+                'providerParameters' => ['body' => ['nationalCode' => $validated['national_code'], 'mobileNumber' => $newMobile09]],
+                'asyncCall' => false,
+                'wrapper'   => true,
+            ];
+            $matchRes = PodiumClient::normalize($client->callSc2($matchPayload));
+            $matched = data_get($matchRes, 'result.matched');
+            $matchCode = (string) data_get($matchRes, 'result.resultCode', '');
+
+            if (!($matched === true || $matched === 'true' || $matchCode === '1')) {
+                return error(__('auth.mobile_nid_mismatch'), [], 422);
+            }
+        } catch (\Throwable $e) {
+            Log::error("Mobile match failed: " . $e->getMessage());
+        }
+
         $code = generateVerifyCode();
-        $notExpired = $user->{User::SECRET_EXPIRES_AT} ? ! Carbon::parse($user->{User::SECRET_EXPIRES_AT})->isPast() : false;
-        if ($notExpired) {
-            return success([], __('auth.code_sent_recently'), 202);
-        }
-        User::where([User::ID], $user->id)->update([User::SECRET => $code, User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2),]);
-        (new SmsService())->send($user->{User::MOBILE}, $code);
-        return success([], __('auth.verification_code_sent_successfully'), 200);
-    }
+        $user->update([
+            User::SECRET => $code,
+            User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2)
+        ]);
 
-    public function verifyCode(UpdateMobileRequest $request): JsonResponse
+        // ذخیره شماره جدید در کش موقت
+        Cache::put('pending_mobile_change_' . $user->id, $validated['new_mobile'], 120);
+
+        (new SmsService())->send($validated['new_mobile'], $code);
+
+        return success([], __('auth.verification_code_sent_to_new_mobile'));
+    }
+    public function confirmChangeMobile(Request $request): JsonResponse
     {
         $user = Auth::user();
-        if (!$user) return error(__('auth.unauthenticated'), [], 401);
-        $data = $request->validated();
-        $currentMobileCode = $data['code'] ?? null;
-        $newMobile = $data['username'] ?? null;
-        if (is_null($currentMobileCode) || is_null($newMobile)) {
-            return error(__('validation.required'), ['code', 'username'], 422);
-        }
-        $notExpired = $user->{User::SECRET_EXPIRES_AT} ? ! Carbon::parse($user->{User::SECRET_EXPIRES_AT})->isPast() : false;
-        if ((int) ($user->{User::SECRET} ?? 0) === (int) $currentMobileCode && $notExpired) {
-            $newCode = generateVerifyCode();
-            (new SmsService())->send($newMobile, $newCode);
-            User::where([User::ID], $user->id)->update([User::SECRET => $newCode, User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2),]);
-            session(['pending_mobile_update' => $newMobile]);
-            return success(['new_mobile' => $newMobile], __('auth.verification_code_sent_successfully_to_new_mobile'), 200);
-        }
-        return error(__('auth.verification_code_not_match'), [], 400);
-    }
+        $request->validate(['code' => 'required|digits:6']);
 
+        $cachedMobile = Cache::get('pending_mobile_change_' . $user->id);
+
+        if (!$cachedMobile) {
+            return error(__('auth.request_expired'), [], 400);
+        }
+
+        if ($user->{User::SECRET} != $request->input('code') || Carbon::parse($user->{User::SECRET_EXPIRES_AT})->isPast()) {
+            return error(__('auth.verification_code_not_match'), [], 400);
+        }
+
+        $user->update([
+            User::MOBILE => $cachedMobile,
+            User::SECRET => null,
+            User::SECRET_EXPIRES_AT => null
+        ]);
+
+        // آپدیت پروفایل
+        $user->profile()->update([UserProfile::PHONE => $cachedMobile]);
+
+        Cache::forget(key: 'pending_mobile_change_' . $user->id);
+
+        return success([], __('profile.mobile_updated_successfully'));
+    }
+    private function mobileTo09(string $input): string
+    {
+        $m = preg_replace('/\D/', '', $input);
+        if (str_starts_with($m, '0098')) $m = substr($m, 2);
+        if (str_starts_with($m, '98'))   return '0' . substr($m, 2);
+        if (str_starts_with($m, '9'))    return '0' . $m;
+        return $m;
+    }
     public function confirmUpdateMobile(Request $request): JsonResponse
     {
         $user = Auth::user();

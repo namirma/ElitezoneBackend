@@ -15,7 +15,7 @@ use App\Models\OrderUnit;
 use App\Models\Offer;
 use App\Models\PriceFilterCategory;
 use App\Models\User;
-use App\Models\UserType; // 🚀 1. ایمپورت کردن UserType
+use App\Models\UserType;
 use App\Services\PriceCalculationService;
 use App\Services\PricingRoleResolver;
 use Illuminate\Http\Request;
@@ -25,12 +25,12 @@ use Illuminate\Support\Str;
 use App\Http\Resources\OrderResource;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
+use Illuminate\Http\JsonResponse;
 
 class CheckoutController extends Controller
 {
     private ?Collection $orderUnitsMapCache = null;
 
-    // ... (متدهای __construct, activeCode, getOrderUnitsMap, collectOffers, calculateCartLevelOfferDiscountAmount بدون تغییر) ...
     public function __construct(
         private readonly PriceCalculationService $priceService,
         private readonly PricingRoleResolver $roleResolver
@@ -58,13 +58,18 @@ class CheckoutController extends Controller
 
     private function collectOffers(Collection $items): Collection
     {
-        return $items->flatMap(fn(CartItem $item) => $item->productVariant->product->offers()->current()->where(Offer::MINIMUM_QUANTITY, '<=', array_sum($item->{CartItem::QUANTITIES}))->get())->unique(Offer::ID)->values();
+        return $items->flatMap(fn(CartItem $item) =>
+            $item->productVariant->product->offers()->current()
+                ->where(Offer::MINIMUM_QUANTITY, '<=', array_sum($item->{CartItem::QUANTITIES}))
+                ->get()
+        )->unique(Offer::ID)->values();
     }
 
     private function calculateCartLevelOfferDiscountAmount(float $subtotal, Collection $offers): float
     {
         $totalDiscountFromOffers = 0.0;
         foreach ($offers as $offer) {
+            /** @var Offer $offer */
             if ($offer->{Offer::TYPE} === 'percentage') {
                 $totalDiscountFromOffers += $subtotal * ($offer->{Offer::VALUE} / 100);
             } elseif ($offer->{Offer::TYPE} === 'fixed_amount') {
@@ -74,8 +79,7 @@ class CheckoutController extends Controller
         return min($totalDiscountFromOffers, $subtotal > 0 ? $subtotal : 0);
     }
 
-
-    public function placeOrder(Request $request)
+    public function placeOrder(Request $request): JsonResponse
     {
         $user = Auth::user();
 
@@ -114,11 +118,11 @@ class CheckoutController extends Controller
         $totalVatAmount = 0.0;
         $totalAppliedVariantDiscount = 0.0;
         $orderUnitsMap = $this->getOrderUnitsMap();
-        $activeCode   = $this->activeCode();
-        $pfId         = PriceFilterCategory::where(PriceFilterCategory::CODE, $activeCode)->value('id');
-        $filterIds    = $pfId ? [$pfId] : $cart->priceFilterCategories->pluck(PriceFilterCategory::ID)->all();
+        $activeCode = $this->activeCode();
+        $pfId = PriceFilterCategory::where(PriceFilterCategory::CODE, $activeCode)->value('id');
+        $filterIds = $pfId ? [$pfId] : $cart->priceFilterCategories->pluck(PriceFilterCategory::ID)->all();
         $customerType = CustomerType::where(CustomerType::CODE, $activeCode)->first() ?: $cart->customerType;
-        $badge        = $cart->badge;
+        $badge = $cart->badge;
 
         foreach ($cart->items as $item) {
             $pricingDetails = $this->priceService->calculatePrice(
@@ -128,13 +132,16 @@ class CheckoutController extends Controller
                 $customerType,
                 $badge,
                 $filterIds,
-                true // withVAT
+                true
             );
 
             $itemTotalWeight = 0;
             foreach ($item->{CartItem::QUANTITIES} as $unitId => $qty) {
+                /** @var OrderUnit|null $unit */
                 $unit = $orderUnitsMap->get((int)$unitId);
-                if ($unit) $itemTotalWeight += (float)$qty * $unit->{OrderUnit::AMOUNT};
+                if ($unit) {
+                    $itemTotalWeight += (float)$qty * $unit->{OrderUnit::AMOUNT};
+                }
             }
 
             $variantDiscountAmountFromService = isset($pricingDetails['variant_discount_amount']) ? (float)$pricingDetails['variant_discount_amount'] : 0.0;
@@ -158,28 +165,20 @@ class CheckoutController extends Controller
         $cartLevelOfferDiscount = $this->calculateCartLevelOfferDiscountAmount($subtotalAfterVariantDiscounts, $offers);
 
         $totalDiscount = $totalAppliedVariantDiscount + $cartLevelOfferDiscount;
-        $shippingCost = 0.0; // TODO: Implement shipping calculation
+        $shippingCost = 0.0;
 
         $finalAmount = ($subtotalAfterVariantDiscounts - $cartLevelOfferDiscount) + $totalVatAmount + $shippingCost;
 
-
-        // 🚀 2. START: محاسبه سهم مشاور فنی (اصلاح شده بر اساس TYPE_ID)
         $beneficiaryUserId = $validated[Order::BENEFICIARY_USER_ID] ?? null;
         $placerUserId = $user->id;
 
         $engineerFeeAmount = null;
         $contractorFeeAmount = null;
 
-        // بررسی می‌کنیم که آیا این خرید "برای دیگری" است یا خیر
         if ($beneficiaryUserId && $beneficiaryUserId != $placerUserId) {
-
-            // 🚀 کاربر ذی‌nفع را پیدا می‌کنیم
             $beneficiaryUser = User::find($beneficiaryUserId);
 
             if ($beneficiaryUser) {
-
-                // 🚀 ID های انواع مشاور را بر اساس slug واکشی می‌کنیم
-                // (این مقادیر کش می‌شوند تا در هر درخواست فقط یکبار اجرا شوند)
                 static $consultantTypeIds = null;
                 if ($consultantTypeIds === null) {
                     $consultantTypeIds = UserType::whereIn('slug', ['engineer', 'contractor'])
@@ -189,27 +188,21 @@ class CheckoutController extends Controller
                 $engineerTypeId = $consultantTypeIds->get('engineer');
                 $contractorTypeId = $consultantTypeIds->get('contractor');
 
-                // 🚀 محاسبه سهم بر اساس *type_id*
-                // $subtotalAfterVariantDiscounts = مبلغ پایه محاسبه سهم
-
-                if ($beneficiaryUser->{User::TYPE_ID} == $engineerTypeId) { // <-- 🚀 A: چک کردن type_id مهندس
+                if ($engineerTypeId && $beneficiaryUser->{User::TYPE_ID} == $engineerTypeId) {
                     $feePercentage = config('elitezon.consultant_fee_percentage', 2.0);
                     $engineerFeeAmount = ($subtotalAfterVariantDiscounts * $feePercentage) / 100;
-
-                } elseif ($beneficiaryUser->{User::TYPE_ID} == $contractorTypeId) { // <-- 🚀 B: چک کردن type_id پیمانکار
+                } elseif ($contractorTypeId && $beneficiaryUser->{User::TYPE_ID} == $contractorTypeId) {
                     $feePercentage = config('elitezon.contractor_fee_percentage', 2.0);
                     $contractorFeeAmount = ($subtotalAfterVariantDiscounts * $feePercentage) / 100;
                 }
             }
         }
-        // 🚀 END: محاسبه سهم مشاور فنی
 
         $order = DB::transaction(function () use (
             $user, $cart, $validated, $supplierMapping,
             $finalAmount, $subtotalAfterVariantDiscounts, $totalVatAmount, $totalDiscount, $shippingCost,
-            $engineerFeeAmount, $contractorFeeAmount // 🚀 3. افزودن متغیرها به use
+            $engineerFeeAmount, $contractorFeeAmount
         ) {
-
             $order = Order::create([
                 Order::PLACER_USER_ID => $user->id,
                 Order::BENEFICIARY_USER_ID => $validated[Order::BENEFICIARY_USER_ID] ?? $user->id,
@@ -223,13 +216,9 @@ class CheckoutController extends Controller
                 Order::SHIPPING_COST => $shippingCost,
                 Order::RESERVATION_EXPIRES_AT => now()->addHours(2),
                 Order::PAYMENT_STATUS => Order::PAYMENT_PENDING,
-
-                // 🚀 4. ذخیره کردن مبالغ محاسبه شده در دیتابیس
                 Order::ENGINEER_FEE_AMOUNT => $engineerFeeAmount,
                 Order::CONTRACTOR_FEE_AMOUNT => $contractorFeeAmount,
                 Order::EXPERT_FEE_AMOUNT => null,
-
-                // 🚀 5. تنظیم وضعیت پرداخت سهم
                 Order::ENGINEER_FEE_PAYMENT_STATUS => $engineerFeeAmount ? Order::FEE_PAYMENT_PENDING : null,
                 Order::CONTRACTOR_FEE_PAYMENT_STATUS => $contractorFeeAmount ? Order::FEE_PAYMENT_PENDING : null,
                 Order::EXPERT_FEE_PAYMENT_STATUS => null,
@@ -253,8 +242,6 @@ class CheckoutController extends Controller
 
             return $order;
         });
-
-        // (new SmsService())->send($user->mobile, __('sms.order_reserved', ['hours'2]));
 
         return success(new OrderResource($order->load('items')), __('checkout.order_placed_reserved'));
     }

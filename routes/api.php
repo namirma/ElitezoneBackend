@@ -217,10 +217,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/messages/{userNotification}', [ProfileController::class, 'updateMessageStatus']);
         Route::group(['prefix' => 'change-mobile'], function () {
             Route::get('/', [ProfileController::class, 'updateMobile']);
-            Route::post('/verify-code', [ProfileController::class, 'verifyCode']);
-            Route::post('/confirm', [ProfileController::class, 'confirmUpdateMobile']);
+            Route::post('/request', [ProfileController::class, 'requestChangeMobile']);
+            Route::post('/confirm', [ProfileController::class, 'confirmChangeMobile']);
         });
-
+        Route::post('/real', [ProfileController::class, 'updateRealProfile']);
+        Route::post('/legal', [ProfileController::class, 'updateLegalProfile']);
         Route::get('/', [ProfileController::class, 'getProfile']);
         Route::post('/', [ProfileController::class, 'setProfile']);
         Route::put('/', [ProfileController::class, 'updateProfile']);
