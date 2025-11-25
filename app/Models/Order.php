@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Traits\PersianDate;
+use function in_array;
 
 class Order extends Model
 {
@@ -145,5 +146,73 @@ class Order extends Model
     public function surveys(): HasMany
     {
         return $this->hasMany(OrderSurvey::class, OrderSurvey::ORDER_ID);
+    }
+
+    public function getDashboardProgressAttribute(): array
+    {
+        $s = $this->attributes[self::STATUS];
+        $stepsState = [
+            1 => 'inactive',
+            2 => 'inactive',
+            3 => 'inactive',
+            4 => 'inactive',
+            5 => 'inactive',
+        ];
+        $stepsState[1] = 'completed';
+
+        if (in_array($s, [self::STATUS_PENDING, self::STATUS_RESERVED_EXTENDED, self::STATUS_PROCESSING, self::STATUS_PREPARING])) {
+            $stepsState[2] = 'current';
+        } elseif (in_array($s, [self::STATUS_WEIGHBRIDGE_DONE, self::STATUS_WAYBILL_ISSUED, self::STATUS_SHIPPED, self::STATUS_DELIVERED])) {
+            $stepsState[2] = 'completed';
+        }
+
+        if ($s === self::STATUS_WEIGHBRIDGE_DONE) {
+            $stepsState[3] = 'current';
+        } elseif (in_array($s, [self::STATUS_WAYBILL_ISSUED, self::STATUS_SHIPPED, self::STATUS_DELIVERED])) {
+            $stepsState[3] = 'completed';
+        }
+
+
+        if (in_array($s, [self::STATUS_WAYBILL_ISSUED, self::STATUS_SHIPPED])) {
+            $stepsState[4] = 'current';
+        } elseif ($s === self::STATUS_DELIVERED) {
+
+            $stepsState[4] = 'completed';
+        }
+        if ($s === self::STATUS_DELIVERED) {
+            $stepsState[5] = 'completed';
+        }
+        if ($s === self::STATUS_CANCELLED || $s === self::STATUS_FAILED) {
+        }
+        return [
+            'is_cancelled' => in_array($s, [self::STATUS_CANCELLED, self::STATUS_FAILED]),
+            'steps' => [
+                [
+                    'step' => 1,
+                    'title' => 'رزرو سفارش',
+                    'state' => $stepsState[1]
+                ],
+                [
+                    'step' => 2,
+                    'title' => 'ثبت اولیه پس از پرداخت',
+                    'state' => $stepsState[2]
+                ],
+                [
+                    'step' => 3,
+                    'title' => 'ثبت نهایی بعد از باسکول',
+                    'state' => $stepsState[3]
+                ],
+                [
+                    'step' => 4,
+                    'title' => 'در حال حمل',
+                    'state' => $stepsState[4]
+                ],
+                [
+                    'step' => 5,
+                    'title' => 'تکمیل شده',
+                    'state' => $stepsState[5]
+                ],
+            ]
+        ];
     }
 }

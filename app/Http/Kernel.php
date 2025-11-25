@@ -33,6 +33,7 @@ use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 use App\Http\Middleware\EnsureRoleIsSelected;
 use App\Http\Middleware\EnsureUserIsExpert;
+use App\Http\Middleware\TrackDashboardUsage;
 
 class Kernel extends HttpKernel
 {
@@ -101,5 +102,6 @@ class Kernel extends HttpKernel
         'SecurityHeaders' => SecurityHeaders::class,
         'attach.price.category' => AttachActivePriceCategory::class,
         'role.expert' => EnsureUserIsExpert::class,
+        'track' => TrackDashboardUsage::class,
     ];
 }

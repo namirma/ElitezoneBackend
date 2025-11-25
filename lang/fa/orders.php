@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\Order;
+
 return [
     'cannot_cancel' => '.این سفارش در وضعیت قابل لغو نیست ',
     'cancelled_successfully' => '.سفارش با موفقیت لغو شد ',
@@ -18,5 +20,22 @@ return [
     'payment_successful_awaiting_confirmation' => '.پرداخت شما با موفقیت انجام شد  سفارش در انتظار تایید تامین‌کننده است ',
     "orders cannot_extend_reservation_status" => ".امکان تمدید رزرو برای این سفارش در وضعیت فعلی وجود ندارد ",
     "orders cannot_extend_reservation_expired" => ".زمان رزرو اولیه (۲ ساعته) این سفارش به پایان رسیده و امکان تمدید آن وجود ندارد ",
-    "orders reservation_extended" => ".رزرو سفارش شما با موفقیت به مدت ۲۴ ساعت تمدید شد "
+    "orders reservation_extended" => ".رزرو سفارش شما با موفقیت به مدت ۲۴ ساعت تمدید شد ",
+
+    'status' => [
+        Order::STATUS_PENDING => 'در انتظار تایید (رزرو شده)',
+        Order::STATUS_RESERVED_EXTENDED => 'رزرو تمدید شده',
+        Order::STATUS_PROCESSING => 'در حال پردازش (ثبت اولیه)',
+        Order::STATUS_PREPARING => 'در حال آماده‌سازی',
+        Order::STATUS_WEIGHBRIDGE_DONE => 'باسکول انجام شد (ثبت نهایی)',
+        Order::STATUS_WAYBILL_ISSUED => 'بارنامه صادر شد',
+        Order::STATUS_SHIPPED => 'در حال حمل',
+        Order::STATUS_DELIVERED => 'تحویل شده',
+        Order::STATUS_CANCELLED => 'لغو شده',
+        Order::STATUS_FAILED => 'ناموفق',
+        Order::PAYMENT_PENDING => 'در انتظار پرداخت',
+        Order::PAYMENT_PAID => 'پرداخت شده',
+        Order::FEE_PAYMENT_PENDING => 'در انتظار پرداخت سهم',
+        Order::FEE_PAYMENT_PAID => 'سهم پرداخت شده',
+    ],
 ];

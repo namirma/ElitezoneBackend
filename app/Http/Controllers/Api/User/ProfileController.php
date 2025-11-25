@@ -24,6 +24,7 @@ use App\Http\Requests\UpdateRealProfileRequest;
 use App\Models\UserNotification;
 use App\Models\UserProfile;
 use App\Services\PodiumClient;
+use App\Services\PodiumServices\CompanyInquiryService;
 use App\Services\SmsService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -38,6 +39,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use function array_key_exists;
 use function is_null;
 
 class ProfileController extends Controller
@@ -221,6 +223,43 @@ class ProfileController extends Controller
         return success(new UserResource(User::with('profile')->find(Auth::id())), __('profile.updated_successfully'));
     }
 
+    public function fetchLegalData(Request $request, CompanyInquiryService $service): JsonResponse
+    {
+        $request->validate([
+            'national_id' => 'required|string',
+        ]);
+
+        try {
+            $data = $service->fetchByNationalId($request->national_id);
+
+
+            $raw = $data['company'] ?? $data;
+
+
+            $response = [
+
+                'company'       => $raw['full_name'] ?? '',           // نام کامل شرکت
+                'national_id'   => $raw['national_number'] ?? $request->national_id, // شناسه ملی
+                'register_id'   => $raw['registration_number'] ?? '', // شماره ثبت
+                'phone'         => $raw['phone_number'] ?? '',        // شماره تلفن
+
+
+                'type'          => $raw['type'] ?? '',                // نوع شرکت (سهامی خاص و...)
+                'registration_date' => $raw['registration_date'] ?? '', // تاریخ ثبت
+                'capital'       => $raw['capital'] ?? '',             // سرمایه شرکت
+                'country'       => $raw['country'] ?? '',             // کشور
+                'address'       => $raw['address'] ?? '',             // آدرس
+                'postal_code'   => $raw['postal_code'] ?? '',         // کد پستی
+                'fax_number'    => $raw['fax_number'] ?? '',          // فکس
+                'registration_organization' => $raw['registration_organization'] ?? '', // واحد ثبتی
+                'status'        => $raw['status'] ?? '',              // وضعیت (فعال/غیرفعال)
+            ];
+
+            return success($response, 'اطلاعات شرکت با موفقیت دریافت شد.');
+        } catch (\Exception $e) {
+            return error($e->getMessage(), [], 422);
+        }
+    }
     public function updateRealProfile(UpdateRealProfileRequest $request): JsonResponse
     {
         $user = Auth::user();
