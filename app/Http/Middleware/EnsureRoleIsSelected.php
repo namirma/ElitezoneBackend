@@ -30,7 +30,7 @@ public function handle(Request $request, Closure $next): Response
     }
 
     return response()->json([
-        'message' => 'لطفاً ابتدا نقش کاربری خود را انتخاب کنید.',
+        'message' => '.لطفاً ابتدا نقش کاربری خود را انتخاب کنید',
         'code'    => 'ROLE_NOT_SELECTED'
     ], 403);
 }

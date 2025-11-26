@@ -20,7 +20,7 @@ return [
         'orders' => [
             'title' => 'سفارش‌ها',
             'icon'  => 'truck',
-            'link'  => '/orders',
+            'link'  => '/profile/orders',
         ],
         'messages' => [
             'title' => 'پیغام‌ها',
@@ -30,12 +30,12 @@ return [
         'wallet' => [
             'title' => 'مدیریت مالی',
             'icon'  => 'credit-card',
-            'link'  => '/wallet',
+            'link'  => '/profile/wallet',
         ],
         'my_items' => [
             'title' => 'آیتم‌های من',
             'icon'  => 'archive',
-            'link'  => '/wishlists',
+            'link'  => '/profile/wishlists',
         ],
         'addresses' => [
             'title' => 'آدرس‌ها',
@@ -45,7 +45,7 @@ return [
         'relations' => [
             'title' => 'کارفرمایان',
             'icon'  => 'users',
-            'link'  => '/consultants',
+            'link'  => '/profile/consultants',
         ],
     ],
 

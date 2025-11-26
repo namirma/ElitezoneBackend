@@ -238,21 +238,21 @@ class ProfileController extends Controller
 
             $response = [
 
-                'company'       => $raw['full_name'] ?? '',           // نام کامل شرکت
-                'national_id'   => $raw['national_number'] ?? $request->national_id, // شناسه ملی
-                'register_id'   => $raw['registration_number'] ?? '', // شماره ثبت
-                'phone'         => $raw['phone_number'] ?? '',        // شماره تلفن
+                'company'       => $raw['full_name'] ?? '',
+                'national_id'   => $raw['national_number'] ?? $request->national_id,
+                'register_id'   => $raw['registration_number'] ?? '',
+                'phone'         => $raw['phone_number'] ?? '',
 
 
-                'type'          => $raw['type'] ?? '',                // نوع شرکت (سهامی خاص و...)
-                'registration_date' => $raw['registration_date'] ?? '', // تاریخ ثبت
-                'capital'       => $raw['capital'] ?? '',             // سرمایه شرکت
-                'country'       => $raw['country'] ?? '',             // کشور
-                'address'       => $raw['address'] ?? '',             // آدرس
-                'postal_code'   => $raw['postal_code'] ?? '',         // کد پستی
-                'fax_number'    => $raw['fax_number'] ?? '',          // فکس
-                'registration_organization' => $raw['registration_organization'] ?? '', // واحد ثبتی
-                'status'        => $raw['status'] ?? '',              // وضعیت (فعال/غیرفعال)
+                'type'          => $raw['type'] ?? '',
+                'registration_date' => $raw['registration_date'] ?? '',
+                'capital'       => $raw['capital'] ?? '',
+                'country'       => $raw['country'] ?? '',
+                'address'       => $raw['address'] ?? '',
+                'postal_code'   => $raw['postal_code'] ?? '',
+                'fax_number'    => $raw['fax_number'] ?? '',
+                'registration_organization' => $raw['registration_organization'] ?? '',
+                'status'        => $raw['status'] ?? '',
             ];
 
             return success($response, 'اطلاعات شرکت با موفقیت دریافت شد.');
@@ -420,7 +420,6 @@ class ProfileController extends Controller
         // EngineerProfile::where([EngineerProfile::USER_ID], $uid)->delete();
         // SupplierProfile::where([SupplierProfile::USER_ID], $uid)->delete();
 
-        // 🚀 هشدار: این متد منسوخ شده است
         Log::warning("Deprecated method ProfileController::removeProfile() was called.");
     }
 

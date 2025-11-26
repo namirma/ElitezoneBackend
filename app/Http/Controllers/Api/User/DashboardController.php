@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
+use function array_slice;
 
 class DashboardController extends Controller
 {
@@ -112,17 +113,18 @@ class DashboardController extends Controller
                 $q->where('placer_user_id', $user->id)->orWhere('beneficiary_user_id', $user->id);
             })
             ->whereIn('status', ['pending', 'reserved_extended', 'weighbridge_done', 'delivered'])
+            ->latest()
             ->get();
 
         foreach ($orders as $order) {
             if (in_array($order->status, ['pending', 'reserved_extended']) && $order->payment_status === 'pending') {
-                $alerts[] = $this->makeAlert('order_pay', 'error', 'payment', "/checkout/payment/{$order->id}", ['order_number' => $order->order_number], $order->id);
+                $alerts[] = $this->makeAlert('order_pay', 'error', 'payment', "/profile/orders/{$order->id}", ['order_number' => $order->order_number], $order->id);
             }
             if ($order->status === 'weighbridge_done' && $order->final_invoice_ref) {
-                $alerts[] = $this->makeAlert('order_invoice', 'info', 'document-text', "/orders/{$order->id}", ['order_number' => $order->order_number], $order->id);
+                $alerts[] = $this->makeAlert('order_invoice', 'info', 'document-text', "/profile/orders/{$order->id}", ['order_number' => $order->order_number], $order->id);
             }
             if ($order->status === 'delivered' && $order->survey_status !== 'completed') {
-                $alerts[] = $this->makeAlert('order_survey', 'success', 'star', "/orders/{$order->id}/survey", ['order_number' => $order->order_number], $order->id);
+                $alerts[] = $this->makeAlert('order_survey', 'success', 'star', "/profile/orders/{$order->id}", ['order_number' => $order->order_number], $order->id);
             }
         }
         return $alerts;
@@ -155,7 +157,7 @@ class DashboardController extends Controller
             ->where('created_at', '>=', now()->subDay())->latest()->first();
 
         if ($deposit) {
-            $alerts[] = $this->makeAlert('wallet_deposit', 'success', 'wallet', '/wallet', ['amount' => number_format($deposit->amount)], $deposit->id);
+            $alerts[] = $this->makeAlert('wallet_deposit', 'success', 'wallet', '/profile/wallet', ['amount' => number_format($deposit->amount)], $deposit->id);
         }
         return $alerts;
     }
@@ -164,10 +166,10 @@ class DashboardController extends Controller
     {
         $alerts = [];
         foreach ($user->associatedEmployers()->wherePivot('status', 'pending')->get() as $employer) {
-            $alerts[] = $this->makeAlert('invite_received', 'info', 'user-group', '/consultants/invitations', ['name' => $employer->profile->name], $employer->id);
+            $alerts[] = $this->makeAlert('invite_received', 'info', 'user-group', '/profile/consultants', ['name' => $employer->profile->name], $employer->id);
         }
         foreach ($user->technicalConsultants()->wherePivot('status', 'rejected')->where('employer_consultant.updated_at', '>=', now()->subDays(3))->get() as $consultant) {
-            $alerts[] = $this->makeAlert('invite_rejected', 'warning', 'user-minus', '/consultants', ['name' => $consultant->profile->name], $consultant->id);
+            $alerts[] = $this->makeAlert('invite_rejected', 'warning', 'user-minus', '/profile/consultants', ['name' => $consultant->profile->name], $consultant->id);
         }
         return $alerts;
     }

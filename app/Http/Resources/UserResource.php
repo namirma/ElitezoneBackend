@@ -16,7 +16,7 @@ class UserResource extends JsonResource
         return [
             User::TYPE_ID => $this->{User::TYPE_ID},
             User::MOBILE => $this->{User::MOBILE},
-            User::CREATED_AT => $this->{User::CREATED_AT}, // 🚀 اصلاح شد: (created_at_ -> created_at)
+            User::CREATED_AT => $this->{User::CREATED_AT},
             User::PASSWORD => (bool)$this->{User::PASSWORD},
             'created_at_p' => $this->created_at_p,
             'created_at_diff' => $this->created_at_diff,
