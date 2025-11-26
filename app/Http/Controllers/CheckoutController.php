@@ -58,7 +58,8 @@ class CheckoutController extends Controller
 
     private function collectOffers(Collection $items): Collection
     {
-        return $items->flatMap(fn(CartItem $item) =>
+        return $items->flatMap(
+            fn(CartItem $item) =>
             $item->productVariant->product->offers()->current()
                 ->where(Offer::MINIMUM_QUANTITY, '<=', array_sum($item->{CartItem::QUANTITIES}))
                 ->get()
@@ -77,6 +78,49 @@ class CheckoutController extends Controller
             }
         }
         return min($totalDiscountFromOffers, $subtotal > 0 ? $subtotal : 0);
+    }
+
+    public function paymentInfo(Order $order): JsonResponse
+    {
+        $user = Auth::user();
+
+        if ($order->placer_user_id !== $user->id && $order->beneficiary_user_id !== $user->id) {
+            return error(__('auth.forbidden'), [], 403);
+        }
+
+        if ($order->payment_status === Order::PAYMENT_PAID) {
+            return error('.این سفارش قبلاً پرداخت شده است', [], 400);
+        }
+
+        $walletBalance = $user->wallet->balance ?? 0;
+
+        $data = [
+            'order_id'       => $order->id,
+            'order_number'   => $order->order_number,
+            'payable_amount' => (string) $order->final_amount,
+            'items_count'    => $order->items()->count(),
+            'created_at_p'   => $order->created_at_p,
+            'gateways'       => [
+                [
+                    'key'   => 'shaparak',
+                    'title' => 'درگاه پرداخت اینترنتی',
+                    'icon'  => 'card',
+                ],
+                [
+                    'key'        => 'wallet',
+                    'title'      => 'کیف پول',
+                    'balance'    => (string) $walletBalance,
+                    'has_credit' => $walletBalance >= $order->final_amount,
+                ],
+                [
+                    'key'   => 'receipt',
+                    'title' => 'آپلود فیش بانکی (کارت به کارت)',
+                    'icon'  => 'document-text',
+                ],
+            ]
+        ];
+
+        return success($data, '.اطلاعات پرداخت دریافت شد');
     }
 
     public function placeOrder(Request $request): JsonResponse
@@ -182,7 +226,7 @@ class CheckoutController extends Controller
                 static $consultantTypeIds = null;
                 if ($consultantTypeIds === null) {
                     $consultantTypeIds = UserType::whereIn('slug', ['engineer', 'contractor'])
-                                                 ->pluck('id', 'slug');
+                        ->pluck('id', 'slug');
                 }
 
                 $engineerTypeId = $consultantTypeIds->get('engineer');
@@ -199,9 +243,17 @@ class CheckoutController extends Controller
         }
 
         $order = DB::transaction(function () use (
-            $user, $cart, $validated, $supplierMapping,
-            $finalAmount, $subtotalAfterVariantDiscounts, $totalVatAmount, $totalDiscount, $shippingCost,
-            $engineerFeeAmount, $contractorFeeAmount
+            $user,
+            $cart,
+            $validated,
+            $supplierMapping,
+            $finalAmount,
+            $subtotalAfterVariantDiscounts,
+            $totalVatAmount,
+            $totalDiscount,
+            $shippingCost,
+            $engineerFeeAmount,
+            $contractorFeeAmount
         ) {
             $order = Order::create([
                 Order::PLACER_USER_ID => $user->id,

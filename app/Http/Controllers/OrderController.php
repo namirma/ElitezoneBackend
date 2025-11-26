@@ -240,6 +240,29 @@ class OrderController extends Controller
         return error(__('orders.cannot_prepare_in_current_state'), [], 400);
     }
 
+
+    public function uploadCustomerReceipt(Request $request, Order $order): JsonResponse
+    {
+        if ($order->placer_user_id !== Auth::id()) {
+            return error(__('auth.forbidden'), [], 403);
+        }
+
+        if ($order->payment_status === Order::PAYMENT_PAID) {
+            return error('.این سفارش قبلاً پرداخت شده است', [], 400);
+        }
+
+        $request->validate([
+            'receipt' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
+        ]);
+
+        $path = $request->file('receipt')->store('order_receipts', 'public');
+
+        $order->update([
+            'payment_receipt_ref' => $path,
+        ]);
+
+        return success(new OrderResource($order), '.فیش پرداخت با موفقیت ثبت شد');
+    }
     public function addWaybill(Request $request, Order $order): JsonResponse
     {
         $user = Auth::user();

@@ -4,7 +4,7 @@ namespace App\Services\Gateways;
 
 use App\Contracts\GatewayInterface;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log; 
+use Illuminate\Support\Facades\Log;
 
 class TesnaService implements GatewayInterface
 {
@@ -22,7 +22,7 @@ class TesnaService implements GatewayInterface
         try {
             $response = Http::withHeaders($this->headers)
                 ->timeout(10)
-                ->get($this->baseUrl . $endpoint, $data);
+                ->get("{$this->baseUrl}$endpoint", $data);
 
 
             if ($response->failed()) {

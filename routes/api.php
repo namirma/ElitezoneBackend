@@ -120,7 +120,11 @@ Route::middleware(['auth:sanctum', 'attach.price.category'])->group(function () 
         Route::patch('/customer', 'updateCustomerType');
     });
 
-    Route::post('/checkout', [CheckoutController::class, 'placeOrder'])->middleware(EnsureRoleIsSelected::class);
+    Route::controller(CheckoutController::class)->prefix('checkout')->group(function () {
+        // ثبت سفارش
+        Route::post('/', 'placeOrder')->middleware(EnsureRoleIsSelected::class);
+        Route::get('/payment/{order}', 'paymentInfo');
+    });
 });
 
 // --- پادیوم (سرویس‌ها) ---
@@ -180,7 +184,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
         Route::post('/real', [ProfileController::class, 'updateRealProfile']);
         Route::post('/legal', [ProfileController::class, 'updateLegalProfile']);
-        Route::post('/legal/fetch', [ProfileController::class, 'fetchLegalData']); // استعلام شرکت
+        Route::post('/legal/fetch', [ProfileController::class, 'fetchLegalData']); 
 
         Route::get('/role-options', [ProfileController::class, 'getRoleOptions']);
         Route::get('/user-types', [AuthController::class, 'types']);
@@ -220,6 +224,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::post('/{order}/pay-hold-fee', 'payHoldFee');
             Route::post('/{order}/pay-full', 'payFullOrder');
             Route::post('/{order}/cancel', 'cancel');
+            Route::post('/{order}/upload-receipt', 'uploadCustomerReceipt');
             Route::get('/{order}/invoice/{type}', 'downloadInvoice')->whereIn('type', ['initial', 'final', 'tax']);
             Route::post('/{order}/survey', [OrderSurveyController::class, 'store']);
 

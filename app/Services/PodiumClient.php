@@ -25,6 +25,9 @@ class PodiumClient
     {
         return Http::asForm()
             ->timeout($this->timeout)
+            ->withOptions([
+                'proxy' => false,
+            ])
             ->withHeaders([
                 '_token_'        => $this->businessToken,
                 '_token_issuer_' => (string) Config::get('podium.defaults._token_issuer', 1),

@@ -151,66 +151,147 @@ class Order extends Model
     public function getDashboardProgressAttribute(): array
     {
         $s = $this->attributes[self::STATUS];
-        $stepsState = [
-            1 => 'inactive',
-            2 => 'inactive',
-            3 => 'inactive',
-            4 => 'inactive',
-            5 => 'inactive',
+        $id = $this->attributes[self::ID];
+        $paymentStatus = $this->attributes[self::PAYMENT_STATUS];
+
+        // مقداردهی اولیه استیت‌ها
+        $stepsData = [
+            1 => ['state' => 'inactive', 'actions' => []],
+            2 => ['state' => 'inactive', 'actions' => []],
+            3 => ['state' => 'inactive', 'actions' => []],
+            4 => ['state' => 'inactive', 'actions' => []],
+            5 => ['state' => 'inactive', 'actions' => []],
         ];
-        $stepsState[1] = 'completed';
+
+        // --- محاسبه وضعیت دایره‌ها (State) ---
+        $stepsData[1]['state'] = 'completed';
 
         if (in_array($s, [self::STATUS_PENDING, self::STATUS_RESERVED_EXTENDED, self::STATUS_PROCESSING, self::STATUS_PREPARING])) {
-            $stepsState[2] = 'current';
+            $stepsData[2]['state'] = 'current';
         } elseif (in_array($s, [self::STATUS_WEIGHBRIDGE_DONE, self::STATUS_WAYBILL_ISSUED, self::STATUS_SHIPPED, self::STATUS_DELIVERED])) {
-            $stepsState[2] = 'completed';
+            $stepsData[2]['state'] = 'completed';
         }
 
         if ($s === self::STATUS_WEIGHBRIDGE_DONE) {
-            $stepsState[3] = 'current';
+            $stepsData[3]['state'] = 'current';
         } elseif (in_array($s, [self::STATUS_WAYBILL_ISSUED, self::STATUS_SHIPPED, self::STATUS_DELIVERED])) {
-            $stepsState[3] = 'completed';
+            $stepsData[3]['state'] = 'completed';
         }
-
 
         if (in_array($s, [self::STATUS_WAYBILL_ISSUED, self::STATUS_SHIPPED])) {
-            $stepsState[4] = 'current';
+            $stepsData[4]['state'] = 'current';
         } elseif ($s === self::STATUS_DELIVERED) {
+            $stepsData[4]['state'] = 'completed';
+        }
 
-            $stepsState[4] = 'completed';
-        }
         if ($s === self::STATUS_DELIVERED) {
-            $stepsState[5] = 'completed';
+            $stepsData[5]['state'] = 'completed';
         }
-        if ($s === self::STATUS_CANCELLED || $s === self::STATUS_FAILED) {
+
+        // --- محاسبه لینک‌ها و اکشن‌ها (Actions) ---
+
+        // مرحله ۱: رزرو
+        if ($paymentStatus === self::PAYMENT_PENDING && in_array($s, [self::STATUS_PENDING, self::STATUS_RESERVED_EXTENDED])) {
+            $stepsData[1]['actions'][] = [
+                'label' => 'پرداخت فاکتور',
+                'link'  => "/checkout/payment/{$id}", // مستقیم به صفحه پرداخت
+                'type'  => 'primary'
+            ];
+        } elseif ($paymentStatus === self::PAYMENT_PAID) {
+            $stepsData[1]['actions'][] = [
+                'label' => 'دریافت رسید',
+                'link'  => "/profile/orders/{$id}/invoice/initial", // دانلود مستقیم
+                'type'  => 'secondary'
+            ];
         }
+
+        // مرحله ۲: ثبت اولیه
+        if (in_array($s, [self::STATUS_WEIGHBRIDGE_DONE, self::STATUS_WAYBILL_ISSUED, self::STATUS_SHIPPED, self::STATUS_DELIVERED])) {
+             $stepsData[2]['actions'][] = [
+                'label' => 'دانلود فاکتور اولیه',
+                'link'  => "/profile/orders/{$id}/invoice/initial", // دانلود مستقیم
+                'type'  => 'secondary'
+            ];
+        } else {
+            $stepsData[2]['actions'][] = [
+                'label' => 'مشاهده جزئیات',
+                'link'  => "/profile/orders/{$id}", // مشاهده در سایت
+                'type'  => 'secondary'
+            ];
+        }
+
+        // مرحله ۳: ثبت نهایی (باسکول)
+        if ($s === self::STATUS_WEIGHBRIDGE_DONE) {
+            $stepsData[3]['actions'][] = [
+                'label' => 'فاکتور نهایی (تسویه)',
+                'link'  => "/checkout/payment/{$id}",
+                'type'  => 'primary'
+            ];
+        } elseif (in_array($s, [self::STATUS_WAYBILL_ISSUED, self::STATUS_SHIPPED, self::STATUS_DELIVERED])) {
+            $stepsData[3]['actions'][] = [
+                'label' => 'دریافت فاکتور نهایی',
+                'link'  => "/profile/orders/{$id}/invoice/final", // دانلود مستقیم
+                'type'  => 'secondary'
+            ];
+        }
+
+        // مرحله ۴: حمل
+        if (in_array($s, [self::STATUS_WAYBILL_ISSUED, self::STATUS_SHIPPED])) {
+            // بارنامه معمولاً عکس یا متنی در صفحه جزئیات است
+            $stepsData[4]['actions'][] = [
+                'label' => 'مشاهده بارنامه',
+                'link'  => "/profile/orders/{$id}",
+                'type'  => 'primary'
+            ];
+        } elseif ($s === self::STATUS_DELIVERED) {
+             $stepsData[4]['actions'][] = [
+                'label' => 'مشاهده جزئیات حمل',
+                'link'  => "/profile/orders/{$id}",
+                'type'  => 'secondary'
+            ];
+        }
+
+        // مرحله ۵: تکمیل
+        if ($s === self::STATUS_DELIVERED) {
+            $stepsData[5]['actions'][] = [
+                'label' => 'دریافت فاکتور رسمی',
+                'link'  => "/profile/orders/{$id}/invoice/tax", // دانلود مستقیم
+                'type'  => 'secondary'
+            ];
+        }
+
         return [
             'is_cancelled' => in_array($s, [self::STATUS_CANCELLED, self::STATUS_FAILED]),
             'steps' => [
                 [
                     'step' => 1,
                     'title' => 'رزرو سفارش',
-                    'state' => $stepsState[1]
+                    'state' => $stepsData[1]['state'],
+                    'actions' => $stepsData[1]['actions']
                 ],
                 [
                     'step' => 2,
                     'title' => 'ثبت اولیه پس از پرداخت',
-                    'state' => $stepsState[2]
+                    'state' => $stepsData[2]['state'],
+                    'actions' => $stepsData[2]['actions']
                 ],
                 [
                     'step' => 3,
                     'title' => 'ثبت نهایی بعد از باسکول',
-                    'state' => $stepsState[3]
+                    'state' => $stepsData[3]['state'],
+                    'actions' => $stepsData[3]['actions']
                 ],
                 [
                     'step' => 4,
                     'title' => 'در حال حمل',
-                    'state' => $stepsState[4]
+                    'state' => $stepsData[4]['state'],
+                    'actions' => $stepsData[4]['actions']
                 ],
                 [
                     'step' => 5,
                     'title' => 'تکمیل شده',
-                    'state' => $stepsState[5]
+                    'state' => $stepsData[5]['state'],
+                    'actions' => $stepsData[5]['actions']
                 ],
             ]
         ];
