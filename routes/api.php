@@ -184,7 +184,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
         Route::post('/real', [ProfileController::class, 'updateRealProfile']);
         Route::post('/legal', [ProfileController::class, 'updateLegalProfile']);
-        Route::post('/legal/fetch', [ProfileController::class, 'fetchLegalData']); 
+        Route::post('/legal/fetch', [ProfileController::class, 'fetchLegalData']);
 
         Route::get('/role-options', [ProfileController::class, 'getRoleOptions']);
         Route::get('/user-types', [AuthController::class, 'types']);
@@ -277,7 +277,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::get('/', 'listMyConsultants')->middleware('track:relations');
             Route::post('/invite', 'inviteConsultant');
             Route::delete('/{consultant}', 'removeConsultant');
-
+            Route::get('/invitations/rejection-reasons', 'getRejectionReasons');
             Route::get('/invitations', 'listMyInvitations');
             Route::post('/invitations/{employer}/accept', 'acceptInvitation');
             Route::post('/invitations/{employer}/reject', 'rejectInvitation');

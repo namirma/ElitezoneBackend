@@ -12,6 +12,7 @@ class EmployerConsultant extends Pivot
      EMPLOYER_ID = 'employer_id',
      CONSULTANT_ID = 'consultant_id',
      STATUS = "status",
+     REJECT_REASON = "reject_reason",
      STATUS_PENDING = 'pending',
      STATUS_APPROVED = 'approved',
      STATUS_REJECTED = 'rejected';
