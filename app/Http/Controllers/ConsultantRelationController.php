@@ -6,27 +6,36 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\InviteConsultantRequest;
 use App\Http\Requests\RejectInvitationRequest;
 use App\Http\Resources\ConsultantRelationResource;
-use App\Models\User;
-use App\Models\UserType;
 use App\Models\EmployerConsultant;
+use App\Models\User;
 use App\Models\UserNotification;
+use App\Models\UserType;
 use App\Services\SmsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use function in_array;
 
 class ConsultantRelationController extends Controller
 {
-
-    public function listMyConsultants(Request $request): JsonResponse
+    public function listMyConsultants(): JsonResponse
     {
         $employer = Auth::user();
         $consultants = $employer->technicalConsultants()
             ->with('profile')
             ->get();
 
-        return success(ConsultantRelationResource::collection($consultants), 'لیست مشاوران دریافت شد.');
+        return success(ConsultantRelationResource::collection($consultants), __('consultant.list_received'));
+    }
+
+    public function listMyEmployers(): JsonResponse
+    {
+        $consultant = Auth::user();
+        $employers = $consultant->associatedEmployers()
+            ->wherePivot(EmployerConsultant::STATUS, EmployerConsultant::STATUS_APPROVED)
+            ->with('profile')
+            ->get();
+
+        return success(ConsultantRelationResource::collection($employers), __('consultant.employers_list_received'));
     }
 
     public function inviteConsultant(InviteConsultantRequest $request): JsonResponse
@@ -65,7 +74,7 @@ class ConsultantRelationController extends Controller
             if ($status === EmployerConsultant::STATUS_REJECTED) {
                 if ($updatedAt->diffInHours(now()) < 24) {
                     $hoursLeft = 24 - $updatedAt->diffInHours(now());
-                    return error("درخواست شما رد شده است. لطفاً {$hoursLeft} ساعت دیگر مجدداً تلاش کنید", [], 429);
+                    return error(__('consultant.retry_delay', ['hours' => $hoursLeft]), [], 429);
                 }
 
                 $employer->technicalConsultants()->updateExistingPivot($consultant->id, [
@@ -93,7 +102,7 @@ class ConsultantRelationController extends Controller
 
         (new SmsService())->send($consultant->{User::MOBILE}, $smsMessage);
 
-        return success([], 'درخواست همکاری برای مشاور فنی ارسال شد.');
+        return success([], __('consultant.invitation_sent'));
     }
 
     public function removeConsultant(User $consultant): JsonResponse
@@ -106,7 +115,8 @@ class ConsultantRelationController extends Controller
 
         return error(__('auth.consultant_relation_not_found'), [], 404);
     }
-    public function listMyInvitations(Request $request): JsonResponse
+
+    public function listMyInvitations(): JsonResponse
     {
         $consultant = Auth::user();
         $invitations = $consultant->associatedEmployers()
@@ -114,7 +124,7 @@ class ConsultantRelationController extends Controller
             ->with('profile')
             ->get();
 
-        return success(ConsultantRelationResource::collection($invitations), 'لیست درخواست‌های همکاری دریافت شد.');
+        return success(ConsultantRelationResource::collection($invitations), __('consultant.invitations_list_received'));
     }
 
     public function acceptInvitation(User $employer): JsonResponse
@@ -125,20 +135,18 @@ class ConsultantRelationController extends Controller
         if (!$pivot || $pivot->pivot->{EmployerConsultant::STATUS} !== EmployerConsultant::STATUS_PENDING) {
             return error(__('auth.invitation_not_found'), [], 404);
         }
-        $consultant->associatedEmployers()->updateExistingPivot($employer->id, [EmployerConsultant::STATUS => EmployerConsultant::STATUS_APPROVED]);
 
-        // TODO: ارسال نوتیفیکیشن به کارفرما
+        $consultant->associatedEmployers()->updateExistingPivot($employer->id, [
+            EmployerConsultant::STATUS => EmployerConsultant::STATUS_APPROVED
+        ]);
 
-        return success([], __('auth.invitation_accepted'));
+        return success([], __('consultant.invitation_accepted'));
     }
 
     public function rejectInvitation(RejectInvitationRequest $request, User $employer): JsonResponse
     {
         $consultant = Auth::user();
-
-        $pivot = $consultant->associatedEmployers()
-            ->where(EmployerConsultant::EMPLOYER_ID, $employer->id)
-            ->first();
+        $pivot = $consultant->associatedEmployers()->where(EmployerConsultant::EMPLOYER_ID, $employer->id)->first();
 
         if (!$pivot || $pivot->pivot->{EmployerConsultant::STATUS} !== EmployerConsultant::STATUS_PENDING) {
             return error(__('auth.invitation_not_found'), [], 404);
@@ -149,16 +157,13 @@ class ConsultantRelationController extends Controller
             EmployerConsultant::REJECT_REASON => $request->validated('reject_reason')
         ]);
 
-        return success([], __('auth.invitation_rejected'));
+        return success([], __('consultant.invitation_rejected'));
     }
-
 
     public function getRejectionReasons(): JsonResponse
     {
-        $reasons = __('consultant.rejection_reasons');
-        return success($reasons, '.لیست دلایل دریافت شد');
+        return success(__('consultant.rejection_reasons'), __('consultant.rejection_reasons_received'));
     }
-
 
     private function findConsultantByCredentials(array $data): ?User
     {
@@ -171,6 +176,7 @@ class ConsultantRelationController extends Controller
         }
         return null;
     }
+
     private function mobileTo09(string $raw): string
     {
         $m = preg_replace('/\D/', '', $raw);

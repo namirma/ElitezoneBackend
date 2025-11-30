@@ -102,6 +102,7 @@ class Kernel extends HttpKernel
         'SecurityHeaders' => SecurityHeaders::class,
         'attach.price.category' => AttachActivePriceCategory::class,
         'role.expert' => EnsureUserIsExpert::class,
+        'role.employer' => \App\Http\Middleware\EnsureUserIsEmployer::class,
         'track' => TrackDashboardUsage::class,
     ];
 }

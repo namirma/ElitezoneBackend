@@ -274,13 +274,18 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
         // --- مشاوران / کارفرمایان (Consultants) ---
         Route::prefix('consultants')->controller(ConsultantRelationController::class)->group(function () {
-            Route::get('/', 'listMyConsultants')->middleware('track:relations');
-            Route::post('/invite', 'inviteConsultant');
-            Route::delete('/{consultant}', 'removeConsultant');
-            Route::get('/invitations/rejection-reasons', 'getRejectionReasons');
-            Route::get('/invitations', 'listMyInvitations');
-            Route::post('/invitations/{employer}/accept', 'acceptInvitation');
-            Route::post('/invitations/{employer}/reject', 'rejectInvitation');
+            Route::middleware('role.employer')->group(function () {
+                Route::get('/', 'listMyConsultants')->middleware('track:relations');
+                Route::post('/invite', 'inviteConsultant');
+                Route::delete('/{consultant}', 'removeConsultant');
+            });
+            Route::middleware('role.expert')->group(function () {
+                Route::get('/employers', 'listMyEmployers');
+                Route::get('/invitations', 'listMyInvitations');
+                Route::get('/invitations/rejection-reasons', 'getRejectionReasons');
+                Route::post('/invitations/{employer}/accept', 'acceptInvitation');
+                Route::post('/invitations/{employer}/reject', 'rejectInvitation');
+            });
         });
 
         // --- تکمیل پروفایل نقش‌های خاص ---

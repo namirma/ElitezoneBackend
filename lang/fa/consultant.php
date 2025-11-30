@@ -1,6 +1,16 @@
 <?php
 
 return [
+
+    'list_received' => '.لیست مشاوران با موفقیت دریافت شد',
+    'employers_list_received' => '.لیست کارفرمایان با موفقیت دریافت شد',
+    'invitation_sent' => '.درخواست همکاری برای مشاور فنی ارسال شد',
+    'invitations_list_received' => '.لیست درخواست‌های همکاری دریافت شد',
+    'invitation_accepted' => '.درخواست کارفرما با موفقیت تایید شد',
+    'invitation_rejected' => '.درخواست کارفرما رد شد',
+    'rejection_reasons_received' => '.لیست دلایل رد همکاری دریافت شد',
+    'retry_delay' => 'درخواست شما رد شده است. لطفاً :hours ساعت دیگر مجدداً تلاش کنید',
+
     'rejection_reasons' => [
         [
             'id' => 1,
@@ -25,7 +35,7 @@ return [
         [
             'id' => 5,
             'text' => 'سایر موارد',
-            'has_input' => true 
+            'has_input' => true
         ],
     ],
 ];

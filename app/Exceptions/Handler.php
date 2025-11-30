@@ -4,6 +4,8 @@ namespace App\Exceptions;
 
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Illuminate\Http\Exceptions\ThrottleRequestsException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Throwable;
 
 class Handler extends ExceptionHandler
@@ -29,20 +31,28 @@ class Handler extends ExceptionHandler
         });
 
         $this->renderable(function (ThrottleRequestsException $e, $request) {
-
-            // چک می‌کنیم که درخواست برای API باشد
             if ($request->wantsJson() || $request->is('api/*')) {
-
-                // محاسبه زمان باقی‌مانده (به دقیقه)
                 $retryAfterSeconds = $e->getHeaders()['Retry-After'] ?? 60;
                 $minutes = (int) ceil($retryAfterSeconds / 60);
 
-                // 🚀 3. استفاده از هلپر error() و پیام فارسی شما
                 return error(
                     __('auth.throttle', ['minutes' => $minutes]),
-                    [], // آرایه خطاها خالی است
-                    429 // 429 Too Many Attempts
+                    [],
+                    429
                 );
+            }
+        });
+
+        $this->renderable(function (NotFoundHttpException $e, $request) {
+            if ($request->wantsJson() || $request->is('api/*')) {
+
+                $message = '.مسیر مورد نظر یافت نشد';
+
+                if ($e->getPrevious() instanceof ModelNotFoundException) {
+                    $message = __('global.model_not_found') ?? '.آیتم مورد نظر یافت نشد';
+                }
+
+                return error($message, [], 404);
             }
         });
     }
