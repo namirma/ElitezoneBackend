@@ -30,9 +30,14 @@ class ConsultantRelationController extends Controller
     public function listMyEmployers(): JsonResponse
     {
         $consultant = Auth::user();
+
         $employers = $consultant->associatedEmployers()
-            ->wherePivot(EmployerConsultant::STATUS, EmployerConsultant::STATUS_APPROVED)
+            ->wherePivotIn(EmployerConsultant::STATUS, [
+                EmployerConsultant::STATUS_APPROVED,
+                EmployerConsultant::STATUS_REJECTED
+            ])
             ->with('profile')
+            ->orderByPivot('updated_at', 'desc')
             ->get();
 
         return success(ConsultantRelationResource::collection($employers), __('consultant.employers_list_received'));
