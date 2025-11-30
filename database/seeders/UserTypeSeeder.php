@@ -30,7 +30,11 @@ class UserTypeSeeder extends Seeder
             [
                 UserType::NAME => 'کارفرما',
                 UserType::SLUG => 'employer',
-            ]
+            ],
+[
+                UserType::NAME => 'مشاور فنی',
+                UserType::SLUG => 'expert',
+            ],
         ]);
 
         DB::table('roles')->insert([

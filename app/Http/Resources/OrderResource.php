@@ -61,12 +61,13 @@ class OrderResource extends JsonResource
                 'prepared_at_p' => $this->prepared_at ? verta($this->prepared_at)->format('Y/m/d H:i') : null,
                 'shipped_at_p' => $this->shipped_at ? verta($this->shipped_at)->format('Y/m/d H:i') : null,
             ]),
+            'progress' => $this->dashboard_progress,
 
             'placer' => new UserResource($this->whenLoaded('placer')),
             'beneficiary' => new UserResource($this->whenLoaded('beneficiary')),
             'address' => new AddressResource($this->whenLoaded('address')),
             'items' => OrderItemResource::collection($this->whenLoaded('items')),
-            
+
         ];
     }
 }

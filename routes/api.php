@@ -220,6 +220,24 @@ Route::middleware(['auth:sanctum'])->group(function () {
         // --- سفارش‌ها (Orders) ---
         Route::prefix('orders')->controller(OrderController::class)->group(function () {
             Route::get('/', 'index')->middleware('track:orders');
+            
+            // 2. تب‌های سفارش‌های خودم (Buy Myself)
+            Route::group(['prefix' => 'buy-myself'], function () {
+                Route::get('/current', 'listMyCurrentOrders');
+                Route::get('/delivered', 'listMyDeliveredOrders');
+                Route::get('/cancelled', 'listMyCancelledOrders');
+            });
+
+            // 3. تب‌های سفارش‌های دیگران (Buy For Others)
+            Route::group(['prefix' => 'buy-others'], function () {
+                Route::get('/current', 'listOthersCurrentOrders');
+                Route::get('/delivered', 'listOthersDeliveredOrders');
+                Route::get('/cancelled', 'listOthersCancelledOrders');
+            });
+
+            // ... سایر روت‌های عملیاتی (show, pay, cancel, invoice, survey, ...)
+            Route::get('/{order}', 'show');
+            Route::post('/{order}/pay-hold-fee', 'payHoldFee');
             Route::get('/{order}', 'show');
             Route::post('/{order}/pay-hold-fee', 'payHoldFee');
             Route::post('/{order}/pay-full', 'payFullOrder');
