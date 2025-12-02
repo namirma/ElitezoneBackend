@@ -53,7 +53,7 @@ class User extends Authenticatable implements LaratrustUser
         REMEMBER_TOKEN = 'remember_token',
         CREATED_AT = 'created_at',
         UPDATED_AT = 'updated_at';
-        
+
     public const
         RELATION_PROFILE = 'profile',
         RELATION_ENGINEER = 'engineer',
@@ -180,16 +180,18 @@ class User extends Authenticatable implements LaratrustUser
     public function technicalConsultants(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'employer_consultant', EmployerConsultant::EMPLOYER_ID, EmployerConsultant::CONSULTANT_ID)
-                    ->using(EmployerConsultant::class)
-                    ->withPivot(EmployerConsultant::STATUS)
-                    ->withTimestamps();
+            ->using(EmployerConsultant::class)
+            
+            ->withPivot([EmployerConsultant::STATUS, EmployerConsultant::REJECT_REASON])
+            ->withTimestamps();
     }
 
     public function associatedEmployers(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'employer_consultant', EmployerConsultant::CONSULTANT_ID, EmployerConsultant::EMPLOYER_ID)
-                    ->using(EmployerConsultant::class)
-                    ->withPivot(EmployerConsultant::STATUS)
-                    ->withTimestamps();
+            ->using(EmployerConsultant::class)
+
+            ->withPivot([EmployerConsultant::STATUS, EmployerConsultant::REJECT_REASON])
+            ->withTimestamps();
     }
 }

@@ -5,10 +5,14 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreUserBankAccountRequest;
 use App\Http\Resources\UserBankAccountResource;
+use App\Models\User;
 use App\Models\UserBankAccount;
+use App\Services\PodiumServices\CardInquiryService;
+use App\Services\PodiumServices\ShebaInquiryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class UserBankAccountController extends Controller
 {
@@ -18,27 +22,76 @@ class UserBankAccountController extends Controller
         return success(UserBankAccountResource::collection($accounts), __('bank.list_received'));
     }
 
-    public function store(StoreUserBankAccountRequest $request): JsonResponse
-    {
+    public function store(
+        StoreUserBankAccountRequest $request,
+        ShebaInquiryService $shebaService,
+        CardInquiryService $cardService
+    ): JsonResponse {
         $user = Auth::user();
+        $user->load('profile');
+
+        // 1. بررسی تکمیل بودن اطلاعات پروفایل
+        if (empty($user->{User::NATIONAL_CODE}) || empty($user->{User::BIRTH_DATE})) {
+            return error(__('bank.identity_incomplete'), [], 422);
+        }
+
         $data = $request->validated();
 
-        DB::transaction(function () use ($user, $data) {
-            if (!empty($data[UserBankAccount::IS_DEFAULT])) {
-                $user->bankAccounts()->update([UserBankAccount::IS_DEFAULT => false]);
-            }
-            $user->bankAccounts()->create([
-                UserBankAccount::BANK_NAME => $data[UserBankAccount::BANK_NAME],
-                UserBankAccount::ACCOUNT_HOLDER_NAME => $data[UserBankAccount::ACCOUNT_HOLDER_NAME],
-                UserBankAccount::SHABA => $data[UserBankAccount::SHABA],
-                UserBankAccount::IS_DEFAULT => $data[UserBankAccount::IS_DEFAULT] ?? false,
-                UserBankAccount::STATUS => UserBankAccount::STATUS_PENDING,
-            ]);
+        $shaba = $data['shaba'] ?? null;
+        $cardNumber = $data['card_number'] ?? null;
+        $bankName = __('bank.unknown_bank');
 
-            // TODO: ارسال نوتیفیکیشن به ادمین
+        // 2. استعلام و احراز هویت (شبا یا کارت)
+        try {
+            if ($cardNumber) {
+                // استعلام کارت
+                $isMatched = $cardService->verify($cardNumber, $user->{User::NATIONAL_CODE}, $user->{User::BIRTH_DATE});
+
+                if (!$isMatched) {
+                    throw ValidationException::withMessages([
+                        'card_number' => [__('bank.card_mismatch')]
+                    ]);
+                }
+
+                $bankName = $this->getBankNameFromCard($cardNumber);
+            } elseif ($shaba) {
+                // استعلام شبا
+                $isMatched = $shebaService->verify($shaba, $user->{User::NATIONAL_CODE}, $user->{User::BIRTH_DATE});
+
+                if (!$isMatched) {
+                    throw ValidationException::withMessages([
+                        'shaba' => [__('bank.shaba_mismatch')]
+                    ]);
+                }
+
+                $bankName = $this->getBankNameFromIban($shaba);
+            }
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (\Exception $e) {
+            return error(__('bank.service_unavailable'), ['debug' => $e->getMessage()], 503);
+        }
+
+        // 3. دریافت نام صاحب حساب
+        $holderName = $this->resolveHolderName($user);
+
+        // 4. ذخیره در دیتابیس
+        $bankAccount = DB::transaction(function () use ($user, $data, $bankName, $holderName, $shaba, $cardNumber) {
+            if (!empty($data['is_default'])) {
+                $user->bankAccounts()->update(['is_default' => false]);
+            }
+
+            return $user->bankAccounts()->create([
+                UserBankAccount::BANK_NAME           => $bankName,
+                UserBankAccount::ACCOUNT_HOLDER_NAME => $holderName,
+                UserBankAccount::SHABA               => $shaba,
+                UserBankAccount::CARD_NUMBER         => $cardNumber,
+                UserBankAccount::IS_DEFAULT          => $data['is_default'] ?? false,
+                UserBankAccount::STATUS              => UserBankAccount::STATUS_APPROVED,
+            ]);
         });
 
-        return success([], __('bank.store_success'));
+        return success(new UserBankAccountResource($bankAccount), __('bank.store_success'));
     }
 
     public function destroy(UserBankAccount $bankAccount): JsonResponse
@@ -47,16 +100,83 @@ class UserBankAccountController extends Controller
             return error(__('auth.forbidden'), [], 403);
         }
 
-        if ($bankAccount->{UserBankAccount::STATUS} === UserBankAccount::STATUS_APPROVED) {
-             return error(__('bank.delete_approved_error'), [], 400);
-        }
-
-        if ($bankAccount->{UserBankAccount::IS_DEFAULT}) {
-             return error(__('bank.delete_default_error'), [], 400);
-        }
+        // حذف حساب‌های دیفالت یا تایید شده
+        // if ($bankAccount->is_default) return error(__('bank.delete_default_error'), [], 400);
 
         $bankAccount->delete();
-
         return success([], __('bank.delete_success'));
+    }
+
+    /**
+     * استخراج نام صاحب حساب از پروفایل کاربر
+     */
+    private function resolveHolderName(User $user): string
+    {
+        $fullName = trim(($user->profile->name ?? '') . ' ' . ($user->profile->family ?? ''));
+        return empty($fullName) ? __('bank.unknown_user') : $fullName;
+    }
+
+    /**
+     * تشخیص نام بانک از روی کد شبا
+     */
+    private function getBankNameFromIban(string $iban): string
+    {
+        $cleanIban = strtoupper(preg_replace('/[^A-Z0-9]/', '', $iban));
+        // ارقام 5، 6 و 7 کد بانک هستند
+        $bankCode = substr($cleanIban, 4, 3);
+
+        return $this->getBankNameByCode($bankCode);
+    }
+
+    /**
+     * تشخیص نام بانک از روی ۶ رقم اول کارت (BIN)
+     */
+    private function getBankNameFromCard(string $card): string
+    {
+        $bin = substr($card, 0, 6);
+        $bankCode = match ($bin) {
+            '603799' => '017', // ملی
+            '589210' => '015', // سپه
+            '627648' => '020', // توسعه صادرات
+            '627961' => '011', // صنعت و معدن
+            '603770' => '016', // کشاورزی
+            '628023' => '014', // مسکن
+            '627760' => '021', // پست بانک
+            '502908' => '022', // توسعه تعاون
+            '627412' => '055', // اقتصاد نوین
+            '622106', '639194' => '054', // پارسیان
+            '502229', '639347' => '057', // پاسارگاد
+            '627488', '502938' => '053', // کارآفرین
+            '621986' => '056', // سامان
+            '639346' => '059', // سینا
+            '639607' => '058', // سرمایه
+            '636214' => '062', // آینده
+            '502806' => '061', // شهر
+            '603769' => '019', // صادرات
+            '610433', '991975' => '012', // ملت
+            '627353' => '018', // تجارت
+            '589463' => '013', // رفاه
+            '627381' => '063', // انصار
+            '639370' => '090', // مهر اقتصاد
+            '639599' => '052', // قوامین (کد فرضی، ادغام شده)
+            '504172' => '070', // رسالت
+            '606373' => '060', // مهر ایران
+            '628157' => '051', // موسسه توسعه
+            '505785' => '069', // ایران زمین
+            '505416' => '064', // گردشگری
+            '636949' => '065', // حکمت
+            '505801' => '073', // کوثر
+            '627884' => '053', // کارآفرین (گاهی مشترک)
+            default => null
+        };
+
+        return $bankCode ? $this->getBankNameByCode($bankCode) : __('bank.unknown_bank');
+    }
+
+    private function getBankNameByCode(string $code): string
+    {
+        $key = 'bank.banks.' . $code;
+        $name = __($key);
+        return $name === $key ? __('bank.unknown_bank') : $name;
     }
 }

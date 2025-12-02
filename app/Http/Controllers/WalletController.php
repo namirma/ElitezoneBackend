@@ -3,23 +3,27 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreDepositReceiptRequest;
+use App\Http\Requests\WalletDepositRequest;
+use App\Http\Requests\WalletWithdrawalRequest;
 use App\Http\Resources\WalletResource;
 use App\Http\Resources\WalletTransactionResource;
-use App\Models\User;
+use App\Models\UserBankAccount;
+use App\Models\UserProfile;
+use App\Models\Wallet;
 use App\Models\WalletTransaction;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use App\Http\Requests\WalletDepositRequest;
-use App\Http\Requests\WalletWithdrawalRequest;
-use App\Models\UserBankAccount;
-use App\Models\UserProfile;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Carbon;
-use App\Models\Wallet;
 
 class WalletController extends Controller
 {
+    // =========================================================================
+    //  بخش ۱: کیف پول (Wallet & Transactions)
+    // =========================================================================
+
     public function getWallet(): JsonResponse
     {
         $user = Auth::user();
@@ -32,10 +36,8 @@ class WalletController extends Controller
     {
         $user = Auth::user();
         $wallet = $user->wallet()->firstOrCreate();
-        $walletId = $wallet->id;
 
-        $query = WalletTransaction::where(WalletTransaction::WALLET_ID, $walletId)
-            ->latest();
+        $query = WalletTransaction::where(WalletTransaction::WALLET_ID, $wallet->id)->latest();
 
         if ($request->filled('type')) {
             match ($request->input('type')) {
@@ -47,12 +49,7 @@ class WalletController extends Controller
         }
 
         if ($request->filled('status')) {
-            match ($request->input('status')) {
-                'confirmed' => $query->where(WalletTransaction::STATUS, WalletTransaction::STATUS_CONFIRMED),
-                'pending'   => $query->where(WalletTransaction::STATUS, WalletTransaction::STATUS_PENDING),
-                'failed'    => $query->where(WalletTransaction::STATUS, WalletTransaction::STATUS_FAILED),
-                default     => null,
-            };
+            $query->where(WalletTransaction::STATUS, $request->input('status'));
         }
 
         if ($request->filled('range')) {
@@ -78,6 +75,7 @@ class WalletController extends Controller
         $user = Auth::user();
         $wallet = $user->wallet()->firstOrCreate();
         $validated = $request->validated();
+
         $amount = $validated['amount'];
         $method = $validated['payment_method'];
 
@@ -89,39 +87,33 @@ class WalletController extends Controller
             WalletTransaction::META        => ['payment_method' => $method]
         ]);
 
-        switch ($method) {
+        return match ($method) {
+            'bank_transfer' => success([
+                'transaction_id' => $transaction->id,
+                'type'           => 'manual_payment',
+                'message'        => __('wallet.deposit_manual_info', ['amount' => number_format($amount)]),
+                'upload_url'     => route('wallet.deposit.upload', ['transaction' => $transaction->id])
+            ], __('wallet.deposit_created')),
 
-            case 'bank_transfer':
-                $paymentInfo = [
-                    'transaction_id' => $transaction->id,
-                    'type' => 'manual_payment',
-                    'message' => __('wallet.deposit_manual_info', ['amount' => number_format($amount)]),
-                    'upload_url' => route('wallet.deposit.upload', ['transaction' => $transaction->id])
-                ];
-                return success($paymentInfo, __('wallet.deposit_created'));
+            'shaparak' => success([
+                'transaction_id' => $transaction->id,
+                'type'           => 'gateway_redirect',
+                'redirect_url'   => "https://shaparak.example.com/payment/{$transaction->id}",
+            ], __('wallet.redirect_to_gateway')),
 
-            case 'shaparak':
-                $redirectUrl = 'https://shaparak.example.com/payment/' . $transaction->id;
-                $paymentInfo = [
-                    'transaction_id' => $transaction->id,
-                    'type' => 'gateway_redirect',
-                    'redirect_url' => $redirectUrl,
-                ];
-                return success($paymentInfo, __('wallet.redirect_to_gateway'));
+            'podium' => success([
+                'transaction_id' => $transaction->id,
+                'type'           => 'gateway_redirect',
+                'redirect_url'   => "https://podium.example.com/payment/{$transaction->id}",
+            ], __('wallet.redirect_to_gateway')),
 
-            case 'podium':
-                $redirectUrl = 'https://podium.example.com/payment/' . $transaction->id;
-                $paymentInfo = [
-                    'transaction_id' => $transaction->id,
-                    'type' => 'gateway_redirect',
-                    'redirect_url' => $redirectUrl,
-                ];
-                return success($paymentInfo, __('wallet.redirect_to_gateway'));
-        }
-
-        return error(__('wallet.invalid_payment_method'), [], 400);
+            default => error(__('wallet.invalid_payment_method'), [], 400),
+        };
     }
 
+    /**
+     * آپلود رسید برای تراکنشی که قبلاً با requestDeposit ایجاد شده
+     */
     public function uploadDepositReceipt(Request $request, WalletTransaction $transaction): JsonResponse
     {
         $user = Auth::user();
@@ -131,31 +123,28 @@ class WalletController extends Controller
         }
 
         $meta = $transaction->{WalletTransaction::META};
-        $paymentMethod = is_array($meta) ? ($meta['payment_method'] ?? null) : null;
+        $isBankTransfer = ($meta['payment_method'] ?? '') === 'bank_transfer';
 
         if (
             $transaction->{WalletTransaction::TYPE} !== WalletTransaction::TYPE_DEPOSIT ||
             $transaction->{WalletTransaction::STATUS} !== WalletTransaction::STATUS_PENDING ||
-            $paymentMethod !== 'bank_transfer'
+            !$isBankTransfer
         ) {
             return error(__('wallet.invalid_upload_transaction'), [], 400);
         }
 
-        $validated = $request->validate([
-            'receipt' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048']
+        $request->validate([
+            'receipt' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120']
         ]);
 
-        $path = $validated['receipt']->store('wallet_receipts', 'public');
+        $path = $request->file('receipt')->store('wallet_receipts', 'public');
 
         $transaction->update([
-            WalletTransaction::DESCRIPTION => $transaction->{WalletTransaction::DESCRIPTION} . ' | رسید بارگذاری شد.',
+            WalletTransaction::DESCRIPTION => $transaction->{WalletTransaction::DESCRIPTION} . ' | رسید آپلود شد',
             WalletTransaction::META => array_merge($meta ?? [], ['receipt_path' => $path])
         ]);
 
-        return success(
-            new WalletTransactionResource($transaction),
-            __('wallet.receipt_uploaded')
-        );
+        return success(new WalletTransactionResource($transaction), __('wallet.receipt_uploaded'));
     }
 
     public function requestWithdrawal(WalletWithdrawalRequest $request): JsonResponse
@@ -165,46 +154,111 @@ class WalletController extends Controller
         $validated = $request->validated();
 
         $amount = $validated['amount'];
-        $bankAccountId = $validated['user_bank_account_id'];
+        $bankAccount = UserBankAccount::find($validated['user_bank_account_id']);
 
-        $bankAccount = UserBankAccount::find($bankAccountId);
         if (!$bankAccount) {
             return error(__('wallet.bank_account_not_found'), [], 404);
         }
-        $shaba = $bankAccount->{UserBankAccount::SHABA};
-        $bankName = $bankAccount->{UserBankAccount::BANK_NAME};
-        $accountHolder = $bankAccount->{UserBankAccount::ACCOUNT_HOLDER_NAME};
 
         try {
-            $transaction = DB::transaction(function () use ($wallet, $user, $amount, $shaba, $bankName, $accountHolder) {
-
+            $transaction = DB::transaction(function () use ($wallet, $user, $amount, $bankAccount) {
+                // کسر از موجودی (قفل کردن برای جلوگیری از Race Condition)
                 $wallet->lockForUpdate()->decrement(Wallet::BALANCE, $amount);
 
-                $desc = __('wallet.withdrawal_description', ['shaba' => $shaba, 'bank' => $bankName]);
+                $desc = __('wallet.withdrawal_description', [
+                    'shaba' => $bankAccount->{UserBankAccount::SHABA}
+                ]);
 
-                $transaction = $wallet->transactions()->create([
+                return $wallet->transactions()->create([
                     WalletTransaction::AMOUNT      => $amount,
                     WalletTransaction::TYPE        => WalletTransaction::TYPE_WITHDRAW,
                     WalletTransaction::STATUS      => WalletTransaction::STATUS_PENDING,
                     WalletTransaction::DESCRIPTION => $desc,
                     WalletTransaction::META        => [
-                        'shaba'      => $shaba,
-                        'bank_name'  => $bankName,
-                        'account_holder_name' => $accountHolder,
-                        'first_name' => $user->profile->{UserProfile::NAME} ?? '',
-                        'last_name'  => $user->profile->{UserProfile::FAMILY} ?? '',
+                        'shaba'     => $bankAccount->{UserBankAccount::SHABA},
+                        'bank_name' => $bankAccount->{UserBankAccount::BANK_NAME},
+                        'holder'    => $bankAccount->{UserBankAccount::ACCOUNT_HOLDER_NAME},
                     ]
                 ]);
-
-                return $transaction;
             }, 5);
+
+            return success(new WalletTransactionResource($transaction), __('wallet.withdrawal_created'));
+
         } catch (\Throwable $e) {
-            return error(__('global.operation_failed'), ['db_error' => $e->getMessage()], 500);
+            return error(__('global.operation_failed'), ['debug' => $e->getMessage()], 500);
+        }
+    }
+
+
+    // =========================================================================
+    //  بخش ۲: فیش‌های پرداختی (Payment Receipts - Tab)
+    // =========================================================================
+
+    public function getReceipts(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        $wallet = $user->wallet;
+
+        // دریافت تراکنش‌هایی که از نوع واریز فیشی هستند
+        $receipts = $wallet->transactions()
+            ->where('type', WalletTransaction::TYPE_DEPOSIT)
+            ->whereJsonContains('meta->payment_method', 'bank_transfer')
+            ->latest()
+            ->paginate(20);
+
+        return success(WalletTransactionResource::collection($receipts), __('wallet.receipts_list'));
+    }
+
+    public function storeReceipt(StoreDepositReceiptRequest $request): JsonResponse
+    {
+        $user = Auth::user();
+        $wallet = $user->wallet()->firstOrCreate();
+        $data = $request->validated();
+
+        $path = $request->file('receipt_image')->store('wallet_receipts', 'public');
+
+        $metaData = [
+            'payment_method' => 'bank_transfer',
+            'receipt_info' => [
+                'receipt_number' => $data['receipt_number'],
+                'bank_name'      => $data['bank_name'],
+                'payment_date'   => $data['payment_date'],
+                'image_path'     => $path,
+            ]
+        ];
+
+        $desc = __('wallet.receipt_description', [
+            'number' => $data['receipt_number'],
+            'bank'   => $data['bank_name']
+        ]);
+        if (!empty($data['description'])) {
+            $desc .= ' - ' . $data['description'];
         }
 
-        return success(
-            new WalletTransactionResource($transaction),
-            __('wallet.withdrawal_created')
-        );
+        $transaction = $wallet->transactions()->create([
+            WalletTransaction::AMOUNT      => $data['amount'],
+            WalletTransaction::TYPE        => WalletTransaction::TYPE_DEPOSIT,
+            WalletTransaction::STATUS      => WalletTransaction::STATUS_PENDING,
+            WalletTransaction::DESCRIPTION => $desc,
+            WalletTransaction::META        => $metaData
+        ]);
+
+        return success(new WalletTransactionResource($transaction), __('wallet.receipt_created'));
+    }
+
+    public function deleteReceipt(WalletTransaction $transaction): JsonResponse
+    {
+        if ($transaction->wallet->user_id !== Auth::id()) {
+            return error(__('auth.forbidden'), [], 403);
+        }
+
+        // فقط فیش‌های در انتظار بررسی قابل حذف هستند
+        if ($transaction->status !== WalletTransaction::STATUS_PENDING) {
+            return error(__('wallet.receipt_delete_forbidden'), [], 400);
+        }
+
+        $transaction->delete();
+
+        return success([], __('wallet.receipt_deleted'));
     }
 }

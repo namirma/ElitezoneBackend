@@ -21,6 +21,7 @@ class UserBankAccountResource extends JsonResource
             UserBankAccount::BANK_NAME => $this->{UserBankAccount::BANK_NAME},
             UserBankAccount::ACCOUNT_HOLDER_NAME => $this->{UserBankAccount::ACCOUNT_HOLDER_NAME},
             UserBankAccount::SHABA => $this->{UserBankAccount::SHABA},
+            UserBankAccount::CARD_NUMBER => $this->{UserBankAccount::CARD_NUMBER},
             'status' => $statusText,
             'status_code' => $this->{UserBankAccount::STATUS},
             UserBankAccount::REJECTION_REASON => $this->whenNotNull($this->{UserBankAccount::REJECTION_REASON}),

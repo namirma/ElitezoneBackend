@@ -220,7 +220,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         // --- سفارش‌ها (Orders) ---
         Route::prefix('orders')->controller(OrderController::class)->group(function () {
             Route::get('/', 'index')->middleware('track:orders');
-            
+
             // 2. تب‌های سفارش‌های خودم (Buy Myself)
             Route::group(['prefix' => 'buy-myself'], function () {
                 Route::get('/current', 'listMyCurrentOrders');
@@ -254,14 +254,26 @@ Route::middleware(['auth:sanctum'])->group(function () {
         });
 
         // --- مدیریت مالی (Wallet & Bank) ---
-        Route::prefix('wallet')->controller(WalletController::class)->group(function () {
-            Route::get('/', 'getWallet')->middleware('track:wallet');
-            Route::get('/transactions', 'getTransactions');
-            Route::post('/deposit', 'requestDeposit');
-            Route::post('/deposit/{transaction}/upload-receipt', 'uploadDepositReceipt');
-            Route::post('/withdraw', 'requestWithdrawal');
+        Route::prefix('financial')->group(function () {
+
+            // 1. بخش کیف پول (Wallet)
+            Route::controller(WalletController::class)->prefix('wallet')->group(function () {
+                Route::get('/', 'getWallet');
+                Route::get('/transactions', 'getTransactions');
+                Route::post('/deposit', 'requestDeposit');
+                Route::post('/withdraw', 'requestWithdrawal');
+            });
+
+            // 2. بخش فیش‌های پرداختی (Payment Receipts)
+            Route::controller(WalletController::class)->prefix('receipts')->group(function () {
+                Route::get('/', 'getReceipts');
+                Route::post('/', 'storeReceipt');
+                Route::delete('/{transaction}', 'deleteReceipt');
+            });
+
+            Route::apiResource('accounts', UserBankAccountController::class)
+                ->except(['show', 'update']);
         });
-        Route::apiResource('/bank-accounts', UserBankAccountController::class)->except(['show', 'update']);
 
         // --- آدرس‌ها (Addresses) ---
         Route::prefix('addresses')->controller(AddressController::class)->group(function () {

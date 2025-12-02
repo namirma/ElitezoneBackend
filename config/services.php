@@ -53,4 +53,13 @@ return [
         'sc_product_id' => env('PODIUM_SC_PRODUCT_ID_COMPANY', 46953),
     ],
 
+    'sheba_inquiry' => [
+        'sc_api_key'    => env('PODIUM_SC_API_KEY_SHEBA'),
+        'sc_product_id' => env('PODIUM_SC_PRODUCT_ID_SHEBA', 16530455),
+    ],
+
+    'card_inquiry' => [
+        'sc_api_key'    => env('PODIUM_SC_API_KEY_CARD'),
+        'sc_product_id' => env('PODIUM_SC_PRODUCT_ID_CARD', 16530454),
+    ],
 ];
