@@ -33,6 +33,7 @@ use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 use App\Http\Middleware\EnsureRoleIsSelected;
 use App\Http\Middleware\EnsureUserIsExpert;
+use App\Http\Middleware\Idempotency;
 use App\Http\Middleware\TrackDashboardUsage;
 
 class Kernel extends HttpKernel
@@ -104,5 +105,6 @@ class Kernel extends HttpKernel
         'role.expert' => EnsureUserIsExpert::class,
         'role.employer' => \App\Http\Middleware\EnsureUserIsEmployer::class,
         'track' => TrackDashboardUsage::class,
+        'idempotency' => Idempotency::class
     ];
 }

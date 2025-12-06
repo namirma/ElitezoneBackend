@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\StoreQuestionRequest;
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
@@ -11,13 +10,13 @@ use App\Models\UserNotification;
 use App\Models\UserProfile;
 use App\Models\UserType;
 use App\Services\PodiumClient;
-use App\Services\SmsService;
-use Illuminate\Http\Client\RequestException;
+use App\Jobs\SendSmsJob; // استفاده از جاب برای سرعت بالا
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Laravel\Sanctum\PersonalAccessToken;
 use Throwable;
 
@@ -47,7 +46,10 @@ class AuthController extends Controller
                 User::SECRET            => $verifyCode,
                 User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2),
             ]);
-            (new SmsService())->send($mobile, __('sms.loginMessage', ['code' => $verifyCode]));
+
+            // ارسال سریع با جاب
+            SendSmsJob::dispatch($mobile, __('sms.loginMessage', ['code' => $verifyCode]));
+
             return response()->json(['status' => true, 'message' => __('auth.verification_code_sent_successfully')], 202);
         }
 
@@ -91,6 +93,7 @@ class AuthController extends Controller
         if ($srvBirth === '' || $srvBirth !== $birthDate) {
             return response()->json(['status' => false, 'message' => __('auth.birthdate_mismatch')], 422);
         }
+
         $verifyCode = generateVerifyCode();
 
         if ($user) {
@@ -99,7 +102,6 @@ class AuthController extends Controller
                 User::BIRTH_DATE        => $birthDate,
                 User::SECRET            => $verifyCode,
                 User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2),
-                // User::TYPE_ID           => null,
             ]);
         } else {
             User::create([
@@ -112,7 +114,7 @@ class AuthController extends Controller
             ]);
         }
 
-        (new SmsService())->send($mobile, __('sms.loginMessage', ['code' => $verifyCode]));
+        SendSmsJob::dispatch($mobile, __('sms.loginMessage', ['code' => $verifyCode]));
 
         return response()->json(['status' => true, 'message' => __('auth.verification_code_sent_successfully')], 202);
     }
@@ -135,7 +137,6 @@ class AuthController extends Controller
                     'data' => ['mobile' => $mobile]
                 ], 404);
             }
-            // -------------------------------------------
 
             if ($user->{User::PASSWORD}) {
                 return response()->json([
@@ -159,7 +160,7 @@ class AuthController extends Controller
                 User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2),
             ]);
 
-            (new SmsService())->send($mobile, __('sms.loginMessage', ['code' => $verifyCode]));
+            SendSmsJob::dispatch($mobile, __('sms.loginMessage', ['code' => $verifyCode]));
 
             return response()->json([
                 'status' => true,
@@ -174,6 +175,7 @@ class AuthController extends Controller
             ], 404);
         }
     }
+
     private function mobileTo09(string $input): string
     {
         $m = preg_replace('/\D/', '', $input);
@@ -182,6 +184,7 @@ class AuthController extends Controller
         if (str_starts_with($m, '9'))    return '0' . $m;
         return $m;
     }
+
     public function types(): JsonResponse
     {
         return success(UserType::all(), __('global.information_received_successfully'));
@@ -199,7 +202,7 @@ class AuthController extends Controller
             'productEntityId'    => (int)    config('podium.services.identity_inquiry.sc_product_id'),
             'providerParameters' => [
                 'nationalCode' => (string) $user->national_code,
-                'birthDate'    => (string) $user->birth_date, // 13790922
+                'birthDate'    => (string) $user->birth_date,
             ],
             'asyncCall' => false,
             'wrapper'   => true,
@@ -217,7 +220,7 @@ class AuthController extends Controller
         $bdate = (string) data_get($info, 'birthDate', data_get($norm, 'result.birthDate', ''));
 
         if (preg_match('/^\d{8}$/', $bdate)) {
-            $bdate = substr($bdate, 0, 4) . '-' . substr($bdate, 4, 2) . '-' . substr($bdate, 6, 2); // 1379-09-22
+            $bdate = substr($bdate, 0, 4) . '-' . substr($bdate, 4, 2) . '-' . substr($bdate, 6, 2);
         }
         $values = [
             UserProfile::USER_ID       => $user->id,
@@ -233,6 +236,7 @@ class AuthController extends Controller
             $values
         );
     }
+
     public function verifyCode(StoreUserRequest $request): JsonResponse
     {
         $user = User::where([
@@ -270,8 +274,11 @@ class AuthController extends Controller
         $this->syncIdentityToProfile($user);
         $user->tokens()->delete();
         $token = $user->createToken('auth')->plainTextToken;
+
         if ($isNewUser) {
-            (new SmsService())->send($request->validated('username'), __('sms.newRegisterUser'));
+            // 🚀 اصلاح شد: استفاده از جاب برای ارسال سریع
+            SendSmsJob::dispatch($request->validated('username'), __('sms.newRegisterUser'));
+
             UserNotification::create([
                 UserNotification::USER_ID => Auth::id(),
                 UserNotification::SUBJECT => __('global.newUserNotificationSubject'),
@@ -283,7 +290,6 @@ class AuthController extends Controller
 
     public function checkPassword(Request $request)
     {
-        // 1. دریافت کاربر
         $user = User::where([User::MOBILE => $request->input('username')])->first();
 
         if (!$user) {
@@ -305,7 +311,7 @@ class AuthController extends Controller
             return success(['user' => new UserResource($user), 'token' => $token], __('auth.login_success'));
         }
 
-        return error(__('auth.password_error'), [], 404); 
+        return error(__('auth.password_error'), [], 404);
     }
 
     public function forgetPassword(Request $request)
@@ -323,10 +329,11 @@ class AuthController extends Controller
                 User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(3)
             ]);
 
-            (new SmsService())->send(
+            SendSmsJob::dispatch(
                 $request->input('username'),
                 __('sms.loginMessage', ['code' => $mobileVerifyCode])
-            );;
+            );
+
             return success([], 'auth.forget_password_code_sent_successfully');
         }
 
@@ -373,7 +380,6 @@ class AuthController extends Controller
 
         $user = User::where([User::MOBILE => $validated['username']])->first();
         if (isset($user->{User::SECRET_EXPIRES_AT}) && ! Carbon::parse($user->{User::SECRET_EXPIRES_AT})->isPast()) {
-
             return response()->json([
                 'status' => true,
                 'message' => __('auth.code_sent_recently'),
@@ -385,13 +391,11 @@ class AuthController extends Controller
             User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2)
         ]);
 
-        (new SmsService())->send(
-            $validated['username'],
-            __('sms.loginMessage', ['code' => $mobileVerifyCode])
-        );
+        SendSmsJob::dispatch($validated['username'], __('sms.loginMessage', ['code' => $mobileVerifyCode]));
 
         return success([], __('auth.verification_code_sent_successfully'));
     }
+
     public function logout(Request $request): JsonResponse
     {
         $user = $request->user();

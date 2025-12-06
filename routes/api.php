@@ -59,6 +59,7 @@ use App\Http\Middleware\EnsureRoleIsSelected;
 
 // --- 1. روت‌های عمومی (Public) ---
 Route::post('/payment/result', fn() => response()->json(['message' => 'Callback URL.']));
+Route::any('/payment/callback', [\App\Http\Controllers\PaymentController::class, 'callback'])->name('payment.callback');
 Route::get('/search', [SearchController::class, 'search']);
 Route::post('/new-question', [QuestionController::class, 'submitQuestion']);
 Route::get('kavir-products', function () {
@@ -139,6 +140,7 @@ Route::prefix('v1/podium')->group(function () {
 
 // --- پنل ادمین ---
 Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
+    Route::get('/activities', [\App\Http\Controllers\Api\Admin\AdminActivityLogController::class, 'index']);
     Route::controller(AdminSearchController::class)->prefix('search')->group(function () {
         Route::get('/users', 'searchUsers');
         Route::get('/transactions', 'searchTransactions');
@@ -157,6 +159,7 @@ Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
     });
     Route::controller(AdminOrderController::class)->prefix('orders')->group(function () {
         Route::get('/', 'index');
+        Route::get('/{order}/history', 'history');
         Route::get('/{order}', 'show');
         Route::post('/{order}/status', 'changeStatus');
     });
@@ -261,13 +264,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
                 Route::get('/', 'getWallet');
                 Route::get('/transactions', 'getTransactions');
                 Route::post('/deposit', 'requestDeposit');
-                Route::post('/withdraw', 'requestWithdrawal');
+                Route::post('/withdraw', 'requestWithdrawal')->middleware('idempotency');
             });
 
             // 2. بخش فیش‌های پرداختی (Payment Receipts)
             Route::controller(WalletController::class)->prefix('receipts')->group(function () {
                 Route::get('/', 'getReceipts');
-                Route::post('/', 'storeReceipt');
+                Route::post('/', 'storeReceipt')->middleware('idempotency');
                 Route::delete('/{transaction}', 'deleteReceipt');
             });
 

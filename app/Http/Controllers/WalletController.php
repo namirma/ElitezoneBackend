@@ -98,6 +98,7 @@ class WalletController extends Controller
             'shaparak' => success([
                 'transaction_id' => $transaction->id,
                 'type'           => 'gateway_redirect',
+                $callbackUrl = route('payment.callback', ['transaction_id' => $transaction->id]),
                 'redirect_url'   => "https://shaparak.example.com/payment/{$transaction->id}",
             ], __('wallet.redirect_to_gateway')),
 
@@ -150,25 +151,35 @@ class WalletController extends Controller
     public function requestWithdrawal(WalletWithdrawalRequest $request): JsonResponse
     {
         $user = Auth::user();
-        $wallet = $user->wallet()->firstOrCreate();
         $validated = $request->validated();
 
         $amount = $validated['amount'];
-        $bankAccount = UserBankAccount::find($validated['user_bank_account_id']);
+        $bankAccount = UserBankAccount::where('id', $validated['user_bank_account_id'])
+            ->where('user_id', $user->id) // چک کردن مالکیت حساب
+            ->first();
 
         if (!$bankAccount) {
             return error(__('wallet.bank_account_not_found'), [], 404);
         }
 
         try {
-            $transaction = DB::transaction(function () use ($wallet, $user, $amount, $bankAccount) {
-                // کسر از موجودی (قفل کردن برای جلوگیری از Race Condition)
-                $wallet->lockForUpdate()->decrement(Wallet::BALANCE, $amount);
+            $transaction = DB::transaction(function () use ($user, $amount, $bankAccount) {
+
+                $wallet = $user->wallet()->lockForUpdate()->firstOrCreate();
+
+                if ($wallet->balance < $amount) {
+                    throw new \Exception(__('auth.withdrawal_amount_max'));
+                }
+
+                // 3. کسر موجودی
+                $wallet->decrement(Wallet::BALANCE, $amount);
 
                 $desc = __('wallet.withdrawal_description', [
-                    'shaba' => $bankAccount->{UserBankAccount::SHABA}
+                    'shaba' => $bankAccount->{UserBankAccount::SHABA},
+                    'bank'  => $bankAccount->{UserBankAccount::BANK_NAME}
                 ]);
 
+                // 4. ثبت تراکنش
                 return $wallet->transactions()->create([
                     WalletTransaction::AMOUNT      => $amount,
                     WalletTransaction::TYPE        => WalletTransaction::TYPE_WITHDRAW,
@@ -183,8 +194,10 @@ class WalletController extends Controller
             }, 5);
 
             return success(new WalletTransactionResource($transaction), __('wallet.withdrawal_created'));
-
-        } catch (\Throwable $e) {
+        } catch (\Exception $e) {
+            if ($e->getMessage() === __('auth.withdrawal_amount_max')) {
+                return error($e->getMessage(), [], 400);
+            }
             return error(__('global.operation_failed'), ['debug' => $e->getMessage()], 500);
         }
     }
@@ -194,7 +207,7 @@ class WalletController extends Controller
     //  بخش ۲: فیش‌های پرداختی (Payment Receipts - Tab)
     // =========================================================================
 
-    public function getReceipts(Request $request): JsonResponse
+    public function getReceipts(): JsonResponse
     {
         $user = Auth::user();
         $wallet = $user->wallet;
@@ -242,6 +255,11 @@ class WalletController extends Controller
             WalletTransaction::DESCRIPTION => $desc,
             WalletTransaction::META        => $metaData
         ]);
+        activity()
+            ->performedOn($transaction)
+            ->causedBy($user)
+            ->withProperties(['amount' => $transaction->amount, 'ip' => $request->ip()])
+            ->log('.فیش بانکی توسط کاربر بارگذاری شد');
 
         return success(new WalletTransactionResource($transaction), __('wallet.receipt_created'));
     }

@@ -14,7 +14,7 @@ class ConsultantRelationResource extends JsonResource
     {
         $status = $this->pivot->{EmployerConsultant::STATUS};
 
-        $statusText = match($status) {
+        $statusText = match ($status) {
             EmployerConsultant::STATUS_PENDING  => 'در انتظار تایید',
             EmployerConsultant::STATUS_APPROVED => 'تایید شده',
             EmployerConsultant::STATUS_REJECTED => 'رد شده',

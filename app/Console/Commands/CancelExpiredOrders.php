@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Order;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Exception;
 
@@ -21,9 +22,9 @@ class CancelExpiredOrders extends Command
     protected $description = 'Cancel pending or reserved orders that have passed their expiration time.';
 
     /**
-     * دلیل لغو سفارش
+     * دلیل لغو سفارش (ثابت)
      */
-    private const CANCEL_REASON = '.این سفارش به دلیل گذشتن زمان اعتبار یا عدم تکمیل پرداخت، توسط سیستم لغو شد';
+    private const CANCEL_REASON = 'این سفارش به دلیل گذشتن زمان اعتبار یا عدم تکمیل پرداخت، توسط سیستم لغو شد.';
 
     /**
      * اجرای دستور
@@ -47,11 +48,12 @@ class CancelExpiredOrders extends Command
 
         $count = 0;
 
-        // پردازش دسته‌ای برای مدیریت حافظه
+        // پردازش دسته‌ای (Chunk) برای بهینه‌سازی حافظه
         $query->chunkById(100, function ($orders) use ($bar, &$count) {
             foreach ($orders as $order) {
                 try {
-                    $this->cancelOrder($order);
+                    // فراخوانی متد پردازش لغو
+                    $this->processCancellation($order);
                     $count++;
                 } catch (Exception $e) {
                     Log::error("Failed to cancel order #{$order->id}: " . $e->getMessage());
@@ -68,7 +70,7 @@ class CancelExpiredOrders extends Command
     }
 
     /**
-     * دریافت کوئری سفارش‌های منقضی شده
+     * کوئری دریافت سفارش‌های منقضی شده
      */
     private function getExpiredOrdersQuery()
     {
@@ -80,37 +82,35 @@ class CancelExpiredOrders extends Command
     }
 
     /**
-     * منطق لغو کردن یک سفارش تکی
+     * منطق اصلی لغو سفارش (تراکنش دیتابیس)
      */
-    private function cancelOrder(Order $order): void
+    private function processCancellation(Order $order): void
     {
-        $newPaymentStatus = $this->resolvePaymentStatus($order);
+        DB::transaction(function () use ($order) {
+            // ۱. بازگرداندن موجودی کالا به انبار
+            $order->restoreStock();
 
-        $order->update([
-            Order::STATUS         => Order::STATUS_CANCELLED,
-            Order::PAYMENT_STATUS => $newPaymentStatus,
-            Order::CANCEL_REASON  => self::CANCEL_REASON
-        ]);
+            // ۲. بازگرداندن وجه به کیف پول (اگر پرداختی داشته)
+            // (این متد خودش وضعیت پرداخت را به REFUNDED تغییر می‌دهد)
+            $order->refundToWallet();
+
+            // ۳. تعیین وضعیت نهایی پرداخت
+            // اگر متد refundToWallet اجرا شده باشد، پیمنت استاتوس آپدیت شده است.
+            // اما اگر سفارشی پولی نداده بود (Pending)، باید وضعیت پرداختش هم کنسل شود.
+            $paymentStatus = $order->fresh()->{Order::PAYMENT_STATUS};
+
+            if ($paymentStatus === Order::PAYMENT_PENDING) {
+                $paymentStatus = Order::STATUS_CANCELLED;
+            }
+
+            // ۴. آپدیت نهایی سفارش
+            $order->update([
+                Order::STATUS         => Order::STATUS_CANCELLED,
+                Order::PAYMENT_STATUS => $paymentStatus,
+                Order::CANCEL_REASON  => self::CANCEL_REASON // استفاده صحیح از ثابت
+            ]);
+        });
 
         Log::info("Order #{$order->id} automatically cancelled due to expiry.");
-    }
-
-    /**
-     * تعیین وضعیت جدید پرداخت بر اساس وضعیت فعلی سفارش
-     */
-    private function resolvePaymentStatus(Order $order): string
-    {
-        // اگر رزرو تمدید شده باشد، یعنی قبلاً بخشی از مبلغ پرداخت شده است (نیاز به عودت)
-        if ($order->{Order::STATUS} === Order::STATUS_RESERVED_EXTENDED) {
-            return Order::PAYMENT_REFUND_PENDING;
-        }
-
-        // در غیر این صورت، اگر پرداخت هنوز انجام نشده، وضعیت به لغو شده تغییر می‌کند
-        if ($order->{Order::PAYMENT_STATUS} === Order::PAYMENT_PENDING) {
-            return Order::STATUS_CANCELLED;
-        }
-
-        // اگر هیچکدام نبود، وضعیت فعلی پرداخت را حفظ کن
-        return $order->{Order::PAYMENT_STATUS};
     }
 }

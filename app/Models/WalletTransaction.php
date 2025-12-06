@@ -4,9 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class WalletTransaction extends Model
 {
+    use LogsActivity;
+
     public const
         ID = 'id',
         WALLET_ID = 'wallet_id',
@@ -45,7 +49,7 @@ class WalletTransaction extends Model
 
     public function getReceiptDetailsAttribute()
     {
-        
+
         return $this->meta['receipt_info'] ?? null;
     }
     public function wallet(): BelongsTo
@@ -56,5 +60,21 @@ class WalletTransaction extends Model
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class, self::ORDER_ID);
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['status'])
+            ->logOnlyDirty()
+            ->setDescriptionForEvent(function (string $eventName) {
+                $action = match ($eventName) {
+                    'created' => 'ایجاد',
+                    'updated' => 'ویرایش',
+                    'deleted' => 'حذف',
+                    default   => $eventName,
+                };
+                return "تراکنش مالی با موفقیت {$action} .شد";
+            });
     }
 }

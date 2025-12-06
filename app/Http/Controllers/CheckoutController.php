@@ -150,11 +150,13 @@ class CheckoutController extends Controller
 
         $supplierMapping = [];
         foreach ($cart->items as $item) {
+
             $item->loadMissing('factory');
             if (!$item->factory || !$item->factory->{Factory::SUPPLIER_USER_ID}) {
                 $factoryName = $item->factory->{Factory::NAME} ?? $item->{CartItem::FACTORY_ID};
                 return error(__('checkout.supplier_not_found_for_factory', ['factory' => $factoryName]), [], 400);
             }
+            $item->productVariant()->decrement('stock_quantity', array_sum($item->{CartItem::QUANTITIES}));
             $supplierMapping[$item->id] = $item->factory->{Factory::SUPPLIER_USER_ID};
         }
 

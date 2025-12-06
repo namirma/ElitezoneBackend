@@ -12,6 +12,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 
 class OrderController extends Controller
 {
@@ -192,6 +193,19 @@ class OrderController extends Controller
             Order::STATUS => Order::STATUS_CANCELLED,
             Order::PAYMENT_STATUS => $newPaymentStatus
         ]);
+
+        DB::transaction(function () use ($order) {
+            $order->restoreStock();
+            $order->refundToWallet();
+
+            $order->update([
+                Order::STATUS => Order::STATUS_CANCELLED,
+                Order::CANCEL_REASON => 'لغو توسط کاربر',
+                Order::PAYMENT_STATUS => $order->payment_status === Order::PAYMENT_PAID
+                    ? Order::PAYMENT_REFUNDED
+                    : Order::STATUS_CANCELLED
+            ]);
+        });
 
         return success(new OrderResource($order->fresh()), __('orders.cancelled_successfully'));
     }

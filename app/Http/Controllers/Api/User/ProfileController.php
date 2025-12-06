@@ -21,6 +21,7 @@ use App\Models\UserType;
 use App\Http\Requests\StoreUserTypeRequest;
 use App\Http\Requests\UpdateLegalProfileRequest;
 use App\Http\Requests\UpdateRealProfileRequest;
+use App\Jobs\SendSmsJob;
 use App\Models\UserNotification;
 use App\Models\UserProfile;
 use App\Services\PodiumClient;
@@ -354,7 +355,7 @@ class ProfileController extends Controller
         // ذخیره شماره جدید در کش موقت
         Cache::put('pending_mobile_change_' . $user->id, $validated['new_mobile'], 120);
 
-        (new SmsService())->send($validated['new_mobile'], $code);
+        SendSmsJob::dispatch($validated['new_mobile'], $code);
 
         return success([], __('auth.verification_code_sent_to_new_mobile'));
     }

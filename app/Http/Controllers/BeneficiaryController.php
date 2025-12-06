@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\SendSmsJob;
 use App\Models\User;
 use App\Models\UserProfile;
 use App\Models\UserType;
@@ -37,7 +38,8 @@ class BeneficiaryController extends Controller
             'apiKey'          => (string) config('podium.services.nid_mobile_match.sc_api_key'),
             'productEntityId' => (int)    config('podium.services.nid_mobile_match.sc_product_id'),
             'providerParameters' => ['body' => ['nationalCode' => $nationalCode, 'mobileNumber' => $mobile]],
-            'asyncCall' => false, 'wrapper'   => true,
+            'asyncCall' => false,
+            'wrapper'   => true,
         ];
 
         try {
@@ -45,7 +47,7 @@ class BeneficiaryController extends Controller
             $matched   = data_get($matchRes, 'result.matched');
             $matchCode = (string) data_get($matchRes, 'result.resultCode', '');
             if (!($matched === true || $matched === 'true' || $matchCode === '1')) {
-                 return error(__('beneficiary.mobile_nid_mismatch'), [], 422); // 🚀 Updated key
+                return error(__('beneficiary.mobile_nid_mismatch'), [], 422); // 🚀 Updated key
             }
         } catch (Throwable $e) {
             return error(__('beneficiary.mobile_check_failed'), [], 502); // 🚀 Updated key
@@ -55,7 +57,8 @@ class BeneficiaryController extends Controller
             'apiKey'             => (string) config('podium.services.identity_inquiry.sc_api_key'),
             'productEntityId'    => (int)    config('podium.services.identity_inquiry.sc_product_id'),
             'providerParameters' => ['nationalCode' => $nationalCode, 'birthDate' => $birthDate],
-            'asyncCall' => false, 'wrapper'   => true,
+            'asyncCall' => false,
+            'wrapper'   => true,
         ];
 
         try {
@@ -99,7 +102,7 @@ class BeneficiaryController extends Controller
 
         $buyerName = $buyer->profile->{UserProfile::NAME} ?? $buyer->{User::MOBILE};
         $smsMessage = __('beneficiary.sms_verification_body', ['name' => $buyerName, 'code' => $verifyCode]);
-        (new SmsService())->send($mobile, $smsMessage);
+        SendSmsJob::dispatch($mobile, $smsMessage);;
 
         return success([
             'beneficiary_user_id' => $beneficiaryUser->id,
@@ -117,10 +120,11 @@ class BeneficiaryController extends Controller
 
         $beneficiaryUser = User::find($data['beneficiary_user_id']);
 
-        if (!$beneficiaryUser ||
+        if (
+            !$beneficiaryUser ||
             $beneficiaryUser->{User::SECRET} != $data['code'] ||
-            Carbon::parse($beneficiaryUser->{User::SECRET_EXPIRES_AT})->isPast())
-        {
+            Carbon::parse($beneficiaryUser->{User::SECRET_EXPIRES_AT})->isPast()
+        ) {
             return error(__('auth.verification_code_not_match'), [], 400);
         }
 

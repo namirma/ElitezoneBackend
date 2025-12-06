@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\InviteConsultantRequest;
 use App\Http\Requests\RejectInvitationRequest;
 use App\Http\Resources\ConsultantRelationResource;
+use App\Jobs\SendSmsJob;
 use App\Models\EmployerConsultant;
 use App\Models\User;
 use App\Models\UserNotification;
@@ -105,7 +106,7 @@ class ConsultantRelationController extends Controller
             UserNotification::BODY    => $smsMessage,
         ]);
 
-        (new SmsService())->send($consultant->{User::MOBILE}, $smsMessage);
+        SendSmsJob::dispatch($consultant->{User::MOBILE}, $smsMessage);
 
         return success([], __('consultant.invitation_sent'));
     }

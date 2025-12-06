@@ -7,11 +7,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Traits\PersianDate;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
+
 use function in_array;
 
 class Order extends Model
 {
-    use HasFactory, PersianDate;
+    use HasFactory, PersianDate, LogsActivity;
 
     public const
         ID = 'id',
@@ -54,26 +57,26 @@ class Order extends Model
 
     // Status Constants
     public const
-    STATUS_PENDING = 'pending',
-    STATUS_RESERVED_EXTENDED = 'reserved_extended',
-    STATUS_PROCESSING = 'processing',
-    STATUS_PREPARING = 'preparing',
-    STATUS_WEIGHBRIDGE_DONE = 'weighbridge_done',
-    STATUS_WAYBILL_ISSUED = 'waybill_issued',
-    STATUS_SHIPPED = 'shipped',
-    STATUS_DELIVERED = 'delivered',
-    STATUS_CANCELLED = 'cancelled',
-    STATUS_FAILED = 'failed',
-    PAYMENT_PENDING = 'pending',
-    PAYMENT_PAID = 'paid',
-    PAYMENT_FAILED = 'failed',
-    PAYMENT_REFUND_PENDING = 'refund_pending',
-    PAYMENT_REFUNDED = 'refunded',
-    FEE_PAYMENT_PENDING = 'pending',
-    FEE_PAYMENT_PAID = 'paid',
-    SURVEY_PENDING = 'pending',
-    SURVEY_REQUESTED = 'requested',
-    SURVEY_COMPLETED = 'completed';
+        STATUS_PENDING = 'pending',
+        STATUS_RESERVED_EXTENDED = 'reserved_extended',
+        STATUS_PROCESSING = 'processing',
+        STATUS_PREPARING = 'preparing',
+        STATUS_WEIGHBRIDGE_DONE = 'weighbridge_done',
+        STATUS_WAYBILL_ISSUED = 'waybill_issued',
+        STATUS_SHIPPED = 'shipped',
+        STATUS_DELIVERED = 'delivered',
+        STATUS_CANCELLED = 'cancelled',
+        STATUS_FAILED = 'failed',
+        PAYMENT_PENDING = 'pending',
+        PAYMENT_PAID = 'paid',
+        PAYMENT_FAILED = 'failed',
+        PAYMENT_REFUND_PENDING = 'refund_pending',
+        PAYMENT_REFUNDED = 'refunded',
+        FEE_PAYMENT_PENDING = 'pending',
+        FEE_PAYMENT_PAID = 'paid',
+        SURVEY_PENDING = 'pending',
+        SURVEY_REQUESTED = 'requested',
+        SURVEY_COMPLETED = 'completed';
 
     protected $fillable = [
         self::PLACER_USER_ID,
@@ -207,7 +210,7 @@ class Order extends Model
 
         // مرحله ۲: ثبت اولیه
         if (in_array($s, [self::STATUS_WEIGHBRIDGE_DONE, self::STATUS_WAYBILL_ISSUED, self::STATUS_SHIPPED, self::STATUS_DELIVERED])) {
-             $stepsData[2]['actions'][] = [
+            $stepsData[2]['actions'][] = [
                 'label' => 'دانلود فاکتور اولیه',
                 'link'  => "/profile/orders/{$id}/invoice/initial", // دانلود مستقیم
                 'type'  => 'secondary'
@@ -244,7 +247,7 @@ class Order extends Model
                 'type'  => 'primary'
             ];
         } elseif ($s === self::STATUS_DELIVERED) {
-             $stepsData[4]['actions'][] = [
+            $stepsData[4]['actions'][] = [
                 'label' => 'مشاهده جزئیات حمل',
                 'link'  => "/profile/orders/{$id}",
                 'type'  => 'secondary'
@@ -295,5 +298,57 @@ class Order extends Model
                 ],
             ]
         ];
+    }
+
+    public function restoreStock(): void
+    {
+        foreach ($this->items as $item) {
+            $totalQty = array_sum($item->quantity_details ?? []);
+            if ($totalQty > 0) {
+                $item->productVariant()->increment('stock_quantity', $totalQty);
+            }
+        }
+    }
+
+    public function refundToWallet(): void
+    {
+        if ($this->payment_status === self::PAYMENT_PAID || $this->partial_payment_amount > 0) {
+
+            $refundAmount = $this->payment_status === self::PAYMENT_PAID
+                ? $this->final_amount
+                : $this->partial_payment_amount;
+
+            $user = $this->placer;
+            $wallet = $user->wallet()->firstOrCreate();
+
+            $wallet->increment(\App\Models\Wallet::BALANCE, $refundAmount);
+
+            $wallet->transactions()->create([
+                'amount' => $refundAmount,
+                'type'   => 'deposit',
+                'status' => 'confirmed',
+                'description' => "بازگشت وجه بابت لغو سفارش #{$this->order_number}",
+                'order_id' => $this->id
+            ]);
+
+            $this->update(['payment_status' => self::PAYMENT_REFUNDED]);
+        }
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['status', 'payment_status', 'final_amount'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->setDescriptionForEvent(function (string $eventName) {
+                $action = match ($eventName) {
+                    'created' => 'ثبت',
+                    'updated' => 'ویرایش',
+                    'deleted' => 'حذف',
+                    default   => $eventName,
+                };
+                return "سفارش شماره {$this->order_number} {$action} شد.";
+            });
     }
 }

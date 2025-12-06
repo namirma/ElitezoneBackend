@@ -18,10 +18,10 @@ return [
     'reservation_extended' => '.رزرو سفارش شما با موفقیت به مدت ۲۴ ساعت تمدید شد ',
     'cannot_pay_order' => '.امکان پرداخت این سفارش در وضعیت فعلی وجود ندارد ',
     'payment_successful_awaiting_confirmation' => '.پرداخت شما با موفقیت انجام شد  سفارش در انتظار تایید تامین‌کننده است ',
-    "orders cannot_extend_reservation_status" => ".امکان تمدید رزرو برای این سفارش در وضعیت فعلی وجود ندارد ",
-    "orders cannot_extend_reservation_expired" => ".زمان رزرو اولیه (۲ ساعته) این سفارش به پایان رسیده و امکان تمدید آن وجود ندارد ",
-    "orders reservation_extended" => ".رزرو سفارش شما با موفقیت به مدت ۲۴ ساعت تمدید شد ",
-
+    'cannot_extend_reservation_status' => '.امکان تمدید رزرو برای این سفارش در وضعیت فعلی وجود ندارد',
+    'cannot_extend_reservation_expired' => '.زمان رزرو اولیه (۲ ساعته) این سفارش به پایان رسیده و امکان تمدید آن وجود ندارد',
+    'already_paid' => '.این سفارش قبلاً پرداخت شده است',
+    'receipt_uploaded_success' => '.فیش پرداخت با موفقیت ثبت شد و در انتظار بررسی است',
     'status' => [
         Order::STATUS_PENDING => 'در انتظار تایید (رزرو شده)',
         Order::STATUS_RESERVED_EXTENDED => 'رزرو تمدید شده',

@@ -12,10 +12,32 @@ use Illuminate\Database\Eloquent\Builder;
 
 class AdminOrderController extends Controller
 {
+
+    public function history(Order $order): JsonResponse
+    {
+
+        $activities = $order->activities()
+            ->with('causer')
+            ->latest()
+            ->get();
+
+        $history = $activities->map(function ($activity) {
+            return [
+                'event'       => $activity->description,
+                'causer_name' => $activity->causer ? $activity->causer->profile->name : 'سیستم',
+                'created_at'  => verta($activity->created_at)->format('Y/m/d H:i'),
+                'changes'     => $activity->properties['attributes'] ?? [],
+                'old'         => $activity->properties['old'] ?? [],
+            ];
+        });
+
+        return success($history, 'تاریخچه سفارش دریافت شد.');
+    }
     public function index(OrderFilterRequest $request): JsonResponse
     {
+
         $orders = Order::query()
-            ->with(['user:id,name,mobile,avatar']) // Eager Loading برای پرفورمنس
+            ->with(['user:id,name,mobile,avatar']) 
             ->when($request->filled('order_number'), fn(Builder $q) =>
                 $q->where('tracking_code', 'like', "%{$request->order_number}%")
                   ->orWhere('id', $request->order_number)
