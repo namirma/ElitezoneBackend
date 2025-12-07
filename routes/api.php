@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\Admin\AdminFinancialController;
 use App\Http\Controllers\Api\Admin\AdminOrderController;
 use App\Http\Controllers\Api\Admin\AdminSearchController;
 use App\Http\Controllers\Api\Admin\AdminUserController;
+use App\Http\Controllers\Api\Admin\AdminWalletController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\Api\ListopherController;
@@ -163,6 +164,12 @@ Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
         Route::get('/{order}', 'show');
         Route::post('/{order}/status', 'changeStatus');
     });
+    Route::controller(AdminWalletController::class)
+        ->prefix('wallet')
+        ->group(function () {
+            Route::get('/transactions', 'index'); // مشاهده لیست
+            Route::post('/transactions/{transaction}/status', 'changeStatus'); // تایید یا رد
+        });
 });
 
 Route::middleware(['auth:sanctum'])->group(function () {

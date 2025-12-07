@@ -29,7 +29,8 @@ class WalletTransaction extends Model
 
         STATUS_PENDING = 'pending',
         STATUS_CONFIRMED = 'confirmed',
-        STATUS_FAILED = 'failed';
+        STATUS_FAILED = 'failed',
+        STATUS_REJECTED = 'rejected';
 
     protected $fillable = [
         self::WALLET_ID,

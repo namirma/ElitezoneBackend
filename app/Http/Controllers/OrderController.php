@@ -3,21 +3,24 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\AddWaybillRequest;
+use App\Http\Requests\PayFullOrderRequest;
 use App\Http\Requests\PayHoldFeeRequest;
+use App\Http\Requests\UploadOrderReceiptRequest;
+use App\Http\Resources\OrderResource;
 use App\Models\Order;
 use App\Models\OrderItem;
-use App\Http\Resources\OrderResource;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Eloquent\Builder;
 
 class OrderController extends Controller
 {
     // =========================================================================
-    //  بخش ۱: لیست‌های فیلتر شده (داشبورد کاربر)
+    //  بخش ۱: لیست‌های داشبورد کاربر (My Orders)
     // =========================================================================
 
     public function listMyCurrentOrders(Request $request): JsonResponse
@@ -50,41 +53,226 @@ class OrderController extends Controller
         return $this->getOrdersByStatus($request, 'others', 'cancelled');
     }
 
-    /**
-     * موتور جستجو و فیلتر مرکزی برای تب‌های سفارشات داشبورد
-     */
+    // =========================================================================
+    //  بخش ۲: عملیات اصلی (CRUD & Actions)
+    // =========================================================================
+
+    public function index(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        $viewType = $this->determineViewType($request, $user);
+
+        // چک دسترسی برای ویوی تامین‌کننده
+        if ($viewType === 'supplier_fulfillment' && !$user->hasRole('supplier')) {
+            return error(__('auth.forbidden'), [], 403);
+        }
+
+        $query = Order::query()->latest();
+
+        $this->applyEagerLoading($query, $user, $viewType);
+        $this->applyViewFilters($query, $user->id, $viewType);
+        $this->applyStatusFilters($query, $request->query('status_type'));
+
+        $orders = $query->paginate($request->input('per_page', 10));
+
+        return success(OrderResource::collection($orders), __('global.received_successfully'));
+    }
+
+    public function show(Order $order): JsonResponse
+    {
+        $this->authorizeOrderView($order);
+
+        $order->load([
+            'items.productVariant',
+            'items.supplier.profile',
+            'address',
+            'placer.profile',
+            'beneficiary.profile'
+        ]);
+
+        return success(new OrderResource($order), __('global.received_successfully'));
+    }
+
+    public function cancel(Order $order): JsonResponse
+    {
+        $this->authorizeOrderOwner($order);
+
+        if (!$this->isOrderCancellable($order)) {
+            return error(__('orders.cannot_cancel'), [], 400);
+        }
+
+        DB::transaction(function () use ($order) {
+            // ۱. بازگرداندن کالا به انبار
+            $order->restoreStock();
+
+            // ۲. بازگرداندن وجه به کیف پول (اگر پرداخت کرده باشد)
+            $order->refundToWallet();
+
+            // ۳. تغییر وضعیت
+            $newPaymentStatus = ($order->payment_status === Order::PAYMENT_PAID)
+                ? Order::PAYMENT_REFUNDED
+                : Order::PAYMENT_FAILED;
+
+            $order->update([
+                Order::STATUS => Order::STATUS_CANCELLED,
+                Order::PAYMENT_STATUS => $newPaymentStatus,
+                Order::CANCEL_REASON => 'لغو توسط کاربر'
+            ]);
+        });
+
+        return success(new OrderResource($order->fresh()), __('orders.cancelled_successfully'));
+    }
+
+    // =========================================================================
+    //  بخش ۳: پرداخت و مالی (Payments)
+    // =========================================================================
+
+    public function payHoldFee(PayHoldFeeRequest $request, Order $order): JsonResponse
+    {
+        if ($order->status !== Order::STATUS_PENDING) {
+            return error(__('orders.cannot_extend_reservation_status'), [], 400);
+        }
+        if ($order->reservation_expires_at < now()) {
+            return error(__('orders.cannot_extend_reservation_expired'), [], 400);
+        }
+
+        // TODO: اتصال به درگاه پرداخت
+        $order->update([
+            Order::STATUS => Order::STATUS_RESERVED_EXTENDED,
+            Order::RESERVATION_EXPIRES_AT => now()->addDay(),
+            Order::PARTIAL_PAYMENT_AMOUNT => $request->validated('amount'),
+        ]);
+
+        return success(new OrderResource($order->fresh()), __('orders.reservation_extended'));
+    }
+
+    public function payFullOrder(PayFullOrderRequest $request, Order $order): JsonResponse
+    {
+        $this->authorizeOrderOwner($order);
+
+        if (!in_array($order->status, [Order::STATUS_PENDING, Order::STATUS_RESERVED_EXTENDED])) {
+            return error(__('orders.cannot_pay_order'), [], 400);
+        }
+
+        $gateway = $request->validated('gateway');
+
+        if ($gateway === 'wallet') {
+            return $this->processWalletPayment($order);
+        }
+
+        // پرداخت بانکی (لینک)
+        $paymentUrl = "https://payment-gateway.com/pay?order={$order->id}&provider={$gateway}";
+
+        return success(['redirect_url' => $paymentUrl], __('orders.payment_redirect'));
+    }
+
+    public function uploadCustomerReceipt(UploadOrderReceiptRequest $request, Order $order): JsonResponse
+    {
+        $this->authorizeOrderOwner($order);
+
+        if ($order->payment_status === Order::PAYMENT_PAID) {
+            return error(__('orders.already_paid'), [], 400);
+        }
+
+        $path = $request->file('receipt')->store('order_receipts', 'public');
+        $order->update([Order::PAYMENT_RECEIPT_REF => $path]);
+
+        return success(new OrderResource($order), __('orders.receipt_uploaded_success'));
+    }
+
+    public function downloadInvoice(Order $order, string $type): JsonResponse
+    {
+        $this->authorizeOrderView($order);
+
+        $ref = match ($type) {
+            'initial' => $order->initial_invoice_ref,
+            'final'   => $order->final_invoice_ref,
+            'tax'     => $order->tax_invoice_ref,
+            default   => null,
+        };
+
+        if (!$ref) {
+            return error(__('orders.invoice_not_found'), [], 404);
+        }
+
+        return success(['download_link' => url("/invoices/placeholder/{$ref}")], __('orders.invoice_download_link'));
+    }
+
+    // =========================================================================
+    //  بخش ۴: پنل تامین‌کننده (Supplier Actions)
+    // =========================================================================
+
+    public function markAsPrepared(Order $order): JsonResponse
+    {
+        $this->authorizeSupplier($order);
+
+        if ($order->status === Order::STATUS_PROCESSING) {
+            $order->update([
+                Order::STATUS => Order::STATUS_PREPARING,
+                Order::PREPARED_AT => now()
+            ]);
+            return success(new OrderResource($order), __('orders.marked_as_prepared'));
+        }
+        return error(__('orders.cannot_prepare_in_current_state'), [], 400);
+    }
+
+    public function addWaybill(AddWaybillRequest $request, Order $order): JsonResponse
+    {
+        $this->authorizeSupplier($order);
+
+        if (in_array($order->status, [Order::STATUS_PREPARING, Order::STATUS_WEIGHBRIDGE_DONE])) {
+            $order->update([
+                Order::STATUS => Order::STATUS_WAYBILL_ISSUED,
+                Order::WAYBILL_REF => $request->validated(Order::WAYBILL_REF),
+                Order::SHIPPED_AT => now()
+            ]);
+            return success(new OrderResource($order), __('orders.waybill_added'));
+        }
+        return error(__('orders.cannot_add_waybill'), [], 400);
+    }
+
+    public function issueEspadanaCommand(Order $order): JsonResponse
+    {
+        $this->authorizeSupplier($order);
+        // TODO: Call External API
+        $order->update([Order::ESPADANA_ORDER_REF => 'ESPADANA_' . $order->id . '_' . time()]);
+        return success(new OrderResource($order), __('orders.espadana_command_issued'));
+    }
+
+    public function attachPaymentReceipt(UploadOrderReceiptRequest $request, Order $order): JsonResponse
+    {
+        $this->authorizeSupplier($order); // برای تامین‌کننده
+
+        $path = $request->file('receipt')->store('supplier_receipts', 'public');
+        // اینجا شاید فیلد متفاوتی در دیتابیس باشد یا همان payment_receipt_ref
+        // فعلاً فرض می‌کنیم همان است
+        $order->update([Order::PAYMENT_RECEIPT_REF => $path]);
+
+        return success(new OrderResource($order), __('orders.receipt_attached'));
+    }
+
+    // =========================================================================
+    //  بخش ۵: متدهای خصوصی و کمکی (Helpers)
+    // =========================================================================
+
     private function getOrdersByStatus(Request $request, string $type, string $tabStatus): JsonResponse
     {
         $userId = Auth::id();
-        $query = Order::query()->with([
-            'items.productVariant',
-            'items.supplier.profile',
-            'beneficiary.profile',
-            'placer.profile'
-        ]);
+        $query = Order::query()->with(['items.productVariant', 'items.supplier.profile', 'beneficiary.profile', 'placer.profile']);
 
-        // فیلتر بر اساس مالکیت (خودم / دیگران)
         if ($type === 'myself') {
             $query->where(Order::PLACER_USER_ID, $userId)
-                ->where(function ($q) use ($userId) {
-                    $q->whereNull(Order::BENEFICIARY_USER_ID)
-                        ->orWhere(Order::BENEFICIARY_USER_ID, $userId);
-                });
+                  ->where(fn($q) => $q->whereNull(Order::BENEFICIARY_USER_ID)->orWhere(Order::BENEFICIARY_USER_ID, $userId));
         } elseif ($type === 'others') {
             $query->where(Order::PLACER_USER_ID, $userId)
-                ->whereNotNull(Order::BENEFICIARY_USER_ID)
-                ->where(Order::BENEFICIARY_USER_ID, '!=', $userId);
+                  ->whereNotNull(Order::BENEFICIARY_USER_ID)
+                  ->where(Order::BENEFICIARY_USER_ID, '!=', $userId);
         }
 
-        // فیلتر بر اساس وضعیت تب (جاری / تحویل شده / لغو شده)
         match ($tabStatus) {
             'current' => $query->whereIn(Order::STATUS, [
-                Order::STATUS_PENDING,
-                Order::STATUS_RESERVED_EXTENDED,
-                Order::STATUS_PROCESSING,
-                Order::STATUS_PREPARING,
-                Order::STATUS_WEIGHBRIDGE_DONE,
-                Order::STATUS_WAYBILL_ISSUED,
+                Order::STATUS_PENDING, Order::STATUS_RESERVED_EXTENDED, Order::STATUS_PROCESSING,
+                Order::STATUS_PREPARING, Order::STATUS_WEIGHBRIDGE_DONE, Order::STATUS_WAYBILL_ISSUED,
                 Order::STATUS_SHIPPED
             ]),
             'delivered' => $query->where(Order::STATUS, Order::STATUS_DELIVERED),
@@ -96,284 +284,82 @@ class OrderController extends Controller
         return success(OrderResource::collection($orders), __('global.received_successfully'));
     }
 
-
-    // =========================================================================
-    //  بخش ۲: متدهای اصلی و عمومی (CRUD)
-    // =========================================================================
-
-    /**
-     * لیست کلی سفارشات (با قابلیت فیلتر پیشرفته برای ادمین یا استفاده‌های خاص)
-     */
-    public function index(Request $request): JsonResponse
+    private function processWalletPayment(Order $order): JsonResponse
     {
         $user = Auth::user();
-        $viewType = $request->query('view_type', 'my_direct');
+        $wallet = $user->wallet()->lockForUpdate()->firstOrCreate();
 
-        // تنظیم ویوی پیش‌فرض برای تامین‌کننده
-        if ($user->hasRole('supplier') && !$request->has('view_type')) {
-            $viewType = 'supplier_fulfillment';
+        if ($wallet->balance < $order->final_amount) {
+            return error(__('orders.wallet_balance_low'), [], 400);
         }
 
-        // کنترل دسترسی برای ویوی تامین‌کننده
-        if ($viewType === 'supplier_fulfillment' && !$user->hasRole('supplier')) {
-            return error(__('auth.forbidden'), [], 403);
-        }
+        DB::transaction(function () use ($wallet, $order) {
+            $wallet->decrement('balance', $order->final_amount);
 
-        $query = Order::query()->latest();
-        $this->applyEagerLoading($query, $user, $viewType);
-        $this->applyViewFilters($query, $user->id, $viewType);
-        $this->applyStatusFilters($query, $request->query('status_type'));
-
-        $orders = $query->paginate($request->query('per_page', 10));
-        return success(OrderResource::collection($orders), __('global.received_successfully'));
-    }
-
-    /**
-     * مشاهده جزئیات یک سفارش
-     */
-    public function show(Order $order): JsonResponse
-    {
-        $user = Auth::user();
-
-        // بررسی دسترسی (خریدار، ذی‌نفع یا تامین‌کننده مرتبط)
-        $isSupplier = $user->hasRole('supplier') && $order->items()->where(OrderItem::SUPPLIER_USER_ID, $user->id)->exists();
-        $isOwner = $order->{Order::PLACER_USER_ID} === $user->id || $order->{Order::BENEFICIARY_USER_ID} === $user->id;
-
-        if (!$isOwner && !$isSupplier) {
-            return error(__('auth.forbidden'), [], 403);
-        }
-
-        $order->load([
-            'items' => function ($q) use ($user, $isSupplier) {
-                if ($isSupplier) {
-                    $q->where(OrderItem::SUPPLIER_USER_ID, $user->id);
-                }
-                $q->with(['productVariant', 'supplier.profile']);
-            },
-            'address',
-            'placer.profile',
-            'beneficiary.profile'
-        ]);
-
-        return success(new OrderResource($order), __('global.received_successfully'));
-    }
-
-    /**
-     * لغو سفارش توسط کاربر
-     */
-    public function cancel(Order $order): JsonResponse
-    {
-        $userId = Auth::id();
-
-        if ($order->{Order::PLACER_USER_ID} !== $userId && $order->{Order::BENEFICIARY_USER_ID} !== $userId) {
-            return error(__('auth.forbidden'), [], 403);
-        }
-
-        $cancellable = [
-            Order::STATUS_PENDING,
-            Order::STATUS_RESERVED_EXTENDED,
-            Order::STATUS_PROCESSING,
-            Order::STATUS_PREPARING,
-            Order::STATUS_WEIGHBRIDGE_DONE,
-            Order::STATUS_WAYBILL_ISSUED
-        ];
-
-        if (!in_array($order->{Order::STATUS}, $cancellable)) {
-            return error(__('orders.cannot_cancel'), [], 400);
-        }
-
-        // تعیین وضعیت پرداخت پس از لغو
-        $newPaymentStatus = match ($order->{Order::PAYMENT_STATUS}) {
-            Order::PAYMENT_PENDING => Order::STATUS_CANCELLED,
-            Order::PAYMENT_PAID    => Order::PAYMENT_REFUND_PENDING, // نیاز به بازگشت وجه
-            default                => $order->{Order::PAYMENT_STATUS}
-        };
-
-        $order->update([
-            Order::STATUS => Order::STATUS_CANCELLED,
-            Order::PAYMENT_STATUS => $newPaymentStatus
-        ]);
-
-        DB::transaction(function () use ($order) {
-            $order->restoreStock();
-            $order->refundToWallet();
+            $wallet->transactions()->create([
+                'amount' => $order->final_amount,
+                'type' => 'withdraw',
+                'status' => 'confirmed',
+                'description' => "پرداخت سفارش #{$order->order_number}",
+                'order_id' => $order->id
+            ]);
 
             $order->update([
-                Order::STATUS => Order::STATUS_CANCELLED,
-                Order::CANCEL_REASON => 'لغو توسط کاربر',
-                Order::PAYMENT_STATUS => $order->payment_status === Order::PAYMENT_PAID
-                    ? Order::PAYMENT_REFUNDED
-                    : Order::STATUS_CANCELLED
+                Order::STATUS => Order::STATUS_PROCESSING,
+                Order::PAYMENT_STATUS => Order::PAYMENT_PAID,
+                Order::PAID_AT => now(),
+                Order::RESERVATION_EXPIRES_AT => null,
             ]);
         });
 
-        return success(new OrderResource($order->fresh()), __('orders.cancelled_successfully'));
+        return success(new OrderResource($order->fresh()), __('orders.payment_success_wallet'));
     }
 
+    // --- Authorization Helpers ---
 
-    // =========================================================================
-    //  بخش ۳: عملیات مالی و پرداخت (خریدار)
-    // =========================================================================
-
-    /**
-     * آپلود فیش بانکی (کارت به کارت) توسط خریدار
-     */
-    public function uploadCustomerReceipt(Request $request, Order $order): JsonResponse
+    private function authorizeOrderOwner(Order $order): void
     {
-        if ($order->{Order::PLACER_USER_ID} !== Auth::id()) {
-            return error(__('auth.forbidden'), [], 403);
+        if ($order->placer_user_id !== Auth::id()) {
+            abort(error(__('auth.forbidden'), [], 403));
         }
-
-        if ($order->{Order::PAYMENT_STATUS} === Order::PAYMENT_PAID) {
-            return error(__('orders.already_paid'), [], 400);
-        }
-
-        $request->validate([
-            'receipt' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
-        ]);
-
-        $path = $request->file('receipt')->store('order_receipts', 'public');
-
-        $order->update([
-            Order::PAYMENT_RECEIPT_REF => $path,
-        ]);
-
-        return success(new OrderResource($order), __('orders.receipt_uploaded_success'));
     }
 
-    /**
-     * پرداخت هزینه رزرو (تمدید مهلت)
-     */
-    public function payHoldFee(PayHoldFeeRequest $request, Order $order): JsonResponse
+    private function authorizeOrderView(Order $order): void
     {
-        if ($order->{Order::STATUS} !== Order::STATUS_PENDING) {
-            return error(__('orders.cannot_extend_reservation_status'), [], 400);
-        }
-        if ($order->{Order::RESERVATION_EXPIRES_AT} < now()) {
-            return error(__('orders.cannot_extend_reservation_expired'), [], 400);
-        }
-
-        // TODO: اتصال به درگاه پرداخت (Podium/Shaparak)
-        // فعلاً فرض بر پرداخت موفق است
-        $order->update([
-            Order::STATUS => Order::STATUS_RESERVED_EXTENDED,
-            Order::RESERVATION_EXPIRES_AT => now()->addDay(),
-            Order::PARTIAL_PAYMENT_AMOUNT => $request->validated('amount'),
-        ]);
-
-        return success(new OrderResource($order->fresh()), __('orders.reservation_extended'));
-    }
-
-    /**
-     * پرداخت کامل سفارش (مرحله ۲)
-     */
-    public function payFullOrder(Request $request, Order $order): JsonResponse
-    {
-        if ($order->{Order::PLACER_USER_ID} !== Auth::id()) {
-            return error(__('auth.forbidden'), [], 403);
-        }
-        if (!in_array($order->{Order::STATUS}, [Order::STATUS_PENDING, Order::STATUS_RESERVED_EXTENDED])) {
-            return error(__('orders.cannot_pay_order'), [], 400);
-        }
-
-        // TODO: اتصال به درگاه پرداخت کامل
-        // شبیه‌سازی پرداخت موفق:
-        $order->update([
-            Order::STATUS => Order::STATUS_PROCESSING,
-            Order::PAYMENT_STATUS => Order::PAYMENT_PAID,
-            Order::PAID_AT => now(),
-            Order::RESERVATION_EXPIRES_AT => null,
-        ]);
-
-        // TODO: ارسال نوتیفیکیشن به تامین‌کننده
-
-        return success(new OrderResource($order), __('orders.payment_successful_awaiting_confirmation'));
-    }
-
-    /**
-     * دانلود انواع فاکتور (اولیه، نهایی، رسمی)
-     */
-    public function downloadInvoice(Order $order, string $type): JsonResponse
-    {
-        $user = Auth::user();
-        $isSupplier = $user->hasRole('supplier') && $order->items()->where(OrderItem::SUPPLIER_USER_ID, $user->id)->exists();
-        $isOwner = $order->{Order::PLACER_USER_ID} === $user->id || $order->{Order::BENEFICIARY_USER_ID} === $user->id;
+        $userId = Auth::id();
+        $isOwner = $order->placer_user_id === $userId || $order->beneficiary_user_id === $userId;
+        $isSupplier = Auth::user()->hasRole('supplier') && $order->items()->where(OrderItem::SUPPLIER_USER_ID, $userId)->exists();
 
         if (!$isOwner && !$isSupplier) {
-            return error(__('auth.forbidden'), [], 403);
+            abort(error(__('auth.forbidden'), [], 403));
         }
+    }
 
-        $ref = match ($type) {
-            'initial' => $order->{Order::INITIAL_INVOICE_REF},
-            'final'   => $order->{Order::FINAL_INVOICE_REF},
-            'tax'     => $order->{Order::TAX_INVOICE_REF},
-            default   => null,
-        };
-
-        if (!$ref) {
-            return error(__('orders.invoice_not_found'), [], 404);
+    private function authorizeSupplier(Order $order): void
+    {
+        $user = Auth::user();
+        if (!$user->hasRole('supplier') || !$order->items()->where(OrderItem::SUPPLIER_USER_ID, $user->id)->exists()) {
+            abort(error(__('auth.forbidden'), [], 403));
         }
-
-        // تولید لینک دانلود موقت یا واقعی
-        return success(['download_link' => url("/invoices/placeholder/{$ref}")], __('orders.invoice_download_link'));
     }
 
-
-    // =========================================================================
-    //  بخش ۴: عملیات تامین‌کننده (Supplier Actions)
-    // =========================================================================
-
-    public function markAsPrepared(Order $order): JsonResponse
+    private function isOrderCancellable(Order $order): bool
     {
-        $this->authorizeSupplier($order);
+        return in_array($order->status, [
+            Order::STATUS_PENDING, Order::STATUS_RESERVED_EXTENDED,
+            Order::STATUS_PROCESSING, Order::STATUS_PREPARING,
+            Order::STATUS_WEIGHBRIDGE_DONE, Order::STATUS_WAYBILL_ISSUED
+        ]);
+    }
 
-        if ($order->{Order::STATUS} === Order::STATUS_PROCESSING) {
-            $order->update([
-                Order::STATUS => Order::STATUS_PREPARING,
-                Order::PREPARED_AT => now()
-            ]);
-            return success(new OrderResource($order), __('orders.marked_as_prepared'));
+    private function determineViewType(Request $request, User $user): string
+    {
+        $type = $request->query('view_type');
+        if ($user->hasRole('supplier') && !$type) {
+            return 'supplier_fulfillment';
         }
-        return error(__('orders.cannot_prepare_in_current_state'), [], 400);
+        return $type ?? 'my_direct';
     }
-
-    public function addWaybill(Request $request, Order $order): JsonResponse
-    {
-        $this->authorizeSupplier($order);
-        $request->validate([Order::WAYBILL_REF => 'required|string|max:255']);
-
-        if (in_array($order->{Order::STATUS}, [Order::STATUS_PREPARING, Order::STATUS_WEIGHBRIDGE_DONE])) {
-            $order->update([
-                Order::STATUS => Order::STATUS_WAYBILL_ISSUED,
-                Order::WAYBILL_REF => $request->input(Order::WAYBILL_REF),
-                Order::SHIPPED_AT => now()
-            ]);
-            return success(new OrderResource($order), __('orders.waybill_added'));
-        }
-        return error(__('orders.cannot_add_waybill'), [], 400);
-    }
-
-    public function issueEspadanaCommand(Order $order): JsonResponse
-    {
-        $this->authorizeSupplier($order);
-        // TODO: اتصال به وب‌سرویس اسپادانا
-        $order->update([Order::ESPADANA_ORDER_REF => 'ESPADANA_REF_' . $order->id . '_' . time()]);
-        return success(new OrderResource($order), __('orders.espadana_command_issued'));
-    }
-
-    public function attachPaymentReceipt(Request $request, Order $order): JsonResponse
-    {
-        $this->authorizeSupplier($order);
-        // این متد مخصوص تامین‌کننده است (مثلاً رسید پرداخت داخلی)
-        $request->validate(['receipt_ref' => 'required|string|max:255']);
-        $order->update([Order::PAYMENT_RECEIPT_REF => $request->input('receipt_ref')]);
-        return success(new OrderResource($order), __('orders.receipt_attached'));
-    }
-
-
-    // =========================================================================
-    //  بخش ۵: توابع کمکی و خصوصی (Helpers)
-    // =========================================================================
 
     private function applyEagerLoading(Builder $query, User $user, string $viewType): void
     {
@@ -384,9 +370,7 @@ class OrderController extends Controller
                 }
                 $q->with(['productVariant', 'supplier.profile']);
             },
-            'address',
-            'placer.profile',
-            'beneficiary.profile'
+            'address', 'placer.profile', 'beneficiary.profile'
         ]);
     }
 
@@ -395,15 +379,15 @@ class OrderController extends Controller
         match ($viewType) {
             'supplier_fulfillment' => $query->whereHas('items', fn($q) => $q->where(OrderItem::SUPPLIER_USER_ID, $userId)),
             'pending_surveys' => $query->where(fn($q) => $q->where(Order::PLACER_USER_ID, $userId)->orWhere(Order::BENEFICIARY_USER_ID, $userId))
-                ->where(Order::STATUS, Order::STATUS_DELIVERED)
-                ->where(Order::SURVEY_STATUS, '!=', Order::SURVEY_COMPLETED),
+                                       ->where(Order::STATUS, Order::STATUS_DELIVERED)
+                                       ->where(Order::SURVEY_STATUS, '!=', Order::SURVEY_COMPLETED),
             'my_direct' => $query->where(Order::PLACER_USER_ID, $userId)
-                ->where(fn($q) => $q->whereNull(Order::BENEFICIARY_USER_ID)->orWhere(Order::BENEFICIARY_USER_ID, $userId)),
+                                 ->where(fn($q) => $q->whereNull(Order::BENEFICIARY_USER_ID)->orWhere(Order::BENEFICIARY_USER_ID, $userId)),
             'for_others' => $query->where(Order::PLACER_USER_ID, $userId)
-                ->whereNotNull(Order::BENEFICIARY_USER_ID)
-                ->where(Order::BENEFICIARY_USER_ID, '!=', $userId),
+                                  ->whereNotNull(Order::BENEFICIARY_USER_ID)
+                                  ->where(Order::BENEFICIARY_USER_ID, '!=', $userId),
             'employer_associated' => $query->where(Order::BENEFICIARY_USER_ID, $userId)
-                ->where(Order::PLACER_USER_ID, '!=', $userId),
+                                           ->where(Order::PLACER_USER_ID, '!=', $userId),
             default => $query->whereRaw('1 = 0'),
         };
     }
@@ -414,22 +398,10 @@ class OrderController extends Controller
             $query->whereIn(Order::STATUS, [Order::STATUS_DELIVERED, Order::STATUS_CANCELLED, Order::STATUS_FAILED]);
         } else {
             $query->whereIn(Order::STATUS, [
-                Order::STATUS_PENDING,
-                Order::STATUS_RESERVED_EXTENDED,
-                Order::STATUS_PROCESSING,
-                Order::STATUS_PREPARING,
-                Order::STATUS_WEIGHBRIDGE_DONE,
-                Order::STATUS_WAYBILL_ISSUED,
+                Order::STATUS_PENDING, Order::STATUS_RESERVED_EXTENDED, Order::STATUS_PROCESSING,
+                Order::STATUS_PREPARING, Order::STATUS_WEIGHBRIDGE_DONE, Order::STATUS_WAYBILL_ISSUED,
                 Order::STATUS_SHIPPED
             ]);
-        }
-    }
-
-    private function authorizeSupplier(Order $order): void
-    {
-        $user = Auth::user();
-        if (!$user->hasRole('supplier') || !$order->items()->where(OrderItem::SUPPLIER_USER_ID, $user->id)->exists()) {
-            abort(error(__('auth.forbidden'), [], 403));
         }
     }
 }

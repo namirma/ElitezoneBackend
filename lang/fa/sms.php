@@ -15,4 +15,7 @@ return [
     تیم EliteZone',
     "beneficiary_verification" => "کاربر :name قصد خرید به نام شما در الیت-زون را دارد. کد تایید: :code",
     'consultant_invitation' => 'کاربر :employer_name شما را به عنوان مشاور فنی در الیت-زون دعوت کرده است. لطفاً جهت تایید به پنل کاربری خود مراجعه کنید.',
+
+    'transaction_confirmed' => 'کاربر گرامی، درخواست :type مبلغ :amount .ریال شما تایید شد',
+    'transaction_rejected'  => 'کاربر گرامی، درخواست :type مبلغ :amount .ریال شما رد شد',
 ];

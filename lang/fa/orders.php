@@ -38,4 +38,14 @@ return [
         Order::FEE_PAYMENT_PENDING => 'در انتظار پرداخت سهم',
         Order::FEE_PAYMENT_PAID => 'سهم پرداخت شده',
     ],
+
+    'receipt_required' => '.آپلود فایل رسید الزامی است',
+    'receipt_mimes'    => '.فرمت فایل باید jpg, jpeg, png یا pdf باشد',
+    'receipt_max'      => '.حجم فایل نباید بیشتر از ۵ مگابایت باشد',
+    'waybill_required' => '.وارد کردن شماره بارنامه الزامی است',
+    'gateway_required' => '.انتخاب درگاه پرداخت الزامی است',
+    'gateway_invalid'  => '.درگاه انتخاب شده معتبر نیست',
+    'wallet_balance_low' => '.موجودی کیف پول کافی نیست',
+    'payment_redirect' => '...در حال انتقال به درگاه پرداخت',
+    'payment_success_wallet' => '.پرداخت با موفقیت از کیف پول انجام شد',
 ];

@@ -2,8 +2,11 @@
 
 namespace App\Providers;
 
+use App\Models\User;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
+use function in_array;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -26,6 +29,15 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        Gate::define('viewApiDocs', function (User $user = null) {
+            if (app()->environment('local')) {
+                return true;
+            }
+            return $user && in_array($user->email, [
+                'navidm632@gmail.com',
+                //'zarsanjsajad@gmail.com',
+            ]);
+
+        });
     }
 }

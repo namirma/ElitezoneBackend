@@ -8,6 +8,7 @@
         "php": "^8.1",
         "ext-iconv": "*",
         "artisaninweb/laravel-soap": "0.3.0.10",
+        "dedoc/scramble": "^0.13.7",
         "guzzlehttp/guzzle": "^7.9",
         "hekmatinasser/verta": "^8.3",
         "laravel/framework": "^10.10",
