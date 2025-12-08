@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Order\CancelOrderAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AddWaybillRequest;
 use App\Http\Requests\PayFullOrderRequest;
@@ -11,11 +12,13 @@ use App\Http\Resources\OrderResource;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\User;
+use App\Services\InventoryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Builder;
+use Mccarlosen\LaravelMpdf\Facades\LaravelMpdf as PDF;
 
 class OrderController extends Controller
 {
@@ -93,32 +96,31 @@ class OrderController extends Controller
         return success(new OrderResource($order), __('global.received_successfully'));
     }
 
-    public function cancel(Order $order): JsonResponse
+    public function cancel(Order $order, CancelOrderAction $cancelAction): JsonResponse
     {
-        $this->authorizeOrderOwner($order);
+        $userId = Auth::id();
 
-        if (!$this->isOrderCancellable($order)) {
+        // ۱. چک دسترسی
+        if ($order->{Order::PLACER_USER_ID} !== $userId && $order->{Order::BENEFICIARY_USER_ID} !== $userId) {
+            return error(__('auth.forbidden'), [], 403);
+        }
+
+        // ۲. چک وضعیت (آیا قابل لغو است؟)
+        $cancellable = [
+            Order::STATUS_PENDING,
+            Order::STATUS_RESERVED_EXTENDED,
+            Order::STATUS_PROCESSING,
+            Order::STATUS_PREPARING,
+            Order::STATUS_WEIGHBRIDGE_DONE,
+            Order::STATUS_WAYBILL_ISSUED
+        ];
+
+        if (!in_array($order->{Order::STATUS}, $cancellable)) {
             return error(__('orders.cannot_cancel'), [], 400);
         }
 
-        DB::transaction(function () use ($order) {
-            // ۱. بازگرداندن کالا به انبار
-            $order->restoreStock();
-
-            // ۲. بازگرداندن وجه به کیف پول (اگر پرداخت کرده باشد)
-            $order->refundToWallet();
-
-            // ۳. تغییر وضعیت
-            $newPaymentStatus = ($order->payment_status === Order::PAYMENT_PAID)
-                ? Order::PAYMENT_REFUNDED
-                : Order::PAYMENT_FAILED;
-
-            $order->update([
-                Order::STATUS => Order::STATUS_CANCELLED,
-                Order::PAYMENT_STATUS => $newPaymentStatus,
-                Order::CANCEL_REASON => 'لغو توسط کاربر'
-            ]);
-        });
+        // ۳. اجرای اکشن (فراخوانی منطق مرکزی)
+        $cancelAction->execute($order, 'لغو توسط کاربر');
 
         return success(new OrderResource($order->fresh()), __('orders.cancelled_successfully'));
     }
@@ -180,22 +182,101 @@ class OrderController extends Controller
         return success(new OrderResource($order), __('orders.receipt_uploaded_success'));
     }
 
-    public function downloadInvoice(Order $order, string $type): JsonResponse
+    public function downloadInvoice(Order $order, string $type)
     {
+
         $this->authorizeOrderView($order);
+        $order->load(['items.productVariant', 'placer.profile', 'address.city', 'address.province']);
 
-        $ref = match ($type) {
-            'initial' => $order->initial_invoice_ref,
-            'final'   => $order->final_invoice_ref,
-            'tax'     => $order->tax_invoice_ref,
-            default   => null,
-        };
+        $seller = [
+            'name'          => 'شرکت نرم‌افزاری سازه اسپادانا',
+            'economic_code' => '411347688653',
+            'reg_id'        => '31106',
+            'national_id'   => '10260516722',
+            'address'       => 'اصفهان، پارک علم و فناوری، خیابان سلمان فارسی، ساختمان شهرک علمی تحقیقاتی، طبقه اول، واحد 114',
+            'phone'         => '03134005000',
+            'postal_code'   => '8158184500',
+        ];
 
-        if (!$ref) {
-            return error(__('orders.invoice_not_found'), [], 404);
+        // 4. اطلاعات خریدار
+        $buyerProfile = $order->placer->profile;
+        $buyer = [
+            'name'          => ($buyerProfile->first_name ?? '') . ' ' . ($buyerProfile->last_name ?? ''),
+            'economic_code' => $buyerProfile->economic_code ?? '-',
+            'national_id'   => $order->placer->national_code ?? '-',
+            'reg_id'        => null,
+            'postal_code'   => $order->address->postal_code ?? '-',
+            'phone'         => $order->placer->mobile,
+            'address'       => $order->address->postal_address ?? $order->address->address ?? '-',
+        ];
+
+        $amountInWords = $this->numberToWords($order->final_amount);
+
+        $data = [
+            'order'         => $order,
+            'seller'        => $seller,
+            'buyer'         => $buyer,
+            'type'          => $type,
+            'date'          => verta($order->created_at)->format('Y/m/d'),
+            'validity_date' => verta($order->created_at)->addDay()->format('Y/m/d'),
+            'amount_words'  => $amountInWords,
+        ];
+
+        $pdf = PDF::loadView('pdf.invoice', $data, [], [
+            'mode'         => 'utf-8',
+            'format'       => 'A4',
+            'orientation'  => 'P',
+            'margin_left'  => 5,
+            'margin_right' => 5,
+            'margin_top'   => 5,
+            'margin_bottom' => 5,
+            'default_font' => 'yekan'
+        ]);
+
+        return $pdf->download("invoice-{$order->order_number}.pdf");
+    }
+
+    private function numberToWords($number)
+    {
+        $ones = array('', 'یک', 'دو', 'سه', 'چهار', 'پنج', 'شش', 'هفت', 'هشت', 'نه', 'ده', 'یازده', 'دوازده', 'سیزده', 'چهارده', 'پانزده', 'شانزده', 'هفده', 'هجده', 'نوزده');
+        $tens = array('', '', 'بیست', 'سی', 'چهل', 'پنجاه', 'شصت', 'هفتاد', 'هشتاد', 'نود');
+        $thousands = array('', 'هزار', 'میلیون', 'میلیارد', 'تریلیون');
+
+        if ($number == 0) return 'صفر';
+
+        $number = (string) $number;
+        $number = str_pad($number, ceil(strlen($number) / 3) * 3, '0', STR_PAD_LEFT);
+        $parts = str_split($number, 3);
+        $result = [];
+
+        foreach ($parts as $key => $part) {
+            $part = (int) $part;
+            if ($part == 0) continue;
+
+            $hundredsDigit = floor($part / 100);
+            $tensDigit = floor(($part % 100) / 10);
+            $onesDigit = $part % 10;
+            $partText = [];
+
+            if ($hundredsDigit > 0) {
+                $hundredsNames = ['', 'صد', 'دویست', 'سیصد', 'چهارصد', 'پانصد', 'ششصد', 'هفتصد', 'هشتصد', 'نهصد'];
+                $partText[] = $hundredsNames[$hundredsDigit];
+            }
+
+            if ($tensDigit > 1) {
+                $partText[] = $tens[$tensDigit];
+                if ($onesDigit > 0) $partText[] = $ones[$onesDigit];
+            } elseif ($tensDigit == 1) {
+                $partText[] = $ones[10 + $onesDigit];
+            } elseif ($onesDigit > 0) {
+                $partText[] = $ones[$onesDigit];
+            }
+
+            $level = count($parts) - $key - 1;
+            $result[] = implode(' و ', $partText) . ($level > 0 ? ' ' . $thousands[$level] : '');
         }
 
-        return success(['download_link' => url("/invoices/placeholder/{$ref}")], __('orders.invoice_download_link'));
+        return implode(' و ', $result);
     }
 
     // =========================================================================
@@ -262,17 +343,21 @@ class OrderController extends Controller
 
         if ($type === 'myself') {
             $query->where(Order::PLACER_USER_ID, $userId)
-                  ->where(fn($q) => $q->whereNull(Order::BENEFICIARY_USER_ID)->orWhere(Order::BENEFICIARY_USER_ID, $userId));
+                ->where(fn($q) => $q->whereNull(Order::BENEFICIARY_USER_ID)->orWhere(Order::BENEFICIARY_USER_ID, $userId));
         } elseif ($type === 'others') {
             $query->where(Order::PLACER_USER_ID, $userId)
-                  ->whereNotNull(Order::BENEFICIARY_USER_ID)
-                  ->where(Order::BENEFICIARY_USER_ID, '!=', $userId);
+                ->whereNotNull(Order::BENEFICIARY_USER_ID)
+                ->where(Order::BENEFICIARY_USER_ID, '!=', $userId);
         }
 
         match ($tabStatus) {
             'current' => $query->whereIn(Order::STATUS, [
-                Order::STATUS_PENDING, Order::STATUS_RESERVED_EXTENDED, Order::STATUS_PROCESSING,
-                Order::STATUS_PREPARING, Order::STATUS_WEIGHBRIDGE_DONE, Order::STATUS_WAYBILL_ISSUED,
+                Order::STATUS_PENDING,
+                Order::STATUS_RESERVED_EXTENDED,
+                Order::STATUS_PROCESSING,
+                Order::STATUS_PREPARING,
+                Order::STATUS_WEIGHBRIDGE_DONE,
+                Order::STATUS_WAYBILL_ISSUED,
                 Order::STATUS_SHIPPED
             ]),
             'delivered' => $query->where(Order::STATUS, Order::STATUS_DELIVERED),
@@ -286,33 +371,45 @@ class OrderController extends Controller
 
     private function processWalletPayment(Order $order): JsonResponse
     {
-        $user = Auth::user();
-        $wallet = $user->wallet()->lockForUpdate()->firstOrCreate();
+        try {
+            // شروع تراکنش اتمیک (Atomic Transaction)
+            return DB::transaction(function () use ($order) {
+                $user = Auth::user();
 
-        if ($wallet->balance < $order->final_amount) {
-            return error(__('orders.wallet_balance_low'), [], 400);
+                // ۱. قفل کردن کیف پول برای جلوگیری از برداشت همزمان
+                $wallet = $user->wallet()->lockForUpdate()->firstOrCreate();
+
+                // بررسی موجودی کیف پول
+                if ($wallet->balance < $order->final_amount) {
+                    throw new \Exception(__('orders.wallet_balance_low'));
+                }
+                (new InventoryService())->deductStockForOrder($order);
+
+                // ۳. کسر مبلغ از کیف پول
+                $wallet->decrement('balance', $order->final_amount);
+
+                // ۴. ثبت تراکنش مالی در تاریخچه کیف پول
+                $wallet->transactions()->create([
+                    'amount' => $order->final_amount,
+                    'type' => 'withdraw', // بهتر است این هم به صورت ثابت (Const) تعریف شود
+                    'status' => 'confirmed',
+                    'description' => "پرداخت سفارش #{$order->order_number}",
+                    'order_id' => $order->id
+                ]);
+
+                // ۵. به‌روزرسانی وضعیت سفارش با استفاده از ثابت‌های مدل
+                $order->update([
+                    Order::STATUS => Order::STATUS_PROCESSING,
+                    Order::PAYMENT_STATUS => Order::PAYMENT_PAID,
+                    Order::PAID_AT => now(),
+                    Order::RESERVATION_EXPIRES_AT => null,
+                ]);
+
+                return success(new OrderResource($order->fresh()), __('orders.payment_success_wallet'));
+            });
+        } catch (\Exception $e) {
+            return error($e->getMessage(), [], 400);
         }
-
-        DB::transaction(function () use ($wallet, $order) {
-            $wallet->decrement('balance', $order->final_amount);
-
-            $wallet->transactions()->create([
-                'amount' => $order->final_amount,
-                'type' => 'withdraw',
-                'status' => 'confirmed',
-                'description' => "پرداخت سفارش #{$order->order_number}",
-                'order_id' => $order->id
-            ]);
-
-            $order->update([
-                Order::STATUS => Order::STATUS_PROCESSING,
-                Order::PAYMENT_STATUS => Order::PAYMENT_PAID,
-                Order::PAID_AT => now(),
-                Order::RESERVATION_EXPIRES_AT => null,
-            ]);
-        });
-
-        return success(new OrderResource($order->fresh()), __('orders.payment_success_wallet'));
     }
 
     // --- Authorization Helpers ---
@@ -346,9 +443,12 @@ class OrderController extends Controller
     private function isOrderCancellable(Order $order): bool
     {
         return in_array($order->status, [
-            Order::STATUS_PENDING, Order::STATUS_RESERVED_EXTENDED,
-            Order::STATUS_PROCESSING, Order::STATUS_PREPARING,
-            Order::STATUS_WEIGHBRIDGE_DONE, Order::STATUS_WAYBILL_ISSUED
+            Order::STATUS_PENDING,
+            Order::STATUS_RESERVED_EXTENDED,
+            Order::STATUS_PROCESSING,
+            Order::STATUS_PREPARING,
+            Order::STATUS_WEIGHBRIDGE_DONE,
+            Order::STATUS_WAYBILL_ISSUED
         ]);
     }
 
@@ -370,7 +470,9 @@ class OrderController extends Controller
                 }
                 $q->with(['productVariant', 'supplier.profile']);
             },
-            'address', 'placer.profile', 'beneficiary.profile'
+            'address',
+            'placer.profile',
+            'beneficiary.profile'
         ]);
     }
 
@@ -379,15 +481,15 @@ class OrderController extends Controller
         match ($viewType) {
             'supplier_fulfillment' => $query->whereHas('items', fn($q) => $q->where(OrderItem::SUPPLIER_USER_ID, $userId)),
             'pending_surveys' => $query->where(fn($q) => $q->where(Order::PLACER_USER_ID, $userId)->orWhere(Order::BENEFICIARY_USER_ID, $userId))
-                                       ->where(Order::STATUS, Order::STATUS_DELIVERED)
-                                       ->where(Order::SURVEY_STATUS, '!=', Order::SURVEY_COMPLETED),
+                ->where(Order::STATUS, Order::STATUS_DELIVERED)
+                ->where(Order::SURVEY_STATUS, '!=', Order::SURVEY_COMPLETED),
             'my_direct' => $query->where(Order::PLACER_USER_ID, $userId)
-                                 ->where(fn($q) => $q->whereNull(Order::BENEFICIARY_USER_ID)->orWhere(Order::BENEFICIARY_USER_ID, $userId)),
+                ->where(fn($q) => $q->whereNull(Order::BENEFICIARY_USER_ID)->orWhere(Order::BENEFICIARY_USER_ID, $userId)),
             'for_others' => $query->where(Order::PLACER_USER_ID, $userId)
-                                  ->whereNotNull(Order::BENEFICIARY_USER_ID)
-                                  ->where(Order::BENEFICIARY_USER_ID, '!=', $userId),
+                ->whereNotNull(Order::BENEFICIARY_USER_ID)
+                ->where(Order::BENEFICIARY_USER_ID, '!=', $userId),
             'employer_associated' => $query->where(Order::BENEFICIARY_USER_ID, $userId)
-                                           ->where(Order::PLACER_USER_ID, '!=', $userId),
+                ->where(Order::PLACER_USER_ID, '!=', $userId),
             default => $query->whereRaw('1 = 0'),
         };
     }
@@ -398,8 +500,12 @@ class OrderController extends Controller
             $query->whereIn(Order::STATUS, [Order::STATUS_DELIVERED, Order::STATUS_CANCELLED, Order::STATUS_FAILED]);
         } else {
             $query->whereIn(Order::STATUS, [
-                Order::STATUS_PENDING, Order::STATUS_RESERVED_EXTENDED, Order::STATUS_PROCESSING,
-                Order::STATUS_PREPARING, Order::STATUS_WEIGHBRIDGE_DONE, Order::STATUS_WAYBILL_ISSUED,
+                Order::STATUS_PENDING,
+                Order::STATUS_RESERVED_EXTENDED,
+                Order::STATUS_PROCESSING,
+                Order::STATUS_PREPARING,
+                Order::STATUS_WEIGHBRIDGE_DONE,
+                Order::STATUS_WAYBILL_ISSUED,
                 Order::STATUS_SHIPPED
             ]);
         }

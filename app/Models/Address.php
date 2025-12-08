@@ -60,8 +60,8 @@ class Address extends Model
         return $this->belongsTo(\App\Models\ActivityProvince::class, self::PROVINCE_ID);
     }
 
-    // public function city(): BelongsTo
-    // {
-    //     return $this->belongsTo(\App\Models\ProvinceCity::class, self::CITY_ID);
-    // }
+    public function city(): BelongsTo
+    {
+        return $this->belongsTo(ProvinceCity::class, self::CITY_ID);
+    }
 }

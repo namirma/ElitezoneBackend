@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\User;
+use App\Models\UserType;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -17,16 +18,21 @@ class UserFactory extends Factory
      *
      * @return array<string, mixed>
      */
-     protected static ?string $password;
+    protected static ?string $password;
     public function definition(): array
     {
         return [
-            'name' => fake()->name(),
-            'email' => fake()->unique()->safeEmail(),
-            'email_verified_at' => now(),
-            //'password' => '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', // password
-            'password' => static::$password ??= Hash::make('password'),
+            'mobile' => '09' . fake()->unique()->numerify('#########'),
+            'national_code' => fake()->unique()->numerify('##########'),
+            'birth_date' => '13800101',
+            'password' => Hash::make('password'),
             'remember_token' => Str::random(10),
+            'type_id' => function () {
+             return UserType::firstOrCreate(
+                 ['slug' => 'customer'],
+                 ['name' => 'customer', 'icon' => 'user']
+             )->id;
+        },
         ];
     }
 
@@ -35,7 +41,7 @@ class UserFactory extends Factory
      */
     public function unverified(): static
     {
-        return $this->state(fn (array $attributes) => [
+        return $this->state(fn(array $attributes) => [
             'email_verified_at' => null,
         ]);
     }
