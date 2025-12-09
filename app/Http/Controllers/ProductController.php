@@ -26,6 +26,8 @@ use App\Models\ProductImage;
 use App\Models\ProductVariant;
 use App\Models\ProductVariantAttribute;
 use App\Models\Offer;
+use App\Repositories\Contracts\ProductRepositoryInterface;
+use App\Repositories\Eloquent\ProductRepository;
 use App\Services\PriceCalculationService;
 use App\Services\PricingRoleResolver;
 use Illuminate\Http\JsonResponse;
@@ -38,32 +40,24 @@ class ProductController extends Controller
 {
     public function __construct(
         private readonly PriceCalculationService $priceService,
-        private readonly PricingRoleResolver     $roleResolver
+        private readonly PricingRoleResolver     $roleResolver,
+        private readonly ProductRepositoryInterface $productRepo
     ) {}
 
     public function index(ProductIndexRequest $request): JsonResponse
     {
-        $v = $request->validated();
+        $filters = $request->validated();
         $activeCode = $this->resolveActiveCode();
         $withDebug  = $request->boolean('debug_prices');
+        $filterData = \App\DataTransferObjects\ProductFilterData::fromRequest($request, $activeCode);
 
-        $products = Product::query()->active()
-            ->with([
-                'category',
-                'images' => fn($q) => $q->where(ProductImage::IS_PRIMARY, true),
-                'variants.prices.factory',
-                'variants.prices.factoryLocation',
-            ])
-            ->when(!empty($v['category']), fn($q) => $q->where(Product::CATEGORY_ID, $v['category']))
-            ->when(!empty($v['search']), function ($q) use ($v) {
-                $q->where(function ($qq) use ($v) {
-                    $qq->where(Product::NAME, 'like', "%{$v['search']}%")
-                       ->orWhere(Product::DESCRIPTION, 'like', "%{$v['search']}%");
-                });
-            })
-            ->get();
+        $paginator = $this->productRepo->getProducts(
+            $filterData,
+            $request->input('per_page', 12)
+        );
 
-        // محاسبه‌ی قیمت‌ها و مینیمم‌ها
+        $products = ($this->productRepo instanceof ProductRepository) ? $this->productRepo->getBaseQuery($filters)->get() : Product::all();
+
         $products->each(function (Product $product) use ($activeCode, $withDebug) {
             $product->variants->each(function (ProductVariant $variant) use ($activeCode, $withDebug) {
                 $this->hydrateVariantPrices($variant, $activeCode, $withDebug);
@@ -73,12 +67,10 @@ class ProductController extends Controller
                 ->min('final_price');
         });
 
-        // مرتب‌سازی
-        $sortKey = $v['sort'] ?? 'newest';
+        $sortKey = $filters['sort'] ?? 'newest';
         $products = $this->applyDynamicSorting($products, $sortKey, 'products');
 
-        // pagina
-        $perPage      = !empty($v['per_page']) ? (int) $v['per_page'] : 12;
+        $perPage      = !empty($filters['per_page']) ? (int) $filters['per_page'] : 12;
         $currentPage  = LengthAwarePaginator::resolveCurrentPage();
         $slice        = $products->slice(($currentPage - 1) * $perPage, $perPage)->values();
         $paginator    = new LengthAwarePaginator($slice, $products->count(), $perPage, $currentPage);
@@ -108,14 +100,12 @@ class ProductController extends Controller
             'aggregateLimitOrderUnit',
         ])->incrementViewCount();
 
+        // محاسبه قیمت
         $product->variants->each(function (ProductVariant $variant) use ($activeCode, $withDebug) {
             $this->hydrateVariantPrices($variant, $activeCode, $withDebug);
         });
 
-        $factories = Factory::query()
-            ->whereHas('prices.productVariant.product', fn($q) => $q->where(Product::ID, $product->id))
-            ->with('locations')
-            ->get();
+        $factories = $this->productRepo->getProductFactories($product->id);
 
         return success([
             'product'   => new ProductDetailResource($product),
@@ -278,7 +268,11 @@ class ProductController extends Controller
                 $variant,
                 $price->factory,
                 $price->factoryLocation,
-                null, null, null, false, $activeCode
+                null,
+                null,
+                null,
+                false,
+                $activeCode
             );
 
             $price->final_price        = (float)$calc['final_price'];

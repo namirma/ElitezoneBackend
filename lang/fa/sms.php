@@ -18,4 +18,6 @@ return [
 
     'transaction_confirmed' => 'کاربر گرامی، درخواست :type مبلغ :amount .ریال شما تایید شد',
     'transaction_rejected'  => 'کاربر گرامی، درخواست :type مبلغ :amount .ریال شما رد شد',
+
+    'order_placed' => "سفارش شما با شماره :order_number رزرو شد.\nجهت تکمیل خرید، لطفاً پرداخت را انجام دهید.\nالیت زون",
 ];

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\WalletFunded;
 use App\Http\Controllers\Controller;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
@@ -56,7 +57,6 @@ class PaymentController extends Controller
                 $this->markAsFailed($transaction);
                 return $this->redirectClient(false, __('payment.verification_failed'));
             }
-
         } catch (\Exception $e) {
             Log::error("Payment Callback Error: " . $e->getMessage());
             return $this->redirectClient(false, __('payment.technical_error'));
@@ -87,18 +87,16 @@ class PaymentController extends Controller
     private function settleWallet(WalletTransaction $transaction, string $refId): void
     {
         DB::transaction(function () use ($transaction, $refId) {
-            // قفل کردن رکورد کیف پول برای جلوگیری از تداخل
             $wallet = Wallet::where('id', $transaction->wallet_id)->lockForUpdate()->first();
 
             $wallet->increment(Wallet::BALANCE, $transaction->amount);
 
             $transaction->update([
                 'status' => WalletTransaction::STATUS_CONFIRMED,
-                'meta'   => array_merge($transaction->meta ?? [], [
-                    'ref_id'      => $refId,
-                    'verified_at' => now()->toDateTimeString()
-                ])
+                'meta'   => [...$transaction->meta ?? [], 'ref_id'      => $refId,
+                    'verified_at' => now()->toDateTimeString()]
             ]);
+            WalletFunded::dispatch($transaction);
         });
     }
 

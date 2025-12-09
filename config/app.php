@@ -1,5 +1,6 @@
 <?php
 
+use App\Providers\RepositoryServiceProvider;
 use App\Providers\ResponseServiceProvider;
 use Artisaninweb\SoapWrapper\SoapWrapper;
 use Illuminate\Support\Facades\Facade;
@@ -181,6 +182,7 @@ return [
         App\Providers\RouteServiceProvider::class,
         ResponseServiceProvider::class,
         Mccarlosen\LaravelMpdf\LaravelMpdfServiceProvider::class,
+        RepositoryServiceProvider::class
     ])->toArray(),
 
     /*

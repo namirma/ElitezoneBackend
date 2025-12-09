@@ -46,6 +46,7 @@ use App\Http\Controllers\StockSubscriptionController;
 use App\Http\Controllers\UserBankAccountController;
 use App\Http\Controllers\WalletController;
 use App\Http\Middleware\EnsureRoleIsSelected;
+use App\Models\ProductPriceCache;
 
 /*
 |--------------------------------------------------------------------------
@@ -63,9 +64,13 @@ Route::post('/payment/result', fn() => response()->json(['message' => 'Callback 
 Route::any('/payment/callback', [\App\Http\Controllers\PaymentController::class, 'callback'])->name('payment.callback');
 Route::get('/search', [SearchController::class, 'search']);
 Route::post('/new-question', [QuestionController::class, 'submitQuestion']);
+Route::get('/test-cache', function () {
+    return ProductPriceCache::with('variant:id,name')->take(10)->get();
+});
 Route::get('kavir-products', function () {
     $gateway = GatewayFactory::make('tesna');
     return response()->json($gateway->getRequest('/api/v1/wh/AllStoreCodes'));
+
 });
 
 // --- احراز هویت ---
