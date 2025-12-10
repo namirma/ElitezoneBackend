@@ -71,28 +71,27 @@ class ProductVariant extends Model
 
     public function getActiveDiscountDetails(): ?array
     {
-        $value = $this->{self::DISCOUNT_VALUE};
-        $type = $this->{self::DISCOUNT_TYPE};
-
-        if ($value === null || $value == 0 || $type === null) {
+        
+        if (empty($this->discount_value) || $this->discount_value <= 0) {
             return null;
         }
 
-        $now = Carbon::now();
-        $startDate = $this->{self::DISCOUNT_START_DATE};
-        $endDate = $this->{self::DISCOUNT_END_DATE};
+        $now = now();
 
-        if (($startDate instanceof Carbon && $startDate->isFuture()) || ($endDate instanceof Carbon && $endDate->isPast())) {
+
+        if (!empty($this->discount_start_date) && $now->lt($this->discount_start_date)) {
             return null;
         }
 
-        if (!in_array($type, ['percentage', 'fixed_amount'])) {
+        if (!empty($this->discount_end_date) && $now->gt($this->discount_end_date)) {
             return null;
         }
 
-        return ['type' => $type, 'value' => (float)$value];
+        return [
+            'type' => $this->discount_type ?? 'fixed_amount',
+            'value' => $this->discount_value,
+        ];
     }
-
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class, self::PRODUCT_ID);

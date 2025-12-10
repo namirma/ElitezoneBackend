@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Traits\Resilience\HasCircuitBreaker;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Config;
@@ -10,6 +11,7 @@ use Illuminate\Support\Facades\Log;
 
 class PodiumClient
 {
+    use HasCircuitBreaker;
     protected string $baseUrl;
     protected string $businessToken;
     protected int $timeout;
@@ -19,6 +21,9 @@ class PodiumClient
         $this->baseUrl       = rtrim(Config::get('podium.base_url'), '/');
         $this->businessToken = (string) Config::get('podium.business_token');
         $this->timeout       = (int) Config::get('podium.defaults.timeout', 30);
+
+        $this->cbThreshold = 3;
+        $this->cbTimeout = 120;
     }
 
     protected function http(): PendingRequest
@@ -37,19 +42,21 @@ class PodiumClient
 
     public function call(array $payload): array
     {
-        $endpoint = $this->baseUrl . Config::get('podium.endpoints.do_service_call');
+        return $this->executeProtected('podium_core', function () use ($payload) {
 
-        $response = $this->http()->post($endpoint, $payload);
+            $endpoint = $this->baseUrl . Config::get('podium.endpoints.do_service_call');
+            $response = $this->http()->post($endpoint, $payload);
 
-        if ($response->failed()) {
-            Log::error('Podium HTTP error', [
-                'status' => $response->status(),
-                'body'   => $response->body(),
-            ]);
-            $response->throw();
-        }
+            if ($response->failed()) {
+                Log::error('Podium HTTP error', [
+                    'status' => $response->status(),
+                    'body'   => $response->body(),
+                ]);
+                $response->throw(); 
+            }
 
-        return $response->json() ?? [];
+            return $response->json() ?? [];
+        });
     }
     protected function httpSc2(): PendingRequest
     {
@@ -62,19 +69,21 @@ class PodiumClient
 
     public function callSc2(array $payload): array
     {
-        $endpoint = $this->baseUrl . Config::get('podium.sc2.endpoints.do');
+        return $this->executeProtected('podium_sc2', function () use ($payload) {
 
-        $response = $this->httpSc2()->post($endpoint, $payload);
+            $endpoint = $this->baseUrl . Config::get('podium.sc2.endpoints.do');
+            $response = $this->httpSc2()->post($endpoint, $payload);
 
-        if ($response->failed()) {
-            Log::error('Podium SC2 HTTP error', [
-                'status' => $response->status(),
-                'body'   => $response->body(),
-            ]);
-            $response->throw();
-        }
+            if ($response->failed()) {
+                Log::error('Podium SC2 HTTP error', [
+                    'status' => $response->status(),
+                    'body'   => $response->body(),
+                ]);
+                $response->throw();
+            }
 
-        return $response->json() ?? [];
+            return $response->json() ?? [];
+        });
     }
 
 

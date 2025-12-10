@@ -2,22 +2,26 @@
 
 namespace App\Services;
 
-use App\Models\ProductVariant;
+use App\DataTransferObjects\Pricing\PriceCalculationResult;
+use App\Models\Badge;
+use App\Models\CustomerType;
 use App\Models\Factory;
 use App\Models\FactoryLocation;
-use App\Models\CustomerType;
-use App\Models\Badge;
-use App\Models\PriceFilterCategory;
-use App\Models\PriceSetting;
 use App\Models\OrderUnit;
-use App\Models\ProductPrice;
-use App\Models\PriceFilter;
-use App\Models\PriceFilterType;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Cache;
+use App\Models\PriceSetting;
+use App\Models\ProductVariant;
+use App\Services\Pricing\Pipes\ApplyPriceFilters;
+use App\Services\Pricing\Pipes\ApplyVariantDiscount;
+use App\Services\Pricing\Pipes\ApplyVat;
+use App\Services\Pricing\Pipes\SetBasePrice;
+use App\Services\Pricing\PricingContext;
+use Illuminate\Pipeline\Pipeline;
 
 class PriceCalculationService
 {
+    /**
+     * محاسبه قیمت واحد محصول با استفاده از الگوی Pipeline
+     */
     public function calculatePrice(
         ProductVariant  $variant,
         Factory         $factory,
@@ -27,137 +31,36 @@ class PriceCalculationService
         ?array          $filterCategoryIds = null,
         bool            $withVAT = false,
         ?string         $filterCategoryCode = null
-    ): array {
-        $base = $this->getBasePrice($variant, $factory, $location);
-        $initialGeneral = (float) $base['general_price'];
-        $initialSpecial = (float) $base['special_price'];
+    ): PriceCalculationResult {
+        // ۱. ایجاد کانتکست (Context)
+        $context = new PricingContext(
+            variant: $variant,
+            factory: $factory,
+            location: $location,
+            customerType: $customerType,
+            badge: $badge,
+            filterCategoryIds: $filterCategoryIds,
+            withVat: $withVAT,
+            filterCategoryCode: $filterCategoryCode
+        );
 
-        $discountBase = $initialSpecial > 0 ? $initialSpecial : $initialGeneral;
-        $variantDiscount = $variant->getActiveDiscountDetails();
-        $priceAfterVariantDiscount = $discountBase;
-        $appliedVariantDiscountAmount = 0.0;
-        $appliedVariantDiscountType  = null;
-        $appliedVariantDiscountValue = null;
-
-        if ($variantDiscount) {
-            $appliedVariantDiscountType  = $variantDiscount['type'];
-            $appliedVariantDiscountValue = (float) $variantDiscount['value'];
-
-            if ($variantDiscount['type'] === 'percentage') {
-                $appliedVariantDiscountAmount = $discountBase * ($appliedVariantDiscountValue / 100);
-                $priceAfterVariantDiscount    = $discountBase - $appliedVariantDiscountAmount;
-            } elseif ($variantDiscount['type'] === 'fixed_amount') {
-                $appliedVariantDiscountAmount = $appliedVariantDiscountValue;
-                $priceAfterVariantDiscount    = $discountBase - $appliedVariantDiscountValue;
-            }
-            $priceAfterVariantDiscount = max(0.0, $priceAfterVariantDiscount);
-        }
-
-        $filters = $this->getAllFilters($filterCategoryIds, $filterCategoryCode);
-
-        $generalFilters  = $filters->filter(fn($f) => ($f->filterType->{PriceFilterType::APPLY_ON} ?? 'both') === 'general');
-        $specialFilters  = $filters->filter(fn($f) => ($f->filterType->{PriceFilterType::APPLY_ON} ?? 'both') === 'special');
-        $bothSideFilters = $filters->filter(fn($f) => ($f->filterType->{PriceFilterType::APPLY_ON} ?? 'both') === 'both');
-
-        $generalWithFilters = $this->applyFilters($initialGeneral, $generalFilters);
-        $specialWithFilters = $this->applyFilters($priceAfterVariantDiscount, $specialFilters);
-        $customerAdjustment = $this->applyFilters(0.0, $bothSideFilters);
-
-        $final = max(0.0, $specialWithFilters + $customerAdjustment);
-
-        $vatRate = 0.0;
-        $vatAmount = 0.0;
-        if ($withVAT) {
-            $vatRate   = PriceSetting::getValueAsFloat(PriceSetting::CODE_VAT_RATE, 10.0);
-            $vatAmount = $final * ($vatRate / 100);
-        }
-
-        return [
-            'base_general_price'           => (string) $initialGeneral,
-            'base_special_price'           => (string) $initialSpecial,
-            'variant_discount_type'        => $appliedVariantDiscountType,
-            'variant_discount_value'       => $appliedVariantDiscountValue !== null ? (string) $appliedVariantDiscountValue : null,
-            'variant_discount_amount'      => (string) $appliedVariantDiscountAmount,
-            'price_after_variant_discount' => (string) $priceAfterVariantDiscount,
-            'general_price_with_filters'   => (string) $generalWithFilters,
-            'special_price_with_filters'   => (string) $specialWithFilters,
-            'customer_adjustment'          => (string) $customerAdjustment,
-            'role_golden_figure'           => (string) max(0.0, $generalWithFilters - $specialWithFilters),
-            'final_price'                  => (string) $final,
-            'vat_amount'                   => (string) $vatAmount,
-            'vat_rate'                     => (string) ($withVAT ? $vatRate : 0.0),
-            'price_with_vat'               => (string) ($final + $vatAmount),
-            'with_vat'                     => $withVAT,
+        // ۲. تعریف مراحل (Pipes)
+        $pipes = [
+            SetBasePrice::class,        // دریافت قیمت پایه از کش/دیتابیس
+            ApplyVariantDiscount::class, // اعمال تخفیف مستقیم واریانت
+            ApplyPriceFilters::class,   // اعمال فیلترهای دینامیک (عمومی/ویژه)
+            ApplyVat::class,            // اعمال ارزش افزوده
         ];
+
+        // ۳. اجرای پایپ‌لاین
+        return app(Pipeline::class)
+            ->send($context)
+            ->through($pipes)
+            ->then(function (PricingContext $context) {
+                return $context->toDto(); 
+            });
     }
 
-    private function getAllFilters(?array $categoryIds, ?string $categoryCode = null): Collection
-    {
-        if ((empty($categoryIds) || !is_array($categoryIds)) && $categoryCode) {
-            $categoryIds = PriceFilterCategory::where(PriceFilterCategory::CODE, $categoryCode)
-                ->where(PriceFilterCategory::IS_ACTIVE, true)
-                ->pluck('id')->all();
-        }
-
-        if (empty($categoryIds)) {
-            return collect();
-        }
-
-        return PriceFilterCategory::whereIn('id', $categoryIds)
-            ->where(PriceFilterCategory::IS_ACTIVE, true)
-            ->with(['filters' => function ($q) {
-                $q->where('price_filters.is_active', true)
-                    ->join('price_filter_types as t', 't.id', '=', 'price_filters.price_filter_type_id')
-                    ->orderBy('t.sort_order')
-                    ->orderBy('price_filters.sort_order')
-                    ->select('price_filters.*', 't.apply_on as _apply_on');
-            }])
-            ->get()
-            ->flatMap(function (PriceFilterCategory $cat) {
-                return $cat->filters->map(function ($f) {
-                    $f->filterType = (object) ['apply_on' => $f->_apply_on];
-                    return $f;
-                });
-            })
-            ->unique('id');
-    }
-
-    private function applyFilters(float $startPrice, Collection $filters): float
-    {
-        $price = $startPrice;
-        foreach ($filters->sortBy(PriceFilter::SORT_ORDER) as $filter) {
-            $amount    = (float) $filter->{PriceFilter::AMOUNT};
-            $isPercent = (bool)  $filter->{PriceFilter::IS_PERCENTAGE};
-            $price = $isPercent ? $price + ($price * $amount / 100) : $price + $amount;
-        }
-        return $price;
-    }
-
-    private function getBasePrice(ProductVariant $variant, Factory $factory, FactoryLocation $location): array
-    {
-        $cacheKey = "price_{$variant->{ProductVariant::ID}}_{$factory->{Factory::ID}}_{$location->{FactoryLocation::ID}}";
-
-        if (($cached = Cache::get($cacheKey)) !== null) {
-            return $cached;
-        }
-
-        $priceModel = $variant->prices()
-            ->where(ProductPrice::FACTORY_ID, $factory->id)
-            ->where(ProductPrice::FACTORY_LOCATION_ID, $location->id)
-            ->latest(ProductPrice::LAST_UPDATED_AT)
-            ->first();
-
-        $data = ['general_price' => 0.0, 'special_price' => 0.0];
-        if ($priceModel) {
-            $data = [
-                'general_price' => (float) $priceModel->{ProductPrice::GENERAL_PRICE},
-                'special_price' => (float) $priceModel->{ProductPrice::SPECIAL_PRICE},
-            ];
-        }
-
-        Cache::put($cacheKey, $data, now()->addMinutes(15));
-        return $data;
-    }
 
     public function calculateTotalPrice(array $quantities, float $unitPrice, bool $withVAT = false): array
     {
@@ -172,12 +75,13 @@ class PriceCalculationService
             $unit = $orderUnits->get($unitId);
             if (!$unit || $currentQty <= 0) continue;
 
-            $weightPerUnit = (float) $unit->{OrderUnit::AMOUNT};
+            $weightPerUnit = (float) $unit->amount;
             $totalCount += $currentQty;
             $totalWeight += $currentQty * $weightPerUnit;
+
             $breakdown[] = [
                 'unit_id'      => $unit->id,
-                'unit_name'    => $unit->{OrderUnit::NAME},
+                'unit_name'    => $unit->name,
                 'quantity'     => (string) $currentQty,
                 'unit_weight'  => (string) $weightPerUnit,
                 'total_weight' => (string) ($currentQty * $weightPerUnit),

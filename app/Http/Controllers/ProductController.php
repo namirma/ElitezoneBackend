@@ -21,12 +21,10 @@ use App\Models\Cart;
 use App\Models\CustomerType;
 use App\Models\Factory;
 use App\Models\FactoryLocation;
-use App\Models\PriceFilterCategory;
+use App\Models\Offer;
 use App\Models\Product;
-use App\Models\ProductImage;
 use App\Models\ProductVariant;
 use App\Models\ProductVariantAttribute;
-use App\Models\Offer;
 use App\Repositories\Contracts\ProductRepositoryInterface;
 use App\Repositories\Eloquent\ProductRepository;
 use App\Services\PriceCalculationService;
@@ -47,44 +45,29 @@ class ProductController extends Controller
 
     public function index(ProductIndexRequest $request): JsonResponse
     {
-        // 1. دریافت نقش کاربر
         $activeCode = $this->resolveActiveCode();
         $withDebug  = $request->boolean('debug_prices');
-
         $filterData = ProductFilterData::fromRequest($request, $activeCode);
 
+        // Fetch products based on repository type
         if ($this->productRepo instanceof ProductRepository) {
-            $productsQuery = $this->productRepo->getBaseQuery($filterData);
-            $products = $productsQuery->get();
+            $products = $this->productRepo->getBaseQuery($filterData)->get();
         } else {
             $products = Product::all();
         }
 
+        // Hydrate prices for sorting purposes
         $products->each(function (Product $product) use ($activeCode, $withDebug) {
-            $product->variants->each(function ($variant) use ($activeCode, $withDebug) {
-                $this->hydrateVariantPrices($variant, $activeCode, $withDebug);
-            });
+            $product->variants->each(fn($v) => $this->hydrateVariantPrices($v, $activeCode, $withDebug));
 
             $product->min_variant_price = $product->variants
                 ->flatMap(fn($v) => $v->prices)
                 ->min('final_price');
         });
 
-        $sortKey = $filterData->sortKey;
-        $products = $this->applyDynamicSorting($products, $sortKey, 'products');
-
-        // 6. صفحه‌بندی دستی
-        $perPage      = $request->input('per_page', 12);
-        $currentPage  = LengthAwarePaginator::resolveCurrentPage();
-        $slice        = $products->slice(($currentPage - 1) * $perPage, $perPage)->values();
-
-        $paginator = new LengthAwarePaginator(
-            $slice,
-            $products->count(),
-            $perPage,
-            $currentPage,
-            ['path' => LengthAwarePaginator::resolveCurrentPath()]
-        );
+        // Apply sorting & pagination
+        $products = $this->applyDynamicSorting($products, $filterData->sortKey, 'products');
+        $paginator = $this->manualPaginate($products, $request->input('per_page', 12));
 
         return success(
             ProductResource::collection($paginator)->additional($this->paginationMeta($paginator)),
@@ -94,27 +77,15 @@ class ProductController extends Controller
 
     public function show(Product $product): JsonResponse
     {
-        $activeCode = $this->resolveActiveCode();
-        $withDebug  = request()->boolean('debug_prices');
-
+        // Load only essential details (excluding variants for performance)
         $product->loadMissing([
             'category',
             'images',
             'videos',
-            'variants.variantAttributes.attributeType',
-            'variants.limitOrderUnit',
-            'variants.product.orderUnits',
-            'variants.prices.factory',
-            'variants.prices.factoryLocation',
             'orderUnits',
             'offers',
             'aggregateLimitOrderUnit',
         ])->incrementViewCount();
-
-        // محاسبه قیمت
-        $product->variants->each(function (ProductVariant $variant) use ($activeCode, $withDebug) {
-            $this->hydrateVariantPrices($variant, $activeCode, $withDebug);
-        });
 
         $factories = $this->productRepo->getProductFactories($product->id);
 
@@ -124,11 +95,46 @@ class ProductController extends Controller
         ], 'global.received_successfully');
     }
 
+    public function variants(ProductVariantFilterRequest $request, Product $product): JsonResponse
+    {
+        $v          = $request->validated();
+        $activeCode = $this->resolveActiveCode();
+        $withDebug  = $request->boolean('debug_prices');
+        $sort       = $v['sort'] ?? 'newest';
+
+        // 1. Build Query
+        $query = $product->variants()
+            ->with(['prices.factory', 'prices.factoryLocation', 'variantAttributes.attributeType', 'cartItems', 'limitOrderUnit']);
+
+        // 2. Apply Filters
+        if (!empty($v['filter_categories'])) {
+            $query->whereHas(
+                'variantAttributes',
+                fn($q) =>
+                $q->whereIn(ProductVariantAttribute::ATTRIBUTE_ID, $v['filter_categories'])
+            );
+        }
+
+        // 3. Get Collection & Calculate Prices
+        $variants = $query->get();
+        $variants->each(fn($variant) => $this->hydrateVariantPrices($variant, $activeCode, $withDebug));
+
+        // 4. Sort & Paginate
+        $variants  = $this->applyDynamicSorting($variants, $sort, 'variants');
+        $paginator = $this->manualPaginate($variants, $v['per_page'] ?? 10);
+
+        return success(
+            ProductVariantResource::collection($paginator)->additional($this->paginationMeta($paginator)),
+            'global.received_successfully'
+        );
+    }
+
     public function filters(Product $product): JsonResponse
     {
         $product->loadMissing('variants.variantAttributes.attributeType');
+
         $typeIds = $product->variants
-            ->flatMap(fn(ProductVariant $variant) => $variant->variantAttributes->pluck(Attribute::ATTRIBUTE_TYPE_ID))
+            ->flatMap(fn($v) => $v->variantAttributes->pluck(Attribute::ATTRIBUTE_TYPE_ID))
             ->unique();
 
         $attributes = AttributeType::query()
@@ -139,85 +145,42 @@ class ProductController extends Controller
         return success(AttributeTypeResource::collection($attributes), 'global.received_successfully');
     }
 
-    public function variants(ProductVariantFilterRequest $request, Product $product): JsonResponse
-    {
-        $v          = $request->validated();
-        $activeCode = $this->resolveActiveCode();
-        $withDebug  = $request->boolean('debug_prices');
-        $sort       = $v['sort'] ?? 'newest';
-
-        $variants = $product->variants()
-            ->with(['prices.factory', 'prices.factoryLocation', 'variantAttributes.attributeType', 'cartItems', 'limitOrderUnit'])
-            ->when(!empty($v['filter_categories']), function ($q) use ($v) {
-                $q->whereHas('variantAttributes', function ($qq) use ($v) {
-                    $qq->whereIn(ProductVariantAttribute::ATTRIBUTE_ID, $v['filter_categories']);
-                });
-            })
-            ->get();
-
-        $variants->each(function (ProductVariant $variant) use ($activeCode, $withDebug) {
-            $this->hydrateVariantPrices($variant, $activeCode, $withDebug);
-        });
-
-        $variants = $this->applyDynamicSorting($variants, $sort, 'variants');
-
-        $perPage      = !empty($v['per_page']) ? (int) $v['per_page'] : 10;
-        $currentPage  = LengthAwarePaginator::resolveCurrentPage();
-        $slice        = $variants->slice(($currentPage - 1) * $perPage, $perPage)->values();
-        $paginator    = new LengthAwarePaginator($slice, $variants->count(), $perPage, $currentPage);
-
-        return success(
-            ProductVariantResource::collection($paginator)->additional($this->paginationMeta($paginator)),
-            'global.received_successfully'
-        );
-    }
-
     public function getVariantPrice(ProductVariantPriceRequest $request): JsonResponse
     {
-        $v          = $request->validated();
-        $variant    = ProductVariant::find($v['variant_id']);
-        if (!$variant) return error('global.variant_not_found', [], 404);
-        $factory    = Factory::find($v['factory_id']);
-        if (!$factory) return error('global.factory_not_found', [], 404);
-        $location   = FactoryLocation::find($v['location_id']);
-        if (!$location) return error('global.location_not_found', [], 404);
+        $v = $request->validated();
 
-        // سشن سبد برای نشان‌ها
-        $sessionId = $request->cookie('cart_session_id', Str::uuid()->toString());
-        $cart = Auth::check()
-            ? Cart::firstOrCreate([Cart::USER_ID => Auth::id()])
-            : Cart::firstOrCreate([Cart::SESSION_ID => $sessionId], [Cart::USER_ID => null]);
-        if (!Auth::check()) {
-            cookie()->queue('cart_session_id', $cart->session_id, 60 * 24 * 30);
-        }
+        $variant  = ProductVariant::findOrFail($v['variant_id']);
+        $factory  = Factory::findOrFail($v['factory_id']);
+        $location = FactoryLocation::findOrFail($v['location_id']);
 
-        $activeCode = $this->resolveActiveCode();
+        // Handle Cart Session
+        $this->handleCartSession($request);
+        $badge = $this->getCartBadge();
+
+        $activeCode   = $this->resolveActiveCode();
         $customerType = CustomerType::where(CustomerType::CODE, $activeCode)->first();
-        $badge        = $cart->badge_id ? Badge::find($cart->badge_id) : null;
 
-        $price = $this->priceService->calculatePrice(
-            $variant,
-            $factory,
-            $location,
-            $customerType,
-            $badge,
-            null,
-            (bool)($v['with_vat'] ?? false),
-            $activeCode
+        $priceDto = $this->priceService->calculatePrice(
+            variant: $variant,
+            factory: $factory,
+            location: $location,
+            customerType: $customerType,
+            badge: $badge,
+            filterCategoryIds: null,
+            withVAT: (bool)($v['with_vat'] ?? false),
+            filterCategoryCode: $activeCode
         );
 
-        return success($price, 'global.received_successfully');
+        return success($priceDto->toArray(), 'global.received_successfully');
     }
 
     public function calculateOrderPrice(OrderPriceRequest $request): JsonResponse
     {
-        $v          = $request->validated();
-        $variant    = ProductVariant::find($v['variant_id']);
-        if (!$variant) return error('global.variant_not_found', [], 404);
-        $factory    = Factory::find($v['factory_id']);
-        if (!$factory) return error('global.factory_not_found', [], 404);
-        $location   = FactoryLocation::find($v['location_id']);
-        if (!$location) return error('global.location_not_found', [], 404);
+        $v = $request->validated();
+
+        $variant  = ProductVariant::findOrFail($v['variant_id']);
+        $factory  = Factory::findOrFail($v['factory_id']);
+        $location = FactoryLocation::findOrFail($v['location_id']);
 
         $badge      = !empty($v['badge_id']) ? Badge::find($v['badge_id']) : null;
         $activeCode = $this->resolveActiveCode();
@@ -225,7 +188,8 @@ class ProductController extends Controller
 
         $withVat = (bool)($v['with_vat'] ?? false);
 
-        $unit = $this->priceService->calculatePrice(
+        // 1. Calculate Unit Price (DTO)
+        $unitDto = $this->priceService->calculatePrice(
             $variant,
             $factory,
             $location,
@@ -236,12 +200,14 @@ class ProductController extends Controller
             $activeCode
         );
 
+        // 2. Calculate Total (Array) using DTO property
         $order = $this->priceService->calculateTotalPrice(
             $v['quantities'],
-            (float)$unit['final_price'],
+            $unitDto->finalPrice,
             $withVat
         );
 
+        // 3. Apply Offers
         $offers = $this->checkEligibleOffers($variant->product, $order['total_count']);
         $discounted = $this->applyDiscounts((float)$order['subtotal'], $offers);
 
@@ -249,8 +215,8 @@ class ProductController extends Controller
         $final     = $discounted + $vatAmount;
 
         return success([
-            'unit_price'         => (string)$unit['final_price'],
-            'unit_price_details' => $unit,
+            'unit_price'         => (string)$unitDto->finalPrice,
+            'unit_price_details' => $unitDto->toArray(),
             'order_details'      => $order,
             'offers'             => OfferResource::collection($offers),
             'discount_amount'    => (string)($order['subtotal'] - $discounted),
@@ -262,46 +228,83 @@ class ProductController extends Controller
         ], 'global.received_successfully');
     }
 
-    /* -------------------- Helpers -------------------- */
+    // =========================================================================
+    //  Private Helpers
+    // =========================================================================
 
     private function resolveActiveCode(): string
     {
-        if (!Auth::check()) {
-            return 'employer_without_consultant';
-        }
-        $user = Auth::user()->fresh(['roles', 'employer']);
-        return $this->roleResolver->resolve($user);
+        if (!Auth::check()) return 'employer_without_consultant';
+        return $this->roleResolver->resolve(Auth::user()->fresh(['roles', 'employer']));
     }
+
     private function hydrateVariantPrices(ProductVariant $variant, string $activeCode, bool $withDebug = false): void
     {
         $variant->prices->each(function ($price) use ($variant, $activeCode, $withDebug) {
-            $calc = $this->priceService->calculatePrice(
+            $calcDto = $this->priceService->calculatePrice(
                 $variant,
                 $price->factory,
                 $price->factoryLocation,
-                null,
-                null,
-                null,
-                false,
+                null, // filters
+                null, // badge
+                null, // filterIds
+                false, // withVat
                 $activeCode
             );
 
-            $price->final_price        = (float)$calc['final_price'];
-            $price->role_special_price = (float)$calc['special_price_with_filters'];
-            $price->role_general_price = (float)$calc['general_price_with_filters'];
-            $price->role_golden_figure = (float)$calc['role_golden_figure'];
+            // Assign DTO properties to model for sorting/resources
+            $price->final_price        = $calcDto->finalPrice;
+            $price->role_special_price = $calcDto->payablePrice;
+            $price->role_general_price = $calcDto->listPrice;
+            $price->role_golden_figure = max(0.0, $calcDto->listPrice - $calcDto->payablePrice);
 
             if ($withDebug) {
-                $price->pricing_debug = $calc;
+                $price->pricing_debug = $calcDto->toArray();
             }
         });
 
         $variant->min_price = $variant->prices->min('final_price');
     }
 
+    private function manualPaginate(Collection $items, int $perPage): LengthAwarePaginator
+    {
+        $currentPage = LengthAwarePaginator::resolveCurrentPage();
+        $slice       = $items->slice(($currentPage - 1) * $perPage, $perPage)->values();
+
+        return new LengthAwarePaginator(
+            $slice,
+            $items->count(),
+            $perPage,
+            $currentPage,
+            ['path' => LengthAwarePaginator::resolveCurrentPath()]
+        );
+    }
+
+    private function handleCartSession($request): void
+    {
+        if (Auth::check()) {
+            Cart::firstOrCreate([Cart::USER_ID => Auth::id()]);
+        } else {
+            $sessionId = $request->cookie('cart_session_id', Str::uuid()->toString());
+            $cart = Cart::firstOrCreate([Cart::SESSION_ID => $sessionId], [Cart::USER_ID => null]);
+            cookie()->queue('cart_session_id', $cart->session_id, 60 * 24 * 30);
+        }
+    }
+
+    private function getCartBadge(): ?Badge
+    {
+        $cart = Auth::check()
+            ? Cart::where(Cart::USER_ID, Auth::id())->first()
+            : Cart::where(Cart::SESSION_ID, request()->cookie('cart_session_id'))->first();
+
+        return $cart && $cart->badge_id ? Badge::find($cart->badge_id) : null;
+    }
+
     private function checkEligibleOffers(Product $product, int $totalQuantity)
     {
-        return $product->offers()->current()->where(Offer::MINIMUM_QUANTITY, '<=', $totalQuantity)->get();
+        return $product->offers()->current()
+            ->where(Offer::MINIMUM_QUANTITY, '<=', $totalQuantity)
+            ->get();
     }
 
     private function applyDiscounts(float $price, Collection $offers): float
@@ -314,6 +317,20 @@ class ProductController extends Controller
             };
         }
         return max(0.0, $price);
+    }
+
+    private function applyDynamicSorting(Collection $collection, string $sortKey, string $type = 'products'): Collection
+    {
+        $getter = fn($item) => $type === 'products'
+            ? ($item->min_variant_price ?? null)
+            : ($item->min_price ?? null);
+        $sorted = match ($sortKey) {
+            'cheapest'       => $collection->sortBy($getter),
+            'most_expensive' => $collection->sortByDesc($getter),
+            'most_viewed'    => $collection->sortByDesc('view_count'),
+            default          => $collection->sortByDesc('created_at'),
+        };
+        return $sorted->values();
     }
 
     private function paginationMeta(LengthAwarePaginator $paginator): array
@@ -330,32 +347,5 @@ class ProductController extends Controller
                 'prev' => $paginator->previousPageUrl(),
             ],
         ];
-    }
-
-    private function applyDynamicSorting(Collection $collection, string $sortKey, string $type = 'products'): Collection
-    {
-        $minGetter = function ($item) use ($type) {
-            return $type === 'products'
-                ? ($item->min_variant_price ?? null)
-                : ($item->min_price ?? null);
-        };
-
-        switch ($sortKey) {
-            case 'cheapest':
-                $collection = $collection->sortBy(fn($item) => $minGetter($item));
-                break;
-            case 'most_expensive':
-                $collection = $collection->sortByDesc(fn($item) => $minGetter($item));
-                break;
-            case 'most_viewed':
-                $collection = $collection->sortByDesc('view_count');
-                break;
-            case 'newest':
-            default:
-                $collection = $collection->sortByDesc('created_at');
-                break;
-        }
-
-        return $collection->values();
     }
 }
