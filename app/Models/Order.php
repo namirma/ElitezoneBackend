@@ -2,20 +2,28 @@
 
 namespace App\Models;
 
+use App\Models\Builders\OrderBuilder;
+use App\Models\Concerns\HasOrderActions;  // فراخوانی تریت عملیات
+use App\Models\Concerns\HasOrderProgress; // فراخوانی تریت پیشرفت
+use App\Traits\PersianDate;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use App\Traits\PersianDate;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
 
-use function in_array;
-
 class Order extends Model
 {
-    use HasFactory, PersianDate, LogsActivity;
+    use HasFactory,
+        PersianDate,
+        LogsActivity,
+        HasOrderProgress,
+        HasOrderActions;
 
+    // =========================================================================
+    //  Constants (Database Columns)
+    // =========================================================================
     public const
         ID = 'id',
         PLACER_USER_ID = 'placer_user_id',
@@ -55,7 +63,9 @@ class Order extends Model
         CREATED_AT = 'created_at',
         UPDATED_AT = 'updated_at';
 
-    // Status Constants
+    // =========================================================================
+    //  Constants (Business Logic / Statuses)
+    // =========================================================================
     public const
         STATUS_PENDING = 'pending',
         STATUS_RESERVED_EXTENDED = 'reserved_extended',
@@ -78,6 +88,9 @@ class Order extends Model
         SURVEY_REQUESTED = 'requested',
         SURVEY_COMPLETED = 'completed';
 
+    // =========================================================================
+    //  Configurations
+    // =========================================================================
     protected $fillable = [
         self::PLACER_USER_ID,
         self::BENEFICIARY_USER_ID,
@@ -125,8 +138,12 @@ class Order extends Model
         self::SHIPPED_AT => 'datetime',
         self::RESERVATION_EXPIRES_AT => 'datetime',
         self::PARTIAL_PAYMENT_AMOUNT => 'decimal:2',
+        self::FINAL_AMOUNT => 'decimal:2',
     ];
 
+    // =========================================================================
+    //  Relationships
+    // =========================================================================
     public function placer(): BelongsTo
     {
         return $this->belongsTo(User::class, self::PLACER_USER_ID);
@@ -146,195 +163,15 @@ class Order extends Model
     {
         return $this->hasMany(OrderItem::class, OrderItem::ORDER_ID);
     }
+
     public function surveys(): HasMany
     {
         return $this->hasMany(OrderSurvey::class, OrderSurvey::ORDER_ID);
     }
 
-    public function getDashboardProgressAttribute(): array
-    {
-        $s = $this->attributes[self::STATUS];
-        $id = $this->attributes[self::ID];
-        $paymentStatus = $this->attributes[self::PAYMENT_STATUS];
-
-        // مقداردهی اولیه استیت‌ها
-        $stepsData = [
-            1 => ['state' => 'inactive', 'actions' => []],
-            2 => ['state' => 'inactive', 'actions' => []],
-            3 => ['state' => 'inactive', 'actions' => []],
-            4 => ['state' => 'inactive', 'actions' => []],
-            5 => ['state' => 'inactive', 'actions' => []],
-        ];
-
-        // --- محاسبه وضعیت دایره‌ها (State) ---
-        $stepsData[1]['state'] = 'completed';
-
-        if (in_array($s, [self::STATUS_PENDING, self::STATUS_RESERVED_EXTENDED, self::STATUS_PROCESSING, self::STATUS_PREPARING])) {
-            $stepsData[2]['state'] = 'current';
-        } elseif (in_array($s, [self::STATUS_WEIGHBRIDGE_DONE, self::STATUS_WAYBILL_ISSUED, self::STATUS_SHIPPED, self::STATUS_DELIVERED])) {
-            $stepsData[2]['state'] = 'completed';
-        }
-
-        if ($s === self::STATUS_WEIGHBRIDGE_DONE) {
-            $stepsData[3]['state'] = 'current';
-        } elseif (in_array($s, [self::STATUS_WAYBILL_ISSUED, self::STATUS_SHIPPED, self::STATUS_DELIVERED])) {
-            $stepsData[3]['state'] = 'completed';
-        }
-
-        if (in_array($s, [self::STATUS_WAYBILL_ISSUED, self::STATUS_SHIPPED])) {
-            $stepsData[4]['state'] = 'current';
-        } elseif ($s === self::STATUS_DELIVERED) {
-            $stepsData[4]['state'] = 'completed';
-        }
-
-        if ($s === self::STATUS_DELIVERED) {
-            $stepsData[5]['state'] = 'completed';
-        }
-
-        // --- محاسبه لینک‌ها و اکشن‌ها (Actions) ---
-
-        // مرحله ۱: رزرو
-        if ($paymentStatus === self::PAYMENT_PENDING && in_array($s, [self::STATUS_PENDING, self::STATUS_RESERVED_EXTENDED])) {
-            $stepsData[1]['actions'][] = [
-                'label' => 'پرداخت فاکتور',
-                'link'  => "/checkout/payment/{$id}", // مستقیم به صفحه پرداخت
-                'type'  => 'primary'
-            ];
-        } elseif ($paymentStatus === self::PAYMENT_PAID) {
-            $stepsData[1]['actions'][] = [
-                'label' => 'دریافت رسید',
-                'link'  => "/profile/orders/{$id}/invoice/initial", // دانلود مستقیم
-                'type'  => 'secondary'
-            ];
-        }
-
-        // مرحله ۲: ثبت اولیه
-        if (in_array($s, [self::STATUS_WEIGHBRIDGE_DONE, self::STATUS_WAYBILL_ISSUED, self::STATUS_SHIPPED, self::STATUS_DELIVERED])) {
-            $stepsData[2]['actions'][] = [
-                'label' => 'دانلود فاکتور اولیه',
-                'link'  => "/profile/orders/{$id}/invoice/initial", // دانلود مستقیم
-                'type'  => 'secondary'
-            ];
-        } else {
-            $stepsData[2]['actions'][] = [
-                'label' => 'مشاهده جزئیات',
-                'link'  => "/profile/orders/{$id}", // مشاهده در سایت
-                'type'  => 'secondary'
-            ];
-        }
-
-        // مرحله ۳: ثبت نهایی (باسکول)
-        if ($s === self::STATUS_WEIGHBRIDGE_DONE) {
-            $stepsData[3]['actions'][] = [
-                'label' => 'فاکتور نهایی (تسویه)',
-                'link'  => "/checkout/payment/{$id}",
-                'type'  => 'primary'
-            ];
-        } elseif (in_array($s, [self::STATUS_WAYBILL_ISSUED, self::STATUS_SHIPPED, self::STATUS_DELIVERED])) {
-            $stepsData[3]['actions'][] = [
-                'label' => 'دریافت فاکتور نهایی',
-                'link'  => "/profile/orders/{$id}/invoice/final", // دانلود مستقیم
-                'type'  => 'secondary'
-            ];
-        }
-
-        // مرحله ۴: حمل
-        if (in_array($s, [self::STATUS_WAYBILL_ISSUED, self::STATUS_SHIPPED])) {
-            // بارنامه معمولاً عکس یا متنی در صفحه جزئیات است
-            $stepsData[4]['actions'][] = [
-                'label' => 'مشاهده بارنامه',
-                'link'  => "/profile/orders/{$id}",
-                'type'  => 'primary'
-            ];
-        } elseif ($s === self::STATUS_DELIVERED) {
-            $stepsData[4]['actions'][] = [
-                'label' => 'مشاهده جزئیات حمل',
-                'link'  => "/profile/orders/{$id}",
-                'type'  => 'secondary'
-            ];
-        }
-
-        // مرحله ۵: تکمیل
-        if ($s === self::STATUS_DELIVERED) {
-            $stepsData[5]['actions'][] = [
-                'label' => 'دریافت فاکتور رسمی',
-                'link'  => "/profile/orders/{$id}/invoice/tax", // دانلود مستقیم
-                'type'  => 'secondary'
-            ];
-        }
-
-        return [
-            'is_cancelled' => in_array($s, [self::STATUS_CANCELLED, self::STATUS_FAILED]),
-            'steps' => [
-                [
-                    'step' => 1,
-                    'title' => 'رزرو سفارش',
-                    'state' => $stepsData[1]['state'],
-                    'actions' => $stepsData[1]['actions']
-                ],
-                [
-                    'step' => 2,
-                    'title' => 'ثبت اولیه پس از پرداخت',
-                    'state' => $stepsData[2]['state'],
-                    'actions' => $stepsData[2]['actions']
-                ],
-                [
-                    'step' => 3,
-                    'title' => 'ثبت نهایی بعد از باسکول',
-                    'state' => $stepsData[3]['state'],
-                    'actions' => $stepsData[3]['actions']
-                ],
-                [
-                    'step' => 4,
-                    'title' => 'در حال حمل',
-                    'state' => $stepsData[4]['state'],
-                    'actions' => $stepsData[4]['actions']
-                ],
-                [
-                    'step' => 5,
-                    'title' => 'تکمیل شده',
-                    'state' => $stepsData[5]['state'],
-                    'actions' => $stepsData[5]['actions']
-                ],
-            ]
-        ];
-    }
-
-    public function restoreStock(): void
-    {
-        foreach ($this->items as $item) {
-            $totalQty = array_sum($item->quantity_details ?? []);
-            if ($totalQty > 0) {
-                $item->productVariant()->increment('stock_quantity', $totalQty);
-            }
-        }
-    }
-
-    public function refundToWallet(): void
-    {
-        if ($this->payment_status === self::PAYMENT_PAID || $this->partial_payment_amount > 0) {
-
-            $refundAmount = $this->payment_status === self::PAYMENT_PAID
-                ? $this->final_amount
-                : $this->partial_payment_amount;
-
-            $user = $this->placer;
-            $wallet = $user->wallet()->firstOrCreate();
-
-            $wallet->increment(\App\Models\Wallet::BALANCE, $refundAmount);
-
-            $wallet->transactions()->create([
-                'amount' => $refundAmount,
-                'type'   => 'deposit',
-                'status' => 'confirmed',
-                'description' => "بازگشت وجه بابت لغو سفارش #{$this->order_number}",
-                'order_id' => $this->id
-            ]);
-
-            $this->update(['payment_status' => self::PAYMENT_REFUNDED]);
-        }
-    }
-
+    // =========================================================================
+    //  Activity Log
+    // =========================================================================
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
@@ -350,5 +187,10 @@ class Order extends Model
                 };
                 return "سفارش شماره {$this->order_number} {$action} شد.";
             });
+    }
+
+    public function newEloquentBuilder($query): OrderBuilder
+    {
+        return new OrderBuilder($query);
     }
 }

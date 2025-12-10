@@ -43,9 +43,34 @@ class WalletTransaction extends Model
     ];
 
     protected $casts = [
-        self::META => 'array'
+        self::META => 'array',
+        self::AMOUNT => 'decimal:2',
     ];
 
+    // --- متدهای کمکی (Accessors) برای فرانت‌ ---
+
+    // دریافت متن فارسی وضعیت
+    public function getStatusLabelAttribute(): string
+    {
+        return match ($this->{self::STATUS}) {
+            self::STATUS_PENDING   => 'در انتظار بررسی',
+            self::STATUS_CONFIRMED => 'موفق',
+            self::STATUS_REJECTED  => 'رد شده',
+            self::STATUS_FAILED    => 'ناموفق',
+            default                => 'نامشخص',
+        };
+    }
+
+    // دریافت رنگ وضعیت (برای نمایش بج در فرانت)
+    public function getStatusColorAttribute(): string
+    {
+        return match ($this->{self::STATUS}) {
+            self::STATUS_PENDING   => 'warning',
+            self::STATUS_CONFIRMED => 'success',
+            self::STATUS_REJECTED, self::STATUS_FAILED => 'danger',
+            default                => 'secondary',
+        };
+    }
     protected $appends = ['receipt_details'];
 
     public function getReceiptDetailsAttribute()

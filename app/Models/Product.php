@@ -153,4 +153,5 @@ class Product extends Model
         if (!in_array("updated_at_diff", $this->appends)) $this->appends[] = "updated_at_diff";
         return $value;
     }
+
 }

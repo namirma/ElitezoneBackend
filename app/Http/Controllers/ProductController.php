@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\DataTransferObjects\ProductFilterData;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\OrderPriceRequest;
 use App\Http\Requests\ProductIndexRequest;
@@ -46,34 +47,44 @@ class ProductController extends Controller
 
     public function index(ProductIndexRequest $request): JsonResponse
     {
-        $filters = $request->validated();
+        // 1. دریافت نقش کاربر
         $activeCode = $this->resolveActiveCode();
         $withDebug  = $request->boolean('debug_prices');
-        $filterData = \App\DataTransferObjects\ProductFilterData::fromRequest($request, $activeCode);
 
-        $paginator = $this->productRepo->getProducts(
-            $filterData,
-            $request->input('per_page', 12)
-        );
+        $filterData = ProductFilterData::fromRequest($request, $activeCode);
 
-        $products = ($this->productRepo instanceof ProductRepository) ? $this->productRepo->getBaseQuery($filters)->get() : Product::all();
+        if ($this->productRepo instanceof ProductRepository) {
+            $productsQuery = $this->productRepo->getBaseQuery($filterData);
+            $products = $productsQuery->get();
+        } else {
+            $products = Product::all();
+        }
 
         $products->each(function (Product $product) use ($activeCode, $withDebug) {
-            $product->variants->each(function (ProductVariant $variant) use ($activeCode, $withDebug) {
+            $product->variants->each(function ($variant) use ($activeCode, $withDebug) {
                 $this->hydrateVariantPrices($variant, $activeCode, $withDebug);
             });
+
             $product->min_variant_price = $product->variants
                 ->flatMap(fn($v) => $v->prices)
                 ->min('final_price');
         });
 
-        $sortKey = $filters['sort'] ?? 'newest';
+        $sortKey = $filterData->sortKey;
         $products = $this->applyDynamicSorting($products, $sortKey, 'products');
 
-        $perPage      = !empty($filters['per_page']) ? (int) $filters['per_page'] : 12;
+        // 6. صفحه‌بندی دستی
+        $perPage      = $request->input('per_page', 12);
         $currentPage  = LengthAwarePaginator::resolveCurrentPage();
         $slice        = $products->slice(($currentPage - 1) * $perPage, $perPage)->values();
-        $paginator    = new LengthAwarePaginator($slice, $products->count(), $perPage, $currentPage);
+
+        $paginator = new LengthAwarePaginator(
+            $slice,
+            $products->count(),
+            $perPage,
+            $currentPage,
+            ['path' => LengthAwarePaginator::resolveCurrentPath()]
+        );
 
         return success(
             ProductResource::collection($paginator)->additional($this->paginationMeta($paginator)),

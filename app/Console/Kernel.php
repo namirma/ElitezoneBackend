@@ -20,15 +20,19 @@ class Kernel extends ConsoleKernel
 
         // 3. افزودن تسک زمان‌بندی شده برای لغو سفارش‌ها
         $schedule->command('orders:cancel-expired')
-            ->everyMinute() // این دستور هر دقیقه اجرا می‌شود
-            ->withoutOverlapping(); // جلوگیری از اجرای همزمان در صورت طول کشیدن
+            ->everyMinute()
+            ->withoutOverlapping()
+            ->runInBackground()
+            ->onOneServer();
 
-
-        $schedule->command('products:sync-kavir')->hourly()->withoutOverlapping();
-
-        // گزینه ۲: اجرا روزی دو بار (مثلاً ۱۰ صبح و ۲ ظهر)
-        // $schedule->command('products:sync-kavir')->dailyAt('10:00');
-        // $schedule->command('products:sync-kavir')->dailyAt('14:00');
+        // سینک محصولات کویر (سنگین)
+        $schedule->command('products:sync-kavir')
+            ->hourly()
+            ->withoutOverlapping()
+            ->runInBackground()
+            ->onOneServer()
+            // ->emailOutputOnFailure('admin@elitezone.me')
+        ;
     }
     /**
      * Register the commands for the application.

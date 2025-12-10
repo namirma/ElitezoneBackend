@@ -9,6 +9,7 @@ use App\Models\ProductPriceCache;
 use App\Models\ProductVariantAttribute;
 use App\Repositories\Contracts\ProductRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -17,6 +18,33 @@ class ProductRepository implements ProductRepositoryInterface
     /**
      * دریافت لیست محصولات با استفاده از DTO
      */
+    public function getBaseQuery(ProductFilterData $filters): Builder
+    {
+        $query = Product::query()->active()
+            ->with([
+                'category',
+                'images' => fn($q) => $q->where(ProductImage::IS_PRIMARY, true),
+                'variants.prices.factory', // برای محاسبه قیمت نیاز است
+                'variants.prices.factoryLocation',
+            ]);
+
+        // اعمال فیلتر دسته‌بندی
+        if ($filters->categoryId) {
+            $query->where(Product::CATEGORY_ID, $filters->categoryId);
+        }
+
+        // اعمال جستجو
+        if ($filters->search) {
+            $search = $filters->search;
+            $query->where(function ($q) use ($search) {
+                $q->where(Product::NAME, 'like', "%{$search}%")
+                  ->orWhere(Product::DESCRIPTION, 'like', "%{$search}%");
+            });
+        }
+
+        return $query;
+    }
+
     public function getProducts(ProductFilterData $filters, int $perPage = 12): LengthAwarePaginator
     {
         $query = Product::query()->active()
