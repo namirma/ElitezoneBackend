@@ -64,20 +64,16 @@ class CheckoutController extends Controller
      */
     public function placeOrder(StoreOrderRequest $request, PlaceOrderAction $placeOrderAction): JsonResponse
     {
-        try {
-            $orderData = PlaceOrderData::fromRequest($request);
 
-            $order = $placeOrderAction->execute(Auth::user(), $orderData);
+        $orderData = $request->toDto();
 
-            $order->load(['items.productVariant', 'address']);
+        $order = $placeOrderAction->execute(Auth::user(), $orderData);
 
-            return success(
-                new OrderResource($order),
-                __('checkout.order_placed_reserved')
-            );
+        $order->load(['items.productVariant', 'address']);
 
-        } catch (\Exception $e) {
-            return error($e->getMessage(), [], 400);
-        }
+        return success(
+            new OrderResource($order),
+            __('checkout.order_placed_reserved')
+        );
     }
 }

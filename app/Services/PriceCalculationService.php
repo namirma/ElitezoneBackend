@@ -16,6 +16,7 @@ use App\Services\Pricing\Pipes\ApplyVat;
 use App\Services\Pricing\Pipes\SetBasePrice;
 use App\Services\Pricing\PricingContext;
 use Illuminate\Pipeline\Pipeline;
+use Illuminate\Support\Facades\Cache;
 
 class PriceCalculationService
 {
@@ -57,7 +58,7 @@ class PriceCalculationService
             ->send($context)
             ->through($pipes)
             ->then(function (PricingContext $context) {
-                return $context->toDto(); 
+                return $context->toDto();
             });
     }
 
@@ -67,12 +68,17 @@ class PriceCalculationService
         $totalCount = 0.0;
         $totalWeight = 0.0;
         $breakdown = [];
-        $orderUnits = OrderUnit::all()->keyBy(OrderUnit::ID);
+
+        $orderUnits = Cache::remember('pricing:order_units_collection', 86400, function () {
+            return OrderUnit::all()->keyBy(OrderUnit::ID);
+        });
 
         foreach ($quantities as $unitIdToString => $qty) {
             $unitId = (int) $unitIdToString;
             $currentQty = (float) $qty;
+
             $unit = $orderUnits->get($unitId);
+
             if (!$unit || $currentQty <= 0) continue;
 
             $weightPerUnit = (float) $unit->amount;

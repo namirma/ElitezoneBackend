@@ -13,6 +13,10 @@ use Illuminate\Support\Facades\Log;
 
 class PaymentController extends Controller
 {
+    public function result()
+    {
+        return response()->json(['message' => 'Callback URL.']);
+    }
     /**
      * مدیریت بازگشت از درگاه پرداخت (Callback)
      */
@@ -93,8 +97,11 @@ class PaymentController extends Controller
 
             $transaction->update([
                 'status' => WalletTransaction::STATUS_CONFIRMED,
-                'meta'   => [...$transaction->meta ?? [], 'ref_id'      => $refId,
-                    'verified_at' => now()->toDateTimeString()]
+                'meta'   => [
+                    ...$transaction->meta ?? [],
+                    'ref_id'      => $refId,
+                    'verified_at' => now()->toDateTimeString()
+                ]
             ]);
             WalletFunded::dispatch($transaction);
         });

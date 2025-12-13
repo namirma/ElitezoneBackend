@@ -22,6 +22,10 @@ use Throwable;
 
 class AuthController extends Controller
 {
+    public function me(Request $request)
+    {
+        return $request->user();
+    }
     public function register(StoreUserRequest $request): JsonResponse
     {
         $mobile       = $this->mobileTo09($request->validated('username'));

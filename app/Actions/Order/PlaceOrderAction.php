@@ -4,6 +4,8 @@ namespace App\Actions\Order;
 
 use App\DataTransferObjects\PlaceOrderData;
 use App\Events\OrderPlaced;
+use App\Exceptions\Order\CartIsEmptyException;
+use App\Exceptions\Order\StockUnavailableException;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\CustomerType;
@@ -12,13 +14,17 @@ use App\Models\Offer;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderUnit;
+use App\Models\PriceFilterCategory;
+use App\Models\ProductVariant;
 use App\Models\User;
 use App\Models\UserType;
+use App\Repositories\Contracts\OrderRepositoryInterface;
 use App\Services\InventoryService;
 use App\Services\PriceCalculationService;
 use App\Services\PricingRoleResolver;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Exception;
 
@@ -27,96 +33,38 @@ class PlaceOrderAction
     public function __construct(
         private readonly PriceCalculationService $priceService,
         private readonly PricingRoleResolver $roleResolver,
-        private readonly InventoryService $inventoryService
+        private readonly InventoryService $inventoryService,
+        private readonly OrderRepositoryInterface $orderRepo
     ) {}
 
-    /**
-     * اجرای عملیات ثبت سفارش
-     */
     public function execute(User $user, PlaceOrderData $data): Order
     {
-        // ۱. دریافت و اعتبارسنجی سبد خرید
-        $cart = $this->getCart($user);
+        $cart = $this->getCartOrFail($user);
 
-        if (!$cart || $cart->items->isEmpty()) {
-            throw new Exception(__('cart.cart_is_empty'));
-        }
+        $this->ensureStockIsAvailable($cart);
 
-        // ۲. اعتبارسنجی انبار قبل از شروع پردازش سنگین (Fail Fast)
-        $this->validateStockAvailability($cart);
+        $financials = $this->calculateFinancials($cart, $user, $data);
 
-        // ۳. محاسبات مالی کامل (قیمت، تخفیف، مالیات، کارمزد)
-        $totals = $this->calculateOrderTotals($cart, $user, $data);
+        $order = DB::transaction(function () use ($user, $cart, $data, $financials) {
+            $order = $this->createOrderRecord($user, $data, $financials);
 
-        // ۴. تراکنش دیتابیس (ثبت سفارش + کسر موجودی + حذف سبد)
-        $order = DB::transaction(function () use ($user, $cart, $data, $totals) {
+            $this->createOrderItems($order, $cart);
 
-            // الف) ایجاد سفارش
-            $order = Order::create([
-                Order::PLACER_USER_ID         => $user->id,
-                Order::BENEFICIARY_USER_ID    => $data->beneficiaryUserId ?? $user->id,
-                Order::ADDRESS_ID             => $data->addressId,
-                Order::ORDER_NUMBER           => 'EL-' . strtoupper(Str::random(10)),
-                Order::STATUS                 => Order::STATUS_PENDING,
-                Order::PAYMENT_STATUS         => Order::PAYMENT_PENDING,
-
-                // مبالغ محاسبه شده
-                Order::SUBTOTAL               => $totals['subtotal'],
-                Order::DISCOUNT_AMOUNT        => $totals['total_discount'],
-                Order::VAT_AMOUNT             => $totals['vat_amount'],
-                Order::SHIPPING_COST          => $totals['shipping_cost'],
-                Order::FINAL_AMOUNT           => $totals['final_amount'],
-
-                // کارمزدها
-                Order::ENGINEER_FEE_AMOUNT    => $totals['fees']['engineer'],
-                Order::CONTRACTOR_FEE_AMOUNT  => $totals['fees']['contractor'],
-                Order::ENGINEER_FEE_PAYMENT_STATUS => $totals['fees']['engineer'] ? Order::FEE_PAYMENT_PENDING : null,
-                Order::CONTRACTOR_FEE_PAYMENT_STATUS => $totals['fees']['contractor'] ? Order::FEE_PAYMENT_PENDING : null,
-
-                Order::RESERVATION_EXPIRES_AT => now()->addHours(2),
-                Order::NOTES                  => $data->description,
-            ]);
-
-            // ب) ایجاد آیتم‌های سفارش
-            foreach ($cart->items as $item) {
-                $supplierId = $item->factory->{Factory::SUPPLIER_USER_ID} ?? null;
-                if (!$supplierId) {
-                    throw new Exception("تامین‌کننده برای کارخانه {$item->factory->name} یافت نشد.");
-                }
-
-                OrderItem::create([
-                    OrderItem::ORDER_ID           => $order->id,
-                    OrderItem::PRODUCT_VARIANT_ID => $item->{CartItem::PRODUCT_VARIANT_ID},
-                    OrderItem::SUPPLIER_USER_ID   => $supplierId,
-                    OrderItem::PRODUCT_NAME       => $item->productVariant->{\App\Models\ProductVariant::NAME},
-                    OrderItem::VARIANT_SKU        => $item->productVariant->{\App\Models\ProductVariant::SKU},
-                    OrderItem::QUANTITY_DETAILS   => $item->{CartItem::QUANTITIES},
-                    OrderItem::UNIT_PRICE         => $item->calculated_unit_price,
-                    OrderItem::TOTAL_PRICE        => $item->calculated_line_total,
-                ]);
-            }
-
-            // ج) کسر موجودی انبار (از طریق سرویس ایمن)
             $this->inventoryService->deductStockForOrder($order);
 
-            // د) حذف سبد خرید
-            $cart->items()->delete();
-            $cart->delete();
+            $this->clearCart($cart);
 
             return $order;
         });
 
-        // ۵. شلیک رویداد (برای ارسال پیامک و ...)
         OrderPlaced::dispatch($order);
 
         return $order;
     }
 
-    // --- متدهای کمکی (Private Helpers) ---
-
-    private function getCart(User $user): ?Cart
+    private function getCartOrFail(User $user): Cart
     {
-        return Cart::where(Cart::USER_ID, $user->id)
+        $cart = Cart::where(Cart::USER_ID, $user->id)
             ->with([
                 'items.productVariant.product.offers',
                 'items.factory',
@@ -125,104 +73,122 @@ class PlaceOrderAction
                 'badge',
                 'priceFilterCategories'
             ])->first();
+
+        if (!$cart || $cart->items->isEmpty()) {
+            throw new CartIsEmptyException();
+        }
+
+        return $cart;
     }
 
-    private function validateStockAvailability(Cart $cart): void
+    private function ensureStockIsAvailable(Cart $cart): void
     {
+        $unitsMap = Cache::remember('order_units_map', 86400, function () {
+            return OrderUnit::all()->keyBy(OrderUnit::ID);
+        });
+
         foreach ($cart->items as $item) {
-            $requestedQty = array_sum($item->{CartItem::QUANTITIES} ?? []);
-            if ($item->productVariant->stock_quantity < $requestedQty) {
-                throw new Exception("موجودی محصول {$item->productVariant->name} کافی نیست.");
+            $variant = $item->productVariant;
+            $requiredBaseQty = 0.0;
+
+            foreach ($item->{CartItem::QUANTITIES} as $unitId => $qty) {
+                $unit = $unitsMap->get((int)$unitId);
+                if ($unit) {
+                    $requiredBaseQty += (float)$qty * (float)$unit->amount;
+                }
+            }
+
+            if ($variant->stock_quantity < $requiredBaseQty) {
+                throw new StockUnavailableException($variant->name);
             }
         }
     }
 
-    private function calculateOrderTotals(Cart $cart, User $user, PlaceOrderData $data): array
+    private function calculateFinancials(Cart $cart, User $user, PlaceOrderData $data): array
     {
         $subtotal = 0.0;
         $totalVat = 0.0;
         $totalItemDiscounts = 0.0;
 
         $activeCode = $this->roleResolver->resolve($user);
+        $priceFilter = PriceFilterCategory::where('code', $activeCode)->first();
+        $filterIds = $priceFilter ? [$priceFilter->id] : $cart->priceFilterCategories->pluck('id')->toArray();
         $customerType = CustomerType::where(CustomerType::CODE, $activeCode)->first() ?: $cart->customerType;
+
         $orderUnitsMap = OrderUnit::all()->keyBy(OrderUnit::ID);
 
-        // ۱. محاسبه قیمت هر آیتم
         foreach ($cart->items as $item) {
+            /** @var \App\DataTransferObjects\Pricing\PriceCalculationResult $pricing */
             $pricing = $this->priceService->calculatePrice(
-                $item->productVariant,
-                $item->factory,
-                $item->factoryLocation,
-                $customerType,
-                $cart->badge,
-                null,
-                true
+                variant: $item->productVariant,
+                factory: $item->factory,
+                location: $item->factoryLocation,
+                customerType: $customerType,
+                badge: $cart->badge,
+                filterCategoryIds: $filterIds,
+                withVAT: true,
+                filterCategoryCode: $activeCode
             );
 
-            // محاسبه وزن کل
-            $itemWeight = 0;
-            foreach ($item->{CartItem::QUANTITIES} as $unitId => $qty) {
-                if ($unit = $orderUnitsMap->get($unitId)) {
-                    $itemWeight += (float)$qty * (float)$unit->{OrderUnit::AMOUNT};
-                }
-            }
+            $itemTotalWeight = $this->calculateItemWeight($item->{CartItem::QUANTITIES}, $orderUnitsMap);
 
-            $unitPrice = (float)$pricing['final_price'];
-            $lineTotal = $itemWeight * $unitPrice;
+            $unitPrice = $pricing->finalPrice;
+            $unitVatAmount = $pricing->vatAmount;
 
-            // محاسبه مالیات خطی
-            $vatRate = (float)($pricing['vat_rate'] ?? 0);
-            $lineVat = $lineTotal * ($vatRate / 100);
+            $lineTotal = $itemTotalWeight * $unitPrice;
+            $lineVat = $itemTotalWeight * $unitVatAmount;
 
-            // ذخیره مقادیر محاسبه شده در آبجکت آیتم (برای استفاده در مرحله ثبت)
             $item->calculated_unit_price = $unitPrice;
             $item->calculated_line_total = $lineTotal;
+            $item->calculated_line_vat = $lineVat;
 
             $subtotal += $lineTotal;
             $totalVat += $lineVat;
 
-            // جمع تخفیف‌های واریانت (اگر در سرویس قیمت محاسبه شده باشد)
-            $itemDiscountPerUnit = (float)($pricing['variant_discount_amount'] ?? 0);
-            $totalItemDiscounts += $itemDiscountPerUnit * $itemWeight;
+            $itemDiscountPerUnit = $pricing->variantDiscountAmount;
+            $totalItemDiscounts += $itemDiscountPerUnit * $itemTotalWeight;
         }
 
-        // ۲. محاسبه تخفیف‌های سطح سبد خرید (Offers)
-        $offers = $this->collectOffers($cart->items);
-        $cartOfferDiscount = $this->calculateCartOffers($subtotal, $offers);
+        $cartOfferDiscount = $this->calculateCartLevelDiscounts($cart->items, $subtotal, $orderUnitsMap);
 
         $totalDiscount = $totalItemDiscounts + $cartOfferDiscount;
+        $fees = $this->calculateBeneficiaryFees($user, $data->beneficiaryUserId, $subtotal);
         $shippingCost = 0.0;
 
-
-        $finalAmount = $subtotal - $cartOfferDiscount + $totalVat + $shippingCost;
-
-        // ۴. محاسبه کارمزدها (Fees)
-        $fees = $this->calculateFees($user, $data->beneficiaryUserId, $subtotal);
+        $finalAmount = max(0, ($subtotal - $cartOfferDiscount) + $totalVat + $shippingCost);
 
         return [
             'subtotal'       => $subtotal,
             'vat_amount'     => $totalVat,
             'total_discount' => $totalDiscount,
             'shipping_cost'  => $shippingCost,
-            'final_amount'   => max(0, $finalAmount),
+            'final_amount'   => $finalAmount,
             'fees'           => $fees,
         ];
     }
 
-    private function collectOffers(Collection $items): Collection
+    private function calculateItemWeight(array $quantities, Collection $unitsMap): float
     {
-        return $items->flatMap(function (CartItem $item) {
-            $qty = array_sum($item->{CartItem::QUANTITIES});
-            return $item->productVariant->product->offers()->current()
-                ->where(Offer::MINIMUM_QUANTITY, '<=', $qty)
-                ->get();
-        })->unique(Offer::ID);
+        $weight = 0.0;
+        foreach ($quantities as $unitId => $qty) {
+            if ($unit = $unitsMap->get((int)$unitId)) {
+                $weight += (float)$qty * (float)$unit->{OrderUnit::AMOUNT};
+            }
+        }
+        return $weight;
     }
 
-    private function calculateCartOffers(float $subtotal, Collection $offers): float
+    private function calculateCartLevelDiscounts(Collection $items, float $subtotal, Collection $unitsMap): float
     {
+        $applicableOffers = $items->flatMap(function (CartItem $item) use ($unitsMap) {
+            $totalWeight = $this->calculateItemWeight($item->{CartItem::QUANTITIES}, $unitsMap);
+            return $item->productVariant->product->offers()->current()
+                ->where(Offer::MINIMUM_QUANTITY, '<=', $totalWeight)
+                ->get();
+        })->unique(Offer::ID);
+
         $discount = 0.0;
-        foreach ($offers as $offer) {
+        foreach ($applicableOffers as $offer) {
             if ($offer->{Offer::TYPE} === 'percentage') {
                 $discount += $subtotal * ($offer->{Offer::VALUE} / 100);
             } elseif ($offer->{Offer::TYPE} === 'fixed_amount') {
@@ -232,28 +198,80 @@ class PlaceOrderAction
         return min($discount, $subtotal);
     }
 
-    private function calculateFees(User $placer, ?int $beneficiaryId, float $amount): array
+    private function calculateBeneficiaryFees(User $placer, ?int $beneficiaryId, float $subtotal): array
     {
         $fees = ['engineer' => null, 'contractor' => null];
-
-        if (!$beneficiaryId || $beneficiaryId == $placer->id) {
-            return $fees;
-        }
+        if (!$beneficiaryId || $beneficiaryId == $placer->id) return $fees;
 
         $beneficiary = User::find($beneficiaryId);
         if (!$beneficiary) return $fees;
 
-        $engineerTypeId = UserType::where('slug', 'engineer')->value('id');
-        $contractorTypeId = UserType::where('slug', 'contractor')->value('id');
+        $typeIds = UserType::whereIn('slug', ['engineer', 'contractor'])->pluck('id', 'slug');
 
-        if ($engineerTypeId && $beneficiary->{User::TYPE_ID} == $engineerTypeId) {
-            $percentage = config('elitezon.consultant_fee_percentage', 2.0);
-            $fees['engineer'] = ($amount * $percentage) / 100;
-        } elseif ($contractorTypeId && $beneficiary->{User::TYPE_ID} == $contractorTypeId) {
-            $percentage = config('elitezon.contractor_fee_percentage', 2.0);
-            $fees['contractor'] = ($amount * $percentage) / 100;
+        if (isset($typeIds['engineer']) && $beneficiary->{User::TYPE_ID} == $typeIds['engineer']) {
+            $pct = config('elitezon.consultant_fee_percentage', 2.0);
+            $fees['engineer'] = ($subtotal * $pct) / 100;
+        } elseif (isset($typeIds['contractor']) && $beneficiary->{User::TYPE_ID} == $typeIds['contractor']) {
+            $pct = config('elitezon.contractor_fee_percentage', 2.0);
+            $fees['contractor'] = ($subtotal * $pct) / 100;
         }
-
         return $fees;
+    }
+
+    private function createOrderRecord(User $user, PlaceOrderData $data, array $fins): Order
+    {
+        return $this->orderRepo->create([
+            Order::PLACER_USER_ID => $user->id,
+            Order::BENEFICIARY_USER_ID => $data->beneficiaryUserId ?? $user->id,
+            Order::ADDRESS_ID => $data->addressId,
+            Order::ORDER_NUMBER => 'EL-' . strtoupper(Str::random(10)),
+
+            Order::STATUS => Order::STATUS_PENDING,
+            Order::PAYMENT_STATUS => Order::PAYMENT_PENDING,
+
+            Order::SUBTOTAL => $fins['subtotal'],
+            Order::DISCOUNT_AMOUNT => $fins['total_discount'],
+            Order::VAT_AMOUNT => $fins['vat_amount'],
+            Order::SHIPPING_COST => $fins['shipping_cost'],
+            Order::FINAL_AMOUNT => $fins['final_amount'],
+
+            Order::ENGINEER_FEE_AMOUNT => $fins['fees']['engineer'],
+            Order::CONTRACTOR_FEE_AMOUNT => $fins['fees']['contractor'],
+            Order::ENGINEER_FEE_PAYMENT_STATUS => $fins['fees']['engineer'] ? Order::FEE_PAYMENT_PENDING : null,
+            Order::CONTRACTOR_FEE_PAYMENT_STATUS => $fins['fees']['contractor'] ? Order::FEE_PAYMENT_PENDING : null,
+
+            Order::RESERVATION_EXPIRES_AT => now()->addHours(2),
+            Order::NOTES => $data->description,
+        ]);
+    }
+
+    private function createOrderItems(Order $order, Cart $cart): void
+    {
+        foreach ($cart->items as $item) {
+            $supplierId = $item->factory->{Factory::SUPPLIER_USER_ID} ?? null;
+
+            if (!$supplierId) {
+                throw new Exception("تامین‌کننده برای کارخانه {$item->factory->name} تعریف نشده است.");
+            }
+
+            OrderItem::create([
+                OrderItem::ORDER_ID => $order->id,
+                OrderItem::PRODUCT_VARIANT_ID => $item->{CartItem::PRODUCT_VARIANT_ID},
+                OrderItem::SUPPLIER_USER_ID => $supplierId,
+
+                OrderItem::PRODUCT_NAME => $item->productVariant->{ProductVariant::NAME},
+                OrderItem::VARIANT_SKU => $item->productVariant->{ProductVariant::SKU},
+
+                OrderItem::QUANTITY_DETAILS => $item->{CartItem::QUANTITIES},
+                OrderItem::UNIT_PRICE => $item->calculated_unit_price,
+                OrderItem::TOTAL_PRICE => $item->calculated_line_total,
+            ]);
+        }
+    }
+
+    private function clearCart(Cart $cart): void
+    {
+        $cart->items()->delete();
+        $cart->delete();
     }
 }

@@ -3,6 +3,7 @@
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Response;
+
 function faToEn($string): array|string
 {
     $persian = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
@@ -34,19 +35,20 @@ function getProvince(): Collection
     return DB::table('province')->get();
 }
 
-function getCities(): Collection
+function getCities($provinceID = null): Collection
 {
-    return is_null(request('provinceID')) ? DB::table('province_city')->get() : DB::table('province_city')->where(['ProvinceID' => request('provinceID')])->get();
+    $id = $provinceID ?? request('provinceID');
+
+    return is_null($id)
+        ? DB::table('province_city')->get()
+        : DB::table('province_city')->where(['ProvinceID' => $id])->get();
 }
 
 function getSupplierId(): Collection
 {
-    // Check if 'activity_category_id' is provided in the request
     if (is_null(request('activity_category_id'))) {
-        // If not provided, get all activity_category_ids
         return DB::table('supplier_activities')->pluck('activity_category_id');
     } else {
-        // If provided, get the specific activity_category_ids based on the request
         return DB::table('supplier_activities')
             ->where('activity_category_id', request('activity_category_id'))
             ->pluck('activity_category_id');

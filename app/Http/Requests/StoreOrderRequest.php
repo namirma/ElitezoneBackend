@@ -2,8 +2,8 @@
 
 namespace App\Http\Requests;
 
+use App\DataTransferObjects\PlaceOrderData;
 use App\Models\Address;
-use App\Models\Order;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -18,11 +18,19 @@ class StoreOrderRequest extends FormRequest
     public function rules(): array
     {
         return [
-            Order::BENEFICIARY_USER_ID => 'nullable|exists:users,id',
-            Order::ADDRESS_ID => [
+            'beneficiary_user_id' => ['nullable', 'integer', 'exists:users,id'],
+            'address_id' => [
                 'nullable',
-                Rule::exists('addresses', Address::ID)->where(Address::USER_ID, Auth::id())
+                'integer',
+                Rule::exists('addresses', 'id')->where('user_id', Auth::id())
             ],
+            'description' => ['nullable', 'string', 'max:1000'],
+            'shipping_method' => ['nullable', 'string'],
         ];
+    }
+
+    public function toDto(): PlaceOrderData
+    {
+        return PlaceOrderData::fromRequest($this);
     }
 }

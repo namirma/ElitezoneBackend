@@ -9,31 +9,43 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class ProductVariantAttribute extends Model
 {
     use HasFactory;
+    protected $table = 'product_variant_attributes';
+
+    public $timestamps = false;
 
     const
         ID = 'id',
         PRODUCT_VARIANT_ID = 'product_variant_id',
         ATTRIBUTE_ID = 'attribute_id',
-        CREATED_AT = 'created_at',
-        UPDATED_AT = 'updated_at';
+        ATTRIBUTE_VALUE_ID = 'attribute_value_id';
 
     protected $fillable = [
         self::PRODUCT_VARIANT_ID,
         self::ATTRIBUTE_ID,
+        self::ATTRIBUTE_VALUE_ID,
     ];
 
+    /**
+     * ارتباط با واریانت محصول
+     */
     public function productVariant(): BelongsTo
     {
-        return $this->belongsTo(ProductVariant::class);
+        return $this->belongsTo(ProductVariant::class, self::PRODUCT_VARIANT_ID);
     }
 
+    /**
+     * ارتباط با نوع ویژگی (مثلاً رنگ)
+     */
     public function attribute(): BelongsTo
     {
-        return $this->belongsTo(Attribute::class);
+        return $this->belongsTo(Attribute::class, self::ATTRIBUTE_ID);
     }
 
-    public function attributeValue()
+    /**
+     * ارتباط با مقدار ویژگی (مثلاً قرمز)
+     */
+    public function attributeValue(): BelongsTo
     {
-        return $this->belongsTo(AttributeValue::class, 'attribute_value_id');
+        return $this->belongsTo(AttributeValue::class, self::ATTRIBUTE_VALUE_ID);
     }
 }

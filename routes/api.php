@@ -1,15 +1,36 @@
 <?php
 
+use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AddressController;
-use App\Http\Controllers\Api\Admin\AdminFinancialController;
-use App\Http\Controllers\Api\Admin\AdminOrderController;
-use App\Http\Controllers\Api\Admin\AdminSearchController;
-use App\Http\Controllers\Api\Admin\AdminUserController;
-use App\Http\Controllers\Api\Admin\AdminWalletController;
-use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
-use App\Http\Controllers\Api\ListopherController;
+use App\Http\Controllers\ConsultantRelationController;
+use App\Http\Controllers\CustomerTypeController;
+use App\Http\Controllers\EduixController;
+use App\Http\Controllers\FactoryController;
 use App\Http\Controllers\IdentityInquirySc2Controller;
+use App\Http\Controllers\JobExperienceController;
+use App\Http\Controllers\MobileNidMatchController;
+use App\Http\Controllers\OrderActionController;
+use App\Http\Controllers\OrderController;
+use App\Http\Controllers\OrderSurveyController;
+use App\Http\Controllers\ParameterDetectionController;
+use App\Http\Controllers\PaymentController; // Added
+use App\Http\Controllers\PodiumBalanceController;
+use App\Http\Controllers\PodiumBatchSettlementController;
+use App\Http\Controllers\PodiumSettlementController;
+use App\Http\Controllers\PodiumSettlementInquiryController;
+use App\Http\Controllers\PriceFilterController;
+use App\Http\Controllers\ProductCategoryController;
+use App\Http\Controllers\ProductController;
+use App\Http\Controllers\PurchaseParameterController;
+use App\Http\Controllers\SearchController;
+use App\Http\Controllers\StockSubscriptionController;
+use App\Http\Controllers\UserBankAccountController;
+use App\Http\Controllers\WalletController;
+use App\Http\Controllers\WishlistController;
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\ListopherController;
 use App\Http\Controllers\Api\QuestionController;
 use App\Http\Controllers\Api\User\ContractorController;
 use App\Http\Controllers\Api\User\DashboardController;
@@ -17,61 +38,36 @@ use App\Http\Controllers\Api\User\EmployerController;
 use App\Http\Controllers\Api\User\EngineerController;
 use App\Http\Controllers\Api\User\ProfileController;
 use App\Http\Controllers\Api\User\SupplierController;
-use App\Http\Controllers\CartController;
-use App\Http\Controllers\ConsultantRelationController;
-use App\Http\Controllers\CustomerTypeController;
-use App\Http\Controllers\EduixController;
-use App\Http\Controllers\FactoryController;
-use App\Http\Controllers\JobExperienceController;
-use App\Http\Controllers\MobileNidMatchController;
-use App\Http\Controllers\OrderActionController;
-use App\Http\Controllers\ParameterDetectionController;
-use App\Http\Controllers\PodiumBalanceController;
-use App\Http\Controllers\PodiumBatchSettlementController;
-use App\Http\Controllers\PriceFilterController;
-use App\Http\Controllers\ProductCategoryController;
-use App\Http\Controllers\ProductController;
-use App\Http\Controllers\PurchaseParameterController;
-use App\Http\Controllers\SearchController;
-use App\Http\Controllers\WishlistController;
-use App\Models\User;
-use App\Services\Gateways\GatewayFactory;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\PodiumSettlementController;
-use App\Http\Controllers\PodiumSettlementInquiryController;
-use App\Http\Controllers\OrderController;
-use App\Http\Controllers\OrderSurveyController;
-use App\Http\Controllers\StockSubscriptionController;
-use App\Http\Controllers\UserBankAccountController;
-use App\Http\Controllers\WalletController;
+use App\Http\Controllers\Api\DebugController;
+
+// Admin Controllers
+use App\Http\Controllers\Api\Admin\AdminActivityLogController;
+use App\Http\Controllers\Api\Admin\AdminFinancialController;
+use App\Http\Controllers\Api\Admin\AdminOrderController;
+use App\Http\Controllers\Api\Admin\AdminSearchController;
+use App\Http\Controllers\Api\Admin\AdminUserController;
+use App\Http\Controllers\Api\Admin\AdminWalletController;
+
+// Middleware
 use App\Http\Middleware\EnsureRoleIsSelected;
-use App\Models\ProductPriceCache;
 
 /*
 |--------------------------------------------------------------------------
 | API Routes
 |--------------------------------------------------------------------------
-|
-| Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "api" middleware group. Make something great!
-|
 */
 
 // --- 1. روت‌های عمومی (Public) ---
-Route::post('/payment/result', fn() => response()->json(['message' => 'Callback URL.']));
-Route::any('/payment/callback', [\App\Http\Controllers\PaymentController::class, 'callback'])->name('payment.callback');
+Route::post('/payment/result', [PaymentController::class, 'result']);
+Route::any('/payment/callback', [PaymentController::class, 'callback'])->name('payment.callback');
+
 Route::get('/search', [SearchController::class, 'search']);
 Route::post('/new-question', [QuestionController::class, 'submitQuestion']);
-Route::get('/test-cache', function () {
-    return ProductPriceCache::with('variant:id,name')->take(10)->get();
-});
-Route::get('kavir-products', function () {
-    $gateway = GatewayFactory::make('tesna');
-    return response()->json($gateway->getRequest('/api/v1/wh/AllStoreCodes'));
 
-});
+// Debug Routes (پیشنهاد می‌شود در پروداکشن محدود شوند)
+Route::get('/test-cache', [DebugController::class, 'testCache']);
+Route::get('kavir-products', [DebugController::class, 'kavirProducts']);
+
 
 // --- احراز هویت ---
 Route::controller(AuthController::class)->prefix('authenticate')->group(function () {
@@ -128,7 +124,6 @@ Route::middleware(['auth:sanctum', 'attach.price.category'])->group(function () 
     });
 
     Route::controller(CheckoutController::class)->prefix('checkout')->group(function () {
-        // ثبت سفارش
         Route::post('/', 'placeOrder')->middleware(EnsureRoleIsSelected::class);
         Route::get('/payment/{order}', 'paymentInfo');
     });
@@ -146,7 +141,7 @@ Route::prefix('v1/podium')->group(function () {
 
 // --- پنل ادمین ---
 Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
-    Route::get('/activities', [\App\Http\Controllers\Api\Admin\AdminActivityLogController::class, 'index']);
+    Route::get('/activities', [AdminActivityLogController::class, 'index']);
     Route::controller(AdminSearchController::class)->prefix('search')->group(function () {
         Route::get('/users', 'searchUsers');
         Route::get('/transactions', 'searchTransactions');
@@ -169,29 +164,27 @@ Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
         Route::get('/{order}', 'show');
         Route::post('/{order}/status', 'changeStatus');
     });
-    Route::controller(AdminWalletController::class)
-        ->prefix('wallet')
-        ->group(function () {
-            Route::get('/transactions', 'index'); // مشاهده لیست
-            Route::post('/transactions/{transaction}/status', 'changeStatus'); // تایید یا رد
-        });
+    Route::controller(AdminWalletController::class)->prefix('wallet')->group(function () {
+        Route::get('/transactions', 'index');
+        Route::post('/transactions/{transaction}/status', 'changeStatus');
+    });
 });
 
+// --- روت‌های نیازمند لاگین ---
 Route::middleware(['auth:sanctum'])->group(function () {
 
-
-    // 2. استان‌ها (عمومی لاگین شده)
-    Route::group(['prefix' => 'province'], function () {
-        Route::get('/', fn() => success(getProvince()));
-        Route::get('/cities/{provinceID?}', fn() => success(getCities()));
+    // 2. استان‌ها (Refactored)
+    Route::prefix('province')->controller(AddressController::class)->group(function () {
+        Route::get('/', 'getProvinces');
+        Route::get('/cities/{provinceID?}', 'getCities');
     });
 
-    // 3. تمام زیرمجموعه‌های پروفایل
+    // 3. پروفایل و زیرمجموعه‌ها
     Route::prefix('profile')->group(function () {
 
-        // 1. داشبورد اصلی
         Route::get('/dashboard', [DashboardController::class, 'index']);
-        // --- اطلاعات پایه و حساب کاربری ---
+
+        // اطلاعات پایه
         Route::get('/', [ProfileController::class, 'getProfile'])->middleware('track:account_info');
         Route::post('/', [ProfileController::class, 'setProfile']);
         Route::put('/', [ProfileController::class, 'updateProfile']);
@@ -207,52 +200,48 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/verify-email', [ProfileController::class, 'setEmail']);
         Route::post('/check-email-token', [ProfileController::class, 'checkToken']);
         Route::post('/password', [ProfileController::class, 'setPassword']);
-        Route::group(['prefix' => 'change-mobile'], function () {
-            Route::get('/', [ProfileController::class, 'updateMobile']);
-            Route::post('/request', [ProfileController::class, 'requestChangeMobile']);
-            Route::post('/confirm', [ProfileController::class, 'confirmChangeMobile']);
+
+        Route::prefix('change-mobile')->controller(ProfileController::class)->group(function () {
+            Route::get('/', 'updateMobile');
+            Route::post('/request', 'requestChangeMobile');
+            Route::post('/confirm', 'confirmChangeMobile');
         });
 
-        // --- پیغام‌ها (Messages) ---
+        // پیغام‌ها
         Route::get('/messages', [ProfileController::class, 'getMessages'])->middleware('track:messages');
         Route::get('/messages/read-all', [ProfileController::class, 'updateAllMessageStatus']);
         Route::get('/messages/{userNotification}', [ProfileController::class, 'updateMessageStatus']);
 
-        // --- اطلاعات تحصیلی (Education) ---
+        // تحصیلات
         Route::prefix('education')->middleware('role.expert')->controller(EduixController::class)->group(function () {
             Route::get('/', 'index')->middleware('track:education');
             Route::post('/fetch', 'fetch');
             Route::delete('/{record}', 'destroy');
         });
 
-        // --- اطلاعات شغلی (Job Experiences) ---
+        // سوابق شغلی
         Route::prefix('job-experiences')->middleware('role.expert')->controller(JobExperienceController::class)->group(function () {
             Route::get('/', 'index')->middleware('track:job');
             Route::post('/', 'store');
             Route::delete('/{jobExperience}', 'destroy');
         });
 
-        // --- سفارش‌ها (Orders) ---
+        // سفارش‌ها
         Route::prefix('orders')->controller(OrderController::class)->group(function () {
             Route::get('/', 'index')->middleware('track:orders');
 
-            // 2. تب‌های سفارش‌های خودم (Buy Myself)
-            Route::group(['prefix' => 'buy-myself'], function () {
+            Route::prefix('buy-myself')->group(function () {
                 Route::get('/current', 'listMyCurrentOrders');
                 Route::get('/delivered', 'listMyDeliveredOrders');
                 Route::get('/cancelled', 'listMyCancelledOrders');
             });
 
-            // 3. تب‌های سفارش‌های دیگران (Buy For Others)
-            Route::group(['prefix' => 'buy-others'], function () {
+            Route::prefix('buy-others')->group(function () {
                 Route::get('/current', 'listOthersCurrentOrders');
                 Route::get('/delivered', 'listOthersDeliveredOrders');
                 Route::get('/cancelled', 'listOthersCancelledOrders');
             });
 
-            // ... سایر روت‌های عملیاتی (show, pay, cancel, invoice, survey, ...)
-            Route::get('/{order}', 'show');
-            Route::post('/{order}/pay-hold-fee', 'payHoldFee');
             Route::get('/{order}', 'show');
             Route::post('/{order}/pay-hold-fee', 'payHoldFee');
             Route::post('/{order}/pay-full', 'payFullOrder');
@@ -268,10 +257,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::post('/{order}/receipt', 'attachPaymentReceipt');
         });
 
-        // --- مدیریت مالی (Wallet & Bank) ---
+        // مدیریت مالی
         Route::prefix('financial')->group(function () {
-
-            // 1. بخش کیف پول (Wallet)
             Route::controller(WalletController::class)->prefix('wallet')->group(function () {
                 Route::get('/', 'getWallet');
                 Route::get('/transactions', 'getTransactions');
@@ -279,18 +266,16 @@ Route::middleware(['auth:sanctum'])->group(function () {
                 Route::post('/withdraw', 'requestWithdrawal')->middleware('idempotency');
             });
 
-            // 2. بخش فیش‌های پرداختی (Payment Receipts)
             Route::controller(WalletController::class)->prefix('receipts')->group(function () {
                 Route::get('/', 'getReceipts');
                 Route::post('/', 'storeReceipt')->middleware('idempotency');
                 Route::delete('/{transaction}', 'deleteReceipt');
             });
 
-            Route::apiResource('accounts', UserBankAccountController::class)
-                ->except(['show', 'update']);
+            Route::apiResource('accounts', UserBankAccountController::class)->except(['show', 'update']);
         });
 
-        // --- آدرس‌ها (Addresses) ---
+        // آدرس‌ها
         Route::prefix('addresses')->controller(AddressController::class)->group(function () {
             Route::get('/', 'index')->middleware('track:addresses');
             Route::post('/', 'store');
@@ -299,7 +284,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::post('/{address}/default', 'setDefault');
         });
 
-        // --- آیتم‌های من (Wishlists) ---
+        // آیتم‌های من (Wishlists)
         Route::prefix('wishlists')->controller(WishlistController::class)->group(function () {
             Route::get('/', 'index')->middleware('track:my_items');
             Route::post('/', 'store');
@@ -317,7 +302,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::post('/toggle', 'toggle');
         });
 
-        // --- مشاوران / کارفرمایان (Consultants) ---
+        // مشاوران / کارفرمایان
         Route::prefix('consultants')->controller(ConsultantRelationController::class)->group(function () {
             Route::middleware('role.employer')->group(function () {
                 Route::get('/', 'listMyConsultants')->middleware('track:relations');
@@ -333,16 +318,17 @@ Route::middleware(['auth:sanctum'])->group(function () {
             });
         });
 
-        // --- تکمیل پروفایل نقش‌های خاص ---
+        // تکمیل پروفایل نقش‌های خاص
         Route::post('/engineer', [EngineerController::class, 'store']);
         Route::post('/contractor', [ContractorController::class, 'store']);
         Route::post('/employer', [EmployerController::class, 'store']);
         Route::prefix('supplier')->group(function () {
             Route::post('/', [SupplierController::class, 'store']);
             Route::get('/activity-categories', [SupplierController::class, 'getCategories']);
-            Route::get('/activityCategory-getId', fn() => getSupplierCategoryId());
+            // Refactored here:
+            Route::get('/activityCategory-getId', [SupplierController::class, 'getActivityCategoryId']);
         });
-    }); // پایان گروه profile
+    });
 
     Route::post('/listophers', [ListopherController::class, 'store']);
 
@@ -352,5 +338,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/confirm-verification', [\App\Http\Controllers\BeneficiaryController::class, 'confirmVerification']);
     });
 
-    Route::get('/user', fn(Request $request) => $request->user());
+    // Refactored User Route
+    Route::get('/user', [AuthController::class, 'me']);
 });

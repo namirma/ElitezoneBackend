@@ -37,7 +37,7 @@ class SendOrderPaymentNotification implements ShouldQueue
             SendSmsJob::dispatch($user->mobile, $message);
 
             //  در آینده ایمیل
-            
+
         } catch (\Exception $e) {
             Log::error("Failed to send notification for Order {$order->id}: " . $e->getMessage());
         }

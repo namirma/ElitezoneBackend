@@ -24,7 +24,7 @@ class AttributeValue extends Model
         return $this->belongsToMany(
             ProductVariant::class,
             'product_variant_attributes',
-            'attribute_value_id', // از جدول پیوت
+            'attribute_value_id',
             'product_variant_id'
         );
     }

@@ -42,6 +42,7 @@ class User extends Authenticatable
         CREATED_AT = 'created_at',
         UPDATED_AT = 'updated_at';
 
+    // Relation Names
     public const
         RELATION_PROFILE = 'profile',
         RELATION_ENGINEER = 'engineer',
@@ -53,6 +54,7 @@ class User extends Authenticatable
         RELATION_BADGE = 'badge',
         RELATION_EDUIX_RECORDS = 'eduixRecords',
         RELATION_JOB_EXPERIENCES = 'jobExperiences';
+
     // =========================================================================
     //  Configurations
     // =========================================================================
@@ -79,73 +81,80 @@ class User extends Authenticatable
     protected $appends = ['created_at_p', 'created_at_diff', 'updated_at_p', 'updated_at_diff'];
 
     // =========================================================================
-    //  Accessors (Dates)
+    //  Relationships
     // =========================================================================
-    public function getCreatedAtAttribute($value)
-    {
-        return $value;
-    }
-
-    public function getUpdatedAtAttribute($value)
-    {
-        return $value;
-    }
-
 
     public function profile(): HasOne
     {
         return $this->hasOne(UserProfile::class);
     }
+
     public function engineer(): HasOne
     {
         return $this->hasOne(EngineerProfile::class);
     }
+
     public function contractor(): HasOne
     {
         return $this->hasOne(ContractorProfile::class);
     }
+
     public function supplier(): HasOne
     {
         return $this->hasOne(SupplierProfile::class);
     }
+
+    public function wallet()
+    {
+        return $this->hasOne(Wallet::class);
+    }   
     public function employer(): HasOne
     {
         return $this->hasOne(EmployerProfile::class);
     }
+
     public function type(): BelongsTo
     {
         return $this->belongsTo(UserType::class, self::TYPE_ID);
     }
+
     public function badge(): BelongsTo
     {
         return $this->belongsTo(Badge::class, self::BADGE_ID);
     }
 
-    // روابط عمومی
+    // --- روابط عمومی ---
+
     public function addresses(): HasMany
     {
         return $this->hasMany(Address::class, Address::USER_ID);
     }
+
     public function bankAccounts(): HasMany
     {
         return $this->hasMany(UserBankAccount::class, UserBankAccount::USER_ID);
     }
+
     public function searches(): HasMany
     {
         return $this->hasMany(Search::class);
     }
+
     public function wishlists(): HasMany
     {
         return $this->hasMany(Wishlist::class, Wishlist::USER_ID);
     }
+
     public function eduixRecords(): HasMany
     {
         return $this->hasMany(EduixRecord::class, EduixRecord::USER_ID);
     }
+
     public function jobExperiences(): HasMany
     {
         return $this->hasMany(JobExperience::class, JobExperience::USER_ID);
     }
+
     public function stockSubscriptions(): HasMany
     {
         return $this->hasMany(StockSubscription::class, StockSubscription::USER_ID);

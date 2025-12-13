@@ -4,26 +4,21 @@ namespace App\Repositories\Contracts;
 
 use App\DataTransferObjects\ProductFilterData;
 use App\Models\Product;
-use App\Models\ProductVariant;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
 interface ProductRepositoryInterface
 {
     /**
-     * دریافت لیست محصولات با فیلتر، جستجو و مرتب‌سازی
+     * دریافت کوئری ساز بر اساس فیلترها (بدون اجرا)
+     * این به Action اجازه می‌دهد قبل از دریافت، کارهایی مثل Eager Loading اضافه کند.
      */
-   public function getProducts(ProductFilterData $filters, int $perPage = 12): LengthAwarePaginator;
+    public function getFilterQuery(ProductFilterData $filters): Builder;
 
     /**
-     * یافتن یک محصول با تمام روابط مورد نیاز برای صفحه جزئیات
+     * یافتن محصول با تمام جزئیات (برای صفحه سینگل)
      */
     public function findProductWithDetails(string $cuid): Product;
-
-    /**
-     * دریافت واریانت‌های یک محصول با فیلتر
-     */
-    public function getProductVariants(Product $product, array $filters, int $perPage = 10): LengthAwarePaginator;
 
     /**
      * دریافت کارخانه‌های مرتبط با محصول

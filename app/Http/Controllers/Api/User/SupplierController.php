@@ -16,6 +16,10 @@ use Illuminate\Support\Facades\Auth;
 
 class SupplierController extends Controller
 {
+    public function getActivityCategoryId()
+    {
+        return getSupplierCategoryId();
+    }
     public function index()
     {
         $categories = SupplierActivityCategory::with('children')->get();
@@ -58,12 +62,11 @@ class SupplierController extends Controller
                 SupplierProfile::WEBSITE => $request->validated('website') ?? $this->website ?? null,
                 SupplierProfile::WEBSITE_NOT_RELATED => $request->validated('website_not_related') ?? $this->website_not_related ?? 1, // default to true
                 SupplierProfile::COMPANY => $request->validated('company') ?? $this->company ?? null,
-            ]);
+            ]
+        );
         if ($request->has('activity_category_id')) {
             $supplierProfile->activities()->sync($request->activity_category_id);
         }
         return success(new UserResource(User::with('supplier')->find(Auth::id())));
-
     }
-
 }

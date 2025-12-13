@@ -19,4 +19,5 @@ return [
     'manual_deposit_description' => 'شارژ کیف پول (کارت به کارت/فیش)',
     'withdrawal_description' => 'درخواست برداشت وجه به شبا: :shaba',
     'receipt_description' => 'ثبت فیش بانکی | شماره: :number | بانک: :bank',
+    'insufficient_balance' => '.موجودی کیف پول برای انجام این عملیات کافی نیست',
 ];

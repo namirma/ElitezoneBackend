@@ -21,7 +21,6 @@ use App\Models\PriceFilterCategory;
 use App\Models\PriceSetting;
 use App\Models\Product;
 use App\Models\ProductVariant;
-use App\Models\PurchaseParameterValue;
 use App\Services\PriceCalculationService;
 use App\Services\PricingRoleResolver;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -47,9 +46,9 @@ class CartController extends Controller
         if (Auth::check()) {
             return app(PricingRoleResolver::class)->resolve(Auth::user());
         }
-        // مهمان نداریم؛ ولی برای اطمینان:
         return 'employer_without_consultant';
     }
+
     private function getOrderUnitsMap(): Collection
     {
         if ($this->orderUnitsMapCache === null) {
@@ -228,7 +227,8 @@ class CartController extends Controller
         $customerType = CustomerType::where(CustomerType::CODE, $activeCode)->first() ?: $cart->customerType;
 
         foreach ($cart->items as $item) {
-            $pricingDetails = $this->priceService->calculatePrice(
+            // دریافت نتیجه به صورت DTO
+            $pricingDetailsDto = $this->priceService->calculatePrice(
                 $item->productVariant,
                 $item->factory,
                 $item->factoryLocation,
@@ -244,23 +244,30 @@ class CartController extends Controller
                 if ($unit) $itemTotalWeight += (float)$qty * $unit->{OrderUnit::AMOUNT};
             }
 
-            $variantDiscountAmountFromService = isset($pricingDetails['variant_discount_amount']) ? (float)$pricingDetails['variant_discount_amount'] : 0.0;
+            // اصلاح: استفاده از دسترسی Object (->) به جای Array ([])
+            // فرض می‌کنیم نام پراپرتی‌ها در DTO به صورت camelCase است
+            $variantDiscountAmountFromService = isset($pricingDetailsDto->variantDiscountAmount) ? (float)$pricingDetailsDto->variantDiscountAmount : 0.0;
             $totalAppliedVariantDiscount += $variantDiscountAmountFromService * $itemTotalWeight;
 
-            $itemFinalPrice = $itemTotalWeight * (float)$pricingDetails['final_price'];
+            // اصلاح: دسترسی به finalPrice
+            $itemFinalPrice = $itemTotalWeight * (float)$pricingDetailsDto->finalPrice;
             $itemVatAmount = 0.0;
-            if ($withVat && isset($pricingDetails['vat_rate']) && (float)$pricingDetails['vat_rate'] > 0) {
-                $itemVatAmount = $itemFinalPrice * ((float)$pricingDetails['vat_rate'] / 100);
+            // اصلاح: دسترسی به vatRate
+            if ($withVat && isset($pricingDetailsDto->vatRate) && (float)$pricingDetailsDto->vatRate > 0) {
+                $itemVatAmount = $itemFinalPrice * ((float)$pricingDetailsDto->vatRate / 100);
             }
+
             $item->setAttribute('pricing_context', [
                 'code' => $activeCode,
                 'price_filter_category_id' => $pfId,
                 'customer_type_id' => optional($customerType)->id,
             ]);
-            $item->setAttribute('unit_price_details', $pricingDetails);
+
+            // اصلاح: تبدیل DTO به آرایه برای ذخیره در دیتابیس (JSON)
+            $item->setAttribute('unit_price_details', $pricingDetailsDto->toArray());
 
             $item->fill([
-                CartItem::PRICE          => $pricingDetails['final_price'],
+                CartItem::PRICE          => $pricingDetailsDto->finalPrice, // اصلاح
                 CartItem::FINAL_PRICE    => $itemFinalPrice,
                 CartItem::VAT_AMOUNT     => $itemVatAmount,
                 CartItem::TOTAL_WITH_VAT => $itemFinalPrice + $itemVatAmount,
@@ -359,7 +366,8 @@ class CartController extends Controller
 
                 $this->checkVariantAggregateLimits($variant, $mergedQuantities, $orderUnitsMap);
 
-                $pricingDetails = $this->priceService->calculatePrice(
+                // دریافت نتیجه به صورت DTO
+                $pricingDetailsDto = $this->priceService->calculatePrice(
                     $variant,
                     $factory,
                     $location,
@@ -371,13 +379,13 @@ class CartController extends Controller
 
                 $totalDetails = $this->priceService->calculateTotalPrice(
                     $mergedQuantities,
-                    (float) $pricingDetails['final_price'],
+                    (float) $pricingDetailsDto->finalPrice, // اصلاح: استفاده از دسترسی آبجکت
                     $withVat
                 );
 
                 $existingCartItem->update([
                     CartItem::QUANTITIES     => $mergedQuantities,
-                    CartItem::PRICE          => $pricingDetails['final_price'],
+                    CartItem::PRICE          => $pricingDetailsDto->finalPrice, // اصلاح
                     CartItem::FINAL_PRICE    => $totalDetails['subtotal'],
                     CartItem::VAT_AMOUNT     => $totalDetails['vat_amount'],
                     CartItem::TOTAL_WITH_VAT => $totalDetails['total_with_vat'],
@@ -388,7 +396,8 @@ class CartController extends Controller
             } else {
                 $this->checkVariantAggregateLimits($variant, $validatedData['quantities'], $orderUnitsMap);
 
-                $pricingDetails = $this->priceService->calculatePrice(
+                // دریافت نتیجه به صورت DTO
+                $pricingDetailsDto = $this->priceService->calculatePrice(
                     $variant,
                     $factory,
                     $location,
@@ -400,7 +409,7 @@ class CartController extends Controller
 
                 $totalDetails = $this->priceService->calculateTotalPrice(
                     $validatedData['quantities'],
-                    (float) $pricingDetails['final_price'],
+                    (float) $pricingDetailsDto->finalPrice, // اصلاح
                     $withVat
                 );
 
@@ -411,7 +420,7 @@ class CartController extends Controller
                     CartItem::FACTORY_LOCATION_ID => $location->id,
                     CartItem::SHIPPING_METHOD_ID  => $validatedData['shipping_method_id'],
                     CartItem::QUANTITIES          => $validatedData['quantities'],
-                    CartItem::PRICE               => $pricingDetails['final_price'],
+                    CartItem::PRICE               => $pricingDetailsDto->finalPrice, // اصلاح
                     CartItem::FINAL_PRICE         => $totalDetails['subtotal'],
                     CartItem::VAT_AMOUNT          => $totalDetails['vat_amount'],
                     CartItem::TOTAL_WITH_VAT      => $totalDetails['total_with_vat'],
@@ -462,12 +471,16 @@ class CartController extends Controller
             $activeCode = $this->activeCode();
             $pf         = PriceFilterCategory::where('code', $activeCode)->first();
             $filterIds  = $pf ? [$pf->id] : [];
-            $pricingDetails = $this->priceService->calculatePrice($productVariant, $item->factory, $location, $cart->customerType, $cart->badge, $filterIds, $withVat);
-            $totalDetails = $this->priceService->calculateTotalPrice($validatedData['quantities'], (float)$pricingDetails['final_price'], $withVat);
+
+            // دریافت نتیجه به صورت DTO
+            $pricingDetailsDto = $this->priceService->calculatePrice($productVariant, $item->factory, $location, $cart->customerType, $cart->badge, $filterIds, $withVat);
+
+            $totalDetails = $this->priceService->calculateTotalPrice($validatedData['quantities'], (float)$pricingDetailsDto->finalPrice, $withVat); // اصلاح
+
             $item->update([
                 CartItem::FACTORY_LOCATION_ID => $location->id,
                 CartItem::QUANTITIES => $validatedData['quantities'],
-                CartItem::PRICE => $pricingDetails['final_price'],
+                CartItem::PRICE => $pricingDetailsDto->finalPrice, // اصلاح
                 CartItem::WITH_VAT => $withVat,
                 CartItem::FINAL_PRICE => $totalDetails['subtotal'],
                 CartItem::VAT_AMOUNT => $totalDetails['vat_amount'],

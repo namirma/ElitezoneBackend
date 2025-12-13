@@ -71,7 +71,7 @@ class ProductVariant extends Model
 
     public function getActiveDiscountDetails(): ?array
     {
-        
+
         if (empty($this->discount_value) || $this->discount_value <= 0) {
             return null;
         }
@@ -102,11 +102,12 @@ class ProductVariant extends Model
         return $this->belongsTo(OrderUnit::class, self::LIMIT_ORDER_UNIT_ID);
     }
 
-    public function variantAttributes(): BelongsToMany
+    public function variantAttributes() 
     {
-        return $this->belongsToMany(Attribute::class, 'product_variant_attributes', 'product_variant_id', 'attribute_id')
-            ->withPivot([Attribute::CREATED_AT, Attribute::UPDATED_AT])
-            ->with('attributeType');
+        return $this->belongsToMany(Attribute::class, 'product_variant_attributes')
+            ->using(ProductVariantAttribute::class)
+            ->withPivot('attribute_value_id')
+            ->as('details');
     }
 
     public function prices(): HasMany

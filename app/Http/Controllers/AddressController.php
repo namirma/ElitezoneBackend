@@ -13,6 +13,15 @@ use Illuminate\Support\Facades\DB;
 
 class AddressController extends Controller
 {
+    public function getProvinces()
+    {
+        return success(getProvince());
+    }
+
+    public function getCities($provinceID = null)
+    {
+        return success(getCities($provinceID));
+    }
     public function index(): JsonResponse
     {
         $user = Auth::user();

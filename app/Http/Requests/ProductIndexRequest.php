@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\DataTransferObjects\ProductFilterData;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -27,15 +28,24 @@ class ProductIndexRequest extends FormRequest
             'search'   => ['sometimes', 'nullable', 'string', 'max:255'],
             'per_page' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:100'],
             'sort'     => ['sometimes', 'nullable', 'string', Rule::in($validSortOptions)],
+            'filter_categories' => ['sometimes', 'array'],
+            'debug_prices' => ['sometimes', 'boolean'],
         ];
     }
 
     protected function prepareForValidation(): void
     {
         if (!$this->has('sort') || empty($this->input('sort'))) {
-            $this->merge([
-                'sort' => 'newest',
-            ]);
+            $this->merge(['sort' => 'newest']);
         }
+    }
+
+    /**
+     * تبدیل ریکوئست به DTO
+     * @param string $activeRoleCode
+     */
+    public function toDto(string $activeRoleCode): ProductFilterData
+    {
+        return ProductFilterData::fromRequest($this, $activeRoleCode);
     }
 }

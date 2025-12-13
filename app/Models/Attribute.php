@@ -48,6 +48,6 @@ class Attribute extends Model
             'product_variant_attributes',
             'attribute_id',
             'product_variant_id'
-        )->withTimestamps();
+        );
     }
 }

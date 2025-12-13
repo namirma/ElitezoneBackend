@@ -13,14 +13,20 @@ class Cors
      *
      * @param Closure(Request): (Response) $next
      */
-    public function handle(Request $request, Closure $next): Response
+    public function handle(Request $request, Closure $next)
     {
         $response = $next($request);
 
-        $response->headers->set('Access-Control-Allow-Origin', '*');
-        $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-        $response->headers->set('Access-Control-Allow-Headers', 'Authorization,DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Set-Cookie');
-        $response->headers->set('Access-Control-Allow-Credentials', true);
+        $origin = $request->header('Origin');
+
+        $allowedOrigin = $origin ?: '*';
+
+        if (method_exists($response, 'header')) {
+            $response->header('Access-Control-Allow-Origin', $allowedOrigin)
+                ->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+                ->header('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type, X-Token-Auth, Authorization, Idempotency-Key')
+                ->header('Access-Control-Allow-Credentials', 'true');
+        }
 
         return $response;
     }
