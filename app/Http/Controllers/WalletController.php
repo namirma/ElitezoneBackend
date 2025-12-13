@@ -12,11 +12,13 @@ use App\Models\UserBankAccount;
 use App\Models\UserProfile;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 
 class WalletController extends Controller
 {
@@ -152,53 +154,67 @@ class WalletController extends Controller
     {
         $user = Auth::user();
         $validated = $request->validated();
+        $amount = (float) $validated['amount'];
 
-        $amount = $validated['amount'];
-        $bankAccount = UserBankAccount::where('id', $validated['user_bank_account_id'])
-            ->where('user_id', $user->id) // چک کردن مالکیت حساب
-            ->first();
-
-        if (!$bankAccount) {
-            return error(__('wallet.bank_account_not_found'), [], 404);
-        }
+        // 1. ایجاد کلید قفل اختصاصی برای کاربر
+        $lockKey = "wallet_transaction_lock:user:{$user->id}";
 
         try {
-            $transaction = DB::transaction(function () use ($user, $amount, $bankAccount) {
+            // 2. تلاش برای گرفتن قفل (حداکثر ۱۰ ثانیه صبر می‌کند)
+            // اگر کاربر دیگری همزمان درخواست داده باشد، درخواست دوم اینجا منتظر می‌ماند
+            $result = Cache::lock($lockKey, 10)->block(10, function () use ($user, $validated, $amount) {
 
-                $wallet = $user->wallet()->lockForUpdate()->firstOrCreate();
+                // 3. اعتبارسنجی حساب بانکی (داخل قفل برای اطمینان بیشتر)
+                $bankAccount = UserBankAccount::where('id', $validated['user_bank_account_id'])
+                    ->where('user_id', $user->id)
+                    ->first();
 
-                if ($wallet->balance < $amount) {
-                    throw new \Exception(__('auth.withdrawal_amount_max'));
+                if (!$bankAccount) {
+                    throw new \Exception(__('wallet.bank_account_not_found'), 404);
                 }
 
-                // 3. کسر موجودی
-                $wallet->decrement(Wallet::BALANCE, $amount);
+                // 4. شروع تراکنش دیتابیس
+                return DB::transaction(function () use ($user, $amount, $bankAccount) {
+                    $wallet = $user->wallet()->firstOrCreate();
 
-                $desc = __('wallet.withdrawal_description', [
-                    'shaba' => $bankAccount->{UserBankAccount::SHABA},
-                    'bank'  => $bankAccount->{UserBankAccount::BANK_NAME}
-                ]);
+                    if ($wallet->balance < $amount) {
+                        throw new \Exception(__('auth.withdrawal_amount_max'), 400);
+                    }
 
-                // 4. ثبت تراکنش
-                return $wallet->transactions()->create([
-                    WalletTransaction::AMOUNT      => $amount,
-                    WalletTransaction::TYPE        => WalletTransaction::TYPE_WITHDRAW,
-                    WalletTransaction::STATUS      => WalletTransaction::STATUS_PENDING,
-                    WalletTransaction::DESCRIPTION => $desc,
-                    WalletTransaction::META        => [
-                        'shaba'     => $bankAccount->{UserBankAccount::SHABA},
-                        'bank_name' => $bankAccount->{UserBankAccount::BANK_NAME},
-                        'holder'    => $bankAccount->{UserBankAccount::ACCOUNT_HOLDER_NAME},
-                    ]
-                ]);
-            }, 5);
+                    // کسر موجودی
+                    $wallet->decrement(Wallet::BALANCE, $amount);
 
-            return success(new WalletTransactionResource($transaction), __('wallet.withdrawal_created'));
+                    // ساخت توضیحات
+                    $desc = __('wallet.withdrawal_description', [
+                        'shaba' => $bankAccount->{UserBankAccount::SHABA},
+                        'bank'  => $bankAccount->{UserBankAccount::BANK_NAME}
+                    ]);
+
+                    // ثبت تراکنش
+                    $transaction = $wallet->transactions()->create([
+                        WalletTransaction::AMOUNT      => $amount,
+                        WalletTransaction::TYPE        => WalletTransaction::TYPE_WITHDRAW,
+                        WalletTransaction::STATUS      => WalletTransaction::STATUS_PENDING,
+                        WalletTransaction::DESCRIPTION => $desc,
+                        WalletTransaction::META        => [
+                            'shaba'     => $bankAccount->{UserBankAccount::SHABA},
+                            'bank_name' => $bankAccount->{UserBankAccount::BANK_NAME},
+                            'holder'    => $bankAccount->{UserBankAccount::ACCOUNT_HOLDER_NAME},
+                        ]
+                    ]);
+
+                    return success(new WalletTransactionResource($transaction), __('wallet.withdrawal_created'));
+                });
+            });
+
+            return $result;
+        } catch (LockTimeoutException $e) {
+            return error(__('global.system_busy_try_again'), [], 429);
         } catch (\Exception $e) {
-            if ($e->getMessage() === __('auth.withdrawal_amount_max')) {
-                return error($e->getMessage(), [], 400);
-            }
-            return error(__('global.operation_failed'), ['debug' => $e->getMessage()], 500);
+            $status = $e->getCode() ?: 500;
+            $status = ($status < 100 || $status > 599) ? 500 : $status;
+
+            return error($e->getMessage(), [], $status);
         }
     }
 

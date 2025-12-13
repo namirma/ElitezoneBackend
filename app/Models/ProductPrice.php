@@ -2,11 +2,16 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class ProductPrice extends Model
 {
+    use HasFactory;
+
     const
         ID = 'id',
         PRODUCT_VARIANT_ID = 'product_variant_id',
@@ -35,6 +40,35 @@ class ProductPrice extends Model
         self::SPECIAL_PRICE   => 'float',
         self::GOLDEN_FIGURE   => 'float',
     ];
+
+
+    protected static function booted(): void
+    {
+        parent::booted();
+
+        static::created(fn(ProductPrice $price) => self::flushVariantCache($price));
+        static::updated(fn(ProductPrice $price) => self::flushVariantCache($price));
+        static::deleted(fn(ProductPrice $price) => self::flushVariantCache($price));
+    }
+
+    /**
+     * پاکسازی هوشمند کش (سازگار با همه درایورها)
+     */
+    protected static function flushVariantCache(ProductPrice $price): void
+    {
+        if (!isset($price->product_variant_id)) return;
+        $driver = config('cache.default');
+
+        if (in_array($driver, ['redis', 'memcached'])) {
+            try {
+                Cache::tags(["variant:{$price->product_variant_id}"])->flush();
+            } catch (\Exception $e) {
+                Log::error("Failed to flush cache tags: " . $e->getMessage());
+            }
+        }
+    }
+
+    /* -------------------- Relationships -------------------- */
 
     public function productVariant(): BelongsTo
     {

@@ -10,14 +10,18 @@ class SetBasePrice implements PricingPipe
 {
     public function handle(PricingContext $context, Closure $next)
     {
-        // ساخت کلید کش
-        $cacheKey = "price_{$context->variant->id}_{$context->factory->id}_{$context->location->id}";
+        $variantId  = $context->variant->id;
+        $factoryId  = $context->factory->id;
+        $locationId = $context->location->id;
 
-        $prices = Cache::remember($cacheKey, now()->addMinutes(15), function () use ($context) {
+        $cacheKey = "price_v{$variantId}_f{$factoryId}_l{$locationId}";
+        $ttl = now()->addMinutes(60);
+
+        $fetchPriceLogic = function () use ($context) {
             $priceModel = $context->variant->prices()
                 ->where('factory_id', $context->factory->id)
                 ->where('factory_location_id', $context->location->id)
-                ->latest('updated_at') 
+                ->latest('updated_at')
                 ->first();
 
             if ($priceModel) {
@@ -26,9 +30,16 @@ class SetBasePrice implements PricingPipe
                     'special' => (float) $priceModel->special_price,
                 ];
             }
-
             return ['general' => 0.0, 'special' => 0.0];
-        });
+        };
+
+        // تلاش برای استفاده از کش هوشمند
+        try {
+            $tags = ['pricing', "variant:{$variantId}"];
+            $prices = Cache::tags($tags)->remember($cacheKey, $ttl, $fetchPriceLogic);
+        } catch (\BadMethodCallException $e) {
+            $prices = Cache::remember($cacheKey, $ttl, $fetchPriceLogic);
+        }
 
         $context->baseGeneralPrice = $prices['general'];
         $context->baseSpecialPrice = $prices['special'];

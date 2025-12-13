@@ -14,10 +14,23 @@ class OrderResource extends JsonResource
         $user = Auth::user();
         $isSupplier = $user ? $user->hasRole('supplier') : false;
 
+        $progress = $this->dashboard_progress;
+
         return [
             Order::ID => $this->id,
             Order::ORDER_NUMBER => $this->order_number,
             Order::STATUS => $this->status,
+
+            'status_label' => $progress['current_status_label'] ?? 'نامشخص',
+
+            // تعیین رنگ وضعیت برای فرانت‌ند (View Logic)
+            'status_color' => match ($this->status) {
+                Order::STATUS_DELIVERED => 'success',
+                Order::STATUS_CANCELLED, Order::STATUS_FAILED => 'danger',
+                Order::STATUS_PENDING, Order::STATUS_RESERVED_EXTENDED => 'warning',
+                default => 'primary',
+            },
+
             Order::FINAL_AMOUNT => (string) $this->final_amount,
             Order::PAYMENT_STATUS => $this->payment_status,
             Order::NOTES => $this->notes,
@@ -33,6 +46,7 @@ class OrderResource extends JsonResource
             'paid_at_p' => $this->paid_at ? verta($this->paid_at)->format('Y/m/d H:i') : null,
             'weighbridge_registered_at_p' => $this->weighbridge_registered_at ? verta($this->weighbridge_registered_at)->format('Y/m/d H:i') : null,
 
+            // اطلاعات مخصوص خریدار (غیر تامین‌کننده)
             $this->mergeWhen(!$isSupplier, [
                 Order::PLACER_USER_ID => $this->placer_user_id,
                 Order::BENEFICIARY_USER_ID => $this->beneficiary_user_id,
@@ -52,6 +66,7 @@ class OrderResource extends JsonResource
                 Order::EXPERT_FEE_INVOICE_REF => $this->expert_fee_invoice_ref,
             ]),
 
+            // اطلاعات مخصوص تامین‌کننده
             $this->mergeWhen($isSupplier, [
                 Order::PREPARED_AT => $this->prepared_at?->format('Y-m-d H:i:s'),
                 Order::SHIPPED_AT => $this->shipped_at?->format('Y-m-d H:i:s'),
@@ -61,13 +76,13 @@ class OrderResource extends JsonResource
                 'prepared_at_p' => $this->prepared_at ? verta($this->prepared_at)->format('Y/m/d H:i') : null,
                 'shipped_at_p' => $this->shipped_at ? verta($this->shipped_at)->format('Y/m/d H:i') : null,
             ]),
-            'progress' => $this->dashboard_progress,
+
+            'progress' => $progress,
 
             'placer' => new UserResource($this->whenLoaded('placer')),
             'beneficiary' => new UserResource($this->whenLoaded('beneficiary')),
             'address' => new AddressResource($this->whenLoaded('address')),
             'items' => OrderItemResource::collection($this->whenLoaded('items')),
-
         ];
     }
 }
