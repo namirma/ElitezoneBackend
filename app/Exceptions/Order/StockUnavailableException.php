@@ -8,6 +8,6 @@ class StockUnavailableException extends BusinessException
 {
     public function __construct(string $productName)
     {
-        parent::__construct("موجودی محصول '{$productName}' کافی نیست.", 422);
+        parent::__construct($message ?? 'موجودی محصول کافی نیست.', 422);
     }
 }

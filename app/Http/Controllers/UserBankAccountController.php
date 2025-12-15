@@ -16,12 +16,18 @@ use Illuminate\Validation\ValidationException;
 
 class UserBankAccountController extends Controller
 {
+    /**
+     * دریافت لیست حساب‌های بانکی کاربر
+     */
     public function index(): JsonResponse
     {
         $accounts = Auth::user()->bankAccounts()->latest()->get();
         return success(UserBankAccountResource::collection($accounts), __('bank.list_received'));
     }
 
+    /**
+     * افزودن حساب بانکی جدید (کارت یا شبا)
+     */
     public function store(
         StoreUserBankAccountRequest $request,
         ShebaInquiryService $shebaService,
@@ -30,21 +36,20 @@ class UserBankAccountController extends Controller
         $user = Auth::user();
         $user->load('profile');
 
-        // 1. بررسی تکمیل بودن اطلاعات پروفایل
+        // ۱. بررسی تکمیل بودن اطلاعات هویتی
         if (empty($user->{User::NATIONAL_CODE}) || empty($user->{User::BIRTH_DATE})) {
             return error(__('bank.identity_incomplete'), [], 422);
         }
 
         $data = $request->validated();
-
         $shaba = $data['shaba'] ?? null;
         $cardNumber = $data['card_number'] ?? null;
         $bankName = __('bank.unknown_bank');
 
-        // 2. استعلام و احراز هویت (شبا یا کارت)
+        // ۲. استعلام و احراز هویت (شبا یا کارت)
         try {
             if ($cardNumber) {
-                // استعلام کارت
+                // الف) استعلام کارت
                 $isMatched = $cardService->verify($cardNumber, $user->{User::NATIONAL_CODE}, $user->{User::BIRTH_DATE});
 
                 if (!$isMatched) {
@@ -54,8 +59,9 @@ class UserBankAccountController extends Controller
                 }
 
                 $bankName = $this->getBankNameFromCard($cardNumber);
+
             } elseif ($shaba) {
-                // استعلام شبا
+                // ب) استعلام شبا
                 $isMatched = $shebaService->verify($shaba, $user->{User::NATIONAL_CODE}, $user->{User::BIRTH_DATE});
 
                 if (!$isMatched) {
@@ -72,11 +78,12 @@ class UserBankAccountController extends Controller
             return error(__('bank.service_unavailable'), ['debug' => $e->getMessage()], 503);
         }
 
-        // 3. دریافت نام صاحب حساب
+        // ۳. دریافت نام صاحب حساب
         $holderName = $this->resolveHolderName($user);
 
-        // 4. ذخیره در دیتابیس
+        // ۴. ذخیره در دیتابیس
         $bankAccount = DB::transaction(function () use ($user, $data, $bankName, $holderName, $shaba, $cardNumber) {
+            // اگر حساب پیش‌فرض است، بقیه را از حالت پیش‌فرض خارج کن
             if (!empty($data['is_default'])) {
                 $user->bankAccounts()->update(['is_default' => false]);
             }
@@ -94,18 +101,22 @@ class UserBankAccountController extends Controller
         return success(new UserBankAccountResource($bankAccount), __('bank.store_success'));
     }
 
+    /**
+     * حذف حساب بانکی
+     */
     public function destroy(UserBankAccount $bankAccount): JsonResponse
     {
         if ($bankAccount->{UserBankAccount::USER_ID} !== Auth::id()) {
             return error(__('auth.forbidden'), [], 403);
         }
 
-        // حذف حساب‌های دیفالت یا تایید شده
-        // if ($bankAccount->is_default) return error(__('bank.delete_default_error'), [], 400);
-
         $bankAccount->delete();
         return success([], __('bank.delete_success'));
     }
+
+    // =========================================================================
+    //  متدهای کمکی (Helpers)
+    // =========================================================================
 
     /**
      * استخراج نام صاحب حساب از پروفایل کاربر
@@ -122,7 +133,7 @@ class UserBankAccountController extends Controller
     private function getBankNameFromIban(string $iban): string
     {
         $cleanIban = strtoupper(preg_replace('/[^A-Z0-9]/', '', $iban));
-        // ارقام 5، 6 و 7 کد بانک هستند
+        // ارقام 5 تا 7 کد بانک هستند
         $bankCode = substr($cleanIban, 4, 3);
 
         return $this->getBankNameByCode($bankCode);
@@ -134,6 +145,7 @@ class UserBankAccountController extends Controller
     private function getBankNameFromCard(string $card): string
     {
         $bin = substr($card, 0, 6);
+
         $bankCode = match ($bin) {
             '603799' => '017', // ملی
             '589210' => '015', // سپه
@@ -144,39 +156,43 @@ class UserBankAccountController extends Controller
             '627760' => '021', // پست بانک
             '502908' => '022', // توسعه تعاون
             '627412' => '055', // اقتصاد نوین
-            '622106', '639194' => '054', // پارسیان
+            '622106', '639194', '627884' => '054', // پارسیان (اصلاح شد)
             '502229', '639347' => '057', // پاسارگاد
-            '627488', '502938' => '053', // کارآفرین
+            '627488' => '053', // کارآفرین
             '621986' => '056', // سامان
             '639346' => '059', // سینا
             '639607' => '058', // سرمایه
             '636214' => '062', // آینده
             '502806' => '061', // شهر
+            '502938' => '066', // دی (اصلاح شد: کد دی 066 است)
             '603769' => '019', // صادرات
             '610433', '991975' => '012', // ملت
-            '627353' => '018', // تجارت
+            '627353', '585983' => '018', // تجارت
             '589463' => '013', // رفاه
             '627381' => '063', // انصار
             '639370' => '090', // مهر اقتصاد
-            '639599' => '052', // قوامین (کد فرضی، ادغام شده)
+            '639599' => '052', // قوامین
             '504172' => '070', // رسالت
             '606373' => '060', // مهر ایران
-            '628157' => '051', // موسسه توسعه
+            '628157' => '051', // توسعه
             '505785' => '069', // ایران زمین
             '505416' => '064', // گردشگری
             '636949' => '065', // حکمت
             '505801' => '073', // کوثر
-            '627884' => '053', // کارآفرین (گاهی مشترک)
             default => null
         };
 
         return $bankCode ? $this->getBankNameByCode($bankCode) : __('bank.unknown_bank');
     }
 
+    /**
+     * دریافت نام فارسی بانک از فایل ترجمه بر اساس کد
+     */
     private function getBankNameByCode(string $code): string
     {
         $key = 'bank.banks.' . $code;
         $name = __($key);
+        // اگر ترجمه پیدا نشد، مقدار پیش‌فرض برگردان
         return $name === $key ? __('bank.unknown_bank') : $name;
     }
 }

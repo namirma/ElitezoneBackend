@@ -9,58 +9,53 @@ use App\Exceptions\Wallet\InsufficientBalanceException;
 use App\Models\Order;
 use App\Models\User;
 use App\Repositories\Contracts\OrderRepositoryInterface;
+use App\Services\Payment\PaymentGatewayFactory;
 use Illuminate\Support\Facades\DB;
 use Exception;
 
 class PayOrderAction
 {
     public function __construct(
-        private readonly OrderRepositoryInterface $orderRepo
+        private readonly OrderRepositoryInterface $orderRepo,
+        private readonly PaymentGatewayFactory $gatewayFactory 
     ) {}
 
     /**
      * پردازش پرداخت سفارش
-     *
-     * @param User $user
-     * @param Order $order
-     * @param string $gateway
-     * @return Order
-     * @throws \App\Exceptions\BusinessException
      */
-    public function execute(User $user, Order $order, string $gateway): Order
+    public function execute(User $user, Order $order, string $gatewayName): Order
     {
         $payableStatuses = [Order::STATUS_PENDING, Order::STATUS_RESERVED_EXTENDED];
 
+        // 1. گاردها
         if (!in_array($order->status, $payableStatuses)) {
             throw new OrderNotPayableException(__("orders.status.{$order->status}"));
         }
 
-        // ۲. گارد: آیا قبلاً پرداخت شده؟
         if ($order->payment_status === Order::PAYMENT_PAID) {
-            throw new InvalidOrderStateException('پرداخت شده', 'پرداخت مجدد');
+            throw new OrderNotPayableException(__('orders.errors.already_paid'));
         }
 
-        // ۳. اجرای تراکنش اتمیک
-        $updatedOrder = DB::transaction(function () use ($user, $order, $gateway) {
+        // 2. انتخاب استراتژی پرداخت
+        $gateway = $this->gatewayFactory->make($gatewayName);
 
-            // الف) کسر مبلغ (Logic Strategy)
-            if ($gateway === 'wallet') {
-                $this->payWithWallet($user, $order);
-            } else {
-                throw new Exception("درگاه $gateway هنوز پیاده‌سازی نشده است.");
-            }
+        // 3. اجرای تراکنش اتمیک
+        $updatedOrder = DB::transaction(function () use ($user, $order, $gateway, $gatewayName) {
 
+            // الف) انجام عملیات پرداخت (پلی‌مورفیسم)
+            $result = $gateway->pay($user, $order);
+
+            // ب) آپدیت وضعیت سفارش
             $this->orderRepo->update($order, [
                 Order::STATUS         => Order::STATUS_PROCESSING,
                 Order::PAYMENT_STATUS => Order::PAYMENT_PAID,
-                Order::PAYMENT_METHOD => $gateway,
+                Order::PAYMENT_METHOD => $gatewayName,
                 Order::PAID_AT        => now(),
             ]);
 
             return $order;
         });
 
-        // ۴. شلیک رویداد
         OrderPaid::dispatch($updatedOrder);
 
         return $updatedOrder;
@@ -69,27 +64,20 @@ class PayOrderAction
     /**
      * منطق پرداخت با کیف پول
      */
-    /**
-     * منطق پرداخت با کیف پول
-     */
     private function payWithWallet(User $user, Order $order): void
     {
-        // 1. دریافت کیف پول
         $wallet = $user->wallet;
 
         if (!$wallet) {
             throw new Exception("کیف پول برای این کاربر فعال نشده است.");
         }
 
-        // 2. بررسی موجودی
         if ($wallet->balance < $order->final_amount) {
             throw new InsufficientBalanceException();
         }
 
-        // 3. کسر موجودی
         $wallet->decrement('balance', $order->final_amount);
 
-        // 4. ثبت تراکنش
         $wallet->transactions()->create([
             'amount'         => -1 * $order->final_amount,
             'type'           => 'withdraw',

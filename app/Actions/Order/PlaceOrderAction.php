@@ -3,6 +3,7 @@
 namespace App\Actions\Order;
 
 use App\DataTransferObjects\PlaceOrderData;
+use App\DataTransferObjects\Pricing\PriceCalculationResult; // مطمئن شوید فایلش وجود دارد
 use App\Events\OrderPlaced;
 use App\Exceptions\Order\CartIsEmptyException;
 use App\Exceptions\Order\StockUnavailableException;
@@ -74,8 +75,9 @@ class PlaceOrderAction
                 'priceFilterCategories'
             ])->first();
 
+        // اصلاح: اکسپشن باید مسیج قبول کند. اگر کلاسش خالی است، متن را به Exception اصلی پاس می‌دهد.
         if (!$cart || $cart->items->isEmpty()) {
-            throw new CartIsEmptyException();
+            throw new CartIsEmptyException(__('orders.errors.cart_empty'));
         }
 
         return $cart;
@@ -99,7 +101,8 @@ class PlaceOrderAction
             }
 
             if ($variant->stock_quantity < $requiredBaseQty) {
-                throw new StockUnavailableException($variant->name);
+                // اصلاح: ارسال پیام ترجمه شده به اکسپشن
+                throw new StockUnavailableException(__('orders.errors.stock_unavailable', ['product' => $variant->name]));
             }
         }
     }
@@ -118,7 +121,8 @@ class PlaceOrderAction
         $orderUnitsMap = OrderUnit::all()->keyBy(OrderUnit::ID);
 
         foreach ($cart->items as $item) {
-            /** @var \App\DataTransferObjects\Pricing\PriceCalculationResult $pricing */
+            /** @var PriceCalculationResult $pricing */
+            // اطمینان حاصل کنید که سرویس calculatePrice دقیقاً آبجکت PriceCalculationResult برمی‌گرداند
             $pricing = $this->priceService->calculatePrice(
                 variant: $item->productVariant,
                 factory: $item->factory,
@@ -225,21 +229,17 @@ class PlaceOrderAction
             Order::BENEFICIARY_USER_ID => $data->beneficiaryUserId ?? $user->id,
             Order::ADDRESS_ID => $data->addressId,
             Order::ORDER_NUMBER => 'EL-' . strtoupper(Str::random(10)),
-
             Order::STATUS => Order::STATUS_PENDING,
             Order::PAYMENT_STATUS => Order::PAYMENT_PENDING,
-
             Order::SUBTOTAL => $fins['subtotal'],
             Order::DISCOUNT_AMOUNT => $fins['total_discount'],
             Order::VAT_AMOUNT => $fins['vat_amount'],
             Order::SHIPPING_COST => $fins['shipping_cost'],
             Order::FINAL_AMOUNT => $fins['final_amount'],
-
             Order::ENGINEER_FEE_AMOUNT => $fins['fees']['engineer'],
             Order::CONTRACTOR_FEE_AMOUNT => $fins['fees']['contractor'],
             Order::ENGINEER_FEE_PAYMENT_STATUS => $fins['fees']['engineer'] ? Order::FEE_PAYMENT_PENDING : null,
             Order::CONTRACTOR_FEE_PAYMENT_STATUS => $fins['fees']['contractor'] ? Order::FEE_PAYMENT_PENDING : null,
-
             Order::RESERVATION_EXPIRES_AT => now()->addHours(2),
             Order::NOTES => $data->description,
         ]);
@@ -258,10 +258,8 @@ class PlaceOrderAction
                 OrderItem::ORDER_ID => $order->id,
                 OrderItem::PRODUCT_VARIANT_ID => $item->{CartItem::PRODUCT_VARIANT_ID},
                 OrderItem::SUPPLIER_USER_ID => $supplierId,
-
                 OrderItem::PRODUCT_NAME => $item->productVariant->{ProductVariant::NAME},
                 OrderItem::VARIANT_SKU => $item->productVariant->{ProductVariant::SKU},
-
                 OrderItem::QUANTITY_DETAILS => $item->{CartItem::QUANTITIES},
                 OrderItem::UNIT_PRICE => $item->calculated_unit_price,
                 OrderItem::TOTAL_PRICE => $item->calculated_line_total,

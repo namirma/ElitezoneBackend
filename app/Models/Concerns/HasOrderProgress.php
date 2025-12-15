@@ -3,6 +3,7 @@
 namespace App\Models\Concerns;
 
 use App\Models\Order;
+use Illuminate\Support\Facades\Lang;
 
 trait HasOrderProgress
 {
@@ -15,7 +16,6 @@ trait HasOrderProgress
         $id = $this->id;
         $paymentStatus = $this->payment_status;
 
-        // اگر سفارش کنسل یا ناموفق شده، کل پروسه را متوقف نشان بده
         $isCancelled = in_array($s, [Order::STATUS_CANCELLED, Order::STATUS_FAILED]);
 
         $stepsData = [
@@ -30,32 +30,31 @@ trait HasOrderProgress
         // ۱. محاسبه وضعیت دایره‌ها (State Logic)
         // ---------------------------------------------------------
 
-        // مرحله ۱: همیشه تکمیل است
         $stepsData[1]['state'] = 'completed';
 
         if (!$isCancelled) {
-            // مرحله ۲: ثبت اولیه
+            // مرحله ۲
             if (in_array($s, [Order::STATUS_PENDING, Order::STATUS_RESERVED_EXTENDED, Order::STATUS_PROCESSING, Order::STATUS_PREPARING])) {
                 $stepsData[2]['state'] = 'current';
             } elseif (in_array($s, [Order::STATUS_WEIGHBRIDGE_DONE, Order::STATUS_WAYBILL_ISSUED, Order::STATUS_SHIPPED, Order::STATUS_DELIVERED])) {
                 $stepsData[2]['state'] = 'completed';
             }
 
-            // مرحله ۳: باسکول و ثبت نهایی
+            // مرحله ۳
             if ($s === Order::STATUS_WEIGHBRIDGE_DONE) {
                 $stepsData[3]['state'] = 'current';
             } elseif (in_array($s, [Order::STATUS_WAYBILL_ISSUED, Order::STATUS_SHIPPED, Order::STATUS_DELIVERED])) {
                 $stepsData[3]['state'] = 'completed';
             }
 
-            // مرحله ۴: بارنامه و حمل
+            // مرحله ۴
             if (in_array($s, [Order::STATUS_WAYBILL_ISSUED, Order::STATUS_SHIPPED])) {
                 $stepsData[4]['state'] = 'current';
             } elseif ($s === Order::STATUS_DELIVERED) {
                 $stepsData[4]['state'] = 'completed';
             }
 
-            // مرحله ۵: تحویل نهایی
+            // مرحله ۵
             if ($s === Order::STATUS_DELIVERED) {
                 $stepsData[5]['state'] = 'completed';
             }
@@ -66,70 +65,70 @@ trait HasOrderProgress
         // ---------------------------------------------------------
 
         if (!$isCancelled) {
-            // اکشن‌های مرحله ۱ (رزرو)
+            // اکشن‌های مرحله ۱
             if ($paymentStatus === Order::PAYMENT_PENDING && in_array($s, [Order::STATUS_PENDING, Order::STATUS_RESERVED_EXTENDED])) {
                 $stepsData[1]['actions'][] = [
-                    'label' => 'پرداخت فاکتور',
+                    'label' => __('orders.actions.pay_invoice'),
                     'link'  => "/checkout/payment/{$id}",
                     'type'  => 'primary'
                 ];
             } elseif ($paymentStatus === Order::PAYMENT_PAID) {
                 $stepsData[1]['actions'][] = [
-                    'label' => 'دریافت رسید',
+                    'label' => __('orders.actions.get_receipt'),
                     'link'  => "/profile/orders/{$id}/invoice/initial",
                     'type'  => 'secondary'
                 ];
             }
 
-            // اکشن‌های مرحله ۲ (ثبت اولیه)
+            // اکشن‌های مرحله ۲
             if (in_array($s, [Order::STATUS_WEIGHBRIDGE_DONE, Order::STATUS_WAYBILL_ISSUED, Order::STATUS_SHIPPED, Order::STATUS_DELIVERED])) {
                 $stepsData[2]['actions'][] = [
-                    'label' => 'دانلود فاکتور اولیه',
+                    'label' => __('orders.actions.download_initial_invoice'),
                     'link'  => "/profile/orders/{$id}/invoice/initial",
                     'type'  => 'secondary'
                 ];
             } else {
                 $stepsData[2]['actions'][] = [
-                    'label' => 'مشاهده جزئیات',
+                    'label' => __('orders.actions.view_details'),
                     'link'  => "/profile/orders/{$id}",
                     'type'  => 'secondary'
                 ];
             }
 
-            // اکشن‌های مرحله ۳ (باسکول / نهایی)
+            // اکشن‌های مرحله ۳
             if ($s === Order::STATUS_WEIGHBRIDGE_DONE) {
                 $stepsData[3]['actions'][] = [
-                    'label' => 'فاکتور نهایی (تسویه)',
+                    'label' => __('orders.actions.final_invoice_settlement'),
                     'link'  => "/checkout/payment/{$id}",
                     'type'  => 'primary'
                 ];
             } elseif (in_array($s, [Order::STATUS_WAYBILL_ISSUED, Order::STATUS_SHIPPED, Order::STATUS_DELIVERED])) {
                 $stepsData[3]['actions'][] = [
-                    'label' => 'دریافت فاکتور نهایی',
+                    'label' => __('orders.actions.get_final_invoice'),
                     'link'  => "/profile/orders/{$id}/invoice/final",
                     'type'  => 'secondary'
                 ];
             }
 
-            // اکشن‌های مرحله ۴ (حمل)
+            // اکشن‌های مرحله ۴
             if (in_array($s, [Order::STATUS_WAYBILL_ISSUED, Order::STATUS_SHIPPED])) {
                 $stepsData[4]['actions'][] = [
-                    'label' => 'مشاهده بارنامه',
+                    'label' => __('orders.actions.view_waybill'),
                     'link'  => "/profile/orders/{$id}",
                     'type'  => 'primary'
                 ];
             } elseif ($s === Order::STATUS_DELIVERED) {
                 $stepsData[4]['actions'][] = [
-                    'label' => 'مشاهده جزئیات حمل',
+                    'label' => __('orders.actions.view_shipping_details'),
                     'link'  => "/profile/orders/{$id}",
                     'type'  => 'secondary'
                 ];
             }
 
-            // اکشن‌های مرحله ۵ (تکمیل)
+            // اکشن‌های مرحله ۵
             if ($s === Order::STATUS_DELIVERED) {
                 $stepsData[5]['actions'][] = [
-                    'label' => 'دریافت فاکتور رسمی',
+                    'label' => __('orders.actions.get_tax_invoice'),
                     'link'  => "/profile/orders/{$id}/invoice/tax",
                     'type'  => 'secondary'
                 ];
@@ -140,33 +139,22 @@ trait HasOrderProgress
         // ۳. ساخت خروجی نهایی
         // ---------------------------------------------------------
 
-        // نکته مهم: اگر در فرانت از این تایتل‌ها برای نمایش وضعیت کلی استفاده می‌کنند،
-        // باید اینجا عنوان وضعیت فعلی را هم بفرستیم.
+        // اصلاح حرفه‌ای: استفاده از فایل ترجمه به جای match طولانی
+        // اگر وضعیت در فایل ترجمه باشد، آن را برمی‌گرداند، اگر نباشد خود کلید را برمی‌گرداند
+        // برای اطمینان از مقدار پیش‌فرض، از دستور زیر استفاده می‌کنیم:
 
-        // محاسبه "وضعیت کلی نمایشی" برای هدر پایین
-        $currentStatusLabel = match ($s) {
-            Order::STATUS_PENDING, 'reserved' => 'رزرو سفارش',
-            Order::STATUS_RESERVED_EXTENDED   => 'رزرو تمدید شده',
-            Order::STATUS_PROCESSING          => 'در حال پردازش',
-            Order::STATUS_PREPARING           => 'در حال آماده‌سازی',
-            Order::STATUS_WEIGHBRIDGE_DONE    => 'توزین شده',
-            Order::STATUS_WAYBILL_ISSUED      => 'صدور بارنامه',
-            Order::STATUS_SHIPPED             => 'ارسال شده',
-            Order::STATUS_DELIVERED           => 'تحویل شده',
-            Order::STATUS_CANCELLED           => 'لغو شده',
-            Order::STATUS_FAILED              => 'ناموفق',
-            default                           => 'نامشخص',
-        };
+        $transKey = "orders.status.{$s}";
+        $currentStatusLabel = Lang::has($transKey) ? __($transKey) : __('orders.status.unknown');
 
         return [
             'is_cancelled' => $isCancelled,
             'current_status_label' => $currentStatusLabel,
             'steps' => [
-                ['step' => 1, 'title' => 'رزرو سفارش',           'state' => $stepsData[1]['state'], 'actions' => $stepsData[1]['actions']],
-                ['step' => 2, 'title' => 'ثبت اولیه پس از پرداخت', 'state' => $stepsData[2]['state'], 'actions' => $stepsData[2]['actions']],
-                ['step' => 3, 'title' => 'ثبت نهایی بعد از باسکول', 'state' => $stepsData[3]['state'], 'actions' => $stepsData[3]['actions']],
-                ['step' => 4, 'title' => 'در حال حمل',            'state' => $stepsData[4]['state'], 'actions' => $stepsData[4]['actions']],
-                ['step' => 5, 'title' => 'تکمیل شده',             'state' => $stepsData[5]['state'], 'actions' => $stepsData[5]['actions']],
+                ['step' => 1, 'title' => __('orders.steps.1'), 'state' => $stepsData[1]['state'], 'actions' => $stepsData[1]['actions']],
+                ['step' => 2, 'title' => __('orders.steps.2'), 'state' => $stepsData[2]['state'], 'actions' => $stepsData[2]['actions']],
+                ['step' => 3, 'title' => __('orders.steps.3'), 'state' => $stepsData[3]['state'], 'actions' => $stepsData[3]['actions']],
+                ['step' => 4, 'title' => __('orders.steps.4'), 'state' => $stepsData[4]['state'], 'actions' => $stepsData[4]['actions']],
+                ['step' => 5, 'title' => __('orders.steps.5'), 'state' => $stepsData[5]['state'], 'actions' => $stepsData[5]['actions']],
             ]
         ];
     }

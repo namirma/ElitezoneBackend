@@ -9,7 +9,6 @@ use App\Http\Requests\WalletWithdrawalRequest;
 use App\Http\Resources\WalletResource;
 use App\Http\Resources\WalletTransactionResource;
 use App\Models\UserBankAccount;
-use App\Models\UserProfile;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use Illuminate\Contracts\Cache\LockTimeoutException;
@@ -41,6 +40,7 @@ class WalletController extends Controller
 
         $query = WalletTransaction::where(WalletTransaction::WALLET_ID, $wallet->id)->latest();
 
+        // فیلتر بر اساس نوع تراکنش
         if ($request->filled('type')) {
             match ($request->input('type')) {
                 'deposit'  => $query->where(WalletTransaction::TYPE, WalletTransaction::TYPE_DEPOSIT),
@@ -50,10 +50,12 @@ class WalletController extends Controller
             };
         }
 
+        // فیلتر بر اساس وضعیت
         if ($request->filled('status')) {
             $query->where(WalletTransaction::STATUS, $request->input('status'));
         }
 
+        // فیلتر زمانی
         if ($request->filled('range')) {
             $now = Carbon::now();
             match ($request->input('range')) {
@@ -81,6 +83,7 @@ class WalletController extends Controller
         $amount = $validated['amount'];
         $method = $validated['payment_method'];
 
+        // ایجاد تراکنش اولیه (در انتظار پرداخت)
         $transaction = $wallet->transactions()->create([
             WalletTransaction::AMOUNT      => $amount,
             WalletTransaction::TYPE        => WalletTransaction::TYPE_DEPOSIT,
@@ -89,6 +92,7 @@ class WalletController extends Controller
             WalletTransaction::META        => ['payment_method' => $method]
         ]);
 
+        // مدیریت روش‌های پرداخت
         return match ($method) {
             'bank_transfer' => success([
                 'transaction_id' => $transaction->id,
@@ -100,14 +104,15 @@ class WalletController extends Controller
             'shaparak' => success([
                 'transaction_id' => $transaction->id,
                 'type'           => 'gateway_redirect',
-                $callbackUrl = route('payment.callback', ['transaction_id' => $transaction->id]),
-                'redirect_url'   => "https://shaparak.example.com/payment/{$transaction->id}",
+                'callback_url'   => route('payment.callback', ['transaction_id' => $transaction->id]),
+                // بهتر است URL درگاه را از کانفیگ بخوانید
+                'redirect_url'   => config('services.shaparak.url', 'https://shaparak.ir/payment') . "/{$transaction->id}",
             ], __('wallet.redirect_to_gateway')),
 
             'podium' => success([
                 'transaction_id' => $transaction->id,
                 'type'           => 'gateway_redirect',
-                'redirect_url'   => "https://podium.example.com/payment/{$transaction->id}",
+                'redirect_url'   => config('services.podium.url', 'https://podium.ir/payment') . "/{$transaction->id}",
             ], __('wallet.redirect_to_gateway')),
 
             default => error(__('wallet.invalid_payment_method'), [], 400),
@@ -115,12 +120,13 @@ class WalletController extends Controller
     }
 
     /**
-     * آپلود رسید برای تراکنشی که قبلاً با requestDeposit ایجاد شده
+     * آپلود رسید برای تراکنشی که قبلاً ایجاد شده (روش کارت به کارت)
      */
     public function uploadDepositReceipt(Request $request, WalletTransaction $transaction): JsonResponse
     {
         $user = Auth::user();
 
+        // 1. بررسی مالکیت
         if ($transaction->wallet->{Wallet::USER_ID} !== $user->id) {
             return error(__('auth.forbidden'), [], 403);
         }
@@ -128,6 +134,7 @@ class WalletController extends Controller
         $meta = $transaction->{WalletTransaction::META};
         $isBankTransfer = ($meta['payment_method'] ?? '') === 'bank_transfer';
 
+        // 2. بررسی وضعیت تراکنش
         if (
             $transaction->{WalletTransaction::TYPE} !== WalletTransaction::TYPE_DEPOSIT ||
             $transaction->{WalletTransaction::STATUS} !== WalletTransaction::STATUS_PENDING ||
@@ -136,14 +143,19 @@ class WalletController extends Controller
             return error(__('wallet.invalid_upload_transaction'), [], 400);
         }
 
+        // 3. اعتبارسنجی فایل
         $request->validate([
             'receipt' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120']
         ]);
 
         $path = $request->file('receipt')->store('wallet_receipts', 'public');
 
+        // 4. آپدیت تراکنش
+        // نکته: استفاده از فایل زبان برای متن الحاقی
+        $newDescription = $transaction->{WalletTransaction::DESCRIPTION} . __('wallet.receipt_uploaded_suffix');
+
         $transaction->update([
-            WalletTransaction::DESCRIPTION => $transaction->{WalletTransaction::DESCRIPTION} . ' | رسید آپلود شد',
+            WalletTransaction::DESCRIPTION => $newDescription,
             WalletTransaction::META => array_merge($meta ?? [], ['receipt_path' => $path])
         ]);
 
@@ -156,15 +168,12 @@ class WalletController extends Controller
         $validated = $request->validated();
         $amount = (float) $validated['amount'];
 
-        // 1. ایجاد کلید قفل اختصاصی برای کاربر
+        // استفاده از Atomic Lock برای جلوگیری از درخواست همزمان
         $lockKey = "wallet_transaction_lock:user:{$user->id}";
 
         try {
-            // 2. تلاش برای گرفتن قفل (حداکثر ۱۰ ثانیه صبر می‌کند)
-            // اگر کاربر دیگری همزمان درخواست داده باشد، درخواست دوم اینجا منتظر می‌ماند
-            $result = Cache::lock($lockKey, 10)->block(10, function () use ($user, $validated, $amount) {
+            return Cache::lock($lockKey, 10)->block(10, function () use ($user, $validated, $amount) {
 
-                // 3. اعتبارسنجی حساب بانکی (داخل قفل برای اطمینان بیشتر)
                 $bankAccount = UserBankAccount::where('id', $validated['user_bank_account_id'])
                     ->where('user_id', $user->id)
                     ->first();
@@ -173,7 +182,6 @@ class WalletController extends Controller
                     throw new \Exception(__('wallet.bank_account_not_found'), 404);
                 }
 
-                // 4. شروع تراکنش دیتابیس
                 return DB::transaction(function () use ($user, $amount, $bankAccount) {
                     $wallet = $user->wallet()->firstOrCreate();
 
@@ -184,13 +192,12 @@ class WalletController extends Controller
                     // کسر موجودی
                     $wallet->decrement(Wallet::BALANCE, $amount);
 
-                    // ساخت توضیحات
+                    // توضیحات استاندارد از فایل زبان
                     $desc = __('wallet.withdrawal_description', [
                         'shaba' => $bankAccount->{UserBankAccount::SHABA},
                         'bank'  => $bankAccount->{UserBankAccount::BANK_NAME}
                     ]);
 
-                    // ثبت تراکنش
                     $transaction = $wallet->transactions()->create([
                         WalletTransaction::AMOUNT      => $amount,
                         WalletTransaction::TYPE        => WalletTransaction::TYPE_WITHDRAW,
@@ -207,13 +214,11 @@ class WalletController extends Controller
                 });
             });
 
-            return $result;
         } catch (LockTimeoutException $e) {
             return error(__('global.system_busy_try_again'), [], 429);
         } catch (\Exception $e) {
             $status = $e->getCode() ?: 500;
             $status = ($status < 100 || $status > 599) ? 500 : $status;
-
             return error($e->getMessage(), [], $status);
         }
     }
@@ -228,7 +233,7 @@ class WalletController extends Controller
         $user = Auth::user();
         $wallet = $user->wallet;
 
-        // دریافت تراکنش‌هایی که از نوع واریز فیشی هستند
+        // دریافت فیش‌های واریزی
         $receipts = $wallet->transactions()
             ->where('type', WalletTransaction::TYPE_DEPOSIT)
             ->whereJsonContains('meta->payment_method', 'bank_transfer')
@@ -256,10 +261,12 @@ class WalletController extends Controller
             ]
         ];
 
+        // ساخت توضیحات استاندارد
         $desc = __('wallet.receipt_description', [
             'number' => $data['receipt_number'],
             'bank'   => $data['bank_name']
         ]);
+
         if (!empty($data['description'])) {
             $desc .= ' - ' . $data['description'];
         }
@@ -271,11 +278,13 @@ class WalletController extends Controller
             WalletTransaction::DESCRIPTION => $desc,
             WalletTransaction::META        => $metaData
         ]);
+
+        // لاگ استاندارد از فایل زبان
         activity()
             ->performedOn($transaction)
             ->causedBy($user)
             ->withProperties(['amount' => $transaction->amount, 'ip' => $request->ip()])
-            ->log('.فیش بانکی توسط کاربر بارگذاری شد');
+            ->log(__('wallet.logs.receipt_uploaded_by_user'));
 
         return success(new WalletTransactionResource($transaction), __('wallet.receipt_created'));
     }
@@ -286,7 +295,6 @@ class WalletController extends Controller
             return error(__('auth.forbidden'), [], 403);
         }
 
-        // فقط فیش‌های در انتظار بررسی قابل حذف هستند
         if ($transaction->status !== WalletTransaction::STATUS_PENDING) {
             return error(__('wallet.receipt_delete_forbidden'), [], 400);
         }

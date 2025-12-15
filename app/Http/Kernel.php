@@ -76,7 +76,7 @@ class Kernel extends HttpKernel
             EnsureFrontendRequestsAreStateful::class,
             ThrottleRequests::class . ':api',
             SubstituteBindings::class,
-            EnsureRoleIsSelected::class,
+            //EnsureRoleIsSelected::class,
         ],
     ];
 
@@ -105,6 +105,7 @@ class Kernel extends HttpKernel
         'role.expert' => EnsureUserIsExpert::class,
         'role.employer' => \App\Http\Middleware\EnsureUserIsEmployer::class,
         'track' => TrackDashboardUsage::class,
-        'idempotency' => Idempotency::class
+        'idempotency' => Idempotency::class, 
+        'role.selected' => EnsureRoleIsSelected::class,
     ];
 }

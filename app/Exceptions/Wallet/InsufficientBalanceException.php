@@ -6,8 +6,13 @@ use App\Exceptions\BusinessException;
 
 class InsufficientBalanceException extends BusinessException
 {
-    public function __construct()
+    /**
+     * @param string|null $message 
+     */
+    public function __construct(?string $message = null)
     {
-        parent::__construct(__('wallet.insufficient_balance'), 402); // 402 Payment Required
+        $msg = $message ?? __('wallet.errors.insufficient_balance');
+
+        parent::__construct($msg, 402);
     }
 }

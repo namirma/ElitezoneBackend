@@ -1,12 +1,13 @@
 <?php
 
 namespace App\Exceptions\Order;
+
 use App\Exceptions\BusinessException;
 
 class OrderNotPayableException extends BusinessException
 {
-    public function __construct(string $status)
+    public function __construct(?string $message = null)
     {
-        parent::__construct("سفارش با وضعیت '$status' قابل پرداخت نیست.", 400);
+        parent::__construct($message ?? 'این سفارش قابل پرداخت نیست.', 400);
     }
 }
