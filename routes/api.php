@@ -11,7 +11,7 @@ use App\Http\Controllers\FactoryController;
 use App\Http\Controllers\IdentityInquirySc2Controller;
 use App\Http\Controllers\JobExperienceController;
 use App\Http\Controllers\MobileNidMatchController;
-use App\Http\Controllers\OrderActionController;
+use App\Http\Controllers\Api\User\OrderActionController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\OrderSurveyController;
 use App\Http\Controllers\ParameterDetectionController;
@@ -39,6 +39,7 @@ use App\Http\Controllers\Api\User\EngineerController;
 use App\Http\Controllers\Api\User\ProfileController;
 use App\Http\Controllers\Api\User\SupplierController;
 use App\Http\Controllers\Api\DebugController;
+use Illuminate\Http\Request;
 
 // Admin Controllers
 use App\Http\Controllers\Api\Admin\AdminActivityLogController;
@@ -47,7 +48,9 @@ use App\Http\Controllers\Api\Admin\AdminOrderController;
 use App\Http\Controllers\Api\Admin\AdminSearchController;
 use App\Http\Controllers\Api\Admin\AdminUserController;
 use App\Http\Controllers\Api\Admin\AdminWalletController;
-
+use App\Http\Controllers\Api\User\OrderInvoiceController;
+use App\Http\Controllers\Api\User\OrderPaymentController;
+use App\Http\Controllers\Api\User\SupplierOrderController;
 // Middleware
 use App\Http\Middleware\EnsureRoleIsSelected;
 
@@ -227,34 +230,53 @@ Route::middleware(['auth:sanctum'])->group(function () {
         });
 
         // سفارش‌ها
-        Route::prefix('orders')->controller(OrderController::class)->group(function () {
-            Route::get('/', 'index')->middleware('track:orders');
+        Route::prefix('orders')->group(function () {
 
-            Route::prefix('buy-myself')->group(function () {
-                Route::get('/current', 'listMyCurrentOrders');
-                Route::get('/delivered', 'listMyDeliveredOrders');
-                Route::get('/cancelled', 'listMyCancelledOrders');
+            // 1. نمایش و لیست‌ها (OrderController)
+            Route::controller(OrderController::class)->group(function () {
+                Route::get('/', 'index')->middleware('track:orders');
+                Route::get('/{order}', 'show')->whereNumber('order');
+
+                Route::prefix('buy-myself')->group(function () {
+                    Route::get('/current', fn(Request $request) => app(OrderController::class)->myOrders($request, 'current'));
+                    Route::get('/delivered', fn(Request $request) => app(OrderController::class)->myOrders($request, 'delivered'));
+                    Route::get('/cancelled', fn(Request $request) => app(OrderController::class)->myOrders($request, 'cancelled'));
+                });
+
+                Route::prefix('buy-others')->group(function () {
+                    Route::get('/current', fn(Request $request) => app(OrderController::class)->otherOrders($request, 'current'));
+                    Route::get('/delivered', fn(Request $request) => app(OrderController::class)->otherOrders($request, 'delivered'));
+                    Route::get('/cancelled', fn(Request $request) => app(OrderController::class)->otherOrders($request, 'cancelled'));
+                });
             });
 
-            Route::prefix('buy-others')->group(function () {
-                Route::get('/current', 'listOthersCurrentOrders');
-                Route::get('/delivered', 'listOthersDeliveredOrders');
-                Route::get('/cancelled', 'listOthersCancelledOrders');
+            // 2. عملیات مالی (OrderPaymentController)
+            Route::controller(OrderPaymentController::class)->group(function () {
+                Route::post('/{order}/pay-hold-fee', 'payHoldFee');
+                Route::post('/{order}/pay-full', 'payFullOrder');
+                Route::post('/{order}/upload-receipt', 'uploadReceipt');
             });
 
-            Route::get('/{order}', 'show');
-            Route::post('/{order}/pay-hold-fee', 'payHoldFee');
-            Route::post('/{order}/pay-full', 'payFullOrder');
-            Route::post('/{order}/cancel', 'cancel');
-            Route::post('/{order}/upload-receipt', 'uploadCustomerReceipt');
-            Route::get('/{order}/invoice/{type}', 'downloadInvoice')->whereIn('type', ['initial', 'final', 'tax']);
+            // 3. عملیات اکشن (OrderActionController)
+            Route::controller(OrderActionController::class)->group(function () {
+                Route::post('/{order}/cancel', 'cancel');
+                Route::post('/{order}/finalize-invoice', 'finalizeInvoice');
+            });
+
+            // 4. فاکتور (OrderInvoiceController)
+            Route::get('/{order}/invoice/{type}', [OrderInvoiceController::class, 'download'])
+                ->whereIn('type', ['initial', 'final', 'tax']);
+
+            // 5. نظرسنجی
             Route::post('/{order}/survey', [OrderSurveyController::class, 'store']);
 
-            // عملیات سوپلایر
-            Route::post('/{order}/prepare', 'markAsPrepared');
-            Route::post('/{order}/waybill', 'addWaybill');
-            Route::post('/{order}/espadana', 'issueEspadanaCommand');
-            Route::post('/{order}/receipt', 'attachPaymentReceipt');
+            // 6. تامین‌کننده (SupplierOrderController)
+            Route::controller(SupplierOrderController::class)->group(function () {
+                Route::post('/{order}/prepare', 'markAsPrepared');
+                Route::post('/{order}/waybill', 'addWaybill');
+                Route::post('/{order}/espadana', 'issueEspadanaCommand');
+                Route::post('/{order}/receipt', 'attachPaymentReceipt');
+            });
         });
 
         // مدیریت مالی

@@ -22,6 +22,7 @@ use App\Models\UserType;
 use App\Repositories\Contracts\OrderRepositoryInterface;
 use App\Services\InventoryService;
 use App\Services\PriceCalculationService;
+use App\Services\Pricing\CartPricingCalculator;
 use App\Services\PricingRoleResolver;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -32,6 +33,7 @@ use Exception;
 class PlaceOrderAction
 {
     public function __construct(
+        private readonly CartPricingCalculator $cartPricing,
         private readonly PriceCalculationService $priceService,
         private readonly PricingRoleResolver $roleResolver,
         private readonly InventoryService $inventoryService,

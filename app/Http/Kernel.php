@@ -105,7 +105,7 @@ class Kernel extends HttpKernel
         'role.expert' => EnsureUserIsExpert::class,
         'role.employer' => \App\Http\Middleware\EnsureUserIsEmployer::class,
         'track' => TrackDashboardUsage::class,
-        'idempotency' => Idempotency::class, 
+        'idempotency' => Idempotency::class,
         'role.selected' => EnsureRoleIsSelected::class,
     ];
 }

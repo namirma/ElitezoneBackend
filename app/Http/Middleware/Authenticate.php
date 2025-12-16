@@ -12,18 +12,22 @@ class Authenticate extends Middleware
      */
     protected function redirectTo(Request $request): ?string
     {
-        return $request->expectsJson() ? null : route('login');
-    }
-    protected function unauthenticated($request, array $guards)
-    {
-        if ($request->expectsJson() || $request->is('api/*')) {
-            abort(error(
-                __('auth.unauthenticated'),
-                [],
-                401
-            ));
+        if ($request->is('api/*') || $request->expectsJson()) {
+            return null;
         }
 
-        parent::unauthenticated($request, $guards);
+        return route('login');
     }
+    // protected function unauthenticated($request, array $guards)
+    // {
+    //     if ($request->expectsJson() || $request->is('api/*')) {
+    //         abort(error(
+    //             __('auth.unauthenticated'),
+    //             [],
+    //             401
+    //         ));
+    //     }
+
+    //     parent::unauthenticated($request, $guards);
+    // }
 }

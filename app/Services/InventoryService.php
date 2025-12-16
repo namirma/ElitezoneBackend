@@ -5,14 +5,29 @@ namespace App\Services;
 use App\Exceptions\Order\StockUnavailableException;
 use App\Models\Order;
 use App\Models\OrderItem;
-use App\Models\OrderUnit; // <--- ایمپورت مدل واحد
+use App\Models\OrderUnit;
 use App\Models\ProductVariant;
 use Exception;
-use Illuminate\Support\Facades\Cache; // <--- برای کش کردن واحدها
+use Illuminate\Support\Facades\Cache;
 
 class InventoryService
 {
+    /**
+     * بررسی موجودی (بدون کسر کردن)
+     * این متد در CartController و AddToCartAction استفاده می‌شود
+     */
+    public function checkStock(ProductVariant $variant, array|float|int $quantities): bool
+    {
+        $requiredBaseQty = is_array($quantities)
+            ? $this->calculateBaseQuantity($quantities)
+            : (float) $quantities;
 
+        return $variant->stock_quantity >= $requiredBaseQty;
+    }
+
+    /**
+     * کسر موجودی برای سفارش نهایی
+     */
     public function deductStockForOrder(Order $order): void
     {
         $order->load('items');
@@ -24,7 +39,7 @@ class InventoryService
 
     private function deductItemStock(OrderItem $item): void
     {
-        // 1. قفل کردن رکورد برای جلوگیری از Race Condition
+        // قفل کردن رکورد برای جلوگیری از Race Condition
         $variant = ProductVariant::where('id', $item->product_variant_id)
             ->lockForUpdate()
             ->first();
@@ -33,7 +48,9 @@ class InventoryService
             throw new Exception("محصول با شناسه {$item->product_variant_id} یافت نشد.");
         }
 
-        $requiredBaseQty = $this->calculateBaseQuantity($item->quantity_details);
+        $quantities = $item->quantities;
+
+        $requiredBaseQty = $this->calculateBaseQuantity($quantities);
 
         if ($variant->stock_quantity < $requiredBaseQty) {
             throw new StockUnavailableException($variant->name);
@@ -45,7 +62,8 @@ class InventoryService
     public function restoreStock(Order $order): void
     {
         foreach ($order->items as $item) {
-            $qty = $this->calculateBaseQuantity($item->quantity_details);
+            $quantities = $item->quantities; // فرض بر این است که OrderItem کست array دارد
+            $qty = $this->calculateBaseQuantity($quantities);
 
             ProductVariant::where('id', $item->product_variant_id)
                 ->increment('stock_quantity', $qty);
@@ -54,12 +72,12 @@ class InventoryService
 
     /**
      * محاسبه مقدار کل بر اساس ضرایب واحدها
-     * (جایگزین array_sum ساده قبلی)
      */
     private function calculateBaseQuantity(?array $details): float
     {
         if (empty($details)) return 0.0;
 
+        // کش کردن واحدها برای پرهیز از کوکی‌های تکراری دیتابیس
         $unitsMap = Cache::remember('order_units_map', 86400, function () {
             return OrderUnit::all()->keyBy('id');
         });
@@ -71,6 +89,8 @@ class InventoryService
 
             if ($unit) {
                 $totalBaseQty += (float)$qty * (float)$unit->amount;
+            } else {
+                $totalBaseQty += (float)$qty;
             }
         }
 
