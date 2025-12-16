@@ -23,4 +23,23 @@ class StoreDepositReceiptRequest extends FormRequest
         ];
     }
 
+     public function messages(): array
+    {
+        $min = (int) config('wallet.min_receipt_amount', 10000);
+
+        return [
+            'amount.required' => 'مبلغ الزامی است.',
+            'amount.integer'  => 'مبلغ باید عدد صحیح باشد.',
+            'amount.min'      => "مبلغ باید حداقل {$min} تومان باشد.",
+
+            'receipt_number.required' => 'شماره رسید الزامی است.',
+            'bank_name.required'      => 'نام بانک الزامی است.',
+            'payment_date.required'   => 'تاریخ پرداخت الزامی است.',
+
+            'receipt_image.required' => 'تصویر رسید الزامی است.',
+            'receipt_image.mimes'    => 'فرمت فایل باید jpg/jpeg/png/pdf باشد.',
+            'receipt_image.max'      => 'حجم فایل نباید بیشتر از ۵ مگابایت باشد.',
+        ];
+    }
+
 }

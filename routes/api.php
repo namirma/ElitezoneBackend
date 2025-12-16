@@ -283,12 +283,14 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::prefix('financial')->group(function () {
             Route::controller(WalletController::class)->prefix('wallet')->group(function () {
                 Route::get('/', 'getWallet');
-                Route::get('/transactions', 'getTransactions');
+                Route::get('/transactions/{transaction}/download', 'downloadReceipt');
                 Route::post('/deposit', 'requestDeposit');
                 Route::post('/withdraw', 'requestWithdrawal')->middleware('idempotency');
             });
 
             Route::controller(WalletController::class)->prefix('receipts')->group(function () {
+                Route::get('/transactions/{transaction}/download', 'downloadReceipt')
+                    ->whereNumber('transaction');
                 Route::get('/', 'getReceipts');
                 Route::post('/', 'storeReceipt')->middleware('idempotency');
                 Route::delete('/{transaction}', 'deleteReceipt');

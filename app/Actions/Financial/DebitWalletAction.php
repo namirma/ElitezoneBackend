@@ -3,30 +3,39 @@
 namespace App\Actions\Financial;
 
 use App\Models\User;
+use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use Illuminate\Support\Facades\DB;
 use Exception;
 
 class DebitWalletAction
 {
-    public function execute(User $user, float $amount, ?string $description = null): WalletTransaction
+    /**
+     * کسر موجودی از کیف پول و ثبت تراکنش
+     */
+    public function execute(
+        User $user,
+        float $amount,
+        ?string $description = null,
+        array $meta = [],
+        string $type = WalletTransaction::TYPE_WITHDRAW
+    ): WalletTransaction
     {
-        return DB::transaction(function () use ($user, $amount, $description) {
-            if ($user->wallet_balance < $amount) {
-                throw new Exception("موجودی کیف پول کافی نیست.");
+        return DB::transaction(function () use ($user, $amount, $description, $meta, $type) {
+            $wallet = $user->wallet()->firstOrCreate([]);
+            if ($wallet->balance < $amount) {
+                throw new Exception(__('wallet.insufficient_balance'));
             }
 
-            // ۲. ثبت تراکنش
-            $transaction = $user->walletTransactions()->create([
-                'amount' => -$amount,
-                'type' => 'withdraw',
-                'description' => $description,
-                'balance_before' => $user->wallet_balance,
-                'balance_after' => $user->wallet_balance - $amount,
-            ]);
+            $wallet->decrement('balance', $amount);
 
-            // ۳. کسر موجودی
-            $user->decrement('wallet_balance', $amount);
+            $transaction = $wallet->transactions()->create([
+                'amount'      => $amount,
+                'type'        => $type,
+                'status'      => WalletTransaction::STATUS_PENDING,
+                'description' => $description,
+                'meta'        => $meta,
+            ]);
 
             return $transaction;
         });
