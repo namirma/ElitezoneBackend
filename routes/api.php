@@ -281,21 +281,26 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
         // مدیریت مالی
         Route::prefix('financial')->group(function () {
+
+            // گروه Wallet
             Route::controller(WalletController::class)->prefix('wallet')->group(function () {
                 Route::get('/', 'getWallet');
-                Route::get('/transactions/{transaction}/download', 'downloadReceipt');
+                Route::get('/transactions', 'getTransactions');
                 Route::post('/deposit', 'requestDeposit');
                 Route::post('/withdraw', 'requestWithdrawal')->middleware('idempotency');
             });
 
+            // گروه Receipts (فیش‌ها)
             Route::controller(WalletController::class)->prefix('receipts')->group(function () {
-                Route::get('/transactions/{transaction}/download', 'downloadReceipt')
-                    ->whereNumber('transaction');
                 Route::get('/', 'getReceipts');
                 Route::post('/', 'storeReceipt')->middleware('idempotency');
                 Route::delete('/{transaction}', 'deleteReceipt');
+                Route::get('/transactions/{transaction}/download', 'downloadReceipt')
+                    ->whereNumber('transaction')
+                    ->name('api.financial.download');
             });
 
+            // حساب‌های بانکی
             Route::apiResource('accounts', UserBankAccountController::class)->except(['show', 'update']);
         });
 

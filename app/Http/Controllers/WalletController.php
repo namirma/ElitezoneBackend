@@ -17,7 +17,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage; // <--- این حتما باید باشد
+use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class WalletController extends Controller
@@ -102,7 +102,7 @@ class WalletController extends Controller
         }
 
         // منطق درگاه آنلاین (Shaparak/Podium)
-        $url = "https://dummy-gateway.com/pay/{$transaction->id}"; // لینک موقت
+        $url = "https://dummy-gateway.com/pay/{$transaction->id}";
         return success([
             'transaction_id' => $transaction->id,
             'type'           => 'gateway_redirect',
@@ -132,10 +132,8 @@ class WalletController extends Controller
 
         $request->validate(['receipt' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120']);
 
-        // ذخیره فایل
         $path = $request->file('receipt')->store('wallet_receipts', 'public');
 
-        // آپدیت متا با مسیر فایل
         $transaction->update([
             'description' => $transaction->description . ' | رسید آپلود شد',
             'meta'        => array_merge($transaction->meta ?? [], ['receipt_path' => $path])
@@ -153,18 +151,20 @@ class WalletController extends Controller
         $wallet = $user->wallet()->firstOrCreate([]);
         $data = $request->validated();
 
-        // 1. ذخیره فایل فیش
-        $path = $request->file('receipt_image')->store('wallet_receipts', 'public');
+        $file = $request->file('receipt_image');
 
-        // 2. آماده‌سازی اطلاعات
+        $originalName = $file->getClientOriginalName();
+
+        $path = $file->store('wallet_receipts', 'public');
+
         $metaData = [
             'payment_method' => 'bank_transfer',
-            'receipt_path'   => $path, // <--- مسیر فایل اینجا ذخیره می‌شود برای دانلود
+            'receipt_path'   => $path,
             'receipt_info'   => [
                 'receipt_number' => $data['receipt_number'],
                 'bank_name'      => $data['bank_name'],
                 'payment_date'   => $data['payment_date'],
-                // 'image_path' => $path // اینجا هم باشد بد نیست
+                'original_name'  => $originalName,
             ]
         ];
 
@@ -177,7 +177,6 @@ class WalletController extends Controller
             $desc .= ' - ' . $data['description'];
         }
 
-        // 3. ایجاد تراکنش
         $transaction = $wallet->transactions()->create([
             'amount'      => $data['amount'],
             'type'        => WalletTransaction::TYPE_DEPOSIT,
@@ -199,23 +198,20 @@ class WalletController extends Controller
      */
     public function downloadReceipt(WalletTransaction $transaction): StreamedResponse|JsonResponse
     {
-        // 1. بررسی امنیت (فقط صاحب تراکنش)
         if ($transaction->wallet->user_id !== Auth::id()) {
             return error(__('auth.forbidden'), [], 403);
         }
 
-        // 2. پیدا کردن مسیر فایل از ستون meta
-        // ممکن است در receipt_path باشد یا داخل receipt_info.image_path (بسته به متد ذخیره)
-        $path = $transaction->meta['receipt_path']
-             ?? $transaction->meta['receipt_info']['image_path']
-             ?? null;
+        $meta = $transaction->meta ?? [];
+        $path = $meta['receipt_path'] ?? ($meta['receipt_info']['image_path'] ?? null);
 
         if (!$path || !Storage::disk('public')->exists($path)) {
-            return error('فایل رسید یافت نشد یا حذف شده است.', [], 404);
+            return error('فایل رسید یافت نشد.', [], 404);
         }
 
-        // 3. دانلود فایل
-        return Storage::disk('public')->download($path);
+        $downloadName = $meta['receipt_info']['original_name'] ?? basename($path);
+
+        return Storage::disk('public')->download($path, $downloadName);
     }
 
     // =========================================================================
@@ -302,7 +298,6 @@ class WalletController extends Controller
                     return success(new WalletTransactionResource($transaction), __('wallet.withdrawal_created'));
                 });
             });
-
         } catch (LockTimeoutException $e) {
             return error(__('global.system_busy_try_again'), [], 429);
         } catch (\Exception $e) {
