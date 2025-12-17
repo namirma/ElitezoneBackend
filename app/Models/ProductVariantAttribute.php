@@ -2,17 +2,19 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Relations\Pivot;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class ProductVariantAttribute extends Model
+class ProductVariantAttribute extends Pivot
 {
     use HasFactory;
+
     protected $table = 'product_variant_attributes';
 
     public $timestamps = false;
 
+    // تعریف نام ستون‌ها به عنوان ثابت (اختیاری ولی خوب است)
     const
         ID = 'id',
         PRODUCT_VARIANT_ID = 'product_variant_id',

@@ -11,17 +11,31 @@ class ProductVariantAttributeResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        $pivot = $this->pivot ?? $this->details ?? null;
+
+        if (!$pivot) {
+            return [];
+        }
+        $attributeValue = $pivot->attributeValue;
+
+        // 3. لود کردن گروه ویژگی
         $this->loadMissing('attributeType');
 
         return [
-            ProductVariantAttribute::PRODUCT_VARIANT_ID => $this->pivot->product_variant_id,
-            ProductVariantAttribute::ATTRIBUTE_ID       => $this->pivot->attribute_id,
-            'value'         => $this->display_name,
-            'display_value' => $this->display_name,
+            ProductVariantAttribute::PRODUCT_VARIANT_ID => $pivot->product_variant_id,
+            ProductVariantAttribute::ATTRIBUTE_ID       => $pivot->attribute_id,
+
+            'name'  => $this->name,
+            'label' => $this->display_name,
+
+            // نمایش مقدار (مثلاً "14")
+            'value'         => $attributeValue ? $attributeValue->value : ($this->display_name ?? $this->name),
+            'display_value' => $attributeValue ? $attributeValue->display_value : ($this->display_name ?? $this->name),
+
             'attribute_type' => [
                 Attribute::ATTRIBUTE_TYPE_ID   => $this->attributeType->id,
                 Attribute::NAME                => $this->attributeType->name,
-                Attribute::DISPLAY_NAME        => $this->attributeType->display_name,
+                Attribute::DISPLAY_NAME        => $this->attributeType->display_name, // اینجا "مشخصات فنی" است
             ],
         ];
     }

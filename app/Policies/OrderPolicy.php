@@ -10,45 +10,70 @@ use Illuminate\Auth\Access\Response;
 class OrderPolicy
 {
     use HandlesAuthorization;
+    
+    public function before(User $user, string $ability): ?bool
+    {
+        if ($user->hasRole('admin')) {
+            return true;
+        }
 
+        return null;
+    }
+
+    /**
+     * مشاهده جزئیات سفارش
+     */
     public function view(User $user, Order $order): Response
     {
         // ۱. مالک یا ذی‌نفع
         if ($order->placer_user_id === $user->id || $order->beneficiary_user_id === $user->id) {
             return Response::allow();
         }
-
-        // ۲. تامین‌کننده مرتبط
         if ($user->hasRole('supplier')) {
             $isSupplier = $order->items()->where('supplier_user_id', $user->id)->exists();
+
             return $isSupplier
                 ? Response::allow()
                 : Response::deny(__('auth.policy.supplier_access_denied'));
         }
 
-        // ۳. ادمین (معمولاً ادمین دسترسی دارد)
-        if ($user->hasRole('admin')) {
-             return Response::allow();
-        }
-
         return Response::deny(__('auth.policy.order_view_denied'));
     }
 
+    /**
+     * پرداخت سفارش
+     */
     public function pay(User $user, Order $order): Response
     {
-        // فقط ثبت‌کننده سفارش می‌تواند پرداخت کند
-        return $order->placer_user_id === $user->id
+        // آیا سفارش پرداخت شده است؟
+        if ($order->payment_status === Order::PAYMENT_PAID) {
+            return Response::deny(__('checkout.order_already_paid'));
+        }
+
+        // فقط ثبت‌کننده یا ذی‌نفع می‌تواند پرداخت کند
+        return ($order->placer_user_id === $user->id || $order->beneficiary_user_id === $user->id)
             ? Response::allow()
             : Response::deny(__('auth.policy.only_placer_can_pay'));
     }
 
+    /**
+     * لغو سفارش
+     */
     public function cancel(User $user, Order $order): Response
     {
+        // سفارشات تکمیل شده یا ارسال شده قابل لغو نیستند (بسته به بیزنس شما)
+        if (in_array($order->status, [Order::STATUS_COMPLETED, Order::STATUS_SHIPPED])) {
+            return Response::deny(__('orders.cannot_cancel_shipped_order'));
+        }
+
         return ($order->placer_user_id === $user->id || $order->beneficiary_user_id === $user->id)
             ? Response::allow()
             : Response::deny(__('auth.policy.cancel_denied'));
     }
 
+    /**
+     * مدیریت سفارش توسط تامین‌کننده (مثلاً تغییر وضعیت آیتم‌ها)
+     */
     public function manageAsSupplier(User $user, Order $order): Response
     {
         if (!$user->hasRole('supplier')) {

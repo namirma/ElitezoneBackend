@@ -2,26 +2,33 @@
 
 namespace App\DataTransferObjects;
 
-use Illuminate\Http\Request;
+use App\Http\Requests\StoreOrderRequest;
 
 class PlaceOrderData
 {
     public function __construct(
         public readonly ?int $beneficiaryUserId,
         public readonly ?int $addressId,
+        public readonly ?int $shippingMethodId,
         public readonly ?string $description,
-        public readonly ?string $shippingMethod,
+        public readonly ?string $couponCode,
         public readonly ?string $ipAddress,
         public readonly ?string $userAgent,
     ) {}
 
-    public static function fromRequest(Request $request): self
+    /**
+     * ساخت DTO از ریکوئست معتبر شده
+     */
+    public static function fromRequest(StoreOrderRequest $request): self
     {
+        $data = $request->validated();
+
         return new self(
-            beneficiaryUserId: $request->integer('beneficiary_user_id') ?: null,
-            addressId: $request->integer('address_id') ?: null,
-            description: $request->input('description'),
-            shippingMethod: $request->input('shipping_method'),
+            beneficiaryUserId: isset($data['beneficiary_user_id']) ? (int) $data['beneficiary_user_id'] : null,
+            addressId: isset($data['address_id']) ? (int) $data['address_id'] : null,
+            shippingMethodId: isset($data['shipping_method_id']) ? (int) $data['shipping_method_id'] : null,
+            description: $data['description'] ?? null,
+            couponCode: $data['coupon_code'] ?? null,
             ipAddress: $request->ip(),
             userAgent: $request->userAgent(),
         );
@@ -32,8 +39,9 @@ class PlaceOrderData
         return [
             'beneficiary_user_id' => $this->beneficiaryUserId,
             'address_id'          => $this->addressId,
+            'shipping_method_id'  => $this->shippingMethodId,
             'description'         => $this->description,
-            'shipping_method'     => $this->shippingMethod,
+            'coupon_code'         => $this->couponCode,
             'ip_address'          => $this->ipAddress,
             'user_agent'          => $this->userAgent,
         ];

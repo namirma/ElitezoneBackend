@@ -23,33 +23,23 @@ class FilterProductsAction
      */
     public function execute(ProductFilterData $filters): LengthAwarePaginator
     {
-        // ۱. دریافت کوئری پایه
         $products = $this->fetchBaseProducts($filters);
-
-        // ۲. محاسبه قیمت‌ها (Hydration) برای هر محصول
-        $products->each(function (Product $product) use ($filters) {
-            $this->hydrateProductPrices($product, $filters);
-        });
-
-        // ۳. مرتب‌سازی داینامیک (اصلاح شده)
+        $products->each(fn(Product $product) => $this->hydrateProductPrices($product, $filters));
         $sortedProducts = $this->applyDynamicSorting($products, $filters->sortKey);
 
-        // ۴. صفحه‌بندی دستی
         return $this->manualPaginate($sortedProducts, $filters->perPage);
     }
 
     private function fetchBaseProducts(ProductFilterData $filters): Collection
     {
         if ($this->productRepo instanceof ProductRepository) {
-            return $this->productRepo->getBaseQuery($filters)->get();
+            return $this->productRepo->getFilterQuery($filters)->get();
         }
-
+        
         return Product::query()
             ->when($filters->categoryId, fn($q) => $q->where('category_id', $filters->categoryId))
-            ->when($filters->search, fn($q) => $q->where('name', 'like', "%{$filters->search}%"))
             ->get();
     }
-
     private function hydrateProductPrices(Product $product, ProductFilterData $filters): void
     {
         $product->variants->each(fn($v) => $this->hydrateVariantPrices($v, $filters));

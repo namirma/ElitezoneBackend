@@ -3,8 +3,8 @@
 namespace App\Models;
 
 use App\Models\Builders\OrderBuilder;
-use App\Models\Concerns\HasOrderActions;  // فراخوانی تریت عملیات
-use App\Models\Concerns\HasOrderProgress; // فراخوانی تریت پیشرفت
+use App\Models\Concerns\HasOrderActions;
+use App\Models\Concerns\HasOrderProgress;
 use App\Traits\PersianDate;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -75,15 +75,19 @@ class Order extends Model
         STATUS_WAYBILL_ISSUED = 'waybill_issued',
         STATUS_SHIPPED = 'shipped',
         STATUS_DELIVERED = 'delivered',
+        STATUS_COMPLETED = 'completed', 
         STATUS_CANCELLED = 'cancelled',
         STATUS_FAILED = 'failed',
+
         PAYMENT_PENDING = 'pending',
         PAYMENT_PAID = 'paid',
         PAYMENT_FAILED = 'failed',
         PAYMENT_REFUND_PENDING = 'refund_pending',
         PAYMENT_REFUNDED = 'refunded',
+
         FEE_PAYMENT_PENDING = 'pending',
         FEE_PAYMENT_PAID = 'paid',
+
         SURVEY_PENDING = 'pending',
         SURVEY_REQUESTED = 'requested',
         SURVEY_COMPLETED = 'completed';

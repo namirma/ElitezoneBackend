@@ -11,6 +11,7 @@ class WalletTransaction extends Model
 {
     use LogsActivity;
 
+    // --- ثابت‌های نام ستون‌ها ---
     public const
         ID = 'id',
         WALLET_ID = 'wallet_id',
@@ -21,7 +22,10 @@ class WalletTransaction extends Model
         DESCRIPTION = 'description',
         META = 'meta',
         CREATED_AT = 'created_at',
-        UPDATED_AT = 'updated_at',
+        UPDATED_AT = 'updated_at';
+
+    // --- ثابت‌های مقادیر (Enums) ---
+    public const
         TYPE_DEPOSIT = 'deposit',
         TYPE_WITHDRAW = 'withdraw',
         TYPE_FEE_HOLD = 'fee_hold',
@@ -31,6 +35,13 @@ class WalletTransaction extends Model
         STATUS_CONFIRMED = 'confirmed',
         STATUS_FAILED = 'failed',
         STATUS_REJECTED = 'rejected';
+
+    public const
+        METHOD_BANK_TRANSFER = 'bank_transfer',
+        METHOD_GATEWAY = 'gateway',
+
+        PATH_RECEIPTS = 'wallet_receipts';
+
 
     protected $fillable = [
         self::WALLET_ID,
@@ -47,9 +58,8 @@ class WalletTransaction extends Model
         self::AMOUNT => 'decimal:2',
     ];
 
-    // --- متدهای کمکی (Accessors) برای فرانت‌ ---
+    // --- Accessors ---
 
-    // دریافت متن فارسی وضعیت
     public function getStatusLabelAttribute(): string
     {
         return match ($this->{self::STATUS}) {
@@ -61,7 +71,6 @@ class WalletTransaction extends Model
         };
     }
 
-    // دریافت رنگ وضعیت (برای نمایش بج در فرانت)
     public function getStatusColorAttribute(): string
     {
         return match ($this->{self::STATUS}) {
@@ -71,13 +80,16 @@ class WalletTransaction extends Model
             default                => 'secondary',
         };
     }
+
     protected $appends = ['receipt_details'];
 
     public function getReceiptDetailsAttribute()
     {
-
         return $this->meta['receipt_info'] ?? null;
     }
+
+    // --- Relations ---
+
     public function wallet(): BelongsTo
     {
         return $this->belongsTo(Wallet::class, self::WALLET_ID);
@@ -88,19 +100,13 @@ class WalletTransaction extends Model
         return $this->belongsTo(Order::class, self::ORDER_ID);
     }
 
+    // --- Activity Log ---
+
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
             ->logOnly(['status'])
             ->logOnlyDirty()
-            ->setDescriptionForEvent(function (string $eventName) {
-                $action = match ($eventName) {
-                    'created' => 'ایجاد',
-                    'updated' => 'ویرایش',
-                    'deleted' => 'حذف',
-                    default   => $eventName,
-                };
-                return "تراکنش مالی با موفقیت {$action} .شد";
-            });
+            ->setDescriptionForEvent(fn(string $eventName) => "تراکنش مالی {$eventName} شد.");
     }
 }

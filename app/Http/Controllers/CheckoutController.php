@@ -7,69 +7,87 @@ use App\DataTransferObjects\PlaceOrderData;
 use App\Http\Requests\StoreOrderRequest;
 use App\Http\Resources\OrderResource;
 use App\Models\Order;
+use App\Models\WalletTransaction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 
 class CheckoutController extends Controller
 {
+    public function __construct(
+        protected PlaceOrderAction $placeOrderAction
+    ) {}
+
     /**
-     * دریافت اطلاعات پرداخت سفارش
+     * دریافت اطلاعات پرداخت برای یک سفارش ثبت شده (جهت انتخاب درگاه)
      */
     public function paymentInfo(Order $order): JsonResponse
     {
-        $user = Auth::user();
 
-        // بررسی دسترسی
-        if ($order->placer_user_id !== $user->id && $order->beneficiary_user_id !== $user->id) {
-            return error(__('auth.forbidden'), [], 403);
-        }
+        Gate::authorize('view', $order);
 
+        // 2. بررسی وضعیت پرداخت
         if ($order->payment_status === Order::PAYMENT_PAID) {
             return error(__('checkout.order_already_paid'), [], 400);
         }
 
-        $walletBalance = $user->wallet->balance ?? 0;
+        $user = Auth::user();
+        $walletBalance = $user->wallet()->firstOrCreate([])->balance ?? 0;
+
+        $gateways = [
+            [
+                'key'   => WalletTransaction::METHOD_GATEWAY,
+                'title' =>(__('checkout.gateways.internet')),
+                'icon'  => 'card',
+                'is_active' => true,
+            ],
+            [
+                'key'        => 'wallet',
+                'title'      => __('checkout.gateways.wallet'),
+                'balance'    => (string) $walletBalance,
+                'has_credit' => $walletBalance >= $order->final_amount,
+                'icon'       => 'wallet',
+                'is_active'  => true,
+            ],
+            [
+                'key'   => WalletTransaction::METHOD_BANK_TRANSFER,
+                'title' => __('checkout.gateways.receipt'),
+                'icon'  => 'document-text',
+                'is_active' => true,
+            ],
+        ];
 
         $data = [
             'order_id'       => $order->id,
             'order_number'   => $order->order_number,
             'payable_amount' => (string) $order->final_amount,
             'items_count'    => $order->items()->count(),
-            'created_at_p'   => $order->created_at_p,
-            'gateways'       => [
-                [
-                    'key'   => 'shaparak',
-                    'title' => __('checkout.gateways.internet'),
-                    'icon'  => 'card',
-                ],
-                [
-                    'key'        => 'wallet',
-                    'title'      => __('checkout.gateways.wallet'),
-                    'balance'    => (string) $walletBalance,
-                    'has_credit' => $walletBalance >= $order->final_amount,
-                ],
-                [
-                    'key'   => 'receipt',
-                    'title' => __('checkout.gateways.receipt'),
-                    'icon'  => 'document-text',
-                ],
-            ]
+            'created_at_p'   => verta($order->created_at)->format('Y/m/d H:i'),
+            'gateways'       => $gateways,
         ];
 
         return success($data, __('checkout.payment_info_received'));
     }
 
     /**
-     * ثبت نهایی سفارش
+     * ثبت نهایی سفارش (تبدیل سبد خرید به سفارش)
      */
-    public function placeOrder(StoreOrderRequest $request, PlaceOrderAction $placeOrderAction): JsonResponse
+    public function placeOrder(StoreOrderRequest $request): JsonResponse
     {
+        
+        $orderData = PlaceOrderData::fromRequest($request);
 
-        $orderData = $request->toDto();
+        $cart = Auth::user()->cart;
 
-        $order = $placeOrderAction->execute(Auth::user(), $orderData);
+        if (!$cart || $cart->items()->count() === 0) {
+            return error(__('checkout.cart_is_empty'), [], 400);
+        }
 
-        $order->load(['items.productVariant', 'address']);
+        // 3. اجرای اکشن (تمام لاجیک‌های موجودی، قیمت و ثبت دیتابیس)
+        $order = $this->placeOrderAction->execute($cart, $orderData);
+
+        // 4. بارگذاری روابط برای نمایش در ریسورس
+        $order->load(['items.productVariant', 'address', 'shippingMethod']);
 
         return success(
             new OrderResource($order),

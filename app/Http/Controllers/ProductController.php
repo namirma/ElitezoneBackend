@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Actions\Order\CalculateOrderEstimateAction;
 use App\Actions\Product\FilterProductsAction;
 use App\Actions\Product\FilterProductVariantsAction;
-use App\DataTransferObjects\ProductFilterData;
 use App\Http\Requests\OrderPriceRequest;
 use App\Http\Requests\ProductIndexRequest;
 use App\Http\Requests\ProductVariantFilterRequest;
@@ -29,7 +28,6 @@ use App\Repositories\Contracts\ProductRepositoryInterface;
 use App\Services\PriceCalculationService;
 use App\Services\PricingRoleResolver;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 
@@ -38,35 +36,37 @@ class ProductController extends Controller
     public function __construct(
         private readonly PricingRoleResolver $roleResolver,
         private readonly ProductRepositoryInterface $productRepo,
-        private readonly PriceCalculationService $priceService 
+        private readonly PriceCalculationService $priceService
     ) {}
 
-    /**
-     * لیست محصولات (Refactored)
-     */
+
     public function index(ProductIndexRequest $request, FilterProductsAction $action): JsonResponse
     {
         $activeCode = $this->resolveActiveCode();
+
         $filterData = $request->toDto($activeCode);
 
         $paginator = $action->execute($filterData);
 
         return success(
-            ProductResource::collection($paginator)->additional($this->paginationMeta($paginator)),
+            ProductResource::collection($paginator)->response()->getData(true),
             'global.received_successfully'
         );
     }
 
     /**
-     * نمایش جزئیات محصول (Clean)
+     * نمایش جزئیات یک محصول
      */
     public function show(Product $product): JsonResponse
     {
         $product->loadMissing([
-            'category', 'images', 'videos', 'orderUnits', 'offers', 'aggregateLimitOrderUnit',
+            'category',
+            'images',
+            'videos',
+            'orderUnits',
+            'offers',
+            'aggregateLimitOrderUnit'
         ])->incrementViewCount();
-
-        // استفاده از متد ریپازیتوری برای دریافت کارخانه‌ها
         $factories = $this->productRepo->getProductFactories($product->id);
 
         return success([
@@ -76,7 +76,7 @@ class ProductController extends Controller
     }
 
     /**
-     * لیست واریانت‌های محصول (Refactored with Action)
+     * لیست واریانت‌های یک محصول (برای انتخاب سایز/رنگ)
      */
     public function variants(ProductVariantFilterRequest $request, Product $product, FilterProductVariantsAction $action): JsonResponse
     {
@@ -89,19 +89,19 @@ class ProductController extends Controller
         );
 
         return success(
-            ProductVariantResource::collection($paginator)->additional($this->paginationMeta($paginator)),
+            ProductVariantResource::collection($paginator)->response()->getData(true),
             'global.received_successfully'
         );
     }
 
     /**
-     * دریافت فیلترهای محصول
+     * دریافت ویژگی‌های قابل فیلتر برای یک محصول (مثل لیست رنگ‌ها)
      */
     public function filters(Product $product): JsonResponse
     {
-        $product->loadMissing('variants.variantAttributes');
-
-        $typeIds = $product->variants
+        $typeIds = $product->variants()
+            ->with('variantAttributes')
+            ->get()
             ->flatMap(fn($v) => $v->variantAttributes->pluck(Attribute::ATTRIBUTE_TYPE_ID))
             ->unique();
 
@@ -113,19 +113,19 @@ class ProductController extends Controller
     }
 
     /**
-     * دریافت قیمت تکی واریانت
+     * محاسبه قیمت دقیق یک واریانت خاص
      */
     public function getVariantPrice(ProductVariantPriceRequest $request): JsonResponse
     {
-        $v = $request->validated();
-        $this->handleCartSession($request); // مدیریت سشن سبد خرید
+        $data = $request->validated();
+        $this->handleCartSession($request);
 
-        $variant  = ProductVariant::findOrFail($v['variant_id']);
-        $factory  = Factory::findOrFail($v['factory_id']);
-        $location = FactoryLocation::findOrFail($v['location_id']);
+        $variant  = ProductVariant::findOrFail($data['variant_id']);
+        $factory  = Factory::findOrFail($data['factory_id']);
+        $location = FactoryLocation::findOrFail($data['location_id']);
 
-        $activeCode = $this->resolveActiveCode();
-        $badge      = $this->getCartBadge();
+        $activeCode   = $this->resolveActiveCode();
+        $badge        = $this->getCartBadge();
         $customerType = CustomerType::where(CustomerType::CODE, $activeCode)->first();
 
         $priceDto = $this->priceService->calculatePrice(
@@ -135,7 +135,7 @@ class ProductController extends Controller
             customerType: $customerType,
             badge: $badge,
             filterCategoryIds: null,
-            withVAT: (bool)($v['with_vat'] ?? false),
+            withVAT: (bool)($data['with_vat'] ?? false),
             filterCategoryCode: $activeCode
         );
 
@@ -143,7 +143,7 @@ class ProductController extends Controller
     }
 
     /**
-     * محاسبه قیمت نهایی سفارش (پیش‌فاکتور) (Refactored with Action)
+     * محاسبه پیش‌فاکتور نهایی سبد خرید/سفارش
      */
     public function calculateOrderPrice(OrderPriceRequest $request, CalculateOrderEstimateAction $action): JsonResponse
     {
@@ -157,36 +157,18 @@ class ProductController extends Controller
             'unit_price_details' => $result['unit_dto']->toArray(),
             'order_details'      => $result['order_details'],
             'offers'             => OfferResource::collection($result['offers']),
-
             ...$result['financials']
         ], 'global.received_successfully');
     }
 
     // =========================================================================
-    //  Helpers
+    //  Private Helpers
     // =========================================================================
 
     private function resolveActiveCode(): string
     {
         if (!Auth::check()) return 'employer_without_consultant';
-        // فرض بر این است که یوزر لود شده و ریلیشن‌ها موجودند
         return $this->roleResolver->resolve(Auth::user());
-    }
-
-    private function paginationMeta(LengthAwarePaginator $paginator): array
-    {
-        return [
-            'meta' => [
-                'current_page' => $paginator->currentPage(),
-                'last_page'    => $paginator->lastPage(),
-                'per_page'     => $paginator->perPage(),
-                'total'        => $paginator->total(),
-            ],
-            'links' => [
-                'next' => $paginator->nextPageUrl(),
-                'prev' => $paginator->previousPageUrl(),
-            ],
-        ];
     }
 
     private function handleCartSession($request): void
@@ -196,8 +178,8 @@ class ProductController extends Controller
         } else {
             $sessionId = $request->cookie('cart_session_id', Str::uuid()->toString());
             if (!Cart::where(Cart::SESSION_ID, $sessionId)->exists()) {
-                 $cart = Cart::create([Cart::SESSION_ID => $sessionId, Cart::USER_ID => null]);
-                 cookie()->queue('cart_session_id', $cart->session_id, 60 * 24 * 30);
+                $cart = Cart::create([Cart::SESSION_ID => $sessionId, Cart::USER_ID => null]);
+                cookie()->queue('cart_session_id', $cart->session_id, 60 * 24 * 30);
             }
         }
     }
@@ -209,7 +191,6 @@ class ProductController extends Controller
             : Cart::where(Cart::SESSION_ID, request()->cookie('cart_session_id'));
 
         $cart = $query->first();
-
         return $cart && $cart->badge_id ? Badge::find($cart->badge_id) : null;
     }
 }
