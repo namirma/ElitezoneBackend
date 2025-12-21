@@ -55,10 +55,11 @@ class ProductController extends Controller
     }
 
     /**
-     * نمایش جزئیات یک محصول
+     * نمایش جزئیات محصول + ثبت هوشمند بازدید
      */
     public function show(Product $product): JsonResponse
     {
+        // ۱. بارگذاری روابط (Eager Loading) برای جلوگیری از کوئری‌های اضافی
         $product->loadMissing([
             'category',
             'images',
@@ -66,9 +67,21 @@ class ProductController extends Controller
             'orderUnits',
             'offers',
             'aggregateLimitOrderUnit'
-        ])->incrementViewCount();
+        ]);
+
+        // ۲. ثبت بازدید و داده‌های تحلیلی (Async)
+        \App\Jobs\LogProductView::dispatch(
+            productId: $product->id,
+            userId: Auth::id(),
+            ipAddress: request()->ip(),
+            userAgent: request()->userAgent(),
+            sessionId: request()->cookie('cart_session_id')
+        )->afterResponse();
+
+        // ۳. دریافت لیست کارخانه‌ها
         $factories = $this->productRepo->getProductFactories($product->id);
 
+        // ۴. بازگشت پاسخ
         return success([
             'product'   => new ProductDetailResource($product),
             'factories' => FactoryResource::collection($factories),
@@ -99,17 +112,19 @@ class ProductController extends Controller
      */
     public function filters(Product $product): JsonResponse
     {
-        $typeIds = $product->variants()
-            ->with('variantAttributes')
-            ->get()
-            ->flatMap(fn($v) => $v->variantAttributes->pluck(Attribute::ATTRIBUTE_TYPE_ID))
-            ->unique();
-
-        $attributes = AttributeType::whereIn(AttributeType::ID, $typeIds)
-            ->with('attributes')
+        $attributeTypes = AttributeType::whereHas('attributes', function ($q) use ($product) {
+            $q->whereHas('productVariants', function ($q2) use ($product) {
+                $q2->where('product_id', $product->id);
+            });
+        })
+            ->with(['attributes' => function ($q) use ($product) {
+                $q->whereHas('productVariants', function ($q2) use ($product) {
+                    $q2->where('product_id', $product->id);
+                });
+            }])
             ->get();
 
-        return success(AttributeTypeResource::collection($attributes), 'global.received_successfully');
+        return success(AttributeTypeResource::collection($attributeTypes), 'global.received_successfully');
     }
 
     /**

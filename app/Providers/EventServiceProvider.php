@@ -2,10 +2,12 @@
 
 namespace App\Providers;
 
+use App\Events\CartItemChanged;
 use App\Events\OrderCancelled;
 use App\Events\OrderPaid;
 use App\Events\OrderPlaced;
 use App\Events\WalletFunded;
+use App\Listeners\LogCartEvent;
 use App\Listeners\SendOrderCancellationNotification;
 use App\Listeners\SendOrderPaymentNotification;
 use App\Listeners\SendOrderPlacedNotification;
@@ -36,8 +38,11 @@ class EventServiceProvider extends ServiceProvider
             SendOrderCancellationNotification::class,
         ],
         OrderPlaced::class => [
-        SendOrderPlacedNotification::class,
-    ],
+            SendOrderPlacedNotification::class,
+        ],
+        CartItemChanged::class => [
+            LogCartEvent::class,
+        ],
     ];
 
     /**

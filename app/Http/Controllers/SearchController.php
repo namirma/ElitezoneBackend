@@ -6,129 +6,142 @@ use App\Http\Requests\SearchRequest;
 use App\Http\Resources\SearchResource;
 use App\Models\Search;
 use App\Models\SupplierActivityCategory;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 
 class SearchController extends Controller
 {
+    /**
+     * متد اصلی که روت (Route) صدا می‌زند
+     */
     public function search(SearchRequest $request)
     {
-        $query = $request->input('query', ''); // Default to an empty string if no query is provided
+        // ۱. دریافت ورودی
+        $query = trim($request->input('query', ''));
 
-        // If the query is empty, fetch popular searches directly
         if (empty($query)) {
-            $popularSearches = Search::select('query')
-                ->whereIn('query', function ($q) {
-                    $q->select('name')
-                        ->from('supplier_activity_categories')
-                        ->union(
-                            SupplierActivityCategory::select('name')
-                                ->whereHas('children')
-                                ->getQuery()
-                        );
-                })
-                ->groupBy('query')
-                ->orderByRaw('COUNT(*) DESC')
-                ->limit(5)
-                ->pluck('query');
-
-            return new SearchResource([
-                'related_searches' => [],
-                'latest_searches' => [],
-                'popular_searches' => $popularSearches,
-            ]);
+            return $this->defaultResponse();
         }
 
-        // Save the search query for logged-in users or guests
-        if (Auth::check()) {
-            // Check if the search query already exists for the authenticated user
-            $existingSearch = Search::where('user_id', Auth::id())
-                ->where('query', $query)
-                ->first();
+        // ۲. اینجا تابع کمکی پایین صفحه را صدا می‌زنیم
+        $searchResults = $this->performCategorySearch($query);
 
-            if (!$existingSearch) {
-                Search::create([
-                    Search::QUERY => $query,
-                    Search::USER_ID => Auth::id(),
-                ]);
-            }
-        } else {
-            // For guest users
-            $existingSearch = Search::where('query', $query)
-                ->whereNull('user_id')
-                ->first();
+        // شمارش نتایج برای دیتاساینس
+        $totalResultsCount = $searchResults->count();
 
-            if (!$existingSearch) {
-                Search::create([
-                    Search::QUERY => $query,
-                    Search::USER_ID => null,
-                ]);
-            }
-        }
+        // ۳. ذخیره لاگ (تابع کمکی پایین صفحه)
+        $this->logSearchActivity($request, $query, $totalResultsCount);
 
-        // Fetch related searches
-        $relatedSearches = SupplierActivityCategory::query()
-            ->where(function ($q) use ($query) {
-                $q->where('name', 'like', "%$query%")
-                    ->orWhereHas('children', function ($q) use ($query) {
-                        $q->where('name', 'like', "%$query%");
-                    });
+        // ۴. آماده‌سازی خروجی
+        $relatedSearches = $searchResults->take(5)->values();
+        $latestSearches = $this->getLatestSearches();
+        $popularSearches = $this->getPopularSearches();
+
+        return new SearchResource([
+            'related_searches' => $relatedSearches,
+            'latest_searches'  => $latestSearches,
+            'popular_searches' => $popularSearches,
+        ]);
+    }
+
+    /**
+     * منطق اصلی جستجو در دیتابیس (همان performSearchLogic)
+     */
+    private function performCategorySearch(string $query): Collection
+    {
+        return SupplierActivityCategory::query()
+            ->where(function (Builder $q) use ($query) {
+                $q->where('name', 'LIKE', "%{$query}%")
+                  ->orWhereHas('children', function (Builder $subQ) use ($query) {
+                      $subQ->where('name', 'LIKE', "%{$query}%");
+                  });
             })
             ->with('children')
             ->get()
             ->flatMap(function ($category) use ($query) {
                 $matches = collect();
+
+                // اگر اسم دسته اصلی شبیه بود
                 if (Str::contains($category->name, $query)) {
                     $matches->push($category->name);
                 }
 
-                $matches = $matches->merge(
-                    $category->children->filter(function ($child) use ($query) {
-                        return Str::contains($child->name, $query);
-                    })->pluck('name')
-                );
+                // اگر اسم زیرمجموعه‌ها شبیه بود
+                $childMatches = $category->children
+                    ->filter(fn($child) => Str::contains($child->name, $query))
+                    ->pluck('name');
 
-                return $matches;
+                return $matches->merge($childMatches);
             })
-            ->unique()
-            ->take(5);
+            ->unique();
+    }
 
-        // Fetch latest searches
-        $latestSearches = Auth::check()
-            ? Search::where('user_id', Auth::id())
-                ->select('query')
-                ->distinct()
-                ->orderBy('created_at', 'desc')
-                ->limit(5)
-                ->pluck('query')
-            : Search::select('query')
-                ->distinct()
-                ->orderBy('created_at', 'desc')
-                ->limit(5)
-                ->pluck('query');
+    /**
+     * ثبت اطلاعات در دیتابیس برای تحلیل داده
+     */
+    private function logSearchActivity(SearchRequest $request, string $query, int $resultsCount): void
+    {
+        Search::create([
+            Search::QUERY         => $query,
+            Search::RESULTS_COUNT => $resultsCount,
+            Search::USER_ID       => Auth::id(),
+            Search::IP_ADDRESS    => $request->ip(),
+            Search::USER_AGENT    => $request->userAgent(),
+            Search::CREATED_AT    => now(),
+        ]);
+    }
 
-        // Fetch popular searches
-        $popularSearches = Search::select('query')
-            ->whereIn('query', function ($q) {
-                $q->select('name')
-                    ->from('supplier_activity_categories')
-                    ->union(
-                        SupplierActivityCategory::select('name')
-                            ->whereHas('children')
-                            ->getQuery()
-                    );
-            })
-            ->groupBy('query')
+    /**
+     * دریافت آخرین جستجوها
+     */
+    private function getLatestSearches(): Collection
+    {
+        $query = Search::select(Search::QUERY)
+            ->distinct()
+            ->orderBy(Search::CREATED_AT, 'desc')
+            ->limit(5);
+
+        if (Auth::check()) {
+            $query->where(Search::USER_ID, Auth::id());
+        }
+
+        return $query->pluck(Search::QUERY);
+    }
+
+    /**
+     * دریافت جستجوهای محبوب
+     */
+    private function getPopularSearches(): Collection
+    {
+        $validCategoriesSubQuery = function ($q) {
+            $q->select('name')
+              ->from('supplier_activity_categories')
+              ->union(
+                  SupplierActivityCategory::select('name')
+                      ->whereHas('children')
+                      ->getQuery()
+              );
+        };
+
+        return Search::select(Search::QUERY)
+            ->whereIn(Search::QUERY, $validCategoriesSubQuery)
+            ->groupBy(Search::QUERY)
             ->orderByRaw('COUNT(*) DESC')
             ->limit(5)
-            ->pluck('query');
+            ->pluck(Search::QUERY);
+    }
 
-        $data = [
-            'related_searches' => $relatedSearches,
-            'latest_searches' => $latestSearches,
-            'popular_searches' => $popularSearches,
-        ];
-
-        return new SearchResource($data);
+    /**
+     * پاسخ پیش‌فرض
+     */
+    private function defaultResponse(): SearchResource
+    {
+        return new SearchResource([
+            'related_searches' => [],
+            'latest_searches'  => [],
+            'popular_searches' => $this->getPopularSearches(),
+        ]);
     }
 }

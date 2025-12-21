@@ -2,10 +2,14 @@
 
 namespace App\Providers;
 
+use App\Models\Order;
 use App\Models\User;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
+use App\Models\ProductPrice;
+use App\Observers\OrderObserver;
+use App\Observers\ProductPriceObserver;
 use function in_array;
 
 class AppServiceProvider extends ServiceProvider
@@ -29,7 +33,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        Gate::define('viewApiDocs', function (User $user = null) {
+        Gate::define('viewApiDocs', function (?User $user = null) {
             if (app()->environment('local')) {
                 return true;
             }
@@ -37,7 +41,8 @@ class AppServiceProvider extends ServiceProvider
                 'navidm632@gmail.com',
                 //'zarsanjsajad@gmail.com',
             ]);
-
         });
+        ProductPrice::observe(ProductPriceObserver::class);
+        Order::observe(OrderObserver::class);
     }
 }

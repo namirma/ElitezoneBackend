@@ -3,6 +3,7 @@
 namespace App\Console;
 
 use App\Console\Commands\CancelExpiredOrders;
+use App\Jobs\CalculateCustomerRfm;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 
@@ -33,6 +34,10 @@ class Kernel extends ConsoleKernel
             ->onOneServer()
             // ->emailOutputOnFailure('admin@elitezone.me')
         ;
+        $schedule->job(new CalculateCustomerRfm)
+            ->dailyAt('03:00')
+            ->withoutOverlapping()
+            ->onOneServer();
     }
     /**
      * Register the commands for the application.

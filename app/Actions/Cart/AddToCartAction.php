@@ -2,7 +2,9 @@
 
 namespace App\Actions\Cart;
 
+use App\Events\CartItemChanged;
 use App\Models\Cart;
+use App\Models\CartEvent;
 use App\Models\CartItem;
 use App\Models\OrderUnit;
 use App\Models\Product;
@@ -23,7 +25,7 @@ class AddToCartAction
         $variant = ProductVariant::with(['product.orderUnits', 'product.aggregateLimitOrderUnit', 'limitOrderUnit'])
             ->findOrFail($data['variant_id']);
 
-        // 2. کش کردن نگاشت واحدها برای محاسبات سریع
+        // 2. کش کردن نگاشت واحدها
         $orderUnitsMap = $this->getOrderUnitsMap();
 
         return DB::transaction(function () use ($cart, $variant, $data, $orderUnitsMap) {
@@ -40,47 +42,53 @@ class AddToCartAction
             // آیا این آیتم از قبل در سبد هست؟
             $existingItem = $cart->items()->where($identifiers)->first();
 
-            // 3. اعتبارسنجی محدودیت‌های هر واحد (مثلاً حداکثر 50 کیسه)
-            // منطق سابق: validateOrderUnitCounts
+            // 3. اعتبارسنجی محدودیت‌ها
             $this->validateOrderUnitCounts($variant, $data['quantities'], $cart, $existingItem);
 
             if ($existingItem) {
                 // سناریو الف: آیتم هست -> ادغام تعداد
                 $mergedQuantities = $this->mergeQuantities($existingItem->quantities, $data['quantities']);
 
-                // 4. اعتبارسنجی محدودیت‌های مجموع واریانت (Variant Aggregate Limits)
-                // منطق سابق: checkVariantAggregateLimits
+                // اعتبارسنجی محدودیت‌های مجموع واریانت
                 $this->checkVariantAggregateLimits($variant, $mergedQuantities, $orderUnitsMap);
 
                 $existingItem->update([
                     CartItem::QUANTITIES => $mergedQuantities,
-                    // اگر لوکیشن جدید هم آمده باشد، آپدیت می‌شود
                     CartItem::FACTORY_LOCATION_ID => $data['location_id'],
                 ]);
-
             } else {
                 // سناریو ب: آیتم جدید
-                // 4. اعتبارسنجی محدودیت‌های مجموع واریانت
+                // اعتبارسنجی محدودیت‌های مجموع واریانت
                 $this->checkVariantAggregateLimits($variant, $data['quantities'], $orderUnitsMap);
 
                 CartItem::create(array_merge($identifiers, [
                     CartItem::QUANTITIES => $data['quantities'],
-                    CartItem::PRICE      => 0, // قیمت بعداً محاسبه می‌شود
+                    CartItem::PRICE      => 0,
                     CartItem::FINAL_PRICE => 0,
                 ]));
             }
 
-            // 5. اعتبارسنجی محدودیت‌های کل خط محصول (Product Line Aggregate Limits)
-            // مثلاً: مجموع تمام میلگردهای ۱۶ و ۱۸ نباید کمتر از ۲ تن باشد
-            // منطق سابق: checkProductLineAggregateLimits
-            // نکته: باید سبد را رفرش کنیم تا آیتم جدید را ببیند
+            // 5. اعتبارسنجی محدودیت‌های کل خط محصول
             $freshCart = $cart->fresh(['items.productVariant.product', 'items.productVariant.product.aggregateLimitOrderUnit']);
             $this->checkProductLineAggregateLimits($freshCart, $variant->product, $orderUnitsMap);
 
-            // اگر فیلتر قیمت ارسال شده، سینک کن
+            // سینک فیلتر قیمت
             if (isset($data['filter_categories'])) {
                 $cart->priceFilterCategories()->sync($data['filter_categories']);
             }
+
+            $quantityAdded = array_sum($data['quantities']);
+
+            $currentPriceSnapshot = $variant->price ?? null;
+
+            CartItemChanged::dispatch(
+                $cart,
+                $variant,
+                CartEvent::ACTION_ADD, 
+                (float) $quantityAdded,
+                $currentPriceSnapshot
+            );
+            /* ----------------------------------------------------------------- */
 
             return $cart->load('items');
         });
@@ -182,7 +190,7 @@ class AddToCartAction
         if (!$variant->relationLoaded('limitOrderUnit')) $variant->load('limitOrderUnit');
 
         $limitUnit = $variant->limitOrderUnit;
-        if (!$limitUnit) return; 
+        if (!$limitUnit) return;
 
         $totalValue = $this->convertQuantitiesToTargetUnitValue($quantities, $limitUnit, $orderUnitsMap);
 
