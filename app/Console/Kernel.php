@@ -4,6 +4,7 @@ namespace App\Console;
 
 use App\Console\Commands\CancelExpiredOrders;
 use App\Jobs\CalculateCustomerRfm;
+use App\Jobs\PredictInventoryNeeds;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 
@@ -37,6 +38,10 @@ class Kernel extends ConsoleKernel
         $schedule->job(new CalculateCustomerRfm)
             ->dailyAt('03:00')
             ->withoutOverlapping()
+            ->onOneServer();
+
+        $schedule->job(new PredictInventoryNeeds)
+            ->dailyAt('04:00')
             ->onOneServer();
     }
     /**

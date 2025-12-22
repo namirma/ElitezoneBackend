@@ -48,6 +48,7 @@ use App\Http\Controllers\Api\Admin\AdminOrderController;
 use App\Http\Controllers\Api\Admin\AdminSearchController;
 use App\Http\Controllers\Api\Admin\AdminUserController;
 use App\Http\Controllers\Api\Admin\AdminWalletController;
+use App\Http\Controllers\Api\Data\AnalyticsController;
 use App\Http\Controllers\Api\User\OrderInvoiceController;
 use App\Http\Controllers\Api\User\OrderPaymentController;
 use App\Http\Controllers\Api\User\SupplierOrderController;
@@ -67,10 +68,19 @@ Route::any('/payment/callback', [PaymentController::class, 'callback'])->name('p
 Route::get('/search', [SearchController::class, 'search']);
 Route::post('/new-question', [QuestionController::class, 'submitQuestion']);
 
-// Debug Routes (پیشنهاد می‌شود در پروداکشن محدود شوند)
 Route::get('/test-cache', [DebugController::class, 'testCache']);
 Route::get('kavir-products', [DebugController::class, 'kavirProducts']);
 
+Route::prefix('data')->middleware(['auth:sanctum'])->group(function () {
+
+    Route::prefix('analytics')->group(function () {
+
+        Route::get('/dashboard', [AnalyticsController::class, 'dashboard']);
+
+        Route::get('/revenue', [AnalyticsController::class, 'revenue']);
+    });
+
+});
 
 // --- احراز هویت ---
 Route::controller(AuthController::class)->prefix('authenticate')->group(function () {

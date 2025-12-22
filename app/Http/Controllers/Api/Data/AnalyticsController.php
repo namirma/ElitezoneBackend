@@ -1,0 +1,42 @@
+<?php
+
+namespace App\Http\Controllers\Api\Data;
+
+use App\Http\Controllers\Controller;
+use App\Services\AnalyticsService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+
+class AnalyticsController extends Controller
+{
+    protected AnalyticsService $analyticsService;
+
+    public function __construct(AnalyticsService $analyticsService)
+    {
+        $this->analyticsService = $analyticsService;
+    }
+
+    /**
+     * دریافت تمام داده‌های داشبورد یکجا
+     */
+    public function dashboard(): JsonResponse
+    {
+        return response()->json([
+            'revenue_chart' => $this->analyticsService->getRevenueChartData(30),
+            'sales_funnel'  => $this->analyticsService->getSalesFunnel(),
+            'rfm_segments'  => $this->analyticsService->getCustomerSegmentsChart(),
+            'top_products'  => $this->analyticsService->getTopProducts(),
+        ]);
+    }
+
+    /**
+     * دریافت اختصاصی نمودار فروش (مثلاً برای فیلتر بازه زمانی)
+     */
+    public function revenue(Request $request): JsonResponse
+    {
+        $days = (int) $request->get('days', 30);
+        return response()->json(
+            $this->analyticsService->getRevenueChartData($days)
+        );
+    }
+}
