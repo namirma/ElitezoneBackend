@@ -49,6 +49,7 @@ use App\Http\Controllers\Api\Admin\AdminSearchController;
 use App\Http\Controllers\Api\Admin\AdminUserController;
 use App\Http\Controllers\Api\Admin\AdminWalletController;
 use App\Http\Controllers\Api\Data\AnalyticsController;
+use App\Http\Controllers\Api\Data\InventoryController;
 use App\Http\Controllers\Api\User\OrderInvoiceController;
 use App\Http\Controllers\Api\User\OrderPaymentController;
 use App\Http\Controllers\Api\User\SupplierOrderController;
@@ -73,11 +74,14 @@ Route::get('kavir-products', [DebugController::class, 'kavirProducts']);
 
 Route::prefix('data')->middleware(['auth:sanctum'])->group(function () {
 
-    Route::prefix('analytics')->group(function () {
+    Route::prefix('data')->group(function () {
+        Route::get('analytics/dashboard', [AnalyticsController::class, 'dashboard']);
+        Route::get('inventory/predictions', [InventoryController::class, 'predictions']);
+    });
 
-        Route::get('/dashboard', [AnalyticsController::class, 'dashboard']);
-
-        Route::get('/revenue', [AnalyticsController::class, 'revenue']);
+    // گروه عملیات مارکتینگ (که قراره بسازیم)
+    Route::prefix('marketing')->group(function () {
+        // ...
     });
 
 });

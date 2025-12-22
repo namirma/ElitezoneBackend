@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -54,4 +55,8 @@ class OrderItem extends Model
     {
         return $this->belongsTo(User::class, self::SUPPLIER_USER_ID);
     }
+    public function scopeSumQuantity(Builder $query, string $alias = 'total_qty')
+{
+    return $query->selectRaw("SUM(JSON_EXTRACT(quantity_details, '$.quantity')) as {$alias}");
+}
 }

@@ -16,63 +16,73 @@ class InventoryIntelligenceService
      */
     public function runAnalysis(): void
     {
-        // ۱. پاک کردن تحلیل‌های قدیمی (چون موجودی لحظه‌ای عوض میشه)
+        // ۱. دریافت تنظیمات از فایل کانفیگ (برای جلوگیری از هاردکد کردن)
+        $conf = [
+            'sales_days'      => config('intelligence.inventory.sales_period_days', 30),
+            'search_days'     => config('intelligence.inventory.search_period_days', 7),
+            'prediction_days' => config('intelligence.inventory.prediction_days', 7),
+            'conversion_rate' => config('intelligence.inventory.search_conversion_rate', 0.1),
+            'high_search'     => config('intelligence.inventory.high_search_threshold', 50),
+        ];
+
+        // ۲. پاک کردن تحلیل‌های قدیمی
         InventoryPrediction::truncate();
 
-        // ۲. گرفتن تمام محصولات فعال با موجودی و نام
+        // ۳. گرفتن داده‌های اولیه
         $variants = ProductVariant::with('product')->get();
 
-        // ۳. گرفتن آمار فروش ۳۰ روزه برای همه محصولات (یک کوئری بهینه)
-        $salesStats = $this->getSalesStats();
+        // ۴. دریافت آمار با استفاده از بازه زمانی کانفیگ شده
+        $salesStats = $this->getSalesStats($conf['sales_days']);
+        $searchStats = $this->getSearchStats($conf['search_days']);
 
-        // ۴. گرفتن آمار جستجو برای کلمات کلیدی (یک کوئری بهینه)
-        // نکته: این بخش ساده‌سازی شده است. در سیستم واقعی باید نام محصول را نرمالایز کنیم
-        $searchStats = $this->getSearchStats();
-
+        // ۵. تحلیل تک‌تک محصولات
         foreach ($variants as $variant) {
-            $this->analyzeVariant($variant, $salesStats, $searchStats);
+            $this->analyzeVariant($variant, $salesStats, $searchStats, $conf);
         }
     }
 
-    private function analyzeVariant($variant, $salesStats, $searchStats)
+    private function analyzeVariant($variant, $salesStats, $searchStats, array $conf)
     {
-        // الف) محاسبه سرعت فروش (میانگین روزانه در ۳۰ روز اخیر)
-        $totalSold30d = $salesStats[$variant->id] ?? 0;
-        $velocity = $totalSold30d / 30; // مثلا: 2.5 شاخه در روز
+        // الف) محاسبه سرعت فروش (Velocity)
+        $totalSold = $salesStats[$variant->id] ?? 0;
+        $velocity = $totalSold / $conf['sales_days']; // میانگین فروش روزانه
 
-        // ب) محاسبه حجم جستجو (تشخیص Interest)
-        // فرض می‌کنیم نام محصول در کوئری جستجو وجود داشته باشد
-        // در پایتون از NLP استفاده می‌کنیم، اینجا از str_contains
+        // ب) محاسبه حجم جستجو (Search Interest)
         $searchVolume = $searchStats->filter(function ($count, $query) use ($variant) {
+            // نرمال‌سازی ساده (حذف فاصله‌ها برای دقت بیشتر)
             return str_contains($query, $variant->name) || str_contains($query, $variant->sku);
         })->sum();
 
-        // ج) فرمول پیش‌بینی تقاضای ۷ روز آینده
-        // فرمول: (سرعت فروش * ۷) + (ضریب تبدیل جستجو)
-        // فرض: هر ۱۰ جستجو منجر به ۱ سفارش بالقوه می‌شود (Conversion Rate 10%)
-        $potentialFromSearch = $searchVolume * 0.1;
-        $predictedDemand = ($velocity * 7) + $potentialFromSearch;
+        // ج) فرمول پیش‌بینی تقاضا (AI Formula)
+        // تقاضا = (سرعت فروش * روزهای آینده) + (جستجو * ضریب تبدیل)
+        $potentialFromSearch = $searchVolume * $conf['conversion_rate'];
+        $predictedDemand = ($velocity * $conf['prediction_days']) + $potentialFromSearch;
 
-        // د) محاسبه نیاز به خرید (Gap Analysis)
-        $currentStock = $variant->stock_quantity;
+        // د) تحلیل شکاف موجودی (Gap Analysis)
+        $currentStock = $variant->stock_quantity ?? 0;
         $restockNeeded = max(0, $predictedDemand - $currentStock);
 
-        // ه) تعیین اولویت و دلیل
+        // ه) تعیین اولویت و دلیل (Logic)
         $priority = InventoryPrediction::PRIORITY_LOW;
         $reason = "وضعیت نرمال";
 
-        if ($currentStock == 0 && $predictedDemand > 0) {
+        // سناریو ۱: بحرانی (موجودی صفر + تقاضا داریم)
+        if ($currentStock == 0 && $predictedDemand > 0.5) {
             $priority = InventoryPrediction::PRIORITY_CRITICAL;
             $reason = "توقف فروش! (موجودی صفر، تقاضای فعال)";
-        } elseif ($restockNeeded > 0) {
+        }
+        // سناریو ۲: هشدار (موجودی داریم ولی تا هفته بعد تمام می‌شود)
+        elseif ($restockNeeded > 0) {
             $priority = InventoryPrediction::PRIORITY_HIGH;
-            $reason = "خطر اتمام موجودی در هفته آینده";
-        } elseif ($searchVolume > 50 && $velocity < 1) {
+            $reason = "خطر اتمام موجودی در {$conf['prediction_days']} روز آینده";
+        }
+        // سناریو ۳: تقاضای نهفته (جستجوی بالا ولی فروش پایین)
+        elseif ($searchVolume > $conf['high_search'] && $velocity < 1) {
             $priority = InventoryPrediction::PRIORITY_NORMAL;
-            $reason = "تقاضای نهفته (جستجوی بالا ولی فروش کم - قیمت یا توضیحات را چک کنید)";
+            $reason = "تقاضای نهفته (جستجوی بالا ولی عدم ثبت سفارش)";
         }
 
-        // و) ذخیره در دیتابیس
+        // و) ذخیره در دیتابیس (فقط اگر نکته‌ای وجود دارد)
         if ($predictedDemand > 0 || $currentStock < 10) {
             InventoryPrediction::create([
                 InventoryPrediction::PRODUCT_VARIANT_ID => $variant->id,
@@ -88,21 +98,22 @@ class InventoryIntelligenceService
         }
     }
 
-    // --- Helper Methods for Optimization ---
+    // --- Helper Methods (Optimized) ---
 
-    private function getSalesStats(): Collection
+    private function getSalesStats(int $days): Collection
     {
         return OrderItem::query()
-            ->where('created_at', '>=', now()->subDays(30))
-            ->select('product_variant_id', DB::raw('SUM(JSON_EXTRACT(quantity_details, "$.quantity")) as total_qty'))
+            ->where('created_at', '>=', now()->subDays($days))
+            ->select('product_variant_id')
+            ->sumQuantity('total_qty')
             ->groupBy('product_variant_id')
             ->pluck('total_qty', 'product_variant_id');
     }
 
-    private function getSearchStats(): Collection
+    private function getSearchStats(int $days): Collection
     {
         return Search::query()
-            ->where(Search::CREATED_AT, '>=', now()->subDays(7))
+            ->where(Search::CREATED_AT, '>=', now()->subDays($days))
             ->select(Search::QUERY, DB::raw('COUNT(*) as count'))
             ->groupBy(Search::QUERY)
             ->pluck('count', Search::QUERY);

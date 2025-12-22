@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Events\CartItemChanged;
+use App\Events\CustomerSegmentChanged;
 use App\Events\OrderCancelled;
 use App\Events\OrderPaid;
 use App\Events\OrderPlaced;
@@ -12,6 +13,7 @@ use App\Listeners\SendOrderCancellationNotification;
 use App\Listeners\SendOrderPaymentNotification;
 use App\Listeners\SendOrderPlacedNotification;
 use App\Listeners\SendWalletFundingNotification;
+use App\Listeners\SendWinBackOffer;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
@@ -42,6 +44,9 @@ class EventServiceProvider extends ServiceProvider
         ],
         CartItemChanged::class => [
             LogCartEvent::class,
+        ],
+        CustomerSegmentChanged::class => [
+            SendWinBackOffer::class,
         ],
     ];
 

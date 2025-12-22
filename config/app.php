@@ -182,7 +182,8 @@ return [
         App\Providers\RouteServiceProvider::class,
         ResponseServiceProvider::class,
         Mccarlosen\LaravelMpdf\LaravelMpdfServiceProvider::class,
-        RepositoryServiceProvider::class
+        RepositoryServiceProvider::class,
+        App\Providers\ObserverServiceProvider::class,
     ])->toArray(),
 
     /*
