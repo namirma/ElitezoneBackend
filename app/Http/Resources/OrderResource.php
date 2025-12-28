@@ -14,75 +14,133 @@ class OrderResource extends JsonResource
         $user = Auth::user();
         $isSupplier = $user ? $user->hasRole('supplier') : false;
 
-        $progress = $this->dashboard_progress;
+        // بارگذاری روابط مورد نیاز (شامل اقلام سفارش و پروفایل کاربر)
+        $this->loadMissing(['items', 'placer.profile', 'address']);
 
+        // دریافت دیتای پراگرس‌بار
+        $progress = $this->dashboard_progress ?? [];
+
+        // ---------------------------------------------------------
+        // ۱. منطق لیبل وضعیت (دقیق و سفارشی)
+        // ---------------------------------------------------------
+        // ابتدا سعی می‌کنیم از فایل ترجمه orders.php بخوانیم
+        $statusKey = $this->{Order::STATUS};
+        $customLabel = __('orders.status.' . $statusKey);
+
+        // اگر ترجمه پیدا نشد، از دیتای پیش‌فرض استفاده می‌کنیم
+        if ($customLabel === 'orders.status.' . $statusKey) {
+            $customLabel = $progress['current_status_label'] ?? 'نامشخص';
+        }
+
+        // ---------------------------------------------------------
+        // ۲. ساخت لینک‌ها
+        // ---------------------------------------------------------
+        $canPay = $this->{Order::PAYMENT_STATUS} !== Order::PAYMENT_PAID
+            && $this->{Order::STATUS} !== Order::STATUS_CANCELLED;
+
+        $paymentUrl = $canPay ? route('api.user.orders.pay_full', ['order' => $this->id]) : null;
+        $invoiceUrl = route('api.user.orders.invoice', ['order' => $this->id, 'type' => 'initial']);
+
+        // ---------------------------------------------------------
+        // ۳. ساخت آرایه خروجی
+        // ---------------------------------------------------------
         return [
-            Order::ID => $this->id,
-            Order::ORDER_NUMBER => $this->order_number,
-            Order::STATUS => $this->status,
+            Order::ID           => $this->id,
+            Order::ORDER_NUMBER => $this->{Order::ORDER_NUMBER},
 
-            'status_label' => $progress['current_status_label'] ?? 'نامشخص',
+            // --- اطلاعات وضعیت ---
+            'status_info' => [
+                'key'   => $this->{Order::STATUS},
+                'label' => $customLabel,
+                'color' => match ($this->{Order::STATUS}) {
+                    Order::STATUS_DELIVERED => 'success',
+                    Order::STATUS_CANCELLED, Order::STATUS_FAILED => 'danger',
+                    Order::STATUS_PENDING, Order::STATUS_RESERVED_EXTENDED => 'warning',
+                    default => 'primary',
+                },
+                'progress_data' => $progress,
+            ],
 
-            // تعیین رنگ وضعیت برای فرانت‌ند (View Logic)
-            'status_color' => match ($this->status) {
-                Order::STATUS_DELIVERED => 'success',
-                Order::STATUS_CANCELLED, Order::STATUS_FAILED => 'danger',
-                Order::STATUS_PENDING, Order::STATUS_RESERVED_EXTENDED => 'warning',
-                default => 'primary',
-            },
+            // --- خلاصه اقلام سفارش (نام محصول) ---
+            'items_summary' => $this->items->map(function ($item) {
+                $details = $item->quantity_details;
 
-            Order::FINAL_AMOUNT => (string) $this->final_amount,
-            Order::PAYMENT_STATUS => $this->payment_status,
-            Order::NOTES => $this->notes,
-            Order::PAID_AT => $this->paid_at?->format('Y-m-d H:i:s'),
-            Order::WEIGHBRIDGE_REGISTERED_AT => $this->weighbridge_registered_at?->format('Y-m-d H:i:s'),
-            Order::FINAL_INVOICE_REF => $this->final_invoice_ref,
-            Order::TAX_INVOICE_REF => $this->tax_invoice_ref,
-            Order::SURVEY_STATUS => $this->survey_status,
-            Order::CANCEL_REASON => $this->cancel_reason,
-            Order::CREATED_AT => $this->created_at?->format('Y-m-d H:i:s'),
-            'created_at_p' => $this->created_at_p,
-            'created_at_diff' => $this->created_at_diff,
-            'paid_at_p' => $this->paid_at ? verta($this->paid_at)->format('Y/m/d H:i') : null,
-            'weighbridge_registered_at_p' => $this->weighbridge_registered_at ? verta($this->weighbridge_registered_at)->format('Y/m/d H:i') : null,
+                $qty = $details['quantity'] ?? $details['value'] ?? 0;
 
-            // اطلاعات مخصوص خریدار (غیر تامین‌کننده)
-            $this->mergeWhen(!$isSupplier, [
-                Order::PLACER_USER_ID => $this->placer_user_id,
-                Order::BENEFICIARY_USER_ID => $this->beneficiary_user_id,
-                Order::ADDRESS_ID => $this->address_id,
-                Order::SUBTOTAL => (string) $this->subtotal,
-                Order::DISCOUNT_AMOUNT => (string) $this->discount_amount,
-                Order::SHIPPING_COST => (string) $this->shipping_cost,
-                Order::VAT_AMOUNT => (string) $this->vat_amount,
-                Order::PAYMENT_METHOD => $this->payment_method,
-                Order::INITIAL_INVOICE_REF => $this->initial_invoice_ref,
-                Order::EXPERT_FEE_AMOUNT => $this->whenNotNull((string) $this->expert_fee_amount),
-                Order::EXPERT_FEE_PAYMENT_STATUS => $this->expert_fee_payment_status,
-                Order::ENGINEER_FEE_AMOUNT => $this->whenNotNull((string) $this->engineer_fee_amount),
-                Order::ENGINEER_FEE_PAYMENT_STATUS => $this->engineer_fee_payment_status,
-                Order::CONTRACTOR_FEE_AMOUNT => $this->whenNotNull((string) $this->contractor_fee_amount),
-                Order::CONTRACTOR_FEE_PAYMENT_STATUS => $this->contractor_fee_payment_status,
-                Order::EXPERT_FEE_INVOICE_REF => $this->expert_fee_invoice_ref,
-            ]),
+                return [
+                    'name'     => $item->product_name ?? 'محصول نامشخص',
+                    'quantity' => (string) $qty,
+                    'unit'     => $details['unit'] ?? 'کیلوگرم',
+                ];
+            }),
 
-            // اطلاعات مخصوص تامین‌کننده
-            $this->mergeWhen($isSupplier, [
-                Order::PREPARED_AT => $this->prepared_at?->format('Y-m-d H:i:s'),
-                Order::SHIPPED_AT => $this->shipped_at?->format('Y-m-d H:i:s'),
-                Order::PAYMENT_RECEIPT_REF => $this->payment_receipt_ref,
-                Order::ESPADANA_ORDER_REF => $this->espadana_order_ref,
-                Order::WAYBILL_REF => $this->waybill_ref,
-                'prepared_at_p' => $this->prepared_at ? verta($this->prepared_at)->format('Y/m/d H:i') : null,
-                'shipped_at_p' => $this->shipped_at ? verta($this->shipped_at)->format('Y/m/d H:i') : null,
-            ]),
+            // --- اطلاعات خریدار ---
+            'buyer' => $this->when(!$isSupplier, function () {
+                return [
+                    'id'          => $this->{Order::PLACER_USER_ID},
+                    'full_name'   => $this->placer->full_name ?? 'کاربر ناشناس',
+                    'mobile'      => $this->placer->mobile ?? null,
+                ];
+            }),
 
-            'progress' => $progress,
+            'beneficiary' => $this->when($this->{Order::BENEFICIARY_USER_ID}, function () {
+                return [
+                    'id'          => $this->{Order::BENEFICIARY_USER_ID},
+                    'full_name'   => $this->beneficiary->full_name ?? 'نامشخص',
+                    'national_id' => $this->beneficiary->profile->national_code ?? null,
+                    'mobile'      => $this->beneficiary->mobile ?? null,
+                ];
+            }),
 
-            'placer' => new UserResource($this->whenLoaded('placer')),
-            'beneficiary' => new UserResource($this->whenLoaded('beneficiary')),
-            'address' => new AddressResource($this->whenLoaded('address')),
-            'items' => OrderItemResource::collection($this->whenLoaded('items')),
+            // --- اطلاعات مالی ---
+            'financial' => [
+                Order::FINAL_AMOUNT    => (string) $this->{Order::FINAL_AMOUNT},
+                Order::PAYMENT_STATUS  => $this->{Order::PAYMENT_STATUS},
+                'is_paid'              => $this->{Order::PAYMENT_STATUS} === Order::PAYMENT_PAID,
+                'paid_at_p'            => $this->{Order::PAID_AT} ? verta($this->{Order::PAID_AT})->format('Y/m/d H:i') : null,
+
+                // فیلدهای اضافی برای خریدار
+                $this->mergeWhen(!$isSupplier, [
+                    Order::SUBTOTAL => (string) $this->{Order::SUBTOTAL},
+                    Order::DISCOUNT_AMOUNT => (string) $this->{Order::DISCOUNT_AMOUNT},
+                    Order::VAT_AMOUNT => (string) $this->{Order::VAT_AMOUNT},
+                    Order::SHIPPING_COST => (string) $this->{Order::SHIPPING_COST},
+                ]),
+            ],
+
+            // --- آدرس تحویل ---
+            'delivery_address' => $this->when($this->address, function () {
+                return [
+                    'province'     => $this->address->province->name ?? '',
+                    'city'         => $this->address->city->name ?? '',
+                    'full_address' => $this->address->address,
+                    'postal_code'  => $this->address->postal_code,
+                    'receiver'     => $this->address->receiver_name,
+                    'phone'        => $this->address->receiver_mobile,
+                ];
+            }),
+
+            // --- دکمه‌های عملیاتی ---
+            'actions' => [
+                'download_invoice' => [
+                    'label'  => 'دانلود فاکتور اولیه',
+                    'url'    => $invoiceUrl,
+                    'method' => 'GET',
+                    'active' => true,
+                ],
+                'payment' => [
+                    'label'  => 'پرداخت نهایی',
+                    'url'    => $paymentUrl,
+                    'method' => 'POST',
+                    'active' => !is_null($paymentUrl),
+                ]
+            ],
+
+            // --- تاریخ‌ها ---
+            'dates' => [
+                'created_at_p'    => $this->created_at_p,
+                'created_at_diff' => $this->created_at_diff,
+            ],
         ];
     }
 }

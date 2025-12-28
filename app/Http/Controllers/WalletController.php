@@ -47,7 +47,6 @@ class WalletController extends Controller
             $type = $request->input('type');
             if ($type === 'deposit') $query->where('type', WalletTransaction::TYPE_DEPOSIT);
             elseif ($type === 'withdraw') $query->where('type', WalletTransaction::TYPE_WITHDRAW);
-            elseif ($type === 'fee') $query->whereIn('type', [WalletTransaction::TYPE_FEE_HOLD, WalletTransaction::TYPE_FEE_RELEASE]);
         }
 
         if ($request->filled('status')) {

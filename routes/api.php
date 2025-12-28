@@ -83,7 +83,6 @@ Route::prefix('data')->middleware(['auth:sanctum'])->group(function () {
     Route::prefix('marketing')->group(function () {
         // ...
     });
-
 });
 
 // --- احراز هویت ---
@@ -246,51 +245,68 @@ Route::middleware(['auth:sanctum'])->group(function () {
         // سفارش‌ها
         Route::prefix('orders')->group(function () {
 
-            // 1. نمایش و لیست‌ها (OrderController)
-            Route::controller(OrderController::class)->group(function () {
-                Route::get('/', 'index')->middleware('track:orders');
-                Route::get('/{order}', 'show')->whereNumber('order');
+            // ====================================================
+            // 1. لیست‌های خاص (حتماً باید اول باشند)
+            // ====================================================
 
+            Route::controller(OrderController::class)->group(function () {
+                // لیست خرید برای خودم
                 Route::prefix('buy-myself')->group(function () {
                     Route::get('/current', fn(Request $request) => app(OrderController::class)->myOrders($request, 'current'));
                     Route::get('/delivered', fn(Request $request) => app(OrderController::class)->myOrders($request, 'delivered'));
                     Route::get('/cancelled', fn(Request $request) => app(OrderController::class)->myOrders($request, 'cancelled'));
                 });
 
+                // لیست خرید برای دیگران
                 Route::prefix('buy-others')->group(function () {
                     Route::get('/current', fn(Request $request) => app(OrderController::class)->otherOrders($request, 'current'));
                     Route::get('/delivered', fn(Request $request) => app(OrderController::class)->otherOrders($request, 'delivered'));
                     Route::get('/cancelled', fn(Request $request) => app(OrderController::class)->otherOrders($request, 'cancelled'));
                 });
+
+                // لیست کلی
+                Route::get('/', 'index')->middleware('track:orders');
             });
 
-            // 2. عملیات مالی (OrderPaymentController)
+            // ====================================================
+            // 2. عملیات روی یک سفارش خاص (Wildcard Routes)
+            // ====================================================
+
+            // عملیات مالی
             Route::controller(OrderPaymentController::class)->group(function () {
-                Route::post('/{order}/pay-hold-fee', 'payHoldFee');
-                Route::post('/{order}/pay-full', 'payFullOrder');
-                Route::post('/{order}/upload-receipt', 'uploadReceipt');
+                Route::post('/{order}/pay-hold-fee', 'payHoldFee')->whereNumber('order');
+                Route::post('/{order}/pay-full', 'payFullOrder')->whereNumber('order')->name('api.user.orders.pay_full');
+                Route::post('/{order}/upload-receipt', 'uploadReceipt')->whereNumber('order');
             });
 
-            // 3. عملیات اکشن (OrderActionController)
+            // عملیات تغییر وضعیت/اکشن
             Route::controller(OrderActionController::class)->group(function () {
-                Route::post('/{order}/cancel', 'cancel');
-                Route::post('/{order}/finalize-invoice', 'finalizeInvoice');
+                Route::post('/{order}/cancel', 'cancel')->whereNumber('order');
+                Route::post('/{order}/finalize-invoice', 'finalizeInvoice')->whereNumber('order');
             });
 
-            // 4. فاکتور (OrderInvoiceController)
+            // دانلود فاکتور
             Route::get('/{order}/invoice/{type}', [OrderInvoiceController::class, 'download'])
-                ->whereIn('type', ['initial', 'final', 'tax']);
+                ->whereNumber('order')
+                ->whereIn('type', ['initial', 'final', 'tax'])
+                ->name('api.user.orders.invoice');
 
-            // 5. نظرسنجی
-            Route::post('/{order}/survey', [OrderSurveyController::class, 'store']);
+            // نظرسنجی
+            Route::post('/{order}/survey', [OrderSurveyController::class, 'store'])->whereNumber('order');
 
-            // 6. تامین‌کننده (SupplierOrderController)
+            // عملیات تامین‌کننده
             Route::controller(SupplierOrderController::class)->group(function () {
-                Route::post('/{order}/prepare', 'markAsPrepared');
-                Route::post('/{order}/waybill', 'addWaybill');
-                Route::post('/{order}/espadana', 'issueEspadanaCommand');
-                Route::post('/{order}/receipt', 'attachPaymentReceipt');
+                Route::post('/{order}/prepare', 'markAsPrepared')->whereNumber('order');
+                Route::post('/{order}/waybill', 'addWaybill')->whereNumber('order');
+                Route::post('/{order}/espadana', 'issueEspadanaCommand')->whereNumber('order');
+                Route::post('/{order}/receipt', 'attachPaymentReceipt')->whereNumber('order');
             });
+
+            // ====================================================
+            // 3. نمایش جزئیات سفارش (باید آخرین روت باشد)
+            // ====================================================
+            // اگر این را بالا بگذارید، "buy-myself" را به عنوان "order id" می‌بیند و ارور می‌دهد
+            Route::get('/{order}', [OrderController::class, 'show'])->whereNumber('order');
         });
 
         // مدیریت مالی

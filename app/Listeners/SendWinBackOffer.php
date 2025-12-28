@@ -4,7 +4,7 @@ namespace App\Listeners;
 
 use App\Events\CustomerSegmentChanged;
 use App\Services\Marketing\CouponService;
-use App\Models\CustomerStat; // فرض بر اینکه سگمنت‌ها اینجا ثابت تعریف شدن یا رشته هستن
+use App\Models\CustomerStat; 
 use App\Models\UserProfile;
 use Illuminate\Support\Facades\Log;
 

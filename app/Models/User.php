@@ -84,6 +84,14 @@ class User extends Authenticatable
     //  Relationships
     // =========================================================================
 
+    public function getFullNameAttribute(): string
+    {
+        $profile = $this->profile;
+        if (!$profile || (empty($profile->name) && empty($profile->family))) {
+            return 'کاربر ناشناس';
+        }
+        return trim("{$profile->name} {$profile->family}");
+    }
     public function profile(): HasOne
     {
         return $this->hasOne(UserProfile::class);
@@ -107,7 +115,7 @@ class User extends Authenticatable
     public function wallet()
     {
         return $this->hasOne(Wallet::class);
-    }   
+    }
     public function employer(): HasOne
     {
         return $this->hasOne(EmployerProfile::class);

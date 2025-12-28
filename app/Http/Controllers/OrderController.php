@@ -66,14 +66,36 @@ class OrderController extends Controller
     /**
      * متد کمکی برای لیست سفارش‌های "دیگران" (Buy Others)
      */
-    public function otherOrders(Request $request, string $statusGroup): JsonResponse
+    public function otherOrders(Request $request, string $type)
     {
-        $orders = $this->orderRepository->getUserOrders(
-            userId: Auth::id(),
-            roleType: 'beneficiary',
-            statusGroup: $statusGroup,
-            perPage: $request->input('per_page', 10)
-        );
-        return success(OrderResource::collection($orders));
+        $userId = Auth::id();
+
+        $query = Order::query()
+            ->where('placer_user_id', $userId)
+            ->whereNotNull('beneficiary_user_id');
+
+        switch ($type) {
+            case 'current':
+                $query->whereIn('status', [
+                    Order::STATUS_PENDING,
+                    Order::STATUS_PROCESSING,
+                    Order::STATUS_WEIGHBRIDGE_DONE,
+                    Order::STATUS_PREPARING,
+                    Order::STATUS_SHIPPED
+                ]);
+                break;
+
+            case 'delivered':
+                $query->where('status', Order::STATUS_DELIVERED);
+                break;
+
+            case 'cancelled':
+                $query->whereIn('status', [Order::STATUS_CANCELLED, Order::STATUS_FAILED]);
+                break;
+        }
+
+        $orders = $query->latest()->get();
+
+        return success(OrderResource::collection($orders), 'global.received_successfully');
     }
 }
