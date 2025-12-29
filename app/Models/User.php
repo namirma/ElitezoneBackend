@@ -131,6 +131,12 @@ class User extends Authenticatable
         return $this->belongsTo(Badge::class, self::BADGE_ID);
     }
 
+    public function badges(): BelongsToMany
+    {
+        return $this->belongsToMany(Badge::class, 'badge_user')
+            ->withTimestamps();
+    }
+
     // --- روابط عمومی ---
 
     public function addresses(): HasMany

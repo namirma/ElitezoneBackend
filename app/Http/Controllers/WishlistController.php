@@ -69,12 +69,15 @@ class WishlistController extends Controller
         return success([], 'wishlist.destroy.success');
     }
 
-    public function addVariant( Wishlist $wishlist, ProductVariant $variant): JsonResponse
+    public function addVariant(Wishlist $wishlist, ProductVariant $variant): JsonResponse
     {
         if (Auth::id() !== $wishlist->{Wishlist::USER_ID}) {
             return error('global.unauthorized', [], 403);
         }
-        $wishlist->variants()->syncWithoutDetaching($variant->id);
+        if ($wishlist->variants()->where('product_variant_id', $variant->id)->exists()) {
+            return error('wishlist.variants.store.duplicate', [], 409);
+        }
+        $wishlist->variants()->attach($variant->id);
         return success([], 'wishlist.variants.store.success');
     }
 
@@ -82,6 +85,9 @@ class WishlistController extends Controller
     {
         if (Auth::id() !== $wishlist->{Wishlist::USER_ID}) {
             return error('global.unauthorized', [], 403);
+        }
+        if (!$wishlist->variants()->where('product_variant_id', $variant->id)->exists()) {
+            return error('wishlist.variants.destroy.not_found', [], 404);
         }
         $wishlist->variants()->detach($variant->id);
         return success([], 'wishlist.variants.destroy.success');

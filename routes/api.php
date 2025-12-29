@@ -53,6 +53,7 @@ use App\Http\Controllers\Api\Data\InventoryController;
 use App\Http\Controllers\Api\User\OrderInvoiceController;
 use App\Http\Controllers\Api\User\OrderPaymentController;
 use App\Http\Controllers\Api\User\SupplierOrderController;
+use App\Http\Controllers\MyItemsController;
 // Middleware
 use App\Http\Middleware\EnsureRoleIsSelected;
 
@@ -305,7 +306,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
             // ====================================================
             // 3. نمایش جزئیات سفارش (باید آخرین روت باشد)
             // ====================================================
-            // اگر این را بالا بگذارید، "buy-myself" را به عنوان "order id" می‌بیند و ارور می‌دهد
             Route::get('/{order}', [OrderController::class, 'show'])->whereNumber('order');
         });
 
@@ -359,6 +359,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::prefix('stock-subscriptions')->controller(StockSubscriptionController::class)->group(function () {
             Route::get('/', 'index');
             Route::post('/toggle', 'toggle');
+        });
+
+        Route::prefix('my-items')->controller(MyItemsController::class)->group(function () {
+            Route::get('/badges', 'badges');
+            Route::get('/surveys', 'surveys');
         });
 
         // مشاوران / کارفرمایان

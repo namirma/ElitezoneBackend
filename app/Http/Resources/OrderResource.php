@@ -14,45 +14,45 @@ class OrderResource extends JsonResource
         $user = Auth::user();
         $isSupplier = $user ? $user->hasRole('supplier') : false;
 
-        // بارگذاری روابط مورد نیاز (شامل اقلام سفارش و پروفایل کاربر)
-        $this->loadMissing(['items', 'placer.profile', 'address']);
+        $this->loadMissing(['items', 'placer.profile', 'beneficiary.profile', 'address.city', 'address.province']);
 
-        // دریافت دیتای پراگرس‌بار
         $progress = $this->dashboard_progress ?? [];
 
-        // ---------------------------------------------------------
-        // ۱. منطق لیبل وضعیت (دقیق و سفارشی)
-        // ---------------------------------------------------------
-        // ابتدا سعی می‌کنیم از فایل ترجمه orders.php بخوانیم
         $statusKey = $this->{Order::STATUS};
-        $customLabel = __('orders.status.' . $statusKey);
+        $statusLabel = __('orders.status.' . $statusKey);
+        if ($statusLabel === 'orders.status.' . $statusKey) {
+            $statusLabel = $progress['current_status_label'] ?? __('orders.status.unknown');
+        }
+        $paymentStatusKey = $this->{Order::PAYMENT_STATUS};
+        $paymentStatusLabel = __('orders.status.' . $paymentStatusKey);
 
-        // اگر ترجمه پیدا نشد، از دیتای پیش‌فرض استفاده می‌کنیم
-        if ($customLabel === 'orders.status.' . $statusKey) {
-            $customLabel = $progress['current_status_label'] ?? 'نامشخص';
+        // اگر ترجمه خاصی نداشت، خود کلید را نشان بده (جهت اطمینان)
+        if ($paymentStatusLabel === 'orders.status.' . $paymentStatusKey) {
+            $paymentStatusLabel = $paymentStatusKey;
         }
 
         // ---------------------------------------------------------
-        // ۲. ساخت لینک‌ها
+        // ۳. منطق دکمه‌های عملیاتی (Actions)
         // ---------------------------------------------------------
-        $canPay = $this->{Order::PAYMENT_STATUS} !== Order::PAYMENT_PAID
-            && $this->{Order::STATUS} !== Order::STATUS_CANCELLED;
+        $canPay = $paymentStatusKey !== Order::PAYMENT_PAID
+            && $statusKey !== Order::STATUS_CANCELLED
+            && $statusKey !== Order::STATUS_FAILED;
 
         $paymentUrl = $canPay ? route('api.user.orders.pay_full', ['order' => $this->id]) : null;
         $invoiceUrl = route('api.user.orders.invoice', ['order' => $this->id, 'type' => 'initial']);
 
         // ---------------------------------------------------------
-        // ۳. ساخت آرایه خروجی
+        // ۴. ساخت آرایه خروجی
         // ---------------------------------------------------------
         return [
             Order::ID           => $this->id,
             Order::ORDER_NUMBER => $this->{Order::ORDER_NUMBER},
 
-            // --- اطلاعات وضعیت ---
+            // --- اطلاعات وضعیت و استپ‌ها ---
             'status_info' => [
-                'key'   => $this->{Order::STATUS},
-                'label' => $customLabel,
-                'color' => match ($this->{Order::STATUS}) {
+                'key'   => $statusKey,
+                'label' => $statusLabel,
+                'color' => match ($statusKey) {
                     Order::STATUS_DELIVERED => 'success',
                     Order::STATUS_CANCELLED, Order::STATUS_FAILED => 'danger',
                     Order::STATUS_PENDING, Order::STATUS_RESERVED_EXTENDED => 'warning',
@@ -61,10 +61,9 @@ class OrderResource extends JsonResource
                 'progress_data' => $progress,
             ],
 
-            // --- خلاصه اقلام سفارش (نام محصول) ---
+            // --- خلاصه اقلام سفارش ---
             'items_summary' => $this->items->map(function ($item) {
                 $details = $item->quantity_details;
-
                 $qty = $details['quantity'] ?? $details['value'] ?? 0;
 
                 return [
@@ -74,15 +73,16 @@ class OrderResource extends JsonResource
                 ];
             }),
 
-            // --- اطلاعات خریدار ---
+            // --- اطلاعات خریدار (Placer) ---
             'buyer' => $this->when(!$isSupplier, function () {
                 return [
-                    'id'          => $this->{Order::PLACER_USER_ID},
-                    'full_name'   => $this->placer->full_name ?? 'کاربر ناشناس',
-                    'mobile'      => $this->placer->mobile ?? null,
+                    'id'        => $this->{Order::PLACER_USER_ID},
+                    'full_name' => $this->placer->full_name ?? 'کاربر ناشناس',
+                    'mobile'    => $this->placer->mobile ?? null,
                 ];
             }),
 
+            // --- اطلاعات ذینفع (Beneficiary) - اگر وجود داشته باشد ---
             'beneficiary' => $this->when($this->{Order::BENEFICIARY_USER_ID}, function () {
                 return [
                     'id'          => $this->{Order::BENEFICIARY_USER_ID},
@@ -90,21 +90,21 @@ class OrderResource extends JsonResource
                     'national_id' => $this->beneficiary->profile->national_code ?? null,
                     'mobile'      => $this->beneficiary->mobile ?? null,
                 ];
-            }),
+            }, null),
 
-            // --- اطلاعات مالی ---
+            // --- اطلاعات مالی (اصلاح شده) ---
             'financial' => [
                 Order::FINAL_AMOUNT    => (string) $this->{Order::FINAL_AMOUNT},
-                Order::PAYMENT_STATUS  => $this->{Order::PAYMENT_STATUS},
-                'is_paid'              => $this->{Order::PAYMENT_STATUS} === Order::PAYMENT_PAID,
+                Order::PAYMENT_STATUS  => $paymentStatusKey,
+                'payment_status_text'  => $paymentStatusLabel,
+                'is_paid'              => $paymentStatusKey === Order::PAYMENT_PAID,
                 'paid_at_p'            => $this->{Order::PAID_AT} ? verta($this->{Order::PAID_AT})->format('Y/m/d H:i') : null,
 
-                // فیلدهای اضافی برای خریدار
                 $this->mergeWhen(!$isSupplier, [
-                    Order::SUBTOTAL => (string) $this->{Order::SUBTOTAL},
+                    Order::SUBTOTAL        => (string) $this->{Order::SUBTOTAL},
                     Order::DISCOUNT_AMOUNT => (string) $this->{Order::DISCOUNT_AMOUNT},
-                    Order::VAT_AMOUNT => (string) $this->{Order::VAT_AMOUNT},
-                    Order::SHIPPING_COST => (string) $this->{Order::SHIPPING_COST},
+                    Order::VAT_AMOUNT      => (string) $this->{Order::VAT_AMOUNT},
+                    Order::SHIPPING_COST   => (string) $this->{Order::SHIPPING_COST},
                 ]),
             ],
 
@@ -120,16 +120,16 @@ class OrderResource extends JsonResource
                 ];
             }),
 
-            // --- دکمه‌های عملیاتی ---
+            // --- دکمه‌های عملیاتی (با استفاده از فایل ترجمه) ---
             'actions' => [
                 'download_invoice' => [
-                    'label'  => 'دانلود فاکتور اولیه',
+                    'label'  => __('orders.actions.download_initial_invoice'),
                     'url'    => $invoiceUrl,
                     'method' => 'GET',
                     'active' => true,
                 ],
                 'payment' => [
-                    'label'  => 'پرداخت نهایی',
+                    'label'  => __('orders.actions.final_invoice_settlement'), // مثلا "فاکتور نهایی (تسویه)" یا "پرداخت فاکتور"
                     'url'    => $paymentUrl,
                     'method' => 'POST',
                     'active' => !is_null($paymentUrl),

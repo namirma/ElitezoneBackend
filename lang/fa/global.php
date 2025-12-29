@@ -14,10 +14,10 @@ return [
     در حال مذاکره با سوپلایر‌های محترم هستیم.
     برای قدم های بعدی به شما اطلاع رسانی خواهیم کرد.
     تیم EliteZone',
-    'listopherSavedSuccessfully' => '.اطلاعات لیستوفر با موفقیت ذخیره شد',
-    'created_successfully'           => '.لیست علاقه‌مندی جدید با موفقیت ساخته شد',
-    'updated_successfully'           => '.لیست علاقه‌مندی با موفقیت به‌روز شد',
-    'deleted_successfully'           => '.لیست علاقه‌مندی با موفقیت حذف شد',
+    'listopherSavedSuccessfully' => 'اطلاعات لیستوفر با موفقیت ذخیره شد.',
+    'created_successfully'           => ' لیست .علاقه‌مندی جدید با موفقیت ساخته شد',
+    'updated_successfully'           => '.لیست .علاقه‌مندی با موفقیت به‌روز شد.',
+    'deleted_successfully'           => '.لیست علاقه‌مندی با موفقیت حذف شد.',
     'cannot_update_default'          => '.امکان تغییر نام لیست پیش‌فرض وجود ندارد',
     'cannot_delete_default'          => '.امکان حذف لیست پیش‌فرض وجود ندارد',
     'variant_added_successfully'     => '.محصول با موفقیت به لیست اضافه شد',

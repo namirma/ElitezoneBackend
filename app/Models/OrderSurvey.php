@@ -15,7 +15,9 @@ class OrderSurvey extends Model
         ORDER_ID = 'order_id',
         USER_ID = 'user_id',
         RATING = 'rating',
-        COMMENT = 'comment';
+        COMMENT = 'comment',
+        CREATED_AT = 'created_at',
+        UPDATED_AT = 'updated_at';
 
     protected $fillable = [
         self::ORDER_ID,

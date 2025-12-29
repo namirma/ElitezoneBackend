@@ -26,21 +26,17 @@ class OrderRepository implements OrderRepositoryInterface
     }
 
     /**
-     * پیاده‌سازی متد قدیمی getUserOrders (بهینه شده)
-     * این متد دقیقاً همان کاری را می‌کند که قبلاً در کنترلر انجام می‌شد، اما تمیزتر.
+     * پیاده‌سازی متد قدیمی getUserOrders (اصلاح شده)
      */
     public function getUserOrders(int $userId, string $roleType, string $statusGroup, int $perPage = 10): LengthAwarePaginator
     {
         return Order::query()
-            // فیلتر بر اساس کاربر
             ->where(function (Builder $query) use ($userId, $roleType) {
                 if ($roleType === 'beneficiary') {
-                    // تب "خرید برای دیگران" (من ذی‌نفع هستم)
-                    $query->where(Order::BENEFICIARY_USER_ID, $userId)
-                        ->whereColumn(Order::PLACER_USER_ID, '!=', Order::BENEFICIARY_USER_ID);
+                    $query->where(Order::BENEFICIARY_USER_ID, $userId);
                 } else {
-                    // تب "خرید برای خودم" (من ثبت کننده‌ام)
-                    $query->where(Order::PLACER_USER_ID, $userId);
+                    $query->where(Order::PLACER_USER_ID, $userId)
+                          ->whereNull(Order::BENEFICIARY_USER_ID);
                 }
             })
             // فیلتر بر اساس گروه‌های وضعیت (جاری، تحویل شده، لغو شده)
