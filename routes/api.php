@@ -99,13 +99,18 @@ Route::controller(AuthController::class)->prefix('authenticate')->group(function
 });
 
 // --- محصولات و دسته‌بندی‌ها ---
-Route::prefix('products')->middleware(['auth:sanctum', 'attach.price.category'])->group(function () {
+Route::prefix('products')->middleware(['attach.price.category'])->group(function () {
     Route::get('categories', [ProductCategoryController::class, 'index']);
     Route::get('/', [ProductController::class, 'index']);
     Route::get('/{product:cuid}', [ProductController::class, 'show']);
     Route::get('/{product:cuid}/variants', [ProductController::class, 'variants']);
     Route::get('/{product:cuid}/filters', [ProductController::class, 'filters']);
-    Route::post('/variant-price',   [ProductController::class, 'getVariantPrice']);
+
+    Route::post('/variant-price', [ProductController::class, 'getVariantPrice']);
+});
+
+Route::prefix('products')->middleware(['auth:sanctum', 'attach.price.category'])->group(function () {
+    
     Route::post('/calculate-price', [ProductController::class, 'calculateOrderPrice']);
 });
 
