@@ -22,18 +22,21 @@ class AddressController extends Controller
     {
         return success(getCities($provinceID));
     }
+
     public function index(): JsonResponse
     {
         $user = Auth::user();
         $addresses = $user->addresses()->latest()->get();
         return success(AddressResource::collection($addresses), __('address.list_success'));
     }
+
     public function store(StoreAddressRequest $request): JsonResponse
     {
         $user = Auth::user();
         $data = $request->validated();
 
         $address = DB::transaction(function () use ($user, $data) {
+
             if (!empty($data[Address::IS_DEFAULT])) {
                 $user->addresses()->update([Address::IS_DEFAULT => false]);
             }
@@ -50,6 +53,7 @@ class AddressController extends Controller
                 Address::RECEIVER_MOBILE => $data[Address::RECEIVER_MOBILE],
                 Address::IS_DEFAULT => $data[Address::IS_DEFAULT] ?? false,
             ]);
+
             if ($user->addresses()->count() === 1) {
                 $address->update([Address::IS_DEFAULT => true]);
             }
@@ -59,13 +63,32 @@ class AddressController extends Controller
 
         return success(new AddressResource($address), __('address.store_success'), 201);
     }
+
     public function update(UpdateAddressRequest $request, Address $address): JsonResponse
     {
+
+        if ($address->{Address::USER_ID} !== Auth::id()) {
+            return error(__('auth.forbidden'), [], 403);
+        }
+
         $data = $request->validated();
-        $address->update($data);
+
+        DB::transaction(function () use ($address, $data) {
+
+            if (!empty($data[Address::IS_DEFAULT]) && $data[Address::IS_DEFAULT] == true) {
+
+                Auth::user()->addresses()
+                    ->where(Address::ID, '!=', $address->id)
+                    ->update([Address::IS_DEFAULT => false]);
+            }
+
+
+            $address->update($data);
+        });
 
         return success(new AddressResource($address), __('address.update_success'));
     }
+
     public function destroy(Address $address): JsonResponse
     {
         if ($address->{Address::USER_ID} !== Auth::id()) {
@@ -95,3 +118,4 @@ class AddressController extends Controller
         return success(new AddressResource($address), __('address.set_default_success'));
     }
 }
+

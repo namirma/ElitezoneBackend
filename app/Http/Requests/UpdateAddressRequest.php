@@ -16,7 +16,6 @@ class UpdateAddressRequest extends FormRequest
 
     public function rules(): array
     {
-        // قوانین آپدیت (همه اختیاری هستند)
         return [
             Address::TITLE => ['sometimes', 'required', 'string', 'max:100'],
             Address::PROVINCE_ID => ['sometimes', 'required', 'integer', 'exists:province,id'],
@@ -27,6 +26,7 @@ class UpdateAddressRequest extends FormRequest
             Address::POSTAL_CODE => ['nullable', 'string', 'regex:/^\d{10}$/'],
             Address::RECEIVER_NAME => ['sometimes', 'required', 'string', 'max:100'],
             Address::RECEIVER_MOBILE => ['sometimes', 'required', 'string', 'regex:/^(\+?98|0098|0)?9\d{9}$/'],
+            Address::IS_DEFAULT => ['nullable', 'boolean'],
         ];
     }
 
