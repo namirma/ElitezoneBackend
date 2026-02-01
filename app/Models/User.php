@@ -189,4 +189,30 @@ class User extends Authenticatable
             ->withPivot([EmployerConsultant::STATUS, EmployerConsultant::REJECT_REASON])
             ->withTimestamps();
     }
+
+    public function agreements(): BelongsToMany
+    {
+        return $this->belongsToMany(Agreement::class, 'user_agreements')
+            ->withPivot(['accepted_at', 'ip_address', 'user_agent'])
+            ->withTimestamps();
+    }
+
+
+    public function hasAcceptedLatestAgreement(string $slug): bool
+    {
+        
+        $latestAgreement = Agreement::query()
+            ->where(Agreement::SLUG, $slug)
+            ->active()
+            ->latest(Agreement::CREATED_AT)
+            ->first();
+
+        if (! $latestAgreement) {
+            return true;
+        }
+
+        return $this->agreements()
+            ->where(Agreement::ID, $latestAgreement->{Agreement::ID})
+            ->exists();
+    }
 }

@@ -54,6 +54,7 @@ use App\Http\Controllers\Api\User\OrderInvoiceController;
 use App\Http\Controllers\Api\User\OrderPaymentController;
 use App\Http\Controllers\Api\User\SupplierOrderController;
 use App\Http\Controllers\MyItemsController;
+use App\Http\Controllers\Payment\WalletPaymentController;
 // Middleware
 use App\Http\Middleware\EnsureRoleIsSelected;
 
@@ -86,6 +87,10 @@ Route::prefix('data')->middleware(['auth:sanctum'])->group(function () {
     });
 });
 
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::post('payment/wallet', [WalletPaymentController::class, 'pay'])->name('payment.wallet');
+});
+
 // --- احراز هویت ---
 Route::controller(AuthController::class)->prefix('authenticate')->group(function () {
     Route::post('/', 'register')->middleware('throttle:sms');
@@ -110,7 +115,7 @@ Route::prefix('products')->middleware(['attach.price.category'])->group(function
 });
 
 Route::prefix('products')->middleware(['auth:sanctum', 'attach.price.category'])->group(function () {
-    
+
     Route::post('/calculate-price', [ProductController::class, 'calculateOrderPrice']);
 });
 
