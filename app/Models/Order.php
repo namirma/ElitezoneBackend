@@ -68,6 +68,7 @@ class Order extends Model
     // =========================================================================
     public const
         STATUS_PENDING = 'pending',
+        STATUS_RESERVED = 'reserved',
         STATUS_RESERVED_EXTENDED = 'reserved_extended',
         STATUS_PROCESSING = 'processing',
         STATUS_PREPARING = 'preparing',
@@ -75,7 +76,7 @@ class Order extends Model
         STATUS_WAYBILL_ISSUED = 'waybill_issued',
         STATUS_SHIPPED = 'shipped',
         STATUS_DELIVERED = 'delivered',
-        STATUS_COMPLETED = 'completed', 
+        STATUS_COMPLETED = 'completed',
         STATUS_CANCELLED = 'cancelled',
         STATUS_FAILED = 'failed',
 
@@ -91,6 +92,23 @@ class Order extends Model
         SURVEY_PENDING = 'pending',
         SURVEY_REQUESTED = 'requested',
         SURVEY_COMPLETED = 'completed';
+
+
+    //  Financial Constants (Elite Zone Logic)
+    // =========================================================================
+    public const
+        OFFICIAL_PRICE = 'official_price',
+        WEIGHT_BEFORE_SCALE = 'weight_before_scale',
+        COMMISSION_RATE = 'commission_rate',
+        OWNER_DISCOUNT_RATE = 'owner_discount_rate',
+        SAZE_SHARE_RATE = 'saze_share_rate',
+        CONSULTANT_SHARE_RATE = 'consultant_share_rate',
+        VAT_RATE = 'vat_rate',
+        PAYMENT_OF_OWNER = 'payment_of_owner',
+        PAYMENT_TO_SUPPLIER = 'payment_to_supplier',
+        PAYMENT_TO_CONSULTANT = 'payment_to_consultant',
+        PAYMENT_TO_RESERVE = 'payment_to_reserve',
+        VALIDATION_OF_RESERVE = 'validation_of_reserve';
 
     // =========================================================================
     //  Configurations
@@ -130,6 +148,19 @@ class Order extends Model
         self::WAYBILL_REF,
         self::RESERVATION_EXPIRES_AT,
         self::PARTIAL_PAYMENT_AMOUNT,
+
+        self::OFFICIAL_PRICE,
+        self::WEIGHT_BEFORE_SCALE,
+        self::COMMISSION_RATE,
+        self::OWNER_DISCOUNT_RATE,
+        self::SAZE_SHARE_RATE,
+        self::CONSULTANT_SHARE_RATE,
+        self::VAT_RATE,
+        self::PAYMENT_OF_OWNER,
+        self::PAYMENT_TO_SUPPLIER,
+        self::PAYMENT_TO_CONSULTANT,
+        self::PAYMENT_TO_RESERVE,
+        self::VALIDATION_OF_RESERVE,
     ];
 
     protected $casts = [
@@ -143,6 +174,16 @@ class Order extends Model
         self::RESERVATION_EXPIRES_AT => 'datetime',
         self::PARTIAL_PAYMENT_AMOUNT => 'decimal:2',
         self::FINAL_AMOUNT => 'decimal:2',
+
+        self::OFFICIAL_PRICE => 'decimal:2',
+        self::WEIGHT_BEFORE_SCALE => 'decimal:3',
+        self::COMMISSION_RATE => 'decimal:2',
+        self::OWNER_DISCOUNT_RATE => 'decimal:2',
+        self::VAT_RATE => 'decimal:2',
+        self::PAYMENT_OF_OWNER => 'decimal:2',
+        self::PAYMENT_TO_SUPPLIER => 'decimal:2',
+        self::PAYMENT_TO_RESERVE => 'decimal:2',
+        self::VALIDATION_OF_RESERVE => 'datetime',
     ];
 
     // =========================================================================
