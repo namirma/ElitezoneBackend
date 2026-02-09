@@ -159,6 +159,11 @@ class User extends Authenticatable
         return $this->hasMany(Wishlist::class, Wishlist::USER_ID);
     }
 
+    public function cart(): HasOne
+    {
+        return $this->hasOne(Cart::class);
+    }
+
     public function eduixRecords(): HasMany
     {
         return $this->hasMany(EduixRecord::class, EduixRecord::USER_ID);
@@ -200,7 +205,7 @@ class User extends Authenticatable
 
     public function hasAcceptedLatestAgreement(string $slug): bool
     {
-        
+
         $latestAgreement = Agreement::query()
             ->where(Agreement::SLUG, $slug)
             ->active()

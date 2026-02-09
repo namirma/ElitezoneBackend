@@ -16,21 +16,16 @@ use Illuminate\Validation\ValidationException;
 
 class AddToCartAction
 {
-    /**
-     * متد اصلی اجرایی
-     */
     public function execute(Cart $cart, array $data): Cart
     {
-        // 1. بارگذاری واریانت و کارخانه
         $variant = ProductVariant::with(['product.orderUnits', 'product.aggregateLimitOrderUnit', 'limitOrderUnit'])
-            ->findOrFail($data['variant_id']);
+            ->findOrFail($data['product_variant_id']);
 
-        // 2. کش کردن نگاشت واحدها
         $orderUnitsMap = $this->getOrderUnitsMap();
 
         return DB::transaction(function () use ($cart, $variant, $data, $orderUnitsMap) {
 
-            // مشخصات کلیدی برای پیدا کردن آیتم تکراری
+            // شناساگرهای آیتم
             $identifiers = [
                 CartItem::CART_ID             => $cart->id,
                 CartItem::PRODUCT_VARIANT_ID  => $variant->id,
@@ -39,70 +34,69 @@ class AddToCartAction
                 CartItem::SHIPPING_METHOD_ID  => $data['shipping_method_id'],
             ];
 
-            // آیا این آیتم از قبل در سبد هست؟
+            // بررسی وجود آیتم
             $existingItem = $cart->items()->where($identifiers)->first();
 
-            // 3. اعتبارسنجی محدودیت‌ها
-            $this->validateOrderUnitCounts($variant, $data['quantities'], $cart, $existingItem);
-
+            // محاسبه مقادیر نهایی این آیتم (چه جدید باشد چه آپدیت)
+            $itemFinalQuantities = $data['quantities'];
             if ($existingItem) {
-                // سناریو الف: آیتم هست -> ادغام تعداد
-                $mergedQuantities = $this->mergeQuantities($existingItem->quantities, $data['quantities']);
+                $itemFinalQuantities = $this->mergeQuantities($existingItem->quantities, $data['quantities']);
+            }
 
-                // اعتبارسنجی محدودیت‌های مجموع واریانت
-                $this->checkVariantAggregateLimits($variant, $mergedQuantities, $orderUnitsMap);
+            // محاسبه مجموع کل این واریانت در سبد (برای چک کردن لیمیت‌ها)
+            // اینجا از $itemFinalQuantities استفاده می‌کنیم تا منطق تکرار نشود
+            $totalVariantQuantities = $this->calculateTotalVariantQuantities($cart, $variant->id, $existingItem, $itemFinalQuantities);
 
+            // اعتبارسنجی‌ها
+            $this->validateOrderUnitCounts($variant, $totalVariantQuantities);
+            $this->checkVariantAggregateLimits($variant, $totalVariantQuantities, $orderUnitsMap);
+
+            // اعمال تغییرات در دیتابیس
+            if ($existingItem) {
                 $existingItem->update([
-                    CartItem::QUANTITIES => $mergedQuantities,
-                    CartItem::FACTORY_LOCATION_ID => $data['location_id'],
+                    CartItem::QUANTITIES => $itemFinalQuantities,
+                    CartItem::FACTORY_LOCATION_ID => $data['location_id'], // آپدیت لوکیشن در صورت نیاز
                 ]);
             } else {
-                // سناریو ب: آیتم جدید
-                // اعتبارسنجی محدودیت‌های مجموع واریانت
-                $this->checkVariantAggregateLimits($variant, $data['quantities'], $orderUnitsMap);
-
                 CartItem::create(array_merge($identifiers, [
-                    CartItem::QUANTITIES => $data['quantities'],
+                    CartItem::QUANTITIES => $itemFinalQuantities,
                     CartItem::PRICE      => 0,
                     CartItem::FINAL_PRICE => 0,
                 ]));
             }
 
-            // 5. اعتبارسنجی محدودیت‌های کل خط محصول
+            // اعتبارسنجی محدودیت‌های کل خط محصول
             $freshCart = $cart->fresh(['items.productVariant.product', 'items.productVariant.product.aggregateLimitOrderUnit']);
             $this->checkProductLineAggregateLimits($freshCart, $variant->product, $orderUnitsMap);
 
-            // سینک فیلتر قیمت
+            // سینک فیلترها
             if (isset($data['filter_categories'])) {
                 $cart->priceFilterCategories()->sync($data['filter_categories']);
             }
 
+            // ایونت
             $quantityAdded = array_sum($data['quantities']);
-
             $currentPriceSnapshot = $variant->price ?? null;
 
             CartItemChanged::dispatch(
                 $cart,
                 $variant,
-                CartEvent::ACTION_ADD, 
+                CartEvent::ACTION_ADD,
                 (float) $quantityAdded,
                 $currentPriceSnapshot
             );
-            /* ----------------------------------------------------------------- */
 
             return $cart->load('items');
         });
     }
 
     // =========================================================================
-    //  بخش دوم: متدهای کمکی (همان منطق‌های کپی شده از Trait)
+    //  Helpers
     // =========================================================================
 
     protected function getOrderUnitsMap(): Collection
     {
-        return Cache::remember('order_units_map', 86400, function () {
-            return OrderUnit::all()->keyBy(OrderUnit::ID);
-        });
+        return Cache::remember('order_units_map', 86400, fn() => OrderUnit::all()->keyBy(OrderUnit::ID));
     }
 
     protected function mergeQuantities(array $current, array $new): array
@@ -117,13 +111,39 @@ class AddToCartAction
     }
 
     /**
-     * تبدیل مقادیر واحدها به یک واحد پایه (مثلاً تبدیل همه به کیلوگرم)
+     * محاسبه مجموع کل موجودی یک واریانت در سبد
+     * @param array $targetItemQuantities مقدار نهایی آیتمی که در حال افزودن/ویرایش آن هستیم
      */
+    protected function calculateTotalVariantQuantities(Cart $cart, int $variantId, ?CartItem $existingItem, array $targetItemQuantities): array
+    {
+        $totals = [];
+
+        // 1. اضافه کردن مقادیر سایر آیتم‌های این واریانت (مثلاً در انبارهای دیگر)
+        foreach ($cart->items as $item) {
+            // فقط آیتم‌های همین واریانت
+            if ($item->product_variant_id !== $variantId) continue;
+
+            // آیتم فعلی را نادیده بگیر (چون مقدار نهایی‌اش را جدا داریم)
+            if ($existingItem && $item->id === $existingItem->id) continue;
+
+            foreach ($item->quantities as $u => $q) {
+                $k = (string)$u;
+                $totals[$k] = ($totals[$k] ?? 0) + $q;
+            }
+        }
+
+        // 2. اضافه کردن مقدار نهایی آیتم فعلی
+        foreach ($targetItemQuantities as $u => $q) {
+            $k = (string)$u;
+            $totals[$k] = ($totals[$k] ?? 0) + $q;
+        }
+
+        return $totals;
+    }
+
     protected function convertQuantitiesToTargetUnitValue(array $itemQuantities, ?OrderUnit $targetLimitOrderUnit, Collection $orderUnitsMap): ?float
     {
-        if (!$targetLimitOrderUnit || $targetLimitOrderUnit->amount == 0) {
-            return null;
-        }
+        if (!$targetLimitOrderUnit || $targetLimitOrderUnit->amount == 0) return null;
 
         $totalValueInBase = 0;
         foreach ($itemQuantities as $unitId => $count) {
@@ -136,50 +156,25 @@ class AddToCartAction
         return $totalValueInBase / $targetLimitOrderUnit->amount;
     }
 
-    /**
-     * بررسی سقف تعداد مجاز برای هر واحد خاص
-     * (مثلاً از این نوع بسته‌بندی فقط ۵۰ تا مجاز است)
-     */
-    protected function validateOrderUnitCounts(ProductVariant $variant, array $quantities, Cart $cart, ?CartItem $ignoredItem = null): void
+    protected function validateOrderUnitCounts(ProductVariant $variant, array $totalQuantities): void
     {
         if (!$variant->relationLoaded('product')) $variant->load('product.orderUnits');
-
         $unitMap = $variant->product->orderUnits->keyBy('pivot.order_unit_id');
 
-        foreach ($quantities as $unitId => $qty) {
-            $unitId = (int)$unitId;
-            $qty = (float)$qty;
-
-            $unit = $unitMap->get($unitId);
-            if (!$unit) {
-                throw ValidationException::withMessages(['quantities.' . $unitId => ["واحد سفارش با شناسه {$unitId} نامعتبر است."]]);
-            }
-
-            if ($qty < 0) {
-                throw ValidationException::withMessages(['quantities.' . $unitId => ["تعداد واحد '{$unit->name}' نمی‌تواند منفی باشد."]]);
-            }
+        foreach ($totalQuantities as $unitId => $qty) {
+            $unit = $unitMap->get((int)$unitId);
+            if (!$unit) continue;
 
             $maxCount = $unit->pivot->max_quantity ?? PHP_INT_MAX;
-
-            // محاسبه تعداد فعلی در سبد (به جز آیتم فعلی اگر ویرایش است)
-            $currentInCart = $cart->items
-                ->when($ignoredItem, fn($c) => $c->where('id', '!=', $ignoredItem->id))
-                ->where('product_variant_id', $variant->id)
-                ->sum(fn($item) => $item->quantities[(string)$unitId] ?? ($item->quantities[(int)$unitId] ?? 0));
-
-            if (($currentInCart + $qty) > $maxCount) {
+            if ($qty > $maxCount) {
                 throw ValidationException::withMessages(['quantities.' . $unitId => [
-                    "حداکثر مجاز برای '{$unit->name}' برابر {$maxCount} است. موجودی فعلی سبد: {$currentInCart}"
+                    "حداکثر مجاز برای '{$unit->name}' برابر {$maxCount} است. مجموع در سبد: {$qty}"
                 ]]);
             }
         }
     }
 
-    /**
-     * بررسی محدودیت‌های مجموع برای یک واریانت
-     * (مثلاً حداقل خرید این میلگرد باید ۱۰۰ کیلو باشد، حتی اگر با واحدهای مختلف خریده شود)
-     */
-    protected function checkVariantAggregateLimits(ProductVariant $variant, array $quantities, Collection $orderUnitsMap): void
+    protected function checkVariantAggregateLimits(ProductVariant $variant, array $totalQuantities, Collection $orderUnitsMap): void
     {
         $minValue = $variant->min_order_value;
         $maxValue = $variant->max_order_value;
@@ -188,34 +183,27 @@ class AddToCartAction
         if ($limitUnitId === null || ($minValue === null && $maxValue === null)) return;
 
         if (!$variant->relationLoaded('limitOrderUnit')) $variant->load('limitOrderUnit');
-
         $limitUnit = $variant->limitOrderUnit;
         if (!$limitUnit) return;
 
-        $totalValue = $this->convertQuantitiesToTargetUnitValue($quantities, $limitUnit, $orderUnitsMap);
-
+        $totalValue = $this->convertQuantitiesToTargetUnitValue($totalQuantities, $limitUnit, $orderUnitsMap);
         if ($totalValue === null) return;
 
-        $variantName = $variant->name;
         $unitName = $limitUnit->name;
+        $valRounded = round($totalValue, 2);
 
         if ($minValue !== null && $totalValue > 0.0001 && $totalValue < $minValue) {
             throw ValidationException::withMessages(['quantities' => [
-                "حداقل سفارش برای '{$variantName}' باید {$minValue} {$unitName} باشد. فعلی: " . round($totalValue, 2)
+                "حداقل سفارش '{$variant->name}' باید {$minValue} {$unitName} باشد. فعلی: {$valRounded}"
             ]]);
         }
-
         if ($maxValue !== null && $totalValue > $maxValue) {
             throw ValidationException::withMessages(['quantities' => [
-                "حداکثر سفارش برای '{$variantName}' برابر {$maxValue} {$unitName} است."
+                "حداکثر سفارش '{$variant->name}' برابر {$maxValue} {$unitName} است. فعلی: {$valRounded}"
             ]]);
         }
     }
 
-    /**
-     * بررسی محدودیت‌های کل گروه محصول
-     * (مثلاً مجموع خرید تمام پروفیل‌های Z باید حداقل ۲ تن باشد)
-     */
     protected function checkProductLineAggregateLimits(Cart $cart, Product $product, Collection $orderUnitsMap): void
     {
         $minValue = $product->aggregate_min_order_value;
@@ -225,13 +213,10 @@ class AddToCartAction
         if ($limitUnitId === null || ($minValue === null && $maxValue === null)) return;
 
         if (!$product->relationLoaded('aggregateLimitOrderUnit')) $product->load('aggregateLimitOrderUnit');
-
         $limitUnit = $product->aggregateLimitOrderUnit;
         if (!$limitUnit || $limitUnit->amount == 0) return;
 
         $totalValueInBase = 0;
-
-        // حلقه روی تمام آیتم‌های سبد برای پیدا کردن محصولات مشابه
         foreach ($cart->items as $item) {
             if ($item->productVariant->product_id === $product->id) {
                 foreach ($item->quantities as $unitId => $count) {
@@ -244,18 +229,17 @@ class AddToCartAction
         }
 
         $totalValue = $totalValueInBase / $limitUnit->amount;
-        $productName = $product->name;
+        $valRounded = round($totalValue, 2);
         $unitName = $limitUnit->name;
 
         if ($minValue !== null && $totalValue > 0.0001 && $totalValue < $minValue) {
             throw ValidationException::withMessages(['product_line' => [
-                "حداقل مجموع سفارش برای گروه '{$productName}' باید {$minValue} {$unitName} باشد. فعلی: " . round($totalValue, 2)
+                "حداقل مجموع سفارش گروه '{$product->name}' باید {$minValue} {$unitName} باشد. فعلی: {$valRounded}"
             ]]);
         }
-
         if ($maxValue !== null && $totalValue > $maxValue) {
             throw ValidationException::withMessages(['product_line' => [
-                "حداکثر مجموع سفارش برای گروه '{$productName}' برابر {$maxValue} {$unitName} است."
+                "حداکثر مجموع سفارش گروه '{$product->name}' برابر {$maxValue} {$unitName} است."
             ]]);
         }
     }

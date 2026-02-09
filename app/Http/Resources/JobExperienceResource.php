@@ -20,6 +20,7 @@ class JobExperienceResource extends JsonResource
             JobExperience::ID => $this->id,
             JobExperience::TITLE => $this->{JobExperience::TITLE},
             JobExperience::ORGANIZATION_NAME => $this->{JobExperience::ORGANIZATION_NAME},
+            JobExperience::PROJECT_ADDRESS => $this->{JobExperience::PROJECT_ADDRESS},
             JobExperience::FILE_PATH => $this->{JobExperience::FILE_PATH},
             JobExperience::START_DATE => $this->{JobExperience::START_DATE}?->format('Y-m-d'),
             JobExperience::END_DATE => $this->{JobExperience::END_DATE}?->format('Y-m-d'),

@@ -14,7 +14,6 @@ class InventoryService
 {
     /**
      * بررسی موجودی (بدون کسر کردن)
-     * این متد در CartController و AddToCartAction استفاده می‌شود
      */
     public function checkStock(ProductVariant $variant, array|float|int $quantities): bool
     {
@@ -26,7 +25,7 @@ class InventoryService
     }
 
     /**
-     * کسر موجودی برای سفارش نهایی
+     * کسر موجودی اولیه برای ثبت سفارش
      */
     public function deductStockForOrder(Order $order): void
     {
@@ -37,9 +36,40 @@ class InventoryService
         }
     }
 
+    /**
+     * متد جدید: اصلاح موجودی بعد از باسکول
+     * اگر اختلاف مثبت باشد (سرک بار) -> کسر بیشتر از انبار
+     * اگر اختلاف منفی باشد (کسری بار) -> بازگشت به انبار
+     * * @param int $variantId شناسه محصول
+     * @param float $weightDifference اختلاف وزن (وزن جدید - وزن قدیم)
+     */
+    public function updateStockAfterWeighbridge(int $variantId, float $weightDifference): void
+    {
+        // اگر اختلاف صفر بود کاری نکن
+        if (abs($weightDifference) < 0.001) {
+            return;
+        }
+
+        $variant = ProductVariant::where('id', $variantId)->lockForUpdate()->first();
+
+        if (!$variant) return;
+
+        if ($weightDifference > 0) {
+            // سرک بار: مشتری بیشتر برده، پس باید از انبار کم کنیم
+            if ($variant->stock_quantity < $weightDifference) {
+                // اگر موجودی منفی می‌شود، شاید بخواهید لاگ کنید یا فورس کسر کنید
+                // اینجا فعلاً فورس کسر می‌کنیم
+            }
+            $variant->decrement('stock_quantity', $weightDifference);
+        } else {
+            // کسری بار: مشتری کمتر برده، باید به انبار برگردانیم
+            // مقدار منفی است، پس abs می‌گیریم
+            $variant->increment('stock_quantity', abs($weightDifference));
+        }
+    }
+
     private function deductItemStock(OrderItem $item): void
     {
-        // قفل کردن رکورد برای جلوگیری از Race Condition
         $variant = ProductVariant::where('id', $item->product_variant_id)
             ->lockForUpdate()
             ->first();
@@ -48,7 +78,9 @@ class InventoryService
             throw new Exception("محصول با شناسه {$item->product_variant_id} یافت نشد.");
         }
 
-        $quantities = $item->quantities;
+        $quantities = is_string($item->quantity_details)
+            ? json_decode($item->quantity_details, true)
+            : $item->quantity_details;
 
         $requiredBaseQty = $this->calculateBaseQuantity($quantities);
 
@@ -59,10 +91,16 @@ class InventoryService
         $variant->decrement('stock_quantity', $requiredBaseQty);
     }
 
+    /**
+     * بازگرداندن کل موجودی (برای کنسلی سفارش)
+     */
     public function restoreStock(Order $order): void
     {
         foreach ($order->items as $item) {
-            $quantities = $item->quantities; // فرض بر این است که OrderItem کست array دارد
+            $quantities = is_string($item->quantity_details)
+                ? json_decode($item->quantity_details, true)
+                : $item->quantity_details;
+
             $qty = $this->calculateBaseQuantity($quantities);
 
             ProductVariant::where('id', $item->product_variant_id)
@@ -71,26 +109,26 @@ class InventoryService
     }
 
     /**
-     * محاسبه مقدار کل بر اساس ضرایب واحدها
+     * محاسبه مقدار کل بر اساس فرمول ساده: تعداد * مقدار واحد
      */
     private function calculateBaseQuantity(?array $details): float
     {
         if (empty($details)) return 0.0;
 
-        // کش کردن واحدها برای پرهیز از کوکی‌های تکراری دیتابیس
-        $unitsMap = Cache::remember('order_units_map', 86400, function () {
+        $unitsMap = Cache::remember('all_order_units', 86400, function () {
             return OrderUnit::all()->keyBy('id');
         });
 
         $totalBaseQty = 0.0;
 
         foreach ($details as $unitId => $qty) {
+            $qty = (float) $qty;
             $unit = $unitsMap->get((int)$unitId);
 
             if ($unit) {
-                $totalBaseQty += (float)$qty * (float)$unit->amount;
+                $totalBaseQty += $qty * (float)$unit->amount;
             } else {
-                $totalBaseQty += (float)$qty;
+                $totalBaseQty += $qty;
             }
         }
 

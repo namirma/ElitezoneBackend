@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\User;
+namespace App\Http\Controllers\Api\User;
 
 use App\Actions\Financial\ProcessPreScalePaymentAction;
 use App\Actions\Financial\ProcessReservationPaymentAction;
@@ -17,8 +17,11 @@ use Illuminate\Http\JsonResponse;
 
 class OrderPaymentController extends Controller
 {
-    // قانون: زیر ۱۹۵ میلیون تومان رزرو ندارد
-    private const RESERVATION_THRESHOLD = 195000000;
+    /**
+     * آستانه مبلغ برای فعال شدن امکان رزرو
+     * معادل ۱۹۵ میلیون تومان (۱,۹۵۰,۰۰۰,۰۰۰ ریال)
+     */
+    private const RESERVATION_THRESHOLD = 1950000000;
 
     public function __construct(
         protected ProcessPreScalePaymentAction $purchaseAction,           // خرید مستقیم
@@ -28,12 +31,14 @@ class OrderPaymentController extends Controller
 
     /**
      * متد اصلی پرداخت (Main Entry Point)
+     * مدیریت خرید مستقیم، شروع رزرو و تکمیل وجه
      */
     public function payFullOrder(PayFullOrderRequest $request, Order $order): JsonResponse
     {
-        // 1. ولیدیشن اولیه
+        // 1. بررسی دسترسی کاربر به این سفارش
         $this->authorize('pay', $order);
 
+        // 2. بررسی وضعیت قابل پرداخت بودن سفارش
         $payableStatuses = [Order::STATUS_PENDING, Order::STATUS_RESERVED, Order::STATUS_RESERVED_EXTENDED];
         if (! in_array($order->status, $payableStatuses)) {
             return error(__('orders.cannot_pay_order'), [], 400);
@@ -45,15 +50,14 @@ class OrderPaymentController extends Controller
             // =================================================================
             if (in_array($order->status, [Order::STATUS_RESERVED, Order::STATUS_RESERVED_EXTENDED])) {
 
-                // اجرای اکشن هوشمند تکمیل وجه
                 $this->completionAction->execute($order);
 
                 return success([
                     'order'     => new OrderResource($order->fresh()),
                     'documents' => [
-                        FinancialCodes::DOC_FINAL_RECEIPT_OWNER,     // G
-                        FinancialCodes::DOC_FINAL_REPORT_SUPPLIER,   // H
-                        FinancialCodes::DOC_LOADING_ORDER            // C
+                        FinancialCodes::DOC_FINAL_RECEIPT_OWNER,    // G
+                        FinancialCodes::DOC_FINAL_REPORT_SUPPLIER,  // H
+                        FinancialCodes::DOC_LOADING_ORDER           // C
                     ],
                     'message'   => 'تکمیل وجه رزرو با موفقیت انجام شد. اسناد G و H صادر شدند.'
                 ]);
@@ -63,36 +67,40 @@ class OrderPaymentController extends Controller
             // سناریو ۲: سفارش جدید (خرید مستقیم یا شروع رزرو)
             // =================================================================
 
-            // محاسبه قیمت کل
-            $totalPrice = ($order->official_price && $order->weight_before_scale)
-                ? ($order->official_price * $order->weight_before_scale)
-                : $order->total_amount;
+            // محاسبه قیمت کل برای شرط رزرو (اولویت با قیمت رسمی در صورت وجود)
+            // نکته: اگر قیمت رسمی موجود است، باید مالیات هم به آن اضافه شود تا با آستانه قابل مقایسه باشد
+            // فرض: final_amount شامل همه چیز (حمل + ارزش افزوده) است و دقیق‌ترین عدد است.
+            $totalPriceToCheck = $order->final_amount;
 
             $userWantsReserve = $request->input('payment_type') === 'reserve';
 
-            // الف) مبلغ زیر ۱۹۵ میلیون (فقط خرید مستقیم)
-            if ($totalPrice < self::RESERVATION_THRESHOLD) {
+            // --- حالت الف: مبلغ زیر ۱۹۵ میلیون (فقط خرید مستقیم مجاز است) ---
+            if ($totalPriceToCheck < self::RESERVATION_THRESHOLD) {
+
                 if ($userWantsReserve) {
                     return error("برای مبالغ زیر ۱۹۵ میلیون تومان امکان رزرو وجود ندارد.", [], 400);
                 }
 
+                // انجام خرید مستقیم (آنی)
                 $this->purchaseAction->execute($order);
 
                 return success([
                     'order'     => new OrderResource($order->fresh()),
                     'documents' => [
-                        FinancialCodes::DOC_RECEIPT_OWNER,    // A
-                        FinancialCodes::DOC_REPORT_SUPPLIER,  // B
-                        FinancialCodes::DOC_LOADING_ORDER     // C
+                        FinancialCodes::DOC_RECEIPT_OWNER,   // A
+                        FinancialCodes::DOC_REPORT_SUPPLIER, // B
+                        FinancialCodes::DOC_LOADING_ORDER    // C
                     ],
                     'message'   => 'پرداخت کامل انجام شد.'
                 ]);
             }
 
-            // ب) مبلغ بالای ۱۹۵ میلیون
+            // --- حالت ب: مبلغ بالای ۱۹۵ میلیون ---
             if ($userWantsReserve) {
-                // --- شروع رزرو ---
-                $ptrAmount = self::RESERVATION_THRESHOLD; // مبلغ بیعانه ثابت
+                // >> انتخاب کاربر: رزرو
+
+                // مبلغ بیعانه: دقیقاً ۱۹۵ میلیون تومان (۱,۹۵۰,۰۰۰,۰۰۰ ریال)
+                $ptrAmount = self::RESERVATION_THRESHOLD;
 
                 $this->reservationAction->execute($order, $ptrAmount, validityHours: 2);
 
@@ -106,7 +114,8 @@ class OrderPaymentController extends Controller
                 ]);
 
             } else {
-                // --- خرید مستقیم مبلغ بالا ---
+                // >> انتخاب کاربر: خرید مستقیم (پرداخت کامل)
+
                 $this->purchaseAction->execute($order);
 
                 return success([
@@ -125,16 +134,22 @@ class OrderPaymentController extends Controller
         }
     }
 
-    // متدهای payHoldFee و uploadReceipt بدون تغییر می‌مانند...
+    /**
+     * پرداخت هزینه تمدید (Hold Fee)
+     */
     public function payHoldFee(PayHoldFeeRequest $request, Order $order): JsonResponse
     {
-         // همان کد قبلی
-         return success(new OrderResource($order), 'تمدید شد');
+        $this->authorize('pay', $order);
+        // منطق تمدید (کد قبلی شما)
+        return success(new OrderResource($order), 'تمدید شد');
     }
 
+    /**
+     * آپلود فیش بانکی
+     */
     public function uploadReceipt(UploadOrderReceiptRequest $request, Order $order): JsonResponse
     {
-         // همان کد قبلی
-         return success(new OrderResource($order), 'آپلود شد');
+        $this->authorize('update', $order);
+        return success(new OrderResource($order), 'آپلود شد');
     }
 }

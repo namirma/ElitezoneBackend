@@ -9,12 +9,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class JobExperience extends Model
 {
     use HasFactory;
-    
+
     public const
         ID = 'id',
         USER_ID = 'user_id',
         TITLE = 'title',
         ORGANIZATION_NAME = 'organization_name',
+        PROJECT_ADDRESS = 'project_address',
         FILE_PATH = 'file_path',
         START_DATE = 'start_date',
         END_DATE = 'end_date',
@@ -28,6 +29,7 @@ class JobExperience extends Model
         self::USER_ID,
         self::TITLE,
         self::ORGANIZATION_NAME,
+        self::PROJECT_ADDRESS,
         self::FILE_PATH,
         self::START_DATE,
         self::END_DATE,

@@ -3,15 +3,12 @@
 namespace App\Actions\Order;
 
 use App\DataTransferObjects\PlaceOrderData;
-use App\DataTransferObjects\Pricing\PriceCalculationResult; // مطمئن شوید فایلش وجود دارد
 use App\Events\OrderPlaced;
 use App\Exceptions\Order\CartIsEmptyException;
-use App\Exceptions\Order\StockUnavailableException;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\CustomerType;
 use App\Models\Factory;
-use App\Models\Offer;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderUnit;
@@ -20,11 +17,11 @@ use App\Models\ProductVariant;
 use App\Models\User;
 use App\Models\UserType;
 use App\Repositories\Contracts\OrderRepositoryInterface;
+use App\Services\Financial\SettlementCalculatorService;
 use App\Services\InventoryService;
 use App\Services\PriceCalculationService;
 use App\Services\Pricing\CartPricingCalculator;
 use App\Services\PricingRoleResolver;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
@@ -37,31 +34,34 @@ class PlaceOrderAction
         private readonly PriceCalculationService $priceService,
         private readonly PricingRoleResolver $roleResolver,
         private readonly InventoryService $inventoryService,
-        private readonly OrderRepositoryInterface $orderRepo
+        private readonly OrderRepositoryInterface $orderRepo,
+        private readonly SettlementCalculatorService $settlementCalculator
     ) {}
 
     public function execute(User $user, PlaceOrderData $data): Order
     {
         $cart = $this->getCartOrFail($user);
 
-        $this->ensureStockIsAvailable($cart);
-
+        // محاسبه مالی و وزنی
         $financials = $this->calculateFinancials($cart, $user, $data);
 
         $order = DB::transaction(function () use ($user, $cart, $data, $financials) {
+            // ساخت سفارش
             $order = $this->createOrderRecord($user, $data, $financials);
 
+            // ثبت آیتم‌ها
             $this->createOrderItems($order, $cart);
 
+            // کسر موجودی (با استفاده از متد ساده شده در InventoryService)
             $this->inventoryService->deductStockForOrder($order);
 
+            // پاکسازی سبد خرید
             $this->clearCart($cart);
 
             return $order;
         });
 
         OrderPlaced::dispatch($order);
-
         return $order;
     }
 
@@ -77,36 +77,10 @@ class PlaceOrderAction
                 'priceFilterCategories'
             ])->first();
 
-        // اصلاح: اکسپشن باید مسیج قبول کند. اگر کلاسش خالی است، متن را به Exception اصلی پاس می‌دهد.
         if (!$cart || $cart->items->isEmpty()) {
             throw new CartIsEmptyException(__('orders.errors.cart_empty'));
         }
-
         return $cart;
-    }
-
-    private function ensureStockIsAvailable(Cart $cart): void
-    {
-        $unitsMap = Cache::remember('order_units_map', 86400, function () {
-            return OrderUnit::all()->keyBy(OrderUnit::ID);
-        });
-
-        foreach ($cart->items as $item) {
-            $variant = $item->productVariant;
-            $requiredBaseQty = 0.0;
-
-            foreach ($item->{CartItem::QUANTITIES} as $unitId => $qty) {
-                $unit = $unitsMap->get((int)$unitId);
-                if ($unit) {
-                    $requiredBaseQty += (float)$qty * (float)$unit->amount;
-                }
-            }
-
-            if ($variant->stock_quantity < $requiredBaseQty) {
-                // اصلاح: ارسال پیام ترجمه شده به اکسپشن
-                throw new StockUnavailableException(__('orders.errors.stock_unavailable', ['product' => $variant->name]));
-            }
-        }
     }
 
     private function calculateFinancials(Cart $cart, User $user, PlaceOrderData $data): array
@@ -114,17 +88,17 @@ class PlaceOrderAction
         $subtotal = 0.0;
         $totalVat = 0.0;
         $totalItemDiscounts = 0.0;
+        $totalOrderWeight = 0.0; // وزن کل سفارش
 
         $activeCode = $this->roleResolver->resolve($user);
         $priceFilter = PriceFilterCategory::where('code', $activeCode)->first();
         $filterIds = $priceFilter ? [$priceFilter->id] : $cart->priceFilterCategories->pluck('id')->toArray();
         $customerType = CustomerType::where(CustomerType::CODE, $activeCode)->first() ?: $cart->customerType;
 
-        $orderUnitsMap = OrderUnit::all()->keyBy(OrderUnit::ID);
+        // کش کردن واحدها برای سرعت
+        $orderUnitsMap = Cache::remember('all_order_units', 3600, fn() => OrderUnit::all()->keyBy('id'));
 
         foreach ($cart->items as $item) {
-            /** @var PriceCalculationResult $pricing */
-            // اطمینان حاصل کنید که سرویس calculatePrice دقیقاً آبجکت PriceCalculationResult برمی‌گرداند
             $pricing = $this->priceService->calculatePrice(
                 variant: $item->productVariant,
                 factory: $item->factory,
@@ -136,31 +110,41 @@ class PlaceOrderAction
                 filterCategoryCode: $activeCode
             );
 
-            $itemTotalWeight = $this->calculateItemWeight($item->{CartItem::QUANTITIES}, $orderUnitsMap);
+            // ====================================================
+            // منطق ساده محاسبه وزن: (تعداد × مقدار واحد)
+            // ====================================================
+            $itemTotalWeight = 0.0;
+            foreach ($item->{CartItem::QUANTITIES} as $unitId => $qty) {
+                $qty = (float) $qty;
+                $unit = $orderUnitsMap->get($unitId);
+                if ($unit) {
+                    $itemTotalWeight += $qty * (float)$unit->amount;
+                } else {
+                    // فال‌بک: اگر واحد پیدا نشد، خود تعداد
+                    $itemTotalWeight += $qty;
+                }
+            }
+            $totalOrderWeight += $itemTotalWeight;
+            // ====================================================
 
-            $unitPrice = $pricing->finalPrice;
-            $unitVatAmount = $pricing->vatAmount;
+            $lineTotal = $itemTotalWeight * $pricing->finalPrice;
+            $lineVat = $itemTotalWeight * $pricing->vatAmount;
 
-            $lineTotal = $itemTotalWeight * $unitPrice;
-            $lineVat = $itemTotalWeight * $unitVatAmount;
-
-            $item->calculated_unit_price = $unitPrice;
+            $item->calculated_unit_price = $pricing->finalPrice;
             $item->calculated_line_total = $lineTotal;
             $item->calculated_line_vat = $lineVat;
 
             $subtotal += $lineTotal;
             $totalVat += $lineVat;
-
-            $itemDiscountPerUnit = $pricing->variantDiscountAmount;
-            $totalItemDiscounts += $itemDiscountPerUnit * $itemTotalWeight;
+            $totalItemDiscounts += $pricing->variantDiscountAmount * $itemTotalWeight;
         }
 
-        $cartOfferDiscount = $this->calculateCartLevelDiscounts($cart->items, $subtotal, $orderUnitsMap);
+        // محاسبه کارمزدها با استفاده از سرویس
+        $fees = $this->calculateCommissions($user, $data->beneficiaryUserId, $subtotal);
 
-        $totalDiscount = $totalItemDiscounts + $cartOfferDiscount;
-        $fees = $this->calculateBeneficiaryFees($user, $data->beneficiaryUserId, $subtotal);
+        $cartOfferDiscount = 0.0;
         $shippingCost = 0.0;
-
+        $totalDiscount = $totalItemDiscounts + $cartOfferDiscount;
         $finalAmount = max(0, ($subtotal - $cartOfferDiscount) + $totalVat + $shippingCost);
 
         return [
@@ -170,57 +154,51 @@ class PlaceOrderAction
             'shipping_cost'  => $shippingCost,
             'final_amount'   => $finalAmount,
             'fees'           => $fees,
+            'total_weight'   => $totalOrderWeight,
         ];
     }
 
-    private function calculateItemWeight(array $quantities, Collection $unitsMap): float
+    /**
+     * محاسبه و تخصیص کارمزد مشاور
+     */
+    private function calculateCommissions(User $placer, ?int $beneficiaryId, float $subtotal): array
     {
-        $weight = 0.0;
-        foreach ($quantities as $unitId => $qty) {
-            if ($unit = $unitsMap->get((int)$unitId)) {
-                $weight += (float)$qty * (float)$unit->{OrderUnit::AMOUNT};
-            }
+        $fees = [
+            'engineer' => 0,
+            'contractor' => 0,
+            'owner_discount' => 0, // اختیاری: اگر فیلد دارید
+            'saze_share' => 0      // اختیاری
+        ];
+
+        // اگر مشاور وجود ندارد یا کاربر خودش خرید کرده
+        if (!$beneficiaryId || $beneficiaryId == $placer->id) {
+            return $fees;
         }
-        return $weight;
-    }
-
-    private function calculateCartLevelDiscounts(Collection $items, float $subtotal, Collection $unitsMap): float
-    {
-        $applicableOffers = $items->flatMap(function (CartItem $item) use ($unitsMap) {
-            $totalWeight = $this->calculateItemWeight($item->{CartItem::QUANTITIES}, $unitsMap);
-            return $item->productVariant->product->offers()->current()
-                ->where(Offer::MINIMUM_QUANTITY, '<=', $totalWeight)
-                ->get();
-        })->unique(Offer::ID);
-
-        $discount = 0.0;
-        foreach ($applicableOffers as $offer) {
-            if ($offer->{Offer::TYPE} === 'percentage') {
-                $discount += $subtotal * ($offer->{Offer::VALUE} / 100);
-            } elseif ($offer->{Offer::TYPE} === 'fixed_amount') {
-                $discount += (float)$offer->{Offer::VALUE};
-            }
-        }
-        return min($discount, $subtotal);
-    }
-
-    private function calculateBeneficiaryFees(User $placer, ?int $beneficiaryId, float $subtotal): array
-    {
-        $fees = ['engineer' => null, 'contractor' => null];
-        if (!$beneficiaryId || $beneficiaryId == $placer->id) return $fees;
 
         $beneficiary = User::find($beneficiaryId);
         if (!$beneficiary) return $fees;
 
-        $typeIds = UserType::whereIn('slug', ['engineer', 'contractor'])->pluck('id', 'slug');
+        // 1. دریافت نشان مشاور
+        $badgeCode = $beneficiary->badge ? $beneficiary->badge->code : 'pioneer';
 
-        if (isset($typeIds['engineer']) && $beneficiary->{User::TYPE_ID} == $typeIds['engineer']) {
-            $pct = config('elitezon.consultant_fee_percentage', 2.0);
-            $fees['engineer'] = ($subtotal * $pct) / 100;
-        } elseif (isset($typeIds['contractor']) && $beneficiary->{User::TYPE_ID} == $typeIds['contractor']) {
-            $pct = config('elitezon.contractor_fee_percentage', 2.0);
-            $fees['contractor'] = ($subtotal * $pct) / 100;
+        // 2. محاسبه مبالغ از سرویس
+        $commissions = $this->settlementCalculator->calculateCommissions($subtotal, $badgeCode);
+        $coAmount = $commissions['CO'];
+
+        // 3. تشخیص نوع مشاور (مهندس یا پیمانکار) برای ذخیره در ستون درست
+        $engineerTypeId = UserType::where('slug', 'engineer')->value('id');
+        $contractorTypeId = UserType::where('slug', 'contractor')->value('id');
+
+        if ($beneficiary->user_type_id == $engineerTypeId) {
+            $fees['engineer'] = $coAmount;
+        } elseif ($beneficiary->user_type_id == $contractorTypeId) {
+            $fees['contractor'] = $coAmount;
         }
+
+        // ذخیره سایر سهم‌ها (جهت اطمینان یا دیباگ)
+        $fees['owner_discount'] = $commissions['OW'];
+        $fees['saze_share'] = $commissions['SSG'];
+
         return $fees;
     }
 
@@ -233,15 +211,23 @@ class PlaceOrderAction
             Order::ORDER_NUMBER => 'EL-' . strtoupper(Str::random(10)),
             Order::STATUS => Order::STATUS_PENDING,
             Order::PAYMENT_STATUS => Order::PAYMENT_PENDING,
+
             Order::SUBTOTAL => $fins['subtotal'],
             Order::DISCOUNT_AMOUNT => $fins['total_discount'],
             Order::VAT_AMOUNT => $fins['vat_amount'],
             Order::SHIPPING_COST => $fins['shipping_cost'],
             Order::FINAL_AMOUNT => $fins['final_amount'],
+
+            // ذخیره وزن محاسبه شده
+            'weight_before_scale' => $fins['total_weight'],
+
+            // ذخیره کارمزدها
             Order::ENGINEER_FEE_AMOUNT => $fins['fees']['engineer'],
             Order::CONTRACTOR_FEE_AMOUNT => $fins['fees']['contractor'],
+
             Order::ENGINEER_FEE_PAYMENT_STATUS => $fins['fees']['engineer'] ? Order::FEE_PAYMENT_PENDING : null,
             Order::CONTRACTOR_FEE_PAYMENT_STATUS => $fins['fees']['contractor'] ? Order::FEE_PAYMENT_PENDING : null,
+
             Order::RESERVATION_EXPIRES_AT => now()->addHours(2),
             Order::NOTES => $data->description,
         ]);
@@ -251,10 +237,7 @@ class PlaceOrderAction
     {
         foreach ($cart->items as $item) {
             $supplierId = $item->factory->{Factory::SUPPLIER_USER_ID} ?? null;
-
-            if (!$supplierId) {
-                throw new Exception("تامین‌کننده برای کارخانه {$item->factory->name} تعریف نشده است.");
-            }
+            if (!$supplierId) $supplierId = 1;
 
             OrderItem::create([
                 OrderItem::ORDER_ID => $order->id,

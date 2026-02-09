@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\OrderController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AddressController;
 use App\Http\Controllers\CartController;
@@ -12,10 +13,10 @@ use App\Http\Controllers\IdentityInquirySc2Controller;
 use App\Http\Controllers\JobExperienceController;
 use App\Http\Controllers\MobileNidMatchController;
 use App\Http\Controllers\Api\User\OrderActionController;
-use App\Http\Controllers\OrderController;
+
 use App\Http\Controllers\OrderSurveyController;
 use App\Http\Controllers\ParameterDetectionController;
-use App\Http\Controllers\PaymentController; // Added
+use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PodiumBalanceController;
 use App\Http\Controllers\PodiumBatchSettlementController;
 use App\Http\Controllers\PodiumSettlementController;
@@ -48,6 +49,7 @@ use App\Http\Controllers\Api\Admin\AdminOrderController;
 use App\Http\Controllers\Api\Admin\AdminSearchController;
 use App\Http\Controllers\Api\Admin\AdminUserController;
 use App\Http\Controllers\Api\Admin\AdminWalletController;
+use App\Http\Controllers\Api\Admin\OrderWeighbridgeController;
 use App\Http\Controllers\Api\Data\AnalyticsController;
 use App\Http\Controllers\Api\Data\InventoryController;
 use App\Http\Controllers\Api\User\OrderInvoiceController;
@@ -195,6 +197,9 @@ Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
         Route::get('/transactions', 'index');
         Route::post('/transactions/{transaction}/status', 'changeStatus');
     });
+
+    Route::post('/{order}/weighbridge', [OrderWeighbridgeController::class, 'submitWeight'])
+        ->name('admin.orders.weighbridge.submit');
 });
 
 // --- روت‌های نیازمند لاگین ---
@@ -255,7 +260,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
         // سفارش‌ها
         Route::prefix('orders')->group(function () {
-
             // ====================================================
             // 1. لیست‌های خاص (حتماً باید اول باشند)
             // ====================================================

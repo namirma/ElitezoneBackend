@@ -108,7 +108,9 @@ class Order extends Model
         PAYMENT_TO_SUPPLIER = 'payment_to_supplier',
         PAYMENT_TO_CONSULTANT = 'payment_to_consultant',
         PAYMENT_TO_RESERVE = 'payment_to_reserve',
-        VALIDATION_OF_RESERVE = 'validation_of_reserve';
+        VALIDATION_OF_RESERVE = 'validation_of_reserve',
+        WEIGHT_AFTER_SCALE = 'weight_after_scale',
+        WEIGHING_COMPLETED_AT = 'weighing_completed_at';
 
     // =========================================================================
     //  Configurations
@@ -161,6 +163,8 @@ class Order extends Model
         self::PAYMENT_TO_CONSULTANT,
         self::PAYMENT_TO_RESERVE,
         self::VALIDATION_OF_RESERVE,
+        self::WEIGHT_AFTER_SCALE,
+        self::WEIGHING_COMPLETED_AT,
     ];
 
     protected $casts = [
@@ -184,6 +188,8 @@ class Order extends Model
         self::PAYMENT_TO_SUPPLIER => 'decimal:2',
         self::PAYMENT_TO_RESERVE => 'decimal:2',
         self::VALIDATION_OF_RESERVE => 'datetime',
+        self::WEIGHT_AFTER_SCALE => 'decimal:3',
+        self::WEIGHING_COMPLETED_AT => 'datetime',
     ];
 
     // =========================================================================
@@ -212,6 +218,11 @@ class Order extends Model
     public function surveys(): HasMany
     {
         return $this->hasMany(OrderSurvey::class, OrderSurvey::ORDER_ID);
+    }
+
+    public function shippingMethod(): BelongsTo
+    {
+        return $this->belongsTo(ShippingMethod::class, 'shipping_method_id');
     }
 
     // =========================================================================

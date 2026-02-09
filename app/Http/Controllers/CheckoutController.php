@@ -6,6 +6,7 @@ use App\Actions\Order\PlaceOrderAction;
 use App\DataTransferObjects\PlaceOrderData;
 use App\Http\Requests\StoreOrderRequest;
 use App\Http\Resources\OrderResource;
+use App\Models\Cart;
 use App\Models\Order;
 use App\Models\WalletTransaction;
 use Illuminate\Http\JsonResponse;
@@ -18,15 +19,10 @@ class CheckoutController extends Controller
         protected PlaceOrderAction $placeOrderAction
     ) {}
 
-    /**
-     * دریافت اطلاعات پرداخت برای یک سفارش ثبت شده (جهت انتخاب درگاه)
-     */
     public function paymentInfo(Order $order): JsonResponse
     {
-
         Gate::authorize('view', $order);
 
-        // 2. بررسی وضعیت پرداخت
         if ($order->payment_status === Order::PAYMENT_PAID) {
             return error(__('checkout.order_already_paid'), [], 400);
         }
@@ -36,9 +32,9 @@ class CheckoutController extends Controller
 
         $gateways = [
             [
-                'key'   => WalletTransaction::METHOD_GATEWAY,
-                'title' =>(__('checkout.gateways.internet')),
-                'icon'  => 'card',
+                'key'       => WalletTransaction::METHOD_GATEWAY,
+                'title'     => __('checkout.gateways.internet'),
+                'icon'      => 'card',
                 'is_active' => true,
             ],
             [
@@ -50,9 +46,9 @@ class CheckoutController extends Controller
                 'is_active'  => true,
             ],
             [
-                'key'   => WalletTransaction::METHOD_BANK_TRANSFER,
-                'title' => __('checkout.gateways.receipt'),
-                'icon'  => 'document-text',
+                'key'       => WalletTransaction::METHOD_BANK_TRANSFER,
+                'title'     => __('checkout.gateways.receipt'),
+                'icon'      => 'document-text',
                 'is_active' => true,
             ],
         ];
@@ -74,19 +70,29 @@ class CheckoutController extends Controller
      */
     public function placeOrder(StoreOrderRequest $request): JsonResponse
     {
-        
         $orderData = PlaceOrderData::fromRequest($request);
+        $user = Auth::user();
 
-        $cart = Auth::user()->cart;
+        // 1. اطمینان از اینکه سبد خرید وجود دارد (برای جلوگیری از خطای منطقی)
+        // ما اینجا سبد را چک می‌کنیم، اما به اکشن "کاربر" را پاس می‌دهیم (چون اکشن اینطور نوشته شده)
+        $cart = Cart::with('items')
+            ->where('user_id', $user->id)
+            ->latest('updated_at')
+            ->first();
 
-        if (!$cart || $cart->items()->count() === 0) {
+        if (!$cart || $cart->items->isEmpty()) {
             return error(__('checkout.cart_is_empty'), [], 400);
         }
 
-        // 3. اجرای اکشن (تمام لاجیک‌های موجودی، قیمت و ثبت دیتابیس)
-        $order = $this->placeOrderAction->execute($cart, $orderData);
+        // 2. رفرش کردن روابط کاربر تا اکشن (PlaceOrderAction) سبد قدیمی یا خالی نبیند
+        // این خط حیاتی است:
+        $user = $user->fresh(['cart.items.productVariant']);
 
-        // 4. بارگذاری روابط برای نمایش در ریسورس
+        // 3. اجرای اکشن (ارسال User طبق انتظار سیستم)
+        // اینجا قبلاً $cart بود که باعث ارور می‌شد
+        $order = $this->placeOrderAction->execute($user, $orderData);
+
+        // 4. بارگذاری روابط برای خروجی
         $order->load(['items.productVariant', 'address', 'shippingMethod']);
 
         return success(
