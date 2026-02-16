@@ -7,29 +7,36 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderUnit;
 use App\Models\ProductVariant;
-use Exception;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Cache;
 
 class InventoryService
 {
     /**
-     * بررسی موجودی (بدون کسر کردن)
+     * بررسی موجودی قبل از ثبت سفارش (بدون کسر کردن)
+     * * @param ProductVariant $variant
+     * @param array|float|int $quantities
+     * @return bool
      */
     public function checkStock(ProductVariant $variant, array|float|int $quantities): bool
     {
         $requiredBaseQty = is_array($quantities)
-            ? $this->calculateBaseQuantity($quantities)
+            ? $this->calculateBaseQuantity($quantities, $variant)
             : (float) $quantities;
 
-        return $variant->stock_quantity >= $requiredBaseQty;
+        // مقایسه با تلورانس کوچک برای اعداد اعشاری
+        return $variant->stock_quantity >= ($requiredBaseQty - 0.0001);
     }
 
     /**
-     * کسر موجودی اولیه برای ثبت سفارش
+     * کسر موجودی برای اقلام یک سفارش
+     * * @param Order $order
+     * @throws StockUnavailableException
      */
     public function deductStockForOrder(Order $order): void
     {
-        $order->load('items');
+        // اطمینان از لود شدن آیتم‌ها
+        $order->loadMissing('items');
 
         foreach ($order->items as $item) {
             $this->deductItemStock($item);
@@ -37,81 +44,102 @@ class InventoryService
     }
 
     /**
-     * متد جدید: اصلاح موجودی بعد از باسکول
-     * اگر اختلاف مثبت باشد (سرک بار) -> کسر بیشتر از انبار
-     * اگر اختلاف منفی باشد (کسری بار) -> بازگشت به انبار
-     * * @param int $variantId شناسه محصول
-     * @param float $weightDifference اختلاف وزن (وزن جدید - وزن قدیم)
+     * اصلاح موجودی بعد از ثبت باسکول (Weighbridge)
+     * * @param int $variantId
+     * @param float $weightDifference
      */
     public function updateStockAfterWeighbridge(int $variantId, float $weightDifference): void
     {
-        // اگر اختلاف صفر بود کاری نکن
+        // اگر اختلاف ناچیز است، صرف‌نظر کن
         if (abs($weightDifference) < 0.001) {
             return;
         }
 
+        // دریافت رکورد با قفل برای جلوگیری از تداخل
         $variant = ProductVariant::where('id', $variantId)->lockForUpdate()->first();
 
-        if (!$variant) return;
+        if (!$variant) {
+            // لاگ کردن یا پرتاب خطا بسته به سیاست سیستم
+            return;
+        }
 
         if ($weightDifference > 0) {
-            // سرک بار: مشتری بیشتر برده، پس باید از انبار کم کنیم
-            if ($variant->stock_quantity < $weightDifference) {
-                // اگر موجودی منفی می‌شود، شاید بخواهید لاگ کنید یا فورس کسر کنید
-                // اینجا فعلاً فورس کسر می‌کنیم
-            }
+
             $variant->decrement('stock_quantity', $weightDifference);
         } else {
-            // کسری بار: مشتری کمتر برده، باید به انبار برگردانیم
-            // مقدار منفی است، پس abs می‌گیریم
+            // کسری بار (Underweight): مشتری بار کمتری برده است -> بازگشت به انبار
             $variant->increment('stock_quantity', abs($weightDifference));
         }
     }
 
+    /**
+     * کسر موجودی یک آیتم خاص
+     */
     private function deductItemStock(OrderItem $item): void
     {
+        // قفل کردن رکورد واریانت
         $variant = ProductVariant::where('id', $item->product_variant_id)
             ->lockForUpdate()
             ->first();
 
         if (!$variant) {
-            throw new Exception("محصول با شناسه {$item->product_variant_id} یافت نشد.");
+            throw new ModelNotFoundException("محصول با شناسه {$item->product_variant_id} یافت نشد.");
         }
 
-        $quantities = is_string($item->quantity_details)
-            ? json_decode($item->quantity_details, true)
-            : $item->quantity_details;
+        // تصمیم‌گیری هوشمند: کسر وزن یا تعداد؟
+        // اگر در دیتابیس وزن ذخیره شده باشد (برای میلگرد و ...)، اولویت با وزن است.
+        // اگر وزن 0 بود (کالای عددی)، از تعداد استفاده می‌کنیم.
+        $amountToDeduct = ($item->weight > 0) ? (float)$item->weight : (float)$item->quantity;
 
-        $requiredBaseQty = $this->calculateBaseQuantity($quantities);
-
-        if ($variant->stock_quantity < $requiredBaseQty) {
-            throw new StockUnavailableException($variant->name);
-        }
-
-        $variant->decrement('stock_quantity', $requiredBaseQty);
-    }
-
-    /**
-     * بازگرداندن کل موجودی (برای کنسلی سفارش)
-     */
-    public function restoreStock(Order $order): void
-    {
-        foreach ($order->items as $item) {
+        // اگر به هر دلیلی مقادیر ذخیره شده در آیتم صفر بود، محاسبه مجدد انجام می‌دهیم
+        if ($amountToDeduct <= 0) {
             $quantities = is_string($item->quantity_details)
                 ? json_decode($item->quantity_details, true)
                 : $item->quantity_details;
 
-            $qty = $this->calculateBaseQuantity($quantities);
+            $amountToDeduct = $this->calculateBaseQuantity($quantities, $variant);
+        }
+
+        // بررسی موجودی
+        if ($variant->stock_quantity < ($amountToDeduct - 0.0001)) {
+            throw new StockUnavailableException(
+                "موجودی محصول '{$variant->name}' کافی نیست. (درخواست: {$amountToDeduct}، موجود: {$variant->stock_quantity})"
+            );
+        }
+
+        // انجام کسر موجودی
+        $variant->decrement('stock_quantity', $amountToDeduct);
+    }
+
+    /**
+     * بازگرداندن موجودی (در صورت لغو سفارش)
+     */
+    public function restoreStock(Order $order): void
+    {
+        foreach ($order->items as $item) {
+            $amountRestored = ($item->weight > 0) ? (float)$item->weight : (float)$item->quantity;
+
+            // اگر به هر دلیلی صفر بود، محاسبه مجدد
+            if ($amountRestored <= 0) {
+                $quantities = is_string($item->quantity_details)
+                    ? json_decode($item->quantity_details, true)
+                    : $item->quantity_details;
+
+                // برای محاسبه دقیق نیاز به مدل واریانت داریم، اما اینجا برای سرعت
+                // بهتر است از داده‌های آیتم استفاده کنیم. اگر موجود نبود، کوئری می‌زنیم.
+                $variant = $item->productVariant;
+                $amountRestored = $this->calculateBaseQuantity($quantities, $variant);
+            }
 
             ProductVariant::where('id', $item->product_variant_id)
-                ->increment('stock_quantity', $qty);
+                ->increment('stock_quantity', $amountRestored);
         }
     }
 
     /**
-     * محاسبه مقدار کل بر اساس فرمول ساده: تعداد * مقدار واحد
+     * محاسبه مقدار پایه (کیلوگرم یا تعداد) از روی جزئیات
      */
-    private function calculateBaseQuantity(?array $details): float
+    private function calculateBaseQuantity(?array $details, ?ProductVariant $variant = null): float
     {
         if (empty($details)) return 0.0;
 
@@ -126,9 +154,15 @@ class InventoryService
             $unit = $unitsMap->get((int)$unitId);
 
             if ($unit) {
+                // اگر واحد وجود داشت (مثلا بندیل)، وزن آن را ضربدر تعداد کن
                 $totalBaseQty += $qty * (float)$unit->amount;
             } else {
-                $totalBaseQty += $qty;
+                // اگر واحد خاصی نبود، سعی کن از وزن خود محصول استفاده کنی
+                $variantWeight = ($variant && $variant->weight > 0) ? (float)$variant->weight : 1.0;
+
+                // اگر وزن محصول تعریف نشده بود، فرض بر تعداد ساده است
+                // (در سیستم‌های ترکیبی این نقطه حساس است)
+                $totalBaseQty += $qty * $variantWeight;
             }
         }
 

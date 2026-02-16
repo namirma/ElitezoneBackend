@@ -19,6 +19,11 @@ class OrderItem extends Model
         PRODUCT_NAME = 'product_name',
         VARIANT_SKU = 'variant_sku',
         QUANTITY_DETAILS = 'quantity_details',
+
+        WEIGHT = 'weight',
+        QUANTITY = 'quantity',
+        UNIT_NAME = 'unit_name',
+
         UNIT_PRICE = 'unit_price',
         TOTAL_PRICE = 'total_price',
         CREATED_AT = 'created_at',
@@ -31,6 +36,9 @@ class OrderItem extends Model
         self::PRODUCT_NAME,
         self::VARIANT_SKU,
         self::QUANTITY_DETAILS,
+        self::WEIGHT,
+        self::QUANTITY,
+        self::UNIT_NAME,
         self::UNIT_PRICE,
         self::TOTAL_PRICE,
     ];
@@ -39,6 +47,8 @@ class OrderItem extends Model
         self::QUANTITY_DETAILS => 'array',
         self::UNIT_PRICE => 'decimal:2',
         self::TOTAL_PRICE => 'decimal:2',
+        self::WEIGHT => 'decimal:3',  
+        self::QUANTITY => 'decimal:2',
     ];
 
     public function order(): BelongsTo
@@ -55,8 +65,12 @@ class OrderItem extends Model
     {
         return $this->belongsTo(User::class, self::SUPPLIER_USER_ID);
     }
-    public function scopeSumQuantity(Builder $query, string $alias = 'total_qty')
-{
-    return $query->selectRaw("SUM(JSON_EXTRACT(quantity_details, '$.quantity')) as {$alias}");
-}
+
+    /**
+     * جمع‌بندی تعداد کل اقلام
+     */
+    public function scopeSumQuantity(Builder $query)
+    {
+        return $query->sum('quantity');
+    }
 }

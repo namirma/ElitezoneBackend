@@ -2,9 +2,7 @@
 
 namespace App\Services\Pricing\Pipes;
 
-use App\Models\PriceFilter;
 use App\Models\PriceFilterCategory;
-use App\Models\PriceFilterType;
 use App\Services\Pricing\PricingContext;
 use Closure;
 use Illuminate\Support\Collection;
@@ -13,77 +11,98 @@ class ApplyPriceFilters implements PricingPipe
 {
     public function handle(PricingContext $context, Closure $next)
     {
+        // ۱. دریافت فیلترهای فعال برای این کاربر/محصول
         $filters = $this->getFilters($context);
 
-        // تفکیک فیلترها
-        $generalFilters = $filters->filter(fn($f) => ($f->filterType->apply_on ?? 'both') === 'general');
-        $specialFilters = $filters->filter(fn($f) => ($f->filterType->apply_on ?? 'both') === 'special');
-        $bothSideFilters = $filters->filter(fn($f) => ($f->filterType->apply_on ?? 'both') === 'both');
+        if ($filters->isEmpty()) {
+            return $next($context);
+        }
 
-        // ۱. اعمال فیلترهای عمومی روی List Price
-        $context->listPrice = $this->apply($context->listPrice, $generalFilters);
+        $generalFilters = $filters->filter(fn($f) => optional($f->filterType)->apply_on === 'general');
+        $specialFilters = $filters->filter(fn($f) => optional($f->filterType)->apply_on === 'special');
+        $bothSideFilters = $filters->filter(fn($f) => optional($f->filterType)->apply_on === 'both');
 
-        // ۲. اعمال فیلترهای ویژه روی Payable Price
-        $context->payablePrice = $this->apply($context->payablePrice, $specialFilters);
+        if ($generalFilters->isNotEmpty()) {
+            $context->listPrice = $this->applyFilters($context->listPrice, $generalFilters);
+            $context->payablePrice = $this->applyFilters($context->payablePrice, $generalFilters);
+        }
 
+        // ۴. اعمال فیلترهای ویژه -> تاثیر روی قیمت قابل پرداخت (Payable Price)
+        // مثال: قیمت 37000 - تخفیف مهندس 1000 = 36000
+        if ($specialFilters->isNotEmpty()) {
+            $context->payablePrice = $this->applyFilters($context->payablePrice, $specialFilters);
+        }
 
-        $context->customerAdjustment = $this->apply(0.0, $bothSideFilters);
+        // ۵. اعمال فیلترهای دوطرفه (Adjustments)
+        if ($bothSideFilters->isNotEmpty()) {
+            // محاسبه مقدار خالص تغییرات (مثلاً +500 -200 = +300)
+            $adjustment = $this->applyFilters(0.0, $bothSideFilters);
+            $context->payablePrice += $adjustment;
+        }
 
-        // اضافه کردن adjustment به قیمت نهایی
-        $context->payablePrice += $context->customerAdjustment;
+        // ۶. گارد نهایی: قیمت هرگز نباید منفی شود
         $context->payablePrice = max(0.0, $context->payablePrice);
+        $context->listPrice = max(0.0, $context->listPrice);
 
         return $next($context);
     }
 
-    private function apply(float $price, Collection $filters): float
+    /**
+     * منطق ریاضی اعمال فیلترها
+     */
+    private function applyFilters(float $currentPrice, Collection $filters): float
     {
+        // مرتب‌سازی بر اساس اولویت (sort_order)
         foreach ($filters->sortBy('sort_order') as $filter) {
             $amount = (float) $filter->amount;
             $isPercent = (bool) $filter->is_percentage;
 
+
             if ($isPercent) {
-                $price += ($price * $amount / 100);
+
+                $change = $currentPrice * ($amount / 100);
+                $currentPrice += $change;
             } else {
-                $price += $amount;
+
+                $currentPrice += $amount;
             }
         }
-        return $price;
+
+        return $currentPrice;
     }
 
+    /**
+     * دریافت لیست فیلترها از دیتابیس
+     */
     private function getFilters(PricingContext $context): Collection
     {
         $ids = $context->filterCategoryIds;
 
-        // اگر آیدی نیست ولی کد هست، پیدا کن
-        if ((empty($ids) || !is_array($ids)) && $context->filterCategoryCode) {
-            $ids = PriceFilterCategory::where('code', $context->filterCategoryCode)
+
+        if (empty($ids) && $context->filterCategoryCode) {
+            $category = PriceFilterCategory::where('code', $context->filterCategoryCode)
                 ->where('is_active', true)
-                ->pluck('id')
-                ->all();
+                ->first();
+
+            if ($category) {
+                $ids = [$category->id];
+            }
         }
 
         if (empty($ids)) {
             return collect();
         }
 
-        // کوئری برای دریافت فیلترها (کپی شده از لاجیک اصلی)
         return PriceFilterCategory::whereIn('id', $ids)
             ->where('is_active', true)
-            ->with(['filters' => function ($q) {
-                $q->where('price_filters.is_active', true)
-                    ->join('price_filter_types as t', 't.id', '=', 'price_filters.price_filter_type_id')
-                    ->orderBy('t.sort_order')
-                    ->orderBy('price_filters.sort_order')
-                    ->select('price_filters.*', 't.apply_on as _apply_on');
-            }])
+            ->with(['filters.filterType']) 
             ->get()
-            ->flatMap(function ($cat) {
-                return $cat->filters->map(function ($f) {
-                    $f->filterType = (object) ['apply_on' => $f->_apply_on];
-                    return $f;
-                });
+            ->flatMap(function ($category) {
+                return $category->filters;
             })
-            ->unique('id');
+            // حذف فیلترهای غیرفعال یا ناقص
+            ->filter(fn($f) => $f && $f->is_active && $f->filterType)
+            ->unique('id')
+            ->values();
     }
 }

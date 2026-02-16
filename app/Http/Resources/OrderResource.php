@@ -20,20 +20,18 @@ class OrderResource extends JsonResource
 
         $statusKey = $this->{Order::STATUS};
         $statusLabel = __('orders.status.' . $statusKey);
+        // Fallback for translation
         if ($statusLabel === 'orders.status.' . $statusKey) {
             $statusLabel = $progress['current_status_label'] ?? __('orders.status.unknown');
         }
+
         $paymentStatusKey = $this->{Order::PAYMENT_STATUS};
         $paymentStatusLabel = __('orders.status.' . $paymentStatusKey);
-
-        // اگر ترجمه خاصی نداشت، خود کلید را نشان بده (جهت اطمینان)
         if ($paymentStatusLabel === 'orders.status.' . $paymentStatusKey) {
             $paymentStatusLabel = $paymentStatusKey;
         }
 
-        // ---------------------------------------------------------
-        // ۳. منطق دکمه‌های عملیاتی (Actions)
-        // ---------------------------------------------------------
+        // Logic for action buttons
         $canPay = $paymentStatusKey !== Order::PAYMENT_PAID
             && $statusKey !== Order::STATUS_CANCELLED
             && $statusKey !== Order::STATUS_FAILED;
@@ -41,14 +39,11 @@ class OrderResource extends JsonResource
         $paymentUrl = $canPay ? route('api.user.orders.pay_full', ['order' => $this->id]) : null;
         $invoiceUrl = route('api.user.orders.invoice', ['order' => $this->id, 'type' => 'initial']);
 
-        // ---------------------------------------------------------
-        // ۴. ساخت آرایه خروجی
-        // ---------------------------------------------------------
         return [
             Order::ID           => $this->id,
             Order::ORDER_NUMBER => $this->{Order::ORDER_NUMBER},
 
-            // --- اطلاعات وضعیت و استپ‌ها ---
+            // --- Status Info ---
             'status_info' => [
                 'key'   => $statusKey,
                 'label' => $statusLabel,
@@ -61,19 +56,39 @@ class OrderResource extends JsonResource
                 'progress_data' => $progress,
             ],
 
-            // --- خلاصه اقلام سفارش ---
+            // --- Items Summary (FIXED LOGIC) ---
             'items_summary' => $this->items->map(function ($item) {
-                $details = $item->quantity_details;
-                $qty = $details['quantity'] ?? $details['value'] ?? 0;
+                // 1. تلاش برای خواندن وزن/تعداد از ستون‌های دیتابیس (اگر موجود باشند)
+                $val = (float) ($item->weight ?? 0);
+                $unit = 'کیلوگرم';
+
+                // 2. اگر ستون وزن خالی بود (چون در دیتابیس نیست)، سراغ جیسون می‌رویم
+                if ($val <= 0 && !empty($item->quantity_details)) {
+                    $details = is_string($item->quantity_details)
+                        ? json_decode($item->quantity_details, true)
+                        : $item->quantity_details;
+
+                    // اگر جیسون معتبر بود (مثلا {"2": 8})
+                    if (is_array($details) && count($details) > 0) {
+                        // مقدار اول را می‌گیریم (عدد 8)
+                        $val = (float) reset($details);
+                        $unit = 'عدد'; // یا 'شاخه' / 'بندیل' بسته به نیاز بیزینس
+                    }
+                }
+
+                // 3. اگر هنوز صفر بود، آخرین تلاش از ستون quantity
+                if ($val <= 0) {
+                    $val = (float) ($item->quantity ?? 0);
+                }
 
                 return [
-                    'name'     => $item->product_name ?? 'محصول نامشخص',
-                    'quantity' => (string) $qty,
-                    'unit'     => $details['unit'] ?? 'کیلوگرم',
+                    'name'     => $item->product_variant->name ?? $item->product_name ?? 'محصول',
+                    'quantity' => (string) $val,
+                    'unit'     => $unit,
                 ];
             }),
 
-            // --- اطلاعات خریدار (Placer) ---
+            // --- Buyer Info ---
             'buyer' => $this->when(!$isSupplier, function () {
                 return [
                     'id'        => $this->{Order::PLACER_USER_ID},
@@ -82,7 +97,7 @@ class OrderResource extends JsonResource
                 ];
             }),
 
-            // --- اطلاعات ذینفع (Beneficiary) - اگر وجود داشته باشد ---
+            // --- Beneficiary Info ---
             'beneficiary' => $this->when($this->{Order::BENEFICIARY_USER_ID}, function () {
                 return [
                     'id'          => $this->{Order::BENEFICIARY_USER_ID},
@@ -92,7 +107,7 @@ class OrderResource extends JsonResource
                 ];
             }, null),
 
-            // --- اطلاعات مالی (اصلاح شده) ---
+            // --- Financial Info ---
             'financial' => [
                 Order::FINAL_AMOUNT    => (string) $this->{Order::FINAL_AMOUNT},
                 Order::PAYMENT_STATUS  => $paymentStatusKey,
@@ -108,7 +123,7 @@ class OrderResource extends JsonResource
                 ]),
             ],
 
-            // --- آدرس تحویل ---
+            // --- Address ---
             'delivery_address' => $this->when($this->address, function () {
                 return [
                     'province'     => $this->address->province->name ?? '',
@@ -120,7 +135,7 @@ class OrderResource extends JsonResource
                 ];
             }),
 
-            // --- دکمه‌های عملیاتی (با استفاده از فایل ترجمه) ---
+            // --- Actions ---
             'actions' => [
                 'download_invoice' => [
                     'label'  => __('orders.actions.download_initial_invoice'),
@@ -129,14 +144,14 @@ class OrderResource extends JsonResource
                     'active' => true,
                 ],
                 'payment' => [
-                    'label'  => __('orders.actions.final_invoice_settlement'), // مثلا "فاکتور نهایی (تسویه)" یا "پرداخت فاکتور"
+                    'label'  => __('orders.actions.final_invoice_settlement'),
                     'url'    => $paymentUrl,
                     'method' => 'POST',
                     'active' => !is_null($paymentUrl),
                 ]
             ],
 
-            // --- تاریخ‌ها ---
+            // --- Dates ---
             'dates' => [
                 'created_at_p'    => $this->created_at_p,
                 'created_at_diff' => $this->created_at_diff,

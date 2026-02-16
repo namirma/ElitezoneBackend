@@ -240,10 +240,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
         });
 
         // پیغام‌ها
-        Route::get('/messages', [ProfileController::class, 'getMessages'])->middleware('track:messages');
-        Route::get('/messages/read-all', [ProfileController::class, 'updateAllMessageStatus']);
-        Route::get('/messages/{userNotification}', [ProfileController::class, 'updateMessageStatus']);
-
+        Route::prefix('messages')->controller(ProfileController::class)->group(function () {
+            Route::get('/', 'getMessages');
+            Route::get('/unread-count', 'getUnreadMessagesCount');
+            Route::patch('/read-all', 'updateAllMessageStatus');
+            Route::patch('/{userNotification}/read', 'updateMessageStatus');
+            Route::delete('/{userNotification}', 'deleteMessage');
+        });
         // تحصیلات
         Route::prefix('education')->middleware('role.expert')->controller(EduixController::class)->group(function () {
             Route::get('/', 'index')->middleware('track:education');

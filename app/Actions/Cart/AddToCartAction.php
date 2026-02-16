@@ -9,6 +9,10 @@ use App\Models\CartItem;
 use App\Models\OrderUnit;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\CustomerType;
+use App\Models\PriceFilterCategory;
+use App\Services\PriceCalculationService;
+use App\Services\PricingRoleResolver;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -16,6 +20,11 @@ use Illuminate\Validation\ValidationException;
 
 class AddToCartAction
 {
+    public function __construct(
+        protected PriceCalculationService $priceService,
+        protected PricingRoleResolver $roleResolver
+    ) {}
+
     public function execute(Cart $cart, array $data): Cart
     {
         $variant = ProductVariant::with(['product.orderUnits', 'product.aggregateLimitOrderUnit', 'limitOrderUnit'])
@@ -25,7 +34,7 @@ class AddToCartAction
 
         return DB::transaction(function () use ($cart, $variant, $data, $orderUnitsMap) {
 
-            // شناساگرهای آیتم
+            // ۱. شناسایی آیتم تکراری
             $identifiers = [
                 CartItem::CART_ID             => $cart->id,
                 CartItem::PRODUCT_VARIANT_ID  => $variant->id,
@@ -34,64 +43,152 @@ class AddToCartAction
                 CartItem::SHIPPING_METHOD_ID  => $data['shipping_method_id'],
             ];
 
-            // بررسی وجود آیتم
             $existingItem = $cart->items()->where($identifiers)->first();
 
-            // محاسبه مقادیر نهایی این آیتم (چه جدید باشد چه آپدیت)
+            // ۲. ادغام تعداد (Merge Logic)
             $itemFinalQuantities = $data['quantities'];
             if ($existingItem) {
                 $itemFinalQuantities = $this->mergeQuantities($existingItem->quantities, $data['quantities']);
             }
 
-            // محاسبه مجموع کل این واریانت در سبد (برای چک کردن لیمیت‌ها)
-            // اینجا از $itemFinalQuantities استفاده می‌کنیم تا منطق تکرار نشود
+            // ۳. چک کردن محدودیت‌ها
             $totalVariantQuantities = $this->calculateTotalVariantQuantities($cart, $variant->id, $existingItem, $itemFinalQuantities);
-
-            // اعتبارسنجی‌ها
             $this->validateOrderUnitCounts($variant, $totalVariantQuantities);
             $this->checkVariantAggregateLimits($variant, $totalVariantQuantities, $orderUnitsMap);
 
-            // اعمال تغییرات در دیتابیس
+            // ۴. محاسبه مقادیر فیزیکی (وزن و تعداد کل) برای ذخیره در دیتابیس
+            $calculatedPhys = $this->calculatePhysicalAttributes($itemFinalQuantities, $orderUnitsMap, $variant);
+
+            // ۵. محاسبه قیمت دقیق (برای اینکه قیمت صفر نباشد)
+            $priceData = $this->calculateItemPrice($cart, $variant, $data, $calculatedPhys['weight']);
+
+            // ۶. آماده‌سازی داده‌ها برای ذخیره
+            $saveData = [
+                CartItem::QUANTITIES => $itemFinalQuantities,
+                CartItem::FACTORY_LOCATION_ID => $data['location_id'],
+                'weight'   => $calculatedPhys['weight'],
+                'quantity' => $calculatedPhys['quantity'],
+                'unit_name' => $calculatedPhys['unit_name'],
+                CartItem::PRICE       => $priceData['unit_price'],
+                CartItem::FINAL_PRICE => $priceData['unit_price'], 
+                CartItem::VAT_AMOUNT  => $priceData['vat_amount'],
+                CartItem::TOTAL_WITH_VAT => $priceData['total_with_vat'],
+            ];
+
+            // ۷. ذخیره در دیتابیس
             if ($existingItem) {
-                $existingItem->update([
-                    CartItem::QUANTITIES => $itemFinalQuantities,
-                    CartItem::FACTORY_LOCATION_ID => $data['location_id'], // آپدیت لوکیشن در صورت نیاز
-                ]);
+                $existingItem->update($saveData);
             } else {
-                CartItem::create(array_merge($identifiers, [
-                    CartItem::QUANTITIES => $itemFinalQuantities,
-                    CartItem::PRICE      => 0,
-                    CartItem::FINAL_PRICE => 0,
-                ]));
+                CartItem::create(array_merge($identifiers, $saveData));
             }
 
-            // اعتبارسنجی محدودیت‌های کل خط محصول
-            $freshCart = $cart->fresh(['items.productVariant.product', 'items.productVariant.product.aggregateLimitOrderUnit']);
+            // ۸. چک کردن لیمیت‌های کلی محصول
+            $freshCart = $cart->fresh(['items.productVariant.product']);
             $this->checkProductLineAggregateLimits($freshCart, $variant->product, $orderUnitsMap);
 
-            // سینک فیلترها
+            // ۹. سینک فیلترها
             if (isset($data['filter_categories'])) {
                 $cart->priceFilterCategories()->sync($data['filter_categories']);
             }
 
-            // ایونت
+            // ۱۰. ایونت
             $quantityAdded = array_sum($data['quantities']);
-            $currentPriceSnapshot = $variant->price ?? null;
-
             CartItemChanged::dispatch(
                 $cart,
                 $variant,
                 CartEvent::ACTION_ADD,
                 (float) $quantityAdded,
-                $currentPriceSnapshot
+                $variant->price // Snapshot
             );
 
-            return $cart->load('items');
+            // بازگرداندن سبد خرید با تمام روابط لازم برای نمایش صحیح قیمت
+            return $cart->load([
+                'items.productVariant',
+                'items.factory',
+                'items.shippingMethod',
+                'customerType',
+                'badge'
+            ]);
         });
     }
 
     // =========================================================================
-    //  Helpers
+    //  New Helpers (Calculation Logic)
+    // =========================================================================
+
+    /**
+     * محاسبه وزن و تعداد کل برای ذخیره در ستون‌های جدید
+     */
+   protected function calculatePhysicalAttributes(array $quantities, Collection $orderUnitsMap, ProductVariant $variant): array
+    {
+        $totalWeight = 0.0;
+        $totalQuantity = 0.0;
+        $primaryUnitName = null;
+
+        foreach ($quantities as $unitId => $qty) {
+            $qty = (float) $qty;
+            $totalQuantity += $qty;
+
+            $unit = $orderUnitsMap->get((int)$unitId);
+
+            if (!$primaryUnitName && $unit) {
+                $primaryUnitName = $unit->name;
+            }
+
+            if ($unit) {
+                $totalWeight += $qty * (float) $unit->amount;
+            } else {
+                $variantWeight = (float) ($variant->weight ?? 0);
+                if ($variantWeight <= 0) $variantWeight = 1;
+                $totalWeight += $qty * $variantWeight;
+            }
+        }
+
+        return [
+            'weight'    => $totalWeight,
+            'quantity'  => $totalQuantity,
+            'unit_name' => $primaryUnitName ?? 'عدد'
+        ];
+    }
+
+    /**
+     * محاسبه قیمت در لحظه افزودن به سبد
+     */
+    protected function calculateItemPrice(Cart $cart, ProductVariant $variant, array $data, float $totalWeight): array
+    {
+        // پیدا کردن نقش و فیلترهای کاربر
+        $user = $cart->user; // فرض بر این است که کارت User دارد
+        $roleCode = $user ? $this->roleResolver->resolve($user) : 'employer_without_consultant';
+
+        $customerType = $cart->customerType ?? CustomerType::where('code', $roleCode)->first();
+        $activeFilter = PriceFilterCategory::where('code', $roleCode)->first();
+        $filterIds = $activeFilter ? [$activeFilter->id] : $cart->priceFilterCategories->pluck('id')->toArray();
+
+        // محاسبه قیمت واحد
+        $pricing = $this->priceService->calculatePrice(
+            variant: $variant,
+            factory: \App\Models\Factory::find($data['factory_id']), // نیاز به مدل فکتوری داریم
+            location: \App\Models\FactoryLocation::find($data['location_id']),
+            customerType: $customerType,
+            badge: $cart->badge,
+            filterCategoryIds: $filterIds,
+            withVAT: true,
+            filterCategoryCode: $roleCode
+        );
+
+        // محاسبه قیمت کل سطر
+        $lineTotal = $totalWeight * $pricing->finalPrice;
+        $lineVat   = $totalWeight * $pricing->vatAmount;
+
+        return [
+            'unit_price'     => $pricing->finalPrice,
+            'vat_amount'     => $lineVat, // مالیات کل سطر
+            'total_with_vat' => $lineTotal + $lineVat
+        ];
+    }
+
+    // =========================================================================
+    //  Existing Helpers (Refined)
     // =========================================================================
 
     protected function getOrderUnitsMap(): Collection
@@ -103,36 +200,41 @@ class AddToCartAction
     {
         $merged = $current;
         foreach ($new as $unitId => $qty) {
+            // کست به استرینگ برای جلوگیری از تغییر ساختار آرایه توسط PHP
             $key = (string) $unitId;
-            $currentVal = $merged[$key] ?? ($merged[(int)$unitId] ?? 0);
+
+            // پیدا کردن مقدار قبلی (با ساپورت کلید استرینگ و عددی)
+            $currentVal = 0;
+            if (isset($merged[$key])) {
+                $currentVal = $merged[$key];
+            } elseif (isset($merged[(int)$unitId])) {
+                $currentVal = $merged[(int)$unitId];
+                // حذف کلید عددی برای یکدست شدن
+                unset($merged[(int)$unitId]);
+            }
+
             $merged[$key] = (float)$currentVal + (float)$qty;
         }
         return $merged;
     }
 
-    /**
-     * محاسبه مجموع کل موجودی یک واریانت در سبد
-     * @param array $targetItemQuantities مقدار نهایی آیتمی که در حال افزودن/ویرایش آن هستیم
-     */
     protected function calculateTotalVariantQuantities(Cart $cart, int $variantId, ?CartItem $existingItem, array $targetItemQuantities): array
     {
         $totals = [];
 
-        // 1. اضافه کردن مقادیر سایر آیتم‌های این واریانت (مثلاً در انبارهای دیگر)
         foreach ($cart->items as $item) {
-            // فقط آیتم‌های همین واریانت
             if ($item->product_variant_id !== $variantId) continue;
-
-            // آیتم فعلی را نادیده بگیر (چون مقدار نهایی‌اش را جدا داریم)
             if ($existingItem && $item->id === $existingItem->id) continue;
 
-            foreach ($item->quantities as $u => $q) {
+            $q = is_string($item->quantities) ? json_decode($item->quantities, true) : $item->quantities;
+            if (!is_array($q)) continue;
+
+            foreach ($q as $u => $val) {
                 $k = (string)$u;
-                $totals[$k] = ($totals[$k] ?? 0) + $q;
+                $totals[$k] = ($totals[$k] ?? 0) + $val;
             }
         }
 
-        // 2. اضافه کردن مقدار نهایی آیتم فعلی
         foreach ($targetItemQuantities as $u => $q) {
             $k = (string)$u;
             $totals[$k] = ($totals[$k] ?? 0) + $q;
@@ -159,13 +261,17 @@ class AddToCartAction
     protected function validateOrderUnitCounts(ProductVariant $variant, array $totalQuantities): void
     {
         if (!$variant->relationLoaded('product')) $variant->load('product.orderUnits');
-        $unitMap = $variant->product->orderUnits->keyBy('pivot.order_unit_id');
+
+        // اصلاح کلید مپ برای دسترسی سریع‌تر
+        $unitMap = $variant->product->orderUnits->keyBy('id');
 
         foreach ($totalQuantities as $unitId => $qty) {
             $unit = $unitMap->get((int)$unitId);
             if (!$unit) continue;
 
+            // دسترسی به pivot
             $maxCount = $unit->pivot->max_quantity ?? PHP_INT_MAX;
+
             if ($qty > $maxCount) {
                 throw ValidationException::withMessages(['quantities.' . $unitId => [
                     "حداکثر مجاز برای '{$unit->name}' برابر {$maxCount} است. مجموع در سبد: {$qty}"
@@ -219,7 +325,11 @@ class AddToCartAction
         $totalValueInBase = 0;
         foreach ($cart->items as $item) {
             if ($item->productVariant->product_id === $product->id) {
-                foreach ($item->quantities as $unitId => $count) {
+                // اطمینان از اینکه quantities آرایه است
+                $q = is_string($item->quantities) ? json_decode($item->quantities, true) : $item->quantities;
+                if (!is_array($q)) continue;
+
+                foreach ($q as $unitId => $count) {
                     $unit = $orderUnitsMap->get((int)$unitId);
                     if ($unit && $unit->amount > 0) {
                         $totalValueInBase += (float)$count * $unit->amount;
