@@ -56,11 +56,12 @@ class OrderPaymentController extends Controller
             // =================================================================
             if (in_array($order->status, [Order::STATUS_RESERVED, Order::STATUS_RESERVED_EXTENDED])) {
 
-                // محاسبه مبلغ باقی‌مانده (کل - مبلغ رزرو شده)
-                $remainingAmount = $order->final_amount - ($order->reserved_amount ?? 0);
+                // رفع باگ ۳: استفاده از فیلد مجاز دیتابیس (PAYMENT_TO_RESERVE)
+                $reservedAmount = (float) ($order->{Order::PAYMENT_TO_RESERVE} ?? 0);
+                $remainingAmount = $order->final_amount - $reservedAmount;
 
-                // *** گارد موجودی ***
-                if ($wallet->balance < $remainingAmount) {
+                // *** گارد موجودی *** // (فقط در صورتی که مبلغ مابه‌التفاوت مثبت باشد نیاز به چک کردن موجودی کاربر داریم)
+                if ($remainingAmount > 0 && $wallet->balance < $remainingAmount) {
                     return $this->balanceError($wallet->balance, $remainingAmount);
                 }
 
@@ -84,7 +85,6 @@ class OrderPaymentController extends Controller
             $isReserveRequested = $request->input('payment_type') === 'reserve';
 
             // --- حالت الف: خرید مستقیم (Direct Purchase) ---
-            // اگر مبلغ زیر حد نصاب است یا کاربر درخواست رزرو نکرده
             if ($totalAmount < self::RESERVATION_THRESHOLD || !$isReserveRequested) {
 
                 // *** گارد موجودی برای کل مبلغ ***
@@ -95,15 +95,13 @@ class OrderPaymentController extends Controller
                 // اجرای عملیات خرید و تراکنش‌ها
                 $this->purchaseAction->execute($order);
 
-                $order->refresh();
-
                 return success([
-                    'order'     => new OrderResource($order),
+                    'order'     => new OrderResource($order->fresh()),
                     'documents' => [
                         FinancialCodes::DOC_RECEIPT_OWNER,    // A (رسید خریدار)
                         FinancialCodes::DOC_REPORT_SUPPLIER,  // B (گزارش سوپلایر)
                         FinancialCodes::DOC_LOADING_ORDER,    // C (دستور بارگیری)
-                        FinancialCodes::DOC_CONSULTANT_REPORT // D (گزارش مشاور فنی - طبق دیاگرام)
+                        FinancialCodes::DOC_CONSULTANT_REPORT // D (گزارش مشاور فنی)
                     ],
                     'message'   => 'پرداخت کامل انجام شد.'
                 ]);
@@ -114,7 +112,6 @@ class OrderPaymentController extends Controller
             if ($isReserveRequested) {
                 $reserveAmount = self::RESERVATION_THRESHOLD;
 
-                // *** گارد موجودی برای مبلغ بیعانه ***
                 if ($wallet->balance < $reserveAmount) {
                     return $this->balanceError($wallet->balance, $reserveAmount);
                 }
@@ -140,27 +137,23 @@ class OrderPaymentController extends Controller
 
     /**
      * مدیریت خطای موجودی و تولید پاسخ هدایت به شارژ
-     *
-     * @param float $currentBalance موجودی فعلی
-     * @param float $requiredAmount مبلغ مورد نیاز
-     * @return JsonResponse
      */
     private function balanceError(float $currentBalance, float $requiredAmount): JsonResponse
     {
         $shortage = $requiredAmount - $currentBalance;
 
         return response()->json([
-            'status' => false,
+            'status'  => false,
             'message' => "موجودی کیف پول کافی نیست. لطفاً جهت ادامه، مبلغ " . number_format($shortage) . " ریال کیف پول خود را شارژ کنید.",
-            'data' => [
-                'error_code' => 'insufficient_balance',
+            'data'    => [
+                'error_code'      => 'insufficient_balance',
                 'current_balance' => $currentBalance,
                 'required_amount' => $requiredAmount,
-                'shortage' => $shortage,
+                'shortage'        => $shortage,
 
                 'action' => [
-                    'type' => 'navigate_to_deposit',
-                    'api_route' => '/api/profile/financial/wallet/deposit',
+                    'type'                    => 'navigate_to_deposit',
+                    'api_route'               => '/api/profile/financial/wallet/deposit',
                     'required_deposit_amount' => $shortage
                 ]
             ]
@@ -177,7 +170,7 @@ class OrderPaymentController extends Controller
     public function uploadReceipt(UploadOrderReceiptRequest $request, Order $order): JsonResponse
     {
         $this->authorize('update', $order);
-        
+
         return success(new OrderResource($order), 'فیش بانکی با موفقیت ثبت شد');
     }
 }

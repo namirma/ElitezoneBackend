@@ -58,25 +58,20 @@ class OrderResource extends JsonResource
 
             // --- Items Summary (FIXED LOGIC) ---
             'items_summary' => $this->items->map(function ($item) {
-                // 1. تلاش برای خواندن وزن/تعداد از ستون‌های دیتابیس (اگر موجود باشند)
                 $val = (float) ($item->weight ?? 0);
                 $unit = 'کیلوگرم';
 
-                // 2. اگر ستون وزن خالی بود (چون در دیتابیس نیست)، سراغ جیسون می‌رویم
                 if ($val <= 0 && !empty($item->quantity_details)) {
                     $details = is_string($item->quantity_details)
                         ? json_decode($item->quantity_details, true)
                         : $item->quantity_details;
 
-                    // اگر جیسون معتبر بود (مثلا {"2": 8})
                     if (is_array($details) && count($details) > 0) {
-                        // مقدار اول را می‌گیریم (عدد 8)
                         $val = (float) reset($details);
-                        $unit = 'عدد'; // یا 'شاخه' / 'بندیل' بسته به نیاز بیزینس
+                        $unit = 'عدد';
                     }
                 }
 
-                // 3. اگر هنوز صفر بود، آخرین تلاش از ستون quantity
                 if ($val <= 0) {
                     $val = (float) ($item->quantity ?? 0);
                 }

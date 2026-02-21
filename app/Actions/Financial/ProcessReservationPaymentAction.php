@@ -21,53 +21,27 @@ class ProcessReservationPaymentAction
      * اجرای فلوچارت پرداخت رزرو (PTR)
      * @param Order $order
      * @param float $ptrAmount مبلغ رزرو
-     * @param int $validityHours مدت اعتبار 
+     * @param int $validityHours مدت اعتبار
      */
-    public function execute(Order $order, float $ptrAmount, int $validityHours = 2): void
+    public function execute(Order $order, float $reserveAmount, int $validityHours = 2): void
     {
-        Log::info("شروع فرآیند رزرو سفارش {$order->id} با مبلغ {$ptrAmount}");
+        DB::transaction(function () use ($order, $reserveAmount, $validityHours) {
 
-        DB::transaction(function () use ($order, $ptrAmount, $validityHours) {
+            $buyerId = $order->placer_user_id;
+            $systemUserId = 1;
+            $systemWalletCode = FinancialCodes::WALLET_SAZE;
 
-            // 1. ثبت اطلاعات PTR و VOR (طبق عکس 402)
-            $vor = Carbon::now()->addHours($validityHours);
+            $this->walletEngine->process('-', $reserveAmount, FinancialCodes::WALLET_OWNER, FinancialCodes::STATUS_AVAILABLE, $order, "پرداخت مبلغ بیعانه برای رزرو سفارش {$order->order_number}", $buyerId);
+
+            $this->walletEngine->process('+', $reserveAmount, $systemWalletCode, FinancialCodes::STATUS_HOLD, $order, "امانت (هولد) مبلغ رزرو سفارش {$order->order_number}", $systemUserId);
 
             $order->update([
-                Order::PAYMENT_TO_RESERVE => $ptrAmount,
-                Order::VALIDATION_OF_RESERVE => $vor,
-                'status' => 'reserved', // وضعیت: رزرو شده
+                'status'                 => Order::STATUS_RESERVED,
+                Order::PAYMENT_TO_RESERVE => $reserveAmount,
+                'reservation_expires_at' => now()->addHours($validityHours),
             ]);
 
-            // 2. عملیات مالی (طبق عکس 403)
-
-            // الف) کسر از خریدار: -(PTR, WO, A)
-            // پول از موجودی "آزاد" خریدار کم می‌شود
-            $this->walletEngine->process(
-                '-',
-                $ptrAmount,
-                FinancialCodes::WALLET_OWNER,
-                FinancialCodes::STATUS_AVAILABLE,
-                $order
-            );
-
-            // ب) واریز به شرکت: +(PTR, WSSG, H)
-            // پول به موجودی "بلوکه" شرکت اضافه می‌شود (چون هنوز درآمد قطعی نیست)
-            $this->walletEngine->process(
-                '+',
-                $ptrAmount,
-                FinancialCodes::WALLET_SAZE,
-                FinancialCodes::STATUS_HOLD,
-                $order
-            );
-
-            // 3. صدور اسناد (طبق ستون‌های رنگی دیاگرام)
-            // سند E: رسید خریدار
-            // GenerateDocumentJob::dispatch($order, FinancialCodes::DOC_RESERVE_RECEIPT);
-
-            // سند F: گزارش برای سوپلایر
-            // GenerateDocumentJob::dispatch($order, FinancialCodes::DOC_RESERVE_REPORT);
-
-            Log::info("سفارش {$order->id} تا تاریخ {$vor} رزرو شد.");
+            Log::info("سفارش {$order->order_number} رزرو شد و مبلغ {$reserveAmount} در کیف پول سازه هولد گردید.");
         });
     }
 }

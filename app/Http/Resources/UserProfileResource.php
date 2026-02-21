@@ -33,7 +33,7 @@ class UserProfileResource extends JsonResource
             UserProfile::CREATED_AT => $this->created_at_,
             'created_at_p' => $this->created_at_p,
             'created_at_diff' => $this->created_at_diff,
-            'user' => UserResource::collection($this->whenLoaded('profile')),
+            //'user' => UserResource::collection($this->whenLoaded('profile')),
         ];
     }
 }

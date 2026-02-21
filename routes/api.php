@@ -169,12 +169,20 @@ Route::prefix('v1/podium')->group(function () {
 });
 
 // --- پنل ادمین ---
-Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
+Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(function () {
     Route::get('/activities', [AdminActivityLogController::class, 'index']);
     Route::controller(AdminSearchController::class)->prefix('search')->group(function () {
         Route::get('/users', 'searchUsers');
         Route::get('/transactions', 'searchTransactions');
     });
+    Route::prefix('users')->controller(AdminUserController::class)->group(function () {
+
+        // جستجوی پروفایل کامل (برای نمایش Read-Only)
+        Route::post('/fetch-profile', 'getUserProfileForBackOffice');
+        Route::get('/{user}/orders', 'getUserOrders');
+        Route::get('/{user}/transactions', 'getUserTransactions');
+    });
+
     Route::controller(AdminFinancialController::class)->prefix('financial')->group(function () {
         Route::get('/company/invoices', 'getCompanyInvoices');
         Route::get('/company/expert-shares', 'getExpertShares');

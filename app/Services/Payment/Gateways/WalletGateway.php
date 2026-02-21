@@ -2,11 +2,11 @@
 
 namespace App\Services\Payment\Gateways;
 
-use App\Services\Payment\Contracts\PaymentGatewayInterface;
+use App\Actions\Financial\ProcessPreScalePaymentAction;
+use App\Exceptions\Wallet\InsufficientBalanceException;
 use App\Models\Order;
 use App\Models\User;
-use App\Models\WalletTransaction;
-use App\Exceptions\Wallet\InsufficientBalanceException;
+use App\Services\Payment\Contracts\PaymentGatewayInterface;
 use Exception;
 
 class WalletGateway implements PaymentGatewayInterface
@@ -18,35 +18,24 @@ class WalletGateway implements PaymentGatewayInterface
 
     public function pay(User $user, Order $order): array
     {
-        // 1. دریافت کیف پول با قفل
+        // ۱. دریافت کیف پول کاربر با قفل دیتابیس (برای جلوگیری از تراکنش‌های همزمان)
         $wallet = $user->wallet()->lockForUpdate()->first();
 
         if (!$wallet) {
             throw new Exception(__('wallet.errors.not_found'));
         }
 
-        // 2. بررسی موجودی
+        // ۲. بررسی موجودی کیف پول خریدار
         if ($wallet->balance < $order->final_amount) {
             throw new InsufficientBalanceException(__('wallet.errors.insufficient_balance'));
         }
 
-        // 3. کسر موجودی
-        $wallet->decrement('balance', $order->final_amount);
+        app(ProcessPreScalePaymentAction::class)->execute($order);
 
-        // 4. ثبت تراکنش
-        $transaction = $wallet->transactions()->create([
-            WalletTransaction::AMOUNT      => -1 * $order->final_amount,
-            WalletTransaction::TYPE        => WalletTransaction::TYPE_WITHDRAW,
-            WalletTransaction::STATUS      => WalletTransaction::STATUS_CONFIRMED,
-            WalletTransaction::DESCRIPTION => __('wallet.descriptions.payment_order', ['order_number' => $order->order_number]),
-            WalletTransaction::META        => ['order_id' => $order->id],
-            'balance_before' => $wallet->balance + $order->final_amount,
-            'balance_after'  => $wallet->balance,
-        ]);
-
+        // ۴. بازگشت رسید موفقیت‌آمیز (چون تراکنش‌های کیف پول Reference بانکی ندارند، یک شناسه یونیک تولید می‌کنیم)
         return [
-            'transaction_id' => $transaction->id,
-            'reference_id'   => null, // کیف پول رفنس بانکی ندارد
+            'transaction_id' => null,
+            'reference_id'   => 'WALLET-' . uniqid(),
         ];
     }
 }

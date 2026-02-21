@@ -79,6 +79,7 @@ class Order extends Model
         STATUS_COMPLETED = 'completed',
         STATUS_CANCELLED = 'cancelled',
         STATUS_FAILED = 'failed',
+        STATUS_PENDING_SURPLUS_PAYMENT = 'pending_surplus_payment',
 
         PAYMENT_PENDING = 'pending',
         PAYMENT_PAID = 'paid',

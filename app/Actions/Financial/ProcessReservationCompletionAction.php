@@ -11,7 +11,6 @@ use App\Services\Financial\WalletTransactionEngine;
 use App\Services\Invoice\InvoiceGenerator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Exception;
 
 class ProcessReservationCompletionAction
 {
@@ -30,64 +29,62 @@ class ProcessReservationCompletionAction
 
         DB::transaction(function () use ($order) {
 
-            // 1. محاسبه مجدد و دقیق مبالغ (Snapshot)
-            // نکته: اگر مقادیر رسمی وجود دارد استفاده می‌کنیم، وگرنه محاسبه می‌کنیم
-            $op = (float) ($order->official_price ?: ($order->total_amount / max($order->weight_before_scale, 1)));
+            // 1. محاسبه مجدد و دقیق مبالغ با استفاده از سرویس فرمول‌ها
+            $op = (float) ($order->official_price ?: ($order->items->first()->unit_price ?? 0));
             $wbs = (float) ($order->weight_before_scale ?: 1);
             $trans = (float) ($order->shipping_cost ?: 0);
-
-            // ضرایب (بهتر است این‌ها در دیتابیس سفارش ذخیره شده باشند)
-            $ow = (float) ($order->owner_discount_rate ?: 0);
             $vat = (float) ($order->vat_rate ?: 10.0);
-            $ssg = 3.0; // سهم سازه
-            $co = 0.0;  // سهم مشاور
 
-            // محاسبه POO (سهم نهایی خریدار) و PTS (سهم نهایی سوپلایر)
+            // استفاده از سرویس کالیبره شده برای دریافت ضرایب صحیح (جلوگیری از هاردکد کردن)
+            $badgeCode = $order->beneficiary?->badge?->code ?? 'pioneer';
+            $rates = $this->calculator->getCommissionRates($badgeCode);
+
+            $ow  = $rates['ow_final_rate'];
+            $ssg = $rates['ssg_final_rate'];
+            $co  = $rates['co_final_rate'];
+
+            // محاسبه POO و PTS نهایی
             $POO = $this->calculator->calculatePOO($trans, $op, $wbs, $ow, $vat);
             $PTS = $this->calculator->calculatePTS($trans, $op, $wbs, $ow, $ssg, $co, $vat);
 
             // مبلغی که قبلاً به عنوان بیعانه (رزرو) پرداخت شده
             $PTR = (float) $order->payment_to_reserve;
 
-            // اگر POO معتبر نبود (مثلاً وزن صفر بوده)، از final_amount استفاده می‌کنیم
             if ($POO <= 0) {
                  $POO = (float) $order->final_amount;
-                 // تخمین PTS (مثلاً ۹۰ درصد) اگر محاسبه شکست خورد
                  if ($PTS <= 0) $PTS = $POO * 0.9;
             }
 
             // 2. محاسبه مبلغ باقیمانده (Remaining Amount)
             $remainingAmount = $POO - $PTR;
 
+            // استخراج شناسه‌های مورد نیاز برای تراکنش‌ها
+            $buyerId = $order->placer_user_id;
+            $realSupplierId = $order->items->first()->supplier_user_id;
+            $systemUserId = 1;
+            $systemWalletCode = FinancialCodes::WALLET_SAZE;
+
             Log::info("Order {$order->id}: POO={$POO}, PTR={$PTR}, Remaining={$remainingAmount}");
 
-            // 3. عملیات مالی: دریافت مابقی پول از خریدار
+            // 3. عملیات مالی: دریافت مابقی پول از خریدار (یا بازگشت افت قیمت)
             if ($remainingAmount > 0) {
-                // الف: کسر از حساب خریدار: -(Remaining, WO, A)
-                $this->walletEngine->process('-', $remainingAmount, FinancialCodes::WALLET_OWNER, FinancialCodes::STATUS_AVAILABLE, $order);
-
-                // ب: واریز به حساب آزاد شرکت: +(Remaining, WSSG, A)
-                $this->walletEngine->process('+', $remainingAmount, FinancialCodes::WALLET_SAZE, FinancialCodes::STATUS_AVAILABLE, $order);
+                // دریافت مابه‌التفاوت از خریدار به سازه
+                $this->walletEngine->process('-', $remainingAmount, FinancialCodes::WALLET_OWNER, FinancialCodes::STATUS_AVAILABLE, $order, "تکمیل وجه سفارش {$order->order_number}", $buyerId);
+                $this->walletEngine->process('+', $remainingAmount, $systemWalletCode, FinancialCodes::STATUS_AVAILABLE, $order, "دریافت وجه تکمیلی سفارش {$order->order_number}", $systemUserId);
+            } elseif ($remainingAmount < 0) {
+                // اگر قیمت افت کرده باشد، مابه‌التفاوت را به خریدار برمی‌گردانیم
+                $refundAmount = abs($remainingAmount);
+                $this->walletEngine->process('-', $refundAmount, $systemWalletCode, FinancialCodes::STATUS_AVAILABLE, $order, "بازگشت مابه‌التفاوت افت قیمت سفارش {$order->order_number}", $systemUserId);
+                $this->walletEngine->process('+', $refundAmount, FinancialCodes::WALLET_OWNER, FinancialCodes::STATUS_AVAILABLE, $order, "دریافت مابه‌التفاوت افت قیمت رزرو", $buyerId);
             }
 
-            // 4. عملیات مالی: آزادسازی پول بیعانه (تبدیل Hold به Available)
-            // چون قبلاً PTR را با وضعیت Hold در WSSG ذخیره کردیم، الان باید آن را آزاد کنیم
+            // 4. عملیات مالی: آزادسازی پول بیعانه (تبدیل Hold به Available در سازه)
+            $this->walletEngine->process('-', $PTR, $systemWalletCode, FinancialCodes::STATUS_HOLD, $order, "خروج از حالت هولد مبلغ رزرو سفارش {$order->order_number}", $systemUserId);
+            $this->walletEngine->process('+', $PTR, $systemWalletCode, FinancialCodes::STATUS_AVAILABLE, $order, "تبدیل موجودی هولد رزرو به قطعی", $systemUserId);
 
-            // الف: حذف از بلوکه شرکت: -(PTR, WSSG, H)
-            $this->walletEngine->process('-', $PTR, FinancialCodes::WALLET_SAZE, FinancialCodes::STATUS_HOLD, $order);
-
-            // ب: اضافه به آزاد شرکت: +(PTR, WSSG, A)
-            $this->walletEngine->process('+', $PTR, FinancialCodes::WALLET_SAZE, FinancialCodes::STATUS_AVAILABLE, $order);
-
-            // نکته: الان کل پول (POO) در حساب آزاد شرکت (WSSG) موجود است.
-
-            // 5. تسویه با سوپلایر (خروج پول از شرکت به سوپلایر)
-
-            // الف: برداشت سهم سوپلایر از شرکت: -(PTS, WSSG, A)
-            $this->walletEngine->process('-', $PTS, FinancialCodes::WALLET_SAZE, FinancialCodes::STATUS_AVAILABLE, $order);
-
-            // ب: واریز به سوپلایر: +(PTS, WS, A)
-            $this->walletEngine->process('+', $PTS, FinancialCodes::WALLET_SUPPLIER, FinancialCodes::STATUS_AVAILABLE, $order);
+            // 5. تسویه با سوپلایر (خروج سهم سوپلایر از سازه)
+            $this->walletEngine->process('-', $PTS, $systemWalletCode, FinancialCodes::STATUS_AVAILABLE, $order, "تخصیص سهم تامین‌کننده سفارش {$order->order_number}", $systemUserId);
+            $this->walletEngine->process('+', $PTS, FinancialCodes::WALLET_SUPPLIER, FinancialCodes::STATUS_AVAILABLE, $order, "واریز سهم فروش سفارش {$order->order_number}", $realSupplierId);
 
             // 6. بروزرسانی نهایی سفارش
             $order->update([

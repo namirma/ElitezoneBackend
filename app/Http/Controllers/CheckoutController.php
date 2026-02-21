@@ -73,10 +73,8 @@ class CheckoutController extends Controller
         $orderData = PlaceOrderData::fromRequest($request);
         $user = Auth::user();
 
-        // 1. اطمینان از اینکه سبد خرید وجود دارد (برای جلوگیری از خطای منطقی)
-        // ما اینجا سبد را چک می‌کنیم، اما به اکشن "کاربر" را پاس می‌دهیم (چون اکشن اینطور نوشته شده)
         $cart = Cart::with('items')
-            ->where('user_id', $user->id)
+            ->where(Cart::USER_ID, $user->id)
             ->latest('updated_at')
             ->first();
 
@@ -84,15 +82,8 @@ class CheckoutController extends Controller
             return error(__('checkout.cart_is_empty'), [], 400);
         }
 
-        // 2. رفرش کردن روابط کاربر تا اکشن (PlaceOrderAction) سبد قدیمی یا خالی نبیند
-        // این خط حیاتی است:
         $user = $user->fresh(['cart.items.productVariant']);
-
-        // 3. اجرای اکشن (ارسال User طبق انتظار سیستم)
-        // اینجا قبلاً $cart بود که باعث ارور می‌شد
         $order = $this->placeOrderAction->execute($user, $orderData);
-
-        // 4. بارگذاری روابط برای خروجی
         $order->load(['items.productVariant', 'address', 'shippingMethod']);
 
         return success(

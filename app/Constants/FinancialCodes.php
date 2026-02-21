@@ -51,13 +51,19 @@ class FinancialCodes
     public const DOC_CANCEL_REPORT         = 'j'; // گزارش لغو رزرو خریدار برای سوپلایر
 
     // --- مرحله ۵: بعد از باسکول و حمل (Post Scale & Shipping) ---
-    public const DOC_BILL_OF_LADING        = 'K'; // صدور بارنامه (توسط فولاد کویر/سوپلایر)
-    public const DOC_MODIFIED_INVOICE      = 'L'; // فاکتور اولیه اصلاح شده بر اساس وزن مندرج در بارنامه
+    // --- مرحله ۵: بعد از باسکول و حمل (Post Scale & Shipping) ---
+    public const DOC_EXIT_PERMIT            = 'I'; // مجوز خروج / حواله
+    public const DOC_SUPPLEMENTARY_RECEIPT  = 'J'; // رسید مابه‌التفاوت وزن برای خریدار
+    public const DOC_SUPPLEMENTARY_REPORT   = 'K'; // گزارش مابه‌التفاوت وزن برای سوپلایر
+    public const DOC_MODIFIED_INVOICE_OWNER    = 'LO'; // فاکتور اولیه اصلاح شده برای خریدار
+    public const DOC_MODIFIED_INVOICE_SUPPLIER = 'LS'; // فاکتور اولیه اصلاح شده برای سوپلایر
+    public const DOC_REFUND_REPORT_WEIGH    = 'M'; // گزارش استرداد وجه برای سوپلایر
+    public const DOC_BILL_OF_LADING         = 'N'; // بارنامه
 
     // --- مرحله ۶: سامانه مودیان (Taxpayer System) ---
     public const DOC_TAX_INVOICE_SUPPLIER  = 'O'; // فاکتور نهایی روی سامانه مودیان (برای شرکت نرم‌افزاری سازه توسط سوپلایر)
     public const DOC_TAX_INVOICE_BUYER     = 'P'; // فاکتور نهایی روی سامانه مودیان (برای خریدار توسط شرکت نرم‌افزاری سازه)
-    public const DOC_TAX_INVOICE_CONSULTANT= 'Q'; // فاکتور نهایی روی سامانه مودیان (برای شرکت نرم‌افزاری سازه توسط مشاور فنی)
+    public const DOC_TAX_INVOICE_CONSULTANT = 'Q'; // فاکتور نهایی روی سامانه مودیان (برای شرکت نرم‌افزاری سازه توسط مشاور فنی)
 
     // --- مرحله ۷: الگوریتم‌ها و تسویه نهایی ---
     // این‌ها بیشتر فرآیند هستند تا سند، اما در لیست دیاگرام کد دارند

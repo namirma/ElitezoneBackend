@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Resources;
 
 use App\Models\JobExperience;
@@ -9,7 +10,7 @@ class JobExperienceResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        $statusText = match($this->{JobExperience::STATUS}) {
+        $statusText = match ($this->{JobExperience::STATUS}) {
             JobExperience::STATUS_PENDING => 'در انتظار تایید',
             JobExperience::STATUS_APPROVED => 'تایید شده',
             JobExperience::STATUS_REJECTED => 'رد شده',
@@ -22,8 +23,8 @@ class JobExperienceResource extends JsonResource
             JobExperience::ORGANIZATION_NAME => $this->{JobExperience::ORGANIZATION_NAME},
             JobExperience::PROJECT_ADDRESS => $this->{JobExperience::PROJECT_ADDRESS},
             JobExperience::FILE_PATH => $this->{JobExperience::FILE_PATH},
-            JobExperience::START_DATE => $this->{JobExperience::START_DATE}?->format('Y-m-d'),
-            JobExperience::END_DATE => $this->{JobExperience::END_DATE}?->format('Y-m-d'),
+            JobExperience::START_DATE => $this->{JobExperience::START_DATE}?->format('Y/m/d'),
+            JobExperience::END_DATE => $this->{JobExperience::END_DATE}?->format('Y/m/d'),
             'status' => $statusText,
             'status_code' => $this->{JobExperience::STATUS},
             JobExperience::REJECTION_REASON => $this->{JobExperience::REJECTION_REASON},

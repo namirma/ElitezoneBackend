@@ -6,10 +6,11 @@ use App\Models\Badge;
 use App\Models\CustomerType;
 use App\Models\Factory;
 use App\Models\FactoryLocation;
-use App\Models\Offer;
+use App\Models\OrderUnit;
 use App\Models\ProductVariant;
 use App\Services\PriceCalculationService;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 
 class CalculateOrderEstimateAction
 {
@@ -19,72 +20,118 @@ class CalculateOrderEstimateAction
 
     public function execute(array $data, string $activeRoleCode, ?Badge $badge): array
     {
-        // ۱. یافتن مدل‌ها
-        $variant  = ProductVariant::findOrFail($data['variant_id']);
+
+        $variant  = ProductVariant::with('product.offers')->findOrFail($data['variant_id']);
         $factory  = Factory::findOrFail($data['factory_id']);
         $location = FactoryLocation::findOrFail($data['location_id']);
         $customerType = CustomerType::where(CustomerType::CODE, $activeRoleCode)->first();
         $withVat = (bool)($data['with_vat'] ?? false);
 
-        // ۲. محاسبه قیمت واحد (از طریق سرویس)
         $unitDto = $this->priceService->calculatePrice(
             variant: $variant,
             factory: $factory,
             location: $location,
             customerType: $customerType,
             badge: $badge,
-            filterCategoryIds: null, 
+            filterCategoryIds: null,
             withVAT: $withVat,
             filterCategoryCode: $activeRoleCode
         );
 
-        // ۳. محاسبه قیمت کل (وزن * قیمت واحد)
-        $orderDetails = $this->priceService->calculateTotalPrice(
-            quantities: $data['quantities'],
-            unitPrice: $unitDto->finalPrice,
-            withVAT: $withVat
-        );
+        $physicalData = $this->calculatePhysicalData($data['quantities']);
+        $totalWeight = $physicalData['total_weight'];
 
-        // ۴. محاسبه آفرها (تخفیف حجمی)
-        $offers = $this->getEligibleOffers($variant->product, (float)$orderDetails['total_count']);
-        $discountedPrice = $this->applyOffers((float)$orderDetails['subtotal'], $offers);
+        $unitPrice = (float) $unitDto->finalPrice;
+        $unitVat = (float) ($unitDto->vatAmount ?? 0.0);
 
-        // ۵. محاسبه نهایی مالیات و جمع کل
-        $vatAmount = $withVat ? $discountedPrice * ((float)$orderDetails['vat_rate'] / 100) : 0.0;
-        $finalPrice = $discountedPrice + $vatAmount;
+        $lineSubtotal = $totalWeight * ($unitPrice - $unitVat);
+        $totalVat = $totalWeight * $unitVat;
+
+        $offers = $this->getEligibleOffers($variant->product, $totalWeight);
+        $offerDiscount = $this->calculateOfferDiscount($lineSubtotal, $offers);
+
+        // ۵. محاسبه نهایی
+        $finalPrice = max(0, $lineSubtotal - $offerDiscount) + $totalVat;
 
         return [
-            'unit_dto'      => $unitDto,       // برای نمایش جزئیات قیمت واحد
-            'order_details' => $orderDetails,  // وزن کل، تعداد کل
+            'unit_dto'      => $unitDto,
+            'order_details' => [
+                'total_count'  => (string)$physicalData['total_count'],
+                'total_weight' => (string)$totalWeight,
+                'breakdown'    => $physicalData['breakdown'],
+            ],
             'offers'        => $offers,
             'financials'    => [
-                'subtotal'         => $orderDetails['subtotal'],
-                'discount_amount'  => (string)($orderDetails['subtotal'] - $discountedPrice),
-                'discounted_price' => (string)$discountedPrice,
-                'vat_amount'       => (string)$vatAmount,
-                'vat_rate'         => (string)($withVat ? $orderDetails['vat_rate'] : 0.0),
+                'subtotal'         => (string)$lineSubtotal,
+                'discount_amount'  => (string)$offerDiscount,
+                'vat_amount'       => (string)$totalVat,
                 'final_price'      => (string)$finalPrice,
                 'with_vat'         => $withVat,
             ]
         ];
     }
 
-    private function getEligibleOffers($product, float $qty)
+    /**
+     * محاسبه مستقل ویژگی‌های فیزیکی برای ایزوله کردن خطاهای محاسبه
+     */
+    private function calculatePhysicalData(array $quantities): array
     {
-        return $product->offers()->current()
-            ->where(Offer::MINIMUM_QUANTITY, '<=', $qty)
-            ->get();
+        $totalCount = 0.0;
+        $totalWeight = 0.0;
+        $breakdown = [];
+
+        $orderUnits = Cache::remember('pricing:order_units_collection', 86400, fn() => OrderUnit::all()->keyBy('id'));
+
+        foreach ($quantities as $unitIdToString => $qty) {
+            $unitId = (int) $unitIdToString;
+            $currentQty = (float) $qty;
+            $unit = $orderUnits->get($unitId);
+
+            if (!$unit || $currentQty <= 0) continue;
+
+            $weightPerUnit = (float) $unit->amount;
+            $totalCount += $currentQty;
+            $totalWeight += $currentQty * $weightPerUnit;
+
+            $breakdown[] = [
+                'unit_id'      => $unit->id,
+                'unit_name'    => $unit->name,
+                'quantity'     => (string) $currentQty,
+                'unit_weight'  => (string) $weightPerUnit,
+                'total_weight' => (string) ($currentQty * $weightPerUnit),
+            ];
+        }
+
+        return [
+            'total_count'  => $totalCount,
+            'total_weight' => $totalWeight,
+            'breakdown'    => $breakdown,
+        ];
     }
 
-    private function applyOffers(float $price, Collection $offers): float
+    private function getEligibleOffers($product, float $qty): Collection
     {
+        $now = now();
+        // فیلتر کردن کالکشنِ از پیش لود شده برای جلوگیری از اجرای کوئری در دیتابیس
+        return $product->offers->filter(function ($offer) use ($qty, $now) {
+            $isCurrent = (!$offer->start_date || $offer->start_date <= $now) &&
+                         (!$offer->end_date || $offer->end_date >= $now);
+
+            return $isCurrent && $offer->minimum_quantity <= $qty;
+        })->values();
+    }
+
+    private function calculateOfferDiscount(float $subtotal, Collection $offers): float
+    {
+        $discount = 0.0;
+        
         foreach ($offers as $offer) {
-            $price = match ($offer->type) {
-                'percentage'   => $price - ($price * (float)$offer->value / 100),
-                'fixed_amount' => $price - (float)$offer->value,
-                default        => $price,
-            };
+            if ($offer->type === 'percentage') {
+                $discount += $subtotal * ((float)$offer->value / 100);
+            } elseif ($offer->type === 'fixed_amount') {
+                $discount += (float)$offer->value;
+            }
         }
-        return max(0.0, $price);
+        return min($discount, $subtotal);
     }
 }
