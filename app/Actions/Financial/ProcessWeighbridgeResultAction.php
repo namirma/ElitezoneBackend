@@ -42,7 +42,7 @@ class ProcessWeighbridgeResultAction
                 );
             }
 
-            // ۲. آماده‌سازی داده‌ها برای محاسبه مجدد (تزریق مستقیم به فرمول‌های بی‌نقص شما)
+            // ۲. آماده‌سازی داده‌ها برای محاسبه مجدد
             $badgeCode = $order->beneficiary->badge->code ?? 'pioneer';
             $rates = $this->calculator->getCommissionRates($badgeCode);
             $trans = (float) $order->shipping_cost;
@@ -59,11 +59,8 @@ class ProcessWeighbridgeResultAction
             $status = 'equal';
             $orderStatus = Order::STATUS_SHIPPED;
 
-            // شناسه‌ها (تطبیق با کدهای واقعی شما)
             $buyerId = $order->placer_user_id;
             $realSupplierId = $order->items->first()->supplier_user_id;
-
-            // اصلاح ارور ثابت ناموجود: استفاده از WALLET_SAZE
             $systemUserId = 1;
             $systemWalletCode = FinancialCodes::WALLET_SAZE;
 
@@ -72,60 +69,99 @@ class ProcessWeighbridgeResultAction
             // ============================================================
             if ($diffPOO > self::FINANCIAL_TOLERANCE) {
                 $status = 'surplus';
-                $chargeAmount = abs($diffPOO); // مابه‌التفاوت سهم خریدار
-                $payoutAmount = abs($diffPTS); // مابه‌التفاوت سهم سوپلایر
+                $chargeAmount = abs($diffPOO);
+                $payoutAmount = abs($diffPTS);
 
-                // الف) فرمول اول: خریدار (-) ، سازه (+)
                 $this->walletEngine->process('-', $chargeAmount, FinancialCodes::WALLET_OWNER, FinancialCodes::STATUS_AVAILABLE, $order, "بدهی ایجاد شده بابت سرک باسکول", $buyerId);
                 $this->walletEngine->process('+', $chargeAmount, $systemWalletCode, FinancialCodes::STATUS_AVAILABLE, $order, "دریافت بدهی خریدار بابت سرک باسکول سفارش {$order->order_number}", $systemUserId);
 
-                // ب) فرمول دوم: سازه (-) ، سوپلایر (+)
                 $this->walletEngine->process('-', $payoutAmount, $systemWalletCode, FinancialCodes::STATUS_AVAILABLE, $order, "پرداخت سهم تامین‌کننده بابت سرک باسکول سفارش {$order->order_number}", $systemUserId);
                 $this->walletEngine->process('+', $payoutAmount, FinancialCodes::WALLET_SUPPLIER, FinancialCodes::STATUS_AVAILABLE, $order, "دریافت وجه بابت سرک باسکول", $realSupplierId);
 
-                // ج) توقف سفارش + صدور فاکتور مابه‌التفاوت (اصلاح به ثابت واقعی سیستم شما)
                 $orderStatus = Order::STATUS_PENDING_SURPLUS_PAYMENT;
-                $this->invoiceGenerator->generate($order, FinancialCodes::DOC_SUPPLEMENTARY_RECEIPT);
+
+                // صدور اسناد دقیقاً طبق فایل FinancialCodes
+                $this->invoiceGenerator->generate($order, FinancialCodes::DOC_MODIFIED_INVOICE_OWNER);    // LO
+                $this->invoiceGenerator->generate($order, FinancialCodes::DOC_MODIFIED_INVOICE_SUPPLIER); // LS
+                $this->invoiceGenerator->generate($order, FinancialCodes::DOC_SUPPLEMENTARY_RECEIPT);     // J
+                $this->invoiceGenerator->generate($order, FinancialCodes::DOC_SUPPLEMENTARY_REPORT);      // K
             }
             // ============================================================
             // سناریو ۲: کسری بار (Deficit)
             // ============================================================
             elseif ($diffPOO < -self::FINANCIAL_TOLERANCE) {
                 $status = 'deficit';
-                $refundAmount = abs($diffPOO); // مبلغ بازگشتی به خریدار
-                $reclaimAmount = abs($diffPTS); // مبلغ استردادی از سوپلایر
+                $refundAmount = abs($diffPOO);
+                $reclaimAmount = abs($diffPTS);
 
-                // الف) فرمول اول: سازه (-) ، خریدار (+)
                 $this->walletEngine->process('-', $refundAmount, $systemWalletCode, FinancialCodes::STATUS_AVAILABLE, $order, "پرداخت وجه کسری باسکول سفارش {$order->order_number} به خریدار", $systemUserId);
                 $this->walletEngine->process('+', $refundAmount, FinancialCodes::WALLET_OWNER, FinancialCodes::STATUS_AVAILABLE, $order, "بازگشت وجه ناشی از کسری باسکول", $buyerId);
 
-                // ب) فرمول دوم: سوپلایر (-) ، سازه (+)
                 $this->walletEngine->process('-', $reclaimAmount, FinancialCodes::WALLET_SUPPLIER, FinancialCodes::STATUS_AVAILABLE, $order, "کسر بابت کسری باسکول", $realSupplierId);
                 $this->walletEngine->process('+', $reclaimAmount, $systemWalletCode, FinancialCodes::STATUS_AVAILABLE, $order, "بازپس‌گیری از تامین‌کننده بابت کسری باسکول سفارش {$order->order_number}", $systemUserId);
 
-
-                $this->invoiceGenerator->generate($order, FinancialCodes::DOC_MODIFIED_INVOICE_OWNER);
-                $this->invoiceGenerator->generate($order, FinancialCodes::DOC_MODIFIED_INVOICE_SUPPLIER);
-                $this->invoiceGenerator->generate($order, FinancialCodes::DOC_EXIT_PERMIT);
+                // صدور اسناد دقیقاً طبق فایل FinancialCodes (کدهای من‌درآوردی حذف شدند)
+                $this->invoiceGenerator->generate($order, FinancialCodes::DOC_MODIFIED_INVOICE_OWNER);    // LO
+                $this->invoiceGenerator->generate($order, FinancialCodes::DOC_MODIFIED_INVOICE_SUPPLIER); // LS
+                $this->invoiceGenerator->generate($order, FinancialCodes::DOC_REFUND_REPORT_WEIGH);       // M
+                $this->invoiceGenerator->generate($order, FinancialCodes::DOC_EXIT_PERMIT);               // I
             }
             // ============================================================
             // سناریو ۳: بار برابر (Equal)
             // ============================================================
             else {
-                $this->invoiceGenerator->generate($order, FinancialCodes::DOC_EXIT_PERMIT);
+                $this->invoiceGenerator->generate($order, FinancialCodes::DOC_EXIT_PERMIT);               // I
             }
 
-            // ۴. آپدیت نهایی سفارش با مقادیر جدید
+            // ============================================================
+            // ۴. توزیع حساب‌های امانی: سهم مشاور فنی و مالیات بر ارزش افزوده
+            // ============================================================
+            $base = $trans + ($op * $actualWeight);
+            $vatMultiplier = ($vat / 100) / (1 + ($vat / 100));
+
+            // الف) تفکیک و هولد سهم مشاور فنی
+            $consultantUserId = $order->beneficiary_user_id;
+            $coRate = $rates['co_final_rate'] / 100;
+            $consultantGross = $base * $coRate * (1 + ($vat / 100));
+
+            if ($consultantUserId && $consultantUserId !== $buyerId && $consultantGross > 0) {
+                $consultantVat = $consultantGross * $vatMultiplier;
+                $consultantNet = $consultantGross - $consultantVat;
+
+                $this->walletEngine->process('-', $consultantGross, FinancialCodes::WALLET_SAZE, FinancialCodes::STATUS_AVAILABLE, $order, "تخصیص سهم مشاور فنی سفارش {$order->order_number}", $systemUserId);
+                $this->walletEngine->process('+', $consultantNet, FinancialCodes::WALLET_CONSULTANT, FinancialCodes::STATUS_HOLD, $order, "کمیسیون امانی مشاور فنی تا صدور فاکتور مودیان", $consultantUserId);
+                $this->walletEngine->process('+', $consultantVat, FinancialCodes::WALLET_VAT, FinancialCodes::STATUS_HOLD, $order, "مالیات بر ارزش افزوده کمیسیون مشاور فنی (امانی)", $systemUserId);
+            } else {
+                $consultantGross = 0;
+            }
+
+            // ب) تفکیک و هولد مالیات تامین‌کننده (سوپلایر)
+            $supplierVat = $newPTS * $vatMultiplier;
+            if ($supplierVat > 0) {
+                $this->walletEngine->process('-', $supplierVat, FinancialCodes::WALLET_SUPPLIER, FinancialCodes::STATUS_AVAILABLE, $order, "کسر مالیات امانی سفارش {$order->order_number} تا زمان تسویه مودیان", $realSupplierId);
+                $this->walletEngine->process('+', $supplierVat, FinancialCodes::WALLET_VAT, FinancialCodes::STATUS_HOLD, $order, "مالیات بر ارزش افزوده تامین‌کننده (امانی)", $systemUserId);
+            }
+
+            // ج) تفکیک و هولد مالیات گروه سازه
+            $sazeGross = ($newPOO - $newPTS) - $consultantGross;
+            $sazeVat = $sazeGross * $vatMultiplier;
+            if ($sazeVat > 0) {
+                $this->walletEngine->process('-', $sazeVat, FinancialCodes::WALLET_SAZE, FinancialCodes::STATUS_AVAILABLE, $order, "کسر مالیات بر ارزش افزوده پلتفرم", $systemUserId);
+                $this->walletEngine->process('+', $sazeVat, FinancialCodes::WALLET_VAT, FinancialCodes::STATUS_HOLD, $order, "مالیات بر ارزش افزوده گروه سازه (امانی)", $systemUserId);
+            }
+
+            // ۵. آپدیت نهایی سفارش با مقادیر جدید
             $order->update([
                 Order::WEIGHT_AFTER_SCALE => $actualWeight,
                 Order::WEIGHING_COMPLETED_AT => now(),
                 'status' => $orderStatus,
                 'payment_of_owner' => $newPOO,
                 'payment_to_supplier' => $newPTS,
+                'payment_to_consultant' => $consultantGross,
                 'final_amount' => $newPOO,
             ]);
 
-            Log::info("باسکول نهایی شد. وضعیت: {$status}");
+            Log::info("باسکول نهایی شد و مبالغ امانی مشاور و مالیات با موفقیت تفکیک و هولد شدند. وضعیت: {$status}");
 
             return [
                 'status'         => $status,

@@ -51,8 +51,8 @@ class ProcessReservationCompletionAction
             $PTR = (float) $order->payment_to_reserve;
 
             if ($POO <= 0) {
-                 $POO = (float) $order->final_amount;
-                 if ($PTS <= 0) $PTS = $POO * 0.9;
+                $POO = (float) $order->final_amount;
+                if ($PTS <= 0) $PTS = $POO * 0.9;
             }
 
             // 2. محاسبه مبلغ باقیمانده (Remaining Amount)
@@ -88,7 +88,7 @@ class ProcessReservationCompletionAction
 
             // 6. بروزرسانی نهایی سفارش
             $order->update([
-                Order::STATUS => Order::STATUS_PROCESSING, // وضعیت: در حال پردازش (آماده بارگیری)
+                Order::STATUS => Order::STATUS_PROCESSING, 
                 Order::PAYMENT_STATUS => Order::PAYMENT_PAID,
                 Order::PAYMENT_OF_OWNER => $POO,
                 Order::PAYMENT_TO_SUPPLIER => $PTS,
@@ -96,9 +96,9 @@ class ProcessReservationCompletionAction
             ]);
 
             // 7. صدور اسناد نهایی (G, H, C)
-            $this->invoiceGenerator->generate($order, FinancialCodes::DOC_FINAL_RECEIPT_OWNER);   // سند G
-            $this->invoiceGenerator->generate($order, FinancialCodes::DOC_FINAL_REPORT_SUPPLIER); // سند H
-            $this->invoiceGenerator->generate($order, FinancialCodes::DOC_LOADING_ORDER);         // سند C (مجوز بارگیری)
+            $this->invoiceGenerator->generate($order, FinancialCodes::DOC_FINAL_RECEIPT_OWNER);
+            $this->invoiceGenerator->generate($order, FinancialCodes::DOC_FINAL_REPORT_SUPPLIER);
+            $this->invoiceGenerator->generate($order, FinancialCodes::DOC_LOADING_ORDER);
 
             Log::info("تکمیل وجه سفارش {$order->id} انجام شد و اسناد G, H, C صادر گردید.");
         });

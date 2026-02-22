@@ -14,6 +14,7 @@ use App\Models\PriceFilterCategory;
 use App\Models\User;
 use App\Models\UserType;
 use App\Models\ShippingMethod;
+use App\Services\DocumentSequenceService;
 use App\Services\Financial\SettlementCalculatorService;
 use App\Services\InventoryService;
 use App\Services\PriceCalculationService;
@@ -28,7 +29,8 @@ class PlaceOrderAction
         private readonly PriceCalculationService $priceService,
         private readonly PricingRoleResolver $roleResolver,
         private readonly InventoryService $inventoryService,
-        private readonly SettlementCalculatorService $settlementCalculator
+        private readonly SettlementCalculatorService $settlementCalculator,
+        private readonly DocumentSequenceService $sequenceService
     ) {}
 
     public function execute(User $user, PlaceOrderData $data): Order
@@ -39,7 +41,7 @@ class PlaceOrderAction
 
         $order = DB::transaction(function () use ($user, $cart, $data, $financials) {
 
-            $order = $this->createOrderRecord($user, $data, $financials);
+            $order = $this->createOrderRecord($user, $data, $financials, $cart);
 
             $this->createOrderItems($order, $cart, $financials['items_data']);
 
@@ -66,9 +68,9 @@ class PlaceOrderAction
             'badge',
             'priceFilterCategories'
         ])
-        ->where(Cart::USER_ID, $user->id)
-        ->latest('updated_at')
-        ->first();
+            ->where(Cart::USER_ID, $user->id)
+            ->latest('updated_at')
+            ->first();
 
         if (! $cart || $cart->items->isEmpty()) {
             throw new CartIsEmptyException(__('orders.errors.cart_empty'));
@@ -207,19 +209,30 @@ class PlaceOrderAction
         return $fees;
     }
 
-    private function createOrderRecord(User $user, PlaceOrderData $data, array $fins): Order
+    private function createOrderRecord(User $user, PlaceOrderData $data, array $fins, Cart $cart): Order
     {
+        // ۱. تشخیص کانتکست (Context) کالا بر اساس اولین آیتم سبد خرید
+        // می‌توانید منطق شرط را بر اساس ساختار دیتابیس خودتان (مثلاً نام دسته‌بندی) تنظیم کنید
+        $firstItemCategory = $cart->items->first()->productVariant->product->category_code ?? '';
+        $context = (strtoupper($firstItemCategory) === 'BRICK')
+            ? DocumentSequenceService::CTX_BRICK
+            : DocumentSequenceService::CTX_REBAR;
 
-        do {
-            $orderNumber = 'EL-' . strtoupper(Str::random(10));
-        } while (Order::where(Order::ORDER_NUMBER, $orderNumber)->exists());
+        // ۲. تولید شماره سفارش هوشمند، یکتا و استاندارد (مثال: EZ-ORD-RB-140502-70300100)
+        $orderNumber = $this->sequenceService->generate(
+            DocumentSequenceService::TYPE_ORDER,
+            $context,
+            Order::class,
+            Order::ORDER_NUMBER
+        );
 
+        // ۳. ثبت نهایی در دیتابیس
         return Order::create([
             Order::PLACER_USER_ID                => $user->id,
             Order::BENEFICIARY_USER_ID           => $data->beneficiaryUserId ?? $user->id,
             Order::ADDRESS_ID                    => $data->addressId,
             'shipping_method_id'                 => $data->shippingMethodId ?? 1,
-            Order::ORDER_NUMBER                  => $orderNumber,
+            Order::ORDER_NUMBER                  => $orderNumber, // استفاده از شماره تولید شده
             Order::STATUS                        => Order::STATUS_PENDING,
             Order::PAYMENT_STATUS                => Order::PAYMENT_PENDING,
 
