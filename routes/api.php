@@ -63,6 +63,9 @@ use App\Http\Middleware\EnsureRoleIsSelected;
 |--------------------------------------------------------------------------
 */
 
+Route::prefix('ticket')->group(__DIR__ . '/v1/api.php');
+
+
 // --- 1. روت‌های عمومی (Public) ---
 Route::post('/payment/result', [PaymentController::class, 'result']);
 Route::any('/payment/callback', [PaymentController::class, 'callback'])->name('payment.callback');
@@ -110,7 +113,7 @@ Route::prefix('products')->middleware(['attach.price.category'])->group(function
 });
 
 Route::prefix('products')->middleware(['auth:sanctum', 'attach.price.category'])->group(function () {
-    
+
     Route::post('/calculate-price', [ProductController::class, 'calculateOrderPrice']);
 });
 

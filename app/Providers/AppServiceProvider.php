@@ -3,7 +3,9 @@
 namespace App\Providers;
 
 use App\Models\Order;
+use App\Models\Ticket;
 use App\Models\User;
+use App\Observers\TicketObserver;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
@@ -44,5 +46,6 @@ class AppServiceProvider extends ServiceProvider
         });
         ProductPrice::observe(ProductPriceObserver::class);
         Order::observe(OrderObserver::class);
+        Ticket::observe(TicketObserver::class);
     }
 }

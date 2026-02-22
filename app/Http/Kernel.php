@@ -4,6 +4,7 @@ namespace App\Http;
 
 use App\Http\Middleware\AttachActivePriceCategory;
 use App\Http\Middleware\Authenticate;
+use App\Http\Middleware\CanSeeTicket;
 use App\Http\Middleware\Cors;
 use App\Http\Middleware\EncryptCookies;
 use App\Http\Middleware\PreventRequestsDuringMaintenance;
@@ -107,5 +108,6 @@ class Kernel extends HttpKernel
         'track' => TrackDashboardUsage::class,
         'idempotency' => Idempotency::class,
         'role.selected' => EnsureRoleIsSelected::class,
+        'can-see-ticket' => CanSeeTicket::class,
     ];
 }
