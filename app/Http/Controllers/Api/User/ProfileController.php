@@ -111,88 +111,145 @@ class ProfileController extends Controller
 
     public function setUserType(StoreUserTypeRequest $request): JsonResponse
     {
-        $user = Auth::user();
-        $validated = $request->validated();
-        $newDisplayRoles = collect($validated['roles']);
+        return DB::transaction(function () use ($request) {
+            /** @var User $user */
+            $user = Auth::user();
+            $validated = $request->validated();
+            $newDisplayRoles = collect($validated['roles']); // e.g., ['expert']
 
-        $userTypes = UserType::query()
-            ->whereIn(UserType::SLUG, ['expert', 'employer', 'supplier'])
-            ->pluck(UserType::ID, UserType::SLUG);
+            // =========================================================================
+            //  1. Agreement & Signature Logic (New)
+            // =========================================================================
+            // تعیین نوع توافق‌نامه بر اساس نقش انتخابی
+            $agreementSlug = null;
 
-        $expertTypeId = $userTypes->get('expert');
-        $employerTypeId = $userTypes->get('employer');
-        $supplierTypeId = $userTypes->get('supplier');
-
-        if (!$expertTypeId || !$employerTypeId || !$supplierTypeId) {
-            Log::error("Missing required UserType slugs in database (expert, employer, supplier). Check UserTypeSeeder.");
-            return error(__('profile.usertype_missing'), [], 500);
-        }
-
-        $targetTypeId = null;
-        if ($newDisplayRoles->contains('expert')) {
-            $targetTypeId = $expertTypeId;
-        } elseif ($newDisplayRoles->contains('employer')) {
-            $targetTypeId = $employerTypeId;
-        } elseif ($newDisplayRoles->contains('supplier')) {
-            $targetTypeId = $supplierTypeId;
-        }
-
-        if (is_null($targetTypeId)) {
-            return error(__('profile.invalid_role_selection'), [], 422);
-        }
-        if ($user->{User::TYPE_ID} !== $targetTypeId) {
-            $user->forceFill([User::TYPE_ID => $targetTypeId])->save();
-        }
-
-        $currentRoles = $user->roles->pluck('name');
-
-        if ($newDisplayRoles->contains('employer')) {
-            if (!$currentRoles->contains('employer')) {
-                $user->addRole('employer');
+            if ($newDisplayRoles->contains('expert')) {
+                $agreementSlug = 'consultant_terms'; 
+            } elseif ($newDisplayRoles->contains('employer')) {
+                $agreementSlug = 'employer_terms';
+            } elseif ($newDisplayRoles->contains('supplier')) {
+                $agreementSlug = 'supplier_terms';
             }
-            $user->employer()->firstOrCreate([EmployerProfile::USER_ID => $user->id]);
-        } else {
-            $user->removeRole('employer');
-            $user->employer()->where(EmployerProfile::USER_ID, $user->id)->delete();
-        }
 
-        if ($newDisplayRoles->contains('supplier')) {
-            if (!$currentRoles->contains('supplier')) {
-                $user->addRole('supplier');
+            // ثبت امضا
+            if ($agreementSlug) {
+                $agreement = \App\Models\Agreement::where(\App\Models\Agreement::SLUG, $agreementSlug)
+                    ->active()
+                    ->latest(\App\Models\Agreement::CREATED_AT)
+                    ->first();
+
+                if ($agreement) {
+                    // اگر کاربر تیک زده باشد، ثبت می‌کنیم
+                    if ($request->boolean('terms_accepted')) {
+                        $user->agreements()->syncWithoutDetaching([
+                            $agreement->id => [
+                                'accepted_at' => now(),
+                                'ip_address'  => $request->ip(),
+                                'user_agent'  => $request->header('User-Agent'),
+                            ]
+                        ]);
+                    } elseif ($agreement->is_mandatory) {
+                        throw new \App\Exceptions\BusinessException(__('auth.agreements.required'));
+                    }
+                }
             }
-            $user->supplier()->firstOrCreate([SupplierProfile::USER_ID => $user->id]);
-        } else {
-            $user->removeRole('supplier');
-            $user->supplier()->where(SupplierProfile::USER_ID, $user->id)->delete();
-        }
 
-        if (!$newDisplayRoles->contains('expert')) {
-            $user->removeRoles(['engineer', 'contractor']);
-            $user->engineer()->where(EngineerProfile::USER_ID, $user->id)->delete();
-            $user->contractor()->where(ContractorProfile::USER_ID, $user->id)->delete();
-            $user->eduixRecords()->delete();
+            // =========================================================================
+            //  2. Resolve User Types
+            // =========================================================================
+            $userTypes = UserType::query()
+                ->whereIn(UserType::SLUG, ['expert', 'employer', 'supplier'])
+                ->pluck(UserType::ID, UserType::SLUG);
 
-            // TODO: حذف فایل‌های فیزیکی jobExperiences قبل از اجرای delete
-            $user->jobExperiences()->delete();
-        }
+            $expertTypeId = $userTypes->get('expert');
+            $employerTypeId = $userTypes->get('employer');
+            $supplierTypeId = $userTypes->get('supplier');
 
-        $user = $user->fresh([
-            User::RELATION_ROLES,
-            User::RELATION_TYPE,
-            User::RELATION_EMPLOYER,
-            User::RELATION_SUPPLIER,
-            User::RELATION_ENGINEER,
-            User::RELATION_CONTRACTOR,
-            User::RELATION_PROFILE,
-            User::RELATION_BADGE,
-            User::RELATION_EDUIX_RECORDS,
-            User::RELATION_JOB_EXPERIENCES
-        ]);
+            if (!$expertTypeId || !$employerTypeId || !$supplierTypeId) {
+                Log::error("Missing required UserType slugs in database. Check UserTypeSeeder.");
+                return error(__('profile.usertype_missing'), [], 500);
+            }
 
-        return success(
-            new UserResource($user),
-            __('profile.type_set_successfully')
-        );
+            // =========================================================================
+            //  3. Determine Target Type ID
+            // =========================================================================
+            $targetTypeId = null;
+            if ($newDisplayRoles->contains('expert')) {
+                $targetTypeId = $expertTypeId;
+            } elseif ($newDisplayRoles->contains('employer')) {
+                $targetTypeId = $employerTypeId;
+            } elseif ($newDisplayRoles->contains('supplier')) {
+                $targetTypeId = $supplierTypeId;
+            }
+
+            if (is_null($targetTypeId)) {
+                return error(__('profile.invalid_role_selection'), [], 422);
+            }
+
+            // Update User Type if changed
+            if ($user->{User::TYPE_ID} !== $targetTypeId) {
+                $user->forceFill([User::TYPE_ID => $targetTypeId])->save();
+            }
+
+            // =========================================================================
+            //  4. Sync Roles & Profiles
+            // =========================================================================
+            $currentRoles = $user->roles->pluck('name');
+
+            // --- Employer Logic ---
+            if ($newDisplayRoles->contains('employer')) {
+                if (!$currentRoles->contains('employer')) {
+                    $user->addRole('employer');
+                }
+                $user->employer()->firstOrCreate([EmployerProfile::USER_ID => $user->id]);
+            } else {
+                $user->removeRole('employer');
+                $user->employer()->where(EmployerProfile::USER_ID, $user->id)->delete();
+            }
+
+            // --- Supplier Logic ---
+            if ($newDisplayRoles->contains('supplier')) {
+                if (!$currentRoles->contains('supplier')) {
+                    $user->addRole('supplier');
+                }
+                $user->supplier()->firstOrCreate([SupplierProfile::USER_ID => $user->id]);
+            } else {
+                $user->removeRole('supplier');
+                $user->supplier()->where(SupplierProfile::USER_ID, $user->id)->delete();
+            }
+
+            // --- Expert Logic (Clean up if removed) ---
+            if (!$newDisplayRoles->contains('expert')) {
+                $user->removeRoles(['engineer', 'contractor']);
+                $user->engineer()->where(EngineerProfile::USER_ID, $user->id)->delete();
+                $user->contractor()->where(ContractorProfile::USER_ID, $user->id)->delete();
+                $user->eduixRecords()->delete();
+
+                // TODO: Handle physical file deletion for jobExperiences if necessary
+                $user->jobExperiences()->delete();
+            }
+
+            // =========================================================================
+            //  5. Response
+            // =========================================================================
+            $user = $user->fresh([
+                User::RELATION_ROLES,
+                User::RELATION_TYPE,
+                User::RELATION_EMPLOYER,
+                User::RELATION_SUPPLIER,
+                User::RELATION_ENGINEER,
+                User::RELATION_CONTRACTOR,
+                User::RELATION_PROFILE,
+                User::RELATION_BADGE,
+                User::RELATION_EDUIX_RECORDS,
+                User::RELATION_JOB_EXPERIENCES
+            ]);
+
+            return success(
+                new UserResource($user),
+                __('profile.type_set_successfully')
+            );
+        });
     }
     public function setProfile(StoreUserProfileRequest $request): JsonResponse
     {

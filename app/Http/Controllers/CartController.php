@@ -131,11 +131,10 @@ class CartController extends Controller
     {
         $cart = $this->resolveCart($request);
 
-        // بارگذاری روابط مورد نیاز برای محاسبه قیمت و نمایش
         $cart->loadMissing([
             'items.productVariant.product.images',
             'items.productVariant.variantAttributes.attributeType',
-            'items.productVariant.product.orderUnits', // برای نمایش واحدها
+            'items.productVariant.product.orderUnits',
             'items.factory',
             'items.factoryLocation',
             'items.shippingMethod',
@@ -162,7 +161,6 @@ class CartController extends Controller
             ],
         ], 'global.received_successfully');
 
-        // اگر کاربر مهمان است، کوکی سشن را تمدید کن
         if (!$cart->user_id) {
             $response->cookie('cart_session_id', $cart->session_id, 60 * 24 * 30);
         }
@@ -187,7 +185,6 @@ class CartController extends Controller
             );
         }
 
-        // اطمینان از داشتن CustomerType و ActiveCode صحیح
         $this->ensureCartContext($cart);
 
         return $cart;
@@ -233,7 +230,7 @@ class CartController extends Controller
 
         return new PricingContextData(
             activeCode: $activeCode,
-            customerType: $cart->customerType, // استفاده از نوع مشتری ذخیره شده در سبد
+            customerType: $cart->customerType,
             badge: $cart->badge,
             filterCategoryIds: $filterIds,
             withVat: true,
