@@ -481,14 +481,19 @@ class ProfileController extends Controller
         Log::warning("Deprecated method ProfileController::removeProfile() was called.");
     }
 
- public function getMessages(Request $request): JsonResponse
+    public function getMessages(Request $request): JsonResponse
     {
         $user = Auth::user();
         if (!$user) return error(__('auth.unauthenticated'), [], 401);
+
         $query = UserNotification::where(UserNotification::USER_ID, $user->id);
+        
         if ($request->input('filter') === 'unread') {
             $query->whereNull(UserNotification::READ_AT);
+        } elseif ($request->input('filter') === 'read') {
+            $query->whereNotNull(UserNotification::READ_AT);
         }
+
         $items = $query->latest()->paginate(20);
 
         return success(
