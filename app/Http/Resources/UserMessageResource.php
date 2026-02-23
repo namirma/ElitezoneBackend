@@ -16,7 +16,6 @@ class UserMessageResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        // تبدیل امن تاریخ‌ها به آبجکت Carbon برای جلوگیری از خطای String
         $readAt = $this->read_at ? Carbon::parse($this->read_at) : null;
         $createdAt = $this->created_at ? Carbon::parse($this->created_at) : null;
 
