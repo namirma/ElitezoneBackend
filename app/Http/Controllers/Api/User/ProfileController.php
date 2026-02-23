@@ -124,7 +124,7 @@ class ProfileController extends Controller
             $agreementSlug = null;
 
             if ($newDisplayRoles->contains('expert')) {
-                $agreementSlug = 'consultant_terms'; 
+                $agreementSlug = 'consultant_terms';
             } elseif ($newDisplayRoles->contains('employer')) {
                 $agreementSlug = 'employer_terms';
             } elseif ($newDisplayRoles->contains('supplier')) {
@@ -481,36 +481,97 @@ class ProfileController extends Controller
         Log::warning("Deprecated method ProfileController::removeProfile() was called.");
     }
 
-    public function getMessages(): JsonResponse
+    public function getMessages(Request $request): JsonResponse
     {
         $user = Auth::user();
         if (!$user) return error(__('auth.unauthenticated'), [], 401);
-        $items = UserNotification::where([UserNotification::USER_ID], $user->id)->latest()->get();
-        return success(UserMessageResource::collection($items), __('global.received_successfully'));
+
+        $query = UserNotification::where(UserNotification::USER_ID, $user->id);
+        
+        if ($request->input('filter') === 'unread') {
+            $query->whereNull(UserNotification::READ_AT);
+        } elseif ($request->input('filter') === 'read') {
+            $query->whereNotNull(UserNotification::READ_AT);
+        }
+
+        $items = $query->latest()->paginate(20);
+
+        return success(
+            UserMessageResource::collection($items)->response()->getData(true),
+            __('global.received_successfully')
+        );
     }
 
+    /**
+     * دریافت تعداد پیام‌های خوانده نشده
+     * کاربرد: نمایش عدد قرمز روی آیکون زنگوله در هدر سایت
+     */
+    public function getUnreadMessagesCount(): JsonResponse
+    {
+        $user = Auth::user();
+        if (!$user) return error(__('auth.unauthenticated'), [], 401);
+
+        $count = UserNotification::where(UserNotification::USER_ID, $user->id)
+            ->whereNull(UserNotification::READ_AT)
+            ->count();
+
+        return success(['unread_count' => $count], __('global.received_successfully'));
+    }
+
+    /**
+     * تغییر وضعیت یک پیام به "خوانده شده"
+     */
     public function updateMessageStatus(UserNotification $userNotification): JsonResponse
     {
         $user = Auth::user();
+
+        // بررسی مالکیت پیام
         if (!$user || $userNotification->{UserNotification::USER_ID} !== $user->id) {
             return error(__('auth.forbidden'), [], 403);
         }
+
         if (is_null($userNotification->{UserNotification::READ_AT})) {
-            $userNotification->update([UserNotification::READ_AT => Carbon::now()]);
+            $userNotification->update([
+                UserNotification::READ_AT => Carbon::now()
+            ]);
         }
+
         return success(new UserMessageResource($userNotification), __('profile.message_marked_read'));
     }
 
+    /**
+     * تغییر وضعیت "همه" پیام‌ها به "خوانده شده"
+     */
     public function updateAllMessageStatus(): JsonResponse
     {
         $user = Auth::user();
         if (!$user) return error(__('auth.unauthenticated'), [], 401);
-        $updatedCount = UserNotification::where([UserNotification::USER_ID], $user->id)
+
+        $updatedCount = UserNotification::where(UserNotification::USER_ID, $user->id)
             ->whereNull(UserNotification::READ_AT)
-            ->update([UserNotification::READ_AT => Carbon::now()]);
+            ->update([
+                UserNotification::READ_AT => Carbon::now()
+            ]);
+
         return success(['updated_count' => $updatedCount], __('profile.all_messages_marked_read'));
     }
 
+    /**
+     * حذف یک پیام
+     */
+    public function deleteMessage(UserNotification $userNotification): JsonResponse
+    {
+        $user = Auth::user();
+
+        if (!$user || $userNotification->{UserNotification::USER_ID} !== $user->id) {
+            return error(__('auth.forbidden'), [], 403);
+        }
+
+        // حذف پیام
+        $userNotification->delete();
+
+        return success([], __('global.deleted_successfully'));
+    }
     public function setEmail(VerifyEmailRequest $request): JsonResponse
     {
         $user = Auth::user();

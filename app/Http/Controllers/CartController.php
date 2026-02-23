@@ -193,6 +193,9 @@ class CartController extends Controller
     /**
      * تنظیم مقادیر پیش‌فرض سبد (نوع مشتری و فیلترهای فعال)
      */
+    /**
+     * تنظیم مقادیر پیش‌فرض سبد (نوع مشتری و فیلترهای فعال + سینک کردن بج)
+     */
     private function ensureCartContext(Cart $cart): void
     {
         $activeCode = $this->activeCode();
@@ -207,19 +210,31 @@ class CartController extends Controller
         }
 
         // 2. همگام‌سازی با Active Code (اگر کاربر لاگین کرده و نقشش عوض شده)
-        // این لاجیک اختیاری است و بسته به بیزنس شما دارد
         $ct = CustomerType::where(CustomerType::CODE, $activeCode)->first();
         if ($ct && $cart->customer_type_id !== $ct->id) {
             $cart->update([Cart::CUSTOMER_TYPE_ID => $ct->id]);
         }
 
-        // اگر لازم است فیلتر قیمت هم بر اساس نقش ست شود:
-        // $pf = PriceFilterCategory::where(PriceFilterCategory::CODE, $activeCode)->first();
-        // if ($pf && $cart->priceFilterCategories->isEmpty()) {
-        //    $cart->priceFilterCategories()->sync([$pf->id]);
-        // }
-    }
+        // 3. همگام‌سازی نشان (Badge) کاربر با سبد خرید [بخش جدید]
+        if (Auth::check()) {
+            $user = Auth::user();
 
+            // ابتدا از ستون badge_id خود کاربر می‌خوانیم
+            $userBadgeId = $user->badge_id;
+
+            // اگر ستون badge_id خالی بود اما در جدول واسط رکورد داشت (فال‌بک)
+            if (!$userBadgeId) {
+                // آخرین بج تخصیص داده شده را می‌گیریم
+                $latestBadge = $user->badges()->latest('badge_user.created_at')->first();
+                $userBadgeId = $latestBadge?->id;
+            }
+
+            // اگر کاربر بج دارد و سبد خرید ست نشده (یا متفاوت است)، آپدیت کن
+            if ($userBadgeId && $cart->badge_id !== $userBadgeId) {
+                $cart->update([Cart::BADGE_ID => $userBadgeId]);
+            }
+        }
+    }   
     private function buildPricingContext(Cart $cart): PricingContextData
     {
         $activeCode = $this->activeCode();

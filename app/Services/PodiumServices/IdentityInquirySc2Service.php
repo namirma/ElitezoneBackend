@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\PodiumServices;
 
+use App\Services\PodiumClient;
 use Illuminate\Support\Facades\Config;
 use InvalidArgumentException;
 

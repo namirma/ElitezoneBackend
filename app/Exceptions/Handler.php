@@ -3,12 +3,10 @@
 namespace App\Exceptions;
 
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
-use Illuminate\Http\Exceptions\ThrottleRequestsException;
-use Illuminate\Http\Exceptions\HttpResponseException; // <--- ایمپورت مهم
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 use Symfony\Component\Routing\Exception\RouteNotFoundException;
-use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface; // <--- ایمپورت مهم
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Auth\AuthenticationException;
@@ -34,7 +32,7 @@ class Handler extends ExceptionHandler
         });
     }
 
-    // متد unauthenticated پیش‌فرض لاراول را بازنویسی می‌کنیم
+    // متد unauthenticated برای زمانی که توکن کاربر معتبر نیست
     protected function unauthenticated($request, AuthenticationException $exception)
     {
         if ($request->expectsJson() || $request->is('api/*')) {
@@ -49,8 +47,7 @@ class Handler extends ExceptionHandler
 
     private function handleApiException(Throwable $e)
     {
-        // 1. اگر خطا خودش یک پاسخ HTTP معتبر است (مثل زمانی که یک میدلور پاسخ می‌دهد)
-        // این همان چیزی است که خطای helpers.php:40 را حل می‌کند
+        // 1. خطاهای HTTP سفارشی (response آماده)
         if ($e instanceof HttpResponseException) {
             return $e->getResponse();
         }
@@ -60,7 +57,7 @@ class Handler extends ExceptionHandler
             return $this->jsonResponse('احراز هویت نشده‌اید. لطفاً وارد حساب کاربری شوید.', 401);
         }
 
-        // 3. مشکل روت لاگین (ریدایرکت ناموفق)
+        // 3. مشکل روت لاگین
         if ($e instanceof RouteNotFoundException) {
             if (str_contains($e->getMessage(), 'Route [login] not defined')) {
                 return $this->jsonResponse('احراز هویت نشده‌اید. لطفاً وارد حساب کاربری شوید.', 401);
@@ -68,52 +65,68 @@ class Handler extends ExceptionHandler
             return $this->jsonResponse('مسیر مورد نظر یافت نشد.', 404);
         }
 
-        // 4. عدم دسترسی (403)
+        // 4. عدم دسترسی (AuthorizationException - معمولاً توسط Policyهای لاراول)
         if ($e instanceof AuthorizationException) {
-            return $this->jsonResponse('شما اجازه دسترسی به این بخش را ندارید.', 403);
+            return $this->jsonResponse('شما نقش یا مجوز لازم برای دسترسی به این بخش را ندارید.', 403);
         }
 
         // 5. یافت نشد (404)
         if ($e instanceof NotFoundHttpException || $e instanceof ModelNotFoundException) {
-            $message = 'مسیر مورد نظر یافت نشد.';
-            if ($e instanceof ModelNotFoundException || $e->getPrevious() instanceof ModelNotFoundException) {
-                $message = __('global.model_not_found') ?: 'آیتم مورد نظر یافت نشد.';
+            $message = 'مسیر یا آیتم مورد نظر یافت نشد.';
+            if ($e instanceof ModelNotFoundException) {
+                $message = 'رکوردی با مشخصات وارد شده یافت نشد.';
             }
             return $this->jsonResponse($message, 404);
         }
 
-        // 6. سایر خطاهای HTTP استاندارد (مثل abort(403) یا abort(503))
         if ($e instanceof HttpExceptionInterface) {
-            return $this->jsonResponse($e->getMessage(), $e->getStatusCode());
+            $statusCode = $e->getStatusCode();
+            $message = $e->getMessage();
+
+            if ($statusCode === 403) {
+                $message = 'شما دسترسی لازم برای انجام این عملیات را ندارید.';
+            }
+
+            // اگر پیام خالی بود (مثلا abort(500))
+            if (empty($message)) {
+                $message = match ($statusCode) {
+                    403 => 'دسترسی غیرمجاز',
+                    404 => 'یافت نشد',
+                    500 => 'خطای سرور',
+                    default => 'خطای درخواست',
+                };
+            }
+
+            return $this->jsonResponse($message, $statusCode);
         }
 
         // 7. ولیدیشن (422)
         if ($e instanceof ValidationException) {
             return response()->json([
                 'status'  => false,
-                'message' => $e->getMessage(),
-                'errors'  => $e->errors(),
+                'message' => 'اطلاعات ارسالی معتبر نیست.', // پیام کلی
+                'errors'  => $e->errors(), // جزئیات فیلدها
             ], 422);
         }
 
         // 8. دیتابیس (500)
         if ($e instanceof QueryException) {
+            // لاگ کردن خطای اصلی برای برنامه‌نویس
             Log::error('Database Error: ' . $e->getMessage());
+
+            // در حالت پروداکشن نباید خطای SQL را به کاربر نشان داد
             $message = config('app.debug') ? $e->getMessage() : 'خطای پایگاه داده رخ داده است.';
             return $this->jsonResponse($message, 500);
         }
 
-        // 9. خطای ناشناخته (500)
-        Log::error('Server Error (' . get_class($e) . '): ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+        // 9. سایر خطاهای سرور (500)
+        Log::error('Server Error: ' . $e->getMessage(), ['exception' => $e]);
 
-        $message = $e->getMessage();
-        if (!config('app.debug') || empty($message)) {
-            $message = 'خطای داخلی سرور رخ داده است.';
-        }
-
+        $message = config('app.debug') ? $e->getMessage() : 'خطای داخلی سرور رخ داده است.';
         return $this->jsonResponse($message, 500);
     }
 
+    // متد کمکی برای ساخت پاسخ جیسون
     private function jsonResponse($message, $code)
     {
         return response()->json([

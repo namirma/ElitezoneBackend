@@ -19,10 +19,9 @@ class DebitWalletAction
         ?string $description = null,
         array $meta = [],
         string $type = WalletTransaction::TYPE_WITHDRAW
-    ): WalletTransaction
-    {
+    ): WalletTransaction {
         return DB::transaction(function () use ($user, $amount, $description, $meta, $type) {
-            $wallet = $user->wallet()->firstOrCreate([]);
+            $wallet = $user->wallet()->lockForUpdate()->firstOrCreate([]);
             if ($wallet->balance < $amount) {
                 throw new Exception(__('wallet.insufficient_balance'));
             }

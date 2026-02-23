@@ -4,7 +4,6 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Resources\Json\JsonResource;
 use App\Models\Cart;
-use App\Models\PriceFilterCategory;
 
 class CartResource extends JsonResource
 {
@@ -16,14 +15,11 @@ class CartResource extends JsonResource
             Cart::SESSION_ID           => $this->session_id,
             Cart::CUSTOMER_TYPE_ID     => $this->customer_type_id,
             Cart::BADGE_ID             => $this->badge_id,
-            Cart::CREATED_AT => $this->created_at?->format('Y-m-d H:i:s'),
-            Cart::UPDATED_AT => $this->updated_at?->format('Y-m-d H:i:s'),
+            'created_at'               => $this->created_at?->format('Y-m-d H:i:s'),
+            'updated_at'               => $this->updated_at?->format('Y-m-d H:i:s'),
             'customer_type'           => new CustomerTypeResource($this->whenLoaded('customerType')),
             'badge'                   => new BadgeResource($this->whenLoaded('badge')),
-            'items' => CartItemResource::collection(
-                $this->whenLoaded('items')
-            ),
-
+            'items' => CartItemResource::collection($this->whenLoaded('items')),
         ];
     }
 }

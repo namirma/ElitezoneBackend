@@ -3,58 +3,51 @@
 namespace App\Actions\Order;
 
 use App\DataTransferObjects\PlaceOrderData;
-use App\DataTransferObjects\Pricing\PriceCalculationResult; // مطمئن شوید فایلش وجود دارد
 use App\Events\OrderPlaced;
 use App\Exceptions\Order\CartIsEmptyException;
-use App\Exceptions\Order\StockUnavailableException;
 use App\Models\Cart;
-use App\Models\CartItem;
 use App\Models\CustomerType;
-use App\Models\Factory;
-use App\Models\Offer;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderUnit;
 use App\Models\PriceFilterCategory;
-use App\Models\ProductVariant;
 use App\Models\User;
 use App\Models\UserType;
-use App\Repositories\Contracts\OrderRepositoryInterface;
+use App\Models\ShippingMethod;
+use App\Services\DocumentSequenceService;
+use App\Services\Financial\SettlementCalculatorService;
 use App\Services\InventoryService;
 use App\Services\PriceCalculationService;
-use App\Services\Pricing\CartPricingCalculator;
 use App\Services\PricingRoleResolver;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Exception;
 
 class PlaceOrderAction
 {
     public function __construct(
-        private readonly CartPricingCalculator $cartPricing,
         private readonly PriceCalculationService $priceService,
         private readonly PricingRoleResolver $roleResolver,
         private readonly InventoryService $inventoryService,
-        private readonly OrderRepositoryInterface $orderRepo
+        private readonly SettlementCalculatorService $settlementCalculator,
+        private readonly DocumentSequenceService $sequenceService
     ) {}
 
     public function execute(User $user, PlaceOrderData $data): Order
     {
         $cart = $this->getCartOrFail($user);
 
-        $this->ensureStockIsAvailable($cart);
-
-        $financials = $this->calculateFinancials($cart, $user, $data);
+        $financials = $this->calculateOrderFinancials($cart, $user, $data);
 
         $order = DB::transaction(function () use ($user, $cart, $data, $financials) {
-            $order = $this->createOrderRecord($user, $data, $financials);
 
-            $this->createOrderItems($order, $cart);
+            $order = $this->createOrderRecord($user, $data, $financials, $cart);
+
+            $this->createOrderItems($order, $cart, $financials['items_data']);
 
             $this->inventoryService->deductStockForOrder($order);
 
+            // پاکسازی سبد خرید
             $this->clearCart($cart);
 
             return $order;
@@ -67,64 +60,42 @@ class PlaceOrderAction
 
     private function getCartOrFail(User $user): Cart
     {
-        $cart = Cart::where(Cart::USER_ID, $user->id)
-            ->with([
-                'items.productVariant.product.offers',
-                'items.factory',
-                'items.factoryLocation',
-                'customerType',
-                'badge',
-                'priceFilterCategories'
-            ])->first();
+        $cart = Cart::with([
+            'items.productVariant.product',
+            'items.factory',
+            'items.factoryLocation',
+            'customerType',
+            'badge',
+            'priceFilterCategories'
+        ])
+            ->where(Cart::USER_ID, $user->id)
+            ->latest('updated_at')
+            ->first();
 
-        // اصلاح: اکسپشن باید مسیج قبول کند. اگر کلاسش خالی است، متن را به Exception اصلی پاس می‌دهد.
-        if (!$cart || $cart->items->isEmpty()) {
+        if (! $cart || $cart->items->isEmpty()) {
             throw new CartIsEmptyException(__('orders.errors.cart_empty'));
         }
 
         return $cart;
     }
 
-    private function ensureStockIsAvailable(Cart $cart): void
-    {
-        $unitsMap = Cache::remember('order_units_map', 86400, function () {
-            return OrderUnit::all()->keyBy(OrderUnit::ID);
-        });
-
-        foreach ($cart->items as $item) {
-            $variant = $item->productVariant;
-            $requiredBaseQty = 0.0;
-
-            foreach ($item->{CartItem::QUANTITIES} as $unitId => $qty) {
-                $unit = $unitsMap->get((int)$unitId);
-                if ($unit) {
-                    $requiredBaseQty += (float)$qty * (float)$unit->amount;
-                }
-            }
-
-            if ($variant->stock_quantity < $requiredBaseQty) {
-                // اصلاح: ارسال پیام ترجمه شده به اکسپشن
-                throw new StockUnavailableException(__('orders.errors.stock_unavailable', ['product' => $variant->name]));
-            }
-        }
-    }
-
-    private function calculateFinancials(Cart $cart, User $user, PlaceOrderData $data): array
+    private function calculateOrderFinancials(Cart $cart, User $user, PlaceOrderData $data): array
     {
         $subtotal = 0.0;
         $totalVat = 0.0;
-        $totalItemDiscounts = 0.0;
+        $totalDiscount = 0.0;
+        $totalWeight = 0.0;
+        $itemsData = [];
 
-        $activeCode = $this->roleResolver->resolve($user);
-        $priceFilter = PriceFilterCategory::where('code', $activeCode)->first();
-        $filterIds = $priceFilter ? [$priceFilter->id] : $cart->priceFilterCategories->pluck('id')->toArray();
-        $customerType = CustomerType::where(CustomerType::CODE, $activeCode)->first() ?: $cart->customerType;
+        $roleCode = $this->roleResolver->resolve($user);
+        $customerType = $cart->customerType ?? CustomerType::where('code', $roleCode)->first();
 
-        $orderUnitsMap = OrderUnit::all()->keyBy(OrderUnit::ID);
+        $orderUnits = Cache::remember('order_units_all', 3600, fn() => OrderUnit::all());
+
+        $activeFilter = PriceFilterCategory::where('code', $roleCode)->first();
+        $filterIds = $activeFilter ? [$activeFilter->id] : $cart->priceFilterCategories->pluck('id')->toArray();
 
         foreach ($cart->items as $item) {
-            /** @var PriceCalculationResult $pricing */
-            // اطمینان حاصل کنید که سرویس calculatePrice دقیقاً آبجکت PriceCalculationResult برمی‌گرداند
             $pricing = $this->priceService->calculatePrice(
                 variant: $item->productVariant,
                 factory: $item->factory,
@@ -133,35 +104,73 @@ class PlaceOrderAction
                 badge: $cart->badge,
                 filterCategoryIds: $filterIds,
                 withVAT: true,
-                filterCategoryCode: $activeCode
+                filterCategoryCode: $roleCode
             );
 
-            $itemTotalWeight = $this->calculateItemWeight($item->{CartItem::QUANTITIES}, $orderUnitsMap);
+            $itemLogisticsWeight = 0.0;
+            $itemSalesQuantity = 0.0;
+            $primaryUnitName = null;
 
-            $unitPrice = $pricing->finalPrice;
-            $unitVatAmount = $pricing->vatAmount;
+            $quantities = is_string($item->quantities) ? json_decode($item->quantities, true) : $item->quantities;
+            if (!is_array($quantities)) $quantities = [];
 
-            $lineTotal = $itemTotalWeight * $unitPrice;
-            $lineVat = $itemTotalWeight * $unitVatAmount;
+            if (!empty($quantities)) {
+                foreach ($quantities as $unitId => $qty) {
+                    $qty = (float) $qty;
+                    $itemSalesQuantity += $qty;
 
-            $item->calculated_unit_price = $unitPrice;
-            $item->calculated_line_total = $lineTotal;
-            $item->calculated_line_vat = $lineVat;
+                    $unitModel = $orderUnits->where('id', $unitId)->first();
+                    if (!$primaryUnitName && $unitModel) {
+                        $primaryUnitName = $unitModel->name;
+                    }
+
+                    if ($unitModel) {
+                        $itemLogisticsWeight += $qty * (float) $unitModel->amount;
+                    } else {
+                        $variantWeight = (float) ($item->productVariant->weight ?? 1.0);
+                        if ($variantWeight <= 0) $variantWeight = 1.0;
+                        $itemLogisticsWeight += $qty * $variantWeight;
+                    }
+                }
+            } else {
+                $simpleQty = (float) ($item->quantity ?? 1);
+                $itemSalesQuantity = $simpleQty;
+                $primaryUnitName = 'عدد';
+                $variantWeight = (float) ($item->productVariant->weight ?? 1.0);
+                if ($variantWeight <= 0) $variantWeight = 1.0;
+                $itemLogisticsWeight = $simpleQty * $variantWeight;
+            }
+
+            if ($itemLogisticsWeight <= 0) $itemLogisticsWeight = 0.001;
+
+            $totalWeight += $itemLogisticsWeight;
+
+            // محاسبه قیمت‌های این ردیف
+            $lineTotal = $itemLogisticsWeight * $pricing->finalPrice;
+            $lineVat   = $itemLogisticsWeight * $pricing->vatAmount;
 
             $subtotal += $lineTotal;
             $totalVat += $lineVat;
+            $totalDiscount += ($pricing->variantDiscountAmount * $itemLogisticsWeight);
 
-            $itemDiscountPerUnit = $pricing->variantDiscountAmount;
-            $totalItemDiscounts += $itemDiscountPerUnit * $itemTotalWeight;
+            $itemsData[$item->id] = [
+                'weight'      => $itemLogisticsWeight,
+                'quantity'    => $itemSalesQuantity,
+                'unit_name'   => $primaryUnitName ?? 'واحد',
+                'unit_price'  => $pricing->finalPrice,
+                'total_price' => $lineTotal,
+            ];
         }
 
-        $cartOfferDiscount = $this->calculateCartLevelDiscounts($cart->items, $subtotal, $orderUnitsMap);
-
-        $totalDiscount = $totalItemDiscounts + $cartOfferDiscount;
-        $fees = $this->calculateBeneficiaryFees($user, $data->beneficiaryUserId, $subtotal);
+        // هزینه ارسال
         $shippingCost = 0.0;
+        if ($data->shippingMethodId) {
+            $shippingMethod = ShippingMethod::find($data->shippingMethodId);
+            $shippingCost = $shippingMethod ? (float) ($shippingMethod->cost ?? $shippingMethod->price ?? 0.0) : 0.0;
+        }
 
-        $finalAmount = max(0, ($subtotal - $cartOfferDiscount) + $totalVat + $shippingCost);
+        $finalAmount = max(0, $subtotal + $totalVat + $shippingCost - $totalDiscount);
+        $commissions = $this->calculateCommissions($user, $data->beneficiaryUserId, $subtotal);
 
         return [
             'subtotal'       => $subtotal,
@@ -169,102 +178,108 @@ class PlaceOrderAction
             'total_discount' => $totalDiscount,
             'shipping_cost'  => $shippingCost,
             'final_amount'   => $finalAmount,
-            'fees'           => $fees,
+            'total_weight'   => $totalWeight,
+            'commissions'    => $commissions,
+            'items_data'     => $itemsData,
         ];
     }
 
-    private function calculateItemWeight(array $quantities, Collection $unitsMap): float
+    private function calculateCommissions(User $placer, ?int $beneficiaryId, float $subtotal): array
     {
-        $weight = 0.0;
-        foreach ($quantities as $unitId => $qty) {
-            if ($unit = $unitsMap->get((int)$unitId)) {
-                $weight += (float)$qty * (float)$unit->{OrderUnit::AMOUNT};
-            }
-        }
-        return $weight;
-    }
+        $fees = ['engineer' => 0, 'contractor' => 0];
 
-    private function calculateCartLevelDiscounts(Collection $items, float $subtotal, Collection $unitsMap): float
-    {
-        $applicableOffers = $items->flatMap(function (CartItem $item) use ($unitsMap) {
-            $totalWeight = $this->calculateItemWeight($item->{CartItem::QUANTITIES}, $unitsMap);
-            return $item->productVariant->product->offers()->current()
-                ->where(Offer::MINIMUM_QUANTITY, '<=', $totalWeight)
-                ->get();
-        })->unique(Offer::ID);
-
-        $discount = 0.0;
-        foreach ($applicableOffers as $offer) {
-            if ($offer->{Offer::TYPE} === 'percentage') {
-                $discount += $subtotal * ($offer->{Offer::VALUE} / 100);
-            } elseif ($offer->{Offer::TYPE} === 'fixed_amount') {
-                $discount += (float)$offer->{Offer::VALUE};
-            }
-        }
-        return min($discount, $subtotal);
-    }
-
-    private function calculateBeneficiaryFees(User $placer, ?int $beneficiaryId, float $subtotal): array
-    {
-        $fees = ['engineer' => null, 'contractor' => null];
-        if (!$beneficiaryId || $beneficiaryId == $placer->id) return $fees;
+        if (!$beneficiaryId || $beneficiaryId === $placer->id) return $fees;
 
         $beneficiary = User::find($beneficiaryId);
         if (!$beneficiary) return $fees;
 
-        $typeIds = UserType::whereIn('slug', ['engineer', 'contractor'])->pluck('id', 'slug');
+        $badgeCode = $beneficiary->badge?->code ?? 'pioneer';
+        $calculated = $this->settlementCalculator->calculateCommissions($subtotal, $badgeCode);
+        $amount = $calculated['CO'] ?? 0;
 
-        if (isset($typeIds['engineer']) && $beneficiary->{User::TYPE_ID} == $typeIds['engineer']) {
-            $pct = config('elitezon.consultant_fee_percentage', 2.0);
-            $fees['engineer'] = ($subtotal * $pct) / 100;
-        } elseif (isset($typeIds['contractor']) && $beneficiary->{User::TYPE_ID} == $typeIds['contractor']) {
-            $pct = config('elitezon.contractor_fee_percentage', 2.0);
-            $fees['contractor'] = ($subtotal * $pct) / 100;
+        $engineerTypeId = Cache::remember('user_type_id_engineer', 86400, fn() => UserType::where('slug', 'engineer')->value('id'));
+        $contractorTypeId = Cache::remember('user_type_id_contractor', 86400, fn() => UserType::where('slug', 'contractor')->value('id'));
+
+        if ($beneficiary->hasRole('engineer') || $beneficiary->user_type_id === $engineerTypeId) {
+            $fees['engineer'] = $amount;
+        } elseif ($beneficiary->hasRole('contractor') || $beneficiary->user_type_id === $contractorTypeId) {
+            $fees['contractor'] = $amount;
         }
+
         return $fees;
     }
 
-    private function createOrderRecord(User $user, PlaceOrderData $data, array $fins): Order
+    private function createOrderRecord(User $user, PlaceOrderData $data, array $fins, Cart $cart): Order
     {
-        return $this->orderRepo->create([
-            Order::PLACER_USER_ID => $user->id,
-            Order::BENEFICIARY_USER_ID => $data->beneficiaryUserId ?? $user->id,
-            Order::ADDRESS_ID => $data->addressId,
-            Order::ORDER_NUMBER => 'EL-' . strtoupper(Str::random(10)),
-            Order::STATUS => Order::STATUS_PENDING,
-            Order::PAYMENT_STATUS => Order::PAYMENT_PENDING,
-            Order::SUBTOTAL => $fins['subtotal'],
-            Order::DISCOUNT_AMOUNT => $fins['total_discount'],
-            Order::VAT_AMOUNT => $fins['vat_amount'],
-            Order::SHIPPING_COST => $fins['shipping_cost'],
-            Order::FINAL_AMOUNT => $fins['final_amount'],
-            Order::ENGINEER_FEE_AMOUNT => $fins['fees']['engineer'],
-            Order::CONTRACTOR_FEE_AMOUNT => $fins['fees']['contractor'],
-            Order::ENGINEER_FEE_PAYMENT_STATUS => $fins['fees']['engineer'] ? Order::FEE_PAYMENT_PENDING : null,
-            Order::CONTRACTOR_FEE_PAYMENT_STATUS => $fins['fees']['contractor'] ? Order::FEE_PAYMENT_PENDING : null,
-            Order::RESERVATION_EXPIRES_AT => now()->addHours(2),
-            Order::NOTES => $data->description,
+        // ۱. تشخیص کانتکست (Context) کالا بر اساس اولین آیتم سبد خرید
+        // می‌توانید منطق شرط را بر اساس ساختار دیتابیس خودتان (مثلاً نام دسته‌بندی) تنظیم کنید
+        $firstItemCategory = $cart->items->first()->productVariant->product->category_code ?? '';
+        $context = (strtoupper($firstItemCategory) === 'BRICK')
+            ? DocumentSequenceService::CTX_BRICK
+            : DocumentSequenceService::CTX_REBAR;
+
+        // ۲. تولید شماره سفارش هوشمند، یکتا و استاندارد (مثال: EZ-ORD-RB-140502-70300100)
+        $orderNumber = $this->sequenceService->generate(
+            DocumentSequenceService::TYPE_ORDER,
+            $context,
+            Order::class,
+            Order::ORDER_NUMBER
+        );
+
+        // ۳. ثبت نهایی در دیتابیس
+        return Order::create([
+            Order::PLACER_USER_ID                => $user->id,
+            Order::BENEFICIARY_USER_ID           => $data->beneficiaryUserId ?? $user->id,
+            Order::ADDRESS_ID                    => $data->addressId,
+            'shipping_method_id'                 => $data->shippingMethodId ?? 1,
+            Order::ORDER_NUMBER                  => $orderNumber, // استفاده از شماره تولید شده
+            Order::STATUS                        => Order::STATUS_PENDING,
+            Order::PAYMENT_STATUS                => Order::PAYMENT_PENDING,
+
+            Order::SUBTOTAL                      => $fins['subtotal'],
+            Order::DISCOUNT_AMOUNT               => $fins['total_discount'],
+            Order::VAT_AMOUNT                    => $fins['vat_amount'],
+            Order::SHIPPING_COST                 => $fins['shipping_cost'],
+            Order::FINAL_AMOUNT                  => $fins['final_amount'],
+            Order::WEIGHT_BEFORE_SCALE           => $fins['total_weight'],
+
+            Order::ENGINEER_FEE_AMOUNT           => $fins['commissions']['engineer'],
+            Order::CONTRACTOR_FEE_AMOUNT         => $fins['commissions']['contractor'],
+            Order::ENGINEER_FEE_PAYMENT_STATUS   => $fins['commissions']['engineer'] > 0 ? Order::FEE_PAYMENT_PENDING : null,
+            Order::CONTRACTOR_FEE_PAYMENT_STATUS => $fins['commissions']['contractor'] > 0 ? Order::FEE_PAYMENT_PENDING : null,
+
+            Order::RESERVATION_EXPIRES_AT        => now()->addHours(2),
+            Order::NOTES                         => $data->description,
         ]);
     }
 
-    private function createOrderItems(Order $order, Cart $cart): void
+    private function createOrderItems(Order $order, Cart $cart, array $itemsData): void
     {
         foreach ($cart->items as $item) {
-            $supplierId = $item->factory->{Factory::SUPPLIER_USER_ID} ?? null;
+            $supplierId = $item->factory->supplier_user_id ?? 1;
 
-            if (!$supplierId) {
-                throw new Exception("تامین‌کننده برای کارخانه {$item->factory->name} تعریف نشده است.");
-            }
+            $calc = $itemsData[$item->id] ?? [
+                'weight'      => 0,
+                'quantity'    => 0,
+                'unit_name'   => '',
+                'unit_price'  => 0,
+                'total_price' => 0
+            ];
 
             OrderItem::create([
-                OrderItem::ORDER_ID => $order->id,
-                OrderItem::PRODUCT_VARIANT_ID => $item->{CartItem::PRODUCT_VARIANT_ID},
-                OrderItem::SUPPLIER_USER_ID => $supplierId,
-                OrderItem::PRODUCT_NAME => $item->productVariant->{ProductVariant::NAME},
-                OrderItem::VARIANT_SKU => $item->productVariant->{ProductVariant::SKU},
-                OrderItem::QUANTITY_DETAILS => $item->{CartItem::QUANTITIES},
-                OrderItem::UNIT_PRICE => $item->calculated_unit_price,
-                OrderItem::TOTAL_PRICE => $item->calculated_line_total,
+                OrderItem::ORDER_ID           => $order->id,
+                'product_variant_id'          => $item->product_variant_id,
+                'supplier_user_id'            => $supplierId,
+                'product_name'                => $item->productVariant->product->name ?? 'Unknown',
+                'variant_sku'                 => $item->productVariant->sku,
+
+                'quantity_details'            => $item->quantities,
+                'quantity'                    => $calc['quantity'],
+                'weight'                      => $calc['weight'],
+                'unit_name'                   => $calc['unit_name'],
+
+                'unit_price'                  => $calc['unit_price'],
+                'total_price'                 => $calc['total_price'],
             ]);
         }
     }

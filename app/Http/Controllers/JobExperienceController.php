@@ -26,7 +26,7 @@ class JobExperienceController extends Controller
     public function store(StoreJobExperienceRequest $request): JsonResponse
     {
         $user = Auth::user();
-        
+
         $hasActiveJob = $user->jobExperiences()
             ->whereIn(JobExperience::STATUS, [JobExperience::STATUS_PENDING, JobExperience::STATUS_APPROVED])
             ->exists();
@@ -45,6 +45,7 @@ class JobExperienceController extends Controller
         $job = $user->jobExperiences()->create([
             JobExperience::TITLE => $data[JobExperience::TITLE],
             JobExperience::ORGANIZATION_NAME => $data[JobExperience::ORGANIZATION_NAME] ?? null,
+            JobExperience::PROJECT_ADDRESS => $data[JobExperience::PROJECT_ADDRESS] ?? null,
             JobExperience::START_DATE => $data[JobExperience::START_DATE] ?? null,
             JobExperience::END_DATE => $data[JobExperience::END_DATE] ?? null,
             JobExperience::FILE_PATH => $url,

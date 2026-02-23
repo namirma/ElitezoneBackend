@@ -13,6 +13,7 @@ class StoreJobExperienceRequest extends FormRequest
         return [
             JobExperience::TITLE => ['required', 'string', 'max:255'],
             JobExperience::ORGANIZATION_NAME => ['nullable', 'string', 'max:255'],
+            JobExperience::PROJECT_ADDRESS => ['nullable', 'string', 'max:500'],
             JobExperience::START_DATE => ['nullable', 'date_format:Y-m-d'],
             JobExperience::END_DATE => ['nullable', 'date_format:Y-m-d', 'after_or_equal:' . JobExperience::START_DATE],
             'file' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'], // 2MB

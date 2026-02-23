@@ -280,7 +280,6 @@ class AuthController extends Controller
         $token = $user->createToken('auth')->plainTextToken;
 
         if ($isNewUser) {
-            // 🚀 اصلاح شد: استفاده از جاب برای ارسال سریع
             SendSmsJob::dispatch($request->validated('username'), __('sms.newRegisterUser'));
 
             UserNotification::create([
@@ -289,7 +288,17 @@ class AuthController extends Controller
                 UserNotification::BODY    => __('global.newUserNotificationBody'),
             ]);
         }
-        return success(['user' => new UserResource($user->fresh('profile')), 'token' => $token], __('auth.register_success'));
+        $userWithRelations = $user->fresh([
+            User::RELATION_PROFILE,
+            User::RELATION_TYPE,
+            User::RELATION_ROLES,
+            User::RELATION_BADGE
+        ]);
+        
+        return success([
+            'user'  => new UserResource($userWithRelations),
+            'token' => $token
+        ], __('auth.register_success'));
     }
 
     public function checkPassword(Request $request)

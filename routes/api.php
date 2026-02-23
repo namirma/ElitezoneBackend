@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\OrderController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AddressController;
 use App\Http\Controllers\CartController;
@@ -12,10 +13,10 @@ use App\Http\Controllers\IdentityInquirySc2Controller;
 use App\Http\Controllers\JobExperienceController;
 use App\Http\Controllers\MobileNidMatchController;
 use App\Http\Controllers\Api\User\OrderActionController;
-use App\Http\Controllers\OrderController;
+
 use App\Http\Controllers\OrderSurveyController;
 use App\Http\Controllers\ParameterDetectionController;
-use App\Http\Controllers\PaymentController; // Added
+use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PodiumBalanceController;
 use App\Http\Controllers\PodiumBatchSettlementController;
 use App\Http\Controllers\PodiumSettlementController;
@@ -48,6 +49,7 @@ use App\Http\Controllers\Api\Admin\AdminOrderController;
 use App\Http\Controllers\Api\Admin\AdminSearchController;
 use App\Http\Controllers\Api\Admin\AdminUserController;
 use App\Http\Controllers\Api\Admin\AdminWalletController;
+use App\Http\Controllers\Api\Admin\OrderWeighbridgeController;
 use App\Http\Controllers\Api\Data\AnalyticsController;
 use App\Http\Controllers\Api\Data\InventoryController;
 use App\Http\Controllers\Api\User\OrderInvoiceController;
@@ -170,12 +172,20 @@ Route::prefix('v1/podium')->group(function () {
 });
 
 // --- پنل ادمین ---
-Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
+Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(function () {
     Route::get('/activities', [AdminActivityLogController::class, 'index']);
     Route::controller(AdminSearchController::class)->prefix('search')->group(function () {
         Route::get('/users', 'searchUsers');
         Route::get('/transactions', 'searchTransactions');
     });
+    Route::prefix('users')->controller(AdminUserController::class)->group(function () {
+
+        // جستجوی پروفایل کامل (برای نمایش Read-Only)
+        Route::post('/fetch-profile', 'getUserProfileForBackOffice');
+        Route::get('/{user}/orders', 'getUserOrders');
+        Route::get('/{user}/transactions', 'getUserTransactions');
+    });
+
     Route::controller(AdminFinancialController::class)->prefix('financial')->group(function () {
         Route::get('/company/invoices', 'getCompanyInvoices');
         Route::get('/company/expert-shares', 'getExpertShares');
@@ -198,6 +208,9 @@ Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
         Route::get('/transactions', 'index');
         Route::post('/transactions/{transaction}/status', 'changeStatus');
     });
+
+    Route::post('/{order}/weighbridge', [OrderWeighbridgeController::class, 'submitWeight'])
+        ->name('admin.orders.weighbridge.submit');
 });
 
 // --- روت‌های نیازمند لاگین ---
@@ -238,10 +251,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
         });
 
         // پیغام‌ها
-        Route::get('/messages', [ProfileController::class, 'getMessages'])->middleware('track:messages');
-        Route::get('/messages/read-all', [ProfileController::class, 'updateAllMessageStatus']);
-        Route::get('/messages/{userNotification}', [ProfileController::class, 'updateMessageStatus']);
-
+        Route::prefix('messages')->controller(ProfileController::class)->group(function () {
+            Route::get('/', 'getMessages');
+            Route::get('/unread-count', 'getUnreadMessagesCount');
+            Route::patch('/read-all', 'updateAllMessageStatus');
+            Route::patch('/{userNotification}/read', 'updateMessageStatus');
+            Route::delete('/{userNotification}', 'deleteMessage');
+        });
         // تحصیلات
         Route::prefix('education')->middleware('role.expert')->controller(EduixController::class)->group(function () {
             Route::get('/', 'index')->middleware('track:education');
@@ -258,7 +274,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
         // سفارش‌ها
         Route::prefix('orders')->group(function () {
-
             // ====================================================
             // 1. لیست‌های خاص (حتماً باید اول باشند)
             // ====================================================

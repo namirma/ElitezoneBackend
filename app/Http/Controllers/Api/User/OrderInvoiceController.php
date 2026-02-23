@@ -13,7 +13,7 @@ class OrderInvoiceController extends Controller
     {
         $this->authorize('view', $order);
 
-        $pdf = $generator->generate($order, $type);
+        $pdf = $generator->generate($order, $type, 'download');
 
         return $pdf->download("invoice-{$order->order_number}.pdf");
     }

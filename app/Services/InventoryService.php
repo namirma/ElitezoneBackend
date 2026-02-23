@@ -7,90 +7,140 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderUnit;
 use App\Models\ProductVariant;
-use Exception;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Cache;
 
 class InventoryService
 {
     /**
-     * بررسی موجودی (بدون کسر کردن)
-     * این متد در CartController و AddToCartAction استفاده می‌شود
+     * بررسی موجودی قبل از ثبت سفارش (بدون کسر کردن)
      */
     public function checkStock(ProductVariant $variant, array|float|int $quantities): bool
     {
         $requiredBaseQty = is_array($quantities)
-            ? $this->calculateBaseQuantity($quantities)
+            ? $this->calculateBaseQuantity($quantities, $variant)
             : (float) $quantities;
 
-        return $variant->stock_quantity >= $requiredBaseQty;
+        return $variant->stock_quantity >= ($requiredBaseQty - 0.0001);
     }
 
     /**
-     * کسر موجودی برای سفارش نهایی
+     * کسر موجودی برای اقلام یک سفارش
+     * @throws StockUnavailableException
      */
     public function deductStockForOrder(Order $order): void
     {
-        $order->load('items');
+        $order->loadMissing(['items.productVariant']);
 
         foreach ($order->items as $item) {
             $this->deductItemStock($item);
         }
     }
 
+    /**
+     * اصلاح موجودی بعد از ثبت باسکول (Weighbridge)
+     */
+    public function updateStockAfterWeighbridge(int $variantId, float $weightDifference): void
+    {
+        if (abs($weightDifference) < 0.001) return;
+
+        $variant = ProductVariant::where('id', $variantId)->lockForUpdate()->first();
+        if (!$variant) return;
+
+        if ($weightDifference > 0) {
+            $variant->decrement('stock_quantity', $weightDifference);
+        } else {
+            $variant->increment('stock_quantity', abs($weightDifference));
+        }
+    }
+
+    /**
+     * کسر موجودی یک آیتم خاص
+     */
     private function deductItemStock(OrderItem $item): void
     {
-        // قفل کردن رکورد برای جلوگیری از Race Condition
         $variant = ProductVariant::where('id', $item->product_variant_id)
             ->lockForUpdate()
             ->first();
 
         if (!$variant) {
-            throw new Exception("محصول با شناسه {$item->product_variant_id} یافت نشد.");
+            throw new ModelNotFoundException(
+                __('inventory.errors.product_not_found', ['id' => $item->product_variant_id])
+            );
         }
 
-        $quantities = $item->quantities;
+        $amountToDeduct = ($item->weight > 0) ? (float)$item->weight : (float)$item->quantity;
 
-        $requiredBaseQty = $this->calculateBaseQuantity($quantities);
+        if ($amountToDeduct <= 0) {
+            $quantities = is_string($item->quantity_details)
+                ? json_decode($item->quantity_details, true)
+                : $item->quantity_details;
 
-        if ($variant->stock_quantity < $requiredBaseQty) {
-            throw new StockUnavailableException($variant->name);
+            $amountToDeduct = $this->calculateBaseQuantity($quantities, $variant);
         }
 
-        $variant->decrement('stock_quantity', $requiredBaseQty);
+        // بررسی موجودی و پرتاب خطای ترجمه‌شده و مرتب
+        if ($variant->stock_quantity < ($amountToDeduct - 0.0001)) {
+            throw new StockUnavailableException(
+                __('inventory.errors.insufficient_stock', [
+                    'name'      => $variant->name,
+                    'requested' => number_format($amountToDeduct),
+                    'available' => number_format($variant->stock_quantity)
+                ])
+            );
+        }
+
+        $variant->decrement('stock_quantity', $amountToDeduct);
     }
 
+    /**
+     * بازگرداندن موجودی (در صورت لغو سفارش)
+     */
     public function restoreStock(Order $order): void
     {
-        foreach ($order->items as $item) {
-            $quantities = $item->quantities; // فرض بر این است که OrderItem کست array دارد
-            $qty = $this->calculateBaseQuantity($quantities);
+        $order->loadMissing(['items.productVariant']);
 
-            ProductVariant::where('id', $item->product_variant_id)
-                ->increment('stock_quantity', $qty);
+        foreach ($order->items as $item) {
+            $amountRestored = ($item->weight > 0) ? (float)$item->weight : (float)$item->quantity;
+
+            if ($amountRestored <= 0) {
+                $quantities = is_string($item->quantity_details)
+                    ? json_decode($item->quantity_details, true)
+                    : $item->quantity_details;
+
+                $variant = $item->productVariant;
+                $amountRestored = $this->calculateBaseQuantity($quantities, $variant);
+            }
+
+            if ($amountRestored > 0) {
+                ProductVariant::where('id', $item->product_variant_id)
+                    ->increment('stock_quantity', $amountRestored);
+            }
         }
     }
 
     /**
-     * محاسبه مقدار کل بر اساس ضرایب واحدها
+     * محاسبه مقدار پایه (کیلوگرم یا تعداد) از روی جزئیات
      */
-    private function calculateBaseQuantity(?array $details): float
+    private function calculateBaseQuantity(?array $details, ?ProductVariant $variant = null): float
     {
         if (empty($details)) return 0.0;
 
-        // کش کردن واحدها برای پرهیز از کوکی‌های تکراری دیتابیس
-        $unitsMap = Cache::remember('order_units_map', 86400, function () {
+        $unitsMap = Cache::remember('all_order_units', 86400, function () {
             return OrderUnit::all()->keyBy('id');
         });
 
         $totalBaseQty = 0.0;
 
         foreach ($details as $unitId => $qty) {
+            $qty = (float) $qty;
             $unit = $unitsMap->get((int)$unitId);
 
             if ($unit) {
-                $totalBaseQty += (float)$qty * (float)$unit->amount;
+                $totalBaseQty += $qty * (float)$unit->amount;
             } else {
-                $totalBaseQty += (float)$qty;
+                $variantWeight = ($variant && $variant->weight > 0) ? (float)$variant->weight : 1.0;
+                $totalBaseQty += $qty * $variantWeight;
             }
         }
 

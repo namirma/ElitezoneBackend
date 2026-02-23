@@ -19,13 +19,15 @@ class RemoveCartItemAction
              * گام ۱: استخراج اطلاعات برای دیتاساینس (قبل از حذف)
              * ----------------------------------------------------------------- */
             $variant = $cartItem->productVariant;
-            $quantityRemoved = array_sum($cartItem->quantities) * -1;
+            
+            $quantityRemoved = (float) $cartItem->quantity * -1;
+
             $priceSnapshot = $cartItem->final_price > 0 ? $cartItem->final_price : ($variant->price ?? 0);
             /* ----------------------------------------------------------------- */
 
-
             // گام ۲: عملیات اصلی حذف
             $cartItem->delete();
+
             if ($cart->items()->count() === 0) {
                 $cart->priceFilterCategories()->detach();
             }
@@ -37,12 +39,12 @@ class RemoveCartItemAction
                 $cart,
                 $variant,
                 CartEvent::ACTION_REMOVE,
-                (float) $quantityRemoved,
+                $quantityRemoved,
                 $priceSnapshot
             );
             /* ----------------------------------------------------------------- */
 
-            return $cart->load(['items.productVariant', 'items.parameterValues']);
+            return $cart->fresh(['items.productVariant', 'items.parameterValues']);
         });
     }
 }
