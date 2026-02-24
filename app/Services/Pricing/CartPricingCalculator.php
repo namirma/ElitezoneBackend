@@ -18,7 +18,6 @@ class CartPricingCalculator
 
     public function calculate(Cart $cart, PricingContextData $ctx): CartPricingResult
     {
-        // بارگذاری کامل روابط برای تضمین عدم وقوع N+1
         $cart->loadMissing([
             'items.productVariant.product.offers',
             'items.factory',
@@ -31,9 +30,9 @@ class CartPricingCalculator
         $unitsMap = $this->unitsMap();
 
         $lines = [];
-        $subtotal = 0.0;
-        $vatAmount = 0.0;
-        $totalVariantDiscount = 0.0;
+        $subtotalStr = '0.0000';
+        $vatAmountStr = '0.0000';
+        $totalVariantDiscountStr = '0.0000';
 
         foreach ($cart->items as $item) {
             $pricing = $this->priceService->calculatePrice(
@@ -47,60 +46,68 @@ class CartPricingCalculator
                 filterCategoryCode: $ctx->activeCode,
             );
 
-            // استخراج فیلد quantities (هندل کردن JSON یا آرایه بودن آن)
             $quantities = is_string($item->{CartItem::QUANTITIES})
                 ? json_decode($item->{CartItem::QUANTITIES}, true)
                 : $item->{CartItem::QUANTITIES};
 
             $baseQty = $this->calculateBaseQuantity($quantities ?? [], $unitsMap);
+            $baseQtyStr = (string) $baseQty;
 
-            $unitPrice = (float) $pricing->finalPrice;
-            $unitVat   = (float) ($pricing->vatAmount ?? 0.0);
-            $discountPerUnit = (float) ($pricing->variantDiscountAmount ?? 0.0);
+            $unitPriceStr = (string) (float) $pricing->finalPrice;
+            $unitVatStr   = (string) (float) ($pricing->vatAmount ?? 0.0);
+            $discountPerUnitStr = (string) (float) ($pricing->variantDiscountAmount ?? 0.0);
 
-            // محاسبه دقیق و تفکیک شده (بدون تداخل مالیاتی)
-            $lineSubtotal = $baseQty * ($unitPrice - $unitVat);
-            $lineVat      = $baseQty * $unitVat;
-            $lineTotal    = $lineSubtotal + $lineVat;
+            $priceWithoutVatStr = bcsub($unitPriceStr, $unitVatStr, 4);
+            $lineSubtotalStr    = bcmul($baseQtyStr, $priceWithoutVatStr, 4);
+            $lineVatStr         = bcmul($baseQtyStr, $unitVatStr, 4);
+            $lineTotalStr       = bcadd($lineSubtotalStr, $lineVatStr, 4);
+            $lineDiscountStr    = bcmul($discountPerUnitStr, $baseQtyStr, 4);
 
-            $subtotal += $lineSubtotal;
-            $vatAmount += $lineVat;
-            $totalVariantDiscount += ($discountPerUnit * $baseQty);
+            // جمع‌زدن کل فاکتور
+            $subtotalStr             = bcadd($subtotalStr, $lineSubtotalStr, 4);
+            $vatAmountStr            = bcadd($vatAmountStr, $lineVatStr, 4);
+            $totalVariantDiscountStr = bcadd($totalVariantDiscountStr, $lineDiscountStr, 4);
 
             $lines[] = new CartLinePricingResult(
                 cartItemId: $item->id,
                 baseQuantity: $baseQty,
-                unitPrice: $unitPrice,
-                unitVatAmount: $unitVat,
-                variantDiscountPerUnit: $discountPerUnit,
-                lineSubtotal: $lineSubtotal,
-                lineVat: $lineVat,
-                lineTotal: $lineTotal,
+                unitPrice: (float) $unitPriceStr,
+                unitVatAmount: (float) $unitVatStr,
+                variantDiscountPerUnit: (float) $discountPerUnitStr,
+                lineSubtotal: (float) $lineSubtotalStr,
+                lineVat: (float) $lineVatStr,
+                lineTotal: (float) $lineTotalStr,
                 unitPriceDetails: method_exists($pricing, 'toArray') ? $pricing->toArray() : (array) $pricing,
             );
         }
 
+        $subtotalFloat = (float) $subtotalStr;
+
         // محاسبه تخفیف‌های آفر
-        [$offerDiscount, $appliedOffers] = $this->calculateOfferDiscount(
+        [$offerDiscountFloat, $appliedOffers] = $this->calculateOfferDiscount(
             items: $cart->items,
-            subtotal: $subtotal,
+            subtotal: $subtotalFloat,
             unitsMap: $unitsMap,
             offerBasis: $ctx->offerBasis
         );
 
-        $shippingCost = 0.0;
+        $shippingCostStr = '0.0000';
 
-        // جمع کل سبد خرید
-        $total = max(0, ($subtotal - $offerDiscount) + $vatAmount + $shippingCost);
+        // محاسبه مجموع نهایی: (subtotal - offerDiscount) + vat + shipping
+        $afterOfferStr = bcsub($subtotalStr, (string) $offerDiscountFloat, 4);
+        if ((float)$afterOfferStr < 0) $afterOfferStr = '0.0000';
+
+        $totalStr = bcadd($afterOfferStr, $vatAmountStr, 4);
+        $totalStr = bcadd($totalStr, $shippingCostStr, 4);
 
         return new CartPricingResult(
             lines: $lines,
-            subtotal: $subtotal,
-            vatAmount: $vatAmount,
-            totalVariantDiscount: $totalVariantDiscount,
-            offerDiscount: $offerDiscount,
-            shippingCost: $shippingCost,
-            total: $total,
+            subtotal: $subtotalFloat,
+            vatAmount: (float) $vatAmountStr,
+            totalVariantDiscount: (float) $totalVariantDiscountStr,
+            offerDiscount: $offerDiscountFloat,
+            shippingCost: (float) $shippingCostStr,
+            total: (float) $totalStr,
             appliedOffers: $appliedOffers,
         );
     }
@@ -112,14 +119,15 @@ class CartPricingCalculator
 
     private function calculateBaseQuantity(array $quantities, Collection $unitsMap): float
     {
-        $base = 0.0;
+        $baseStr = '0.0000';
         foreach ($quantities as $unitId => $qty) {
             $unit = $unitsMap->get((int)$unitId);
             if ($unit && (float)$unit->amount > 0) {
-                $base += (float)$qty * (float)$unit->amount;
+                $addedQty = bcmul((string)$qty, (string)$unit->amount, 4);
+                $baseStr = bcadd($baseStr, $addedQty, 4);
             }
         }
-        return $base;
+        return (float) $baseStr;
     }
 
     private function calculateOfferDiscount(Collection $items, float $subtotal, Collection $unitsMap, string $offerBasis): array
@@ -127,7 +135,6 @@ class CartPricingCalculator
         $now = now();
 
         $offers = $items->flatMap(function (CartItem $item) use ($unitsMap, $offerBasis, $now) {
-
             $quantities = is_string($item->{CartItem::QUANTITIES})
                 ? json_decode($item->{CartItem::QUANTITIES}, true)
                 : $item->{CartItem::QUANTITIES};
@@ -143,20 +150,20 @@ class CartPricingCalculator
                              (!$offer->end_date || $offer->end_date >= $now);
                 return $isCurrent && $offer->minimum_quantity <= $thresholdValue;
             });
-
         })->unique('id')->values();
 
-        $discount = 0.0;
+        $discountStr = '0.0000';
         $applied = [];
-        
+
         foreach ($offers as $offer) {
-            $d = 0.0;
+            $dStr = '0.0000';
             if ($offer->type === 'percentage') {
-                $d = $subtotal * ((float)$offer->value / 100);
+                $rateStr = bcdiv((string)$offer->value, '100', 4);
+                $dStr = bcmul((string)$subtotal, $rateStr, 4);
             } elseif ($offer->type === 'fixed_amount') {
-                $d = (float)$offer->value;
+                $dStr = (string)$offer->value;
             }
-            $discount += $d;
+            $discountStr = bcadd($discountStr, $dStr, 4);
 
             $applied[] = [
                 'id' => $offer->id,
@@ -165,7 +172,7 @@ class CartPricingCalculator
             ];
         }
 
-        $discount = min($discount, max(0, $subtotal));
-        return [$discount, $applied];
+        $finalDiscount = min((float)$discountStr, max(0, $subtotal));
+        return [$finalDiscount, $applied];
     }
 }

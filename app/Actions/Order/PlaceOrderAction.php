@@ -35,31 +35,33 @@ class PlaceOrderAction
 
     public function execute(User $user, PlaceOrderData $data): Order
     {
-        $cart = $this->getCartOrFail($user);
+        return DB::transaction(function () use ($user, $data) {
 
-        $financials = $this->calculateOrderFinancials($cart, $user, $data);
+            // ۱. خواندن و قفل کردن سبد خرید دقیقاً داخل تراکنش
+            $cart = $this->getCartOrFail($user);
 
-        $order = DB::transaction(function () use ($user, $cart, $data, $financials) {
+            // ۲. محاسبه مبالغ
+            $financials = $this->calculateOrderFinancials($cart, $user, $data);
 
+            // ۳. ایجاد سفارش
             $order = $this->createOrderRecord($user, $data, $financials, $cart);
-
             $this->createOrderItems($order, $cart, $financials['items_data']);
 
+            // ۴. کسر از انبار
             $this->inventoryService->deductStockForOrder($order);
 
-            // پاکسازی سبد خرید
+            // ۵. پاکسازی سبد خرید
             $this->clearCart($cart);
+
+            OrderPlaced::dispatch($order);
 
             return $order;
         });
-
-        OrderPlaced::dispatch($order);
-
-        return $order;
     }
 
     private function getCartOrFail(User $user): Cart
     {
+        
         $cart = Cart::with([
             'items.productVariant.product',
             'items.factory',
@@ -69,6 +71,7 @@ class PlaceOrderAction
             'priceFilterCategories'
         ])
             ->where(Cart::USER_ID, $user->id)
+            ->lockForUpdate()
             ->latest('updated_at')
             ->first();
 

@@ -9,30 +9,27 @@ class ApplyVariantDiscount implements PricingPipe
 {
     public function handle(PricingContext $context, Closure $next)
     {
-        // دریافت اطلاعات تخفیف از مدل
         $discountDetails = $context->variant->getActiveDiscountDetails();
 
         if ($discountDetails) {
             $context->variantDiscountType = $discountDetails['type'];
             $context->variantDiscountValue = (float) $discountDetails['value'];
 
-            // تخفیف روی "قیمت قابل پرداخت" اعمال می‌شود
-            $baseForDiscount = $context->payablePrice;
-            $amount = 0.0;
+            $baseForDiscount = (string) $context->payablePrice;
+            $amountStr = '0.0000';
 
             if ($discountDetails['type'] === 'percentage') {
-                $amount = $baseForDiscount * ($context->variantDiscountValue / 100);
+                
+                $rateStr = bcdiv((string) $context->variantDiscountValue, '100', 4);
+                $amountStr = bcmul($baseForDiscount, $rateStr, 4);
             } elseif ($discountDetails['type'] === 'fixed_amount') {
-                $amount = $context->variantDiscountValue;
+                $amountStr = (string) $context->variantDiscountValue;
             }
 
-            $context->variantDiscountAmount = $amount;
+            $context->variantDiscountAmount = (float) $amountStr;
 
-            // اعمال تخفیف
-            $context->payablePrice -= $amount;
-
-            // جلوگیری از قیمت منفی
-            $context->payablePrice = max(0.0, $context->payablePrice);
+            $newPriceStr = bcsub($baseForDiscount, $amountStr, 4);
+            $context->payablePrice = max(0.0, (float) $newPriceStr);
         }
 
         return $next($context);

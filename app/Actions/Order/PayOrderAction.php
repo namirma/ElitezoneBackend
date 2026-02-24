@@ -17,43 +17,39 @@ class PayOrderAction
 {
     public function __construct(
         private readonly OrderRepositoryInterface $orderRepo,
-        private readonly PaymentGatewayFactory $gatewayFactory 
+        private readonly PaymentGatewayFactory $gatewayFactory
     ) {}
 
     /**
      * پردازش پرداخت سفارش
      */
-    public function execute(User $user, Order $order, string $gatewayName): Order
+  public function execute(User $user, Order $order, string $gatewayName): Order
     {
-        $payableStatuses = [Order::STATUS_PENDING, Order::STATUS_RESERVED_EXTENDED];
-
-        // 1. گاردها
-        if (!in_array($order->status, $payableStatuses)) {
-            throw new OrderNotPayableException(__("orders.status.{$order->status}"));
-        }
-
-        if ($order->payment_status === Order::PAYMENT_PAID) {
-            throw new OrderNotPayableException(__('orders.errors.already_paid'));
-        }
-
-        // 2. انتخاب استراتژی پرداخت
         $gateway = $this->gatewayFactory->make($gatewayName);
 
-        // 3. اجرای تراکنش اتمیک
         $updatedOrder = DB::transaction(function () use ($user, $order, $gateway, $gatewayName) {
 
-            // الف) انجام عملیات پرداخت (پلی‌مورفیسم)
-            $result = $gateway->pay($user, $order);
+            $lockedOrder = Order::where('id', $order->id)->lockForUpdate()->first();
 
-            // ب) آپدیت وضعیت سفارش
-            $this->orderRepo->update($order, [
+            $payableStatuses = [Order::STATUS_PENDING, Order::STATUS_RESERVED_EXTENDED];
+            if (!in_array($lockedOrder->status, $payableStatuses)) {
+                throw new OrderNotPayableException(__("orders.status.{$lockedOrder->status}"));
+            }
+
+            if ($lockedOrder->payment_status === Order::PAYMENT_PAID) {
+                throw new OrderNotPayableException(__('orders.errors.already_paid'));
+            }
+
+            $result = $gateway->pay($user, $lockedOrder);
+
+            $lockedOrder->update([
                 Order::STATUS         => Order::STATUS_PROCESSING,
                 Order::PAYMENT_STATUS => Order::PAYMENT_PAID,
                 Order::PAYMENT_METHOD => $gatewayName,
                 Order::PAID_AT        => now(),
             ]);
 
-            return $order;
+            return $lockedOrder;
         });
 
         OrderPaid::dispatch($updatedOrder);

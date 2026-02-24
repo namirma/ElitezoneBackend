@@ -32,11 +32,21 @@ class FilterProductsAction
 
     private function fetchBaseProducts(ProductFilterData $filters): Collection
     {
+        $relations = [
+            'category',
+            'images',
+            'variants.prices.factory',
+            'variants.prices.factoryLocation'
+        ];
+
         if ($this->productRepo instanceof ProductRepository) {
-            return $this->productRepo->getFilterQuery($filters)->get();
+            return $this->productRepo->getFilterQuery($filters)
+                ->with($relations)
+                ->get();
         }
-        
+
         return Product::query()
+            ->with($relations)
             ->when($filters->categoryId, fn($q) => $q->where('category_id', $filters->categoryId))
             ->get();
     }
