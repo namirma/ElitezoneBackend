@@ -14,6 +14,7 @@ class AttributeResource extends JsonResource
             Attribute::ATTRIBUTE_TYPE_ID => $this->attribute_type_id,
             Attribute::NAME            => $this->name,
             Attribute::DISPLAY_NAME    => $this->display_name,
+           'values' => AttributeValueResource::collection($this->whenLoaded('values')),
         ];
     }
 }

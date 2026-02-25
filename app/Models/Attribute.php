@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Attribute extends Model
 {
@@ -50,4 +51,9 @@ class Attribute extends Model
             'product_variant_id'
         );
     }
+
+    public function values(): HasMany
+{
+    return $this->hasMany(AttributeValue::class, 'attribute_id');
+}
 }

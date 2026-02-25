@@ -112,21 +112,32 @@ class ProductController extends Controller
      */
     public function filters(Product $product): JsonResponse
     {
-        $attributeTypes = AttributeType::whereHas('attributes', function ($q) use ($product) {
-            $q->whereHas('productVariants', function ($q2) use ($product) {
-                $q2->where('product_id', $product->id);
-            });
-        })
-            ->with(['attributes' => function ($q) use ($product) {
-                $q->whereHas('productVariants', function ($q2) use ($product) {
-                    $q2->where('product_id', $product->id);
-                });
-            }])
+        $attributeTypes = AttributeType::query()
+            // فقط دسته‌بندی ویژگی‌هایی را بیاور که این محصول حداقل یک واریانت با آن ویژگی دارد
+            ->whereHas('attributes.productVariants', function ($q) use ($product) {
+                $q->where('product_id', $product->id);
+            })
+            ->with([
+                'attributes' => function ($q) use ($product) {
+                    // ۱. فیلتر خود ویژگی‌ها (Attributes) بر اساس موجود بودن در واریانت‌های این محصول
+                    $q->whereHas('productVariants', function ($q2) use ($product) {
+                        $q2->where('product_id', $product->id);
+                    })
+                        // ۲. لود کردن مقادیر (Values) منحصر به فردی که برای این محصول وجود دارد
+                        ->with(['values' => function ($q3) use ($product) {
+                            $q3->whereHas('productVariants', function ($q4) use ($product) {
+                                $q4->where('product_id', $product->id);
+                            })->distinct(); // جلوگیری از مقادیر تکراری
+                        }]);
+                }
+            ])
             ->get();
 
-        return success(AttributeTypeResource::collection($attributeTypes), 'global.received_successfully');
+        return success(
+            AttributeTypeResource::collection($attributeTypes),
+            'global.received_successfully'
+        );
     }
-
     /**
      * محاسبه قیمت دقیق یک واریانت خاص
      */
