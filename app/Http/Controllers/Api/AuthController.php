@@ -243,8 +243,10 @@ class AuthController extends Controller
 
     public function verifyCode(StoreUserRequest $request): JsonResponse
     {
+        $mobile = $this->mobileTo09($request->validated('username'));
+
         $user = User::where([
-            User::MOBILE => $request->validated('username'),
+            User::MOBILE => $mobile,
             User::SECRET => $request->validated('code'),
         ])->first();
 
@@ -280,7 +282,7 @@ class AuthController extends Controller
         $token = $user->createToken('auth')->plainTextToken;
 
         if ($isNewUser) {
-            SendSmsJob::dispatch($request->validated('username'), __('sms.newRegisterUser'));
+            SendSmsJob::dispatch($mobile, __('sms.newRegisterUser'));
 
             UserNotification::create([
                 UserNotification::USER_ID => Auth::id(),
@@ -294,7 +296,7 @@ class AuthController extends Controller
             User::RELATION_ROLES,
             User::RELATION_BADGE
         ]);
-        
+
         return success([
             'user'  => new UserResource($userWithRelations),
             'token' => $token

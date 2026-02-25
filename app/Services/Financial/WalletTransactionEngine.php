@@ -32,7 +32,6 @@ class WalletTransactionEngine
             $userId = $targetUserId ?? $this->resolveUserId($walletCode, $order);
             
             $wallet = Wallet::firstOrCreate(['user_id' => $userId]);
-
             $wallet = Wallet::where('id', $wallet->id)->lockForUpdate()->first();
 
             // 3. تعیین نوع عملیات
@@ -46,8 +45,11 @@ class WalletTransactionEngine
                     $wallet->balance += $amount;
                 }
             } else {
-
-                $wallet->balance -= $amount;
+                if ($status === FinancialCodes::STATUS_HOLD || $status === 'hold') {
+                    $wallet->balance_hold -= $amount;
+                } else {
+                    $wallet->balance -= $amount;
+                }
             }
 
             // ذخیره تغییرات موجودی

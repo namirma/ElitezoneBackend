@@ -93,7 +93,8 @@ class AddToCartAction
             }
 
             // ۱۱. ایونت
-            $quantityAdded = array_sum($data['quantities']);
+            // از quantity محاسبه‌شده استفاده می‌کنیم تا با RemoveCartItemAction سازگار باشد
+            $quantityAdded = (float) $calculatedPhys['quantity'];
             CartItemChanged::dispatch(
                 $cart,
                 $variant,

@@ -163,13 +163,34 @@ class OrderPaymentController extends Controller
     public function payHoldFee(PayHoldFeeRequest $request, Order $order): JsonResponse
     {
         $this->authorize('pay', $order);
-        // لاجیک پرداخت هزینه نگهداری (مشابه بالا باید گارد موجودی داشته باشد)
-        return success(new OrderResource($order), 'هزینه تمدید پرداخت شد');
+
+        $user = Auth::user();
+        $wallet = $user->wallet;
+
+        if (!$wallet) {
+            return error('کیف پول برای حساب کاربری شما فعال نشده است.', [], 400);
+        }
+
+        $feeAmount = (float) ($request->validated()['amount'] ?? 0);
+
+        if ($feeAmount <= 0) {
+            return error('مبلغ هزینه نگهداری نامعتبر است.', [], 400);
+        }
+
+        if ($wallet->balance < $feeAmount) {
+            return $this->balanceError($wallet->balance, $feeAmount);
+        }
+
+        // در این نسخه فقط از طریق PaymentStatus/Meta می‌توانی ثبت منطقی انجام دهی
+        $wallet->decrement('balance', $feeAmount);
+
+        return success(new OrderResource($order->fresh()), 'هزینه تمدید پرداخت شد');
     }
 
     public function uploadReceipt(UploadOrderReceiptRequest $request, Order $order): JsonResponse
     {
-        $this->authorize('update', $order);
+        // اجازه مشاهده/پرداخت سفارش برای همان کاربری که می‌تواند پرداخت کند
+        $this->authorize('pay', $order);
 
         return success(new OrderResource($order), 'فیش بانکی با موفقیت ثبت شد');
     }

@@ -46,6 +46,8 @@ class OrderActionController extends Controller
      */
     public function finalizeInvoice(FinalizeOrderInvoiceRequest $request, Order $order): JsonResponse
     {
+        $this->authorize('finalizeInvoice', $order);
+
         $validated = $request->validated();
 
         if ($order->status !== Order::STATUS_PROCESSING) {
@@ -75,17 +77,16 @@ class OrderActionController extends Controller
                     throw new Exception("Consultant user not found.");
                 }
 
-                $wallet = $consultant->wallet;
-                if ($wallet) {
-                     $wallet->transactions()->create([
+                $wallet = $consultant->wallet ?: $consultant->wallet()->create([]);
+
+                $wallet->transactions()->create([
                         'order_id'    => $order->id,
                         'amount'      => $feeAmount,
                         'type'        => WalletTransaction::TYPE_FEE_HOLD,
                         'status'      => WalletTransaction::STATUS_PENDING,
                         'description' => "سهم رزرو شده برای سفارش " . $order->order_number,
-                    ]);
-                    $wallet->increment('balance_hold', $feeAmount);
-                }
+                ]);
+                $wallet->increment('balance_hold', $feeAmount);
             }
         });
 

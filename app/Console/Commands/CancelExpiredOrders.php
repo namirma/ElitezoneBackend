@@ -53,7 +53,8 @@ class CancelExpiredOrders extends Command
         $query->chunkById(100, function ($orders) use ($bar, &$count, $cancelAction) {
             foreach ($orders as $order) {
                 try {
-                    $cancelAction->execute($order, self::CANCEL_REASON);
+                    // این لغو توسط کرون‌جاب سیستم انجام می‌شود
+                    $cancelAction->execute($order, self::CANCEL_REASON, refundWallet: true, isSystemCron: true);
 
                     $count++;
                 } catch (Exception $e) {

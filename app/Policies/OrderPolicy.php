@@ -10,7 +10,7 @@ use Illuminate\Auth\Access\Response;
 class OrderPolicy
 {
     use HandlesAuthorization;
-    
+
     public function before(User $user, string $ability): ?bool
     {
         if ($user->hasRole('admin')) {
@@ -83,5 +83,16 @@ class OrderPolicy
         return $order->items()->where('supplier_user_id', $user->id)->exists()
             ? Response::allow()
             : Response::deny(__('auth.policy.supplier_item_mismatch'));
+    }
+
+    /**
+     * ثبت فاکتور نهایی سفارش
+     */
+    public function finalizeInvoice(User $user, Order $order): Response
+    {
+        // فقط ثبت‌کننده یا ذی‌نفع اجازه دارند فاکتور نهایی را ثبت کنند
+        return ($order->placer_user_id === $user->id || $order->beneficiary_user_id === $user->id)
+            ? Response::allow()
+            : Response::deny(__('auth.policy.finalize_invoice_denied', ['default' => 'شما دسترسی لازم برای این عملیات را ندارید.']));
     }
 }

@@ -31,8 +31,9 @@ class Idempotency
             return $next($request);
         }
 
-        $cacheKey = "idempotency_response:{$key}";
-        $lockKey = "idempotency_lock:{$key}";
+        $userId = optional($request->user())->id ?? 'guest';
+        $cacheKey = "idempotency_response:{$userId}:{$key}";
+        $lockKey = "idempotency_lock:{$userId}:{$key}";
 
         if (Cache::has($cacheKey)) {
             $cachedResponse = Cache::get($cacheKey);
@@ -58,13 +59,23 @@ class Idempotency
             $response = $next($request);
 
             if ($response->isSuccessful()) {
-                $responseData = [
-                    'content' => json_decode($response->getContent(), true),
-                    'status' => $response->getStatusCode(),
-                    'headers' => $response->headers->all(),
-                ];
+                $contentType = $response->headers->get('Content-Type', '');
 
-                Cache::put($cacheKey, $responseData, now()->addHours(self::CACHE_TTL_HOURS));
+                // فقط پاسخ‌های JSON را کش کن تا بدنه خراب نشود
+                if (is_string($contentType) && str_contains($contentType, 'application/json')) {
+                    $decoded = json_decode($response->getContent(), true);
+
+                    // اگر JSON نامعتبر بود، کش نکن
+                    if (json_last_error() === JSON_ERROR_NONE) {
+                        $responseData = [
+                            'content' => $decoded,
+                            'status' => $response->getStatusCode(),
+                            'headers' => $response->headers->all(),
+                        ];
+
+                        Cache::put($cacheKey, $responseData, now()->addHours(self::CACHE_TTL_HOURS));
+                    }
+                }
             }
 
             return $response;

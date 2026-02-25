@@ -15,7 +15,7 @@ class CancelOrderAction
 {
     public function __construct(
         protected InventoryService $inventoryService,
-        protected WalletTransactionEngine $walletEngine // تزریق موتور کیف پول برای هندل کردن هولد
+        protected WalletTransactionEngine $walletEngine ,
     ) {}
 
     /**

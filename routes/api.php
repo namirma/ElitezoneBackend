@@ -73,8 +73,11 @@ Route::any('/payment/callback', [PaymentController::class, 'callback'])->name('p
 Route::get('/search', [SearchController::class, 'search']);
 Route::post('/new-question', [QuestionController::class, 'submitQuestion']);
 
-Route::get('/test-cache', [DebugController::class, 'testCache']);
-Route::get('kavir-products', [DebugController::class, 'kavirProducts']);
+// Endpoints دیباگ فقط برای ادمین‌های لاگین‌کرده
+Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
+    Route::get('/test-cache', [DebugController::class, 'testCache']);
+    Route::get('/kavir-products', [DebugController::class, 'kavirProducts']);
+});
 
 Route::prefix('data')->middleware(['auth:sanctum'])->group(function () {
 

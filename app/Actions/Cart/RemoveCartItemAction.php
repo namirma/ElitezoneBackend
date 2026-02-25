@@ -19,7 +19,7 @@ class RemoveCartItemAction
              * گام ۱: استخراج اطلاعات برای دیتاساینس (قبل از حذف)
              * ----------------------------------------------------------------- */
             $variant = $cartItem->productVariant;
-            
+
             $quantityRemoved = (float) $cartItem->quantity * -1;
 
             $priceSnapshot = $cartItem->final_price > 0 ? $cartItem->final_price : ($variant->price ?? 0);
@@ -44,7 +44,7 @@ class RemoveCartItemAction
             );
             /* ----------------------------------------------------------------- */
 
-            return $cart->fresh(['items.productVariant', 'items.parameterValues']);
+            return $cart->fresh(['items.productVariant']);
         });
     }
 }

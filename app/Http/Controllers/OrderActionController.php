@@ -15,16 +15,19 @@ class OrderActionController extends Controller
     /**
      * ثبت فاکتور نهایی و "هولد" کردن سهم مشاور فنی
      */
-    public function finalizeInvoice(FinalizeOrderInvoiceRequesT $request, Order $order): JsonResponse
+    public function finalizeInvoice(FinalizeOrderInvoiceRequest $request, Order $order): JsonResponse
     {
+        // 1. چک کردن دسترسی کاربر (تغییر پیشنهادی Cursor)
+        $this->authorize('finalizeInvoice', $order);
+
         $validated = $request->validated();
 
-        // 1. بررسی وضعیت سفارش (باید پرداخت شده باشد)
+        // 2. بررسی وضعیت سفارش (باید پردازش شده باشد)
         if ($order->{Order::STATUS} !== Order::STATUS_PROCESSING) {
             return error('سفارش در وضعیت مناسب برای ثبت فاکتور نهایی نیست.', [], 400);
         }
 
-        // 2. پیدا کردن مبلغ سهم و کاربر مشاور
+        // 3. پیدا کردن مبلغ سهم و کاربر مشاور
         $feeAmount = null;
         $consultantUserId = null;
 
@@ -38,13 +41,13 @@ class OrderActionController extends Controller
         }
 
         DB::transaction(function () use ($order, $validated, $feeAmount, $consultantUserId) {
-            // 3. آپدیت سفارش با شماره فاکتور نهایی
+            // 4. آپدیت سفارش با شماره فاکتور نهایی
             $order->update([
                 Order::FINAL_INVOICE_REF => $validated['final_invoice_ref'],
                 // TODO: تغییر وضعیت سفارش اگر لازم است (مثلا به "فاکتور شده")
             ]);
 
-            // 4. اگر سهمی برای مشاور وجود دارد، آن را هولد کن
+            // 5. اگر سهمی برای مشاور وجود دارد، آن را هولد کن
             if ($feeAmount && $consultantUserId) {
                 $consultant = User::find($consultantUserId);
                 if (!$consultant) {
@@ -52,9 +55,10 @@ class OrderActionController extends Controller
                     throw new \Exception("Consultant user not found.");
                 }
 
-                $wallet = $consultant->wallet; // کیف پول او ساخته یا پیدا می‌شود
+                // رفع باگ: اگر کیف پول نداشت، یکی برایش بساز تا ارور ندهد
+                $wallet = $consultant->wallet()->firstOrCreate([]);
 
-                // 5. ایجاد تراکنش "هولد"
+                // 6. ایجاد تراکنش "هولد"
                 $wallet->transactions()->create([
                     'order_id'    => $order->id,
                     'amount'      => $feeAmount,
@@ -63,11 +67,8 @@ class OrderActionController extends Controller
                     'description' => "سهم رزرو شده برای سفارش " . $order->{Order::ORDER_NUMBER},
                 ]);
 
-                // 6. افزایش موجودی "هولد" شده در کیف پول
+                // 7. افزایش موجودی "هولد" شده در کیف پول
                 $wallet->increment('balance_hold', $feeAmount);
-
-                // 7. آپدیت وضعیت پرداخت سهم در سفارش (اختیاری اما خوب است)
-                // $order->update([...]); // مثلا: 'engineer_fee_payment_status' => 'holding'
             }
         });
 

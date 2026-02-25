@@ -24,8 +24,10 @@ class ProcessPreScalePaymentAction
 
             // --- گام ۱: محاسبه دقیق سهم‌ها ---
             $officialPrice = (float) $order->getAttribute(Order::OFFICIAL_PRICE);
-            if ($officialPrice <= 0 && $order->items->isNotEmpty()) {
-                $officialPrice = (float) $order->items->first()->unit_price;
+            $firstItem = $order->items->first();
+
+            if ($officialPrice <= 0 && $firstItem) {
+                $officialPrice = (float) $firstItem->unit_price;
             }
 
             $weightBeforeScale = (float) ($order->getAttribute(Order::WEIGHT_BEFORE_SCALE) ?? 0);
@@ -42,6 +44,11 @@ class ProcessPreScalePaymentAction
             $POO = $this->calculator->calculatePOO($shippingCost, $officialPrice, $weightBeforeScale, $ownerDiscountRate, $vatRate);
             $PTS = $this->calculator->calculatePTS($shippingCost, $officialPrice, $weightBeforeScale, $ownerDiscountRate, $sazeShareRate, $consultantRate, $vatRate);
 
+            if (!$firstItem) {
+                Log::error("Order {$order->id} has no items for pre-scale payment processing.");
+                throw new \RuntimeException('Order items missing for financial processing.');
+            }
+
             $order->update([
                 Order::PAYMENT_OF_OWNER      => $POO,
                 Order::PAYMENT_TO_SUPPLIER   => $PTS,
@@ -53,7 +60,7 @@ class ProcessPreScalePaymentAction
             // --- گام ۲: اجرای تراکنش‌های مالی (Money Flow) با شناسه‌های صحیح ---
 
             $buyerId = $order->placer_user_id;
-            $realSupplierId = $order->items->first()->supplier_user_id;
+            $realSupplierId = $firstItem->supplier_user_id;
             $systemUserId = 1; // شناسه ادمین/سازه
             $systemWalletCode = FinancialCodes::WALLET_SAZE;
 

@@ -30,7 +30,14 @@ class ProcessReservationCompletionAction
         DB::transaction(function () use ($order) {
 
             // 1. محاسبه مجدد و دقیق مبالغ با استفاده از سرویس فرمول‌ها
-            $op = (float) ($order->official_price ?: ($order->items->first()->unit_price ?? 0));
+            $firstItem = $order->items->first();
+
+            if (!$firstItem) {
+                Log::error("Order {$order->id} has no items for reservation completion processing.");
+                throw new \RuntimeException('Order items missing for reservation completion.');
+            }
+
+            $op = (float) ($order->official_price ?: ($firstItem->unit_price ?? 0));
             $wbs = (float) ($order->weight_before_scale ?: 1);
             $trans = (float) ($order->shipping_cost ?: 0);
             $vat = (float) ($order->vat_rate ?: 10.0);
@@ -56,11 +63,11 @@ class ProcessReservationCompletionAction
             }
 
             // 2. محاسبه مبلغ باقیمانده (Remaining Amount)
-            $remainingAmount = $POO - $PTR;
+            $remainingAmount = (float) bcsub((string)$POO, (string)$PTR, 4);
 
             // استخراج شناسه‌های مورد نیاز برای تراکنش‌ها
             $buyerId = $order->placer_user_id;
-            $realSupplierId = $order->items->first()->supplier_user_id;
+            $realSupplierId = $firstItem->supplier_user_id;
             $systemUserId = 1;
             $systemWalletCode = FinancialCodes::WALLET_SAZE;
 
@@ -88,7 +95,7 @@ class ProcessReservationCompletionAction
 
             // 6. بروزرسانی نهایی سفارش
             $order->update([
-                Order::STATUS => Order::STATUS_PROCESSING, 
+                Order::STATUS => Order::STATUS_PROCESSING,
                 Order::PAYMENT_STATUS => Order::PAYMENT_PAID,
                 Order::PAYMENT_OF_OWNER => $POO,
                 Order::PAYMENT_TO_SUPPLIER => $PTS,
