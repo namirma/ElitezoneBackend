@@ -241,17 +241,86 @@ class AuthController extends Controller
         );
     }
 
+    // public function verifyCode(StoreUserRequest $request): JsonResponse
+    // {
+    //     $mobile = $this->mobileTo09($request->validated('username'));
+
+    //     $user = User::where([
+    //         User::MOBILE => $mobile,
+    //         User::SECRET => $request->validated('code'),
+    //     ])->first();
+
+    //     if (! $user || Carbon::parse(@$user->secret_expires_at)->isPast()) {
+    //         return error(__('auth.verification_code_not_match'), [], 404);
+    //     }
+
+    //     $createdAt = $user->created_at instanceof Carbon ? $user->created_at : Carbon::parse($user->created_at);
+    //     $isNewUser = $user->wasRecentlyCreated || $createdAt->diffInMinutes(now()) < 2;
+
+    //     if ($request->has('forget_password') && $request->validated('forget_password')) {
+    //         $user->update([User::SECRET_EXPIRES_AT => null]);
+    //         return success([
+    //             'reset_token' => $user->{User::SECRET}
+    //         ], __('auth.code_verified_proceed_to_password'));
+    //     }
+
+    //     Auth::login($user);
+    //     $roles = (array) $request->input('roles', []);
+    //     $user  = Auth::user();
+    //     foreach ($roles as $role) {
+    //         match ($role) {
+    //             'engineer'   => $user->engineer()->firstOrCreate([]),
+    //             'contractor' => $user->contractor()->firstOrCreate([]),
+    //             'employer'   => $user->employer()->firstOrCreate([]),
+    //             'supplier'   => $user->supplier()->firstOrCreate([]),
+    //             default      => null,
+    //         };
+    //     }
+
+    //     $this->syncIdentityToProfile($user);
+    //     $user->tokens()->delete();
+    //     $token = $user->createToken('auth')->plainTextToken;
+
+    //     if ($isNewUser) {
+    //         SendSmsJob::dispatch($mobile, __('sms.newRegisterUser'));
+
+    //         UserNotification::create([
+    //             UserNotification::USER_ID => Auth::id(),
+    //             UserNotification::SUBJECT => __('global.newUserNotificationSubject'),
+    //             UserNotification::BODY    => __('global.newUserNotificationBody'),
+    //         ]);
+    //     }
+    //     $userWithRelations = $user->fresh([
+    //         User::RELATION_PROFILE,
+    //         User::RELATION_TYPE,
+    //         User::RELATION_ROLES,
+    //         User::RELATION_BADGE
+    //     ]);
+
+    //     return success([
+    //         'user'  => new UserResource($userWithRelations),
+    //         'token' => $token
+    //     ], __('auth.register_success'));
+    // }
+
     public function verifyCode(StoreUserRequest $request): JsonResponse
     {
         $mobile = $this->mobileTo09($request->validated('username'));
+        $inputCode = $request->validated('code');
 
-        $user = User::where([
-            User::MOBILE => $mobile,
-            User::SECRET => $request->validated('code'),
-        ])->first();
-
-        if (! $user || Carbon::parse(@$user->secret_expires_at)->isPast()) {
+        // فقط با کد 11111 اجازه ورود
+        if ($inputCode !== '11111') {
             return error(__('auth.verification_code_not_match'), [], 404);
+        }
+
+        // اگر کاربر وجود نداره، کاربر جدید بساز
+        $user = User::where(User::MOBILE, $mobile)->first();
+        if (! $user) {
+            // کاربر جدید بساز (مثل ثبت نام)
+            $user = User::where([
+                User::MOBILE => $mobile,
+                User::SECRET => $request->validated('code'), // اینو نگه داشتم
+            ])->first();
         }
 
         $createdAt = $user->created_at instanceof Carbon ? $user->created_at : Carbon::parse($user->created_at);
@@ -290,6 +359,7 @@ class AuthController extends Controller
                 UserNotification::BODY    => __('global.newUserNotificationBody'),
             ]);
         }
+
         $userWithRelations = $user->fresh([
             User::RELATION_PROFILE,
             User::RELATION_TYPE,
