@@ -309,7 +309,7 @@ class AuthController extends Controller
         $inputCode = $request->validated('code');
 
         // فقط با کد 11111 اجازه ورود
-        if ($inputCode !== '11111') {
+        if ($inputCode !== '111111') {
             return error(__('auth.verification_code_not_match'), [], 404);
         }
 
