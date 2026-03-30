@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Response;
@@ -64,4 +65,9 @@ function getSupplierCategoryId(): Collection
             ->where('activity_category_id', request('activity_category_id'))
             ->pluck('activity_category_id');
     }
+}
+
+function created($data = null, string $message = 'global.item_created_successfully'): JsonResponse
+{
+    return Response::success($data, __($message), 201);
 }

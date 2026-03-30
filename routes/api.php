@@ -66,6 +66,9 @@ use App\Http\Middleware\EnsureRoleIsSelected;
 |--------------------------------------------------------------------------
 */
 
+Route::prefix('ticket')->group(__DIR__ . '/v1/api.php');
+
+
 // --- 1. روت‌های عمومی (Public) ---
 Route::post('/payment/result', [PaymentController::class, 'result']);
 Route::any('/payment/callback', [PaymentController::class, 'callback'])->name('payment.callback');
