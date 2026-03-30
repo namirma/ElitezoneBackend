@@ -308,24 +308,28 @@ class AuthController extends Controller
         $mobile = $this->mobileTo09($request->validated('username'));
         $inputCode = $request->validated('code');
 
-        // فقط با کد 11111 اجازه ورود
+        // فقط با کد 111111 اجازه ورود
         if ($inputCode !== '111111') {
             return error(__('auth.verification_code_not_match'), [], 404);
         }
 
-        // اگر کاربر وجود نداره، کاربر جدید بساز
-        $user = User::where(User::MOBILE, $mobile)->first();
+        // کاربر رو پیدا کن یا بساز
+        $user = User::firstOrCreate(
+            [User::MOBILE => $mobile],
+            [
+                User::SECRET => $inputCode,
+                User::SECRET_EXPIRES_AT => now()->addHours(1)
+            ]
+        );
+
         if (! $user) {
-            // کاربر جدید بساز (مثل ثبت نام)
-            $user = User::where([
-                User::MOBILE => $mobile,
-                User::SECRET => $request->validated('code'), // اینو نگه داشتم
-            ])->first();
+            return error(__('auth.user_not_found'), [], 404);
         }
 
         $createdAt = $user->created_at instanceof Carbon ? $user->created_at : Carbon::parse($user->created_at);
         $isNewUser = $user->wasRecentlyCreated || $createdAt->diffInMinutes(now()) < 2;
 
+        // بقیه کد بدون تغییر...
         if ($request->has('forget_password') && $request->validated('forget_password')) {
             $user->update([User::SECRET_EXPIRES_AT => null]);
             return success([
