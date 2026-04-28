@@ -36,7 +36,10 @@ class OrderRepository implements OrderRepositoryInterface
                     $query->where(Order::BENEFICIARY_USER_ID, $userId);
                 } else {
                     $query->where(Order::PLACER_USER_ID, $userId)
-                          ->whereNull(Order::BENEFICIARY_USER_ID);
+                        ->where(function ($q) use ($userId) {
+                            $q->whereNull(Order::BENEFICIARY_USER_ID)
+                                ->orWhere(Order::BENEFICIARY_USER_ID, $userId);
+                        });
                 }
             })
             // فیلتر بر اساس گروه‌های وضعیت (جاری، تحویل شده، لغو شده)

@@ -66,4 +66,9 @@ class Cart extends Model
         )->withTimestamps();
     }
 
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class); 
+    }
+
 }

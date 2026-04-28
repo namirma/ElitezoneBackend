@@ -131,7 +131,7 @@ class CartController extends Controller
     {
         $cart = $this->resolveCart($request);
 
-        $cart->loadMissing([
+        $cart->refresh()->load([
             'items.productVariant.product.images',
             'items.productVariant.variantAttributes.attributeType',
             'items.productVariant.product.orderUnits',
@@ -234,7 +234,7 @@ class CartController extends Controller
                 $cart->update([Cart::BADGE_ID => $userBadgeId]);
             }
         }
-    }   
+    }
     private function buildPricingContext(Cart $cart): PricingContextData
     {
         $activeCode = $this->activeCode();

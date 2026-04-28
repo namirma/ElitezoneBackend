@@ -39,16 +39,22 @@ class FilterProductsAction
             'variants.prices.factoryLocation'
         ];
 
-        if ($this->productRepo instanceof ProductRepository) {
-            return $this->productRepo->getFilterQuery($filters)
-                ->with($relations)
-                ->get();
-        }
+        $query = Product::query()->with($relations);
 
-        return Product::query()
-            ->with($relations)
-            ->when($filters->categoryId, fn($q) => $q->where('category_id', $filters->categoryId))
-            ->get();
+        $query->when($filters->categoryId, fn($q) => $q->where('category_id', $filters->categoryId));
+
+        $query->when($filters->availability === 'in_stock', function ($q) {
+            $q->whereHas('variants', function ($variantQuery) {
+                $variantQuery->where('stock', '>', 0);
+            });
+        });
+        $query->when($filters->availability === 'out_of_stock', function ($q) {
+            $q->whereDoesntHave('variants', function ($variantQuery) {
+                $variantQuery->where('stock', '>', 0);
+            });
+        });
+
+        return $query->get();
     }
     private function hydrateProductPrices(Product $product, ProductFilterData $filters): void
     {
@@ -69,7 +75,7 @@ class FilterProductsAction
                 customerType: null,
                 badge: null,
                 filterCategoryIds: null,
-                withVAT: false,
+                withVAT: $filters->withVat,
                 filterCategoryCode: $filters->roleCode
             );
 

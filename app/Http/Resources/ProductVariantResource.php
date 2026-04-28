@@ -11,7 +11,7 @@ class ProductVariantResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            ProductVariant::ID               => (string) $this->id,
+            ProductVariant::ID               => $this->getKey(),
             ProductVariant::PRODUCT_ID       => (string) $this->{ProductVariant::PRODUCT_ID},
             ProductVariant::NAME             => $this->{ProductVariant::NAME},
             ProductVariant::SKU              => $this->{ProductVariant::SKU},

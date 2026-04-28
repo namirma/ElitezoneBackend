@@ -57,6 +57,7 @@ use App\Http\Controllers\Api\User\OrderPaymentController;
 use App\Http\Controllers\Api\User\SupplierOrderController;
 use App\Http\Controllers\MyItemsController;
 use App\Http\Controllers\Payment\WalletPaymentController;
+use App\Http\Controllers\ProfileSearchController;
 // Middleware
 use App\Http\Middleware\EnsureRoleIsSelected;
 
@@ -80,6 +81,15 @@ Route::post('/new-question', [QuestionController::class, 'submitQuestion']);
 Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
     Route::get('/test-cache', [DebugController::class, 'testCache']);
     Route::get('/kavir-products', [DebugController::class, 'kavirProducts']);
+});
+
+Route::middleware(['auth:sanctum'])->group(function () {
+    // روت‌های مربوط به جستجوی نویگیشن پروفایل
+    Route::prefix('profile/search-navigation')->controller(ProfileSearchController::class)->group(function () {
+        Route::get('/', 'index');
+        Route::post('/log', 'logSearch');
+        Route::delete('/history', 'clearHistory');
+    });
 });
 
 Route::prefix('data')->middleware(['auth:sanctum'])->group(function () {
