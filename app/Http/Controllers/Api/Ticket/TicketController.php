@@ -14,9 +14,7 @@ use Illuminate\Http\Request;
 
 class TicketController extends Controller
 {
-    public function __construct(protected TicketService $service)
-    {
-    }
+    public function __construct(protected TicketService $service) {}
 
     public function index(): JsonResponse
     {
@@ -25,14 +23,10 @@ class TicketController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        try {
-            $dto = TicketDTO::fromRequest($request);
-            $ticket = $this->service->create($dto);
+        $dto = TicketDTO::fromRequest($request);
+        $ticket = $this->service->create($dto);
 
-            return created(new CreatedResource($ticket), 'ticket.createdSuccessfully');
-        } catch (\Exception $e) {
-            return error($e->getMessage(), [], $e->getCode());
-        }
+        return created(new CreatedResource($ticket), 'ticket.createdSuccessfully');
     }
 
     public function show(Ticket $ticket): JsonResponse
@@ -44,5 +38,4 @@ class TicketController extends Controller
     {
         return success(DepartmentResource::collection($this->service->getDepartments()));
     }
-
 }
