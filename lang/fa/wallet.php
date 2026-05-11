@@ -35,4 +35,7 @@ return [
         'insufficient_balance' => 'موجودی کیف پول برای پرداخت این سفارش کافی نیست.',
     ],
 
+    'order_payment' => 'پرداخت سفارش شماره :order_number',
+    'deposit' => 'افزایش موجودی کیف پول',
+
 ];

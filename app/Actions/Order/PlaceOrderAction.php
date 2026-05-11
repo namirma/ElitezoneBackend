@@ -21,6 +21,7 @@ use App\Services\PriceCalculationService;
 use App\Services\PricingRoleResolver;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use App\Models\CartItem;
 use Illuminate\Support\Str;
 
 class PlaceOrderAction
@@ -61,23 +62,38 @@ class PlaceOrderAction
 
     private function getCartOrFail(User $user): Cart
     {
-        
-        $cart = Cart::with([
-            'items.productVariant.product',
-            'items.factory',
-            'items.factoryLocation',
-            'customerType',
-            'badge',
-            'priceFilterCategories'
-        ])
-            ->where(Cart::USER_ID, $user->id)
+        // گام یک: قفل گرفتن روی سبد
+        $cart = Cart::where(Cart::USER_ID, $user->id)
             ->lockForUpdate()
             ->latest('updated_at')
             ->first();
 
-        if (! $cart || $cart->items->isEmpty()) {
+        if (! $cart) {
             throw new CartIsEmptyException(__('orders.errors.cart_empty'));
         }
+
+        // گام دو: قفل گرفتن روی آیتم‌ها به طور جداگانه
+        $items = CartItem::where('cart_id', $cart->id)
+            ->lockForUpdate()
+            ->with([
+                'productVariant.product',
+                'factory',
+                'factoryLocation',
+            ])
+            ->get();
+
+        if ($items->isEmpty()) {
+            throw new CartIsEmptyException(__('orders.errors.cart_empty'));
+        }
+
+        $cart->load([
+            'customerType',
+            'badge',
+            'priceFilterCategories',
+        ]);
+
+        // گام چهار: ست کردن آیتم‌ها روی سبد
+        $cart->setRelation('items', $items);
 
         return $cart;
     }

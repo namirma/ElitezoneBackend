@@ -20,21 +20,43 @@ class ProcessPreScalePaymentAction
 
     public function execute(Order $order): void
     {
+        if ($this->isAlreadyProcessed($order)) {
+            Log::warning("ProcessPreScalePaymentAction skipped: order {$order->id} already paid.");
+            return;
+        }
+
         DB::transaction(function () use ($order) {
 
-            // --- گام ۱: محاسبه دقیق سهم‌ها ---
-            $officialPrice = (float) $order->getAttribute(Order::OFFICIAL_PRICE);
-            $firstItem = $order->items->first();
+            $locked = Order::where('id', $order->id)->lockForUpdate()->first();
 
-            if ($officialPrice <= 0 && $firstItem) {
+            if (!$locked) {
+                throw new \RuntimeException("Order {$order->id} not found.");
+            }
+
+            if ($this->isAlreadyProcessed($locked)) {
+                Log::warning("Race detected: order {$locked->id} already paid.");
+                return;
+            }
+
+            $locked->load('items', 'beneficiary.badge');
+
+            $officialPrice = (float) $locked->getAttribute(Order::OFFICIAL_PRICE);
+            $firstItem = $locked->items->first();
+
+            if (!$firstItem) {
+                Log::error("Order {$locked->id} has no items.");
+                throw new \RuntimeException('Order items missing for financial processing.');
+            }
+
+            if ($officialPrice <= 0) {
                 $officialPrice = (float) $firstItem->unit_price;
             }
 
-            $weightBeforeScale = (float) ($order->getAttribute(Order::WEIGHT_BEFORE_SCALE) ?? 0);
-            $shippingCost      = (float) ($order->shipping_cost ?? 0);
-            $vatRate           = (float) ($order->vat_rate ?? 10.0);
+            $weightBeforeScale = (float) ($locked->getAttribute(Order::WEIGHT_BEFORE_SCALE) ?? 0);
+            $shippingCost      = (float) ($locked->shipping_cost ?? 0);
+            $vatRate           = (float) ($locked->vat_rate ?? 10.0);
 
-            $badgeCode = $order->beneficiary?->badge?->code ?? 'pioneer';
+            $badgeCode = $locked->beneficiary?->badge?->code ?? 'pioneer';
             $rates = $this->calculator->getCommissionRates($badgeCode);
 
             $ownerDiscountRate = $rates['ow_final_rate'];
@@ -44,12 +66,7 @@ class ProcessPreScalePaymentAction
             $POO = $this->calculator->calculatePOO($shippingCost, $officialPrice, $weightBeforeScale, $ownerDiscountRate, $vatRate);
             $PTS = $this->calculator->calculatePTS($shippingCost, $officialPrice, $weightBeforeScale, $ownerDiscountRate, $sazeShareRate, $consultantRate, $vatRate);
 
-            if (!$firstItem) {
-                Log::error("Order {$order->id} has no items for pre-scale payment processing.");
-                throw new \RuntimeException('Order items missing for financial processing.');
-            }
-
-            $order->update([
+            $locked->update([
                 Order::PAYMENT_OF_OWNER      => $POO,
                 Order::PAYMENT_TO_SUPPLIER   => $PTS,
                 Order::COMMISSION_RATE       => 1.0,
@@ -57,31 +74,29 @@ class ProcessPreScalePaymentAction
                 Order::OWNER_DISCOUNT_RATE   => $ownerDiscountRate,
             ]);
 
-            // --- گام ۲: اجرای تراکنش‌های مالی (Money Flow) با شناسه‌های صحیح ---
-
-            $buyerId = $order->placer_user_id;
+            $buyerId = $locked->placer_user_id;
             $realSupplierId = $firstItem->supplier_user_id;
-            $systemUserId = 1; // شناسه ادمین/سازه
+            $systemUserId = 1;
             $systemWalletCode = FinancialCodes::WALLET_SAZE;
 
-            // الف) کسر از خریدار و واریز به سیستم
-            $this->walletEngine->process('-', $POO, FinancialCodes::WALLET_OWNER, FinancialCodes::STATUS_AVAILABLE, $order, "پرداخت وجه سفارش {$order->order_number}", $buyerId);
-            $this->walletEngine->process('+', $POO, $systemWalletCode, FinancialCodes::STATUS_AVAILABLE, $order, "دریافت وجه از خریدار برای سفارش {$order->order_number}", $systemUserId);
+            $this->walletEngine->process('-', $POO, FinancialCodes::WALLET_OWNER, FinancialCodes::STATUS_AVAILABLE, $locked, "پرداخت وجه سفارش {$locked->order_number}", $buyerId);
+            $this->walletEngine->process('+', $POO, $systemWalletCode, FinancialCodes::STATUS_AVAILABLE, $locked, "دریافت وجه از خریدار برای سفارش {$locked->order_number}", $systemUserId);
 
-            // ب) کسر سهم سوپلایر از سیستم و واریز به سوپلایر
-            $this->walletEngine->process('-', $PTS, $systemWalletCode, FinancialCodes::STATUS_AVAILABLE, $order, "تخصیص سهم تامین‌کننده سفارش {$order->order_number}", $systemUserId);
-            $this->walletEngine->process('+', $PTS, FinancialCodes::WALLET_SUPPLIER, FinancialCodes::STATUS_AVAILABLE, $order, "واریز سهم فروش سفارش {$order->order_number}", $realSupplierId);
+            $this->walletEngine->process('-', $PTS, $systemWalletCode, FinancialCodes::STATUS_AVAILABLE, $locked, "تخصیص سهم تامین‌کننده سفارش {$locked->order_number}", $systemUserId);
+            $this->walletEngine->process('+', $PTS, FinancialCodes::WALLET_SUPPLIER, FinancialCodes::STATUS_AVAILABLE, $locked, "واریز سهم فروش سفارش {$locked->order_number}", $realSupplierId);
 
-
-            // --- گام ۳: به‌روزرسانی وضعیت سفارش ---
-            $order->update([
+            $locked->update([
                 'status'         => Order::STATUS_PROCESSING,
                 'payment_status' => Order::PAYMENT_PAID,
-                'payment_method' => 'wallet',
                 'paid_at'        => now(),
             ]);
 
-            Log::info("پرداخت سفارش {$order->id} با موفقیت انجام شد و توزیع مالی تکمیل گردید.");
-        });
+            Log::info("پرداخت سفارش {$locked->id} با موفقیت انجام شد.");
+        }, 3);
+    }
+
+    private function isAlreadyProcessed(Order $order): bool
+    {
+        return $order->payment_status === Order::PAYMENT_PAID;
     }
 }
