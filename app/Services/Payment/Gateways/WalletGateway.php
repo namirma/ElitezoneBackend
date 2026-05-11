@@ -4,13 +4,18 @@ namespace App\Services\Payment\Gateways;
 
 use App\Actions\Financial\ProcessPreScalePaymentAction;
 use App\Exceptions\Wallet\InsufficientBalanceException;
+use App\Exceptions\Wallet\WalletNotFoundException;
 use App\Models\Order;
 use App\Models\User;
 use App\Services\Payment\Contracts\PaymentGatewayInterface;
-use Exception;
+use Illuminate\Support\Str;
 
 class WalletGateway implements PaymentGatewayInterface
 {
+    public function __construct(
+        private readonly ProcessPreScalePaymentAction $processPaymentAction
+    ) {}
+
     public function getName(): string
     {
         return 'wallet';
@@ -18,24 +23,34 @@ class WalletGateway implements PaymentGatewayInterface
 
     public function pay(User $user, Order $order): array
     {
-        // ۱. دریافت کیف پول کاربر با قفل دیتابیس (برای جلوگیری از تراکنش‌های همزمان)
+        // ۱. اعتبارسنجی مبلغ سفارش
+        $amount = (float) $order->final_amount;
+        if ($amount <= 0) {
+            throw new \InvalidArgumentException(__('orders.errors.invalid_amount'));
+        }
+
+        // ۲. دریافت کیف پول با قفل دیتابیس برای جلوگیری از Race Condition
         $wallet = $user->wallet()->lockForUpdate()->first();
 
         if (!$wallet) {
-            throw new Exception(__('wallet.errors.not_found'));
+            throw new WalletNotFoundException(__('wallet.errors.not_found'));
         }
 
-        // ۲. بررسی موجودی کیف پول خریدار
-        if ($wallet->balance < $order->final_amount) {
+        // ۳. بررسی موجودی
+        if ((float) $wallet->balance < $amount) {
             throw new InsufficientBalanceException(__('wallet.errors.insufficient_balance'));
         }
 
-        app(ProcessPreScalePaymentAction::class)->execute($order);
+        // ۴. اجرای فلوی مالی کامل (کسر از خریدار، تقسیم بین سازه و سوپلایر)
+        // این Action خودش idempotent هست (در صورتی که فیکس‌های گزارش قبلی اعمال بشه)
+        $this->processPaymentAction->execute($order);
 
-        // ۴. بازگشت رسید موفقیت‌آمیز (چون تراکنش‌های کیف پول Reference بانکی ندارند، یک شناسه یونیک تولید می‌کنیم)
+        // ۵. بازگشت اطلاعات تراکنش
         return [
-            'transaction_id' => null,
-            'reference_id'   => 'WALLET-' . uniqid(),
+            'transaction_id' => null, // کیف پول تراکنش گیت‌وی خارجی نداره
+            'reference_id'   => 'WALLET-' . Str::upper(Str::random(16)),
+            'gateway'        => $this->getName(),
+            'paid_at'        => now()->toIso8601String(),
         ];
     }
 }

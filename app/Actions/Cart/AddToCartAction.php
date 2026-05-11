@@ -94,13 +94,21 @@ class AddToCartAction
 
             // ۱۱. ایونت
             // از quantity محاسبه‌شده استفاده می‌کنیم تا با RemoveCartItemAction سازگار باشد
-            $quantityAdded = (float) $calculatedPhys['quantity'];
+            if ($existingItem) {
+                $previousQuantity = (float) $existingItem->getOriginal('quantity');
+                $newQuantity = (float) $calculatedPhys['quantity'];
+                $quantityAdded = $newQuantity - $previousQuantity;
+            } else {
+                $quantityAdded = (float) $calculatedPhys['quantity'];
+            }
+
+            
             CartItemChanged::dispatch(
                 $cart,
                 $variant,
                 CartEvent::ACTION_ADD,
-                (float) $quantityAdded,
-                $variant->price // Snapshot
+                $quantityAdded,
+                (float) $priceData['unit_price']
             );
 
             return $cart->load([
