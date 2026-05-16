@@ -174,15 +174,16 @@ Route::middleware(['auth:sanctum', 'attach.price.category'])->group(function () 
     });
 });
 
-// --- پادیوم (سرویس‌ها) ---
-Route::prefix('v1/podium')->group(function () {
-    Route::post('/settlements/single', [PodiumSettlementController::class, 'single']);
-    Route::get('/balances', [PodiumBalanceController::class, 'index']);
-    Route::post('/settlements/batch', [PodiumBatchSettlementController::class, 'store']);
-    Route::get('/settlements/inquiry', [PodiumSettlementInquiryController::class, 'index']);
-    Route::post('/identity-inquiry-sc2', IdentityInquirySc2Controller::class);
-    Route::post('mobile-nid-match', [MobileNidMatchController::class, 'store']);
-});
+Route::prefix('v1/podium')
+    ->middleware(['auth:sanctum', 'role:admin'])
+    ->group(function () {
+        Route::post('/settlements/single', [PodiumSettlementController::class, 'single']);
+        Route::get('/balances', [PodiumBalanceController::class, 'index']);
+        Route::post('/settlements/batch', [PodiumBatchSettlementController::class, 'store']);
+        Route::get('/settlements/inquiry', [PodiumSettlementInquiryController::class, 'index']);
+        Route::post('/identity-inquiry-sc2', IdentityInquirySc2Controller::class);
+        Route::post('/mobile-nid-match', [MobileNidMatchController::class, 'store']);
+    });
 
 // --- پنل ادمین ---
 Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(function () {
@@ -316,7 +317,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
             // عملیات مالی
             Route::controller(OrderPaymentController::class)->group(function () {
-                Route::post('/{order}/pay-hold-fee', 'payHoldFee')->whereNumber('order');
+                Route::post('/{order}/pay-hold-fee', 'payHoldFee')->whereNumber('order')->middleware('idempotency');
                 Route::post('/{order}/pay-full', 'payFullOrder')->whereNumber('order')->name('api.user.orders.pay_full');
                 Route::post('/{order}/upload-receipt', 'uploadReceipt')->whereNumber('order');
             });

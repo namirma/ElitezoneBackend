@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use Illuminate\Support\Facades\DB;
+use InvalidArgumentException;
 use Exception;
 
 class DebitWalletAction
@@ -20,11 +21,20 @@ class DebitWalletAction
         array $meta = [],
         string $type = WalletTransaction::TYPE_WITHDRAW
     ): WalletTransaction {
+        // ۱. گارد امنیتی: جلوگیری از مبالغ منفی یا صفر
+        if ($amount <= 0) {
+            throw new InvalidArgumentException('مبلغ برداشت باید بیشتر از صفر باشد.');
+        }
+
         return DB::transaction(function () use ($user, $amount, $description, $meta, $type) {
-            $wallet = Wallet::firstOrCreate(['user_id' => $user->id]);
 
-            $wallet = Wallet::where('id', $wallet->id)->lockForUpdate()->first();
+            $wallet = Wallet::where('user_id', $user->id)->lockForUpdate()->first();
 
+            if (!$wallet) {
+                throw new Exception(__('wallet.insufficient_balance'));
+            }
+
+            // ۴. بررسی موجودی تحت قفل
             if ($wallet->balance < $amount) {
                 throw new Exception(__('wallet.insufficient_balance'));
             }
@@ -34,7 +44,7 @@ class DebitWalletAction
             $transaction = $wallet->transactions()->create([
                 'amount'      => $amount,
                 'type'        => $type,
-                'status'      => WalletTransaction::STATUS_PENDING,
+                'status'      => WalletTransaction::STATUS_CONFIRMED, // اصلاح وضعیت
                 'description' => $description,
                 'meta'        => $meta,
             ]);

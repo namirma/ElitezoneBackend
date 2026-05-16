@@ -24,7 +24,7 @@ class AuthController extends Controller
 {
     public function me(Request $request)
     {
-        return $request->user();
+        return success(new UserResource($request->user()));
     }
     public function register(StoreUserRequest $request): JsonResponse
     {
