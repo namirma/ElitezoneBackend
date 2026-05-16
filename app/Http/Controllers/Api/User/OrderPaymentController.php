@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers\Api\User;
 
+use App\Actions\Financial\PayHoldFeeAction;
 use App\Actions\Financial\ProcessPreScalePaymentAction;
-use App\Actions\Financial\ProcessReservationPaymentAction;
 use App\Actions\Financial\ProcessReservationCompletionAction;
+use App\Actions\Financial\ProcessReservationPaymentAction;
 use App\Constants\FinancialCodes;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\PayFullOrderRequest;
@@ -26,7 +27,8 @@ class OrderPaymentController extends Controller
     public function __construct(
         protected ProcessPreScalePaymentAction $purchaseAction,
         protected ProcessReservationPaymentAction $reservationAction,
-        protected ProcessReservationCompletionAction $completionAction
+        protected ProcessReservationCompletionAction $completionAction,
+        protected PayHoldFeeAction $holdFeeAction
     ) {}
 
     /**
@@ -39,7 +41,7 @@ class OrderPaymentController extends Controller
 
         // بررسی وضعیت‌های مجاز برای پرداخت
         $payableStatuses = [Order::STATUS_PENDING, Order::STATUS_RESERVED, Order::STATUS_RESERVED_EXTENDED];
-        if (! in_array($order->status, $payableStatuses)) {
+        if (! \in_array($order->status, $payableStatuses)) {
             return error(__('orders.cannot_pay_order'), [], 400);
         }
 
@@ -54,17 +56,11 @@ class OrderPaymentController extends Controller
             // =================================================================
             // سناریو ۱: تکمیل وجه (Completion) - برای سفارش‌های رزرو شده
             // =================================================================
-            if (in_array($order->status, [Order::STATUS_RESERVED, Order::STATUS_RESERVED_EXTENDED])) {
+            if (\in_array($order->status, [Order::STATUS_RESERVED, Order::STATUS_RESERVED_EXTENDED])) {
 
-                // رفع باگ ۳: استفاده از فیلد مجاز دیتابیس (PAYMENT_TO_RESERVE)
-                $reservedAmount = (float) ($order->{Order::PAYMENT_TO_RESERVE} ?? 0);
-                $remainingAmount = $order->final_amount - $reservedAmount;
-
-                // *** گارد موجودی *** // (فقط در صورتی که مبلغ مابه‌التفاوت مثبت باشد نیاز به چک کردن موجودی کاربر داریم)
-                if ($remainingAmount > 0 && $wallet->balance < $remainingAmount) {
-                    return $this->balanceError($wallet->balance, $remainingAmount);
-                }
-
+                // Balance is checked inside completionAction using the actual POO formula.
+                // A pre-check here would use final_amount (a stale snapshot) and diverge
+                // from the settlement math, giving the user a wrong shortage figure.
                 $this->completionAction->execute($order);
 
                 return success([
@@ -127,7 +123,6 @@ class OrderPaymentController extends Controller
                     'message'   => 'سفارش با موفقیت رزرو شد.'
                 ]);
             }
-
         } catch (Exception $e) {
             return error($e->getMessage(), [], 400);
         }
@@ -164,34 +159,25 @@ class OrderPaymentController extends Controller
     {
         $this->authorize('pay', $order);
 
-        $user = Auth::user();
-        $wallet = $user->wallet;
+        try {
+            $this->holdFeeAction->execute($order);
 
-        if (!$wallet) {
-            return error('کیف پول برای حساب کاربری شما فعال نشده است.', [], 400);
+            return success([
+                'order'      => new OrderResource($order->fresh()),
+                'fee_amount' => PayHoldFeeAction::FEE_RIALS,
+            ], 'هزینه تمدید با موفقیت پرداخت شد');
+        } catch (Exception $e) {
+            return error($e->getMessage(), [], 400);
         }
-
-        $feeAmount = (float) ($request->validated()['amount'] ?? 0);
-
-        if ($feeAmount <= 0) {
-            return error('مبلغ هزینه نگهداری نامعتبر است.', [], 400);
-        }
-
-        if ($wallet->balance < $feeAmount) {
-            return $this->balanceError($wallet->balance, $feeAmount);
-        }
-
-        // در این نسخه فقط از طریق PaymentStatus/Meta می‌توانی ثبت منطقی انجام دهی
-        $wallet->decrement('balance', $feeAmount);
-
-        return success(new OrderResource($order->fresh()), 'هزینه تمدید پرداخت شد');
     }
-
     public function uploadReceipt(UploadOrderReceiptRequest $request, Order $order): JsonResponse
     {
-        // اجازه مشاهده/پرداخت سفارش برای همان کاربری که می‌تواند پرداخت کند
         $this->authorize('pay', $order);
 
-        return success(new OrderResource($order), 'فیش بانکی با موفقیت ثبت شد');
+        $path = $request->file('receipt')->store('order_receipts', 'public');
+
+        $order->update([Order::PAYMENT_RECEIPT_REF => $path]);
+
+        return success(new OrderResource($order->fresh()), 'فیش بانکی با موفقیت ثبت شد');
     }
 }

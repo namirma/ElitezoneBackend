@@ -72,6 +72,8 @@ class User extends Authenticatable
     protected $hidden = [
         self::PASSWORD,
         self::REMEMBER_TOKEN,
+        self::SECRET,
+        self::SECRET_EXPIRES_AT,
     ];
 
     protected $casts = [
@@ -87,7 +89,7 @@ class User extends Authenticatable
     public function getFullNameAttribute(): string
     {
         $profile = $this->profile;
-        if (!$profile || (empty($profile->name) && empty($profile->family))) {
+        if (!$profile || empty($profile->name) && empty($profile->family)) {
             return 'کاربر ناشناس';
         }
         return trim("{$profile->name} {$profile->family}");

@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Actions\Financial;
 
 use App\Constants\FinancialCodes;
+use App\Exceptions\InsufficientBalanceException;
 use App\Models\Order;
+use App\Models\Wallet;
 use App\Services\Financial\SettlementCalculatorService;
 use App\Services\Financial\WalletTransactionEngine;
 use App\Services\Invoice\InvoiceGenerator;
@@ -79,6 +81,15 @@ class ProcessReservationCompletionAction
             $realSupplierId = $firstItem->supplier_user_id;
             $systemUserId = 1;
             $systemWalletCode = FinancialCodes::WALLET_SAZE;
+
+            // Guard: check buyer balance against the actual debit amount (POO - PTR),
+            // not final_amount - PTR which the controller used as an approximation.
+            if ($remainingAmount > 0) {
+                $buyerWallet = Wallet::where('user_id', $buyerId)->lockForUpdate()->first();
+                if (!$buyerWallet || $buyerWallet->balance < $remainingAmount) {
+                    throw new InsufficientBalanceException($remainingAmount, (float) ($buyerWallet?->balance ?? 0));
+                }
+            }
 
             Log::info("Order {$locked->id}: POO={$POO}, PTR={$PTR}, Remaining={$remainingAmount}");
 

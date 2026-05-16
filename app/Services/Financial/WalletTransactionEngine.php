@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Financial;
 
 use App\Constants\FinancialCodes;
+use App\Exceptions\InsufficientBalanceException;
 use App\Models\Order;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
@@ -38,21 +39,28 @@ class WalletTransactionEngine
             $type = ($operation === '+') ? 'deposit' : 'withdraw';
 
 
+            $isHold = ($status === FinancialCodes::STATUS_HOLD || $status === 'hold');
+
             if ($operation === '+') {
-                if ($status === FinancialCodes::STATUS_HOLD || $status === 'hold') {
+                if ($isHold) {
                     $wallet->balance_hold += $amount;
                 } else {
                     $wallet->balance += $amount;
                 }
             } else {
-                if ($status === FinancialCodes::STATUS_HOLD || $status === 'hold') {
+                if ($isHold) {
+                    if ($wallet->balance_hold < $amount) {
+                        throw new InsufficientBalanceException($amount, (float) $wallet->balance_hold);
+                    }
                     $wallet->balance_hold -= $amount;
                 } else {
+                    if ($wallet->balance < $amount) {
+                        throw new InsufficientBalanceException($amount, (float) $wallet->balance);
+                    }
                     $wallet->balance -= $amount;
                 }
             }
 
-            // ذخیره تغییرات موجودی
             $wallet->save();
 
             // 5. ثبت تراکنش در جدول تاریخچه

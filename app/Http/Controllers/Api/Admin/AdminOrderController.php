@@ -37,10 +37,10 @@ class AdminOrderController extends Controller
     {
 
         $orders = Order::query()
-            ->with(['user:id,name,mobile,avatar']) 
+            ->with(['placer:id,mobile'])
             ->when($request->filled('order_number'), fn(Builder $q) =>
-                $q->where('tracking_code', 'like', "%{$request->order_number}%")
-                  ->orWhere('id', $request->order_number)
+                $q->where(Order::ORDER_NUMBER, 'like', "%{$request->order_number}%")
+                  ->orWhere(Order::ID, $request->order_number)
             )
             ->when($request->filled('date_from'), fn(Builder $q) =>
                 $q->whereDate('created_at', '>=', $request->date_from)
@@ -59,14 +59,14 @@ class AdminOrderController extends Controller
 
     public function show(Order $order): JsonResponse
     {
-        $order->load(['items.product', 'transactions', 'address', 'user']);
+        $order->load(['items', 'address', 'placer.profile']);
 
         return success(new OrderResource($order));
     }
 
     public function changeStatus(Request $request, Order $order): JsonResponse
     {
-        $request->validate(['status' => 'required|string|in:pending,processing,shipped,delivered,canceled']);
+        $request->validate(['status' => 'required|string|in:pending,processing,shipped,delivered,cancelled']);
 
         $order->update(['status' => $request->input('status')]);
 
