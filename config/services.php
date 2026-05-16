@@ -62,4 +62,11 @@ return [
         'sc_api_key'    => env('PODIUM_SC_API_KEY_CARD'),
         'sc_product_id' => env('PODIUM_SC_PRODUCT_ID_CARD', 16530454),
     ],
+
+    'tsms' => [
+        'link'     => env('TSMS_LINK', 'https://tsms.ir/url/tsmshttp.php'),
+        'number'   => env('TSMS_NUMBER'),
+        'username' => env('TSMS_USERNAME'),
+        'password' => env('TSMS_PASSWORD'),
+    ],
 ];
