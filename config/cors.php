@@ -16,7 +16,9 @@ return [
         'https://elitezone.me',
         'https://www.elitezone.me',
         'https://staging.elitezone.me',
-        // 'http://localhost:3000',
+        'http://localhost:3000',
+        'http://localhost:8000',
+        'http://localhost:5173',
     ],
 
     'allowed_origins_patterns' => [],
@@ -29,4 +31,4 @@ return [
 
     'supports_credentials' => true,
 
-    ];
+];
