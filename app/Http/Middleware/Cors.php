@@ -25,7 +25,8 @@ class Cors
             'https://www.elitezone.me',
             'https://staging.elitezone.me',
             'http://localhost:3000',
-            'http://localhost:8000'
+            'http://localhost:8000',
+            'http://localhost:5173'
         ];
 
         $origin = $request->header('Origin');
