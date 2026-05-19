@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\User;
 
+use App\Actions\Auth\RequestOtpAction;
 use App\Actions\Profile\SetUserTypeAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ChangeMobileRequest;
@@ -11,16 +12,13 @@ use App\Http\Requests\StoreUserTypeRequest;
 use App\Http\Requests\UpdateLegalProfileRequest;
 use App\Http\Requests\UpdateRealProfileRequest;
 use App\Http\Requests\VerifyEmailRequest;
-use App\Http\Resources\UserMessageResource;
 use App\Http\Resources\UserResource;
 use App\Jobs\SendSmsJob;
 use App\Mail\VerifyEmail;
 use App\Models\User;
-use App\Models\UserNotification;
 use App\Models\UserProfile;
 use App\Services\PodiumClient;
 use App\Services\PodiumServices\CompanyInquiryService;
-use App\Services\SmsService;
 use App\Support\PhoneNumber;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -28,7 +26,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -222,16 +219,18 @@ class ProfileController extends Controller
         return success(new UserResource($user), __('auth.password_changed_successfully'));
     }
 
-    public function changePasswordFirstAttempt(): JsonResponse
+    public function changePasswordFirstAttempt(RequestOtpAction $otpAction): JsonResponse
     {
         $user = User::findOrFail(Auth::id());
-        $code = generateVerifyCode();
-        $notExpired = $user->{User::SECRET_EXPIRES_AT} ? ! Carbon::parse($user->{User::SECRET_EXPIRES_AT})->isPast() : false;
+        $notExpired = $user->{User::SECRET_EXPIRES_AT}
+            ? ! Carbon::parse($user->{User::SECRET_EXPIRES_AT})->isPast()
+            : false;
+
         if ($notExpired) {
             return success([], __('auth.code_sent_recently'), 202);
         }
-        User::where([User::ID], $user->id)->update([User::SECRET => $code, User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2)]);
-        (new SmsService)->send($user->{User::MOBILE}, $code);
+
+        $otpAction->execute($user, $user->{User::MOBILE});
 
         return success([], __('auth.change_password_first_attempt'), 200);
     }
@@ -327,122 +326,13 @@ class ProfileController extends Controller
         }
         $notExpired = $user->{User::SECRET_EXPIRES_AT} ? ! Carbon::parse($user->{User::SECRET_EXPIRES_AT})->isPast() : false;
         if ((int) ($user->{User::SECRET} ?? 0) === (int) $code && $notExpired) {
-            DB::table('users')->where(User::ID, $user->id)->update([User::MOBILE => $newMobile, User::SECRET => null, User::SECRET_EXPIRES_AT => null]);
+            $user->update([User::MOBILE => $newMobile, User::SECRET => null, User::SECRET_EXPIRES_AT => null]);
             session()->forget('pending_mobile_update');
 
             return success(['mobile' => $newMobile], __('profile.mobileUpdateSuccessfully'), 200);
         }
 
         return error(__('auth.verification_code_not_match_or_expired'), [], 400);
-    }
-
-    public static function removeProfile(): void
-    {
-        // $uid = Auth::id();
-        // ContractorProfile::where([ContractorProfile::USER_ID], $uid)->delete();
-        // EmployerProfile::where([EmployerProfile::USER_ID], $uid)->delete();
-        // EngineerProfile::where([EngineerProfile::USER_ID], $uid)->delete();
-        // SupplierProfile::where([SupplierProfile::USER_ID], $uid)->delete();
-
-        Log::warning('Deprecated method ProfileController::removeProfile() was called.');
-    }
-
-    public function getMessages(Request $request): JsonResponse
-    {
-        $user = Auth::user();
-        if (! $user) {
-            return error(__('auth.unauthenticated'), [], 401);
-        }
-
-        $query = UserNotification::where(UserNotification::USER_ID, $user->id);
-
-        if ($request->input('filter') === 'unread') {
-            $query->whereNull(UserNotification::READ_AT);
-        } elseif ($request->input('filter') === 'read') {
-            $query->whereNotNull(UserNotification::READ_AT);
-        }
-
-        $items = $query->latest()->paginate(20);
-
-        return success(
-            UserMessageResource::collection($items)->response()->getData(true),
-            __('global.received_successfully')
-        );
-    }
-
-    /**
-     * دریافت تعداد پیام‌های خوانده نشده
-     * کاربرد: نمایش عدد قرمز روی آیکون زنگوله در هدر سایت
-     */
-    public function getUnreadMessagesCount(): JsonResponse
-    {
-        $user = Auth::user();
-        if (! $user) {
-            return error(__('auth.unauthenticated'), [], 401);
-        }
-
-        $count = UserNotification::where(UserNotification::USER_ID, $user->id)
-            ->whereNull(UserNotification::READ_AT)
-            ->count();
-
-        return success(['unread_count' => $count], __('global.received_successfully'));
-    }
-
-    /**
-     * تغییر وضعیت یک پیام به "خوانده شده"
-     */
-    public function updateMessageStatus(UserNotification $userNotification): JsonResponse
-    {
-        $user = Auth::user();
-
-        // بررسی مالکیت پیام
-        if (! $user || $userNotification->{UserNotification::USER_ID} !== $user->id) {
-            return error(__('auth.forbidden'), [], 403);
-        }
-
-        if (is_null($userNotification->{UserNotification::READ_AT})) {
-            $userNotification->update([
-                UserNotification::READ_AT => Carbon::now(),
-            ]);
-        }
-
-        return success(new UserMessageResource($userNotification), __('profile.message_marked_read'));
-    }
-
-    /**
-     * تغییر وضعیت "همه" پیام‌ها به "خوانده شده"
-     */
-    public function updateAllMessageStatus(): JsonResponse
-    {
-        $user = Auth::user();
-        if (! $user) {
-            return error(__('auth.unauthenticated'), [], 401);
-        }
-
-        $updatedCount = UserNotification::where(UserNotification::USER_ID, $user->id)
-            ->whereNull(UserNotification::READ_AT)
-            ->update([
-                UserNotification::READ_AT => Carbon::now(),
-            ]);
-
-        return success(['updated_count' => $updatedCount], __('profile.all_messages_marked_read'));
-    }
-
-    /**
-     * حذف یک پیام
-     */
-    public function deleteMessage(UserNotification $userNotification): JsonResponse
-    {
-        $user = Auth::user();
-
-        if (! $user || $userNotification->{UserNotification::USER_ID} !== $user->id) {
-            return error(__('auth.forbidden'), [], 403);
-        }
-
-        // حذف پیام
-        $userNotification->delete();
-
-        return success([], __('global.deleted_successfully'));
     }
 
     public function setEmail(VerifyEmailRequest $request): JsonResponse

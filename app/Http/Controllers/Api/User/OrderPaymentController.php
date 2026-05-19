@@ -49,7 +49,7 @@ class OrderPaymentController extends Controller
             $user = Auth::user();
             $wallet = $user->wallet;
 
-            if (!$wallet) {
+            if (! $wallet) {
                 return error('کیف پول برای حساب کاربری شما فعال نشده است.', [], 400);
             }
 
@@ -64,13 +64,13 @@ class OrderPaymentController extends Controller
                 $this->completionAction->execute($order);
 
                 return success([
-                    'order'     => new OrderResource($order->fresh()),
+                    'order' => new OrderResource($order->fresh()),
                     'documents' => [
                         FinancialCodes::DOC_FINAL_RECEIPT_OWNER,   // G
                         FinancialCodes::DOC_FINAL_REPORT_SUPPLIER, // H
-                        FinancialCodes::DOC_LOADING_ORDER          // C
+                        FinancialCodes::DOC_LOADING_ORDER,          // C
                     ],
-                    'message'   => 'تکمیل وجه با موفقیت انجام شد.'
+                    'message' => 'تکمیل وجه با موفقیت انجام شد.',
                 ]);
             }
 
@@ -81,7 +81,7 @@ class OrderPaymentController extends Controller
             $isReserveRequested = $request->input('payment_type') === 'reserve';
 
             // --- حالت الف: خرید مستقیم (Direct Purchase) ---
-            if ($totalAmount < self::RESERVATION_THRESHOLD || !$isReserveRequested) {
+            if ($totalAmount < self::RESERVATION_THRESHOLD || ! $isReserveRequested) {
 
                 // *** گارد موجودی برای کل مبلغ ***
                 if ($wallet->balance < $totalAmount) {
@@ -92,14 +92,14 @@ class OrderPaymentController extends Controller
                 $this->purchaseAction->execute($order);
 
                 return success([
-                    'order'     => new OrderResource($order->fresh()),
+                    'order' => new OrderResource($order->fresh()),
                     'documents' => [
                         FinancialCodes::DOC_RECEIPT_OWNER,    // A (رسید خریدار)
                         FinancialCodes::DOC_REPORT_SUPPLIER,  // B (گزارش سوپلایر)
                         FinancialCodes::DOC_LOADING_ORDER,    // C (دستور بارگیری)
-                        FinancialCodes::DOC_CONSULTANT_REPORT // D (گزارش مشاور فنی)
+                        FinancialCodes::DOC_CONSULTANT_REPORT, // D (گزارش مشاور فنی)
                     ],
-                    'message'   => 'پرداخت کامل انجام شد.'
+                    'message' => 'پرداخت کامل انجام شد.',
                 ]);
             }
 
@@ -115,12 +115,12 @@ class OrderPaymentController extends Controller
                 $this->reservationAction->execute($order, $reserveAmount, validityHours: 2);
 
                 return success([
-                    'order'     => new OrderResource($order->fresh()),
+                    'order' => new OrderResource($order->fresh()),
                     'documents' => [
                         FinancialCodes::DOC_RESERVE_RECEIPT, // E
-                        FinancialCodes::DOC_RESERVE_REPORT   // F
+                        FinancialCodes::DOC_RESERVE_REPORT,   // F
                     ],
-                    'message'   => 'سفارش با موفقیت رزرو شد.'
+                    'message' => 'سفارش با موفقیت رزرو شد.',
                 ]);
             }
         } catch (Exception $e) {
@@ -137,22 +137,21 @@ class OrderPaymentController extends Controller
     {
         $shortage = $requiredAmount - $currentBalance;
 
-        return response()->json([
-            'status'  => false,
-            'message' => "موجودی کیف پول کافی نیست. لطفاً جهت ادامه، مبلغ " . number_format($shortage) . " ریال کیف پول خود را شارژ کنید.",
-            'data'    => [
-                'error_code'      => 'insufficient_balance',
+        return error(
+            'موجودی کیف پول کافی نیست. لطفاً جهت ادامه، مبلغ '.number_format($shortage).' ریال کیف پول خود را شارژ کنید.',
+            [
+                'error_code' => 'insufficient_balance',
                 'current_balance' => $currentBalance,
                 'required_amount' => $requiredAmount,
-                'shortage'        => $shortage,
-
+                'shortage' => $shortage,
                 'action' => [
-                    'type'                    => 'navigate_to_deposit',
-                    'api_route'               => '/api/profile/financial/wallet/deposit',
-                    'required_deposit_amount' => $shortage
-                ]
-            ]
-        ], 400);
+                    'type' => 'navigate_to_deposit',
+                    'api_route' => '/api/profile/financial/wallet/deposit',
+                    'required_deposit_amount' => $shortage,
+                ],
+            ],
+            400
+        );
     }
 
     public function payHoldFee(PayHoldFeeRequest $request, Order $order): JsonResponse
@@ -163,13 +162,14 @@ class OrderPaymentController extends Controller
             $this->holdFeeAction->execute($order);
 
             return success([
-                'order'      => new OrderResource($order->fresh()),
+                'order' => new OrderResource($order->fresh()),
                 'fee_amount' => PayHoldFeeAction::FEE_RIALS,
             ], 'هزینه تمدید با موفقیت پرداخت شد');
         } catch (Exception $e) {
             return error($e->getMessage(), [], 400);
         }
     }
+
     public function uploadReceipt(UploadOrderReceiptRequest $request, Order $order): JsonResponse
     {
         $this->authorize('pay', $order);

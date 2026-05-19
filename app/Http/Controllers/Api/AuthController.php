@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Actions\Auth\RequestOtpAction;
+use App\Actions\Auth\SyncIdentityToProfileAction;
 use App\Actions\Auth\VerifyIdentityWithPodiumAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreUserRequest;
@@ -10,9 +11,7 @@ use App\Http\Resources\UserResource;
 use App\Jobs\SendSmsJob;
 use App\Models\User;
 use App\Models\UserNotification;
-use App\Models\UserProfile;
 use App\Models\UserType;
-use App\Services\PodiumClient;
 use App\Support\PhoneNumber;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,7 +19,6 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\PersonalAccessToken;
-use Throwable;
 
 class AuthController extends Controller
 {
@@ -119,53 +117,6 @@ class AuthController extends Controller
         return success(UserType::all(), __('global.information_received_successfully'));
     }
 
-    private function syncIdentityToProfile(User $user): void
-    {
-        if (empty($user->national_code) || empty($user->birth_date)) {
-            return;
-        }
-
-        $client = app(PodiumClient::class);
-        $payload = [
-            'apiKey' => (string) config('podium.services.identity_inquiry.sc_api_key'),
-            'productEntityId' => (int) config('podium.services.identity_inquiry.sc_product_id'),
-            'providerParameters' => [
-                'nationalCode' => (string) $user->national_code,
-                'birthDate' => (string) $user->birth_date,
-            ],
-            'asyncCall' => false,
-            'wrapper' => true,
-        ];
-
-        try {
-            $norm = PodiumClient::normalize($client->callSc2($payload));
-        } catch (Throwable $e) {
-            return;
-        }
-
-        $info = data_get($norm, 'result.identityInfo', []);
-        $fname = (string) data_get($info, 'firstName', '');
-        $lname = (string) data_get($info, 'lastName', '');
-        $bdate = (string) data_get($info, 'birthDate', data_get($norm, 'result.birthDate', ''));
-
-        if (preg_match('/^\d{8}$/', $bdate)) {
-            $bdate = substr($bdate, 0, 4).'-'.substr($bdate, 4, 2).'-'.substr($bdate, 6, 2);
-        }
-        $values = [
-            UserProfile::USER_ID => $user->id,
-            UserProfile::NAME => $fname !== '' ? $fname : '—',
-            UserProfile::FAMILY => $lname !== '' ? $lname : '—',
-            UserProfile::NATIONAL_CODE => (string) $user->national_code,
-            UserProfile::BIRTHDAY => $bdate !== '' ? $bdate : '0000-00-00',
-            UserProfile::PHONE => $user->mobile,
-        ];
-
-        UserProfile::updateOrCreate(
-            [UserProfile::USER_ID => $user->id],
-            $values
-        );
-    }
-
     public function verifyCode(StoreUserRequest $request): JsonResponse
     {
         $mobile = PhoneNumber::to09($request->validated('username'));
@@ -203,7 +154,7 @@ class AuthController extends Controller
             };
         }
 
-        $this->syncIdentityToProfile($user);
+        app(SyncIdentityToProfileAction::class)->execute($user);
         $user->tokens()->delete();
         $token = $user->createToken('auth')->plainTextToken;
 

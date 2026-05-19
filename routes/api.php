@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\User\ContractorController;
 use App\Http\Controllers\Api\User\DashboardController;
 use App\Http\Controllers\Api\User\EmployerController;
 use App\Http\Controllers\Api\User\EngineerController;
+use App\Http\Controllers\Api\User\NotificationController;
 use App\Http\Controllers\Api\User\OrderActionController;
 use App\Http\Controllers\Api\User\OrderInvoiceController;
 use App\Http\Controllers\Api\User\OrderPaymentController;
@@ -253,12 +254,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
         });
 
         // پیغام‌ها
-        Route::prefix('messages')->controller(ProfileController::class)->group(function () {
-            Route::get('/', 'getMessages');
-            Route::get('/unread-count', 'getUnreadMessagesCount');
-            Route::patch('/read-all', 'updateAllMessageStatus');
-            Route::patch('/{userNotification}/read', 'updateMessageStatus');
-            Route::delete('/{userNotification}', 'deleteMessage');
+        Route::prefix('messages')->controller(NotificationController::class)->group(function () {
+            Route::get('/', 'index');
+            Route::get('/unread-count', 'unreadCount');
+            Route::patch('/read-all', 'markAllRead');
+            Route::patch('/{userNotification}/read', 'markRead');
+            Route::delete('/{userNotification}', 'destroy');
         });
         // تحصیلات
         Route::prefix('education')->middleware('role.expert')->controller(EduixController::class)->group(function () {
