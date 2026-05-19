@@ -26,6 +26,7 @@ class ProcessReservationCompletionAction
     {
         if ($this->isAlreadyProcessed($order)) {
             Log::warning("ProcessReservationCompletionAction skipped: order {$order->id} already completed.");
+
             return;
         }
 
@@ -35,12 +36,13 @@ class ProcessReservationCompletionAction
 
             $locked = Order::where('id', $order->id)->lockForUpdate()->first();
 
-            if (!$locked) {
+            if (! $locked) {
                 throw new \RuntimeException("Order {$order->id} not found.");
             }
 
             if ($this->isAlreadyProcessed($locked)) {
                 Log::warning("Race detected: order {$locked->id} already completed.");
+
                 return;
             }
 
@@ -48,7 +50,7 @@ class ProcessReservationCompletionAction
 
             $firstItem = $locked->items->first();
 
-            if (!$firstItem) {
+            if (! $firstItem) {
                 Log::error("Order {$locked->id} has no items.");
                 throw new \RuntimeException('Order items missing for reservation completion.');
             }
@@ -61,9 +63,9 @@ class ProcessReservationCompletionAction
             $badgeCode = $locked->beneficiary?->badge?->code ?? 'pioneer';
             $rates = $this->calculator->getCommissionRates($badgeCode);
 
-            $ow  = $rates['ow_final_rate'];
+            $ow = $rates['ow_final_rate'];
             $ssg = $rates['ssg_final_rate'];
-            $co  = $rates['co_final_rate'];
+            $co = $rates['co_final_rate'];
 
             $POO = $this->calculator->calculatePOO($trans, $op, $wbs, $ow, $vat);
             $PTS = $this->calculator->calculatePTS($trans, $op, $wbs, $ow, $ssg, $co, $vat);
@@ -75,7 +77,7 @@ class ProcessReservationCompletionAction
 
             $PTR = (float) $locked->payment_to_reserve;
 
-            $remainingAmount = (float) bcsub((string)$POO, (string)$PTR, 4);
+            $remainingAmount = (float) bcsub((string) $POO, (string) $PTR, 4);
 
             $buyerId = $locked->placer_user_id;
             $realSupplierId = $firstItem->supplier_user_id;
@@ -86,7 +88,7 @@ class ProcessReservationCompletionAction
             // not final_amount - PTR which the controller used as an approximation.
             if ($remainingAmount > 0) {
                 $buyerWallet = Wallet::where('user_id', $buyerId)->lockForUpdate()->first();
-                if (!$buyerWallet || $buyerWallet->balance < $remainingAmount) {
+                if (! $buyerWallet || $buyerWallet->balance < $remainingAmount) {
                     throw new InsufficientBalanceException($remainingAmount, (float) ($buyerWallet?->balance ?? 0));
                 }
             }
@@ -99,21 +101,21 @@ class ProcessReservationCompletionAction
             } elseif ($remainingAmount < 0) {
                 $refundAmount = abs($remainingAmount);
                 $this->walletEngine->process('-', $refundAmount, $systemWalletCode, FinancialCodes::STATUS_AVAILABLE, $locked, "بازگشت مابه‌التفاوت افت قیمت سفارش {$locked->order_number}", $systemUserId);
-                $this->walletEngine->process('+', $refundAmount, FinancialCodes::WALLET_OWNER, FinancialCodes::STATUS_AVAILABLE, $locked, "دریافت مابه‌التفاوت افت قیمت رزرو", $buyerId);
+                $this->walletEngine->process('+', $refundAmount, FinancialCodes::WALLET_OWNER, FinancialCodes::STATUS_AVAILABLE, $locked, 'دریافت مابه‌التفاوت افت قیمت رزرو', $buyerId);
             }
 
             $this->walletEngine->process('-', $PTR, $systemWalletCode, FinancialCodes::STATUS_HOLD, $locked, "خروج از حالت هولد مبلغ رزرو سفارش {$locked->order_number}", $systemUserId);
-            $this->walletEngine->process('+', $PTR, $systemWalletCode, FinancialCodes::STATUS_AVAILABLE, $locked, "تبدیل موجودی هولد رزرو به قطعی", $systemUserId);
+            $this->walletEngine->process('+', $PTR, $systemWalletCode, FinancialCodes::STATUS_AVAILABLE, $locked, 'تبدیل موجودی هولد رزرو به قطعی', $systemUserId);
 
             $this->walletEngine->process('-', $PTS, $systemWalletCode, FinancialCodes::STATUS_AVAILABLE, $locked, "تخصیص سهم تامین‌کننده سفارش {$locked->order_number}", $systemUserId);
             $this->walletEngine->process('+', $PTS, FinancialCodes::WALLET_SUPPLIER, FinancialCodes::STATUS_AVAILABLE, $locked, "واریز سهم فروش سفارش {$locked->order_number}", $realSupplierId);
 
             $locked->update([
-                Order::STATUS              => Order::STATUS_PROCESSING,
-                Order::PAYMENT_STATUS      => Order::PAYMENT_PAID,
-                Order::PAYMENT_OF_OWNER    => $POO,
+                Order::STATUS => Order::STATUS_PROCESSING,
+                Order::PAYMENT_STATUS => Order::PAYMENT_PAID,
+                Order::PAYMENT_OF_OWNER => $POO,
                 Order::PAYMENT_TO_SUPPLIER => $PTS,
-                Order::PAID_AT             => now(),
+                Order::PAID_AT => now(),
             ]);
 
             $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_FINAL_RECEIPT_OWNER);

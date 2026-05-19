@@ -1,8 +1,29 @@
 <?php
 
-use App\Http\Controllers\OrderController;
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AddressController;
+use App\Http\Controllers\Api\Admin\AdminActivityLogController;
+use App\Http\Controllers\Api\Admin\AdminFinancialController;
+use App\Http\Controllers\Api\Admin\AdminOrderController;
+use App\Http\Controllers\Api\Admin\AdminSearchController;
+use App\Http\Controllers\Api\Admin\AdminUserController;
+use App\Http\Controllers\Api\Admin\AdminWalletController;
+use App\Http\Controllers\Api\Admin\OrderWeighbridgeController;
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\Data\AnalyticsController;
+use App\Http\Controllers\Api\Data\InventoryController;
+use App\Http\Controllers\Api\DebugController;
+use App\Http\Controllers\Api\ListopherController;
+use App\Http\Controllers\Api\QuestionController;
+use App\Http\Controllers\Api\User\ContractorController;
+use App\Http\Controllers\Api\User\DashboardController;
+use App\Http\Controllers\Api\User\EmployerController;
+use App\Http\Controllers\Api\User\EngineerController;
+use App\Http\Controllers\Api\User\OrderActionController;
+use App\Http\Controllers\Api\User\OrderInvoiceController;
+use App\Http\Controllers\Api\User\OrderPaymentController;
+use App\Http\Controllers\Api\User\ProfileController;
+use App\Http\Controllers\Api\User\SupplierController;
+use App\Http\Controllers\Api\User\SupplierOrderController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\ConsultantRelationController;
@@ -12,54 +33,31 @@ use App\Http\Controllers\FactoryController;
 use App\Http\Controllers\IdentityInquirySc2Controller;
 use App\Http\Controllers\JobExperienceController;
 use App\Http\Controllers\MobileNidMatchController;
-use App\Http\Controllers\Api\User\OrderActionController;
-
+use App\Http\Controllers\MyItemsController;
+use App\Http\Controllers\OrderController;
 use App\Http\Controllers\OrderSurveyController;
 use App\Http\Controllers\ParameterDetectionController;
+use App\Http\Controllers\Payment\WalletPaymentController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PodiumBalanceController;
+// Admin Controllers
 use App\Http\Controllers\PodiumBatchSettlementController;
 use App\Http\Controllers\PodiumSettlementController;
 use App\Http\Controllers\PodiumSettlementInquiryController;
 use App\Http\Controllers\PriceFilterController;
 use App\Http\Controllers\ProductCategoryController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ProfileSearchController;
 use App\Http\Controllers\PurchaseParameterController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\StockSubscriptionController;
 use App\Http\Controllers\UserBankAccountController;
 use App\Http\Controllers\WalletController;
 use App\Http\Controllers\WishlistController;
-use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\ListopherController;
-use App\Http\Controllers\Api\QuestionController;
-use App\Http\Controllers\Api\User\ContractorController;
-use App\Http\Controllers\Api\User\DashboardController;
-use App\Http\Controllers\Api\User\EmployerController;
-use App\Http\Controllers\Api\User\EngineerController;
-use App\Http\Controllers\Api\User\ProfileController;
-use App\Http\Controllers\Api\User\SupplierController;
-use App\Http\Controllers\Api\DebugController;
-use Illuminate\Http\Request;
-
-// Admin Controllers
-use App\Http\Controllers\Api\Admin\AdminActivityLogController;
-use App\Http\Controllers\Api\Admin\AdminFinancialController;
-use App\Http\Controllers\Api\Admin\AdminOrderController;
-use App\Http\Controllers\Api\Admin\AdminSearchController;
-use App\Http\Controllers\Api\Admin\AdminUserController;
-use App\Http\Controllers\Api\Admin\AdminWalletController;
-use App\Http\Controllers\Api\Admin\OrderWeighbridgeController;
-use App\Http\Controllers\Api\Data\AnalyticsController;
-use App\Http\Controllers\Api\Data\InventoryController;
-use App\Http\Controllers\Api\User\OrderInvoiceController;
-use App\Http\Controllers\Api\User\OrderPaymentController;
-use App\Http\Controllers\Api\User\SupplierOrderController;
-use App\Http\Controllers\MyItemsController;
-use App\Http\Controllers\Payment\WalletPaymentController;
-use App\Http\Controllers\ProfileSearchController;
-// Middleware
 use App\Http\Middleware\EnsureRoleIsSelected;
+use Illuminate\Http\Request;
+// Middleware
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -67,8 +65,7 @@ use App\Http\Middleware\EnsureRoleIsSelected;
 |--------------------------------------------------------------------------
 */
 
-Route::prefix('ticket')->group(__DIR__ . '/v1/api.php');
-
+Route::prefix('ticket')->group(__DIR__.'/v1/api.php');
 
 // --- 1. روت‌های عمومی (Public) ---
 Route::post('/payment/result', [PaymentController::class, 'result']);
@@ -77,14 +74,11 @@ Route::any('/payment/callback', [PaymentController::class, 'callback'])->name('p
 Route::get('/search', [SearchController::class, 'search']);
 Route::post('/new-question', [QuestionController::class, 'submitQuestion']);
 
-// Endpoints دیباگ فقط برای ادمین‌های لاگین‌کرده
-Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
-    Route::get('/test-cache', [DebugController::class, 'testCache']);
-    Route::get('/kavir-products', [DebugController::class, 'kavirProducts']);
-});
-
 Route::middleware(['auth:sanctum'])->group(function () {
-    // روت‌های مربوط به جستجوی نویگیشن پروفایل
+    // درگاه پرداخت کیف پول
+    Route::post('payment/wallet', [WalletPaymentController::class, 'pay'])->name('payment.wallet');
+
+    // جستجوی نویگیشن پروفایل
     Route::prefix('profile/search-navigation')->controller(ProfileSearchController::class)->group(function () {
         Route::get('/', 'index');
         Route::post('/log', 'logSearch');
@@ -92,21 +86,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
     });
 });
 
+// آنالیتیکس و انبار (نیاز به auth)
 Route::prefix('data')->middleware(['auth:sanctum'])->group(function () {
-
-    Route::prefix('data')->group(function () {
-        Route::get('analytics/dashboard', [AnalyticsController::class, 'dashboard']);
-        Route::get('inventory/predictions', [InventoryController::class, 'predictions']);
-    });
-
-    // گروه عملیات مارکتینگ (که قراره بسازیم)
-    Route::prefix('marketing')->group(function () {
-        // ...
-    });
-});
-
-Route::middleware(['auth:sanctum'])->group(function () {
-    Route::post('payment/wallet', [WalletPaymentController::class, 'pay'])->name('payment.wallet');
+    Route::get('analytics/dashboard', [AnalyticsController::class, 'dashboard']);
+    Route::get('inventory/predictions', [InventoryController::class, 'predictions']);
 });
 
 // --- احراز هویت ---
@@ -185,8 +168,13 @@ Route::prefix('v1/podium')
         Route::post('/mobile-nid-match', [MobileNidMatchController::class, 'store']);
     });
 
-// --- پنل ادمین ---
+// --- پنل ادمین (یک گروه واحد برای تمام روت‌های admin) ---
 Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(function () {
+
+    // دیباگ
+    Route::get('/debug/test-cache', [DebugController::class, 'testCache']);
+    Route::get('/debug/kavir-products', [DebugController::class, 'kavirProducts']);
+
     Route::get('/activities', [AdminActivityLogController::class, 'index']);
     Route::controller(AdminSearchController::class)->prefix('search')->group(function () {
         Route::get('/users', 'searchUsers');
@@ -295,16 +283,16 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::controller(OrderController::class)->group(function () {
                 // لیست خرید برای خودم
                 Route::prefix('buy-myself')->group(function () {
-                    Route::get('/current', fn(Request $request) => app(OrderController::class)->myOrders($request, 'current'));
-                    Route::get('/delivered', fn(Request $request) => app(OrderController::class)->myOrders($request, 'delivered'));
-                    Route::get('/cancelled', fn(Request $request) => app(OrderController::class)->myOrders($request, 'cancelled'));
+                    Route::get('/current', fn (Request $request) => app(OrderController::class)->myOrders($request, 'current'));
+                    Route::get('/delivered', fn (Request $request) => app(OrderController::class)->myOrders($request, 'delivered'));
+                    Route::get('/cancelled', fn (Request $request) => app(OrderController::class)->myOrders($request, 'cancelled'));
                 });
 
                 // لیست خرید برای دیگران
                 Route::prefix('buy-others')->group(function () {
-                    Route::get('/current', fn(Request $request) => app(OrderController::class)->otherOrders($request, 'current'));
-                    Route::get('/delivered', fn(Request $request) => app(OrderController::class)->otherOrders($request, 'delivered'));
-                    Route::get('/cancelled', fn(Request $request) => app(OrderController::class)->otherOrders($request, 'cancelled'));
+                    Route::get('/current', fn (Request $request) => app(OrderController::class)->otherOrders($request, 'current'));
+                    Route::get('/delivered', fn (Request $request) => app(OrderController::class)->otherOrders($request, 'delivered'));
+                    Route::get('/cancelled', fn (Request $request) => app(OrderController::class)->otherOrders($request, 'cancelled'));
                 });
 
                 // لیست کلی

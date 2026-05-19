@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Http\Requests\InviteConsultantRequest;
 use App\Http\Requests\RejectInvitationRequest;
 use App\Http\Resources\ConsultantRelationResource;
@@ -11,9 +10,8 @@ use App\Models\EmployerConsultant;
 use App\Models\User;
 use App\Models\UserNotification;
 use App\Models\UserType;
-use App\Services\SmsService;
+use App\Support\PhoneNumber;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class ConsultantRelationController extends Controller
@@ -35,7 +33,7 @@ class ConsultantRelationController extends Controller
         $employers = $consultant->associatedEmployers()
             ->wherePivotIn(EmployerConsultant::STATUS, [
                 EmployerConsultant::STATUS_APPROVED,
-                EmployerConsultant::STATUS_REJECTED
+                EmployerConsultant::STATUS_REJECTED,
             ])
             ->with('profile')
             ->orderByPivot('updated_at', 'desc')
@@ -50,14 +48,14 @@ class ConsultantRelationController extends Controller
         $data = $request->validated();
 
         $consultant = $this->findConsultantByCredentials($data);
-        if (!$consultant) {
+        if (! $consultant) {
             return error(__('auth.consultant_not_found'), [], 404);
         }
 
         $consultantTypeId = $consultant->{User::TYPE_ID};
         $expertTypes = UserType::whereIn(UserType::SLUG, ['engineer', 'contractor', 'expert'])->pluck(UserType::ID);
 
-        if (!$expertTypes->contains($consultantTypeId)) {
+        if (! $expertTypes->contains($consultantTypeId)) {
             return error(__('auth.consultant_is_not_expert'), [], 422);
         }
 
@@ -80,18 +78,19 @@ class ConsultantRelationController extends Controller
             if ($status === EmployerConsultant::STATUS_REJECTED) {
                 if ($updatedAt->diffInHours(now()) < 24) {
                     $hoursLeft = 24 - $updatedAt->diffInHours(now());
+
                     return error(__('consultant.retry_delay', ['hours' => $hoursLeft]), [], 429);
                 }
 
                 $employer->technicalConsultants()->updateExistingPivot($consultant->id, [
                     EmployerConsultant::STATUS => EmployerConsultant::STATUS_PENDING,
                     EmployerConsultant::REJECT_REASON => null,
-                    'updated_at' => now()
+                    'updated_at' => now(),
                 ]);
             }
         } else {
             $employer->technicalConsultants()->attach($consultant->id, [
-                EmployerConsultant::STATUS => EmployerConsultant::STATUS_PENDING
+                EmployerConsultant::STATUS => EmployerConsultant::STATUS_PENDING,
             ]);
         }
 
@@ -103,7 +102,7 @@ class ConsultantRelationController extends Controller
             UserNotification::USER_ID => $consultant->id,
             UserNotification::SENDER_ID => $employer->id,
             UserNotification::SUBJECT => __('global.consultantInvitationSubject'),
-            UserNotification::BODY    => $smsMessage,
+            UserNotification::BODY => $smsMessage,
         ]);
 
         SendSmsJob::dispatch($consultant->{User::MOBILE}, $smsMessage);
@@ -138,12 +137,12 @@ class ConsultantRelationController extends Controller
         $consultant = Auth::user();
         $pivot = $consultant->associatedEmployers()->where(EmployerConsultant::EMPLOYER_ID, $employer->id)->first();
 
-        if (!$pivot || $pivot->pivot->{EmployerConsultant::STATUS} !== EmployerConsultant::STATUS_PENDING) {
+        if (! $pivot || $pivot->pivot->{EmployerConsultant::STATUS} !== EmployerConsultant::STATUS_PENDING) {
             return error(__('auth.invitation_not_found'), [], 404);
         }
 
         $consultant->associatedEmployers()->updateExistingPivot($employer->id, [
-            EmployerConsultant::STATUS => EmployerConsultant::STATUS_APPROVED
+            EmployerConsultant::STATUS => EmployerConsultant::STATUS_APPROVED,
         ]);
 
         return success([], __('consultant.invitation_accepted'));
@@ -154,13 +153,13 @@ class ConsultantRelationController extends Controller
         $consultant = Auth::user();
         $pivot = $consultant->associatedEmployers()->where(EmployerConsultant::EMPLOYER_ID, $employer->id)->first();
 
-        if (!$pivot || $pivot->pivot->{EmployerConsultant::STATUS} !== EmployerConsultant::STATUS_PENDING) {
+        if (! $pivot || $pivot->pivot->{EmployerConsultant::STATUS} !== EmployerConsultant::STATUS_PENDING) {
             return error(__('auth.invitation_not_found'), [], 404);
         }
 
         $consultant->associatedEmployers()->updateExistingPivot($employer->id, [
             EmployerConsultant::STATUS => EmployerConsultant::STATUS_REJECTED,
-            EmployerConsultant::REJECT_REASON => $request->validated('reject_reason')
+            EmployerConsultant::REJECT_REASON => $request->validated('reject_reason'),
         ]);
 
         return success([], __('consultant.invitation_rejected'));
@@ -173,22 +172,15 @@ class ConsultantRelationController extends Controller
 
     private function findConsultantByCredentials(array $data): ?User
     {
-        if (!empty($data[User::MOBILE])) {
-            $mobile = $this->mobileTo09($data[User::MOBILE]);
+        if (! empty($data[User::MOBILE])) {
+            $mobile = PhoneNumber::to09($data[User::MOBILE]);
+
             return User::where(User::MOBILE, $mobile)->first();
         }
-        if (!empty($data[User::NATIONAL_CODE])) {
+        if (! empty($data[User::NATIONAL_CODE])) {
             return User::where(User::NATIONAL_CODE, $data[User::NATIONAL_CODE])->first();
         }
-        return null;
-    }
 
-    private function mobileTo09(string $raw): string
-    {
-        $m = preg_replace('/\D/', '', $raw);
-        if (str_starts_with($m, '0098')) $m = substr($m, 2);
-        if (str_starts_with($m, '98'))   return '0' . substr($m, 2);
-        if (str_starts_with($m, '9'))    return '0' . $m;
-        return $m;
+        return null;
     }
 }

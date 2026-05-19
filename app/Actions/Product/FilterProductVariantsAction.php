@@ -2,7 +2,6 @@
 
 namespace App\Actions\Product;
 
-use App\DataTransferObjects\ProductFilterData;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\ProductVariantAttribute;
@@ -23,9 +22,8 @@ class FilterProductVariantsAction
             ->with(['prices.factory', 'prices.factoryLocation', 'variantAttributes.attributeType', 'cartItems', 'limitOrderUnit']);
 
         // ۲. اعمال فیلتر ویژگی‌ها
-        if (!empty($filters['filter_categories'])) {
-            $query->whereHas('variantAttributes', fn($q) =>
-                $q->whereIn(ProductVariantAttribute::ATTRIBUTE_ID, $filters['filter_categories'])
+        if (! empty($filters['filter_categories'])) {
+            $query->whereHas('variantAttributes', fn ($q) => $q->whereIn(ProductVariantAttribute::ATTRIBUTE_ID, $filters['filter_categories'])
             );
         }
 
@@ -33,7 +31,7 @@ class FilterProductVariantsAction
         $variants = $query->get();
 
         // محاسبه قیمت برای تک‌تک واریانت‌ها
-        $variants->each(fn($variant) => $this->hydrateVariantPrice($variant, $roleCode, $filters['debug_prices'] ?? false));
+        $variants->each(fn ($variant) => $this->hydrateVariantPrice($variant, $roleCode, $filters['debug_prices'] ?? false));
 
         // ۴. مرتب‌سازی
         $sortKey = $filters['sort'] ?? 'newest';
@@ -43,7 +41,7 @@ class FilterProductVariantsAction
         return $this->paginate($sortedVariants, $filters['per_page'] ?? 10);
     }
 
-   private function hydrateVariantPrice(ProductVariant $variant, string $roleCode, bool $debug): void
+    private function hydrateVariantPrice(ProductVariant $variant, string $roleCode, bool $debug): void
     {
         $variant->prices->each(function ($price) use ($variant, $roleCode, $debug) {
             $dto = $this->priceService->calculatePrice(
@@ -63,7 +61,6 @@ class FilterProductVariantsAction
             $price->role_golden_figure = max(0.0, $dto->listPrice - $dto->payablePrice);
             $price->vat_rate = $dto->vatRate;
 
-
             if ($debug) {
                 $price->pricing_debug = $dto->toArray();
             }
@@ -74,12 +71,12 @@ class FilterProductVariantsAction
 
     private function sortVariants(Collection $variants, string $sortKey): Collection
     {
-        $getter = fn($v) => $v->min_price ?? 0;
+        $getter = fn ($v) => $v->min_price ?? 0;
 
         $sorted = match ($sortKey) {
-            'cheapest'       => $variants->sortBy($getter),
+            'cheapest' => $variants->sortBy($getter),
             'most_expensive' => $variants->sortByDesc($getter),
-            default          => $variants->sortByDesc('created_at'),
+            default => $variants->sortByDesc('created_at'),
         };
 
         return $sorted->values();
@@ -88,6 +85,7 @@ class FilterProductVariantsAction
     private function paginate(Collection $items, int $perPage): LengthAwarePaginator
     {
         $page = LengthAwarePaginator::resolveCurrentPage();
+
         return new LengthAwarePaginator(
             $items->slice(($page - 1) * $perPage, $perPage)->values(),
             $items->count(),

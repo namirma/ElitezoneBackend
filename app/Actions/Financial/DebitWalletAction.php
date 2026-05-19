@@ -5,9 +5,9 @@ namespace App\Actions\Financial;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
+use Exception;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
-use Exception;
 
 class DebitWalletAction
 {
@@ -30,7 +30,7 @@ class DebitWalletAction
 
             $wallet = Wallet::where('user_id', $user->id)->lockForUpdate()->first();
 
-            if (!$wallet) {
+            if (! $wallet) {
                 throw new Exception(__('wallet.insufficient_balance'));
             }
 
@@ -42,11 +42,11 @@ class DebitWalletAction
             $wallet->decrement('balance', $amount);
 
             $transaction = $wallet->transactions()->create([
-                'amount'      => $amount,
-                'type'        => $type,
-                'status'      => WalletTransaction::STATUS_CONFIRMED, // اصلاح وضعیت
+                'amount' => $amount,
+                'type' => $type,
+                'status' => WalletTransaction::STATUS_CONFIRMED, // اصلاح وضعیت
                 'description' => $description,
-                'meta'        => $meta,
+                'meta' => $meta,
             ]);
 
             return $transaction;

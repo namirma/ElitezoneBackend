@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Contracts;
+namespace App\Repositories\Contracts;
 
 use App\Models\Ticket;
 use Illuminate\Database\Eloquent\Builder;
@@ -17,4 +17,3 @@ interface TicketRepositoryInterface
 
     public function show(Ticket $ticket);
 }
-

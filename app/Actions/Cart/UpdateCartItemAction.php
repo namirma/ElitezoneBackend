@@ -4,13 +4,13 @@ namespace App\Actions\Cart;
 
 use App\Models\Cart;
 use App\Models\CartItem;
-use App\Models\OrderUnit;
-use App\Models\Product;
-use App\Models\ProductVariant;
 use App\Models\CustomerType;
-use App\Models\PriceFilterCategory;
 use App\Models\Factory;
 use App\Models\FactoryLocation;
+use App\Models\OrderUnit;
+use App\Models\PriceFilterCategory;
+use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Services\InventoryService;
 use App\Services\PriceCalculationService;
 use App\Services\PricingRoleResolver;
@@ -29,7 +29,7 @@ class UpdateCartItemAction
 
     public function execute(CartItem $cartItem, array $data): CartItem
     {
-        
+
         $cartItem->loadMissing(['productVariant.product.orderUnits', 'productVariant.limitOrderUnit', 'cart.user', 'cart.customerType', 'cart.badge', 'cart.priceFilterCategories', 'cart.items']);
         $variant = $cartItem->productVariant;
         $cart = $cartItem->cart;
@@ -46,9 +46,9 @@ class UpdateCartItemAction
             if (isset($data['quantities'])) {
                 $newQuantities = $data['quantities'];
 
-                if (!$this->inventoryService->checkStock($variant, $newQuantities)) {
+                if (! $this->inventoryService->checkStock($variant, $newQuantities)) {
                     throw ValidationException::withMessages([
-                        'quantities' => "موجودی کالا برای تعداد درخواستی کافی نیست."
+                        'quantities' => 'موجودی کالا برای تعداد درخواستی کافی نیست.',
                     ]);
                 }
 
@@ -111,23 +111,27 @@ class UpdateCartItemAction
         foreach ($quantities as $unitId => $qty) {
             $qty = (float) $qty;
             $totalQuantity += $qty;
-            $unit = $orderUnitsMap->get((int)$unitId);
+            $unit = $orderUnitsMap->get((int) $unitId);
 
-            if (!$primaryUnitName && $unit) $primaryUnitName = $unit->name;
+            if (! $primaryUnitName && $unit) {
+                $primaryUnitName = $unit->name;
+            }
 
             if ($unit) {
                 $totalWeight += $qty * (float) $unit->amount;
             } else {
                 $variantWeight = (float) ($variant->weight ?? 0);
-                if ($variantWeight <= 0) $variantWeight = 1;
+                if ($variantWeight <= 0) {
+                    $variantWeight = 1;
+                }
                 $totalWeight += $qty * $variantWeight;
             }
         }
 
         return [
-            'weight'    => $totalWeight,
-            'quantity'  => $totalQuantity,
-            'unit_name' => $primaryUnitName ?? 'عدد'
+            'weight' => $totalWeight,
+            'quantity' => $totalQuantity,
+            'unit_name' => $primaryUnitName ?? 'عدد',
         ];
     }
 
@@ -143,10 +147,10 @@ class UpdateCartItemAction
         $factory = Factory::find($factoryId);
         $location = FactoryLocation::find($locationId);
 
-        if (!$factory || !$location) {
-             throw ValidationException::withMessages([
-                 'factory_id' => 'اطلاعات کارخانه یا محل تحویل نامعتبر است.'
-             ]);
+        if (! $factory || ! $location) {
+            throw ValidationException::withMessages([
+                'factory_id' => 'اطلاعات کارخانه یا محل تحویل نامعتبر است.',
+            ]);
         }
 
         $pricing = $this->priceService->calculatePrice(
@@ -161,12 +165,12 @@ class UpdateCartItemAction
         );
 
         $lineTotal = $totalWeight * $pricing->finalPrice;
-        $lineVat   = $totalWeight * $pricing->vatAmount;
+        $lineVat = $totalWeight * $pricing->vatAmount;
 
         return [
-            'unit_price'     => $pricing->finalPrice,
-            'vat_amount'     => $lineVat,
-            'total_with_vat' => $lineTotal + $lineVat
+            'unit_price' => $pricing->finalPrice,
+            'vat_amount' => $lineVat,
+            'total_with_vat' => $lineTotal + $lineVat,
         ];
     }
 
@@ -176,7 +180,7 @@ class UpdateCartItemAction
 
     protected function getOrderUnitsMap(): Collection
     {
-        return Cache::remember('order_units_map', 86400, fn() => OrderUnit::all()->keyBy(OrderUnit::ID));
+        return Cache::remember('order_units_map', 86400, fn () => OrderUnit::all()->keyBy(OrderUnit::ID));
     }
 
     protected function calculateTotalVariantQuantities(Cart $cart, int $variantId, CartItem $currentItem, array $newQuantities): array
@@ -184,21 +188,27 @@ class UpdateCartItemAction
         $totals = [];
 
         foreach ($cart->items as $item) {
-            if ($item->product_variant_id !== $variantId) continue;
-            if ($item->id === $currentItem->id) continue;
+            if ($item->product_variant_id !== $variantId) {
+                continue;
+            }
+            if ($item->id === $currentItem->id) {
+                continue;
+            }
 
             $q = is_string($item->quantities) ? json_decode($item->quantities, true) : $item->quantities;
-            if (!is_array($q)) continue;
+            if (! is_array($q)) {
+                continue;
+            }
 
             foreach ($q as $u => $val) {
-                $k = (string)$u;
-                $totals[$k] = ($totals[$k] ?? 0) + (float)$val;
+                $k = (string) $u;
+                $totals[$k] = ($totals[$k] ?? 0) + (float) $val;
             }
         }
 
         foreach ($newQuantities as $u => $q) {
-            $k = (string)$u;
-            $totals[$k] = ($totals[$k] ?? 0) + (float)$q;
+            $k = (string) $u;
+            $totals[$k] = ($totals[$k] ?? 0) + (float) $q;
         }
 
         return $totals;
@@ -206,13 +216,15 @@ class UpdateCartItemAction
 
     protected function convertQuantitiesToTargetUnitValue(array $itemQuantities, ?OrderUnit $targetLimitOrderUnit, Collection $orderUnitsMap): ?float
     {
-        if (!$targetLimitOrderUnit || $targetLimitOrderUnit->amount == 0) return null;
+        if (! $targetLimitOrderUnit || $targetLimitOrderUnit->amount == 0) {
+            return null;
+        }
 
         $totalValueInBase = 0;
         foreach ($itemQuantities as $unitId => $count) {
-            $currentOrderUnit = $orderUnitsMap->get((int)$unitId);
+            $currentOrderUnit = $orderUnitsMap->get((int) $unitId);
             if ($currentOrderUnit && $currentOrderUnit->amount > 0) {
-                $totalValueInBase += (float)$count * $currentOrderUnit->amount;
+                $totalValueInBase += (float) $count * $currentOrderUnit->amount;
             }
         }
 
@@ -224,16 +236,16 @@ class UpdateCartItemAction
         $unitMap = $variant->product->orderUnits->keyBy('pivot.order_unit_id');
 
         foreach ($newQuantities as $unitId => $qty) {
-            $unitId = (int)$unitId;
-            $qty = (float)$qty;
+            $unitId = (int) $unitId;
+            $qty = (float) $qty;
 
             $unit = $unitMap->get($unitId);
-            if (!$unit) {
-                throw ValidationException::withMessages(['quantities.' . $unitId => ["واحد سفارش با شناسه {$unitId} نامعتبر است."]]);
+            if (! $unit) {
+                throw ValidationException::withMessages(['quantities.'.$unitId => ["واحد سفارش با شناسه {$unitId} نامعتبر است."]]);
             }
 
             if ($qty < 0) {
-                throw ValidationException::withMessages(['quantities.' . $unitId => ["تعداد درخواستی نمی‌تواند منفی باشد."]]);
+                throw ValidationException::withMessages(['quantities.'.$unitId => ['تعداد درخواستی نمی‌تواند منفی باشد.']]);
             }
 
             $maxCount = $unit->pivot->max_quantity ?? PHP_INT_MAX;
@@ -241,17 +253,17 @@ class UpdateCartItemAction
             $othersInCart = $cart->items
                 ->where('id', '!=', $currentItem->id)
                 ->where('product_variant_id', $variant->id)
-                ->sum(fn($item) => $item->quantities[(string)$unitId] ?? ($item->quantities[(int)$unitId] ?? 0));
+                ->sum(fn ($item) => $item->quantities[(string) $unitId] ?? ($item->quantities[(int) $unitId] ?? 0));
 
             $totalRequested = $othersInCart + $qty;
 
             if ($totalRequested > $maxCount) {
-                throw ValidationException::withMessages(['quantities.' . $unitId => [
+                throw ValidationException::withMessages(['quantities.'.$unitId => [
                     __('cart.limits.max_unit_count', [
-                        'qty'  => number_format($totalRequested),
+                        'qty' => number_format($totalRequested),
                         'unit' => $unit->name,
-                        'max'  => number_format($maxCount)
-                    ])
+                        'max' => number_format($maxCount),
+                    ]),
                 ]]);
             }
         }
@@ -263,14 +275,22 @@ class UpdateCartItemAction
         $maxValue = $variant->max_order_value;
         $limitUnitId = $variant->limit_order_unit_id;
 
-        if ($limitUnitId === null || ($minValue === null && $maxValue === null)) return;
+        if ($limitUnitId === null || ($minValue === null && $maxValue === null)) {
+            return;
+        }
 
-        if (!$variant->relationLoaded('limitOrderUnit')) $variant->load('limitOrderUnit');
+        if (! $variant->relationLoaded('limitOrderUnit')) {
+            $variant->load('limitOrderUnit');
+        }
         $limitUnit = $variant->limitOrderUnit;
-        if (!$limitUnit) return;
+        if (! $limitUnit) {
+            return;
+        }
 
         $totalValue = $this->convertQuantitiesToTargetUnitValue($totalQuantities, $limitUnit, $orderUnitsMap);
-        if ($totalValue === null) return;
+        if ($totalValue === null) {
+            return;
+        }
 
         $unitName = $limitUnit->name;
         $valRounded = round($totalValue, 2);
@@ -278,21 +298,21 @@ class UpdateCartItemAction
         if ($minValue !== null && $totalValue > 0.0001 && $totalValue < $minValue) {
             throw ValidationException::withMessages(['quantities' => [
                 __('cart.limits.min_variant_value', [
-                    'name'    => $variant->name,
-                    'min'     => number_format($minValue),
-                    'unit'    => $unitName,
-                    'current' => number_format($valRounded)
-                ])
+                    'name' => $variant->name,
+                    'min' => number_format($minValue),
+                    'unit' => $unitName,
+                    'current' => number_format($valRounded),
+                ]),
             ]]);
         }
         if ($maxValue !== null && $totalValue > $maxValue) {
             throw ValidationException::withMessages(['quantities' => [
                 __('cart.limits.max_variant_value', [
-                    'name'    => $variant->name,
-                    'max'     => number_format($maxValue),
-                    'unit'    => $unitName,
-                    'current' => number_format($valRounded)
-                ])
+                    'name' => $variant->name,
+                    'max' => number_format($maxValue),
+                    'unit' => $unitName,
+                    'current' => number_format($valRounded),
+                ]),
             ]]);
         }
     }
@@ -303,22 +323,30 @@ class UpdateCartItemAction
         $maxValue = $product->aggregate_max_order_value;
         $limitUnitId = $product->aggregate_limit_order_unit_id;
 
-        if ($limitUnitId === null || ($minValue === null && $maxValue === null)) return;
+        if ($limitUnitId === null || ($minValue === null && $maxValue === null)) {
+            return;
+        }
 
-        if (!$product->relationLoaded('aggregateLimitOrderUnit')) $product->load('aggregateLimitOrderUnit');
+        if (! $product->relationLoaded('aggregateLimitOrderUnit')) {
+            $product->load('aggregateLimitOrderUnit');
+        }
         $limitUnit = $product->aggregateLimitOrderUnit;
-        if (!$limitUnit || $limitUnit->amount == 0) return;
+        if (! $limitUnit || $limitUnit->amount == 0) {
+            return;
+        }
 
         $totalValueInBase = 0;
         foreach ($cart->items as $item) {
             if ($item->productVariant->product_id === $product->id) {
                 $q = is_string($item->quantities) ? json_decode($item->quantities, true) : $item->quantities;
-                if (!is_array($q)) continue;
+                if (! is_array($q)) {
+                    continue;
+                }
 
                 foreach ($q as $unitId => $count) {
-                    $unit = $orderUnitsMap->get((int)$unitId);
+                    $unit = $orderUnitsMap->get((int) $unitId);
                     if ($unit && $unit->amount > 0) {
-                        $totalValueInBase += (float)$count * $unit->amount;
+                        $totalValueInBase += (float) $count * $unit->amount;
                     }
                 }
             }
@@ -331,21 +359,21 @@ class UpdateCartItemAction
         if ($minValue !== null && $totalValue > 0.0001 && $totalValue < $minValue) {
             throw ValidationException::withMessages(['product_line' => [
                 __('cart.limits.min_product_value', [
-                    'name'    => $product->name,
-                    'min'     => number_format($minValue),
-                    'unit'    => $unitName,
-                    'current' => number_format($valRounded)
-                ])
+                    'name' => $product->name,
+                    'min' => number_format($minValue),
+                    'unit' => $unitName,
+                    'current' => number_format($valRounded),
+                ]),
             ]]);
         }
         if ($maxValue !== null && $totalValue > $maxValue) {
             throw ValidationException::withMessages(['product_line' => [
                 __('cart.limits.max_product_value', [
-                    'name'    => $product->name,
-                    'max'     => number_format($maxValue),
-                    'unit'    => $unitName,
-                    'current' => number_format($valRounded)
-                ])
+                    'name' => $product->name,
+                    'max' => number_format($maxValue),
+                    'unit' => $unitName,
+                    'current' => number_format($valRounded),
+                ]),
             ]]);
         }
     }

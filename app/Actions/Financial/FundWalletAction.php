@@ -20,8 +20,7 @@ class FundWalletAction
         ?string $description = null,
         ?UploadedFile $receiptFile = null,
         array $extraMeta = []
-    ): WalletTransaction
-    {
+    ): WalletTransaction {
         return DB::transaction(function () use ($user, $amount, $paymentMethod, $description, $receiptFile, $extraMeta) {
 
             // 1. دریافت یا ساخت کیف پول
@@ -45,11 +44,11 @@ class FundWalletAction
 
             // 3. ایجاد تراکنش (با وضعیت Pending)
             $transaction = $wallet->transactions()->create([
-                WalletTransaction::AMOUNT      => $amount,
-                WalletTransaction::TYPE        => WalletTransaction::TYPE_DEPOSIT,
-                WalletTransaction::STATUS      => WalletTransaction::STATUS_PENDING,
+                WalletTransaction::AMOUNT => $amount,
+                WalletTransaction::TYPE => WalletTransaction::TYPE_DEPOSIT,
+                WalletTransaction::STATUS => WalletTransaction::STATUS_PENDING,
                 WalletTransaction::DESCRIPTION => $description ?? __('wallet.deposit'),
-                WalletTransaction::META        => $meta,
+                WalletTransaction::META => $meta,
             ]);
 
             return $transaction;

@@ -3,20 +3,20 @@
 namespace App\Actions\Financial;
 
 use App\Events\TransactionProcessed;
+use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
-use App\Models\User;
-use Illuminate\Support\Facades\DB;
 use Exception;
+use Illuminate\Support\Facades\DB;
 
 class ProcessTransactionAction
 {
     /**
      * پردازش نهایی تراکنش (تایید یا رد) توسط ادمین
-     * * @param WalletTransaction $transaction
-     * @param string $newStatus وضعیت جدید (CONFIRMED یا REJECTED)
-     * @param string|null $note یادداشت ادمین
-     * @param User $admin کاربری که عملیات را انجام می‌دهد
+     *
+     * @param  string  $newStatus  وضعیت جدید (CONFIRMED یا REJECTED)
+     * @param  string|null  $note  یادداشت ادمین
+     * @param  User  $admin  کاربری که عملیات را انجام می‌دهد
      */
     public function execute(WalletTransaction $transaction, string $newStatus, ?string $note, User $admin): WalletTransaction
     {
@@ -26,7 +26,7 @@ class ProcessTransactionAction
         }
 
         // ۲. اعتبارسنجی وضعیت ورودی
-        if (!in_array($newStatus, [WalletTransaction::STATUS_CONFIRMED, WalletTransaction::STATUS_REJECTED])) {
+        if (! in_array($newStatus, [WalletTransaction::STATUS_CONFIRMED, WalletTransaction::STATUS_REJECTED])) {
             throw new Exception('وضعیت جدید نامعتبر است.');
         }
 
@@ -52,7 +52,7 @@ class ProcessTransactionAction
             // ۴. بروزرسانی تراکنش
             $transaction->update([
                 WalletTransaction::STATUS => $newStatus,
-                WalletTransaction::DESCRIPTION => $transaction->description . ($note ? " | یادداشت ادمین: {$note}" : ''),
+                WalletTransaction::DESCRIPTION => $transaction->description.($note ? " | یادداشت ادمین: {$note}" : ''),
             ]);
 
             // ۵. ثبت لاگ مدیریتی (برای پیگیری اینکه کدام ادمین این کار را کرد)
@@ -62,10 +62,10 @@ class ProcessTransactionAction
                 ->withProperties([
                     'old_status' => WalletTransaction::STATUS_PENDING,
                     'new_status' => $newStatus,
-                    'amount'     => $transaction->amount,
-                    'note'       => $note
+                    'amount' => $transaction->amount,
+                    'note' => $note,
                 ])
-                ->log("وضعیت تراکنش توسط ادمین تغییر یافت.");
+                ->log('وضعیت تراکنش توسط ادمین تغییر یافت.');
 
             // ۶. خبر دادن به سیستم (ارسال پیامک و...)
             TransactionProcessed::dispatch($transaction);

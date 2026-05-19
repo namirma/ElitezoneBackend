@@ -6,16 +6,16 @@ use App\Events\CartItemChanged;
 use App\Models\Cart;
 use App\Models\CartEvent;
 use App\Models\CartItem;
-use App\Models\OrderUnit;
-use App\Models\Product;
-use App\Models\ProductVariant;
 use App\Models\CustomerType;
-use App\Models\PriceFilterCategory;
 use App\Models\Factory;
 use App\Models\FactoryLocation;
+use App\Models\OrderUnit;
+use App\Models\PriceFilterCategory;
+use App\Models\Product;
+use App\Models\ProductVariant;
+use App\Services\InventoryService;
 use App\Services\PriceCalculationService;
 use App\Services\PricingRoleResolver;
-use App\Services\InventoryService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -39,11 +39,11 @@ class AddToCartAction
         return DB::transaction(function () use ($cart, $variant, $data, $orderUnitsMap) {
 
             $identifiers = [
-                CartItem::CART_ID             => $cart->id,
-                CartItem::PRODUCT_VARIANT_ID  => $variant->id,
-                CartItem::FACTORY_ID          => $data['factory_id'],
+                CartItem::CART_ID => $cart->id,
+                CartItem::PRODUCT_VARIANT_ID => $variant->id,
+                CartItem::FACTORY_ID => $data['factory_id'],
                 CartItem::FACTORY_LOCATION_ID => $data['location_id'],
-                CartItem::SHIPPING_METHOD_ID  => $data['shipping_method_id'],
+                CartItem::SHIPPING_METHOD_ID => $data['shipping_method_id'],
             ];
 
             $existingItem = $cart->items()->where($identifiers)->first();
@@ -53,9 +53,9 @@ class AddToCartAction
                 $itemFinalQuantities = $this->mergeQuantities($existingItem->quantities, $data['quantities']);
             }
 
-            if (!$this->inventoryService->checkStock($variant, $itemFinalQuantities)) {
+            if (! $this->inventoryService->checkStock($variant, $itemFinalQuantities)) {
                 throw ValidationException::withMessages([
-                    'quantities' => "موجودی محصول '{$variant->product->name}' کافی نیست. (موجودی فعلی: {$variant->stock_quantity})"
+                    'quantities' => "موجودی محصول '{$variant->product->name}' کافی نیست. (موجودی فعلی: {$variant->stock_quantity})",
                 ]);
             }
 
@@ -70,12 +70,12 @@ class AddToCartAction
             $saveData = [
                 CartItem::QUANTITIES => $itemFinalQuantities,
                 CartItem::FACTORY_LOCATION_ID => $data['location_id'],
-                'weight'   => $calculatedPhys['weight'],
+                'weight' => $calculatedPhys['weight'],
                 'quantity' => $calculatedPhys['quantity'],
                 'unit_name' => $calculatedPhys['unit_name'],
-                CartItem::PRICE       => $priceData['unit_price'],
+                CartItem::PRICE => $priceData['unit_price'],
                 CartItem::FINAL_PRICE => $priceData['unit_price'],
-                CartItem::VAT_AMOUNT  => $priceData['vat_amount'],
+                CartItem::VAT_AMOUNT => $priceData['vat_amount'],
                 CartItem::TOTAL_WITH_VAT => $priceData['total_with_vat'],
             ];
 
@@ -102,7 +102,6 @@ class AddToCartAction
                 $quantityAdded = (float) $calculatedPhys['quantity'];
             }
 
-            
             CartItemChanged::dispatch(
                 $cart,
                 $variant,
@@ -116,7 +115,7 @@ class AddToCartAction
                 'items.factory',
                 'items.shippingMethod',
                 'customerType',
-                'badge'
+                'badge',
             ]);
         });
     }
@@ -131,9 +130,9 @@ class AddToCartAction
             $qty = (float) $qty;
             $totalQuantity += $qty;
 
-            $unit = $orderUnitsMap->get((int)$unitId);
+            $unit = $orderUnitsMap->get((int) $unitId);
 
-            if (!$primaryUnitName && $unit) {
+            if (! $primaryUnitName && $unit) {
                 $primaryUnitName = $unit->name;
             }
 
@@ -141,15 +140,17 @@ class AddToCartAction
                 $totalWeight += $qty * (float) $unit->amount;
             } else {
                 $variantWeight = (float) ($variant->weight ?? 0);
-                if ($variantWeight <= 0) $variantWeight = 1;
+                if ($variantWeight <= 0) {
+                    $variantWeight = 1;
+                }
                 $totalWeight += $qty * $variantWeight;
             }
         }
 
         return [
-            'weight'    => $totalWeight,
-            'quantity'  => $totalQuantity,
-            'unit_name' => $primaryUnitName ?? 'عدد'
+            'weight' => $totalWeight,
+            'quantity' => $totalQuantity,
+            'unit_name' => $primaryUnitName ?? 'عدد',
         ];
     }
 
@@ -166,9 +167,9 @@ class AddToCartAction
         $factory = Factory::find($data['factory_id']);
         $location = FactoryLocation::find($data['location_id']);
 
-        if (!$factory || !$location) {
+        if (! $factory || ! $location) {
             throw ValidationException::withMessages([
-                'factory_id' => 'اطلاعات کارخانه یا محل تحویل نامعتبر است.'
+                'factory_id' => 'اطلاعات کارخانه یا محل تحویل نامعتبر است.',
             ]);
         }
 
@@ -184,18 +185,18 @@ class AddToCartAction
         );
 
         $lineTotal = $totalWeight * $pricing->finalPrice;
-        $lineVat   = $totalWeight * $pricing->vatAmount;
+        $lineVat = $totalWeight * $pricing->vatAmount;
 
         return [
-            'unit_price'     => $pricing->finalPrice,
-            'vat_amount'     => $lineVat,
-            'total_with_vat' => $lineTotal + $lineVat
+            'unit_price' => $pricing->finalPrice,
+            'vat_amount' => $lineVat,
+            'total_with_vat' => $lineTotal + $lineVat,
         ];
     }
 
     protected function getOrderUnitsMap(): Collection
     {
-        return Cache::remember('order_units_map', 86400, fn() => OrderUnit::all()->keyBy(OrderUnit::ID));
+        return Cache::remember('order_units_map', 86400, fn () => OrderUnit::all()->keyBy(OrderUnit::ID));
     }
 
     protected function mergeQuantities(array $current, array $new): array
@@ -207,13 +208,14 @@ class AddToCartAction
             $currentVal = 0;
             if (isset($merged[$key])) {
                 $currentVal = $merged[$key];
-            } elseif (isset($merged[(int)$unitId])) {
-                $currentVal = $merged[(int)$unitId];
-                unset($merged[(int)$unitId]);
+            } elseif (isset($merged[(int) $unitId])) {
+                $currentVal = $merged[(int) $unitId];
+                unset($merged[(int) $unitId]);
             }
 
-            $merged[$key] = (float)$currentVal + (float)$qty;
+            $merged[$key] = (float) $currentVal + (float) $qty;
         }
+
         return $merged;
     }
 
@@ -222,20 +224,26 @@ class AddToCartAction
         $totals = [];
 
         foreach ($cart->items as $item) {
-            if ($item->product_variant_id !== $variantId) continue;
-            if ($existingItem && $item->id === $existingItem->id) continue;
+            if ($item->product_variant_id !== $variantId) {
+                continue;
+            }
+            if ($existingItem && $item->id === $existingItem->id) {
+                continue;
+            }
 
             $q = is_string($item->quantities) ? json_decode($item->quantities, true) : $item->quantities;
-            if (!is_array($q)) continue;
+            if (! is_array($q)) {
+                continue;
+            }
 
             foreach ($q as $u => $val) {
-                $k = (string)$u;
+                $k = (string) $u;
                 $totals[$k] = ($totals[$k] ?? 0) + $val;
             }
         }
 
         foreach ($targetItemQuantities as $u => $q) {
-            $k = (string)$u;
+            $k = (string) $u;
             $totals[$k] = ($totals[$k] ?? 0) + $q;
         }
 
@@ -244,13 +252,15 @@ class AddToCartAction
 
     protected function convertQuantitiesToTargetUnitValue(array $itemQuantities, ?OrderUnit $targetLimitOrderUnit, Collection $orderUnitsMap): ?float
     {
-        if (!$targetLimitOrderUnit || $targetLimitOrderUnit->amount == 0) return null;
+        if (! $targetLimitOrderUnit || $targetLimitOrderUnit->amount == 0) {
+            return null;
+        }
 
         $totalValueInBase = 0;
         foreach ($itemQuantities as $unitId => $count) {
-            $currentOrderUnit = $orderUnitsMap->get((int)$unitId);
+            $currentOrderUnit = $orderUnitsMap->get((int) $unitId);
             if ($currentOrderUnit && $currentOrderUnit->amount > 0) {
-                $totalValueInBase += (float)$count * $currentOrderUnit->amount;
+                $totalValueInBase += (float) $count * $currentOrderUnit->amount;
             }
         }
 
@@ -259,23 +269,27 @@ class AddToCartAction
 
     protected function validateOrderUnitCounts(ProductVariant $variant, array $totalQuantities): void
     {
-        if (!$variant->relationLoaded('product')) $variant->load('product.orderUnits');
+        if (! $variant->relationLoaded('product')) {
+            $variant->load('product.orderUnits');
+        }
 
         $unitMap = $variant->product->orderUnits->keyBy('id');
 
         foreach ($totalQuantities as $unitId => $qty) {
-            $unit = $unitMap->get((int)$unitId);
-            if (!$unit) continue;
+            $unit = $unitMap->get((int) $unitId);
+            if (! $unit) {
+                continue;
+            }
 
             $maxCount = $unit->pivot->max_quantity ?? PHP_INT_MAX;
 
             if ($qty > $maxCount) {
-                throw ValidationException::withMessages(['quantities.' . $unitId => [
+                throw ValidationException::withMessages(['quantities.'.$unitId => [
                     __('cart.limits.max_unit_count', [
-                        'qty'  => $qty,
+                        'qty' => $qty,
                         'unit' => $unit->name,
-                        'max'  => $maxCount
-                    ])
+                        'max' => $maxCount,
+                    ]),
                 ]]);
             }
         }
@@ -287,14 +301,22 @@ class AddToCartAction
         $maxValue = $variant->max_order_value;
         $limitUnitId = $variant->limit_order_unit_id;
 
-        if ($limitUnitId === null || ($minValue === null && $maxValue === null)) return;
+        if ($limitUnitId === null || ($minValue === null && $maxValue === null)) {
+            return;
+        }
 
-        if (!$variant->relationLoaded('limitOrderUnit')) $variant->load('limitOrderUnit');
+        if (! $variant->relationLoaded('limitOrderUnit')) {
+            $variant->load('limitOrderUnit');
+        }
         $limitUnit = $variant->limitOrderUnit;
-        if (!$limitUnit) return;
+        if (! $limitUnit) {
+            return;
+        }
 
         $totalValue = $this->convertQuantitiesToTargetUnitValue($totalQuantities, $limitUnit, $orderUnitsMap);
-        if ($totalValue === null) return;
+        if ($totalValue === null) {
+            return;
+        }
 
         $unitName = $limitUnit->name;
         $valRounded = round($totalValue, 2);
@@ -302,21 +324,21 @@ class AddToCartAction
         if ($minValue !== null && $totalValue > 0.0001 && $totalValue < $minValue) {
             throw ValidationException::withMessages(['quantities' => [
                 __('cart.limits.min_variant_value', [
-                    'name'    => $variant->name,
-                    'min'     => $minValue,
-                    'unit'    => $unitName,
-                    'current' => $valRounded
-                ])
+                    'name' => $variant->name,
+                    'min' => $minValue,
+                    'unit' => $unitName,
+                    'current' => $valRounded,
+                ]),
             ]]);
         }
         if ($maxValue !== null && $totalValue > $maxValue) {
             throw ValidationException::withMessages(['quantities' => [
                 __('cart.limits.max_variant_value', [
-                    'name'    => $variant->name,
-                    'max'     => $maxValue,
-                    'unit'    => $unitName,
-                    'current' => $valRounded
-                ])
+                    'name' => $variant->name,
+                    'max' => $maxValue,
+                    'unit' => $unitName,
+                    'current' => $valRounded,
+                ]),
             ]]);
         }
     }
@@ -327,22 +349,30 @@ class AddToCartAction
         $maxValue = $product->aggregate_max_order_value;
         $limitUnitId = $product->aggregate_limit_order_unit_id;
 
-        if ($limitUnitId === null || ($minValue === null && $maxValue === null)) return;
+        if ($limitUnitId === null || ($minValue === null && $maxValue === null)) {
+            return;
+        }
 
-        if (!$product->relationLoaded('aggregateLimitOrderUnit')) $product->load('aggregateLimitOrderUnit');
+        if (! $product->relationLoaded('aggregateLimitOrderUnit')) {
+            $product->load('aggregateLimitOrderUnit');
+        }
         $limitUnit = $product->aggregateLimitOrderUnit;
-        if (!$limitUnit || $limitUnit->amount == 0) return;
+        if (! $limitUnit || $limitUnit->amount == 0) {
+            return;
+        }
 
         $totalValueInBase = 0;
         foreach ($cart->items as $item) {
             if ($item->productVariant->product_id === $product->id) {
                 $q = is_string($item->quantities) ? json_decode($item->quantities, true) : $item->quantities;
-                if (!is_array($q)) continue;
+                if (! is_array($q)) {
+                    continue;
+                }
 
                 foreach ($q as $unitId => $count) {
-                    $unit = $orderUnitsMap->get((int)$unitId);
+                    $unit = $orderUnitsMap->get((int) $unitId);
                     if ($unit && $unit->amount > 0) {
-                        $totalValueInBase += (float)$count * $unit->amount;
+                        $totalValueInBase += (float) $count * $unit->amount;
                     }
                 }
             }
@@ -355,21 +385,21 @@ class AddToCartAction
         if ($minValue !== null && $totalValue > 0.0001 && $totalValue < $minValue) {
             throw ValidationException::withMessages(['product_line' => [
                 __('cart.limits.min_product_value', [
-                    'name'    => $product->name,
-                    'min'     => $minValue,
-                    'unit'    => $unitName,
-                    'current' => $valRounded
-                ])
+                    'name' => $product->name,
+                    'min' => $minValue,
+                    'unit' => $unitName,
+                    'current' => $valRounded,
+                ]),
             ]]);
         }
         if ($maxValue !== null && $totalValue > $maxValue) {
             throw ValidationException::withMessages(['product_line' => [
                 __('cart.limits.max_product_value', [
-                    'name'    => $product->name,
-                    'max'     => $maxValue,
-                    'unit'    => $unitName,
-                    'current' => $valRounded
-                ])
+                    'name' => $product->name,
+                    'max' => $maxValue,
+                    'unit' => $unitName,
+                    'current' => $valRounded,
+                ]),
             ]]);
         }
     }

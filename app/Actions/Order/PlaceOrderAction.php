@@ -6,14 +6,15 @@ use App\DataTransferObjects\PlaceOrderData;
 use App\Events\OrderPlaced;
 use App\Exceptions\Order\CartIsEmptyException;
 use App\Models\Cart;
+use App\Models\CartItem;
 use App\Models\CustomerType;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderUnit;
 use App\Models\PriceFilterCategory;
+use App\Models\ShippingMethod;
 use App\Models\User;
 use App\Models\UserType;
-use App\Models\ShippingMethod;
 use App\Services\DocumentSequenceService;
 use App\Services\Financial\SettlementCalculatorService;
 use App\Services\InventoryService;
@@ -21,8 +22,6 @@ use App\Services\PriceCalculationService;
 use App\Services\PricingRoleResolver;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use App\Models\CartItem;
-use Illuminate\Support\Str;
 
 class PlaceOrderAction
 {
@@ -109,7 +108,7 @@ class PlaceOrderAction
         $roleCode = $this->roleResolver->resolve($user);
         $customerType = $cart->customerType ?? CustomerType::where('code', $roleCode)->first();
 
-        $orderUnits = Cache::remember('order_units_all', 3600, fn() => OrderUnit::all());
+        $orderUnits = Cache::remember('order_units_all', 3600, fn () => OrderUnit::all());
 
         $activeFilter = PriceFilterCategory::where('code', $roleCode)->first();
         $filterIds = $activeFilter ? [$activeFilter->id] : $cart->priceFilterCategories->pluck('id')->toArray();
@@ -131,15 +130,17 @@ class PlaceOrderAction
             $primaryUnitName = null;
 
             $quantities = is_string($item->quantities) ? json_decode($item->quantities, true) : $item->quantities;
-            if (!is_array($quantities)) $quantities = [];
+            if (! is_array($quantities)) {
+                $quantities = [];
+            }
 
-            if (!empty($quantities)) {
+            if (! empty($quantities)) {
                 foreach ($quantities as $unitId => $qty) {
                     $qty = (float) $qty;
                     $itemSalesQuantity += $qty;
 
                     $unitModel = $orderUnits->where('id', $unitId)->first();
-                    if (!$primaryUnitName && $unitModel) {
+                    if (! $primaryUnitName && $unitModel) {
                         $primaryUnitName = $unitModel->name;
                     }
 
@@ -147,7 +148,9 @@ class PlaceOrderAction
                         $itemLogisticsWeight += $qty * (float) $unitModel->amount;
                     } else {
                         $variantWeight = (float) ($item->productVariant->weight ?? 1.0);
-                        if ($variantWeight <= 0) $variantWeight = 1.0;
+                        if ($variantWeight <= 0) {
+                            $variantWeight = 1.0;
+                        }
                         $itemLogisticsWeight += $qty * $variantWeight;
                     }
                 }
@@ -156,27 +159,31 @@ class PlaceOrderAction
                 $itemSalesQuantity = $simpleQty;
                 $primaryUnitName = 'عدد';
                 $variantWeight = (float) ($item->productVariant->weight ?? 1.0);
-                if ($variantWeight <= 0) $variantWeight = 1.0;
+                if ($variantWeight <= 0) {
+                    $variantWeight = 1.0;
+                }
                 $itemLogisticsWeight = $simpleQty * $variantWeight;
             }
 
-            if ($itemLogisticsWeight <= 0) $itemLogisticsWeight = 0.001;
+            if ($itemLogisticsWeight <= 0) {
+                $itemLogisticsWeight = 0.001;
+            }
 
             $totalWeight += $itemLogisticsWeight;
 
             // محاسبه قیمت‌های این ردیف
             $lineTotal = $itemLogisticsWeight * $pricing->finalPrice;
-            $lineVat   = $itemLogisticsWeight * $pricing->vatAmount;
+            $lineVat = $itemLogisticsWeight * $pricing->vatAmount;
 
             $subtotal += $lineTotal;
             $totalVat += $lineVat;
             $totalDiscount += ($pricing->variantDiscountAmount * $itemLogisticsWeight);
 
             $itemsData[$item->id] = [
-                'weight'      => $itemLogisticsWeight,
-                'quantity'    => $itemSalesQuantity,
-                'unit_name'   => $primaryUnitName ?? 'واحد',
-                'unit_price'  => $pricing->finalPrice,
+                'weight' => $itemLogisticsWeight,
+                'quantity' => $itemSalesQuantity,
+                'unit_name' => $primaryUnitName ?? 'واحد',
+                'unit_price' => $pricing->finalPrice,
                 'total_price' => $lineTotal,
             ];
         }
@@ -192,14 +199,14 @@ class PlaceOrderAction
         $commissions = $this->calculateCommissions($user, $data->beneficiaryUserId, $subtotal);
 
         return [
-            'subtotal'       => $subtotal,
-            'vat_amount'     => $totalVat,
+            'subtotal' => $subtotal,
+            'vat_amount' => $totalVat,
             'total_discount' => $totalDiscount,
-            'shipping_cost'  => $shippingCost,
-            'final_amount'   => $finalAmount,
-            'total_weight'   => $totalWeight,
-            'commissions'    => $commissions,
-            'items_data'     => $itemsData,
+            'shipping_cost' => $shippingCost,
+            'final_amount' => $finalAmount,
+            'total_weight' => $totalWeight,
+            'commissions' => $commissions,
+            'items_data' => $itemsData,
         ];
     }
 
@@ -207,17 +214,21 @@ class PlaceOrderAction
     {
         $fees = ['engineer' => 0, 'contractor' => 0];
 
-        if (!$beneficiaryId || $beneficiaryId === $placer->id) return $fees;
+        if (! $beneficiaryId || $beneficiaryId === $placer->id) {
+            return $fees;
+        }
 
         $beneficiary = User::find($beneficiaryId);
-        if (!$beneficiary) return $fees;
+        if (! $beneficiary) {
+            return $fees;
+        }
 
         $badgeCode = $beneficiary->badge?->code ?? 'pioneer';
         $calculated = $this->settlementCalculator->calculateCommissions($subtotal, $badgeCode);
         $amount = $calculated['CO'] ?? 0;
 
-        $engineerTypeId = Cache::remember('user_type_id_engineer', 86400, fn() => UserType::where('slug', 'engineer')->value('id'));
-        $contractorTypeId = Cache::remember('user_type_id_contractor', 86400, fn() => UserType::where('slug', 'contractor')->value('id'));
+        $engineerTypeId = Cache::remember('user_type_id_engineer', 86400, fn () => UserType::where('slug', 'engineer')->value('id'));
+        $contractorTypeId = Cache::remember('user_type_id_contractor', 86400, fn () => UserType::where('slug', 'contractor')->value('id'));
 
         if ($beneficiary->hasRole('engineer') || $beneficiary->user_type_id === $engineerTypeId) {
             $fees['engineer'] = $amount;
@@ -247,28 +258,28 @@ class PlaceOrderAction
 
         // ۳. ثبت نهایی در دیتابیس
         return Order::create([
-            Order::PLACER_USER_ID                => $user->id,
-            Order::BENEFICIARY_USER_ID           => $data->beneficiaryUserId ?? $user->id,
-            Order::ADDRESS_ID                    => $data->addressId,
-            'shipping_method_id'                 => $data->shippingMethodId ?? 1,
-            Order::ORDER_NUMBER                  => $orderNumber, // استفاده از شماره تولید شده
-            Order::STATUS                        => Order::STATUS_PENDING,
-            Order::PAYMENT_STATUS                => Order::PAYMENT_PENDING,
+            Order::PLACER_USER_ID => $user->id,
+            Order::BENEFICIARY_USER_ID => $data->beneficiaryUserId ?? $user->id,
+            Order::ADDRESS_ID => $data->addressId,
+            'shipping_method_id' => $data->shippingMethodId ?? 1,
+            Order::ORDER_NUMBER => $orderNumber, // استفاده از شماره تولید شده
+            Order::STATUS => Order::STATUS_PENDING,
+            Order::PAYMENT_STATUS => Order::PAYMENT_PENDING,
 
-            Order::SUBTOTAL                      => $fins['subtotal'],
-            Order::DISCOUNT_AMOUNT               => $fins['total_discount'],
-            Order::VAT_AMOUNT                    => $fins['vat_amount'],
-            Order::SHIPPING_COST                 => $fins['shipping_cost'],
-            Order::FINAL_AMOUNT                  => $fins['final_amount'],
-            Order::WEIGHT_BEFORE_SCALE           => $fins['total_weight'],
+            Order::SUBTOTAL => $fins['subtotal'],
+            Order::DISCOUNT_AMOUNT => $fins['total_discount'],
+            Order::VAT_AMOUNT => $fins['vat_amount'],
+            Order::SHIPPING_COST => $fins['shipping_cost'],
+            Order::FINAL_AMOUNT => $fins['final_amount'],
+            Order::WEIGHT_BEFORE_SCALE => $fins['total_weight'],
 
-            Order::ENGINEER_FEE_AMOUNT           => $fins['commissions']['engineer'],
-            Order::CONTRACTOR_FEE_AMOUNT         => $fins['commissions']['contractor'],
-            Order::ENGINEER_FEE_PAYMENT_STATUS   => $fins['commissions']['engineer'] > 0 ? Order::FEE_PAYMENT_PENDING : null,
+            Order::ENGINEER_FEE_AMOUNT => $fins['commissions']['engineer'],
+            Order::CONTRACTOR_FEE_AMOUNT => $fins['commissions']['contractor'],
+            Order::ENGINEER_FEE_PAYMENT_STATUS => $fins['commissions']['engineer'] > 0 ? Order::FEE_PAYMENT_PENDING : null,
             Order::CONTRACTOR_FEE_PAYMENT_STATUS => $fins['commissions']['contractor'] > 0 ? Order::FEE_PAYMENT_PENDING : null,
 
-            Order::RESERVATION_EXPIRES_AT        => now()->addHours(2),
-            Order::NOTES                         => $data->description,
+            Order::RESERVATION_EXPIRES_AT => now()->addHours(2),
+            Order::NOTES => $data->description,
         ]);
     }
 
@@ -278,27 +289,27 @@ class PlaceOrderAction
             $supplierId = $item->factory->supplier_user_id ?? 1;
 
             $calc = $itemsData[$item->id] ?? [
-                'weight'      => 0,
-                'quantity'    => 0,
-                'unit_name'   => '',
-                'unit_price'  => 0,
-                'total_price' => 0
+                'weight' => 0,
+                'quantity' => 0,
+                'unit_name' => '',
+                'unit_price' => 0,
+                'total_price' => 0,
             ];
 
             OrderItem::create([
-                OrderItem::ORDER_ID           => $order->id,
-                'product_variant_id'          => $item->product_variant_id,
-                'supplier_user_id'            => $supplierId,
-                'product_name'                => $item->productVariant->product->name ?? 'Unknown',
-                'variant_sku'                 => $item->productVariant->sku,
+                OrderItem::ORDER_ID => $order->id,
+                'product_variant_id' => $item->product_variant_id,
+                'supplier_user_id' => $supplierId,
+                'product_name' => $item->productVariant->product->name ?? 'Unknown',
+                'variant_sku' => $item->productVariant->sku,
 
-                'quantity_details'            => $item->quantities,
-                'quantity'                    => $calc['quantity'],
-                'weight'                      => $calc['weight'],
-                'unit_name'                   => $calc['unit_name'],
+                'quantity_details' => $item->quantities,
+                'quantity' => $calc['quantity'],
+                'weight' => $calc['weight'],
+                'unit_name' => $calc['unit_name'],
 
-                'unit_price'                  => $calc['unit_price'],
-                'total_price'                 => $calc['total_price'],
+                'unit_price' => $calc['unit_price'],
+                'total_price' => $calc['total_price'],
             ]);
         }
     }

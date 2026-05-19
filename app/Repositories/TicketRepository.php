@@ -2,10 +2,9 @@
 
 namespace App\Repositories;
 
-use App\Contracts\TicketRepositoryInterface;
-use App\Http\Resources\TicketResource;
 use App\Models\Department;
 use App\Models\Ticket;
+use App\Repositories\Contracts\TicketRepositoryInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
@@ -13,7 +12,6 @@ use Illuminate\Support\Facades\Auth;
 
 class TicketRepository implements TicketRepositoryInterface
 {
-
     public function query(): Builder
     {
         return Ticket::query();

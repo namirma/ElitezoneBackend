@@ -6,7 +6,6 @@ use App\DataTransferObjects\ProductFilterData;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Repositories\Contracts\ProductRepositoryInterface;
-use App\Repositories\Eloquent\ProductRepository;
 use App\Services\PriceCalculationService;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -24,7 +23,7 @@ class FilterProductsAction
     public function execute(ProductFilterData $filters): LengthAwarePaginator
     {
         $products = $this->fetchBaseProducts($filters);
-        $products->each(fn(Product $product) => $this->hydrateProductPrices($product, $filters));
+        $products->each(fn (Product $product) => $this->hydrateProductPrices($product, $filters));
         $sortedProducts = $this->applyDynamicSorting($products, $filters->sortKey);
 
         return $this->manualPaginate($sortedProducts, $filters->perPage);
@@ -36,12 +35,13 @@ class FilterProductsAction
             'category',
             'images',
             'variants.prices.factory',
-            'variants.prices.factoryLocation'
+            'variants.prices.factoryLocation',
+            'orderUnits',
         ];
 
         $query = Product::query()->with($relations);
 
-        $query->when($filters->categoryId, fn($q) => $q->where('category_id', $filters->categoryId));
+        $query->when($filters->categoryId, fn ($q) => $q->where('category_id', $filters->categoryId));
 
         $query->when($filters->availability === 'in_stock', function ($q) {
             $q->whereHas('variants', function ($variantQuery) {
@@ -56,12 +56,13 @@ class FilterProductsAction
 
         return $query->get();
     }
+
     private function hydrateProductPrices(Product $product, ProductFilterData $filters): void
     {
-        $product->variants->each(fn($v) => $this->hydrateVariantPrices($v, $filters));
+        $product->variants->each(fn ($v) => $this->hydrateVariantPrices($v, $filters));
 
         $product->min_variant_price = $product->variants
-            ->flatMap(fn($v) => $v->prices)
+            ->flatMap(fn ($v) => $v->prices)
             ->min('final_price');
     }
 
@@ -79,7 +80,7 @@ class FilterProductsAction
                 filterCategoryCode: $filters->roleCode
             );
 
-            $price->final_price        = $calcDto->finalPrice;
+            $price->final_price = $calcDto->finalPrice;
             $price->role_special_price = $calcDto->payablePrice;
             $price->role_general_price = $calcDto->listPrice;
             $price->role_golden_figure = max(0.0, $calcDto->listPrice - $calcDto->payablePrice);
@@ -94,14 +95,14 @@ class FilterProductsAction
 
     private function applyDynamicSorting(Collection $collection, string $sortKey): Collection
     {
-        $getter = fn($item) => $item->min_variant_price ?? 0;
+        $getter = fn ($item) => $item->min_variant_price ?? 0;
 
         // تغییر اصلاحی: استفاده از متغیر واسط برای رفع خطای سینتکس
         $sorted = match ($sortKey) {
-            'cheapest'       => $collection->sortBy($getter),
+            'cheapest' => $collection->sortBy($getter),
             'most_expensive' => $collection->sortByDesc($getter),
-            'most_viewed'    => $collection->sortByDesc('view_count'),
-            default          => $collection->sortByDesc('created_at'),
+            'most_viewed' => $collection->sortByDesc('view_count'),
+            default => $collection->sortByDesc('created_at'),
         };
 
         return $sorted->values();
@@ -110,7 +111,7 @@ class FilterProductsAction
     private function manualPaginate(Collection $items, int $perPage): LengthAwarePaginator
     {
         $currentPage = LengthAwarePaginator::resolveCurrentPage();
-        $slice       = $items->slice(($currentPage - 1) * $perPage, $perPage)->values();
+        $slice = $items->slice(($currentPage - 1) * $perPage, $perPage)->values();
 
         return new LengthAwarePaginator(
             $slice,

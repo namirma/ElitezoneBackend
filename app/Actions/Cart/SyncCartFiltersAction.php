@@ -34,7 +34,9 @@ class SyncCartFiltersAction
                 $factory = Factory::find($cartItem->factory_id);
                 $location = FactoryLocation::find($cartItem->factory_location_id);
 
-                if (!$factory || !$location) continue;
+                if (! $factory || ! $location) {
+                    continue;
+                }
 
                 $pricing = $this->priceService->calculatePrice(
                     variant: $cartItem->productVariant,
@@ -49,12 +51,12 @@ class SyncCartFiltersAction
 
                 $weight = (float) $cartItem->weight;
                 $lineTotal = $weight * $pricing->finalPrice;
-                $lineVat   = $weight * $pricing->vatAmount;
+                $lineVat = $weight * $pricing->vatAmount;
 
                 $cartItem->update([
-                    'price'          => $pricing->finalPrice,
-                    'final_price'    => $pricing->finalPrice,
-                    'vat_amount'     => $lineVat,
+                    'price' => $pricing->finalPrice,
+                    'final_price' => $pricing->finalPrice,
+                    'vat_amount' => $lineVat,
                     'total_with_vat' => $lineTotal + $lineVat,
                 ]);
             }

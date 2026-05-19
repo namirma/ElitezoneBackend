@@ -20,6 +20,7 @@ class ProcessReservationPaymentAction
     {
         if ($this->isAlreadyProcessed($order)) {
             Log::warning("ProcessReservationPaymentAction skipped: order {$order->id} already reserved.");
+
             return;
         }
 
@@ -31,12 +32,13 @@ class ProcessReservationPaymentAction
 
             $locked = Order::where('id', $order->id)->lockForUpdate()->first();
 
-            if (!$locked) {
+            if (! $locked) {
                 throw new \RuntimeException("Order {$order->id} not found.");
             }
 
             if ($this->isAlreadyProcessed($locked)) {
                 Log::warning("Race detected: order {$locked->id} already reserved.");
+
                 return;
             }
 
@@ -49,9 +51,9 @@ class ProcessReservationPaymentAction
             $this->walletEngine->process('+', $reserveAmount, $systemWalletCode, FinancialCodes::STATUS_HOLD, $locked, "امانت مبلغ رزرو سفارش {$locked->order_number}", $systemUserId);
 
             $locked->update([
-                'status'                  => Order::STATUS_RESERVED,
+                'status' => Order::STATUS_RESERVED,
                 Order::PAYMENT_TO_RESERVE => $reserveAmount,
-                'reservation_expires_at'  => now()->addHours($validityHours),
+                'reservation_expires_at' => now()->addHours($validityHours),
             ]);
 
             Log::info("سفارش {$locked->order_number} رزرو شد.");

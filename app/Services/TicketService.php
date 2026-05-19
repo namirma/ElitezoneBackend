@@ -2,16 +2,14 @@
 
 namespace App\Services;
 
-use App\Contracts\TicketRepositoryInterface;
 use App\DataTransferObjects\TicketDTO;
 use App\Models\Ticket;
+use App\Repositories\Contracts\TicketRepositoryInterface;
 use Illuminate\Support\Facades\Auth;
 
 class TicketService
 {
-    public function __construct(protected TicketRepositoryInterface $repository)
-    {
-    }
+    public function __construct(protected TicketRepositoryInterface $repository) {}
 
     public function list()
     {
@@ -20,9 +18,11 @@ class TicketService
 
     public function create(TicketDTO $dto)
     {
-        $dto->user_id = Auth::id();
+        // Inject authenticated user_id before persisting
+        $data = $dto->toArray();
+        $data['user_id'] = Auth::id();
 
-        return $this->repository->create($dto->toArray());
+        return $this->repository->create($data);
     }
 
     public function getDepartments()
@@ -34,5 +34,4 @@ class TicketService
     {
         return $this->repository->show($ticket);
     }
-
 }

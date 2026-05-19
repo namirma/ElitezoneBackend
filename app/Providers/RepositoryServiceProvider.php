@@ -2,10 +2,10 @@
 
 namespace App\Providers;
 
-use App\Contracts\TicketReplyRepositoryInterface;
-use App\Contracts\TicketRepositoryInterface;
 use App\Repositories\Contracts\OrderRepositoryInterface;
 use App\Repositories\Contracts\ProductRepositoryInterface;
+use App\Repositories\Contracts\TicketReplyRepositoryInterface;
+use App\Repositories\Contracts\TicketRepositoryInterface;
 use App\Repositories\Eloquent\OrderRepository;
 use App\Repositories\Eloquent\ProductRepository;
 use App\Repositories\TicketReplyRepository;
@@ -35,6 +35,7 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(TicketReplyRepositoryInterface::class, TicketReplyRepository::class);
 
     }
+
     /**
      * Bootstrap services.
      */

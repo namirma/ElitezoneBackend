@@ -21,11 +21,11 @@ class CalculateOrderEstimateAction
     public function execute(array $data, string $activeRoleCode, ?Badge $badge): array
     {
 
-        $variant  = ProductVariant::with('product.offers')->findOrFail($data['variant_id']);
-        $factory  = Factory::findOrFail($data['factory_id']);
+        $variant = ProductVariant::with('product.offers')->findOrFail($data['variant_id']);
+        $factory = Factory::findOrFail($data['factory_id']);
         $location = FactoryLocation::findOrFail($data['location_id']);
         $customerType = CustomerType::where(CustomerType::CODE, $activeRoleCode)->first();
-        $withVat = (bool)($data['with_vat'] ?? false);
+        $withVat = (bool) ($data['with_vat'] ?? false);
 
         $unitDto = $this->priceService->calculatePrice(
             variant: $variant,
@@ -54,20 +54,20 @@ class CalculateOrderEstimateAction
         $finalPrice = max(0, $lineSubtotal - $offerDiscount) + $totalVat;
 
         return [
-            'unit_dto'      => $unitDto,
+            'unit_dto' => $unitDto,
             'order_details' => [
-                'total_count'  => (string)$physicalData['total_count'],
-                'total_weight' => (string)$totalWeight,
-                'breakdown'    => $physicalData['breakdown'],
+                'total_count' => (string) $physicalData['total_count'],
+                'total_weight' => (string) $totalWeight,
+                'breakdown' => $physicalData['breakdown'],
             ],
-            'offers'        => $offers,
-            'financials'    => [
-                'subtotal'         => (string)$lineSubtotal,
-                'discount_amount'  => (string)$offerDiscount,
-                'vat_amount'       => (string)$totalVat,
-                'final_price'      => (string)$finalPrice,
-                'with_vat'         => $withVat,
-            ]
+            'offers' => $offers,
+            'financials' => [
+                'subtotal' => (string) $lineSubtotal,
+                'discount_amount' => (string) $offerDiscount,
+                'vat_amount' => (string) $totalVat,
+                'final_price' => (string) $finalPrice,
+                'with_vat' => $withVat,
+            ],
         ];
     }
 
@@ -80,42 +80,45 @@ class CalculateOrderEstimateAction
         $totalWeight = 0.0;
         $breakdown = [];
 
-        $orderUnits = Cache::remember('pricing:order_units_collection', 86400, fn() => OrderUnit::all()->keyBy('id'));
+        $orderUnits = Cache::remember('pricing:order_units_collection', 86400, fn () => OrderUnit::all()->keyBy('id'));
 
         foreach ($quantities as $unitIdToString => $qty) {
             $unitId = (int) $unitIdToString;
             $currentQty = (float) $qty;
             $unit = $orderUnits->get($unitId);
 
-            if (!$unit || $currentQty <= 0) continue;
+            if (! $unit || $currentQty <= 0) {
+                continue;
+            }
 
             $weightPerUnit = (float) $unit->amount;
             $totalCount += $currentQty;
             $totalWeight += $currentQty * $weightPerUnit;
 
             $breakdown[] = [
-                'unit_id'      => $unit->id,
-                'unit_name'    => $unit->name,
-                'quantity'     => (string) $currentQty,
-                'unit_weight'  => (string) $weightPerUnit,
+                'unit_id' => $unit->id,
+                'unit_name' => $unit->name,
+                'quantity' => (string) $currentQty,
+                'unit_weight' => (string) $weightPerUnit,
                 'total_weight' => (string) ($currentQty * $weightPerUnit),
             ];
         }
 
         return [
-            'total_count'  => $totalCount,
+            'total_count' => $totalCount,
             'total_weight' => $totalWeight,
-            'breakdown'    => $breakdown,
+            'breakdown' => $breakdown,
         ];
     }
 
     private function getEligibleOffers($product, float $qty): Collection
     {
         $now = now();
+
         // فیلتر کردن کالکشنِ از پیش لود شده برای جلوگیری از اجرای کوئری در دیتابیس
         return $product->offers->filter(function ($offer) use ($qty, $now) {
-            $isCurrent = (!$offer->start_date || $offer->start_date <= $now) &&
-                         (!$offer->end_date || $offer->end_date >= $now);
+            $isCurrent = (! $offer->start_date || $offer->start_date <= $now) &&
+                         (! $offer->end_date || $offer->end_date >= $now);
 
             return $isCurrent && $offer->minimum_quantity <= $qty;
         })->values();
@@ -124,14 +127,15 @@ class CalculateOrderEstimateAction
     private function calculateOfferDiscount(float $subtotal, Collection $offers): float
     {
         $discount = 0.0;
-        
+
         foreach ($offers as $offer) {
             if ($offer->type === 'percentage') {
-                $discount += $subtotal * ((float)$offer->value / 100);
+                $discount += $subtotal * ((float) $offer->value / 100);
             } elseif ($offer->type === 'fixed_amount') {
-                $discount += (float)$offer->value;
+                $discount += (float) $offer->value;
             }
         }
+
         return min($discount, $subtotal);
     }
 }

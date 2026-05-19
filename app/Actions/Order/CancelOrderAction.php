@@ -15,12 +15,13 @@ class CancelOrderAction
 {
     public function __construct(
         protected InventoryService $inventoryService,
-        protected WalletTransactionEngine $walletEngine ,
+        protected WalletTransactionEngine $walletEngine,
     ) {}
 
     /**
      * اجرای عملیات لغو سفارش
-     * @param bool $isSystemCron آیا این درخواست توسط کرون‌جاب سیستم ارسال شده است؟
+     *
+     * @param  bool  $isSystemCron  آیا این درخواست توسط کرون‌جاب سیستم ارسال شده است؟
      */
     public function execute(Order $order, ?string $reason = 'لغو سیستمی', bool $refundWallet = true, bool $isSystemCron = false): Order
     {
@@ -30,7 +31,7 @@ class CancelOrderAction
                 throw new Exception('سفارشات رزرو شده تا پیش از پایان زمان انقضا قابل لغو نیستند.');
             }
 
-            if (!$isSystemCron) {
+            if (! $isSystemCron) {
                 throw new Exception('سفارشات رزرو شده منقضی، تنها توسط سیستم (به صورت خودکار) لغو می‌شوند.');
             }
         }
@@ -50,18 +51,18 @@ class CancelOrderAction
 
             // ۴. آپدیت نهایی سفارش
             $order->update([
-                Order::STATUS         => Order::STATUS_CANCELLED,
+                Order::STATUS => Order::STATUS_CANCELLED,
                 Order::PAYMENT_STATUS => $newPaymentStatus,
-                Order::CANCEL_REASON  => $reason
+                Order::CANCEL_REASON => $reason,
             ]);
 
             // ۵. ارسال ایونت
             OrderCancelled::dispatch($order);
 
             Log::info("سفارش شماره {$order->order_number} با موفقیت لغو شد.", [
-                'reason'         => $reason,
-                'refunded'       => $refundWallet,
-                'is_system_cron' => $isSystemCron
+                'reason' => $reason,
+                'refunded' => $refundWallet,
+                'is_system_cron' => $isSystemCron,
             ]);
 
             return $order;
@@ -84,7 +85,7 @@ class CancelOrderAction
                 // خروج از هولد کیف پول سازه
                 $this->walletEngine->process('-', $reserveAmount, FinancialCodes::WALLET_SAZE, FinancialCodes::STATUS_HOLD, $order, "خروج از هولد به دلیل لغو رزرو سفارش {$order->order_number}", $systemUserId);
                 // بازگشت به کیف پول آزاد خریدار
-                $this->walletEngine->process('+', $reserveAmount, FinancialCodes::WALLET_OWNER, FinancialCodes::STATUS_AVAILABLE, $order, "بازگشت وجه بیعانه به دلیل لغو سفارش", $buyerId);
+                $this->walletEngine->process('+', $reserveAmount, FinancialCodes::WALLET_OWNER, FinancialCodes::STATUS_AVAILABLE, $order, 'بازگشت وجه بیعانه به دلیل لغو سفارش', $buyerId);
             }
         }
         // ب) اگر سفارش خرید مستقیم بوده (بدون رزرو و هولد)

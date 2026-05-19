@@ -3,25 +3,55 @@
 namespace App\DataTransferObjects;
 
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 
-class TicketDTO extends BaseDTO
+/**
+ * Data transfer object for creating a new ticket.
+ *
+ * Uses the readonly constructor pattern (PHP 8.1) instead of the legacy
+ * BaseDTO / validateAndMake style for consistency with newer DTOs.
+ */
+final class TicketDTO
 {
-    const fields = [
-        'user_id',
-        'department_id',
-        'subject',
-        'message',
-        'file'
-    ];
+    public function __construct(
+        public readonly int $department_id,
+        public readonly string $subject,
+        public readonly string $message,
+        public readonly ?int $user_id = null,
+        /** @var UploadedFile[]|null */
+        public readonly ?array $file = null,
+    ) {}
 
     public static function fromRequest(Request $request): self
     {
-        return self::validateAndMake($request, [
+        $request->validate([
             'department_id' => ['required', 'exists:departments,id'],
             'subject' => ['required', 'string'],
             'message' => ['required', 'string'],
             'file.*' => ['nullable', 'file', 'max:5000'],
         ]);
+
+        return new self(
+            department_id: (int) $request->input('department_id'),
+            subject: (string) $request->input('subject'),
+            message: (string) $request->input('message'),
+            file: $request->file('file'),
+        );
     }
 
+    /** Converts to array for repository::create() */
+    public function toArray(): array
+    {
+        $data = [
+            'department_id' => $this->department_id,
+            'subject' => $this->subject,
+            'message' => $this->message,
+        ];
+
+        if ($this->user_id !== null) {
+            $data['user_id'] = $this->user_id;
+        }
+
+        return $data;
+    }
 }

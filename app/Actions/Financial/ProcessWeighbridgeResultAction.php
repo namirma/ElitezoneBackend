@@ -28,6 +28,7 @@ class ProcessWeighbridgeResultAction
     {
         if ($this->isAlreadyProcessed($order)) {
             Log::warning("ProcessWeighbridgeResultAction skipped: order {$order->id} already weighed.");
+
             return $this->buildAlreadyProcessedResponse($order);
         }
 
@@ -39,12 +40,13 @@ class ProcessWeighbridgeResultAction
 
             $locked = Order::where('id', $order->id)->lockForUpdate()->first();
 
-            if (!$locked) {
+            if (! $locked) {
                 throw new \RuntimeException("Order {$order->id} not found.");
             }
 
             if ($this->isAlreadyProcessed($locked)) {
                 Log::warning("Race detected: order {$locked->id} already weighed.");
+
                 return $this->buildAlreadyProcessedResponse($locked);
             }
 
@@ -66,7 +68,7 @@ class ProcessWeighbridgeResultAction
             $badgeCode = $locked->beneficiary->badge->code ?? 'pioneer';
             $rates = $this->calculator->getCommissionRates($badgeCode);
             $trans = (float) $locked->shipping_cost;
-            $vat   = (float) ($locked->vat_rate ?? 10.0);
+            $vat = (float) ($locked->vat_rate ?? 10.0);
             $op = ((float) $locked->official_price > 0)
                 ? (float) $locked->official_price
                 : (float) ($locked->items->first()->unit_price ?? 0);
@@ -90,11 +92,11 @@ class ProcessWeighbridgeResultAction
                 $chargeAmount = abs($diffPOO);
                 $payoutAmount = abs($diffPTS);
 
-                $this->walletEngine->process('-', $chargeAmount, FinancialCodes::WALLET_OWNER, FinancialCodes::STATUS_AVAILABLE, $locked, "بدهی ایجاد شده بابت سرک باسکول", $buyerId);
+                $this->walletEngine->process('-', $chargeAmount, FinancialCodes::WALLET_OWNER, FinancialCodes::STATUS_AVAILABLE, $locked, 'بدهی ایجاد شده بابت سرک باسکول', $buyerId);
                 $this->walletEngine->process('+', $chargeAmount, $systemWalletCode, FinancialCodes::STATUS_AVAILABLE, $locked, "دریافت بدهی خریدار بابت سرک باسکول سفارش {$locked->order_number}", $systemUserId);
 
                 $this->walletEngine->process('-', $payoutAmount, $systemWalletCode, FinancialCodes::STATUS_AVAILABLE, $locked, "پرداخت سهم تامین‌کننده بابت سرک باسکول سفارش {$locked->order_number}", $systemUserId);
-                $this->walletEngine->process('+', $payoutAmount, FinancialCodes::WALLET_SUPPLIER, FinancialCodes::STATUS_AVAILABLE, $locked, "دریافت وجه بابت سرک باسکول", $realSupplierId);
+                $this->walletEngine->process('+', $payoutAmount, FinancialCodes::WALLET_SUPPLIER, FinancialCodes::STATUS_AVAILABLE, $locked, 'دریافت وجه بابت سرک باسکول', $realSupplierId);
 
                 $orderStatus = Order::STATUS_PENDING_SURPLUS_PAYMENT;
 
@@ -108,9 +110,9 @@ class ProcessWeighbridgeResultAction
                 $reclaimAmount = abs($diffPTS);
 
                 $this->walletEngine->process('-', $refundAmount, $systemWalletCode, FinancialCodes::STATUS_AVAILABLE, $locked, "پرداخت وجه کسری باسکول سفارش {$locked->order_number} به خریدار", $systemUserId);
-                $this->walletEngine->process('+', $refundAmount, FinancialCodes::WALLET_OWNER, FinancialCodes::STATUS_AVAILABLE, $locked, "بازگشت وجه ناشی از کسری باسکول", $buyerId);
+                $this->walletEngine->process('+', $refundAmount, FinancialCodes::WALLET_OWNER, FinancialCodes::STATUS_AVAILABLE, $locked, 'بازگشت وجه ناشی از کسری باسکول', $buyerId);
 
-                $this->walletEngine->process('-', $reclaimAmount, FinancialCodes::WALLET_SUPPLIER, FinancialCodes::STATUS_AVAILABLE, $locked, "کسر بابت کسری باسکول", $realSupplierId);
+                $this->walletEngine->process('-', $reclaimAmount, FinancialCodes::WALLET_SUPPLIER, FinancialCodes::STATUS_AVAILABLE, $locked, 'کسر بابت کسری باسکول', $realSupplierId);
                 $this->walletEngine->process('+', $reclaimAmount, $systemWalletCode, FinancialCodes::STATUS_AVAILABLE, $locked, "بازپس‌گیری از تامین‌کننده بابت کسری باسکول سفارش {$locked->order_number}", $systemUserId);
 
                 $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_MODIFIED_INVOICE_OWNER);
@@ -134,8 +136,8 @@ class ProcessWeighbridgeResultAction
                 $consultantNet = $candidateGross - $consultantVat;
 
                 $this->walletEngine->process('-', $candidateGross, FinancialCodes::WALLET_SAZE, FinancialCodes::STATUS_AVAILABLE, $locked, "تخصیص سهم مشاور فنی سفارش {$locked->order_number}", $systemUserId);
-                $this->walletEngine->process('+', $consultantNet, FinancialCodes::WALLET_CONSULTANT, FinancialCodes::STATUS_HOLD, $locked, "کمیسیون امانی مشاور فنی", $consultantUserId);
-                $this->walletEngine->process('+', $consultantVat, FinancialCodes::WALLET_VAT, FinancialCodes::STATUS_HOLD, $locked, "مالیات کمیسیون مشاور فنی امانی", $systemUserId);
+                $this->walletEngine->process('+', $consultantNet, FinancialCodes::WALLET_CONSULTANT, FinancialCodes::STATUS_HOLD, $locked, 'کمیسیون امانی مشاور فنی', $consultantUserId);
+                $this->walletEngine->process('+', $consultantVat, FinancialCodes::WALLET_VAT, FinancialCodes::STATUS_HOLD, $locked, 'مالیات کمیسیون مشاور فنی امانی', $systemUserId);
 
                 $consultantGross = $candidateGross;
             }
@@ -143,34 +145,34 @@ class ProcessWeighbridgeResultAction
             $supplierVat = $newPTS * $vatMultiplier;
             if ($supplierVat > 0) {
                 $this->walletEngine->process('-', $supplierVat, FinancialCodes::WALLET_SUPPLIER, FinancialCodes::STATUS_AVAILABLE, $locked, "کسر مالیات امانی سفارش {$locked->order_number}", $realSupplierId);
-                $this->walletEngine->process('+', $supplierVat, FinancialCodes::WALLET_VAT, FinancialCodes::STATUS_HOLD, $locked, "مالیات تامین‌کننده امانی", $systemUserId);
+                $this->walletEngine->process('+', $supplierVat, FinancialCodes::WALLET_VAT, FinancialCodes::STATUS_HOLD, $locked, 'مالیات تامین‌کننده امانی', $systemUserId);
             }
 
             $sazeGross = ($newPOO - $newPTS) - $consultantGross;
             $sazeVat = $sazeGross * $vatMultiplier;
             if ($sazeVat > 0) {
-                $this->walletEngine->process('-', $sazeVat, FinancialCodes::WALLET_SAZE, FinancialCodes::STATUS_AVAILABLE, $locked, "کسر مالیات بر ارزش افزوده پلتفرم", $systemUserId);
-                $this->walletEngine->process('+', $sazeVat, FinancialCodes::WALLET_VAT, FinancialCodes::STATUS_HOLD, $locked, "مالیات گروه سازه امانی", $systemUserId);
+                $this->walletEngine->process('-', $sazeVat, FinancialCodes::WALLET_SAZE, FinancialCodes::STATUS_AVAILABLE, $locked, 'کسر مالیات بر ارزش افزوده پلتفرم', $systemUserId);
+                $this->walletEngine->process('+', $sazeVat, FinancialCodes::WALLET_VAT, FinancialCodes::STATUS_HOLD, $locked, 'مالیات گروه سازه امانی', $systemUserId);
             }
 
             $locked->update([
-                Order::WEIGHT_AFTER_SCALE    => $actualWeight,
+                Order::WEIGHT_AFTER_SCALE => $actualWeight,
                 Order::WEIGHING_COMPLETED_AT => now(),
-                'status'                     => $orderStatus,
-                'payment_of_owner'           => $newPOO,
-                'payment_to_supplier'        => $newPTS,
-                'payment_to_consultant'      => $consultantGross,
-                'final_amount'               => $newPOO,
+                'status' => $orderStatus,
+                'payment_of_owner' => $newPOO,
+                'payment_to_supplier' => $newPTS,
+                'payment_to_consultant' => $consultantGross,
+                'final_amount' => $newPOO,
             ]);
 
             Log::info("باسکول نهایی شد. وضعیت: {$status}");
 
             return [
-                'status'         => $status,
-                'old_weight'     => (string) $locked->weight_before_scale,
-                'new_weight'     => (string) $actualWeight,
+                'status' => $status,
+                'old_weight' => (string) $locked->weight_before_scale,
+                'new_weight' => (string) $actualWeight,
                 'financial_diff' => (string) abs($diffPOO),
-                'final_amount'   => (string) $newPOO,
+                'final_amount' => (string) $newPOO,
             ];
         }, 3);
     }
@@ -183,11 +185,11 @@ class ProcessWeighbridgeResultAction
     private function buildAlreadyProcessedResponse(Order $order): array
     {
         return [
-            'status'         => 'already_processed',
-            'old_weight'     => (string) $order->weight_before_scale,
-            'new_weight'     => (string) $order->weight_after_scale,
+            'status' => 'already_processed',
+            'old_weight' => (string) $order->weight_before_scale,
+            'new_weight' => (string) $order->weight_after_scale,
             'financial_diff' => '0',
-            'final_amount'   => (string) $order->final_amount,
+            'final_amount' => (string) $order->final_amount,
         ];
     }
 }

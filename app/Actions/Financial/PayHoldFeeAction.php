@@ -26,7 +26,7 @@ class PayHoldFeeAction
         DB::transaction(function () use ($order) {
             $lockedOrder = Order::where('id', $order->id)->lockForUpdate()->first();
 
-            if (!$lockedOrder) {
+            if (! $lockedOrder) {
                 throw new \RuntimeException("Order {$order->id} not found.");
             }
 
@@ -37,17 +37,18 @@ class PayHoldFeeAction
                 && $lockedOrder->{Order::RESERVATION_EXPIRES_AT}->isFuture()
             ) {
                 Log::info("PayHoldFeeAction: سفارش {$lockedOrder->id} قبلاً تمدید شده، عملیات تکراری نادیده گرفته شد.");
+
                 return;
             }
 
-            if (!\in_array($lockedOrder->status, [Order::STATUS_RESERVED, Order::STATUS_RESERVED_EXTENDED])) {
+            if (! \in_array($lockedOrder->status, [Order::STATUS_RESERVED, Order::STATUS_RESERVED_EXTENDED])) {
                 throw new \RuntimeException('تنها سفارش‌های رزرو شده قابل تمدید هستند.');
             }
 
             $buyerId = $lockedOrder->placer_user_id;
             $buyerWallet = Wallet::where('user_id', $buyerId)->lockForUpdate()->first();
 
-            if (!$buyerWallet || $buyerWallet->balance < self::FEE_RIALS) {
+            if (! $buyerWallet || $buyerWallet->balance < self::FEE_RIALS) {
                 throw new InsufficientBalanceException(self::FEE_RIALS, (float) ($buyerWallet?->balance ?? 0));
             }
 
@@ -62,7 +63,7 @@ class PayHoldFeeAction
             );
 
             $lockedOrder->update([
-                Order::STATUS                => Order::STATUS_RESERVED_EXTENDED,
+                Order::STATUS => Order::STATUS_RESERVED_EXTENDED,
                 Order::RESERVATION_EXPIRES_AT => now()->addHours(24),
             ]);
 

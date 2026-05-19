@@ -2,21 +2,23 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Auth\RequestOtpAction;
+use App\Actions\Auth\VerifyIdentityWithPodiumAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Resources\UserResource;
+use App\Jobs\SendSmsJob;
 use App\Models\User;
 use App\Models\UserNotification;
 use App\Models\UserProfile;
 use App\Models\UserType;
 use App\Services\PodiumClient;
-use App\Jobs\SendSmsJob; // استفاده از جاب برای سرعت بالا
+use App\Support\PhoneNumber;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Log;
 use Laravel\Sanctum\PersonalAccessToken;
 use Throwable;
 
@@ -26,167 +28,90 @@ class AuthController extends Controller
     {
         return success(new UserResource($request->user()));
     }
+
     public function register(StoreUserRequest $request): JsonResponse
     {
-        $mobile       = $this->mobileTo09($request->validated('username'));
+        $mobile = PhoneNumber::to09($request->validated('username'));
         $nationalCode = (string) $request->validated('national_code');
-        $birthDate    = str_replace('-', '', (string) $request->validated('birth_date'));
+        $birthDate = str_replace('-', '', (string) $request->validated('birth_date'));
 
         $user = User::where(User::MOBILE, $mobile)->first();
 
-        if ($user && !empty($user->{User::NATIONAL_CODE})) {
+        if ($user && ! empty($user->{User::NATIONAL_CODE})) {
             if ($user->{User::PASSWORD}) {
-                return response()->json([
-                    'status' => true,
-                    'message' => __('auth.user_has_password'),
-                    'action' => 'login_with_password'
-                ], 200);
+                return success(['action' => 'login_with_password'], __('auth.user_has_password'));
             }
             if (isset($user->{User::SECRET_EXPIRES_AT}) && ! Carbon::parse($user->{User::SECRET_EXPIRES_AT})->isPast()) {
-                return response()->json(['status' => true, 'message' => __('auth.code_sent_recently')], 202);
+                return success([], __('auth.code_sent_recently'), 202);
             }
-            $verifyCode = generateVerifyCode();
-            $user->update([
-                User::SECRET            => $verifyCode,
-                User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2),
-            ]);
+            app(RequestOtpAction::class)->execute($user, $mobile);
 
-            // ارسال سریع با جاب
-            SendSmsJob::dispatch($mobile, __('sms.loginMessage', ['code' => $verifyCode]));
-
-            return response()->json(['status' => true, 'message' => __('auth.verification_code_sent_successfully')], 202);
+            return success([], __('auth.verification_code_sent_successfully'), 202);
         }
 
-        $client = app(PodiumClient::class);
+        // Delegate Podium identity verification to a dedicated Action
+        $verifyAction = app(VerifyIdentityWithPodiumAction::class);
+        $errorKey = $verifyAction->execute($mobile, $nationalCode, $birthDate);
 
-        $matchPayload = [
-            'apiKey'          => (string) config('podium.services.nid_mobile_match.sc_api_key'),
-            'productEntityId' => (int)    config('podium.services.nid_mobile_match.sc_product_id'),
-            'providerParameters' => ['body' => ['nationalCode' => $nationalCode, 'mobileNumber' => $mobile]],
-            'asyncCall' => false,
-            'wrapper'   => true,
-        ];
-        try {
-            $matchRes = PodiumClient::normalize($client->callSc2($matchPayload));
-        } catch (Throwable $e) {
-            return response()->json(['status' => false, 'message' => __('auth.mobile_check_failed')], 502);
+        if ($errorKey) {
+            $httpStatus = str_contains($errorKey, 'check_failed') ? 502 : 422;
+
+            return error(__($errorKey), [], $httpStatus);
         }
 
-        $matched   = data_get($matchRes, 'result.matched');
-        $matchCode = (string) data_get($matchRes, 'result.resultCode', '');
-        $isMatch   = $matched === true || $matched === 'true' || $matchCode === '1';
-
-        if (! $isMatch) {
-            return response()->json(['status' => false, 'message' => __('auth.mobile_nid_mismatch')], 422);
-        }
-
-        $idenPayload = [
-            'apiKey'             => (string) config('podium.services.identity_inquiry.sc_api_key'),
-            'productEntityId'    => (int)    config('podium.services.identity_inquiry.sc_product_id'),
-            'providerParameters' => ['nationalCode' => $nationalCode, 'birthDate' => $birthDate],
-            'asyncCall' => false,
-            'wrapper'   => true,
-        ];
-        try {
-            $idenRes = PodiumClient::normalize($client->callSc2($idenPayload));
-        } catch (Throwable $e) {
-            return response()->json(['status' => false, 'message' => __('auth.birthdate_check_failed')], 502);
-        }
-
-        $srvBirth = (string) data_get($idenRes, 'result.identityInfo.birthDate', data_get($idenRes, 'result.birthDate', ''));
-        if ($srvBirth === '' || $srvBirth !== $birthDate) {
-            return response()->json(['status' => false, 'message' => __('auth.birthdate_mismatch')], 422);
-        }
-
-        $verifyCode = generateVerifyCode();
-
+        // Create or update the user record
         if ($user) {
             $user->update([
-                User::NATIONAL_CODE     => $nationalCode,
-                User::BIRTH_DATE        => $birthDate,
-                User::SECRET            => $verifyCode,
-                User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2),
+                User::NATIONAL_CODE => $nationalCode,
+                User::BIRTH_DATE => $birthDate,
             ]);
         } else {
-            User::create([
-                User::MOBILE            => $mobile,
-                User::NATIONAL_CODE     => $nationalCode,
-                User::BIRTH_DATE        => $birthDate,
-                User::SECRET            => $verifyCode,
-                User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2),
-                User::TYPE_ID           => null,
+            $user = User::create([
+                User::MOBILE => $mobile,
+                User::NATIONAL_CODE => $nationalCode,
+                User::BIRTH_DATE => $birthDate,
+                User::TYPE_ID => null,
             ]);
         }
 
-        SendSmsJob::dispatch($mobile, __('sms.loginMessage', ['code' => $verifyCode]));
+        // Generate OTP and send SMS via dedicated Action
+        app(RequestOtpAction::class)->execute($user, $mobile);
 
-        return response()->json(['status' => true, 'message' => __('auth.verification_code_sent_successfully')], 202);
+        return success([], __('auth.verification_code_sent_successfully'), 202);
     }
 
     public function checkUserAndSendCode(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'username' => ['required', 'regex:/^(\+?98|0098|0)?9\d{9}$/']
+            'username' => ['required', 'regex:/^(\+?98|0098|0)?9\d{9}$/'],
         ]);
 
-        $mobile = $this->mobileTo09($validated['username']);
+        $mobile = PhoneNumber::to09($validated['username']);
         $user = User::where(User::MOBILE, $mobile)->first();
 
         if ($user) {
             if (empty($user->{User::NATIONAL_CODE}) || empty($user->{User::BIRTH_DATE})) {
-                return response()->json([
-                    'status' => false,
-                    'message' => '.لطفاً جهت تکمیل اطلاعات کاربری و احراز هویت، مجددا ثبت‌نام کنید',
-                    'action' => 'register',
-                    'data' => ['mobile' => $mobile]
-                ], 404);
+                return error(
+                    '.لطفاً جهت تکمیل اطلاعات کاربری و احراز هویت، مجددا ثبت‌نام کنید',
+                    ['action' => 'register', 'mobile' => $mobile],
+                    404
+                );
             }
 
             if ($user->{User::PASSWORD}) {
-                return response()->json([
-                    'status' => true,
-                    'message' => __('auth.user_has_password'),
-                    'action' => 'login_with_password'
-                ], 200);
+                return success(['action' => 'login_with_password'], __('auth.user_has_password'));
             }
 
             if (isset($user->{User::SECRET_EXPIRES_AT}) && ! Carbon::parse($user->{User::SECRET_EXPIRES_AT})->isPast()) {
-                return response()->json([
-                    'status' => true,
-                    'message' => __('auth.code_sent_recently'),
-                    'action' => 'login_with_code'
-                ], 202);
+                return success(['action' => 'login_with_code'], __('auth.code_sent_recently'), 202);
             }
 
-            $verifyCode = generateVerifyCode();
-            $user->update([
-                User::SECRET            => $verifyCode,
-                User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2),
-            ]);
+            app(RequestOtpAction::class)->execute($user, $mobile);
 
-            SendSmsJob::dispatch($mobile, __('sms.loginMessage', ['code' => $verifyCode]));
-
-            return response()->json([
-                'status' => true,
-                'message' => __('auth.verification_code_sent_successfully'),
-                'action' => 'login_with_code'
-            ], 200);
+            return success(['action' => 'login_with_code'], __('auth.verification_code_sent_successfully'));
         } else {
-            return response()->json([
-                'status' => false,
-                'message' => __('auth.no_user_found_register_required'),
-                'action' => 'register'
-            ], 404);
+            return error(__('auth.no_user_found_register_required'), ['action' => 'register'], 404);
         }
-    }
-
-    private function mobileTo09(string $input): string
-    {
-        $m = preg_replace('/\D/', '', $input);
-        if (str_starts_with($m, '0098')) $m = substr($m, 2);
-        if (str_starts_with($m, '98'))   return '0' . substr($m, 2);
-        if (str_starts_with($m, '9'))    return '0' . $m;
-        return $m;
     }
 
     public function types(): JsonResponse
@@ -200,16 +125,16 @@ class AuthController extends Controller
             return;
         }
 
-        $client  = app(PodiumClient::class);
+        $client = app(PodiumClient::class);
         $payload = [
-            'apiKey'             => (string) config('podium.services.identity_inquiry.sc_api_key'),
-            'productEntityId'    => (int)    config('podium.services.identity_inquiry.sc_product_id'),
+            'apiKey' => (string) config('podium.services.identity_inquiry.sc_api_key'),
+            'productEntityId' => (int) config('podium.services.identity_inquiry.sc_product_id'),
             'providerParameters' => [
                 'nationalCode' => (string) $user->national_code,
-                'birthDate'    => (string) $user->birth_date,
+                'birthDate' => (string) $user->birth_date,
             ],
             'asyncCall' => false,
-            'wrapper'   => true,
+            'wrapper' => true,
         ];
 
         try {
@@ -218,21 +143,21 @@ class AuthController extends Controller
             return;
         }
 
-        $info  = data_get($norm, 'result.identityInfo', []);
+        $info = data_get($norm, 'result.identityInfo', []);
         $fname = (string) data_get($info, 'firstName', '');
         $lname = (string) data_get($info, 'lastName', '');
         $bdate = (string) data_get($info, 'birthDate', data_get($norm, 'result.birthDate', ''));
 
         if (preg_match('/^\d{8}$/', $bdate)) {
-            $bdate = substr($bdate, 0, 4) . '-' . substr($bdate, 4, 2) . '-' . substr($bdate, 6, 2);
+            $bdate = substr($bdate, 0, 4).'-'.substr($bdate, 4, 2).'-'.substr($bdate, 6, 2);
         }
         $values = [
-            UserProfile::USER_ID       => $user->id,
-            UserProfile::NAME          => $fname !== '' ? $fname : '—',
-            UserProfile::FAMILY        => $lname !== '' ? $lname : '—',
+            UserProfile::USER_ID => $user->id,
+            UserProfile::NAME => $fname !== '' ? $fname : '—',
+            UserProfile::FAMILY => $lname !== '' ? $lname : '—',
             UserProfile::NATIONAL_CODE => (string) $user->national_code,
-            UserProfile::BIRTHDAY      => $bdate !== '' ? $bdate : '0000-00-00',
-            UserProfile::PHONE         => $user->mobile,
+            UserProfile::BIRTHDAY => $bdate !== '' ? $bdate : '0000-00-00',
+            UserProfile::PHONE => $user->mobile,
         ];
 
         UserProfile::updateOrCreate(
@@ -243,7 +168,7 @@ class AuthController extends Controller
 
     public function verifyCode(StoreUserRequest $request): JsonResponse
     {
-        $mobile = $this->mobileTo09($request->validated('username'));
+        $mobile = PhoneNumber::to09($request->validated('username'));
 
         $user = User::where([
             User::MOBILE => $mobile,
@@ -259,21 +184,22 @@ class AuthController extends Controller
 
         if ($request->has('forget_password') && $request->validated('forget_password')) {
             $user->update([User::SECRET_EXPIRES_AT => null]);
+
             return success([
-                'reset_token' => $user->{User::SECRET}
+                'reset_token' => $user->{User::SECRET},
             ], __('auth.code_verified_proceed_to_password'));
         }
 
         Auth::login($user);
         $roles = (array) $request->input('roles', []);
-        $user  = Auth::user();
+        $user = Auth::user();
         foreach ($roles as $role) {
             match ($role) {
-                'engineer'   => $user->engineer()->firstOrCreate([]),
+                'engineer' => $user->engineer()->firstOrCreate([]),
                 'contractor' => $user->contractor()->firstOrCreate([]),
-                'employer'   => $user->employer()->firstOrCreate([]),
-                'supplier'   => $user->supplier()->firstOrCreate([]),
-                default      => null,
+                'employer' => $user->employer()->firstOrCreate([]),
+                'supplier' => $user->supplier()->firstOrCreate([]),
+                default => null,
             };
         }
 
@@ -287,110 +213,35 @@ class AuthController extends Controller
             UserNotification::create([
                 UserNotification::USER_ID => Auth::id(),
                 UserNotification::SUBJECT => __('global.newUserNotificationSubject'),
-                UserNotification::BODY    => __('global.newUserNotificationBody'),
+                UserNotification::BODY => __('global.newUserNotificationBody'),
             ]);
         }
         $userWithRelations = $user->fresh([
             User::RELATION_PROFILE,
             User::RELATION_TYPE,
             User::RELATION_ROLES,
-            User::RELATION_BADGE
+            User::RELATION_BADGE,
         ]);
 
         return success([
-            'user'  => new UserResource($userWithRelations),
-            'token' => $token
+            'user' => new UserResource($userWithRelations),
+            'token' => $token,
         ], __('auth.register_success'));
     }
-
-    // public function verifyCode(StoreUserRequest $request): JsonResponse
-    // {
-    //     $mobile = $this->mobileTo09($request->validated('username'));
-    //     $inputCode = $request->validated('code');
-
-    //     // فقط با کد 111111 اجازه ورود
-    //     if ($inputCode !== '111111') {
-    //         return error(__('auth.verification_code_not_match'), [], 404);
-    //     }
-
-    //     // کاربر رو پیدا کن یا بساز
-    //     $user = User::firstOrCreate(
-    //         [User::MOBILE => $mobile],
-    //         [
-    //             User::SECRET => $inputCode,
-    //             User::SECRET_EXPIRES_AT => now()->addHours(1)
-    //         ]
-    //     );
-
-    //     if (! $user) {
-    //         return error(__('auth.user_not_found'), [], 404);
-    //     }
-
-    //     $createdAt = $user->created_at instanceof Carbon ? $user->created_at : Carbon::parse($user->created_at);
-    //     $isNewUser = $user->wasRecentlyCreated || $createdAt->diffInMinutes(now()) < 2;
-
-    //     // بقیه کد بدون تغییر...
-    //     if ($request->has('forget_password') && $request->validated('forget_password')) {
-    //         $user->update([User::SECRET_EXPIRES_AT => null]);
-    //         return success([
-    //             'reset_token' => $user->{User::SECRET}
-    //         ], __('auth.code_verified_proceed_to_password'));
-    //     }
-
-    //     Auth::login($user);
-    //     $roles = (array) $request->input('roles', []);
-    //     $user  = Auth::user();
-    //     foreach ($roles as $role) {
-    //         match ($role) {
-    //             'engineer'   => $user->engineer()->firstOrCreate([]),
-    //             'contractor' => $user->contractor()->firstOrCreate([]),
-    //             'employer'   => $user->employer()->firstOrCreate([]),
-    //             'supplier'   => $user->supplier()->firstOrCreate([]),
-    //             default      => null,
-    //         };
-    //     }
-
-    //     $this->syncIdentityToProfile($user);
-    //     $user->tokens()->delete();
-    //     $token = $user->createToken('auth')->plainTextToken;
-
-    //     if ($isNewUser) {
-    //         SendSmsJob::dispatch($mobile, __('sms.newRegisterUser'));
-
-    //         UserNotification::create([
-    //             UserNotification::USER_ID => Auth::id(),
-    //             UserNotification::SUBJECT => __('global.newUserNotificationSubject'),
-    //             UserNotification::BODY    => __('global.newUserNotificationBody'),
-    //         ]);
-    //     }
-
-    //     $userWithRelations = $user->fresh([
-    //         User::RELATION_PROFILE,
-    //         User::RELATION_TYPE,
-    //         User::RELATION_ROLES,
-    //         User::RELATION_BADGE
-    //     ]);
-
-    //     return success([
-    //         'user'  => new UserResource($userWithRelations),
-    //         'token' => $token
-    //     ], __('auth.register_success'));
-    // }
 
     public function checkPassword(Request $request)
     {
         $user = User::where([User::MOBILE => $request->input('username')])->first();
 
-        if (!$user) {
+        if (! $user) {
             return error(__('auth.no_user_found'), [], 404);
         }
         if (empty($user->{User::NATIONAL_CODE}) || empty($user->{User::BIRTH_DATE})) {
-            return response()->json([
-                'status' => false,
-                'message' => '.اطلاعات کاربری شما ناقص است. لطفاً جهت تکمیل ثبت‌نام اقدام کنید',
-                'action' => 'register',
-                'data' => ['mobile' => $user->{User::MOBILE}]
-            ], 404);
+            return error(
+                '.اطلاعات کاربری شما ناقص است. لطفاً جهت تکمیل ثبت‌نام اقدام کنید',
+                ['action' => 'register', 'mobile' => $user->{User::MOBILE}],
+                404
+            );
         }
         if (Hash::check($request->input('password'), $user->password)) {
             Auth::login($user);
@@ -406,22 +257,12 @@ class AuthController extends Controller
     public function forgetPassword(Request $request)
     {
         $request->validate([
-            'username' => 'required|exists:users,mobile'
+            'username' => 'required|exists:users,mobile',
         ]);
 
         $user = User::where([User::MOBILE => $request->input('username')])->where(User::PASSWORD, '!=', null)->first();
-        if (!is_null($user)) {
-
-            $mobileVerifyCode = generateVerifyCode();
-            $user->update([
-                User::SECRET => $mobileVerifyCode,
-                User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(3)
-            ]);
-
-            SendSmsJob::dispatch(
-                $request->input('username'),
-                __('sms.loginMessage', ['code' => $mobileVerifyCode])
-            );
+        if (! is_null($user)) {
+            app(RequestOtpAction::class)->execute($user, $request->input('username'), 3);
 
             return success([], 'auth.forget_password_code_sent_successfully');
         }
@@ -434,11 +275,11 @@ class AuthController extends Controller
         $request->validate([
             'username' => 'required|exists:users,mobile',
             'code' => 'required',
-            User::PASSWORD => 'required|confirmed'
+            User::PASSWORD => 'required|confirmed',
         ]);
         $user = User::where([
             User::MOBILE => $request->input('username'),
-            User::SECRET => $request->input('code')
+            User::SECRET => $request->input('code'),
         ])
             ->where(User::PASSWORD, '!=', null)
             ->first();
@@ -450,37 +291,30 @@ class AuthController extends Controller
         }
         $user->update([
             User::PASSWORD => Hash::make($request->input('password')),
-            User::SECRET => null
+            User::SECRET => null,
         ]);
         Auth::login($user);
         $user->tokens()->delete();
         $token = $user->createToken('auth')->plainTextToken;
+
         return success(['user' => new UserResource($user), 'token' => $token], __('auth.password_changed_successfully'));
     }
 
     public function sendVerificationCode(Request $request)
     {
         $validated = $request->validate([
-            'username' => 'required|exists:users,mobile'
+            'username' => 'required|exists:users,mobile',
         ], [
             'username.required' => __('auth.username_required'),
-            'username.exists'   => __('auth.no_user_found'),
+            'username.exists' => __('auth.no_user_found'),
         ]);
 
         $user = User::where([User::MOBILE => $validated['username']])->first();
         if (isset($user->{User::SECRET_EXPIRES_AT}) && ! Carbon::parse($user->{User::SECRET_EXPIRES_AT})->isPast()) {
-            return response()->json([
-                'status' => true,
-                'message' => __('auth.code_sent_recently'),
-            ], 202);
+            return success([], __('auth.code_sent_recently'), 202);
         }
-        $mobileVerifyCode = generateVerifyCode();
-        $user->update([
-            User::SECRET => $mobileVerifyCode,
-            User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2)
-        ]);
 
-        SendSmsJob::dispatch($validated['username'], __('sms.loginMessage', ['code' => $mobileVerifyCode]));
+        app(RequestOtpAction::class)->execute($user, $validated['username']);
 
         return success([], __('auth.verification_code_sent_successfully'));
     }

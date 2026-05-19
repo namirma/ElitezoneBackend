@@ -6,7 +6,6 @@ use App\Events\OrderPaid;
 use App\Exceptions\Order\OrderNotPayableException;
 use App\Models\Order;
 use App\Models\User;
-use App\Repositories\Contracts\OrderRepositoryInterface;
 use App\Services\Payment\PaymentGatewayFactory;
 use Illuminate\Support\Facades\DB;
 
@@ -31,7 +30,7 @@ class PayOrderAction
             }
 
             $payableStatuses = [Order::STATUS_PENDING, Order::STATUS_RESERVED_EXTENDED];
-            if (!in_array($lockedOrder->status, $payableStatuses, true)) {
+            if (! in_array($lockedOrder->status, $payableStatuses, true)) {
                 throw new OrderNotPayableException(__("orders.status.{$lockedOrder->status}"));
             }
 
@@ -43,7 +42,7 @@ class PayOrderAction
 
             $lockedOrder->update([
                 Order::PAYMENT_METHOD => $gatewayName,
-                'payment_reference'   => $result['reference_id'] ?? null,
+                'payment_reference' => $result['reference_id'] ?? null,
             ]);
 
             return $lockedOrder->fresh();
