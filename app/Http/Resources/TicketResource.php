@@ -22,7 +22,7 @@ class TicketResource extends JsonResource
             'status' => $this->status,
             'created_at' => $this->created_at?->toDateTimeString(),
             'user' => $this->user,
-//            'admin' => new UserTicketResource($this->whenLoaded('admin')),
+            //            'admin' => new UserTicketResource($this->whenLoaded('admin')),
             'department' => new DepartmentResource($this->whenLoaded('department')),
             'attachments' => TicketFileResource::collection($this->whenLoaded('files')),
             'replies' => TicketReplyResource::collection($this->whenLoaded('replies')),

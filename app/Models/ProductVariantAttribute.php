@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Relations\Pivot;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\Pivot;
 
 class ProductVariantAttribute extends Pivot
 {
@@ -15,11 +15,13 @@ class ProductVariantAttribute extends Pivot
     public $timestamps = false;
 
     // تعریف نام ستون‌ها به عنوان ثابت (اختیاری ولی خوب است)
-    const
-        ID = 'id',
-        PRODUCT_VARIANT_ID = 'product_variant_id',
-        ATTRIBUTE_ID = 'attribute_id',
-        ATTRIBUTE_VALUE_ID = 'attribute_value_id';
+    const ID = 'id';
+
+    const PRODUCT_VARIANT_ID = 'product_variant_id';
+
+    const ATTRIBUTE_ID = 'attribute_id';
+
+    const ATTRIBUTE_VALUE_ID = 'attribute_value_id';
 
     protected $fillable = [
         self::PRODUCT_VARIANT_ID,

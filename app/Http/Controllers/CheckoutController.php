@@ -32,34 +32,34 @@ class CheckoutController extends Controller
 
         $gateways = [
             [
-                'key'       => WalletTransaction::METHOD_GATEWAY,
-                'title'     => __('checkout.gateways.internet'),
-                'icon'      => 'card',
+                'key' => WalletTransaction::METHOD_GATEWAY,
+                'title' => __('checkout.gateways.internet'),
+                'icon' => 'card',
                 'is_active' => true,
             ],
             [
-                'key'        => 'wallet',
-                'title'      => __('checkout.gateways.wallet'),
-                'balance'    => (string) $walletBalance,
+                'key' => 'wallet',
+                'title' => __('checkout.gateways.wallet'),
+                'balance' => (string) $walletBalance,
                 'has_credit' => $walletBalance >= $order->final_amount,
-                'icon'       => 'wallet',
-                'is_active'  => true,
+                'icon' => 'wallet',
+                'is_active' => true,
             ],
             [
-                'key'       => WalletTransaction::METHOD_BANK_TRANSFER,
-                'title'     => __('checkout.gateways.receipt'),
-                'icon'      => 'document-text',
+                'key' => WalletTransaction::METHOD_BANK_TRANSFER,
+                'title' => __('checkout.gateways.receipt'),
+                'icon' => 'document-text',
                 'is_active' => true,
             ],
         ];
 
         $data = [
-            'order_id'       => $order->id,
-            'order_number'   => $order->order_number,
+            'order_id' => $order->id,
+            'order_number' => $order->order_number,
             'payable_amount' => (string) $order->final_amount,
-            'items_count'    => $order->items()->count(),
-            'created_at_p'   => verta($order->created_at)->format('Y/m/d H:i'),
-            'gateways'       => $gateways,
+            'items_count' => $order->items()->count(),
+            'created_at_p' => verta($order->created_at)->format('Y/m/d H:i'),
+            'gateways' => $gateways,
         ];
 
         return success($data, __('checkout.payment_info_received'));
@@ -78,7 +78,7 @@ class CheckoutController extends Controller
             ->latest('updated_at')
             ->first();
 
-        if (!$cart || $cart->items->isEmpty()) {
+        if (! $cart || $cart->items->isEmpty()) {
             return error(__('checkout.cart_is_empty'), [], 400);
         }
 

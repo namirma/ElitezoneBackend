@@ -2,14 +2,13 @@
 
 namespace App\Services;
 
-use App\Models\Order;
-use App\Models\OrderItem;
-use App\Models\CustomerStat;
-use App\Models\Search; // <--- استفاده از مدل صحیح سرچ شما
 use App\Models\CartEvent;
+use App\Models\CustomerStat;
+use App\Models\Order;
+use App\Models\OrderItem; // <--- استفاده از مدل صحیح سرچ شما
+use App\Models\Search;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
 
 class AnalyticsService
 {
@@ -29,7 +28,7 @@ class AnalyticsService
                 ->where(Order::CREATED_AT, '>=', $startDate)
                 ->select([
                     DB::raw('DATE(created_at) as date'),
-                    DB::raw('SUM(final_amount) as total')
+                    DB::raw('SUM(final_amount) as total'),
                 ])
                 ->groupBy('date')
                 ->orderBy('date')
@@ -55,9 +54,9 @@ class AnalyticsService
                         'data' => $values,
                         'fill' => true,
                         'borderColor' => '#4F46E5',
-                        'tension' => 0.4
-                    ]
-                ]
+                        'tension' => 0.4,
+                    ],
+                ],
             ];
         });
     }
@@ -95,8 +94,8 @@ class AnalyticsService
                         'label' => 'تعداد تعامل',
                         'data' => [$searchCount, $cartCount, $orderCount],
                         'backgroundColor' => ['#60A5FA', '#F59E0B', '#10B981'],
-                    ]
-                ]
+                    ],
+                ],
             ];
         });
     }
@@ -123,9 +122,9 @@ class AnalyticsService
                             '#F59E0B', // Potential
                             '#EF4444', // At Risk
                             '#6B7280', // Others
-                        ]
-                    ]
-                ]
+                        ],
+                    ],
+                ],
             ];
         });
     }

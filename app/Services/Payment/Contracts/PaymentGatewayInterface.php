@@ -9,7 +9,9 @@ interface PaymentGatewayInterface
 {
     /**
      * انجام عملیات پرداخت
+     *
      * @return array اطلاعات نتیجه پرداخت (مثل شناسه تراکنش و...)
+     *
      * @throws \Exception در صورت خطا
      */
     public function pay(User $user, Order $order): array;

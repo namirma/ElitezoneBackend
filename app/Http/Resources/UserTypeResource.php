@@ -16,7 +16,7 @@ class UserTypeResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            UserType::ID   => $this->id,
+            UserType::ID => $this->id,
             UserType::NAME => $this->name,
             UserType::SLUG => $this->slug,
             UserType::ICON => $this->icon,

@@ -8,12 +8,13 @@ use App\Models\User;
 use App\Services\EduixScraperService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class EduixController extends Controller
 {
     public function __construct(protected EduixScraperService $scraper) {}
+
     public function fetch(Request $request): JsonResponse
     {
         $user = Auth::user();
@@ -27,7 +28,7 @@ class EduixController extends Controller
         }
         $valitadion = $request->validate([
             'national_code' => 'required|string',
-            'trace_code'    => 'required|string',
+            'trace_code' => 'required|string',
         ]);
         if ($user->{User::NATIONAL_CODE} && $user->{User::NATIONAL_CODE} !== $valitadion['national_code']) {
             return error(__('education.national_code_mismatch'), [], 422);
@@ -35,11 +36,11 @@ class EduixController extends Controller
 
         try {
             $data = $this->scraper->fetchData($valitadion['national_code'], $valitadion['trace_code']);
-            
+
             $record = EduixRecord::updateOrCreate(
                 [
                     EduixRecord::USER_ID => $user->id,
-                    EduixRecord::TRACE_CODE => $valitadion['trace_code']
+                    EduixRecord::TRACE_CODE => $valitadion['trace_code'],
                 ],
                 array_merge($data, [
                     EduixRecord::USER_ID => $user->id,
@@ -49,16 +50,20 @@ class EduixController extends Controller
 
             return success(new EduixRecordResource($record), __('education.fetch_success'));
         } catch (\Throwable $e) {
-            Log::error('Eduix fetch error: ' . $e->getMessage());
+            Log::error('Eduix fetch error: '.$e->getMessage());
+
             return error(__('education.fetch_error'), [], 500);
         }
     }
+
     public function index(): JsonResponse
     {
         $user = Auth::user();
         $records = $user->eduixRecords()->latest()->get();
+
         return success(EduixRecordResource::collection($records), __('education.list_success'));
     }
+
     public function destroy(EduixRecord $record): JsonResponse
     {
         if ($record->{EduixRecord::USER_ID} !== Auth::id()) {
@@ -69,6 +74,7 @@ class EduixController extends Controller
         }
 
         $record->delete();
+
         return success([], __('education.delete_success'));
     }
 }

@@ -13,6 +13,7 @@ use Illuminate\Queue\SerializesModels;
 class LogProductView implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
     public function __construct(
         protected int $productId,
         protected ?int $userId,
@@ -25,11 +26,11 @@ class LogProductView implements ShouldQueue
     {
         ProductView::create([
             ProductView::PRODUCT_ID => $this->productId,
-            ProductView::USER_ID    => $this->userId,
+            ProductView::USER_ID => $this->userId,
             ProductView::IP_ADDRESS => $this->ipAddress,
             ProductView::USER_AGENT => $this->userAgent,
             ProductView::SESSION_ID => $this->sessionId,
-            ProductView::VIEWED_AT  => now(),
+            ProductView::VIEWED_AT => now(),
         ]);
 
         // افزایش بازدید

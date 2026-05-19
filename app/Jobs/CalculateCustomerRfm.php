@@ -6,13 +6,13 @@ use App\Events\CustomerSegmentChanged;
 use App\Models\CustomerStat;
 use App\Models\Order;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
-use Carbon\Carbon;
 
 class CalculateCustomerRfm implements ShouldQueue
 {
@@ -52,13 +52,13 @@ class CalculateCustomerRfm implements ShouldQueue
             $customerStat = CustomerStat::updateOrCreate(
                 [CustomerStat::USER_ID => $userId],
                 [
-                    CustomerStat::RECENCY_DAYS       => $recency,
-                    CustomerStat::FREQUENCY_COUNT    => $frequency,
-                    CustomerStat::MONETARY_TOTAL     => $monetary,
-                    CustomerStat::R_SCORE            => $rScore,
-                    CustomerStat::F_SCORE            => $fScore,
-                    CustomerStat::M_SCORE            => $mScore,
-                    CustomerStat::SEGMENT            => $newSegment,
+                    CustomerStat::RECENCY_DAYS => $recency,
+                    CustomerStat::FREQUENCY_COUNT => $frequency,
+                    CustomerStat::MONETARY_TOTAL => $monetary,
+                    CustomerStat::R_SCORE => $rScore,
+                    CustomerStat::F_SCORE => $fScore,
+                    CustomerStat::M_SCORE => $mScore,
+                    CustomerStat::SEGMENT => $newSegment,
                     CustomerStat::LAST_CALCULATED_AT => now(),
                 ]
             );
@@ -76,15 +76,14 @@ class CalculateCustomerRfm implements ShouldQueue
         }
     }
 
-
     private function calculateRScore(int $days): int
     {
         return match (true) {
-            $days <= 30  => 5,
-            $days <= 60  => 4,
-            $days <= 90  => 3,
+            $days <= 30 => 5,
+            $days <= 60 => 4,
+            $days <= 90 => 3,
             $days <= 180 => 2,
-            default      => 1,
+            default => 1,
         };
     }
 
@@ -93,9 +92,9 @@ class CalculateCustomerRfm implements ShouldQueue
         return match (true) {
             $count >= 20 => 5,
             $count >= 10 => 4,
-            $count >= 5  => 3,
-            $count >= 2  => 2,
-            default      => 1,
+            $count >= 5 => 3,
+            $count >= 2 => 2,
+            default => 1,
         };
     }
 
@@ -104,19 +103,30 @@ class CalculateCustomerRfm implements ShouldQueue
         return match (true) {
             $amount >= 5_000_000_000 => 5,
             $amount >= 1_000_000_000 => 4,
-            $amount >= 500_000_000   => 3,
-            $amount >= 100_000_000   => 2,
-            default                  => 1,
+            $amount >= 500_000_000 => 3,
+            $amount >= 100_000_000 => 2,
+            default => 1,
         };
     }
 
     private function determineSegment(int $r, int $f): string
     {
-        if ($r >= 4 && $f >= 4) return CustomerStat::SEGMENT_CHAMPION;
-        if ($f >= 3 && $r >= 3) return CustomerStat::SEGMENT_LOYAL;
-        if ($r >= 4 && $f == 1) return CustomerStat::SEGMENT_NEW;
-        if ($r <= 2 && $f >= 4) return CustomerStat::SEGMENT_AT_RISK;
-        if ($r <= 2 && $f <= 2) return CustomerStat::SEGMENT_HIBERNATING;
+        if ($r >= 4 && $f >= 4) {
+            return CustomerStat::SEGMENT_CHAMPION;
+        }
+        if ($f >= 3 && $r >= 3) {
+            return CustomerStat::SEGMENT_LOYAL;
+        }
+        if ($r >= 4 && $f == 1) {
+            return CustomerStat::SEGMENT_NEW;
+        }
+        if ($r <= 2 && $f >= 4) {
+            return CustomerStat::SEGMENT_AT_RISK;
+        }
+        if ($r <= 2 && $f <= 2) {
+            return CustomerStat::SEGMENT_HIBERNATING;
+        }
+
         return CustomerStat::SEGMENT_POTENTIAL_LOYAL;
     }
 }

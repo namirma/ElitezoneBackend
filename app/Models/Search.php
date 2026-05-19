@@ -10,15 +10,21 @@ class Search extends Model
 {
     use HasFactory;
 
-    const
-        ID = 'id',
-        QUERY = 'query',
-        RESULTS_COUNT = 'results_count',
-        USER_ID = 'user_id',
-        IP_ADDRESS = 'ip_address',
-        USER_AGENT = 'user_agent',
-        CREATED_AT = 'created_at',
-        UPDATED_AT = 'updated_at';
+    const ID = 'id';
+
+    const QUERY = 'query';
+
+    const RESULTS_COUNT = 'results_count';
+
+    const USER_ID = 'user_id';
+
+    const IP_ADDRESS = 'ip_address';
+
+    const USER_AGENT = 'user_agent';
+
+    const CREATED_AT = 'created_at';
+
+    const UPDATED_AT = 'updated_at';
 
     protected $fillable = [
         self::QUERY,

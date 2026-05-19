@@ -14,7 +14,7 @@ class CartItemChanged
     public function __construct(
         public Cart $cart,
         public ProductVariant $variant,
-        public string $actionType, 
+        public string $actionType,
         public float $quantityChange,
         public ?float $currentPrice = null
     ) {}

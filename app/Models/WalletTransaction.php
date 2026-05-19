@@ -12,36 +12,48 @@ class WalletTransaction extends Model
     use LogsActivity;
 
     // --- ثابت‌های نام ستون‌ها ---
-    public const
-        ID = 'id',
-        WALLET_ID = 'wallet_id',
-        ORDER_ID = 'order_id',
-        AMOUNT = 'amount',
-        TYPE = 'type',
-        STATUS = 'status',
-        DESCRIPTION = 'description',
-        META = 'meta',
-        CREATED_AT = 'created_at',
-        UPDATED_AT = 'updated_at';
+    public const ID = 'id';
+
+    public const WALLET_ID = 'wallet_id';
+
+    public const ORDER_ID = 'order_id';
+
+    public const AMOUNT = 'amount';
+
+    public const TYPE = 'type';
+
+    public const STATUS = 'status';
+
+    public const DESCRIPTION = 'description';
+
+    public const META = 'meta';
+
+    public const CREATED_AT = 'created_at';
+
+    public const UPDATED_AT = 'updated_at';
 
     // --- ثابت‌های مقادیر (Enums) ---
-    public const
-        TYPE_DEPOSIT = 'deposit',
-        TYPE_WITHDRAW = 'withdraw',
-        TYPE_FEE_HOLD = 'fee_hold',
-        TYPE_FEE_RELEASE = 'fee_release',
+    public const TYPE_DEPOSIT = 'deposit';
 
-        STATUS_PENDING = 'pending',
-        STATUS_CONFIRMED = 'confirmed',
-        STATUS_FAILED = 'failed',
-        STATUS_REJECTED = 'rejected';
+    public const TYPE_WITHDRAW = 'withdraw';
 
-    public const
-        METHOD_BANK_TRANSFER = 'bank_transfer',
-        METHOD_GATEWAY = 'gateway',
+    public const TYPE_FEE_HOLD = 'fee_hold';
 
-        PATH_RECEIPTS = 'wallet_receipts';
+    public const TYPE_FEE_RELEASE = 'fee_release';
 
+    public const STATUS_PENDING = 'pending';
+
+    public const STATUS_CONFIRMED = 'confirmed';
+
+    public const STATUS_FAILED = 'failed';
+
+    public const STATUS_REJECTED = 'rejected';
+
+    public const METHOD_BANK_TRANSFER = 'bank_transfer';
+
+    public const METHOD_GATEWAY = 'gateway';
+
+    public const PATH_RECEIPTS = 'wallet_receipts';
 
     protected $fillable = [
         self::WALLET_ID,
@@ -50,7 +62,7 @@ class WalletTransaction extends Model
         self::TYPE,
         self::STATUS,
         self::DESCRIPTION,
-        self::META
+        self::META,
     ];
 
     protected $casts = [
@@ -63,21 +75,21 @@ class WalletTransaction extends Model
     public function getStatusLabelAttribute(): string
     {
         return match ($this->{self::STATUS}) {
-            self::STATUS_PENDING   => 'در انتظار بررسی',
+            self::STATUS_PENDING => 'در انتظار بررسی',
             self::STATUS_CONFIRMED => 'موفق',
-            self::STATUS_REJECTED  => 'رد شده',
-            self::STATUS_FAILED    => 'ناموفق',
-            default                => 'نامشخص',
+            self::STATUS_REJECTED => 'رد شده',
+            self::STATUS_FAILED => 'ناموفق',
+            default => 'نامشخص',
         };
     }
 
     public function getStatusColorAttribute(): string
     {
         return match ($this->{self::STATUS}) {
-            self::STATUS_PENDING   => 'warning',
+            self::STATUS_PENDING => 'warning',
             self::STATUS_CONFIRMED => 'success',
             self::STATUS_REJECTED, self::STATUS_FAILED => 'danger',
-            default                => 'secondary',
+            default => 'secondary',
         };
     }
 
@@ -107,6 +119,6 @@ class WalletTransaction extends Model
         return LogOptions::defaults()
             ->logOnly(['status'])
             ->logOnlyDirty()
-            ->setDescriptionForEvent(fn(string $eventName) => "تراکنش مالی {$eventName} شد.");
+            ->setDescriptionForEvent(fn (string $eventName) => "تراکنش مالی {$eventName} شد.");
     }
 }

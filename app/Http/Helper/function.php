@@ -16,7 +16,7 @@ function faToEn($string): array|string
     return str_replace($arabic, $num, $convertedPersianNums);
 }
 
-function success($data, string $message = "global.received_successfully", int $status = 200, array $headers = [])
+function success($data, string $message = 'global.received_successfully', int $status = 200, array $headers = [])
 {
     return Response::success($data, __($message), $status, $headers);
 }

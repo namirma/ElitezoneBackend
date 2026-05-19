@@ -15,7 +15,6 @@ class SendOrderPaymentNotification implements ShouldQueue
     /**
      * Handle the event.
      *
-     * @param OrderPaid $event
      * @return void
      */
     public function handle(OrderPaid $event)
@@ -23,8 +22,9 @@ class SendOrderPaymentNotification implements ShouldQueue
         $order = $event->order;
         $user = $order->placer;
 
-        if (!$user) {
+        if (! $user) {
             Log::error("OrderPaid Event: Order {$order->id} has no placer user.");
+
             return;
         }
 
@@ -39,7 +39,7 @@ class SendOrderPaymentNotification implements ShouldQueue
             //  در آینده ایمیل
 
         } catch (\Exception $e) {
-            Log::error("Failed to send notification for Order {$order->id}: " . $e->getMessage());
+            Log::error("Failed to send notification for Order {$order->id}: ".$e->getMessage());
         }
     }
 }

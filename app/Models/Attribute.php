@@ -12,13 +12,17 @@ class Attribute extends Model
 {
     use HasFactory;
 
-    const
-        ID                  = 'id',
-        ATTRIBUTE_TYPE_ID   = 'attribute_type_id',
-        NAME                = 'name',
-        DISPLAY_NAME        = 'display_name',
-        CREATED_AT          = 'created_at',
-        UPDATED_AT          = 'updated_at';
+    const ID = 'id';
+
+    const ATTRIBUTE_TYPE_ID = 'attribute_type_id';
+
+    const NAME = 'name';
+
+    const DISPLAY_NAME = 'display_name';
+
+    const CREATED_AT = 'created_at';
+
+    const UPDATED_AT = 'updated_at';
 
     /**
      * The attributes that are mass assignable.
@@ -53,7 +57,7 @@ class Attribute extends Model
     }
 
     public function values(): HasMany
-{
-    return $this->hasMany(AttributeValue::class, 'attribute_id');
-}
+    {
+        return $this->hasMany(AttributeValue::class, 'attribute_id');
+    }
 }

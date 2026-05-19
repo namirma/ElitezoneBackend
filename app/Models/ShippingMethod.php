@@ -7,12 +7,15 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ShippingMethod extends Model
 {
-    const
-        ID         = 'id',
-        NAME       = 'name',
-        CODE       = 'code',
-        CREATED_AT = 'created_at',
-        UPDATED_AT = 'updated_at';
+    const ID = 'id';
+
+    const NAME = 'name';
+
+    const CODE = 'code';
+
+    const CREATED_AT = 'created_at';
+
+    const UPDATED_AT = 'updated_at';
 
     protected $fillable = [
         self::NAME,

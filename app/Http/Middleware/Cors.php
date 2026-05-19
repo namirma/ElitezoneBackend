@@ -11,8 +11,6 @@ class Cors
     /**
      * Handle an incoming request.
      *
-     * @param Request $request
-     * @param Closure $next
      * @return Response
      */
     public function handle(Request $request, Closure $next)
@@ -26,7 +24,7 @@ class Cors
             'https://staging.elitezone.me',
             'http://localhost:3000',
             'http://localhost:8000',
-            'http://localhost:5173'
+            'http://localhost:5173',
         ];
 
         $origin = $request->header('Origin');

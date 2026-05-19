@@ -5,7 +5,7 @@ namespace App\DataTransferObjects\Pricing;
 class CartPricingResult
 {
     /**
-     * @param CartLinePricingResult[] $lines
+     * @param  CartLinePricingResult[]  $lines
      */
     public function __construct(
         public readonly array $lines,

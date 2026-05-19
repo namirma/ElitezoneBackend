@@ -1,4 +1,5 @@
 <?php
+
 // app/Exceptions/Wallet/WalletNotFoundException.php
 
 namespace App\Exceptions\Wallet;

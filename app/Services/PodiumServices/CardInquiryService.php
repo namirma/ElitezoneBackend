@@ -2,10 +2,10 @@
 
 namespace App\Services\PodiumServices;
 
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\Log;
 use Exception;
+use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class CardInquiryService
 {
@@ -14,13 +14,13 @@ class CardInquiryService
         $birthDate = preg_replace('/[^0-9]/', '', $birthDate);
 
         $endpoint = config('podium.endpoints.do_service_call', '/srv/sc/nzh/doServiceCall');
-        $url = rtrim(config('podium.base_url', 'https://api.pod.ir'), '/') . $endpoint;
+        $url = rtrim(config('podium.base_url', 'https://api.pod.ir'), '/').$endpoint;
         $headers = [
-            'accept'         => 'application/json',
-            '_token_'        => (string) config('podium.business_token'),
+            'accept' => 'application/json',
+            '_token_' => (string) config('podium.business_token'),
             '_token_issuer_' => (string) config('podium.defaults._token_issuer', '1'),
-            'scWrapper'      => 'true',
-            'Content-Type'   => 'application/x-www-form-urlencoded',
+            'scWrapper' => 'true',
+            'Content-Type' => 'application/x-www-form-urlencoded',
         ];
 
         $serviceConfig = Config::get('services.card_inquiry');
@@ -30,11 +30,11 @@ class CardInquiryService
             throw new Exception('تنظیمات سرویس استعلام کارت یافت نشد.');
         }
         $body = [
-            'scProductId'  => $serviceConfig['sc_product_id'],
-            'scApiKey'     => $serviceConfig['sc_api_key'],
-            'cardNumber'   => $cardNumber,
+            'scProductId' => $serviceConfig['sc_product_id'],
+            'scApiKey' => $serviceConfig['sc_api_key'],
+            'cardNumber' => $cardNumber,
             'nationalCode' => $nationalCode,
-            'birthDate'    => $birthDate,
+            'birthDate' => $birthDate,
         ];
 
         try {
@@ -45,14 +45,14 @@ class CardInquiryService
 
             $json = $resp->json();
 
-            if (!$resp->successful()) {
+            if (! $resp->successful()) {
                 Log::error('Card Inquiry HTTP Error', [
                     'status' => $resp->status(),
-                    'body' => $resp->body()
+                    'body' => $resp->body(),
                 ]);
                 throw new Exception('خطا در ارتباط با سرویس بانکی.');
             }
-            if (!is_array($json)) {
+            if (! is_array($json)) {
                 $json = json_decode($resp->body(), true);
             }
             if (($json['hasError'] ?? false) === true) {
@@ -62,19 +62,19 @@ class CardInquiryService
             }
             $resultData = $json['result'] ?? [];
             if (isset($resultData['result']) && is_string($resultData['result'])) {
-                 $innerResult = json_decode($resultData['result'], true);
-                 $matched = $innerResult['matched'] ?? false;
+                $innerResult = json_decode($resultData['result'], true);
+                $matched = $innerResult['matched'] ?? false;
             } elseif (isset($resultData['matched'])) {
-                 $matched = $resultData['matched'];
+                $matched = $resultData['matched'];
             } else {
-                 $matched = false;
+                $matched = false;
             }
 
             return (bool) $matched;
 
         } catch (\Throwable $e) {
-            Log::error('Card Inquiry Exception: ' . $e->getMessage());
-            throw $e; 
+            Log::error('Card Inquiry Exception: '.$e->getMessage());
+            throw $e;
         }
     }
 }

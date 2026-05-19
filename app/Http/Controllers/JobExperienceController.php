@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreJobExperienceRequest;
 use App\Http\Resources\JobExperienceResource;
 use App\Models\JobExperience;
@@ -37,7 +36,7 @@ class JobExperienceController extends Controller
         $data = $request->validated();
 
         $path = $data['file']->store('job_experiences', 'public');
-        if (!$path) {
+        if (! $path) {
             return error('خطا در آپلود فایل.', [], 500);
         }
         $url = Storage::disk('public')->url($path);

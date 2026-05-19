@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreAddressRequest;
 use App\Http\Requests\UpdateAddressRequest;
 use App\Http\Resources\AddressResource;
@@ -27,6 +26,7 @@ class AddressController extends Controller
     {
         $user = Auth::user();
         $addresses = $user->addresses()->latest()->get();
+
         return success(AddressResource::collection($addresses), __('address.list_success'));
     }
 
@@ -37,7 +37,7 @@ class AddressController extends Controller
 
         $address = DB::transaction(function () use ($user, $data) {
 
-            if (!empty($data[Address::IS_DEFAULT])) {
+            if (! empty($data[Address::IS_DEFAULT])) {
                 $user->addresses()->update([Address::IS_DEFAULT => false]);
             }
 
@@ -75,13 +75,12 @@ class AddressController extends Controller
 
         DB::transaction(function () use ($address, $data) {
 
-            if (!empty($data[Address::IS_DEFAULT]) && $data[Address::IS_DEFAULT] == true) {
+            if (! empty($data[Address::IS_DEFAULT]) && $data[Address::IS_DEFAULT] == true) {
 
                 Auth::user()->addresses()
                     ->where(Address::ID, '!=', $address->id)
                     ->update([Address::IS_DEFAULT => false]);
             }
-
 
             $address->update($data);
         });
@@ -100,6 +99,7 @@ class AddressController extends Controller
         }
 
         $address->delete();
+
         return success([], __('address.deleted_success'));
     }
 
@@ -118,4 +118,3 @@ class AddressController extends Controller
         return success(new AddressResource($address), __('address.set_default_success'));
     }
 }
-

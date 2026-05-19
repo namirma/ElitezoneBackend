@@ -2,26 +2,26 @@
 
 namespace App\Http\Resources;
 
+use App\Models\ProductVariant;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use App\Models\ProductVariant;
 
 class ProductVariantResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
         return [
-            ProductVariant::ID               => $this->getKey(),
-            ProductVariant::PRODUCT_ID       => (string) $this->{ProductVariant::PRODUCT_ID},
-            ProductVariant::NAME             => $this->{ProductVariant::NAME},
-            ProductVariant::SKU              => $this->{ProductVariant::SKU},
-            ProductVariant::STOCK_QUANTITY   => (string) $this->{ProductVariant::STOCK_QUANTITY},
-            ProductVariant::VIEW_COUNT       => (string) $this->{ProductVariant::VIEW_COUNT},
-            ProductVariant::DISCOUNT_VALUE      => $this->whenNotNull($this->{ProductVariant::DISCOUNT_VALUE}),
-            ProductVariant::DISCOUNT_TYPE       => $this->whenNotNull($this->{ProductVariant::DISCOUNT_TYPE}),
+            ProductVariant::ID => $this->getKey(),
+            ProductVariant::PRODUCT_ID => (string) $this->{ProductVariant::PRODUCT_ID},
+            ProductVariant::NAME => $this->{ProductVariant::NAME},
+            ProductVariant::SKU => $this->{ProductVariant::SKU},
+            ProductVariant::STOCK_QUANTITY => (string) $this->{ProductVariant::STOCK_QUANTITY},
+            ProductVariant::VIEW_COUNT => (string) $this->{ProductVariant::VIEW_COUNT},
+            ProductVariant::DISCOUNT_VALUE => $this->whenNotNull($this->{ProductVariant::DISCOUNT_VALUE}),
+            ProductVariant::DISCOUNT_TYPE => $this->whenNotNull($this->{ProductVariant::DISCOUNT_TYPE}),
             ProductVariant::DISCOUNT_START_DATE => optional($this->{ProductVariant::DISCOUNT_START_DATE})->format('Y-m-d H:i:s'),
-            ProductVariant::DISCOUNT_END_DATE   => optional($this->{ProductVariant::DISCOUNT_END_DATE})->format('Y-m-d H:i:s'),
-            'active_discount_details'           => $this->getActiveDiscountDetails(),
+            ProductVariant::DISCOUNT_END_DATE => optional($this->{ProductVariant::DISCOUNT_END_DATE})->format('Y-m-d H:i:s'),
+            'active_discount_details' => $this->getActiveDiscountDetails(),
             'min_price' => isset($this->min_price) ? (string) $this->min_price : null,
             'attributes' => ProductVariantAttributeResource::collection(
                 $this->whenLoaded('variantAttributes', $this->variantAttributes)
@@ -38,17 +38,17 @@ class ProductVariantResource extends JsonResource
                         'price_id' => (string) $price->id,
 
                         'factory' => [
-                            'id'   => (string) $price->factory->id,
+                            'id' => (string) $price->factory->id,
                             'name' => $price->factory->name,
                         ],
                         'factory_location' => [
-                            'id'   => (string) $price->factoryLocation->id,
+                            'id' => (string) $price->factoryLocation->id,
                             'name' => $price->factoryLocation->name,
                         ],
                         'general_price' => (string) $price->general_price,
                         'special_price' => (string) $price->special_price,
                         'golden_figure' => (string) ($price->golden_figure ?? 0),
-                        'final_price'        => (string) $final,
+                        'final_price' => (string) $final,
                         'role_special_price' => isset($price->role_special_price) ? (string) $price->role_special_price : null,
                         'role_general_price' => isset($price->role_general_price) ? (string) $price->role_general_price : null,
                         'role_golden_figure' => isset($price->role_golden_figure) ? (string) $price->role_golden_figure : null,

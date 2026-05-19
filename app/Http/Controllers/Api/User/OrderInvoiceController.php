@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers\Api\User;
 
+use App\Constants\FinancialCodes;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Services\Invoice\InvoiceGenerator;
-use Illuminate\Http\Response;
 
 class OrderInvoiceController extends Controller
 {
@@ -13,7 +13,11 @@ class OrderInvoiceController extends Controller
     {
         $this->authorize('view', $order);
 
-        $pdf = $generator->generate($order, $type, 'download');
+        $financialCode = match ($type) {
+            'initial' => FinancialCodes::DOC_PRE_INVOICE,
+            default => FinancialCodes::DOC_PRE_INVOICE,
+        };
+        $pdf = $generator->generate($order, $financialCode, 'download');
 
         return $pdf->download("invoice-{$order->order_number}.pdf");
     }

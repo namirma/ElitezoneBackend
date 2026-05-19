@@ -6,7 +6,6 @@ use Artisaninweb\SoapWrapper\SoapWrapper;
 use Illuminate\Support\Facades\Facade;
 use Illuminate\Support\ServiceProvider;
 
-
 return [
 
     /*
@@ -27,7 +26,7 @@ return [
     | Custom variable
     |--------------------------------------------------------------------------
     */
-    'version' => "0.0.1",
+    'version' => '0.0.1',
     'companyInfoEmailAddress' => 'info@elitezone.me',
 
     /*
@@ -54,7 +53,7 @@ return [
     |
     */
 
-    'debug' => (bool)env('APP_DEBUG', false),
+    'debug' => (bool) env('APP_DEBUG', false),
 
     /*
     |--------------------------------------------------------------------------

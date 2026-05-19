@@ -5,15 +5,6 @@ namespace App\Http\Resources;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use App\Http\Resources\BadgeResource;
-use App\Http\Resources\EduixRecordResource;
-use App\Http\Resources\JobExperienceResource;
-use App\Http\Resources\UserProfileResource;
-use App\Http\Resources\EngineerProfileResourse;
-use App\Http\Resources\ContractorProfileResource;
-use App\Http\Resources\SupplierProfileResource;
-use App\Http\Resources\EmployerProfileResource;
-use App\Http\Resources\UserTypeResource;
 
 class UserResource extends JsonResource
 {
@@ -25,12 +16,13 @@ class UserResource extends JsonResource
         } elseif ($this->relationLoaded('badges') && $this->badges->isNotEmpty()) {
             $selectedBadge = $this->badges->last();
         }
+
         return [
             User::ID => $this->{User::ID},
             User::TYPE_ID => $this->{User::TYPE_ID},
             User::MOBILE => $this->{User::MOBILE},
             User::CREATED_AT => $this->{User::CREATED_AT},
-            User::PASSWORD => (bool)$this->{User::PASSWORD},
+            User::PASSWORD => (bool) $this->{User::PASSWORD},
             User::RELATION_PROFILE => new UserProfileResource($this->whenLoaded(User::RELATION_PROFILE)),
             User::RELATION_ENGINEER => new EngineerProfileResourse($this->whenLoaded(User::RELATION_ENGINEER)),
             User::RELATION_CONTRACTOR => new ContractorProfileResource($this->whenLoaded(User::RELATION_CONTRACTOR)),

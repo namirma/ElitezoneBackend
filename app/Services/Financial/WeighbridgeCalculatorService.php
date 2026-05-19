@@ -19,7 +19,6 @@ class WeighbridgeCalculatorService
         // محاسبه اختلاف وزن
         $weightDiff = abs($was - $wbs);
 
-
         // اختلاف سهم خریدار (POO Diff)
         $diffPOO = $this->baseCalculator->calculatePOO(0, $op, $weightDiff, $ow, $vat);
 
@@ -28,7 +27,7 @@ class WeighbridgeCalculatorService
 
         return [
             'poo_diff' => $diffPOO,
-            'pts_diff' => $diffPTS
+            'pts_diff' => $diffPTS,
         ];
     }
 }

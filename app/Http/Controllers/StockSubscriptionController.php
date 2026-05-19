@@ -2,11 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
-use App\Models\ProductVariant;
-use App\Http\Resources\SubscribedVariantResource;
 use App\Http\Requests\ToggleStockSubscriptionRequest;
+use App\Http\Resources\SubscribedVariantResource;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\StockSubscription;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -21,10 +20,11 @@ class StockSubscriptionController extends Controller
                 ->whereNull(StockSubscription::NOTIFIED_AT);
         })
             ->with([
-                'product:' . Product::ID . ',' . Product::NAME . ',' . Product::SLUG,
-                'variantAttributes.attributeType'
+                'product:'.Product::ID.','.Product::NAME.','.Product::SLUG,
+                'variantAttributes.attributeType',
             ])
             ->paginate(10);
+
         return success(
             SubscribedVariantResource::collection($variants)->response()->getData(true),
             __('stock.list_success')
@@ -47,7 +47,7 @@ class StockSubscriptionController extends Controller
             $message = __('stock.unsubscribed');
         } else {
             $user->stockSubscriptions()->create([
-                StockSubscription::PRODUCT_VARIANT_ID => $variantId
+                StockSubscription::PRODUCT_VARIANT_ID => $variantId,
             ]);
             $isSubscribed = true;
             $message = __('stock.subscribed');

@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests;
 
-
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
@@ -22,7 +21,7 @@ class VerifyEmailRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => 'required|email:rfc,dns|unique:user_profiles,email,' . Auth::id() . ',user_id',
+            'email' => 'required|email:rfc,dns|unique:user_profiles,email,'.Auth::id().',user_id',
         ];
     }
 }

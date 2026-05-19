@@ -15,8 +15,9 @@ trait PersianDate
     public function getCreatedAtPAttribute()
     {
         // test server
-        if (@$this->attributes["created_at"])
-            return Verta(@$this->attributes["created_at"])->formatDatetime();
+        if (@$this->attributes['created_at']) {
+            return Verta(@$this->attributes['created_at'])->formatDatetime();
+        }
     }
 
     /**
@@ -24,8 +25,9 @@ trait PersianDate
      */
     public function getUpdatedAtPAttribute()
     {
-        if (@$this->attributes["updated_at"])
-            return Verta(@$this->attributes["updated_at"])->formatDatetime();
+        if (@$this->attributes['updated_at']) {
+            return Verta(@$this->attributes['updated_at'])->formatDatetime();
+        }
     }
 
     /**
@@ -33,8 +35,9 @@ trait PersianDate
      */
     public function getUpdatedAtDiffAttribute()
     {
-        if (@$this->attributes["updated_at"])
-            return Carbon::make(@$this->attributes["updated_at"])->diffForHumans();
+        if (@$this->attributes['updated_at']) {
+            return Carbon::make(@$this->attributes['updated_at'])->diffForHumans();
+        }
     }
 
     /**
@@ -42,8 +45,9 @@ trait PersianDate
      */
     public function getCreatedAtDiffAttribute()
     {
-        if (@$this->attributes["created_at"])
-            return Carbon::make(@$this->attributes["created_at"])->diffForHumans();
+        if (@$this->attributes['created_at']) {
+            return Carbon::make(@$this->attributes['created_at'])->diffForHumans();
+        }
     }
 
     /**
@@ -51,11 +55,12 @@ trait PersianDate
      */
     public function getExpireAtDaysAttribute()
     {
-        if (@$this->attributes["expire_at"]) {
-            if (Carbon::parse(@$this->attributes["expire_at"])->isPast())
+        if (@$this->attributes['expire_at']) {
+            if (Carbon::parse(@$this->attributes['expire_at'])->isPast()) {
                 return 0;
+            }
 
-            return Carbon::make(@$this->attributes["expire_at"])->diffInDays();
+            return Carbon::make(@$this->attributes['expire_at'])->diffInDays();
         }
     }
 }

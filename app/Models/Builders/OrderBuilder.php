@@ -19,7 +19,7 @@ class OrderBuilder extends Builder
             Order::STATUS_PREPARING,
             Order::STATUS_WEIGHBRIDGE_DONE,
             Order::STATUS_WAYBILL_ISSUED,
-            Order::STATUS_SHIPPED
+            Order::STATUS_SHIPPED,
         ]);
     }
 
@@ -38,7 +38,7 @@ class OrderBuilder extends Builder
     {
         return $this->where(function ($q) use ($userId) {
             $q->where(Order::PLACER_USER_ID, $userId)
-              ->orWhere(Order::BENEFICIARY_USER_ID, $userId);
+                ->orWhere(Order::BENEFICIARY_USER_ID, $userId);
         });
     }
 
@@ -48,7 +48,7 @@ class OrderBuilder extends Builder
     public function expired(): self
     {
         return $this->where(Order::STATUS, Order::STATUS_PENDING)
-                    ->where(Order::RESERVATION_EXPIRES_AT, '<', now());
+            ->where(Order::RESERVATION_EXPIRES_AT, '<', now());
     }
 
     /**

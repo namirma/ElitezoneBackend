@@ -2,9 +2,9 @@
 
 namespace App\Services\Payment\Gateways;
 
-use App\Services\Payment\Contracts\PaymentGatewayInterface;
 use App\Models\Order;
 use App\Models\User;
+use App\Services\Payment\Contracts\PaymentGatewayInterface;
 
 class ShaparakGateway implements PaymentGatewayInterface
 {
@@ -21,7 +21,7 @@ class ShaparakGateway implements PaymentGatewayInterface
 
         return [
             'transaction_id' => null,
-            'reference_id'   => 'SH-' . rand(10000, 99999), // شماره پیگیری فرضی
+            'reference_id' => 'SH-'.rand(10000, 99999), // شماره پیگیری فرضی
         ];
     }
 }

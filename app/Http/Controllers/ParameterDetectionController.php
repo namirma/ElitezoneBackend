@@ -2,8 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
-use App\Http\Resources\PriceFilterCategoryResource;
 use App\Models\Cart;
 use App\Models\PriceFilterCategory;
 use App\Models\PurchaseParameterValue;
@@ -18,7 +16,7 @@ class ParameterDetectionController extends Controller
         $parameterValues = PurchaseParameterValue::with(['group', 'priceFilterCategory'])
             ->whereIn(PurchaseParameterValue::ID, $parameterIds)
             ->get()
-            ->keyBy(fn($value) => $value->group->code);
+            ->keyBy(fn ($value) => $value->group->code);
 
         $customerTypeValue = $parameterValues['customer_type'] ?? null;
         $consultantStatusValue = $parameterValues['consultant_status'] ?? null;
@@ -62,7 +60,7 @@ class ParameterDetectionController extends Controller
     {
         $parameterIds = $request->input('parameters');
 
-        if (!$request->filled('parameters') || !is_array($parameterIds)) {
+        if (! $request->filled('parameters') || ! is_array($parameterIds)) {
             $cart = null;
             $userId = Auth::id();
             $sessionId = $request->cookie('cart_session_id');
@@ -79,7 +77,7 @@ class ParameterDetectionController extends Controller
         $category = $this->detectPriceFilterCategoryFromValues($parameterIds)
             ?? PriceFilterCategory::where(PriceFilterCategory::CODE, 'employer_without_consultant')->first();
 
-        if (!$category) {
+        if (! $category) {
             return error('global.notFound', [], 404);
         }
 

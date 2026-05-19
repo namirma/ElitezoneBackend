@@ -15,7 +15,7 @@ class PredictInventoryNeeds implements ShouldQueue
 
     public function handle(InventoryIntelligenceService $service): void
     {
-        
+
         $service->runAnalysis();
     }
 }

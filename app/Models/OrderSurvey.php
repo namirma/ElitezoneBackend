@@ -10,14 +10,19 @@ class OrderSurvey extends Model
 {
     use HasFactory;
 
-    public const
-        ID = 'id',
-        ORDER_ID = 'order_id',
-        USER_ID = 'user_id',
-        RATING = 'rating',
-        COMMENT = 'comment',
-        CREATED_AT = 'created_at',
-        UPDATED_AT = 'updated_at';
+    public const ID = 'id';
+
+    public const ORDER_ID = 'order_id';
+
+    public const USER_ID = 'user_id';
+
+    public const RATING = 'rating';
+
+    public const COMMENT = 'comment';
+
+    public const CREATED_AT = 'created_at';
+
+    public const UPDATED_AT = 'updated_at';
 
     protected $fillable = [
         self::ORDER_ID,

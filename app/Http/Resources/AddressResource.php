@@ -2,9 +2,9 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Address;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use App\Models\Address;
 
 class AddressResource extends JsonResource
 {

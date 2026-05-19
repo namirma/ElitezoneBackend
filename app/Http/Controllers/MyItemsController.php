@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Http\Resources\BadgeResource;
 use App\Http\Resources\OrderSurveyResource;
 use App\Models\OrderSurvey;

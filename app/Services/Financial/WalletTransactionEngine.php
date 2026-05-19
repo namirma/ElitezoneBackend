@@ -31,13 +31,12 @@ class WalletTransactionEngine
 
             // 1. تعیین کاربر هدف
             $userId = $targetUserId ?? $this->resolveUserId($walletCode, $order);
-            
+
             $wallet = Wallet::firstOrCreate(['user_id' => $userId]);
             $wallet = Wallet::where('id', $wallet->id)->lockForUpdate()->first();
 
             // 3. تعیین نوع عملیات
             $type = ($operation === '+') ? 'deposit' : 'withdraw';
-
 
             $isHold = ($status === FinancialCodes::STATUS_HOLD || $status === 'hold');
 
@@ -65,13 +64,13 @@ class WalletTransactionEngine
 
             // 5. ثبت تراکنش در جدول تاریخچه
             WalletTransaction::create([
-                'wallet_id'   => $wallet->id,
-                'order_id'    => $order->id,
-                'amount'      => $amount,
-                'type'        => $type,
-                'status'      => $status,
+                'wallet_id' => $wallet->id,
+                'order_id' => $order->id,
+                'amount' => $amount,
+                'type' => $type,
+                'status' => $status,
                 'description' => $description,
-                'meta'        => json_encode(['code' => $walletCode, 'op' => $operation])
+                'meta' => json_encode(['code' => $walletCode, 'op' => $operation]),
             ]);
         });
     }
@@ -82,9 +81,9 @@ class WalletTransactionEngine
     private function resolveUserId(string $code, Order $order): int
     {
         return match ($code) {
-            FinancialCodes::WALLET_OWNER    => $order->placer_user_id,
+            FinancialCodes::WALLET_OWNER => $order->placer_user_id,
             FinancialCodes::WALLET_SUPPLIER => $order->beneficiary_user_id ?? $order->supplier_user_id ?? 1, // فال‌بک ایمن‌تر
-            FinancialCodes::WALLET_SAZE     => 1, // بهتر است این آیدی از کانفیگ خوانده شود: config('app.admin_id')
+            FinancialCodes::WALLET_SAZE => 1, // بهتر است این آیدی از کانفیگ خوانده شود: config('app.admin_id')
             default => throw new Exception("کد کیف پول ناشناخته: $code"),
         };
     }

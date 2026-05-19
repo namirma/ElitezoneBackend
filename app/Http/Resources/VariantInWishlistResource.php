@@ -2,10 +2,10 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Product;
+use App\Models\ProductVariant;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use App\Models\ProductVariant;
-use App\Models\Product;
 
 class VariantInWishlistResource extends JsonResource
 {
@@ -20,7 +20,7 @@ class VariantInWishlistResource extends JsonResource
                 Product::NAME => $this->product->name,
                 Product::SLUG => $this->product->slug,
 
-            'image' => isset($this->{ProductVariant::IMAGES}[0]) ? $this->{ProductVariant::IMAGES}[0] : null,
+                'image' => isset($this->{ProductVariant::IMAGES}[0]) ? $this->{ProductVariant::IMAGES}[0] : null,
             ]),
         ];
     }

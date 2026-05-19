@@ -2,25 +2,33 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class PurchaseParameterValue extends Model
 {
-    const
-        ID                       = 'id',
-        GROUP_ID                 = 'group_id',
-        NAME                     = 'name',
-        SLUG                     = 'slug',
-        CODE                     = 'code',
-        DESCRIPTION              = 'description',
-        ORDER                    = 'order',
-        IS_ACTIVE                = 'is_active',
-        PRICE_FILTER_CATEGORY_ID = 'price_filter_category_id',
-        CREATED_AT               = 'created_at',
-        UPDATED_AT               = 'updated_at';
+    const ID = 'id';
+
+    const GROUP_ID = 'group_id';
+
+    const NAME = 'name';
+
+    const SLUG = 'slug';
+
+    const CODE = 'code';
+
+    const DESCRIPTION = 'description';
+
+    const ORDER = 'order';
+
+    const IS_ACTIVE = 'is_active';
+
+    const PRICE_FILTER_CATEGORY_ID = 'price_filter_category_id';
+
+    const CREATED_AT = 'created_at';
+
+    const UPDATED_AT = 'updated_at';
 
     protected $fillable = [
         self::GROUP_ID,

@@ -21,6 +21,7 @@ use App\Services\PricingRoleResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 class CartController extends Controller
@@ -39,7 +40,9 @@ class CartController extends Controller
      */
     public function getCart(Request $request): JsonResponse
     {
-        return $this->respondWithCart($request);
+        $cart = $this->resolveCart($request);
+
+        return $this->respondWithCart($request, $cart);
     }
 
     /**
@@ -52,7 +55,7 @@ class CartController extends Controller
         // تمام لاجیک‌های چک کردن لیمیت، موجودی و مرج کردن در اکشن انجام می‌شود
         $action->execute($cart, $request->validated());
 
-        return $this->respondWithCart($request);
+        return $this->respondWithCart($request, $cart);
     }
 
     /**
@@ -72,7 +75,7 @@ class CartController extends Controller
 
         $action->execute($item, $request->validated());
 
-        return $this->respondWithCart($request);
+        return $this->respondWithCart($request, $cart);
     }
 
     /**
@@ -91,7 +94,7 @@ class CartController extends Controller
 
         $action->execute($item);
 
-        return $this->respondWithCart($request);
+        return $this->respondWithCart($request, $cart);
     }
 
     /**
@@ -105,7 +108,7 @@ class CartController extends Controller
 
         $action->execute($cart, $request->validated('filter_categories', []));
 
-        return $this->respondWithCart($request);
+        return $this->respondWithCart($request, $cart);
     }
 
     /**
@@ -117,7 +120,7 @@ class CartController extends Controller
 
         $cart->update(['customer_type_id' => $request->validated('customer_type_id')]);
 
-        return $this->respondWithCart($request);
+        return $this->respondWithCart($request, $cart);
     }
 
     // ---------------------------------------------------------------------
@@ -127,11 +130,9 @@ class CartController extends Controller
     /**
      * متد مرکزی برای ساخت پاسخ استاندارد (Cart Resource + Calculated Totals)
      */
-    private function respondWithCart(Request $request): JsonResponse
+    private function respondWithCart(Request $request, Cart $cart): JsonResponse
     {
-        $cart = $this->resolveCart($request);
-
-        $cart->refresh()->load([
+        $cart->load([
             'items.productVariant.product.images',
             'items.productVariant.variantAttributes.attributeType',
             'items.productVariant.product.orderUnits',
@@ -144,24 +145,24 @@ class CartController extends Controller
         ]);
 
         // محاسبه قیمت
-        $ctx    = $this->buildPricingContext($cart);
+        $ctx = $this->buildPricingContext($cart);
         $result = $this->cartPricing->calculate($cart, $ctx);
 
         // تزریق نتایج محاسباتی به آیتم‌ها (اختیاری، جهت نمایش در Resource)
         $this->applyPricingResultToCartItems($cart, $result);
 
         $response = success([
-            'cart'   => new CartResource($cart),
+            'cart' => new CartResource($cart),
             'totals' => [
-                'subtotal'                => (string) $result->subtotal,
-                'vat_amount'              => (string) $result->vatAmount,
-                'total_variant_discount'  => (string) $result->totalVariantDiscount,
+                'subtotal' => (string) $result->subtotal,
+                'vat_amount' => (string) $result->vatAmount,
+                'total_variant_discount' => (string) $result->totalVariantDiscount,
                 'cart_level_offer_discount' => (string) $result->offerDiscount,
-                'total'                   => (string) $result->total,
+                'total' => (string) $result->total,
             ],
         ], 'global.received_successfully');
 
-        if (!$cart->user_id) {
+        if (! $cart->user_id) {
             $response->cookie('cart_session_id', $cart->session_id, 60 * 24 * 30);
         }
 
@@ -190,19 +191,14 @@ class CartController extends Controller
         return $cart;
     }
 
-    /**
-     * تنظیم مقادیر پیش‌فرض سبد (نوع مشتری و فیلترهای فعال)
-     */
-    /**
-     * تنظیم مقادیر پیش‌فرض سبد (نوع مشتری و فیلترهای فعال + سینک کردن بج)
-     */
     private function ensureCartContext(Cart $cart): void
     {
         $activeCode = $this->activeCode();
 
         // 1. تنظیم نوع مشتری پیش‌فرض اگر ندارد
-        if (!$cart->customer_type_id) {
-            $defaultType = CustomerType::where(CustomerType::CODE, 'employer_without_consultant')->first();
+        if (! $cart->customer_type_id) {
+            $defaultType = Cache::remember('customer_type.default', 3600, fn () => CustomerType::where(CustomerType::CODE, 'employer_without_consultant')->first()
+            );
             if ($defaultType) {
                 $cart->customer_type_id = $defaultType->id;
                 $cart->save();
@@ -210,7 +206,8 @@ class CartController extends Controller
         }
 
         // 2. همگام‌سازی با Active Code (اگر کاربر لاگین کرده و نقشش عوض شده)
-        $ct = CustomerType::where(CustomerType::CODE, $activeCode)->first();
+        $ct = Cache::remember("customer_type.{$activeCode}", 3600, fn () => CustomerType::where(CustomerType::CODE, $activeCode)->first()
+        );
         if ($ct && $cart->customer_type_id !== $ct->id) {
             $cart->update([Cart::CUSTOMER_TYPE_ID => $ct->id]);
         }
@@ -223,7 +220,7 @@ class CartController extends Controller
             $userBadgeId = $user->badge_id;
 
             // اگر ستون badge_id خالی بود اما در جدول واسط رکورد داشت (فال‌بک)
-            if (!$userBadgeId) {
+            if (! $userBadgeId) {
                 // آخرین بج تخصیص داده شده را می‌گیریم
                 $latestBadge = $user->badges()->latest('badge_user.created_at')->first();
                 $userBadgeId = $latestBadge?->id;
@@ -235,6 +232,7 @@ class CartController extends Controller
             }
         }
     }
+
     private function buildPricingContext(Cart $cart): PricingContextData
     {
         $activeCode = $this->activeCode();
@@ -271,7 +269,9 @@ class CartController extends Controller
      */
     private function applyPricingResultToCartItems(Cart $cart, $result): void
     {
-        if (!isset($result->items)) return;
+        if (! isset($result->items)) {
+            return;
+        }
 
         foreach ($cart->items as $item) {
             $lineResult = $result->items->get($item->id);

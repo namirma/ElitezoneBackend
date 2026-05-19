@@ -2,9 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\Models\UserBankAccount;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
-use App\Models\UserBankAccount;
 use Illuminate\Validation\Rule;
 
 class WalletWithdrawalRequest extends FormRequest
@@ -23,7 +23,7 @@ class WalletWithdrawalRequest extends FormRequest
                 'required',
                 'integer',
                 'min:50000',
-                'max:' . $availableBalance
+                'max:'.$availableBalance,
             ],
             'user_bank_account_id' => [
                 'required',
@@ -31,7 +31,7 @@ class WalletWithdrawalRequest extends FormRequest
                 Rule::exists('user_bank_accounts', 'id')->where(function ($query) {
                     $query->where(UserBankAccount::USER_ID, Auth::id())
                         ->where(UserBankAccount::STATUS, UserBankAccount::STATUS_APPROVED);
-                })
+                }),
             ],
         ];
     }

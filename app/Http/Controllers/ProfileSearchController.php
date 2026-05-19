@@ -20,7 +20,7 @@ class ProfileSearchController extends Controller
         // اگر کاربر در حال تایپ است، فقط دسترسی‌های سریع فیلتر شده را بده
         if ($keyword) {
             return success([
-                'quick_access' => $action->search($keyword)
+                'quick_access' => $action->search($keyword),
             ], 'نتیجه جستجو');
         }
 
@@ -37,7 +37,7 @@ class ProfileSearchController extends Controller
 
         ProfileSearchHistory::create([
             'user_id' => Auth::id(),
-            'keyword' => $request->input('keyword')
+            'keyword' => $request->input('keyword'),
         ]);
 
         return success([], 'جستجو با موفقیت ثبت شد.');

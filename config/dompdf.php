@@ -97,6 +97,6 @@ return [
         /**
          * Set the default character encoding
          */
-        'def' => "utf-8",
+        'def' => 'utf-8',
     ],
 ];

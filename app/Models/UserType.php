@@ -12,16 +12,18 @@ class UserType extends Model
 
     public $timestamps = false;
 
-    const
-        ID = 'id',
-        NAME = 'name',
-        SLUG = 'slug',
-        ICON = 'icon';
+    const ID = 'id';
+
+    const NAME = 'name';
+
+    const SLUG = 'slug';
+
+    const ICON = 'icon';
 
     protected $fillable = [
         self::NAME,
         self::SLUG,
-        self::ICON
+        self::ICON,
     ];
 
     public function user(): HasMany

@@ -20,12 +20,12 @@ class AdminSearchController extends Controller
             ->with([User::RELATION_PROFILE, 'wallet', User::RELATION_ROLES])
             ->where(function (Builder $query) use ($keyword) {
                 $query->where(User::MOBILE, 'like', "%{$keyword}%")
-                      ->orWhere(User::NATIONAL_CODE, 'like', "%{$keyword}%")
-                      ->orWhereHas(User::RELATION_PROFILE, function (Builder $q) use ($keyword) {
-                          $q->where(UserProfile::NAME, 'like', "%{$keyword}%")
+                    ->orWhere(User::NATIONAL_CODE, 'like', "%{$keyword}%")
+                    ->orWhereHas(User::RELATION_PROFILE, function (Builder $q) use ($keyword) {
+                        $q->where(UserProfile::NAME, 'like', "%{$keyword}%")
                             ->orWhere(UserProfile::FAMILY, 'like', "%{$keyword}%")
                             ->orWhere(UserProfile::EMAIL, 'like', "%{$keyword}%");
-                      });
+                    });
             })
             ->latest(User::CREATED_AT)
             ->paginate($request->input('per_page', 20));
@@ -38,9 +38,9 @@ class AdminSearchController extends Controller
     {
         $transactions = WalletTransaction::query()
             ->with(['wallet.user.profile'])
-            ->when($request->filled('type'), fn($q) => $q->where(WalletTransaction::TYPE, $request->type))
-            ->when($request->filled('status'), fn($q) => $q->where(WalletTransaction::STATUS, $request->status))
-            ->when($request->boolean('has_receipt'), fn($q) => $q->whereNotNull(WalletTransaction::META . '->receipt_path'))
+            ->when($request->filled('type'), fn ($q) => $q->where(WalletTransaction::TYPE, $request->type))
+            ->when($request->filled('status'), fn ($q) => $q->where(WalletTransaction::STATUS, $request->status))
+            ->when($request->boolean('has_receipt'), fn ($q) => $q->whereNotNull(WalletTransaction::META.'->receipt_path'))
             ->when($request->filled('search'), function ($q) use ($request) {
                 $q->where(function ($sub) use ($request) {
                     $sub->where(WalletTransaction::ID, $request->search)

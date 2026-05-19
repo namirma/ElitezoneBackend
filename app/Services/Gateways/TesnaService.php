@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Log;
 class TesnaService implements GatewayInterface
 {
     protected string $baseUrl;
+
     protected array $headers;
 
     public function __construct(array $config)
@@ -24,12 +25,12 @@ class TesnaService implements GatewayInterface
                 ->timeout(10)
                 ->get("{$this->baseUrl}$endpoint", $data);
 
-
             if ($response->failed()) {
                 Log::error('Tesna API Error', [
                     'status' => $response->status(),
-                    'body' => $response->body()
+                    'body' => $response->body(),
                 ]);
+
                 return [];
             }
 
@@ -38,7 +39,8 @@ class TesnaService implements GatewayInterface
             return $data ?? [];
 
         } catch (\Exception $e) {
-            Log::error('Tesna Connection Failed: ' . $e->getMessage());
+            Log::error('Tesna Connection Failed: '.$e->getMessage());
+
             return [];
         }
     }

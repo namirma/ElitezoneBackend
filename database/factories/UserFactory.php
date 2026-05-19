@@ -19,20 +19,21 @@ class UserFactory extends Factory
      * @return array<string, mixed>
      */
     protected static ?string $password;
+
     public function definition(): array
     {
         return [
-            'mobile' => '09' . fake()->unique()->numerify('#########'),
+            'mobile' => '09'.fake()->unique()->numerify('#########'),
             'national_code' => fake()->unique()->numerify('##########'),
             'birth_date' => '13800101',
             'password' => Hash::make('password'),
             'remember_token' => Str::random(10),
             'type_id' => function () {
-             return UserType::firstOrCreate(
-                 ['slug' => 'customer'],
-                 ['name' => 'customer', 'icon' => 'user']
-             )->id;
-        },
+                return UserType::firstOrCreate(
+                    ['slug' => 'customer'],
+                    ['name' => 'customer', 'icon' => 'user']
+                )->id;
+            },
         ];
     }
 
@@ -41,7 +42,7 @@ class UserFactory extends Factory
      */
     public function unverified(): static
     {
-        return $this->state(fn(array $attributes) => [
+        return $this->state(fn (array $attributes) => [
             'email_verified_at' => null,
         ]);
     }

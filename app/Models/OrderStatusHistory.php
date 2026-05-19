@@ -15,14 +15,19 @@ class OrderStatusHistory extends Model
     /* -------------------------------------------------------------------------- */
     /* Constants (Column Names)                                                   */
     /* -------------------------------------------------------------------------- */
-    const
-        ID               = 'id',
-        ORDER_ID         = 'order_id',
-        FROM_STATUS      = 'from_status',
-        TO_STATUS        = 'to_status',
-        USER_ID          = 'user_id',
-        DURATION_MINUTES = 'duration_minutes',
-        CREATED_AT       = 'created_at';
+    const ID = 'id';
+
+    const ORDER_ID = 'order_id';
+
+    const FROM_STATUS = 'from_status';
+
+    const TO_STATUS = 'to_status';
+
+    const USER_ID = 'user_id';
+
+    const DURATION_MINUTES = 'duration_minutes';
+
+    const CREATED_AT = 'created_at';
 
     /* -------------------------------------------------------------------------- */
     /* Configuration                                                              */
@@ -37,10 +42,10 @@ class OrderStatusHistory extends Model
     ];
 
     protected $casts = [
-        self::ORDER_ID         => 'integer',
-        self::USER_ID          => 'integer',
+        self::ORDER_ID => 'integer',
+        self::USER_ID => 'integer',
         self::DURATION_MINUTES => 'integer',
-        self::CREATED_AT       => 'datetime',
+        self::CREATED_AT => 'datetime',
     ];
 
     /* -------------------------------------------------------------------------- */

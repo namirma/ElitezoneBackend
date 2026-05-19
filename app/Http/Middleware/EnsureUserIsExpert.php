@@ -5,7 +5,6 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
-use App\Models\UserType;
 
 class EnsureUserIsExpert
 {
@@ -13,7 +12,7 @@ class EnsureUserIsExpert
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             return error(__('auth.unauthenticated'), [], 401);
         }
         $user->loadMissing('type');

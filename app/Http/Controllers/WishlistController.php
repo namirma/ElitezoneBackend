@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreWishlistRequest;
 use App\Http\Requests\UpdateWishlistRequest;
 use App\Http\Resources\WishlistResource;
@@ -26,12 +25,14 @@ class WishlistController extends Controller
     {
         $this->findOrCreateDefaultWishlist();
         $wishlists = Auth::user()->wishlists()->withCount('variants')->latest()->get();
+
         return success(WishlistResource::collection($wishlists), 'wishlist.index.success');
     }
 
     public function store(StoreWishlistRequest $request): JsonResponse
     {
         $wishlist = Auth::user()->wishlists()->create($request->validated());
+
         return success(new WishlistResource($wishlist), 'wishlist.store.success', 201);
     }
 
@@ -42,6 +43,7 @@ class WishlistController extends Controller
         }
         $variants = $wishlist->variants()->with('product:id,name,slug')->latest()->paginate(10);
         $wishlist->setRelation('variants', $variants);
+
         return success(new WishlistResource($wishlist), 'wishlist.show.success');
     }
 
@@ -54,6 +56,7 @@ class WishlistController extends Controller
             return error('wishlist.update.default_denied', [], 403);
         }
         $wishlist->update($request->validated());
+
         return success(new WishlistResource($wishlist), 'wishlist.update.success');
     }
 
@@ -66,6 +69,7 @@ class WishlistController extends Controller
             return error('wishlist.destroy.default_denied', [], 403);
         }
         $wishlist->delete();
+
         return success([], 'wishlist.destroy.success');
     }
 
@@ -78,6 +82,7 @@ class WishlistController extends Controller
             return error('wishlist.variants.store.duplicate', [], 409);
         }
         $wishlist->variants()->attach($variant->id);
+
         return success([], 'wishlist.variants.store.success');
     }
 
@@ -86,10 +91,11 @@ class WishlistController extends Controller
         if (Auth::id() !== $wishlist->{Wishlist::USER_ID}) {
             return error('global.unauthorized', [], 403);
         }
-        if (!$wishlist->variants()->where('product_variant_id', $variant->id)->exists()) {
+        if (! $wishlist->variants()->where('product_variant_id', $variant->id)->exists()) {
             return error('wishlist.variants.destroy.not_found', [], 404);
         }
         $wishlist->variants()->detach($variant->id);
+
         return success([], 'wishlist.variants.destroy.success');
     }
 
@@ -100,6 +106,7 @@ class WishlistController extends Controller
         $defaultWishlist = $this->findOrCreateDefaultWishlist();
         $toggleResult = $defaultWishlist->variants()->toggle($variantId);
         $isAttached = count($toggleResult['attached']) > 0;
+
         return success(['is_in_wishlist' => $isAttached], 'wishlist.toggle.success');
     }
 }

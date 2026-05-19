@@ -14,6 +14,7 @@ class Kernel extends ConsoleKernel
     protected $commands = [
         CancelExpiredOrders::class,
     ];
+
     /**
      * Define the application's command schedule.
      */
@@ -33,9 +34,8 @@ class Kernel extends ConsoleKernel
             ->hourly()
             ->withoutOverlapping()
             ->runInBackground()
-            ->onOneServer()
-            // ->emailOutputOnFailure('admin@elitezone.me')
-        ;
+            ->onOneServer();
+        // ->emailOutputOnFailure('admin@elitezone.me')
         $schedule->job(new CalculateCustomerRfm)
             ->dailyAt('03:00')
             ->withoutOverlapping()
@@ -49,12 +49,13 @@ class Kernel extends ConsoleKernel
             ->everyMinute()
             ->onOneServer();
     }
+
     /**
      * Register the commands for the application.
      */
     protected function commands(): void
     {
-        $this->load(__DIR__ . '/Commands');
+        $this->load(__DIR__.'/Commands');
 
         require base_path('routes/console.php');
     }

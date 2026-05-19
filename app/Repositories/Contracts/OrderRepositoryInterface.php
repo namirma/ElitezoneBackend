@@ -9,10 +9,9 @@ interface OrderRepositoryInterface
 {
     /**
      * ایجاد یک سفارش جدید
-     * @param array $data
-     * @return Order
      */
     public function create(array $data): Order;
+
     /**
      * دریافت لیست سفارش‌های یک کاربر بر اساس وضعیت
      */

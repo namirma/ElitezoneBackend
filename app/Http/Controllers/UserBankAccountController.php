@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreUserBankAccountRequest;
 use App\Http\Resources\UserBankAccountResource;
 use App\Models\User;
@@ -22,6 +21,7 @@ class UserBankAccountController extends Controller
     public function index(): JsonResponse
     {
         $accounts = Auth::user()->bankAccounts()->latest()->get();
+
         return success(UserBankAccountResource::collection($accounts), __('bank.list_received'));
     }
 
@@ -52,9 +52,9 @@ class UserBankAccountController extends Controller
                 // الف) استعلام کارت
                 $isMatched = $cardService->verify($cardNumber, $user->{User::NATIONAL_CODE}, $user->{User::BIRTH_DATE});
 
-                if (!$isMatched) {
+                if (! $isMatched) {
                     throw ValidationException::withMessages([
-                        'card_number' => [__('bank.card_mismatch')]
+                        'card_number' => [__('bank.card_mismatch')],
                     ]);
                 }
 
@@ -64,9 +64,9 @@ class UserBankAccountController extends Controller
                 // ب) استعلام شبا
                 $isMatched = $shebaService->verify($shaba, $user->{User::NATIONAL_CODE}, $user->{User::BIRTH_DATE});
 
-                if (!$isMatched) {
+                if (! $isMatched) {
                     throw ValidationException::withMessages([
-                        'shaba' => [__('bank.shaba_mismatch')]
+                        'shaba' => [__('bank.shaba_mismatch')],
                     ]);
                 }
 
@@ -84,17 +84,17 @@ class UserBankAccountController extends Controller
         // ۴. ذخیره در دیتابیس
         $bankAccount = DB::transaction(function () use ($user, $data, $bankName, $holderName, $shaba, $cardNumber) {
             // اگر حساب پیش‌فرض است، بقیه را از حالت پیش‌فرض خارج کن
-            if (!empty($data['is_default'])) {
+            if (! empty($data['is_default'])) {
                 $user->bankAccounts()->update(['is_default' => false]);
             }
 
             return $user->bankAccounts()->create([
-                UserBankAccount::BANK_NAME           => $bankName,
+                UserBankAccount::BANK_NAME => $bankName,
                 UserBankAccount::ACCOUNT_HOLDER_NAME => $holderName,
-                UserBankAccount::SHABA               => $shaba,
-                UserBankAccount::CARD_NUMBER         => $cardNumber,
-                UserBankAccount::IS_DEFAULT          => $data['is_default'] ?? false,
-                UserBankAccount::STATUS              => UserBankAccount::STATUS_APPROVED,
+                UserBankAccount::SHABA => $shaba,
+                UserBankAccount::CARD_NUMBER => $cardNumber,
+                UserBankAccount::IS_DEFAULT => $data['is_default'] ?? false,
+                UserBankAccount::STATUS => UserBankAccount::STATUS_APPROVED,
             ]);
         });
 
@@ -111,6 +111,7 @@ class UserBankAccountController extends Controller
         }
 
         $bankAccount->delete();
+
         return success([], __('bank.delete_success'));
     }
 
@@ -123,7 +124,8 @@ class UserBankAccountController extends Controller
      */
     private function resolveHolderName(User $user): string
     {
-        $fullName = trim(($user->profile->name ?? '') . ' ' . ($user->profile->family ?? ''));
+        $fullName = trim(($user->profile->name ?? '').' '.($user->profile->family ?? ''));
+
         return empty($fullName) ? __('bank.unknown_user') : $fullName;
     }
 
@@ -190,8 +192,9 @@ class UserBankAccountController extends Controller
      */
     private function getBankNameByCode(string $code): string
     {
-        $key = 'bank.banks.' . $code;
+        $key = 'bank.banks.'.$code;
         $name = __($key);
+
         // اگر ترجمه پیدا نشد، مقدار پیش‌فرض برگردان
         return $name === $key ? __('bank.unknown_bank') : $name;
     }

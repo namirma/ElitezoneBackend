@@ -17,13 +17,15 @@ class SendOrderPlacedNotification implements ShouldQueue
         $order = $event->order;
         $user = $order->placer;
 
-        if (!$user) return;
+        if (! $user) {
+            return;
+        }
 
         try {
-           
+
             $message = __('sms.order_placed', ['order_number' => $order->order_number]);
 
-            if (!$message || $message === 'sms.order_placed') {
+            if (! $message || $message === 'sms.order_placed') {
                 $message = "سفارش شما با شماره {$order->order_number} رزرو شد.\nجهت تکمیل خرید، لطفاً پرداخت را انجام دهید.\nالیت زون";
             }
 
@@ -32,7 +34,7 @@ class SendOrderPlacedNotification implements ShouldQueue
             Log::info("Order placed SMS sent for Order #{$order->order_number}");
 
         } catch (\Exception $e) {
-            Log::error("Failed to send order placed SMS: " . $e->getMessage());
+            Log::error('Failed to send order placed SMS: '.$e->getMessage());
         }
     }
 }

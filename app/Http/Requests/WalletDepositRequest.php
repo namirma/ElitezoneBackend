@@ -18,12 +18,12 @@ class WalletDepositRequest extends FormRequest
             'amount' => [
                 'required',
                 'integer',
-                'min:10000'
+                'min:10000',
             ],
             'payment_method' => [
                 'required',
                 'string',
-                Rule::in(['podium', 'shaparak', 'bank_transfer'])
+                Rule::in(['podium', 'shaparak', 'bank_transfer']),
             ],
         ];
         $method = $this->input('payment_method');
@@ -33,6 +33,7 @@ class WalletDepositRequest extends FormRequest
         } elseif ($method === 'podium') {
             $rules['amount'][] = 'max:2000000000';
         }
+
         return $rules;
     }
 

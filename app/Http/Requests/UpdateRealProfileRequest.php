@@ -9,12 +9,15 @@ use Illuminate\Validation\Rule;
 
 class UpdateRealProfileRequest extends FormRequest
 {
-    public function authorize(): bool { return true; }
+    public function authorize(): bool
+    {
+        return true;
+    }
 
     public function rules(): array
     {
         $user = Auth::user();
-        $isFixed = !empty($user->profile?->{UserProfile::NATIONAL_CODE});
+        $isFixed = ! empty($user->profile?->{UserProfile::NATIONAL_CODE});
 
         return [
             UserProfile::NAME => [$isFixed ? 'prohibited' : 'required', 'string', 'max:50'],
@@ -24,7 +27,7 @@ class UpdateRealProfileRequest extends FormRequest
             UserProfile::EMAIL => [
                 'nullable',
                 'email:rfc,dns',
-                Rule::unique('user_profiles', UserProfile::EMAIL)->ignore($user->profile?->id)
+                Rule::unique('user_profiles', UserProfile::EMAIL)->ignore($user->profile?->id),
             ],
             UserProfile::PROVINCE_ID => ['nullable', 'exists:province,id'],
             UserProfile::CITY_ID => ['nullable', 'exists:province_city,id'],

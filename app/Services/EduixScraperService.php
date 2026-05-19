@@ -3,27 +3,28 @@
 namespace App\Services;
 
 use App\Traits\Resilience\HasCircuitBreaker;
+use Illuminate\Support\Facades\Cache;
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpClient\HttpClient;
-use Illuminate\Support\Facades\Cache;
 
 class EduixScraperService
 {
     use HasCircuitBreaker;
+
     protected array $mapping = [
-        'نام'                  => 'name',
-        'نام خانوادگی'        => 'family',
-        'نام پدر'             => 'father_name',
-        'کدملی'               => 'national_code',
-        'شماره شناسنامه'      => 'id_number',
-        'تاریخ تولد'          => 'birth_date',
-        'دانشگاه'             => 'university',
-        'رشته تحصیلی'         => 'field',
-        'نوع دوره قبولی'      => 'course_type',
-        'تاریخ شروع تحصیل'    => 'entry_date',
+        'نام' => 'name',
+        'نام خانوادگی' => 'family',
+        'نام پدر' => 'father_name',
+        'کدملی' => 'national_code',
+        'شماره شناسنامه' => 'id_number',
+        'تاریخ تولد' => 'birth_date',
+        'دانشگاه' => 'university',
+        'رشته تحصیلی' => 'field',
+        'نوع دوره قبولی' => 'course_type',
+        'تاریخ شروع تحصیل' => 'entry_date',
         'تاریخ فارغ التحصیلی' => 'graduate_date',
-        'معدل'                => 'gpa',
-        'وضعیت تحصیلی'        => 'status',
+        'معدل' => 'gpa',
+        'وضعیت تحصیلی' => 'status',
     ];
 
     protected $client;
@@ -31,8 +32,8 @@ class EduixScraperService
     public function __construct()
     {
         $this->client = HttpClient::create([
-            'headers'      => ['User-Agent' => 'Mozilla/5.0 (compatible; EduixScraper/1.0)'],
-            'timeout'      => 5,
+            'headers' => ['User-Agent' => 'Mozilla/5.0 (compatible; EduixScraper/1.0)'],
+            'timeout' => 5,
             'max_duration' => 5,
             'http_version' => '2.0',
         ]);
@@ -68,7 +69,7 @@ class EduixScraperService
                         $data[$key] = null;
                     }
                 });
-                
+
                 return $data;
             });
         });

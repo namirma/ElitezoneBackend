@@ -23,7 +23,7 @@ class UpdateCustomerTypeRequest extends FormRequest
     {
         return [
             'customer_type_id' => 'required|exists:customer_types,id',
-            'badge_id'         => 'nullable|exists:badges,id',
+            'badge_id' => 'nullable|exists:badges,id',
         ];
     }
 }

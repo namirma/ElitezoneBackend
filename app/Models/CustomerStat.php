@@ -13,29 +13,42 @@ class CustomerStat extends Model
     /* -------------------------------------------------------------------------- */
     /* Constants (Column Names)                                                   */
     /* -------------------------------------------------------------------------- */
-    const
-        ID = 'id',
-        USER_ID = 'user_id',
-        RECENCY_DAYS = 'recency_days',
-        FREQUENCY_COUNT = 'frequency_count',
-        MONETARY_TOTAL = 'monetary_total',
-        R_SCORE = 'r_score',
-        F_SCORE = 'f_score',
-        M_SCORE = 'm_score',
-        SEGMENT = 'segment',
-        LAST_CALCULATED_AT = 'last_calculated_at';
+    const ID = 'id';
+
+    const USER_ID = 'user_id';
+
+    const RECENCY_DAYS = 'recency_days';
+
+    const FREQUENCY_COUNT = 'frequency_count';
+
+    const MONETARY_TOTAL = 'monetary_total';
+
+    const R_SCORE = 'r_score';
+
+    const F_SCORE = 'f_score';
+
+    const M_SCORE = 'm_score';
+
+    const SEGMENT = 'segment';
+
+    const LAST_CALCULATED_AT = 'last_calculated_at';
 
     /* -------------------------------------------------------------------------- */
     /* Constants (Segments - برچسب‌های مشتریان)                                  */
     /* -------------------------------------------------------------------------- */
-    const
-        SEGMENT_CHAMPION = 'champion',         
-        SEGMENT_LOYAL = 'loyal',               
-        SEGMENT_POTENTIAL_LOYAL = 'potential', 
-        SEGMENT_AT_RISK = 'at_risk',           
-        SEGMENT_HIBERNATING = 'hibernating',   
-        SEGMENT_LOST = 'lost',                 
-        SEGMENT_NEW = 'new';                   
+    const SEGMENT_CHAMPION = 'champion';
+
+    const SEGMENT_LOYAL = 'loyal';
+
+    const SEGMENT_POTENTIAL_LOYAL = 'potential';
+
+    const SEGMENT_AT_RISK = 'at_risk';
+
+    const SEGMENT_HIBERNATING = 'hibernating';
+
+    const SEGMENT_LOST = 'lost';
+
+    const SEGMENT_NEW = 'new';
 
     protected $fillable = [
         self::USER_ID,

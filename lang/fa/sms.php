@@ -1,7 +1,7 @@
 <?php
 
 return [
-  'loginMessage' => 'پلتفرم EliteZone
+    'loginMessage' => 'پلتفرم EliteZone
   کد تایید:
   :code',
 
@@ -13,11 +13,11 @@ return [
     در حال مذاکره با سوپلایر‌های محترم هستیم.
     برای قدم های بعدی به شما اطلاع رسانی خواهیم کرد.
     تیم EliteZone',
-    "beneficiary_verification" => "کاربر :name قصد خرید به نام شما در الیت-زون را دارد. کد تایید: :code",
+    'beneficiary_verification' => 'کاربر :name قصد خرید به نام شما در الیت-زون را دارد. کد تایید: :code',
     'consultant_invitation' => 'کاربر :employer_name شما را به عنوان مشاور فنی در الیت-زون دعوت کرده است. لطفاً جهت تایید به پنل کاربری خود مراجعه کنید.',
 
     'transaction_confirmed' => 'کاربر گرامی، درخواست :type مبلغ :amount .ریال شما تایید شد',
-    'transaction_rejected'  => 'کاربر گرامی، درخواست :type مبلغ :amount .ریال شما رد شد',
+    'transaction_rejected' => 'کاربر گرامی، درخواست :type مبلغ :amount .ریال شما رد شد',
 
     'order_placed' => "سفارش شما با شماره :order_number رزرو شد.\nجهت تکمیل خرید، لطفاً پرداخت را انجام دهید.\nالیت زون",
 ];

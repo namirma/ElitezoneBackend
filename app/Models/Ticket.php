@@ -21,7 +21,7 @@ class Ticket extends Model
         'admin_id',
         'subject',
         'message',
-        'status'
+        'status',
     ];
 
     public function user(): BelongsTo

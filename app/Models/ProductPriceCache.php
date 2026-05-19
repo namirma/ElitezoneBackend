@@ -9,15 +9,20 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class ProductPriceCache extends Model
 {
     use HasFactory;
-    
-    public const
-        ID = 'id',
-        PRODUCT_ID = 'product_id',
-        PRODUCT_VARIANT_ID = 'product_variant_id',
-        ROLE_CODE = 'role_code',
-        FINAL_PRICE = 'final_price',
-        CREATED_AT = 'created_at',
-        UPDATED_AT = 'updated_at';
+
+    public const ID = 'id';
+
+    public const PRODUCT_ID = 'product_id';
+
+    public const PRODUCT_VARIANT_ID = 'product_variant_id';
+
+    public const ROLE_CODE = 'role_code';
+
+    public const FINAL_PRICE = 'final_price';
+
+    public const CREATED_AT = 'created_at';
+
+    public const UPDATED_AT = 'updated_at';
 
     protected $fillable = [
         self::PRODUCT_ID,

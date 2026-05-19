@@ -10,6 +10,7 @@ class QuestionEmail extends Mailable
     use SerializesModels;
 
     public array $data;
+
     public $type;
 
     public function __construct($data = null, $type = 'support')
@@ -23,7 +24,6 @@ class QuestionEmail extends Mailable
         $view = $this->type === 'user'
             ? 'emails.user-new-question'
             : 'emails.support-new-question';
-
 
         $subject = $this->type === 'user'
             ? 'پیام شما دریافت شد'

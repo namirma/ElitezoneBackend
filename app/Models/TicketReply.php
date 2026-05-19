@@ -14,7 +14,7 @@ class TicketReply extends Model
         'ticket_id',
         'user_id',
         'admin_id',
-        'message'
+        'message',
     ];
 
     public function ticket(): BelongsTo
@@ -26,5 +26,4 @@ class TicketReply extends Model
     {
         return $this->belongsTo(User::class);
     }
-
 }

@@ -18,7 +18,7 @@ class AdminActivityLogController extends Controller
         $query = Activity::query()->with('causer.profile');
 
         if ($request->filled('subject_type')) {
-            $modelClass = 'App\\Models\\' . ucfirst($request->subject_type);
+            $modelClass = 'App\\Models\\'.ucfirst($request->subject_type);
             $query->where('subject_type', $modelClass);
         }
         if ($request->filled('subject_id')) {

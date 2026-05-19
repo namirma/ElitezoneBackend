@@ -16,7 +16,7 @@ class EngineerController extends Controller
     {
         $user = Auth::user();
         $expertTypeId = UserType::where('slug', 'consultant')->value('id');
-        if ($user->type_id == $expertTypeId && !$user->hasRole('engineer')) {
+        if ($user->type_id == $expertTypeId && ! $user->hasRole('engineer')) {
             $user->addRole('engineer');
         }
         // if (!EngineerProfile::where([EngineerProfile::USER_ID => Auth::id()])->exists())

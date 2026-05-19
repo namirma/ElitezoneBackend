@@ -22,5 +22,5 @@ return [
     'rfm' => [
         'champion_threshold_days' => 30, // زیر ۳۰ روز قهرمان است
         'big_spender_amount' => 100_000_000, // بالای ۱۰۰ میلیون خرید سنگین است
-    ]
+    ],
 ];

@@ -10,23 +10,37 @@ class Address extends Model
 {
     use HasFactory;
 
-    public const
-        ID = 'id',
-        USER_ID = 'user_id',
-        TITLE = 'title',
-        PROVINCE_ID = 'province_id',
-        CITY_ID = 'city_id',
-        POSTAL_ADDRESS = 'postal_address',
-        BUILDING_NUMBER = 'building_number',
-        UNIT = 'unit',
-        POSTAL_CODE = 'postal_code',
-        LATITUDE = 'latitude',
-        LONGITUDE = 'longitude',
-        RECEIVER_NAME = 'receiver_name',
-        RECEIVER_MOBILE = 'receiver_mobile',
-        IS_DEFAULT = 'is_default',
-        CREATED_AT = 'created_at',
-        UPDATED_AT = 'updated_at';
+    public const ID = 'id';
+
+    public const USER_ID = 'user_id';
+
+    public const TITLE = 'title';
+
+    public const PROVINCE_ID = 'province_id';
+
+    public const CITY_ID = 'city_id';
+
+    public const POSTAL_ADDRESS = 'postal_address';
+
+    public const BUILDING_NUMBER = 'building_number';
+
+    public const UNIT = 'unit';
+
+    public const POSTAL_CODE = 'postal_code';
+
+    public const LATITUDE = 'latitude';
+
+    public const LONGITUDE = 'longitude';
+
+    public const RECEIVER_NAME = 'receiver_name';
+
+    public const RECEIVER_MOBILE = 'receiver_mobile';
+
+    public const IS_DEFAULT = 'is_default';
+
+    public const CREATED_AT = 'created_at';
+
+    public const UPDATED_AT = 'updated_at';
 
     protected $fillable = [
         self::USER_ID,

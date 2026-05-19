@@ -20,7 +20,7 @@ class AttachActivePriceCategory
         } else {
             $code = 'employer_without_consultant';
         }
-        
+
         app()->instance('active_price_filter_category_code', $code);
 
         return $next($request);

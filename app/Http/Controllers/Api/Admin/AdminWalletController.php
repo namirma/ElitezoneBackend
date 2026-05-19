@@ -6,14 +6,10 @@ use App\Actions\Financial\ProcessTransactionAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UpdateTransactionStatusRequest;
 use App\Http\Resources\WalletTransactionResource;
-use App\Models\Wallet;
 use App\Models\WalletTransaction;
-use App\Models\User;
-use App\Jobs\SendSmsJob;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class AdminWalletController extends Controller
@@ -36,7 +32,7 @@ class AdminWalletController extends Controller
         }
 
         if ($request->filled('user_id')) {
-            $query->whereHas('wallet', fn($q) => $q->where('user_id', $request->user_id));
+            $query->whereHas('wallet', fn ($q) => $q->where('user_id', $request->user_id));
         }
 
         $transactions = $query->paginate($request->input('per_page', 20));
@@ -66,7 +62,8 @@ class AdminWalletController extends Controller
                 __('admin.wallet.status_updated')
             );
         } catch (\Exception $e) {
-            Log::error("Admin Wallet Process Error: " . $e->getMessage());
+            Log::error('Admin Wallet Process Error: '.$e->getMessage());
+
             return error($e->getMessage(), [], 400);
         }
     }

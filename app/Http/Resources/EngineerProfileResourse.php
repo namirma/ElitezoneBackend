@@ -3,7 +3,6 @@
 namespace App\Http\Resources;
 
 use App\Models\EngineerProfile;
-use App\Models\UserProfile;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 

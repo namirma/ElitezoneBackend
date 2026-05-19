@@ -15,12 +15,12 @@ class OrderObserver
     {
         // ثبت نقطه شروع فرآیند (وضعیت اولیه)
         OrderStatusHistory::create([
-            OrderStatusHistory::ORDER_ID         => $order->id,
-            OrderStatusHistory::FROM_STATUS      => null,
-            OrderStatusHistory::TO_STATUS        => $order->status ?? Order::STATUS_PENDING,
-            OrderStatusHistory::USER_ID          => Auth::id(),
+            OrderStatusHistory::ORDER_ID => $order->id,
+            OrderStatusHistory::FROM_STATUS => null,
+            OrderStatusHistory::TO_STATUS => $order->status ?? Order::STATUS_PENDING,
+            OrderStatusHistory::USER_ID => Auth::id(),
             OrderStatusHistory::DURATION_MINUTES => 0,
-            OrderStatusHistory::CREATED_AT       => now(),
+            OrderStatusHistory::CREATED_AT => now(),
         ]);
     }
 
@@ -50,14 +50,14 @@ class OrderObserver
             /* -----------------------------------------------------
              * ثبت رکورد جدید در تاریخچه
              * ----------------------------------------------------- */
-            
+
             OrderStatusHistory::create([
-                OrderStatusHistory::ORDER_ID         => $order->id,
-                OrderStatusHistory::FROM_STATUS      => $oldStatus,
-                OrderStatusHistory::TO_STATUS        => $newStatus,
-                OrderStatusHistory::USER_ID          => Auth::id(),
+                OrderStatusHistory::ORDER_ID => $order->id,
+                OrderStatusHistory::FROM_STATUS => $oldStatus,
+                OrderStatusHistory::TO_STATUS => $newStatus,
+                OrderStatusHistory::USER_ID => Auth::id(),
                 OrderStatusHistory::DURATION_MINUTES => $duration,
-                OrderStatusHistory::CREATED_AT       => now(),
+                OrderStatusHistory::CREATED_AT => now(),
             ]);
         }
     }

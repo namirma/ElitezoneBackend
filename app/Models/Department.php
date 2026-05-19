@@ -14,7 +14,7 @@ class Department extends Model
         'slug',
         'parent_id',
         'description',
-        'is_available_for_ticket'
+        'is_available_for_ticket',
     ];
 
     public function scopeIsAvailableForTicket($query)

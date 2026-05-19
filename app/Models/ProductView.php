@@ -9,21 +9,27 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class ProductView extends Model
 {
     use HasFactory;
-    
+
     protected $table = 'product_views';
+
     public $timestamps = false;
 
     /* -------------------------------------------------------------------------- */
     /* Constants (Column Names)                                                   */
     /* -------------------------------------------------------------------------- */
-    const
-        ID = 'id',
-        PRODUCT_ID = 'product_id',
-        USER_ID = 'user_id',
-        IP_ADDRESS = 'ip_address',
-        USER_AGENT = 'user_agent',
-        SESSION_ID = 'session_id',
-        VIEWED_AT = 'viewed_at';
+    const ID = 'id';
+
+    const PRODUCT_ID = 'product_id';
+
+    const USER_ID = 'user_id';
+
+    const IP_ADDRESS = 'ip_address';
+
+    const USER_AGENT = 'user_agent';
+
+    const SESSION_ID = 'session_id';
+
+    const VIEWED_AT = 'viewed_at';
 
     /* -------------------------------------------------------------------------- */
     /* Configuration                                                              */
@@ -39,8 +45,8 @@ class ProductView extends Model
 
     protected $casts = [
         self::PRODUCT_ID => 'integer',
-        self::USER_ID    => 'integer',
-        self::VIEWED_AT  => 'datetime',
+        self::USER_ID => 'integer',
+        self::VIEWED_AT => 'datetime',
     ];
 
     /* -------------------------------------------------------------------------- */

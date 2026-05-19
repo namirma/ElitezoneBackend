@@ -8,18 +8,27 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Factory extends Model
 {
-    const
-        ID = 'id',
-        NAME = 'name',
-        SLUG = 'slug',
-        DESCRIPTION = 'description',
-        LOGO = 'logo',
-        API_KEY = 'api_key',
-        API_URL = 'api_url',
-        IS_ACTIVE = 'is_active',
-        CREATED_AT = 'created_at',
-        UPDATED_AT = 'updated_at',
-        SUPPLIER_USER_ID = 'supplier_user_id';
+    const ID = 'id';
+
+    const NAME = 'name';
+
+    const SLUG = 'slug';
+
+    const DESCRIPTION = 'description';
+
+    const LOGO = 'logo';
+
+    const API_KEY = 'api_key';
+
+    const API_URL = 'api_url';
+
+    const IS_ACTIVE = 'is_active';
+
+    const CREATED_AT = 'created_at';
+
+    const UPDATED_AT = 'updated_at';
+
+    const SUPPLIER_USER_ID = 'supplier_user_id';
 
     protected $fillable = [
         self::NAME,

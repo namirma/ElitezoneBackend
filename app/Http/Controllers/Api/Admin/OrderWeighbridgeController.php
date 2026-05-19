@@ -32,13 +32,13 @@ class OrderWeighbridgeController extends Controller
             $message = match ($result['status']) {
                 'surplus' => __('weighbridge.messages.surplus', ['amount' => $diffAmount]),
                 'deficit' => __('weighbridge.messages.deficit', ['amount' => $diffAmount]),
-                default   => __('weighbridge.messages.equal'),
+                default => __('weighbridge.messages.equal'),
             };
 
             return success([
-                'order'          => new OrderResource($order->fresh()),
+                'order' => new OrderResource($order->fresh()),
                 'weight_details' => $result,
-                'message'        => $message
+                'message' => $message,
             ]);
 
         } catch (Exception $e) {

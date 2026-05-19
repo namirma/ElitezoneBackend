@@ -7,18 +7,22 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class StockSubscription extends Model
 {
-    public const
-        ID = 'id',
-        USER_ID = 'user_id',
-        PRODUCT_VARIANT_ID = 'product_variant_id',
-        NOTIFIED_AT = 'notified_at',
-        CREATED_AT = 'created_at',
-        UPDATED_AT = 'updated_at';
+    public const ID = 'id';
+
+    public const USER_ID = 'user_id';
+
+    public const PRODUCT_VARIANT_ID = 'product_variant_id';
+
+    public const NOTIFIED_AT = 'notified_at';
+
+    public const CREATED_AT = 'created_at';
+
+    public const UPDATED_AT = 'updated_at';
 
     protected $fillable = [
         self::USER_ID,
         self::PRODUCT_VARIANT_ID,
-        self::NOTIFIED_AT
+        self::NOTIFIED_AT,
     ];
 
     public function user(): BelongsTo

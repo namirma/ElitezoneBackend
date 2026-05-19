@@ -6,54 +6,72 @@ use App\Models\Concerns\HasOrders;
 use App\Models\Concerns\HasWallet;
 use App\Traits\PersianDate;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Laravel\Sanctum\HasApiTokens;
 use Laratrust\Traits\HasRolesAndPermissions;
-use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
     use HasApiTokens,
         HasFactory,
-        Notifiable,
-        PersianDate,
+        HasOrders,
         HasRolesAndPermissions,
         HasWallet,
-        HasOrders;
+        Notifiable,
+        PersianDate;
 
     // =========================================================================
     //  Constants (Database Columns)
     // =========================================================================
-    public const
-        ID = 'id',
-        TYPE_ID = 'type_id',
-        BADGE_ID = 'badge_id',
-        MOBILE = 'mobile',
-        NATIONAL_CODE = 'national_code',
-        BIRTH_DATE = 'birth_date',
-        SECRET = 'secret',
-        SECRET_EXPIRES_AT = 'secret_expires_at',
-        PASSWORD = 'password',
-        REMEMBER_TOKEN = 'remember_token',
-        CREATED_AT = 'created_at',
-        UPDATED_AT = 'updated_at';
+    public const ID = 'id';
+
+    public const TYPE_ID = 'type_id';
+
+    public const BADGE_ID = 'badge_id';
+
+    public const MOBILE = 'mobile';
+
+    public const NATIONAL_CODE = 'national_code';
+
+    public const BIRTH_DATE = 'birth_date';
+
+    public const SECRET = 'secret';
+
+    public const SECRET_EXPIRES_AT = 'secret_expires_at';
+
+    public const PASSWORD = 'password';
+
+    public const REMEMBER_TOKEN = 'remember_token';
+
+    public const CREATED_AT = 'created_at';
+
+    public const UPDATED_AT = 'updated_at';
 
     // Relation Names
-    public const
-        RELATION_PROFILE = 'profile',
-        RELATION_ENGINEER = 'engineer',
-        RELATION_CONTRACTOR = 'contractor',
-        RELATION_SUPPLIER = 'supplier',
-        RELATION_EMPLOYER = 'employer',
-        RELATION_TYPE = 'type',
-        RELATION_ROLES = 'roles',
-        RELATION_BADGE = 'badge',
-        RELATION_EDUIX_RECORDS = 'eduixRecords',
-        RELATION_JOB_EXPERIENCES = 'jobExperiences';
+    public const RELATION_PROFILE = 'profile';
+
+    public const RELATION_ENGINEER = 'engineer';
+
+    public const RELATION_CONTRACTOR = 'contractor';
+
+    public const RELATION_SUPPLIER = 'supplier';
+
+    public const RELATION_EMPLOYER = 'employer';
+
+    public const RELATION_TYPE = 'type';
+
+    public const RELATION_ROLES = 'roles';
+
+    public const RELATION_BADGE = 'badge';
+
+    public const RELATION_EDUIX_RECORDS = 'eduixRecords';
+
+    public const RELATION_JOB_EXPERIENCES = 'jobExperiences';
 
     // =========================================================================
     //  Configurations
@@ -89,11 +107,13 @@ class User extends Authenticatable
     public function getFullNameAttribute(): string
     {
         $profile = $this->profile;
-        if (!$profile || empty($profile->name) && empty($profile->family)) {
+        if (! $profile || empty($profile->name) && empty($profile->family)) {
             return 'کاربر ناشناس';
         }
+
         return trim("{$profile->name} {$profile->family}");
     }
+
     public function profile(): HasOne
     {
         return $this->hasOne(UserProfile::class);
@@ -118,6 +138,7 @@ class User extends Authenticatable
     {
         return $this->hasOne(Wallet::class);
     }
+
     public function employer(): HasOne
     {
         return $this->hasOne(EmployerProfile::class);
@@ -203,7 +224,6 @@ class User extends Authenticatable
             ->withPivot(['accepted_at', 'ip_address', 'user_agent'])
             ->withTimestamps();
     }
-
 
     public function hasAcceptedLatestAgreement(string $slug): bool
     {

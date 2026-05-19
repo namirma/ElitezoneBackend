@@ -32,13 +32,13 @@ class StoreAddressRequest extends FormRequest
     public function messages(): array
     {
         return [
-            Address::POSTAL_ADDRESS . '.required' => __('address.postal_address.required'),
-            Address::RECEIVER_NAME . '.required' => __('address.receiver_name.required'),
-            Address::RECEIVER_MOBILE . '.required' => __('address.receiver_mobile.required'),
-            Address::RECEIVER_MOBILE . '.regex' => __('address.receiver_mobile.regex'),
-            Address::POSTAL_CODE . '.regex' => __('address.postal_code.regex'),
-            Address::PROVINCE_ID . '.exists' => __('address.province_id.exists'),
-            Address::CITY_ID . '.exists' => __('address.city_id.exists'),
+            Address::POSTAL_ADDRESS.'.required' => __('address.postal_address.required'),
+            Address::RECEIVER_NAME.'.required' => __('address.receiver_name.required'),
+            Address::RECEIVER_MOBILE.'.required' => __('address.receiver_mobile.required'),
+            Address::RECEIVER_MOBILE.'.regex' => __('address.receiver_mobile.regex'),
+            Address::POSTAL_CODE.'.regex' => __('address.postal_code.regex'),
+            Address::PROVINCE_ID.'.exists' => __('address.province_id.exists'),
+            Address::CITY_ID.'.exists' => __('address.city_id.exists'),
         ];
     }
 }

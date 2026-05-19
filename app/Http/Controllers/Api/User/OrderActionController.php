@@ -9,10 +9,10 @@ use App\Http\Resources\OrderResource;
 use App\Models\Order;
 use App\Models\User;
 use App\Models\WalletTransaction;
+use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Exception;
 
 class OrderActionController extends Controller
 {
@@ -29,10 +29,10 @@ class OrderActionController extends Controller
             Order::STATUS_PROCESSING,
             Order::STATUS_PREPARING,
             Order::STATUS_WEIGHBRIDGE_DONE,
-            Order::STATUS_WAYBILL_ISSUED
+            Order::STATUS_WAYBILL_ISSUED,
         ];
 
-        if (!in_array($order->status, $cancelableStatuses)) {
+        if (! in_array($order->status, $cancelableStatuses)) {
             return error(__('orders.cannot_cancel'), [], 400);
         }
 
@@ -72,19 +72,19 @@ class OrderActionController extends Controller
 
             if ($feeAmount && $consultantUserId) {
                 $consultant = User::find($consultantUserId);
-                if (!$consultant) {
+                if (! $consultant) {
                     Log::error("User not found for consultant fee hold. Order: {$order->id}");
-                    throw new Exception("Consultant user not found.");
+                    throw new Exception('Consultant user not found.');
                 }
 
                 $wallet = $consultant->wallet ?: $consultant->wallet()->create([]);
 
                 $wallet->transactions()->create([
-                        'order_id'    => $order->id,
-                        'amount'      => $feeAmount,
-                        'type'        => WalletTransaction::TYPE_FEE_HOLD,
-                        'status'      => WalletTransaction::STATUS_PENDING,
-                        'description' => "سهم رزرو شده برای سفارش " . $order->order_number,
+                    'order_id' => $order->id,
+                    'amount' => $feeAmount,
+                    'type' => WalletTransaction::TYPE_FEE_HOLD,
+                    'status' => WalletTransaction::STATUS_PENDING,
+                    'description' => 'سهم رزرو شده برای سفارش '.$order->order_number,
                 ]);
                 $wallet->increment('balance_hold', $feeAmount);
             }

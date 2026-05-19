@@ -10,14 +10,19 @@ class ProductImage extends Model
 {
     use HasFactory;
 
-    public const
-        ID = 'id',
-        PRODUCT_ID = 'product_id',
-        IMAGE_PATH = 'image_path',
-        IS_PRIMARY = 'is_primary',
-        SORT_ORDER = 'sort_order',
-        CREATED_AT = 'created_at',
-        UPDATED_AT = 'updated_at';
+    public const ID = 'id';
+
+    public const PRODUCT_ID = 'product_id';
+
+    public const IMAGE_PATH = 'image_path';
+
+    public const IS_PRIMARY = 'is_primary';
+
+    public const SORT_ORDER = 'sort_order';
+
+    public const CREATED_AT = 'created_at';
+
+    public const UPDATED_AT = 'updated_at';
 
     protected $fillable = [
         self::PRODUCT_ID,

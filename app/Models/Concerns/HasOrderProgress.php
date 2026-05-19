@@ -18,7 +18,7 @@ trait HasOrderProgress
         $isCancelled = in_array($status, [Order::STATUS_CANCELLED, Order::STATUS_FAILED]);
 
         // تشخیص پرداخت یکجا (زیر 195 میلیون یا پرداخت کل مبلغ در رزرو)
-        $isFullPayment = (float)$this->final_amount < 195000000 || $this->payment_to_reserve == $this->final_amount;
+        $isFullPayment = (float) $this->final_amount < 195000000 || $this->payment_to_reserve == $this->final_amount;
 
         // ترجمه وضعیت فعلی برای نمایش در هدر کارت
         $transKey = "orders.status.{$status}";
@@ -30,30 +30,30 @@ trait HasOrderProgress
         $stepsBlueprint = [];
 
         // اگر پرداخت کامل نیست، دایره "رزرو" اضافه می‌شود
-        if (!$isFullPayment) {
+        if (! $isFullPayment) {
             $stepsBlueprint[] = [
-                'title'    => 'سفارش رزرو شد',
+                'title' => 'سفارش رزرو شد',
                 'triggers' => [Order::STATUS_PENDING, Order::STATUS_RESERVED, Order::STATUS_RESERVED_EXTENDED],
             ];
         }
 
         $stepsBlueprint[] = [
-            'title'    => 'سفارش ثبت شد',
+            'title' => 'سفارش ثبت شد',
             'triggers' => [Order::STATUS_PROCESSING, Order::STATUS_PREPARING],
         ];
 
         $stepsBlueprint[] = [
-            'title'    => 'مقدار(وزن) تایید شد',
+            'title' => 'مقدار(وزن) تایید شد',
             'triggers' => [Order::STATUS_WEIGHBRIDGE_DONE, Order::STATUS_PENDING_SURPLUS_PAYMENT],
         ];
 
         $stepsBlueprint[] = [
-            'title'    => 'سفارش حمل شد',
+            'title' => 'سفارش حمل شد',
             'triggers' => [Order::STATUS_WAYBILL_ISSUED, Order::STATUS_SHIPPED],
         ];
 
         $stepsBlueprint[] = [
-            'title'    => 'سفارش تکمیل شد',
+            'title' => 'سفارش تکمیل شد',
             'triggers' => [Order::STATUS_DELIVERED, Order::STATUS_COMPLETED],
         ];
 
@@ -61,7 +61,7 @@ trait HasOrderProgress
         // ۲. پیدا کردن مرحله فعلی (Current Node)
         // ---------------------------------------------------------
         $currentIndex = 0;
-        if (!$isCancelled) {
+        if (! $isCancelled) {
             foreach ($stepsBlueprint as $index => $blueprint) {
                 if (in_array($status, $blueprint['triggers'])) {
                     $currentIndex = $index;
@@ -107,7 +107,7 @@ trait HasOrderProgress
                         $actions[] = ['label' => 'پرداخت فاکتور', 'link' => "/checkout/payment/{$id}", 'type' => 'primary'];
                     }
                     if ($state === 'cancelled') {
-                        $actions[] = ['label' => 'خرید مجدد', 'link' => "/products", 'type' => 'primary'];
+                        $actions[] = ['label' => 'خرید مجدد', 'link' => '/products', 'type' => 'primary'];
                     }
                 }
 
@@ -126,17 +126,17 @@ trait HasOrderProgress
             }
 
             $steps[] = [
-                'step'    => $stepCounter++,
-                'title'   => $blueprint['title'],
-                'state'   => $state,
-                'actions' => $actions
+                'step' => $stepCounter++,
+                'title' => $blueprint['title'],
+                'state' => $state,
+                'actions' => $actions,
             ];
         }
 
         return [
-            'is_cancelled'         => $isCancelled,
+            'is_cancelled' => $isCancelled,
             'current_status_label' => $currentStatusLabel,
-            'steps'                => $steps,
+            'steps' => $steps,
         ];
     }
 }

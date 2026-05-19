@@ -2,8 +2,8 @@
 
 namespace App\Observers;
 
-use App\Models\ProductPrice;
 use App\Models\PriceHistory;
+use App\Models\ProductPrice;
 use Illuminate\Support\Facades\Auth;
 
 class ProductPriceObserver
@@ -32,14 +32,14 @@ class ProductPriceObserver
     protected function logHistory(ProductPrice $productPrice): void
     {
         PriceHistory::create([
-            'product_variant_id'  => $productPrice->product_variant_id,
-            'product_price_id'    => $productPrice->id,
-            'factory_id'          => $productPrice->factory_id,
+            'product_variant_id' => $productPrice->product_variant_id,
+            'product_price_id' => $productPrice->id,
+            'factory_id' => $productPrice->factory_id,
             'factory_location_id' => $productPrice->factory_location_id,
-            'general_price'       => $productPrice->general_price,
-            'special_price'       => $productPrice->special_price,
-            'golden_figure'       => $productPrice->golden_figure,
-            'user_id'             => Auth::id(),
+            'general_price' => $productPrice->general_price,
+            'special_price' => $productPrice->special_price,
+            'golden_figure' => $productPrice->golden_figure,
+            'user_id' => Auth::id(),
         ]);
     }
 }

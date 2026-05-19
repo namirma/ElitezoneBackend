@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('customer_type_id')->constrained()->onDelete('cascade');
             $table->foreignId('badge_id')->nullable()->constrained()->onDelete('set null');
-            $table->decimal('adjustment_amount', 20, 0); 
+            $table->decimal('adjustment_amount', 20, 0);
             $table->boolean('is_active')->default(true);
             $table->timestamps();
 

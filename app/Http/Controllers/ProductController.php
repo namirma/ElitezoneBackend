@@ -15,7 +15,6 @@ use App\Http\Resources\OfferResource;
 use App\Http\Resources\ProductDetailResource;
 use App\Http\Resources\ProductResource;
 use App\Http\Resources\ProductVariantResource;
-use App\Models\Attribute;
 use App\Models\AttributeType;
 use App\Models\Badge;
 use App\Models\Cart;
@@ -38,7 +37,6 @@ class ProductController extends Controller
         private readonly ProductRepositoryInterface $productRepo,
         private readonly PriceCalculationService $priceService
     ) {}
-
 
     public function index(ProductIndexRequest $request, FilterProductsAction $action): JsonResponse
     {
@@ -66,7 +64,7 @@ class ProductController extends Controller
             'videos',
             'orderUnits',
             'offers',
-            'aggregateLimitOrderUnit'
+            'aggregateLimitOrderUnit',
         ]);
 
         // ۲. ثبت بازدید و داده‌های تحلیلی (Async)
@@ -83,7 +81,7 @@ class ProductController extends Controller
 
         // ۴. بازگشت پاسخ
         return success([
-            'product'   => new ProductDetailResource($product),
+            'product' => new ProductDetailResource($product),
             'factories' => FactoryResource::collection($factories),
         ], 'global.received_successfully');
     }
@@ -129,7 +127,7 @@ class ProductController extends Controller
                                 $q4->where('product_id', $product->id);
                             })->distinct(); // جلوگیری از مقادیر تکراری
                         }]);
-                }
+                },
             ])
             ->get();
 
@@ -138,6 +136,7 @@ class ProductController extends Controller
             'global.received_successfully'
         );
     }
+
     /**
      * محاسبه قیمت دقیق یک واریانت خاص
      */
@@ -146,12 +145,12 @@ class ProductController extends Controller
         $data = $request->validated();
         $this->handleCartSession($request);
 
-        $variant  = ProductVariant::findOrFail($data['variant_id']);
-        $factory  = Factory::findOrFail($data['factory_id']);
+        $variant = ProductVariant::findOrFail($data['variant_id']);
+        $factory = Factory::findOrFail($data['factory_id']);
         $location = FactoryLocation::findOrFail($data['location_id']);
 
-        $activeCode   = $this->resolveActiveCode();
-        $badge        = $this->getCartBadge();
+        $activeCode = $this->resolveActiveCode();
+        $badge = $this->getCartBadge();
         $customerType = CustomerType::where(CustomerType::CODE, $activeCode)->first();
 
         $priceDto = $this->priceService->calculatePrice(
@@ -161,7 +160,7 @@ class ProductController extends Controller
             customerType: $customerType,
             badge: $badge,
             filterCategoryIds: null,
-            withVAT: (bool)($data['with_vat'] ?? false),
+            withVAT: (bool) ($data['with_vat'] ?? false),
             filterCategoryCode: $activeCode
         );
 
@@ -174,16 +173,16 @@ class ProductController extends Controller
     public function calculateOrderPrice(OrderPriceRequest $request, CalculateOrderEstimateAction $action): JsonResponse
     {
         $activeCode = $this->resolveActiveCode();
-        $badge      = !empty($request->badge_id) ? Badge::find($request->badge_id) : $this->getCartBadge();
+        $badge = ! empty($request->badge_id) ? Badge::find($request->badge_id) : $this->getCartBadge();
 
         $result = $action->execute($request->validated(), $activeCode, $badge);
 
         return success([
-            'unit_price'         => (string)$result['unit_dto']->finalPrice,
+            'unit_price' => (string) $result['unit_dto']->finalPrice,
             'unit_price_details' => $result['unit_dto']->toArray(),
-            'order_details'      => $result['order_details'],
-            'offers'             => OfferResource::collection($result['offers']),
-            ...$result['financials']
+            'order_details' => $result['order_details'],
+            'offers' => OfferResource::collection($result['offers']),
+            ...$result['financials'],
         ], 'global.received_successfully');
     }
 
@@ -193,7 +192,10 @@ class ProductController extends Controller
 
     private function resolveActiveCode(): string
     {
-        if (!Auth::check()) return 'employer_without_consultant';
+        if (! Auth::check()) {
+            return 'employer_without_consultant';
+        }
+
         return $this->roleResolver->resolve(Auth::user());
     }
 
@@ -203,7 +205,7 @@ class ProductController extends Controller
             Cart::firstOrCreate([Cart::USER_ID => Auth::id()]);
         } else {
             $sessionId = $request->cookie('cart_session_id', Str::uuid()->toString());
-            if (!Cart::where(Cart::SESSION_ID, $sessionId)->exists()) {
+            if (! Cart::where(Cart::SESSION_ID, $sessionId)->exists()) {
                 $cart = Cart::create([Cart::SESSION_ID => $sessionId, Cart::USER_ID => null]);
                 cookie()->queue('cart_session_id', $cart->session_id, 60 * 24 * 30);
             }
@@ -217,6 +219,7 @@ class ProductController extends Controller
             : Cart::where(Cart::SESSION_ID, request()->cookie('cart_session_id'));
 
         $cart = $query->first();
+
         return $cart && $cart->badge_id ? Badge::find($cart->badge_id) : null;
     }
 }

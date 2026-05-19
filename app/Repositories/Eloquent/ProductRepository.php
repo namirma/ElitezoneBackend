@@ -27,9 +27,9 @@ class ProductRepository implements ProductRepositoryInterface
             })
 
             // فیلتر دسته‌بندی
-            ->when($filters->categoryId, fn($q) => $q->where('category_id', $filters->categoryId))
+            ->when($filters->categoryId, fn ($q) => $q->where('category_id', $filters->categoryId))
 
-            ->when(!empty($filters->filterCategories), function (Builder $q) use ($filters) {
+            ->when(! empty($filters->filterCategories), function (Builder $q) use ($filters) {
                 $q->whereHas('variants.variantAttributes', function ($sub) use ($filters) {
                     $sub->whereIn(ProductVariantAttribute::ATTRIBUTE_ID, $filters->filterCategories);
                 });
@@ -53,7 +53,7 @@ class ProductRepository implements ProductRepositoryInterface
 
     public function getProductFactories(int $productId): Collection
     {
-        return Factory::whereHas('prices.productVariant', fn($q) => $q->where('product_id', $productId))
+        return Factory::whereHas('prices.productVariant', fn ($q) => $q->where('product_id', $productId))
             ->with('locations')
             ->get();
     }

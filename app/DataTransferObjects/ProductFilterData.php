@@ -36,13 +36,13 @@ class ProductFilterData
     public function toArray(): array
     {
         return array_filter([
-            'search'            => $this->search,
-            'category'          => $this->categoryId,
-            'sort'              => $this->sortKey,
-            'role_code'         => $this->roleCode,
+            'search' => $this->search,
+            'category' => $this->categoryId,
+            'sort' => $this->sortKey,
+            'role_code' => $this->roleCode,
             'filter_categories' => $this->filterCategories,
-            'availability'      => $this->availability,
-            'with_vat'          => $this->withVat,
-        ], fn($value) => !is_null($value));
+            'availability' => $this->availability,
+            'with_vat' => $this->withVat,
+        ], fn ($value) => ! is_null($value));
     }
 }

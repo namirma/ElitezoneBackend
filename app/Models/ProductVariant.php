@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -13,25 +12,41 @@ class ProductVariant extends Model
 {
     use HasFactory;
 
-    const
-        ID = 'id',
-        PRODUCT_ID = 'product_id',
-        NAME = 'name',
-        SKU = 'sku',
-        IS_ACTIVE = 'is_active',
-        STOCK_QUANTITY = 'stock_quantity',
-        VIEW_COUNT = 'view_count',
-        IMAGES = 'images',
-        VIDEOS = 'videos',
-        MIN_ORDER_VALUE = 'min_order_value',
-        MAX_ORDER_VALUE = 'max_order_value',
-        LIMIT_ORDER_UNIT_ID = 'limit_order_unit_id',
-        DISCOUNT_VALUE = 'discount_value',
-        DISCOUNT_TYPE = 'discount_type',
-        DISCOUNT_START_DATE = 'discount_start_date',
-        DISCOUNT_END_DATE = 'discount_end_date',
-        CREATED_AT = 'created_at',
-        UPDATED_AT = 'updated_at';
+    const ID = 'id';
+
+    const PRODUCT_ID = 'product_id';
+
+    const NAME = 'name';
+
+    const SKU = 'sku';
+
+    const IS_ACTIVE = 'is_active';
+
+    const STOCK_QUANTITY = 'stock_quantity';
+
+    const VIEW_COUNT = 'view_count';
+
+    const IMAGES = 'images';
+
+    const VIDEOS = 'videos';
+
+    const MIN_ORDER_VALUE = 'min_order_value';
+
+    const MAX_ORDER_VALUE = 'max_order_value';
+
+    const LIMIT_ORDER_UNIT_ID = 'limit_order_unit_id';
+
+    const DISCOUNT_VALUE = 'discount_value';
+
+    const DISCOUNT_TYPE = 'discount_type';
+
+    const DISCOUNT_START_DATE = 'discount_start_date';
+
+    const DISCOUNT_END_DATE = 'discount_end_date';
+
+    const CREATED_AT = 'created_at';
+
+    const UPDATED_AT = 'updated_at';
 
     protected $fillable = [
         self::PRODUCT_ID,
@@ -78,12 +93,11 @@ class ProductVariant extends Model
 
         $now = now();
 
-
-        if (!empty($this->discount_start_date) && $now->lt($this->discount_start_date)) {
+        if (! empty($this->discount_start_date) && $now->lt($this->discount_start_date)) {
             return null;
         }
 
-        if (!empty($this->discount_end_date) && $now->gt($this->discount_end_date)) {
+        if (! empty($this->discount_end_date) && $now->gt($this->discount_end_date)) {
             return null;
         }
 
@@ -92,6 +106,7 @@ class ProductVariant extends Model
             'value' => $this->discount_value,
         ];
     }
+
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class, self::PRODUCT_ID);
@@ -102,7 +117,7 @@ class ProductVariant extends Model
         return $this->belongsTo(OrderUnit::class, self::LIMIT_ORDER_UNIT_ID);
     }
 
-    public function variantAttributes() 
+    public function variantAttributes()
     {
         return $this->belongsToMany(Attribute::class, 'product_variant_attributes')
             ->using(ProductVariantAttribute::class)

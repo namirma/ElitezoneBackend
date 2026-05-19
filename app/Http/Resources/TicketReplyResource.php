@@ -2,7 +2,6 @@
 
 namespace App\Http\Resources;
 
-use App\Http\Resources\TicketFileResource;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -20,7 +19,7 @@ class TicketReplyResource extends JsonResource
             'message' => $this->message,
             'user' => $this->user,
             'admin' => $this->admin,
-//            'attachments' => TicketFileResource::collection($this->files),
+            //            'attachments' => TicketFileResource::collection($this->files),
             'created_at' => $this->created_at?->toDateTimeString(),
         ];
     }

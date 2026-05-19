@@ -7,10 +7,14 @@ use App\Http\Middleware\Authenticate;
 use App\Http\Middleware\CanSeeTicket;
 use App\Http\Middleware\Cors;
 use App\Http\Middleware\EncryptCookies;
+use App\Http\Middleware\EnsureRoleIsSelected;
+use App\Http\Middleware\EnsureUserIsExpert;
+use App\Http\Middleware\Idempotency;
 use App\Http\Middleware\PreventRequestsDuringMaintenance;
 use App\Http\Middleware\RedirectIfAuthenticated;
 use App\Http\Middleware\Sanitizer;
 use App\Http\Middleware\SecurityHeaders;
+use App\Http\Middleware\TrackDashboardUsage;
 use App\Http\Middleware\TrimStrings;
 use App\Http\Middleware\TrustProxies;
 use App\Http\Middleware\ValidateSignature;
@@ -32,10 +36,6 @@ use Illuminate\Session\Middleware\AuthenticateSession;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
-use App\Http\Middleware\EnsureRoleIsSelected;
-use App\Http\Middleware\EnsureUserIsExpert;
-use App\Http\Middleware\Idempotency;
-use App\Http\Middleware\TrackDashboardUsage;
 
 class Kernel extends HttpKernel
 {
@@ -75,7 +75,7 @@ class Kernel extends HttpKernel
 
         'api' => [
             EnsureFrontendRequestsAreStateful::class,
-            ThrottleRequests::class . ':api',
+            ThrottleRequests::class.':api',
             SubstituteBindings::class,
             //EnsureRoleIsSelected::class,
         ],

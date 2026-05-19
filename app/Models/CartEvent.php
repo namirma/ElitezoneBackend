@@ -9,19 +9,25 @@ class CartEvent extends Model
 {
     use HasFactory;
 
-    const
-        CART_ID             = 'cart_id',
-        USER_ID             = 'user_id',
-        SESSION_ID          = 'session_id',
-        PRODUCT_VARIANT_ID  = 'product_variant_id',
-        ACTION_TYPE         = 'action_type',
-        QUANTITY_CHANGE     = 'quantity_change',
-        UNIT_PRICE_SNAPSHOT = 'unit_price_snapshot';
+    const CART_ID = 'cart_id';
 
-    public const
-        ACTION_ADD       = 'add',
-        ACTION_REMOVE    = 'remove',
-        ACTION_UPDATE    = 'update';
+    const USER_ID = 'user_id';
+
+    const SESSION_ID = 'session_id';
+
+    const PRODUCT_VARIANT_ID = 'product_variant_id';
+
+    const ACTION_TYPE = 'action_type';
+
+    const QUANTITY_CHANGE = 'quantity_change';
+
+    const UNIT_PRICE_SNAPSHOT = 'unit_price_snapshot';
+
+    public const ACTION_ADD = 'add';
+
+    public const ACTION_REMOVE = 'remove';
+
+    public const ACTION_UPDATE = 'update';
 
     protected $fillable = [
         self::CART_ID,

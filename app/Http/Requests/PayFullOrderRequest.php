@@ -22,7 +22,7 @@ class PayFullOrderRequest extends FormRequest
     {
         return [
             'gateway.required' => __('orders.gateway_required'),
-            'gateway.in'       => __('orders.gateway_invalid'),
+            'gateway.in' => __('orders.gateway_invalid'),
         ];
     }
 }

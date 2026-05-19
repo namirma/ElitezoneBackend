@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Http\Resources\FactoryLocationResource;
 use App\Http\Resources\FactoryResource;
 use App\Models\Factory;
@@ -15,19 +14,20 @@ class FactoryController extends Controller
         $factories = Factory::active()
             ->when(
                 $request->filled('search'),
-                fn ($q) => $q->where(Factory::NAME, 'like', '%' . $request->search . '%')
+                fn ($q) => $q->where(Factory::NAME, 'like', '%'.$request->search.'%')
             )
             ->get();
 
-        return success(FactoryResource::collection($factories)); 
+        return success(FactoryResource::collection($factories));
     }
+
     public function listLocations(int $factoryId)
     {
         $factory = Factory::active()
             ->with(['locations' => fn ($q) => $q->active()])
             ->find($factoryId);
 
-        if (!$factory) {
+        if (! $factory) {
             return error('global.notFound', [], 404);
         }
 

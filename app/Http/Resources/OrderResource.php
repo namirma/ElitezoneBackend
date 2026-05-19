@@ -2,9 +2,9 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Order;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use App\Models\Order;
 use Illuminate\Support\Facades\Auth;
 
 class OrderResource extends JsonResource
@@ -19,15 +19,15 @@ class OrderResource extends JsonResource
         $progress = $this->dashboard_progress ?? [];
 
         $statusKey = $this->{Order::STATUS};
-        $statusLabel = __('orders.status.' . $statusKey);
+        $statusLabel = __('orders.status.'.$statusKey);
         // Fallback for translation
-        if ($statusLabel === 'orders.status.' . $statusKey) {
+        if ($statusLabel === 'orders.status.'.$statusKey) {
             $statusLabel = $progress['current_status_label'] ?? __('orders.status.unknown');
         }
 
         $paymentStatusKey = $this->{Order::PAYMENT_STATUS};
-        $paymentStatusLabel = __('orders.status.' . $paymentStatusKey);
-        if ($paymentStatusLabel === 'orders.status.' . $paymentStatusKey) {
+        $paymentStatusLabel = __('orders.status.'.$paymentStatusKey);
+        if ($paymentStatusLabel === 'orders.status.'.$paymentStatusKey) {
             $paymentStatusLabel = $paymentStatusKey;
         }
 
@@ -40,12 +40,12 @@ class OrderResource extends JsonResource
         $invoiceUrl = route('api.user.orders.invoice', ['order' => $this->id, 'type' => 'initial']);
 
         return [
-            Order::ID           => $this->id,
+            Order::ID => $this->id,
             Order::ORDER_NUMBER => $this->{Order::ORDER_NUMBER},
 
             // --- Status Info ---
             'status_info' => [
-                'key'   => $statusKey,
+                'key' => $statusKey,
                 'label' => $statusLabel,
                 'color' => match ($statusKey) {
                     Order::STATUS_DELIVERED => 'success',
@@ -61,7 +61,7 @@ class OrderResource extends JsonResource
                 $val = (float) ($item->weight ?? 0);
                 $unit = 'کیلوگرم';
 
-                if ($val <= 0 && !empty($item->quantity_details)) {
+                if ($val <= 0 && ! empty($item->quantity_details)) {
                     $details = is_string($item->quantity_details)
                         ? json_decode($item->quantity_details, true)
                         : $item->quantity_details;
@@ -77,78 +77,78 @@ class OrderResource extends JsonResource
                 }
 
                 return [
-                    'name'     => $item->product_variant->name ?? $item->product_name ?? 'محصول',
+                    'name' => $item->product_variant->name ?? $item->product_name ?? 'محصول',
                     'quantity' => (string) $val,
-                    'unit'     => $unit,
+                    'unit' => $unit,
                 ];
             }),
 
             // --- Buyer Info ---
-            'buyer' => $this->when(!$isSupplier, function () {
+            'buyer' => $this->when(! $isSupplier, function () {
                 return [
-                    'id'        => $this->{Order::PLACER_USER_ID},
+                    'id' => $this->{Order::PLACER_USER_ID},
                     'full_name' => $this->placer->full_name ?? 'کاربر ناشناس',
-                    'mobile'    => $this->placer->mobile ?? null,
+                    'mobile' => $this->placer->mobile ?? null,
                 ];
             }),
 
             // --- Beneficiary Info ---
             'beneficiary' => $this->when($this->{Order::BENEFICIARY_USER_ID}, function () {
                 return [
-                    'id'          => $this->{Order::BENEFICIARY_USER_ID},
-                    'full_name'   => $this->beneficiary->full_name ?? 'نامشخص',
+                    'id' => $this->{Order::BENEFICIARY_USER_ID},
+                    'full_name' => $this->beneficiary->full_name ?? 'نامشخص',
                     'national_id' => $this->beneficiary->profile->national_code ?? null,
-                    'mobile'      => $this->beneficiary->mobile ?? null,
+                    'mobile' => $this->beneficiary->mobile ?? null,
                 ];
             }, null),
 
             // --- Financial Info ---
             'financial' => [
-                Order::FINAL_AMOUNT    => (string) $this->{Order::FINAL_AMOUNT},
-                Order::PAYMENT_STATUS  => $paymentStatusKey,
-                'payment_status_text'  => $paymentStatusLabel,
-                'is_paid'              => $paymentStatusKey === Order::PAYMENT_PAID,
-                'paid_at_p'            => $this->{Order::PAID_AT} ? verta($this->{Order::PAID_AT})->format('Y/m/d H:i') : null,
+                Order::FINAL_AMOUNT => (string) $this->{Order::FINAL_AMOUNT},
+                Order::PAYMENT_STATUS => $paymentStatusKey,
+                'payment_status_text' => $paymentStatusLabel,
+                'is_paid' => $paymentStatusKey === Order::PAYMENT_PAID,
+                'paid_at_p' => $this->{Order::PAID_AT} ? verta($this->{Order::PAID_AT})->format('Y/m/d H:i') : null,
 
-                $this->mergeWhen(!$isSupplier, [
-                    Order::SUBTOTAL        => (string) $this->{Order::SUBTOTAL},
+                $this->mergeWhen(! $isSupplier, [
+                    Order::SUBTOTAL => (string) $this->{Order::SUBTOTAL},
                     Order::DISCOUNT_AMOUNT => (string) $this->{Order::DISCOUNT_AMOUNT},
-                    Order::VAT_AMOUNT      => (string) $this->{Order::VAT_AMOUNT},
-                    Order::SHIPPING_COST   => (string) $this->{Order::SHIPPING_COST},
+                    Order::VAT_AMOUNT => (string) $this->{Order::VAT_AMOUNT},
+                    Order::SHIPPING_COST => (string) $this->{Order::SHIPPING_COST},
                 ]),
             ],
 
             // --- Address ---
             'delivery_address' => $this->when($this->address, function () {
                 return [
-                    'province'     => $this->address->province->name ?? '',
-                    'city'         => $this->address->city->name ?? '',
+                    'province' => $this->address->province->name ?? '',
+                    'city' => $this->address->city->name ?? '',
                     'full_address' => $this->address->address,
-                    'postal_code'  => $this->address->postal_code,
-                    'receiver'     => $this->address->receiver_name,
-                    'phone'        => $this->address->receiver_mobile,
+                    'postal_code' => $this->address->postal_code,
+                    'receiver' => $this->address->receiver_name,
+                    'phone' => $this->address->receiver_mobile,
                 ];
             }),
 
             // --- Actions ---
             'actions' => [
                 'download_invoice' => [
-                    'label'  => __('orders.actions.download_initial_invoice'),
-                    'url'    => $invoiceUrl,
+                    'label' => __('orders.actions.download_initial_invoice'),
+                    'url' => $invoiceUrl,
                     'method' => 'GET',
                     'active' => true,
                 ],
                 'payment' => [
-                    'label'  => __('orders.actions.final_invoice_settlement'),
-                    'url'    => $paymentUrl,
+                    'label' => __('orders.actions.final_invoice_settlement'),
+                    'url' => $paymentUrl,
                     'method' => 'POST',
-                    'active' => !is_null($paymentUrl),
-                ]
+                    'active' => ! is_null($paymentUrl),
+                ],
             ],
 
             // --- Dates ---
             'dates' => [
-                'created_at_p'    => $this->created_at_p,
+                'created_at_p' => $this->created_at_p,
                 'created_at_diff' => $this->created_at_diff,
             ],
         ];

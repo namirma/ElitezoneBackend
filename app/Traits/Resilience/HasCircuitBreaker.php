@@ -2,10 +2,10 @@
 
 namespace App\Traits\Resilience;
 
+use Exception;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Throwable;
-use Exception;
 
 trait HasCircuitBreaker
 {
@@ -13,15 +13,18 @@ trait HasCircuitBreaker
      * تنظیمات پیش‌فرض (قابل بازنویسی در کلاسی که از این تریت استفاده می‌کند)
      */
     protected int $cbThreshold = 5;      // تعداد خطای مجاز
+
     protected int $cbTimeout = 60;       // مدت زمان قطع بودن سرویس (ثانیه)
+
     protected int $cbFailureTtl = 300;   // بازه زمانی شمارش خطاها (ثانیه)
 
     /**
      * اجرای کد محافظت شده
      *
-     * @param string $serviceKey نام یکتا برای سرویس (مثلاً 'sms_provider')
-     * @param callable $callback تابعی که باید اجرا شود
+     * @param  string  $serviceKey  نام یکتا برای سرویس (مثلاً 'sms_provider')
+     * @param  callable  $callback  تابعی که باید اجرا شود
      * @return mixed
+     *
      * @throws Throwable
      */
     protected function executeProtected(string $serviceKey, callable $callback)
@@ -67,7 +70,7 @@ trait HasCircuitBreaker
         $failKey = "circuit:{$serviceKey}:failures";
         $openKey = "circuit:{$serviceKey}:open";
 
-        if (!Cache::add($failKey, 1, $this->cbFailureTtl)) {
+        if (! Cache::add($failKey, 1, $this->cbFailureTtl)) {
             // اگر کلید بود، یکی اضافه کن
             Cache::increment($failKey);
         }

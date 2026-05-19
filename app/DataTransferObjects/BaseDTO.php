@@ -10,17 +10,21 @@ class BaseDTO
 {
     public function __construct(array $args = [])
     {
-        foreach ($args as $key => $arg)
-            if ($this->isConstantDefinedAndNotEmpty('fields') && in_array($key, static::fields))
+        foreach ($args as $key => $arg) {
+            if ($this->isConstantDefinedAndNotEmpty('fields') && in_array($key, static::fields)) {
                 $this->{$key} = $arg;
+            }
+        }
     }
 
     public function toArray(): array
     {
         $data = [];
-        foreach (static::fields as $field)
-            if (property_exists($this, $field))
+        foreach (static::fields as $field) {
+            if (property_exists($this, $field)) {
                 $data[$field] = $this->{$field};
+            }
+        }
 
         return $data;
     }
@@ -36,7 +40,8 @@ class BaseDTO
         while ($class) {
             if (defined("$class::$constantName")) {
                 $constantValue = constant("$class::$constantName");
-                return !empty($constantValue);
+
+                return ! empty($constantValue);
             }
             $class = get_parent_class($class);
         }
@@ -48,10 +53,10 @@ class BaseDTO
     {
         $validator = Validator::make($request->all(), $rules);
 
-        if ($validator->fails())
+        if ($validator->fails()) {
             throw new ValidationException($validator);
+        }
 
         return new static($request->only(static::fields));
     }
-
 }

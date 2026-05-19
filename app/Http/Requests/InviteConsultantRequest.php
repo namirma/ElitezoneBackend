@@ -23,8 +23,8 @@ class InviteConsultantRequest extends FormRequest
     public function messages(): array
     {
         return [
-            User::MOBILE . '.required_without' => __('auth.mobile_or_national_code_required'),
-            User::NATIONAL_CODE . '.required_without' => __('auth.mobile_or_national_code_required'),
+            User::MOBILE.'.required_without' => __('auth.mobile_or_national_code_required'),
+            User::NATIONAL_CODE.'.required_without' => __('auth.mobile_or_national_code_required'),
         ];
     }
 }

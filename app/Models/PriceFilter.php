@@ -11,17 +11,25 @@ class PriceFilter extends Model
 {
     use HasFactory;
 
-    public const
-        ID                    = 'id',
-        PRICE_FILTER_TYPE_ID  = 'price_filter_type_id',
-        NAME                  = 'name',
-        CODE                  = 'code',
-        AMOUNT                = 'amount',
-        IS_PERCENTAGE         = 'is_percentage',
-        IS_ACTIVE             = 'is_active',
-        SORT_ORDER            = 'sort_order',
-        CREATED_AT            = 'created_at',
-        UPDATED_AT            = 'updated_at';
+    public const ID = 'id';
+
+    public const PRICE_FILTER_TYPE_ID = 'price_filter_type_id';
+
+    public const NAME = 'name';
+
+    public const CODE = 'code';
+
+    public const AMOUNT = 'amount';
+
+    public const IS_PERCENTAGE = 'is_percentage';
+
+    public const IS_ACTIVE = 'is_active';
+
+    public const SORT_ORDER = 'sort_order';
+
+    public const CREATED_AT = 'created_at';
+
+    public const UPDATED_AT = 'updated_at';
 
     protected $fillable = [
         self::PRICE_FILTER_TYPE_ID,
@@ -35,7 +43,7 @@ class PriceFilter extends Model
 
     protected $casts = [
         self::IS_PERCENTAGE => 'boolean',
-        self::IS_ACTIVE     => 'boolean',
+        self::IS_ACTIVE => 'boolean',
     ];
 
     public function filterType(): BelongsTo
@@ -51,7 +59,7 @@ class PriceFilter extends Model
             self::ID,
             'price_filter_category_id'
         )
-        ->withTimestamps();
+            ->withTimestamps();
     }
 
     public function scopeActive($query)
@@ -64,6 +72,7 @@ class PriceFilter extends Model
         if ($this->is_percentage) {
             return $baseAmount * ($this->amount / 100);
         }
+
         return $this->amount;
     }
 }

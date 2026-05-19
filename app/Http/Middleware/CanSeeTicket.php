@@ -13,14 +13,14 @@ class CanSeeTicket
      *
      * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
      */
-
     public function handle(Request $request, Closure $next): Response
     {
         $ticket = $request->route('ticket');
 
         //TODO should implement admin access too
-        if ($ticket->user_id != $request->user()->id)
+        if ($ticket->user_id != $request->user()->id) {
             return response()->json(['message' => 'Forbidden'], 403);
+        }
 
         return $next($request);
     }

@@ -5,16 +5,15 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UserSearchRequest;
 use App\Http\Resources\OrderResource;
-use App\Http\Resources\UserProfileResource;
 use App\Http\Resources\UserResource;
 use App\Http\Resources\WalletTransactionResource;
 use App\Models\Order;
 use App\Models\User;
 use App\Models\UserProfile;
 use App\Models\WalletTransaction;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Database\Eloquent\Builder;
 
 class AdminUserController extends Controller
 {
@@ -24,22 +23,18 @@ class AdminUserController extends Controller
             ->with(['profile', 'roles'])
             ->when(
                 $request->filled('role'),
-                fn(Builder $q) =>
-                $q->whereHas('roles', fn($r) => $r->where('name', $request->role))
+                fn (Builder $q) => $q->whereHas('roles', fn ($r) => $r->where('name', $request->role))
             )
             ->when(
                 $request->filled('search'),
-                fn(Builder $q) =>
-                $q->where(
-                    fn($sub) =>
-                    $sub->where('mobile', 'like', "%{$request->search}%")
-                        ->orWhereHas('profile', fn($p) => $p->where('name', 'like', "%{$request->search}%"))
+                fn (Builder $q) => $q->where(
+                    fn ($sub) => $sub->where('mobile', 'like', "%{$request->search}%")
+                        ->orWhereHas('profile', fn ($p) => $p->where('name', 'like', "%{$request->search}%"))
                 )
             )
             ->when(
                 $request->has('is_active'),
-                fn(Builder $q) =>
-                $q->where('is_active', $request->boolean('is_active'))
+                fn (Builder $q) => $q->where('is_active', $request->boolean('is_active'))
             )
             ->latest()
             ->paginate($request->get('per_page', 20));
@@ -50,6 +45,7 @@ class AdminUserController extends Controller
     public function show(User $user): JsonResponse
     {
         $user->load(['engineer', 'employer', 'supplier', 'contractor', 'wallet', 'profile']);
+
         return success(new UserResource($user));
     }
 
@@ -72,6 +68,7 @@ class AdminUserController extends Controller
 
         return success(null, __('admin.users.note_added'));
     }
+
     public function getUserProfileForBackOffice(Request $request): JsonResponse
     {
         $request->validate([
@@ -106,7 +103,7 @@ class AdminUserController extends Controller
             })
             ->first();
 
-        if (!$user) {
+        if (! $user) {
             return error(
                 'کاربری با این مشخصات یافت نشد.',
                 ['keyword' => $keyword],
@@ -141,8 +138,9 @@ class AdminUserController extends Controller
     {
         $wallet = $user->wallet;
 
-        if (!$wallet) {
+        if (! $wallet) {
             $empty = WalletTransaction::query()->whereNull(WalletTransaction::ID)->paginate($request->get('per_page', 10));
+
             return success(WalletTransactionResource::collection($empty));
         }
         $transactions = WalletTransaction::query()

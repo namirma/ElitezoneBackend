@@ -11,6 +11,7 @@ class UpdateAddressRequest extends FormRequest
     {
         // اطمینان از اینکه کاربر مالک آدرس است
         $address = $this->route('address');
+
         return $address && $address->{Address::USER_ID} === $this->user()->id;
     }
 
@@ -33,9 +34,9 @@ class UpdateAddressRequest extends FormRequest
     public function messages(): array
     {
         return [
-            Address::POSTAL_ADDRESS . '.required' => __('global.address.postal_address.required'),
-            Address::RECEIVER_NAME . '.required' => __('global.address.receiver_name.required'),
-            Address::RECEIVER_MOBILE . '.required' => __('global.address.receiver_mobile.required'),
+            Address::POSTAL_ADDRESS.'.required' => __('global.address.postal_address.required'),
+            Address::RECEIVER_NAME.'.required' => __('global.address.receiver_name.required'),
+            Address::RECEIVER_MOBILE.'.required' => __('global.address.receiver_mobile.required'),
         ];
     }
 }

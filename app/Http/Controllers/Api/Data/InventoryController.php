@@ -5,14 +5,13 @@ namespace App\Http\Controllers\Api\Data;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\InventoryPredictionResource;
 use App\Models\InventoryPrediction;
-use Illuminate\Http\JsonResponse;
 
 class InventoryController extends Controller
 {
     /**
      * گزارش کالاهای نیازمند شارژ (Restock Report)
      */
-   public function predictions()
+    public function predictions()
     {
         // ۱. دریافت داده‌ها از دیتابیس
         $data = InventoryPrediction::with('variant.product')

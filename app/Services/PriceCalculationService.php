@@ -20,14 +20,14 @@ use Illuminate\Support\Facades\Cache;
 class PriceCalculationService
 {
     public function calculatePrice(
-        ProductVariant  $variant,
-        Factory         $factory,
+        ProductVariant $variant,
+        Factory $factory,
         FactoryLocation $location,
-        ?CustomerType   $customerType = null,
-        ?Badge          $badge = null,
-        ?array          $filterCategoryIds = null,
-        bool            $withVAT = false,
-        ?string         $filterCategoryCode = null
+        ?CustomerType $customerType = null,
+        ?Badge $badge = null,
+        ?array $filterCategoryIds = null,
+        bool $withVAT = false,
+        ?string $filterCategoryCode = null
     ): PriceCalculationResult {
         $context = new PricingContext(
             variant: $variant,
@@ -50,7 +50,7 @@ class PriceCalculationService
         return app(Pipeline::class)
             ->send($context)
             ->through($pipes)
-            ->then(fn(PricingContext $context) => $context->toDto());
+            ->then(fn (PricingContext $context) => $context->toDto());
     }
 
     /**
@@ -63,32 +63,34 @@ class PriceCalculationService
         $totalWeight = 0.0;
         $breakdown = [];
 
-        $orderUnits = Cache::remember('pricing:order_units_collection', 86400, fn() => OrderUnit::all()->keyBy(OrderUnit::ID));
+        $orderUnits = Cache::remember('pricing:order_units_collection', 86400, fn () => OrderUnit::all()->keyBy(OrderUnit::ID));
 
         foreach ($quantities as $unitIdToString => $qty) {
             $unitId = (int) $unitIdToString;
             $currentQty = (float) $qty;
             $unit = $orderUnits->get($unitId);
 
-            if (!$unit || $currentQty <= 0) continue;
+            if (! $unit || $currentQty <= 0) {
+                continue;
+            }
 
             $weightPerUnit = (float) $unit->amount;
             $totalCount += $currentQty;
             $totalWeight += $currentQty * $weightPerUnit;
 
             $breakdown[] = [
-                'unit_id'      => $unit->id,
-                'unit_name'    => $unit->name,
-                'quantity'     => (string) $currentQty,
-                'unit_weight'  => (string) $weightPerUnit,
+                'unit_id' => $unit->id,
+                'unit_name' => $unit->name,
+                'quantity' => (string) $currentQty,
+                'unit_weight' => (string) $weightPerUnit,
                 'total_weight' => (string) ($currentQty * $weightPerUnit),
             ];
         }
 
         return [
-            'total_count'  => $totalCount,
+            'total_count' => $totalCount,
             'total_weight' => $totalWeight,
-            'breakdown'    => $breakdown,
+            'breakdown' => $breakdown,
         ];
     }
 }

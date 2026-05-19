@@ -5,7 +5,6 @@ namespace App\Http\Requests;
 use App\Models\SupplierProfile;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Facades\Auth;
 
 /**
  * @property mixed $activity_category_id

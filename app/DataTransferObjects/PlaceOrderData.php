@@ -38,12 +38,12 @@ class PlaceOrderData
     {
         return [
             'beneficiary_user_id' => $this->beneficiaryUserId,
-            'address_id'          => $this->addressId,
-            'shipping_method_id'  => $this->shippingMethodId,
-            'description'         => $this->description,
-            'coupon_code'         => $this->couponCode,
-            'ip_address'          => $this->ipAddress,
-            'user_agent'          => $this->userAgent,
+            'address_id' => $this->addressId,
+            'shipping_method_id' => $this->shippingMethodId,
+            'description' => $this->description,
+            'coupon_code' => $this->couponCode,
+            'ip_address' => $this->ipAddress,
+            'user_agent' => $this->userAgent,
         ];
     }
 }

@@ -36,7 +36,7 @@ return new class extends Migration
                 'commission_rate', 'owner_discount_rate', 'saze_share_rate',
                 'consultant_share_rate', 'vat_rate',
                 'payment_of_owner', 'payment_to_supplier', 'payment_to_consultant',
-                'payment_to_reserve', 'validation_of_reserve'
+                'payment_to_reserve', 'validation_of_reserve',
             ]);
         });
     }

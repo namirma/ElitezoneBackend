@@ -11,14 +11,19 @@ class OrderUnit extends Model
 {
     use HasFactory;
 
-    const
-        ID = 'id',
-        NAME = 'name',
-        CODE = 'code',
-        UNIT = 'unit',
-        AMOUNT = 'amount',
-        CREATED_AT = 'created_at',
-        UPDATED_AT = 'updated_at';
+    const ID = 'id';
+
+    const NAME = 'name';
+
+    const CODE = 'code';
+
+    const UNIT = 'unit';
+
+    const AMOUNT = 'amount';
+
+    const CREATED_AT = 'created_at';
+
+    const UPDATED_AT = 'updated_at';
 
     protected $fillable = [
         self::NAME,

@@ -2,21 +2,23 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
-use App\Services\Gateways\GatewayFactory;
-use App\Models\Product;
-use App\Models\ProductVariant;
-use App\Models\ProductCategory;
 use App\Models\Attribute;
 use App\Models\AttributeType;
 use App\Models\AttributeValue;
+use App\Models\Product;
+use App\Models\ProductCategory;
+use App\Models\ProductVariant;
+use App\Services\Gateways\GatewayFactory;
+use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+
 use function count;
 use function strlen;
 
 class SyncKavirProducts extends Command
 {
     protected $signature = 'products:sync-kavir';
+
     protected $description = 'Sync products from Kavir Steel with Attribute Values';
 
     public function handle()
@@ -28,12 +30,14 @@ class SyncKavirProducts extends Command
             $response = $gateway->getRequest('/api/v1/wh/AllStoreCodes');
             $items = $response['items'] ?? [];
         } catch (\Exception $e) {
-            $this->error('API Error: ' . $e->getMessage());
+            $this->error('API Error: '.$e->getMessage());
+
             return;
         }
 
         if (empty($items)) {
             $this->warn('No items found.');
+
             return;
         }
 
@@ -54,7 +58,7 @@ class SyncKavirProducts extends Command
                     'name' => 'میلگرد فولاد کویر',
                     'description' => 'محصولات دریافتی از فولاد کویر کاشان',
                     'sku' => 'KAVIR-MAIN',
-                    'is_active' => true
+                    'is_active' => true,
                 ]
             );
 
@@ -68,11 +72,11 @@ class SyncKavirProducts extends Command
             // 3. ایجاد "ویژگی‌ها" (Attributes)
             // مدل Attribute ستون‌های name و display_name دارد
             $attrs = [
-                'type'    => $this->getOrCreateAttribute($techType->id, 'type', 'نوع محصول'),
+                'type' => $this->getOrCreateAttribute($techType->id, 'type', 'نوع محصول'),
                 'surface' => $this->getOrCreateAttribute($techType->id, 'surface', 'نوع سطح'),
-                'grade'   => $this->getOrCreateAttribute($techType->id, 'grade', 'گرید'),
-                'size'    => $this->getOrCreateAttribute($techType->id, 'size', 'سایز (قطر)'),
-                'length'  => $this->getOrCreateAttribute($techType->id, 'length', 'طول شاخه'),
+                'grade' => $this->getOrCreateAttribute($techType->id, 'grade', 'گرید'),
+                'size' => $this->getOrCreateAttribute($techType->id, 'size', 'سایز (قطر)'),
+                'length' => $this->getOrCreateAttribute($techType->id, 'length', 'طول شاخه'),
                 'packing' => $this->getOrCreateAttribute($techType->id, 'packing', 'بسته‌بندی'),
             ];
 
@@ -80,7 +84,9 @@ class SyncKavirProducts extends Command
 
             foreach ($items as $item) {
                 $code = (string) $item['Store_Code'];
-                if (strlen($code) < 14) continue;
+                if (strlen($code) < 14) {
+                    continue;
+                }
 
                 // --- استخراج مقادیر ---
 
@@ -98,7 +104,7 @@ class SyncKavirProducts extends Command
 
                 // طول
                 $lenCm = (int) substr($code, 8, 4);
-                $lenVal = ($lenCm == 0) ? '-' : ($lenCm / 100) . ' متر';
+                $lenVal = ($lenCm == 0) ? '-' : ($lenCm / 100).' متر';
 
                 // بسته‌بندی
                 $packCode = substr($code, 13, 1);

@@ -2,10 +2,10 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Attribute;
+use App\Models\ProductVariantAttribute;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use App\Models\ProductVariantAttribute;
-use App\Models\Attribute;
 
 class ProductVariantAttributeResource extends JsonResource
 {
@@ -13,7 +13,7 @@ class ProductVariantAttributeResource extends JsonResource
     {
         $pivot = $this->pivot ?? $this->details ?? null;
 
-        if (!$pivot) {
+        if (! $pivot) {
             return [];
         }
         $attributeValue = $pivot->attributeValue;
@@ -23,19 +23,19 @@ class ProductVariantAttributeResource extends JsonResource
 
         return [
             ProductVariantAttribute::PRODUCT_VARIANT_ID => $pivot->product_variant_id,
-            ProductVariantAttribute::ATTRIBUTE_ID       => $pivot->attribute_id,
+            ProductVariantAttribute::ATTRIBUTE_ID => $pivot->attribute_id,
 
-            'name'  => $this->name,
+            'name' => $this->name,
             'label' => $this->display_name,
 
             // نمایش مقدار (مثلاً "14")
-            'value'         => $attributeValue ? $attributeValue->value : ($this->display_name ?? $this->name),
+            'value' => $attributeValue ? $attributeValue->value : ($this->display_name ?? $this->name),
             'display_value' => $attributeValue ? $attributeValue->display_value : ($this->display_name ?? $this->name),
 
             'attribute_type' => [
-                Attribute::ATTRIBUTE_TYPE_ID   => $this->attributeType->id,
-                Attribute::NAME                => $this->attributeType->name,
-                Attribute::DISPLAY_NAME        => $this->attributeType->display_name, // اینجا "مشخصات فنی" است
+                Attribute::ATTRIBUTE_TYPE_ID => $this->attributeType->id,
+                Attribute::NAME => $this->attributeType->name,
+                Attribute::DISPLAY_NAME => $this->attributeType->display_name, // اینجا "مشخصات فنی" است
             ],
         ];
     }

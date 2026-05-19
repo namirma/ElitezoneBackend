@@ -16,24 +16,37 @@ class EngineerProfile extends Model
 {
     use HasFactory, PersianDate;
 
-    const
-        ID = 'id',
-        USER_ID = 'user_id',
-        ENGINEER_MEMBER = 'engineer_member',
-        LICENSE_MEMBER = 'license_number',
-        SUPERVISION_BASE = 'supervision_base',
-        DESIGN_BASE = 'design_base',
-        MEMBER_NUMBER = 'member_number',
-        FIELDS_OF_STUDY = 'fields_of_study',
-        STUDENT = 'student',
-        UNIVERSITY_NAME = 'university_name',
-        PROVINCE_ID = 'province_id',
-        ACTIVITY_PROVINCE_ID = 'activity_province_id',
-        CITY_ID = 'city_id',
-        ACTIVITY_CITY_ID = 'activity_city_id',
-        CREATED_AT = 'created_at',
-        UPDATED_AT = 'updated_at';
+    const ID = 'id';
 
+    const USER_ID = 'user_id';
+
+    const ENGINEER_MEMBER = 'engineer_member';
+
+    const LICENSE_MEMBER = 'license_number';
+
+    const SUPERVISION_BASE = 'supervision_base';
+
+    const DESIGN_BASE = 'design_base';
+
+    const MEMBER_NUMBER = 'member_number';
+
+    const FIELDS_OF_STUDY = 'fields_of_study';
+
+    const STUDENT = 'student';
+
+    const UNIVERSITY_NAME = 'university_name';
+
+    const PROVINCE_ID = 'province_id';
+
+    const ACTIVITY_PROVINCE_ID = 'activity_province_id';
+
+    const CITY_ID = 'city_id';
+
+    const ACTIVITY_CITY_ID = 'activity_city_id';
+
+    const CREATED_AT = 'created_at';
+
+    const UPDATED_AT = 'updated_at';
 
     /**
      * The attributes that are mass assignable.
@@ -55,21 +68,23 @@ class EngineerProfile extends Model
         self::CITY_ID,
         self::ACTIVITY_CITY_ID,
         self::CREATED_AT,
-        self::UPDATED_AT
+        self::UPDATED_AT,
     ];
 
     public function getCreatedAtAttribute()
     {
-        $this->appends[] = "created_at_p";
-        $this->appends[] = "created_at_diff";
-        return $this->attributes["created_at"];
+        $this->appends[] = 'created_at_p';
+        $this->appends[] = 'created_at_diff';
+
+        return $this->attributes['created_at'];
     }
 
     public function getUpdatedAtAttribute()
     {
-        $this->appends[] = "updated_at_p";
-        $this->appends[] = "updated_at_diff";
-        return $this->attributes["updated_at"];
+        $this->appends[] = 'updated_at_p';
+        $this->appends[] = 'updated_at_diff';
+
+        return $this->attributes['updated_at'];
     }
 
     public function user(): BelongsTo

@@ -15,11 +15,11 @@ class PodiumSettlementController extends Controller
     {
         $data = $req->validated();
 
-        $data['wallet']       = $data['wallet'] ?? config('podium.defaults.wallet');
+        $data['wallet'] = $data['wallet'] ?? config('podium.defaults.wallet');
         $data['currencyCode'] = $data['currencyCode'] ?? config('podium.defaults.currency');
 
-        $data['paymentId'] = $data['paymentId'] ?? ('pid-' . now()->format('YmdHis') . '-' . Str::upper(Str::random(4)));
-        $data['uniqueId']  = $data['uniqueId']  ?? ('wd-' . now()->format('YmdHis') . '-' . Str::upper(Str::random(6)));
+        $data['paymentId'] = $data['paymentId'] ?? ('pid-'.now()->format('YmdHis').'-'.Str::upper(Str::random(4)));
+        $data['uniqueId'] = $data['uniqueId'] ?? ('wd-'.now()->format('YmdHis').'-'.Str::upper(Str::random(6)));
 
         $res = $this->podium->singleSettlement($data);
 

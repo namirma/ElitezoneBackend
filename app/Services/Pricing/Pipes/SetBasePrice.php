@@ -10,8 +10,8 @@ class SetBasePrice implements PricingPipe
 {
     public function handle(PricingContext $context, Closure $next)
     {
-        $variantId  = $context->variant->id;
-        $factoryId  = $context->factory->id;
+        $variantId = $context->variant->id;
+        $factoryId = $context->factory->id;
         $locationId = $context->location->id;
 
         $cacheKey = "price_v{$variantId}_f{$factoryId}_l{$locationId}";
@@ -30,6 +30,7 @@ class SetBasePrice implements PricingPipe
                     'special' => (float) $priceModel->special_price,
                 ];
             }
+
             return ['general' => 0.0, 'special' => 0.0];
         };
 

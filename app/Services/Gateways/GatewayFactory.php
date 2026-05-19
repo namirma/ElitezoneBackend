@@ -9,16 +9,18 @@ class GatewayFactory
 {
     public static function make(string $serviceName): GatewayInterface
     {
-        $config = Config::get('services.' . $serviceName);
+        $config = Config::get('services.'.$serviceName);
 
         //TODO errors should handle better in development
-        if (!$config || !isset($config['class']))
+        if (! $config || ! isset($config['class'])) {
             throw new \Exception('something went wrong');
+        }
 
         $class = $config['class'];
 
-        if (!class_exists($class))
+        if (! class_exists($class)) {
             throw new \Exception("Class {$class} does not exist.");
+        }
 
         return new $class($config);
     }

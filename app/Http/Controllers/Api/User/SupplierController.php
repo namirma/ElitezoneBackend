@@ -5,13 +5,11 @@ namespace App\Http\Controllers\Api\User;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreSupplierProfileRequest;
 use App\Http\Resources\SupplierCategoryResource;
-use App\Http\Resources\SupplierDataResource;
 use App\Http\Resources\SupplierProfileResource;
 use App\Http\Resources\UserResource;
 use App\Models\SupplierActivityCategory;
 use App\Models\SupplierProfile;
 use App\Models\User;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Auth;
 
 class SupplierController extends Controller
@@ -20,6 +18,7 @@ class SupplierController extends Controller
     {
         return getSupplierCategoryId();
     }
+
     public function index()
     {
         $categories = SupplierActivityCategory::with('children')->get();
@@ -35,6 +34,7 @@ class SupplierController extends Controller
 
         return new SupplierProfileResource($supplier);
     }
+
     public function getCategories()
     {
         return success(SupplierCategoryResource::collection(SupplierActivityCategory::getAll()));
@@ -42,8 +42,9 @@ class SupplierController extends Controller
 
     public function store(StoreSupplierProfileRequest $request)
     {
-        if (!SupplierProfile::where([SupplierProfile::USER_ID => Auth::id()])->exists())
+        if (! SupplierProfile::where([SupplierProfile::USER_ID => Auth::id()])->exists()) {
             ProfileController::removeProfile();
+        }
 
         $supplierProfile = SupplierProfile::updateOrCreate(
             [
@@ -67,6 +68,7 @@ class SupplierController extends Controller
         if ($request->has('activity_category_id')) {
             $supplierProfile->activities()->sync($request->activity_category_id);
         }
+
         return success(new UserResource(User::with('supplier')->find(Auth::id())));
     }
 }

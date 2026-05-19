@@ -12,8 +12,9 @@ class SettlementCalculatorService
     /**
      * متد ۱: محاسبه ریز مبالغ کارمزد برای ثبت اولیه سفارش
      * (استفاده در PlaceOrderAction)
+     *
      * * @param float $subtotal مبلغ کل بدون مالیات
-     * @param string|null $badgeCode کد نشان مشاور
+     * @param  string|null  $badgeCode  کد نشان مشاور
      * @return array [TC, OW, CO, SSG] (مبالغ ریالی)
      */
     public function calculateCommissions(float $subtotal, ?string $badgeCode): array
@@ -34,9 +35,9 @@ class SettlementCalculatorService
         $SSG = $TC_Amount * ($rates['ssg_percent_of_tc'] / 100);
 
         return [
-            'TC'  => round($TC_Amount),
-            'OW'  => round($OW),
-            'CO'  => round($CO),
+            'TC' => round($TC_Amount),
+            'OW' => round($OW),
+            'CO' => round($CO),
             'SSG' => round($SSG),
         ];
     }
@@ -95,7 +96,7 @@ class SettlementCalculatorService
         $shareOfTC = [
             'ow' => 40.0, // همیشه 40 درصد از TC
             'co' => 0.0,
-            'ssg' => 0.0
+            'ssg' => 0.0,
         ];
 
         switch ($badge) {

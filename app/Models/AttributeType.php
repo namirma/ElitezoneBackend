@@ -9,13 +9,17 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class AttributeType extends Model
 {
     // ثابت‌ها
-    public const
-        ID = 'id',
-        NAME = 'name',
-        DISPLAY_NAME = 'display_name',
-        INPUT_TYPE = 'input_type',
-        CREATED_AT = 'created_at',
-        UPDATED_AT = 'updated_at';
+    public const ID = 'id';
+
+    public const NAME = 'name';
+
+    public const DISPLAY_NAME = 'display_name';
+
+    public const INPUT_TYPE = 'input_type';
+
+    public const CREATED_AT = 'created_at';
+
+    public const UPDATED_AT = 'updated_at';
 
     // فیلدهای قابل‌پر شدن
     protected $fillable = [
@@ -41,7 +45,7 @@ class AttributeType extends Model
             ProductCategory::class,
             'category_attributes'
         )
-        ->withPivot('is_required', 'is_filterable', 'sort_order')
-        ->withTimestamps();
+            ->withPivot('is_required', 'is_filterable', 'sort_order')
+            ->withTimestamps();
     }
 }

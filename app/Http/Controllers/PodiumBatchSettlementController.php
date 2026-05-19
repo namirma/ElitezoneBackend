@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-
 use App\Http\Requests\Podium\BatchSettlementRequest;
 use App\Services\PodiumServices\PodiumBatchSettlementService;
 use Illuminate\Http\JsonResponse;

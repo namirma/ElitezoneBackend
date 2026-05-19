@@ -13,18 +13,18 @@ class WalletTransactionResource extends JsonResource
         // ... (بخش ترجمه وضعیت و نوع مثل قبل) ...
         $statusText = match ($this->status) {
             WalletTransaction::STATUS_CONFIRMED => 'تایید شده',
-            WalletTransaction::STATUS_PENDING   => 'در انتظار تایید',
-            WalletTransaction::STATUS_FAILED    => 'ناموفق',
-            WalletTransaction::STATUS_REJECTED  => 'رد شده',
-            default                             => $this->status,
+            WalletTransaction::STATUS_PENDING => 'در انتظار تایید',
+            WalletTransaction::STATUS_FAILED => 'ناموفق',
+            WalletTransaction::STATUS_REJECTED => 'رد شده',
+            default => $this->status,
         };
 
         $typeText = match ($this->type) {
-            WalletTransaction::TYPE_DEPOSIT     => 'افزایش موجودی',
-            WalletTransaction::TYPE_WITHDRAW    => 'برداشت از کیف پول',
-            WalletTransaction::TYPE_FEE_HOLD    => 'سهم رزرو شده',
+            WalletTransaction::TYPE_DEPOSIT => 'افزایش موجودی',
+            WalletTransaction::TYPE_WITHDRAW => 'برداشت از کیف پول',
+            WalletTransaction::TYPE_FEE_HOLD => 'سهم رزرو شده',
             WalletTransaction::TYPE_FEE_RELEASE => 'آزادسازی سهم',
-            default                             => $this->type,
+            default => $this->type,
         };
 
         $meta = $this->meta ?? [];
@@ -39,21 +39,21 @@ class WalletTransactionResource extends JsonResource
         }
 
         return [
-            'id'           => $this->id,
-            'amount'       => (string) $this->amount,
-            'type'         => $typeText,
-            'status'       => $statusText,
-            'description'  => $this->description,
-            'order_id'     => $this->order_id,
+            'id' => $this->id,
+            'amount' => (string) $this->amount,
+            'type' => $typeText,
+            'status' => $statusText,
+            'description' => $this->description,
+            'order_id' => $this->order_id,
             'receipt_data' => [
-                'number'        => $receiptInfo['receipt_number'] ?? null,
-                'bank'          => $receiptInfo['bank_name'] ?? null,
-                'date'          => $receiptInfo['payment_date'] ?? null,
-                'file_name'     => $displayFileName,
+                'number' => $receiptInfo['receipt_number'] ?? null,
+                'bank' => $receiptInfo['bank_name'] ?? null,
+                'date' => $receiptInfo['payment_date'] ?? null,
+                'file_name' => $displayFileName,
                 'download_link' => $downloadLink,
-                'image_url'     => $displayFileName,
+                'image_url' => $displayFileName,
             ],
-            'created_at'   => $this->created_at?->format('Y-m-d H:i:s'),
+            'created_at' => $this->created_at?->format('Y-m-d H:i:s'),
             'created_at_p' => $this->created_at ? verta($this->created_at)->format('Y/m/d') : null,
         ];
     }

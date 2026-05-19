@@ -12,6 +12,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * @property mixed $slug
  * @property mixed $parent_id
  * @property mixed $children
+ *
  * @method relationLoaded(string $string)
  */
 class SupplierCategoryResource extends JsonResource

@@ -18,7 +18,7 @@ class TrackDashboardUsage
 
             $usage = Cache::get($cacheKey, []);
 
-            if (!isset($usage[$module])) {
+            if (! isset($usage[$module])) {
                 $usage[$module] = 0;
             }
             $usage[$module]++;

@@ -14,7 +14,9 @@ class SendTransactionNotification implements ShouldQueue
         $trx = $event->transaction;
         $user = $trx->wallet->user;
 
-        if (!$user) return;
+        if (! $user) {
+            return;
+        }
 
         $amount = number_format($trx->amount);
 
@@ -24,7 +26,6 @@ class SendTransactionNotification implements ShouldQueue
             default => 'تراکنش'
         };
 
-        
         if ($trx->status === WalletTransaction::STATUS_CONFIRMED) {
             $msg = __('sms.transaction_confirmed', ['type' => $typeFa, 'amount' => $amount]);
         } else {

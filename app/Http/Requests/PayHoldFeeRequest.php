@@ -11,6 +11,7 @@ class PayHoldFeeRequest extends FormRequest
     public function authorize(): bool
     {
         $order = $this->route('order');
+
         return $order && $order->{Order::PLACER_USER_ID} === Auth::id();
     }
 

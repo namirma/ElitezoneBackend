@@ -18,11 +18,11 @@ class InventoryIntelligenceService
     {
         // ۱. دریافت تنظیمات از فایل کانفیگ (برای جلوگیری از هاردکد کردن)
         $conf = [
-            'sales_days'      => config('intelligence.inventory.sales_period_days', 30),
-            'search_days'     => config('intelligence.inventory.search_period_days', 7),
+            'sales_days' => config('intelligence.inventory.sales_period_days', 30),
+            'search_days' => config('intelligence.inventory.search_period_days', 7),
             'prediction_days' => config('intelligence.inventory.prediction_days', 7),
             'conversion_rate' => config('intelligence.inventory.search_conversion_rate', 0.1),
-            'high_search'     => config('intelligence.inventory.high_search_threshold', 50),
+            'high_search' => config('intelligence.inventory.high_search_threshold', 50),
         ];
 
         // ۲. پاک کردن تحلیل‌های قدیمی
@@ -64,12 +64,12 @@ class InventoryIntelligenceService
 
         // ه) تعیین اولویت و دلیل (Logic)
         $priority = InventoryPrediction::PRIORITY_LOW;
-        $reason = "وضعیت نرمال";
+        $reason = 'وضعیت نرمال';
 
         // سناریو ۱: بحرانی (موجودی صفر + تقاضا داریم)
         if ($currentStock == 0 && $predictedDemand > 0.5) {
             $priority = InventoryPrediction::PRIORITY_CRITICAL;
-            $reason = "توقف فروش! (موجودی صفر، تقاضای فعال)";
+            $reason = 'توقف فروش! (موجودی صفر، تقاضای فعال)';
         }
         // سناریو ۲: هشدار (موجودی داریم ولی تا هفته بعد تمام می‌شود)
         elseif ($restockNeeded > 0) {
@@ -79,7 +79,7 @@ class InventoryIntelligenceService
         // سناریو ۳: تقاضای نهفته (جستجوی بالا ولی فروش پایین)
         elseif ($searchVolume > $conf['high_search'] && $velocity < 1) {
             $priority = InventoryPrediction::PRIORITY_NORMAL;
-            $reason = "تقاضای نهفته (جستجوی بالا ولی عدم ثبت سفارش)";
+            $reason = 'تقاضای نهفته (جستجوی بالا ولی عدم ثبت سفارش)';
         }
 
         // و) ذخیره در دیتابیس (فقط اگر نکته‌ای وجود دارد)

@@ -24,17 +24,17 @@ class AdminFinancialController extends Controller
             // فیلتر فاکتور اولیه
             ->when($type === 'initial', function (Builder $query) use ($request) {
                 $query->whereNotNull(Order::INITIAL_INVOICE_REF)
-                      ->when($request->filled('payment_status'), fn($q) => $q->where(Order::PAYMENT_STATUS, $request->payment_status));
+                    ->when($request->filled('payment_status'), fn ($q) => $q->where(Order::PAYMENT_STATUS, $request->payment_status));
             })
             // فیلتر فاکتور نهایی
             ->when($type === 'final', function (Builder $query) {
                 $query->whereNotNull(Order::FINAL_INVOICE_REF)
-                      ->whereIn(Order::STATUS, [Order::STATUS_WEIGHBRIDGE_DONE, Order::STATUS_DELIVERED]);
+                    ->whereIn(Order::STATUS, [Order::STATUS_WEIGHBRIDGE_DONE, Order::STATUS_DELIVERED]);
             })
             // فیلتر دستور سفارش
-            ->when($type === 'command', fn(Builder $query) => $query->whereNotNull(Order::ESPADANA_ORDER_REF))
+            ->when($type === 'command', fn (Builder $query) => $query->whereNotNull(Order::ESPADANA_ORDER_REF))
             // فیلتر فاکتور رسمی/مالیاتی
-            ->when($type === 'tax', fn(Builder $query) => $query->whereNotNull(Order::TAX_INVOICE_REF))
+            ->when($type === 'tax', fn (Builder $query) => $query->whereNotNull(Order::TAX_INVOICE_REF))
             ->latest(Order::CREATED_AT)
             ->paginate($request->input('per_page', 20));
 
@@ -63,7 +63,7 @@ class AdminFinancialController extends Controller
         } elseif ($mode === 'payment') {
             $shares->whereIn(WalletTransaction::TYPE, [
                 WalletTransaction::TYPE_FEE_RELEASE,
-                WalletTransaction::TYPE_WITHDRAW
+                WalletTransaction::TYPE_WITHDRAW,
             ]);
         }
 
@@ -81,8 +81,8 @@ class AdminFinancialController extends Controller
 
         $documents = Order::query()
             ->with(['items.supplier.profile', 'items.factory'])
-            ->when($docType === 'waybill', fn(Builder $query) => $query->whereNotNull(Order::WAYBILL_REF))
-            ->when($docType === 'tax', fn(Builder $query) => $query->whereNotNull('payment_receipt_ref'))
+            ->when($docType === 'waybill', fn (Builder $query) => $query->whereNotNull(Order::WAYBILL_REF))
+            ->when($docType === 'tax', fn (Builder $query) => $query->whereNotNull('payment_receipt_ref'))
             ->latest(Order::UPDATED_AT)
             ->paginate($request->input('per_page', 20));
 
@@ -97,7 +97,7 @@ class AdminFinancialController extends Controller
         $documents = WalletTransaction::query()
             ->with('wallet.user.profile')
             ->where(WalletTransaction::TYPE, WalletTransaction::TYPE_WITHDRAW)
-            ->whereNotNull(WalletTransaction::META . '->invoice_path') // چک کردن وجود فایل فاکتور در متادیتا
+            ->whereNotNull(WalletTransaction::META.'->invoice_path') // چک کردن وجود فایل فاکتور در متادیتا
             ->latest(WalletTransaction::CREATED_AT)
             ->paginate($request->input('per_page', 20));
 

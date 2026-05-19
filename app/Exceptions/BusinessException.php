@@ -3,8 +3,8 @@
 namespace App\Exceptions;
 
 use Exception;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class BusinessException extends Exception
 {
@@ -15,6 +15,7 @@ class BusinessException extends Exception
         parent::__construct($message);
         $this->httpCode = $httpCode;
     }
+
     public function render(Request $request): JsonResponse
     {
         return error($this->getMessage(), [], $this->httpCode);

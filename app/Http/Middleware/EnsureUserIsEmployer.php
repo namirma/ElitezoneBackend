@@ -12,7 +12,7 @@ class EnsureUserIsEmployer
     {
         $user = $request->user();
 
-        if (!$user || !$user->hasRole('employer')) {
+        if (! $user || ! $user->hasRole('employer')) {
             return error(__('auth.forbidden'), [], 403);
         }
 

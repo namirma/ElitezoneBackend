@@ -2,15 +2,15 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
-use App\Models\ProductVariant;
 use App\Models\ProductPriceCache;
+use App\Models\ProductVariant;
 use App\Services\PriceCalculationService;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Console\Command;
 
 class CacheProductPrices extends Command
 {
     protected $signature = 'products:cache-prices';
+
     protected $description = 'Calculate and cache product prices for all defined roles';
 
     const ROLES = [
@@ -52,14 +52,14 @@ class CacheProductPrices extends Command
                     }
                 }
 
-                if (!is_null($minPrice)) {
+                if (! is_null($minPrice)) {
                     ProductPriceCache::updateOrCreate(
                         [
                             ProductPriceCache::PRODUCT_VARIANT_ID => $variant->id,
-                            ProductPriceCache::ROLE_CODE          => $roleCode,
+                            ProductPriceCache::ROLE_CODE => $roleCode,
                         ],
                         [
-                            ProductPriceCache::PRODUCT_ID  => $variant->product_id,
+                            ProductPriceCache::PRODUCT_ID => $variant->product_id,
                             ProductPriceCache::FINAL_PRICE => $minPrice,
                         ]
                     );

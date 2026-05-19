@@ -12,9 +12,7 @@ use Illuminate\Http\Request;
 
 class TicketReplyController extends Controller
 {
-    public function __construct(protected TicketReplyService $service)
-    {
-    }
+    public function __construct(protected TicketReplyService $service) {}
 
     public function store(Request $request, Ticket $ticket): JsonResponse
     {
@@ -27,5 +25,4 @@ class TicketReplyController extends Controller
             return error($e->getMessage(), [], $e->getCode());
         }
     }
-
 }

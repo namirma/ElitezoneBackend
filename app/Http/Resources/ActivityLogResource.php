@@ -4,7 +4,6 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use App\Models\UserProfile;
 
 class ActivityLogResource extends JsonResource
 {
@@ -17,16 +16,16 @@ class ActivityLogResource extends JsonResource
         }
 
         return [
-            'id'           => $this->id,
-            'description'  => $this->description,
+            'id' => $this->id,
+            'description' => $this->description,
             'subject_type' => class_basename($this->subject_type),
-            'subject_id'   => $this->subject_id,
-            'causer'       => $causer,
-            'ip_address'   => $this->properties['ip'] ?? null,
-            'changes'      => $this->properties['attributes'] ?? [],
-            'old'          => $this->properties['old'] ?? [],
+            'subject_id' => $this->subject_id,
+            'causer' => $causer,
+            'ip_address' => $this->properties['ip'] ?? null,
+            'changes' => $this->properties['attributes'] ?? [],
+            'old' => $this->properties['old'] ?? [],
             'custom_props' => collect($this->properties)->except(['attributes', 'old', 'ip']),
-            'created_at'   => verta($this->created_at)->format('Y/m/d H:i:s'),
+            'created_at' => verta($this->created_at)->format('Y/m/d H:i:s'),
             'created_at_diff' => $this->created_at->diffForHumans(),
         ];
     }

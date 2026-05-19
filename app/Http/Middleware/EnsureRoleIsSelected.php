@@ -2,11 +2,11 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
+use Carbon\Carbon;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
-use App\Models\User;
-use Carbon\Carbon;
 
 class EnsureRoleIsSelected
 {
@@ -33,26 +33,26 @@ class EnsureRoleIsSelected
 
         $metaData = [
             'role_selected' => false,
-            'hours_passed'  => $hoursPassed,
+            'hours_passed' => $hoursPassed,
             'registration_window_open' => $isWindowOpen,
         ];
 
         if (! $isWindowOpen) {
             return response()->json([
-                'status'  => false,
+                'status' => false,
                 'message' => __('auth.role_selection.timeout'),
-                'code'    => 'REGISTRATION_WINDOW_EXPIRED',
-                'action'  => 'show_limited_attachments',
-                'meta'    => $metaData
+                'code' => 'REGISTRATION_WINDOW_EXPIRED',
+                'action' => 'show_limited_attachments',
+                'meta' => $metaData,
             ], 403);
         }
 
         return response()->json([
-            'status'  => false,
+            'status' => false,
             'message' => __('auth.role_selection.required'),
-            'code'    => 'ROLE_NOT_SELECTED',
-            'action'  => 'force_role_selection',
-            'meta'    => $metaData
+            'code' => 'ROLE_NOT_SELECTED',
+            'action' => 'force_role_selection',
+            'meta' => $metaData,
         ], 403);
     }
 }

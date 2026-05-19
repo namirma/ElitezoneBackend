@@ -17,7 +17,7 @@ class DepartmentSeeder extends Seeder
                 [
                     'id' => 1,
                     'name' => 'بخش مالی',
-                    'slug' => 'accountant'
+                    'slug' => 'accountant',
                 ],
                 [
                     'id' => 2,
@@ -27,8 +27,8 @@ class DepartmentSeeder extends Seeder
                 [
                     'id' => 3,
                     'name' => 'وبسایت',
-                    'slug' => 'website'
-                ]
+                    'slug' => 'website',
+                ],
             ]
         );
     }

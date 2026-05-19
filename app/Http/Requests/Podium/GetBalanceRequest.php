@@ -6,13 +6,16 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class GetBalanceRequest extends FormRequest
 {
-    public function authorize(): bool { return true; }
+    public function authorize(): bool
+    {
+        return true;
+    }
 
     protected function prepareForValidation(): void
     {
-        $guild = $this->filled('guildCode') ? strtoupper(trim((string)$this->input('guildCode'))) : null;
-        
-        if (!empty($guild)) {
+        $guild = $this->filled('guildCode') ? strtoupper(trim((string) $this->input('guildCode'))) : null;
+
+        if (! empty($guild)) {
             $guild = preg_replace('/[^A-Z0-9_.\-]/', '', $guild);
         }
         $this->merge(['guildCode' => $guild]);
@@ -21,7 +24,7 @@ class GetBalanceRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'guildCode' => ['nullable','string','max:64','regex:/^[A-Z0-9_.\-]+$/'],
+            'guildCode' => ['nullable', 'string', 'max:64', 'regex:/^[A-Z0-9_.\-]+$/'],
         ];
     }
 

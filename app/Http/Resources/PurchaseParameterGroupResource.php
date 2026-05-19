@@ -12,10 +12,10 @@ class PurchaseParameterGroupResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            PurchaseParameterGroup::ID         => $this->id,
-            PurchaseParameterGroup::NAME       => $this->name,
-            PurchaseParameterGroup::CODE       => $this->code,
-            PurchaseParameterGroup::ORDER      => $this->order,
+            PurchaseParameterGroup::ID => $this->id,
+            PurchaseParameterGroup::NAME => $this->name,
+            PurchaseParameterGroup::CODE => $this->code,
+            PurchaseParameterGroup::ORDER => $this->order,
             PurchaseParameterGroup::CREATED_AT => $this->created_at
                 ? Carbon::parse($this->created_at)->format('Y-m-d H:i:s')
                 : null,

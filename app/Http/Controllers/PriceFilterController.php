@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Http\Resources\PriceFilterCategoryResource;
 use App\Http\Resources\PriceFilterTypeResource;
 use App\Models\PriceFilterCategory;
@@ -11,7 +10,6 @@ use Illuminate\Http\JsonResponse;
 
 class PriceFilterController extends Controller
 {
-
     public function getCategories(): JsonResponse
     {
         $categories = PriceFilterCategory::active()
@@ -29,7 +27,7 @@ class PriceFilterController extends Controller
     public function getFilterTypes(): JsonResponse
     {
         $types = PriceFilterType::active()
-            ->with(['filters' => fn($q) => $q->active()])
+            ->with(['filters' => fn ($q) => $q->active()])
             ->orderBy('sort_order')
             ->get();
 

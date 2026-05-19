@@ -24,9 +24,6 @@ class WalletFunded
 
     /**
      * Create a new event instance.
-     *
-     * @param User $user
-     * @param WalletTransaction $transaction
      */
     public function __construct(User $user, WalletTransaction $transaction)
     {

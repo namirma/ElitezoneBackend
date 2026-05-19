@@ -22,7 +22,7 @@ class AddWaybillRequest extends FormRequest
     public function messages(): array
     {
         return [
-            Order::WAYBILL_REF . '.required' => __('orders.waybill_required'),
+            Order::WAYBILL_REF.'.required' => __('orders.waybill_required'),
         ];
     }
 }

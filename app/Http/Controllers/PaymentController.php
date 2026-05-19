@@ -3,15 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Events\WalletFunded;
-use App\Http\Controllers\Controller;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use App\Services\Payment\PaymentGatewayFactory;
+use Exception;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Exception;
 
 class PaymentController extends Controller
 {
@@ -44,6 +43,7 @@ class PaymentController extends Controller
         // 3. بررسی وضعیت اولیه بازگشت از بانک
         if (strtolower($status) !== 'ok' && strtolower($status) !== 'success') {
             $this->markAsFailed($transaction);
+
             return $this->redirectClient(false, __('payment.payment_failed'));
         }
 
@@ -69,16 +69,18 @@ class PaymentController extends Controller
 
             // اگر وریفای موفق نبود
             $this->markAsFailed($transaction);
+
             return $this->redirectClient(false, __('payment.verification_failed'));
 
         } catch (Exception $e) {
             // 6. لاگ‌گیری دقیق خطاهای ارتباطی با بانک
-            Log::error("Payment Callback Error: " . $e->getMessage(), [
+            Log::error('Payment Callback Error: '.$e->getMessage(), [
                 'transaction_id' => $transactionId,
-                'authority'      => $authority
+                'authority' => $authority,
             ]);
 
             $this->markAsFailed($transaction);
+
             return $this->redirectClient(false, __('payment.technical_error'));
         }
     }
@@ -118,7 +120,7 @@ class PaymentController extends Controller
 
             $transaction->update([
                 'status' => WalletTransaction::STATUS_CONFIRMED,
-                'meta'   => $meta
+                'meta' => $meta,
             ]);
 
             WalletFunded::dispatch($transaction);
@@ -131,12 +133,12 @@ class PaymentController extends Controller
     private function redirectClient(bool $success, string $message, ?string $refId = null): RedirectResponse
     {
         $baseUrl = config('app.frontend_url', 'http://localhost:3000');
-        $url = $baseUrl . '/payment/result';
+        $url = $baseUrl.'/payment/result';
 
         $queryParams = http_build_query([
-            'status'  => $success ? 'success' : 'failed',
+            'status' => $success ? 'success' : 'failed',
             'message' => $message,
-            'ref_id'  => $refId
+            'ref_id' => $refId,
         ]);
 
         return redirect()->to("{$url}?{$queryParams}");

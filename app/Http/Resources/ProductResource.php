@@ -2,10 +2,10 @@
 
 namespace App\Http\Resources;
 
-use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\JsonResource;
 use App\Models\Product;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
 
 class ProductResource extends JsonResource
 {
@@ -38,6 +38,15 @@ class ProductResource extends JsonResource
                         Product::ID => $image->id,
                         'image_path' => $image->image_path,
                         'is_primary' => (bool) $image->is_primary,
+                    ];
+                });
+            }),
+            'order_unit_limits' => $this->whenLoaded('orderUnits', function () {
+                return $this->orderUnits->map(function ($unit) {
+                    return [
+                        'order_unit_id' => $unit->id,
+                        'unit_name' => $unit->name ?? 'نامشخص',
+                        'max_quantity' => (float) $unit->pivot->max_quantity,
                     ];
                 });
             }),

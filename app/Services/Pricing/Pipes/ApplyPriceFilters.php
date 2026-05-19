@@ -18,9 +18,9 @@ class ApplyPriceFilters implements PricingPipe
             return $next($context);
         }
 
-        $generalFilters = $filters->filter(fn($f) => optional($f->filterType)->apply_on === 'general');
-        $specialFilters = $filters->filter(fn($f) => optional($f->filterType)->apply_on === 'special');
-        $bothSideFilters = $filters->filter(fn($f) => optional($f->filterType)->apply_on === 'both');
+        $generalFilters = $filters->filter(fn ($f) => optional($f->filterType)->apply_on === 'general');
+        $specialFilters = $filters->filter(fn ($f) => optional($f->filterType)->apply_on === 'special');
+        $bothSideFilters = $filters->filter(fn ($f) => optional($f->filterType)->apply_on === 'both');
 
         if ($generalFilters->isNotEmpty()) {
             $context->listPrice = $this->applyFilters($context->listPrice, $generalFilters);
@@ -57,7 +57,6 @@ class ApplyPriceFilters implements PricingPipe
             $amount = (float) $filter->amount;
             $isPercent = (bool) $filter->is_percentage;
 
-
             if ($isPercent) {
 
                 $change = $currentPrice * ($amount / 100);
@@ -78,7 +77,6 @@ class ApplyPriceFilters implements PricingPipe
     {
         $ids = $context->filterCategoryIds;
 
-
         if (empty($ids) && $context->filterCategoryCode) {
             $category = PriceFilterCategory::where('code', $context->filterCategoryCode)
                 ->where('is_active', true)
@@ -95,13 +93,13 @@ class ApplyPriceFilters implements PricingPipe
 
         return PriceFilterCategory::whereIn('id', $ids)
             ->where('is_active', true)
-            ->with(['filters.filterType']) 
+            ->with(['filters.filterType'])
             ->get()
             ->flatMap(function ($category) {
                 return $category->filters;
             })
             // حذف فیلترهای غیرفعال یا ناقص
-            ->filter(fn($f) => $f && $f->is_active && $f->filterType)
+            ->filter(fn ($f) => $f && $f->is_active && $f->filterType)
             ->unique('id')
             ->values();
     }

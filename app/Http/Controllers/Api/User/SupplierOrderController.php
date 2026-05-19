@@ -18,8 +18,9 @@ class SupplierOrderController extends Controller
         if ($order->status === Order::STATUS_PROCESSING) {
             $order->update([
                 Order::STATUS => Order::STATUS_PREPARING,
-                Order::PREPARED_AT => now()
+                Order::PREPARED_AT => now(),
             ]);
+
             return success(new OrderResource($order), __('orders.marked_as_prepared'));
         }
 
@@ -34,8 +35,9 @@ class SupplierOrderController extends Controller
             $order->update([
                 Order::STATUS => Order::STATUS_WAYBILL_ISSUED,
                 Order::WAYBILL_REF => $request->validated('waybill_ref'), // اصلاح نام فیلد بر اساس مدل
-                Order::SHIPPED_AT => now()
+                Order::SHIPPED_AT => now(),
             ]);
+
             return success(new OrderResource($order), __('orders.waybill_added'));
         }
 
@@ -46,7 +48,7 @@ class SupplierOrderController extends Controller
     {
         $this->authorize('manageAsSupplier', $order);
 
-        $order->update([Order::ESPADANA_ORDER_REF => 'ESPADANA_' . $order->id . '_' . time()]);
+        $order->update([Order::ESPADANA_ORDER_REF => 'ESPADANA_'.$order->id.'_'.time()]);
 
         return success(new OrderResource($order), __('orders.espadana_command_issued'));
     }
@@ -56,7 +58,7 @@ class SupplierOrderController extends Controller
         $this->authorize('manageAsSupplier', $order);
 
         $path = $request->file('receipt')->store('supplier_receipts', 'public');
-        $order->update([Order::PAYMENT_RECEIPT_REF => $path]); 
+        $order->update([Order::PAYMENT_RECEIPT_REF => $path]);
 
         return success(new OrderResource($order), __('orders.receipt_attached'));
     }

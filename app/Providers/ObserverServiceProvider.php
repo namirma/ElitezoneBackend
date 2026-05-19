@@ -2,11 +2,11 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\ServiceProvider;
 use App\Models\Order;
 use App\Models\ProductPrice;
 use App\Observers\OrderObserver;
 use App\Observers\ProductPriceObserver;
+use Illuminate\Support\ServiceProvider;
 
 class ObserverServiceProvider extends ServiceProvider
 {

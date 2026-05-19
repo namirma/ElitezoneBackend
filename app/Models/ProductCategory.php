@@ -3,16 +3,21 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ProductCategory extends Model
 {
     const ID = 'id';
+
     const NAME = 'name';
+
     const SLUG = 'slug';
+
     const DESCRIPTION = 'description';
+
     const IMAGE = 'image';
+
     const IS_ACTIVE = 'is_active';
 
     protected $fillable = [

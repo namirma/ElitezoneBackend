@@ -10,25 +10,39 @@ class CartItem extends Model
 {
     use HasFactory;
 
-    public const
-        ID = 'id',
-        CART_ID = 'cart_id',
-        PRODUCT_VARIANT_ID = 'product_variant_id',
-        FACTORY_ID = 'factory_id',
-        FACTORY_LOCATION_ID = 'factory_location_id',
-        SHIPPING_METHOD_ID = 'shipping_method_id',
-        QUANTITIES = 'quantities',
-        WEIGHT = 'weight',
-        QUANTITY = 'quantity',
-        UNIT_NAME = 'unit_name',
+    public const ID = 'id';
 
-        PRICE = 'price',
-        FINAL_PRICE = 'final_price',
-        VAT_AMOUNT = 'vat_amount',
-        TOTAL_WITH_VAT = 'total_with_vat',
-        WITH_VAT = 'with_vat',
-        CREATED_AT = 'created_at',
-        UPDATED_AT = 'updated_at';
+    public const CART_ID = 'cart_id';
+
+    public const PRODUCT_VARIANT_ID = 'product_variant_id';
+
+    public const FACTORY_ID = 'factory_id';
+
+    public const FACTORY_LOCATION_ID = 'factory_location_id';
+
+    public const SHIPPING_METHOD_ID = 'shipping_method_id';
+
+    public const QUANTITIES = 'quantities';
+
+    public const WEIGHT = 'weight';
+
+    public const QUANTITY = 'quantity';
+
+    public const UNIT_NAME = 'unit_name';
+
+    public const PRICE = 'price';
+
+    public const FINAL_PRICE = 'final_price';
+
+    public const VAT_AMOUNT = 'vat_amount';
+
+    public const TOTAL_WITH_VAT = 'total_with_vat';
+
+    public const WITH_VAT = 'with_vat';
+
+    public const CREATED_AT = 'created_at';
+
+    public const UPDATED_AT = 'updated_at';
 
     protected $fillable = [
         self::CART_ID,
@@ -60,9 +74,28 @@ class CartItem extends Model
     ];
 
     // ... (روابط تغییری نکردند) ...
-    public function cart(): BelongsTo { return $this->belongsTo(Cart::class); }
-    public function productVariant(): BelongsTo { return $this->belongsTo(ProductVariant::class); }
-    public function factory(): BelongsTo { return $this->belongsTo(Factory::class); }
-    public function factoryLocation(): BelongsTo { return $this->belongsTo(FactoryLocation::class); }
-    public function shippingMethod(): BelongsTo { return $this->belongsTo(ShippingMethod::class); }
+    public function cart(): BelongsTo
+    {
+        return $this->belongsTo(Cart::class);
+    }
+
+    public function productVariant(): BelongsTo
+    {
+        return $this->belongsTo(ProductVariant::class);
+    }
+
+    public function factory(): BelongsTo
+    {
+        return $this->belongsTo(Factory::class);
+    }
+
+    public function factoryLocation(): BelongsTo
+    {
+        return $this->belongsTo(FactoryLocation::class);
+    }
+
+    public function shippingMethod(): BelongsTo
+    {
+        return $this->belongsTo(ShippingMethod::class);
+    }
 }

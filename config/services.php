@@ -38,34 +38,34 @@ return [
             'x-api-key' => env('TESNA_API_KEY'),
             'Accept' => 'application/json',
             'Authorization' => env('TESNA_BEARER_TOKEN', ''),
-        ]
+        ],
     ],
     'podium_sc2' => [
         'class' => \App\Services\Gateways\PodiumScService::class,
-        'url'   => env('PODIUM_BASE_URL', 'https://api.pod.ir'),
+        'url' => env('PODIUM_BASE_URL', 'https://api.pod.ir'),
         'headers' => [
-            'Authorization' => 'Bearer ' . env('PODIUM_BUSINESS_TOKEN'),
-            'Content-Type'  => 'application/json',
+            'Authorization' => 'Bearer '.env('PODIUM_BUSINESS_TOKEN'),
+            'Content-Type' => 'application/json',
         ],
     ],
     'company_inquiry' => [
-        'sc_api_key'    => env('PODIUM_SC_API_KEY_COMPANY', '3105832128-1e267305e48a45e6a30541a855f6b597.XzIwMjUxMQ'),
+        'sc_api_key' => env('PODIUM_SC_API_KEY_COMPANY', '3105832128-1e267305e48a45e6a30541a855f6b597.XzIwMjUxMQ'),
         'sc_product_id' => env('PODIUM_SC_PRODUCT_ID_COMPANY', 46953),
     ],
 
     'sheba_inquiry' => [
-        'sc_api_key'    => env('PODIUM_SC_API_KEY_SHEBA'),
+        'sc_api_key' => env('PODIUM_SC_API_KEY_SHEBA'),
         'sc_product_id' => env('PODIUM_SC_PRODUCT_ID_SHEBA', 16530455),
     ],
 
     'card_inquiry' => [
-        'sc_api_key'    => env('PODIUM_SC_API_KEY_CARD'),
+        'sc_api_key' => env('PODIUM_SC_API_KEY_CARD'),
         'sc_product_id' => env('PODIUM_SC_PRODUCT_ID_CARD', 16530454),
     ],
 
     'tsms' => [
-        'link'     => env('TSMS_LINK', 'https://tsms.ir/url/tsmshttp.php'),
-        'number'   => env('TSMS_NUMBER'),
+        'link' => env('TSMS_LINK', 'https://tsms.ir/url/tsmshttp.php'),
+        'number' => env('TSMS_NUMBER'),
         'username' => env('TSMS_USERNAME'),
         'password' => env('TSMS_PASSWORD'),
     ],

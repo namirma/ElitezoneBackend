@@ -31,6 +31,13 @@ class OrderRepository implements OrderRepositoryInterface
     public function getUserOrders(int $userId, string $roleType, string $statusGroup, int $perPage = 10): LengthAwarePaginator
     {
         return Order::query()
+            ->with([
+                'items.productVariant',
+                'placer.profile',
+                'beneficiary.profile',
+                'address.city',
+                'address.province',
+            ])
             ->where(function (Builder $query) use ($userId, $roleType) {
                 if ($roleType === 'beneficiary') {
                     $query->where(Order::BENEFICIARY_USER_ID, $userId);
@@ -50,7 +57,7 @@ class OrderRepository implements OrderRepositoryInterface
                     'preparing',
                     'weighbridge_done',
                     'waybill_issued',
-                    'shipped'
+                    'shipped',
                 ]);
             })
             ->when($statusGroup === 'delivered', function (Builder $q) {

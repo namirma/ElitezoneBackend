@@ -14,6 +14,6 @@ class PricingContextData
         /** @var int[] */
         public readonly array $filterCategoryIds,
         public readonly bool $withVat = true,
-        public readonly string $offerBasis = 'weight', 
+        public readonly string $offerBasis = 'weight',
     ) {}
 }

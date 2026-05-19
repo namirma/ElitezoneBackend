@@ -28,5 +28,4 @@ class AttributeValue extends Model
             'product_variant_id'
         );
     }
-    
 }

@@ -1,4 +1,5 @@
 <?php
+
 return [
     'variant_id_required' => '.شناسه محصول الزامی است',
     'variant_not_found' => '.محصول انتخاب شده نامعتبر است',

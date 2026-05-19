@@ -14,14 +14,15 @@ class ToggleStockSubscriptionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'variant_id' => ['required', 'integer', 'exists:product_variants,id']
+            'variant_id' => ['required', 'integer', 'exists:product_variants,id'],
         ];
     }
+
     public function messages(): array
     {
         return [
             'variant_id.required' => __('stock.variant_id_required'),
-            'variant_id.exists'   => __('stock.variant_not_found'),
+            'variant_id.exists' => __('stock.variant_not_found'),
         ];
     }
 }

@@ -22,5 +22,4 @@ trait HasOrders
     {
         return $this->hasMany(Order::class, Order::BENEFICIARY_USER_ID);
     }
-
 }

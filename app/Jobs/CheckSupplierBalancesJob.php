@@ -29,7 +29,7 @@ class CheckSupplierBalancesJob implements ShouldQueue
             try {
                 $this->processTransaction($transaction, $smsService);
             } catch (\Exception $e) {
-                Log::error("Error releasing TRX {$transaction->id}: " . $e->getMessage());
+                Log::error("Error releasing TRX {$transaction->id}: ".$e->getMessage());
             }
         }
     }
@@ -37,28 +37,34 @@ class CheckSupplierBalancesJob implements ShouldQueue
     private function processTransaction(WalletTransaction $transaction, SmsService $smsService): void
     {
         $order = $transaction->order;
-        if (!$order) return;
+        if (! $order) {
+            return;
+        }
 
         $firstItem = $order->items->first();
-        if (!$firstItem) return;
+        if (! $firstItem) {
+            return;
+        }
 
         // پیدا کردن سوپلایر
         $supplier = $firstItem->supplier;
-        if (!$supplier && $firstItem->supplier_user_id) {
+        if (! $supplier && $firstItem->supplier_user_id) {
             $supplier = \App\Models\User::find($firstItem->supplier_user_id);
         }
 
-        if (!$supplier || !$supplier->wallet) return;
+        if (! $supplier || ! $supplier->wallet) {
+            return;
+        }
 
         // شرط اصلی: موجودی مثبت
         if ($supplier->wallet->balance >= 0) {
 
             // *** تغییر مهم: اضافه کردن $order به use ***
-            DB::transaction(function () use ($transaction, $supplier, $smsService, $order) {
+            DB::transaction(function () use ($transaction, $smsService, $order) {
 
                 // آزادسازی تراکنش
                 $transaction->update([
-                    'status' => FinancialCodes::STATUS_AVAILABLE
+                    'status' => FinancialCodes::STATUS_AVAILABLE,
                 ]);
 
                 // آزادسازی پول در کیف پول خریدار
@@ -71,7 +77,7 @@ class CheckSupplierBalancesJob implements ShouldQueue
                 if ($buyer && $buyer->mobile) {
                     $smsService->send(
                         $buyer->mobile,
-                        "مبلغ " . number_format($transaction->amount) . " ریال بابت سفارش {$order->order_number} آزاد شد."
+                        'مبلغ '.number_format($transaction->amount)." ریال بابت سفارش {$order->order_number} آزاد شد."
                     );
                 }
 

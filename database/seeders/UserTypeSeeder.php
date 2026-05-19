@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\UserType;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
@@ -17,7 +16,7 @@ class UserTypeSeeder extends Seeder
         DB::table('user_types')->insert([
             [
                 UserType::NAME => 'مهندس',
-                UserType::SLUG => 'engineer'
+                UserType::SLUG => 'engineer',
             ],
             [
                 UserType::NAME => 'پیمانکار',
@@ -31,7 +30,7 @@ class UserTypeSeeder extends Seeder
                 UserType::NAME => 'کارفرما',
                 UserType::SLUG => 'employer',
             ],
-[
+            [
                 UserType::NAME => 'مشاور فنی',
                 UserType::SLUG => 'expert',
             ],
@@ -40,7 +39,7 @@ class UserTypeSeeder extends Seeder
         DB::table('roles')->insert([
             [
                 'name' => 'engineer',
-                'display_name' => 'مهندس'
+                'display_name' => 'مهندس',
             ],
             [
                 'name' => 'contractor',
@@ -53,7 +52,7 @@ class UserTypeSeeder extends Seeder
             [
                 'name' => 'employer',
                 'display_name' => 'کارفرما',
-            ]
+            ],
         ]);
     }
 }

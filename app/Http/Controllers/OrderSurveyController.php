@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreOrderSurveyRequest;
 use App\Models\Order;
 use Illuminate\Http\JsonResponse;
@@ -31,17 +30,17 @@ class OrderSurveyController extends Controller
             // 4. ذخیره نظرسنجی
             $survey = $order->surveys()->create([
                 'user_id' => $user->id,
-                'rating'  => $validated['rating'],
+                'rating' => $validated['rating'],
                 'comment' => $validated['comment'] ?? null,
             ]);
 
             $order->update([
-                Order::SURVEY_STATUS => Order::SURVEY_COMPLETED
+                Order::SURVEY_STATUS => Order::SURVEY_COMPLETED,
             ]);
 
             return $survey;
         });
-        
+
         return success($survey, __('orders.survey_submitted_successfully'));
     }
 }

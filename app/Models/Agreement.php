@@ -13,15 +13,21 @@ class Agreement extends Model
     // =========================================================================
     //  Constants (Database Columns)
     // =========================================================================
-    public const
-        ID = 'id',
-        SLUG = 'slug',
-        VERSION = 'version',
-        CONTENT = 'content',
-        IS_ACTIVE = 'is_active',
-        IS_MANDATORY = 'is_mandatory',
-        CREATED_AT = 'created_at',
-        UPDATED_AT = 'updated_at';
+    public const ID = 'id';
+
+    public const SLUG = 'slug';
+
+    public const VERSION = 'version';
+
+    public const CONTENT = 'content';
+
+    public const IS_ACTIVE = 'is_active';
+
+    public const IS_MANDATORY = 'is_mandatory';
+
+    public const CREATED_AT = 'created_at';
+
+    public const UPDATED_AT = 'updated_at';
 
     // =========================================================================
     //  Configurations

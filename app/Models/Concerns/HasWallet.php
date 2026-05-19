@@ -37,10 +37,10 @@ trait HasWallet
     public function getWalletOrCreate(): Wallet
     {
         return $this->wallet()->firstOrCreate([
-            'user_id' => $this->id
+            'user_id' => $this->id,
         ], [
             'balance' => 0,
-            'is_active' => true
+            'is_active' => true,
         ]);
     }
 }

@@ -2,17 +2,17 @@
 
 namespace App\Exceptions;
 
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Auth\AuthenticationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Exception\RouteNotFoundException;
-use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Validation\ValidationException;
-use Illuminate\Auth\AuthenticationException;
-use Illuminate\Auth\Access\AuthorizationException;
-use Illuminate\Database\QueryException;
-use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class Handler extends ExceptionHandler
@@ -37,11 +37,12 @@ class Handler extends ExceptionHandler
     {
         if ($request->expectsJson() || $request->is('api/*')) {
             return response()->json([
-                'status'  => false,
+                'status' => false,
                 'message' => 'احراز هویت نشده‌اید. لطفاً وارد حساب کاربری شوید.',
-                'errors'  => [],
+                'errors' => [],
             ], 401);
         }
+
         return redirect()->guest(route('login'));
     }
 
@@ -62,6 +63,7 @@ class Handler extends ExceptionHandler
             if (str_contains($e->getMessage(), 'Route [login] not defined')) {
                 return $this->jsonResponse('احراز هویت نشده‌اید. لطفاً وارد حساب کاربری شوید.', 401);
             }
+
             return $this->jsonResponse('مسیر مورد نظر یافت نشد.', 404);
         }
 
@@ -76,6 +78,7 @@ class Handler extends ExceptionHandler
             if ($e instanceof ModelNotFoundException) {
                 $message = 'رکوردی با مشخصات وارد شده یافت نشد.';
             }
+
             return $this->jsonResponse($message, 404);
         }
 
@@ -103,26 +106,28 @@ class Handler extends ExceptionHandler
         // 7. ولیدیشن (422)
         if ($e instanceof ValidationException) {
             return response()->json([
-                'status'  => false,
+                'status' => false,
                 'message' => 'اطلاعات ارسالی معتبر نیست.', // پیام کلی
-                'errors'  => $e->errors(), // جزئیات فیلدها
+                'errors' => $e->errors(), // جزئیات فیلدها
             ], 422);
         }
 
         // 8. دیتابیس (500)
         if ($e instanceof QueryException) {
             // لاگ کردن خطای اصلی برای برنامه‌نویس
-            Log::error('Database Error: ' . $e->getMessage());
+            Log::error('Database Error: '.$e->getMessage());
 
             // در حالت پروداکشن نباید خطای SQL را به کاربر نشان داد
             $message = config('app.debug') ? $e->getMessage() : 'خطای پایگاه داده رخ داده است.';
+
             return $this->jsonResponse($message, 500);
         }
 
         // 9. سایر خطاهای سرور (500)
-        Log::error('Server Error: ' . $e->getMessage(), ['exception' => $e]);
+        Log::error('Server Error: '.$e->getMessage(), ['exception' => $e]);
 
         $message = config('app.debug') ? $e->getMessage() : 'خطای داخلی سرور رخ داده است.';
+
         return $this->jsonResponse($message, 500);
     }
 
@@ -130,9 +135,9 @@ class Handler extends ExceptionHandler
     private function jsonResponse($message, $code)
     {
         return response()->json([
-            'status'  => false,
+            'status' => false,
             'message' => $message,
-            'errors'  => []
+            'errors' => [],
         ], $code);
     }
 }

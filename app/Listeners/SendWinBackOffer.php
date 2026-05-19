@@ -3,9 +3,9 @@
 namespace App\Listeners;
 
 use App\Events\CustomerSegmentChanged;
-use App\Services\Marketing\CouponService;
-use App\Models\CustomerStat; 
+use App\Models\CustomerStat;
 use App\Models\UserProfile;
+use App\Services\Marketing\CouponService;
 use Illuminate\Support\Facades\Log;
 
 class SendWinBackOffer
@@ -51,7 +51,7 @@ class SendWinBackOffer
         // ۲. پیدا کردن نام کاربر از پروفایل
         // با استفاده از null-safe operator (علامت سوال) چک میکنیم پروفایل وجود داشته باشه
         $firstName = $user->profile?->{UserProfile::NAME} ?? '';
-        $lastName  = $user->profile?->{UserProfile::FAMILY} ?? '';
+        $lastName = $user->profile?->{UserProfile::FAMILY} ?? '';
 
         // اگر اسم و فامیل خالی بود، بنویس "کاربر"
         $fullName = trim("$firstName $lastName") ?: 'کاربر';

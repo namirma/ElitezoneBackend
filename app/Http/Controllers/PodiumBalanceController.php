@@ -13,7 +13,8 @@ class PodiumBalanceController extends Controller
     public function index(GetBalanceRequest $req): JsonResponse
     {
         $res = $this->svc->getBusinessBalances($req->validated('guildCode'));
-        $res = array_filter($res, fn($v) => $v !== null);
+        $res = array_filter($res, fn ($v) => $v !== null);
+
         return response()->json(
             $res,
             200,

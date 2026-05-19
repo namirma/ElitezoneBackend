@@ -17,6 +17,7 @@ class DebugController extends Controller
     public function kavirProducts(): JsonResponse
     {
         $gateway = GatewayFactory::make('tesna');
+
         return response()->json($gateway->getRequest('/api/v1/wh/AllStoreCodes'));
     }
 }

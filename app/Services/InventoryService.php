@@ -26,6 +26,7 @@ class InventoryService
 
     /**
      * کسر موجودی برای اقلام یک سفارش
+     *
      * @throws StockUnavailableException
      */
     public function deductStockForOrder(Order $order): void
@@ -42,10 +43,14 @@ class InventoryService
      */
     public function updateStockAfterWeighbridge(int $variantId, float $weightDifference): void
     {
-        if (abs($weightDifference) < 0.001) return;
+        if (abs($weightDifference) < 0.001) {
+            return;
+        }
 
         $variant = ProductVariant::where('id', $variantId)->lockForUpdate()->first();
-        if (!$variant) return;
+        if (! $variant) {
+            return;
+        }
 
         if ($weightDifference > 0) {
             $variant->decrement('stock_quantity', $weightDifference);
@@ -63,13 +68,13 @@ class InventoryService
             ->lockForUpdate()
             ->first();
 
-        if (!$variant) {
+        if (! $variant) {
             throw new ModelNotFoundException(
                 __('inventory.errors.product_not_found', ['id' => $item->product_variant_id])
             );
         }
 
-        $amountToDeduct = ($item->weight > 0) ? (float)$item->weight : (float)$item->quantity;
+        $amountToDeduct = ($item->weight > 0) ? (float) $item->weight : (float) $item->quantity;
 
         if ($amountToDeduct <= 0) {
             $quantities = is_string($item->quantity_details)
@@ -83,9 +88,9 @@ class InventoryService
         if ($variant->stock_quantity < ($amountToDeduct - 0.0001)) {
             throw new StockUnavailableException(
                 __('inventory.errors.insufficient_stock', [
-                    'name'      => $variant->name,
+                    'name' => $variant->name,
                     'requested' => number_format($amountToDeduct),
-                    'available' => number_format($variant->stock_quantity)
+                    'available' => number_format($variant->stock_quantity),
                 ])
             );
         }
@@ -101,7 +106,7 @@ class InventoryService
         $order->loadMissing(['items.productVariant']);
 
         foreach ($order->items as $item) {
-            $amountRestored = ($item->weight > 0) ? (float)$item->weight : (float)$item->quantity;
+            $amountRestored = ($item->weight > 0) ? (float) $item->weight : (float) $item->quantity;
 
             if ($amountRestored <= 0) {
                 $quantities = is_string($item->quantity_details)
@@ -124,7 +129,9 @@ class InventoryService
      */
     private function calculateBaseQuantity(?array $details, ?ProductVariant $variant = null): float
     {
-        if (empty($details)) return 0.0;
+        if (empty($details)) {
+            return 0.0;
+        }
 
         $unitsMap = Cache::remember('all_order_units', 86400, function () {
             return OrderUnit::all()->keyBy('id');
@@ -134,12 +141,12 @@ class InventoryService
 
         foreach ($details as $unitId => $qty) {
             $qty = (float) $qty;
-            $unit = $unitsMap->get((int)$unitId);
+            $unit = $unitsMap->get((int) $unitId);
 
             if ($unit) {
-                $totalBaseQty += $qty * (float)$unit->amount;
+                $totalBaseQty += $qty * (float) $unit->amount;
             } else {
-                $variantWeight = ($variant && $variant->weight > 0) ? (float)$variant->weight : 1.0;
+                $variantWeight = ($variant && $variant->weight > 0) ? (float) $variant->weight : 1.0;
                 $totalBaseQty += $qty * $variantWeight;
             }
         }

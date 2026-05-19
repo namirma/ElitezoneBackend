@@ -11,23 +11,33 @@ class OrderItem extends Model
 {
     use HasFactory;
 
-    public const
-        ID = 'id',
-        ORDER_ID = 'order_id',
-        PRODUCT_VARIANT_ID = 'product_variant_id',
-        SUPPLIER_USER_ID = 'supplier_user_id',
-        PRODUCT_NAME = 'product_name',
-        VARIANT_SKU = 'variant_sku',
-        QUANTITY_DETAILS = 'quantity_details',
+    public const ID = 'id';
 
-        WEIGHT = 'weight',
-        QUANTITY = 'quantity',
-        UNIT_NAME = 'unit_name',
+    public const ORDER_ID = 'order_id';
 
-        UNIT_PRICE = 'unit_price',
-        TOTAL_PRICE = 'total_price',
-        CREATED_AT = 'created_at',
-        UPDATED_AT = 'updated_at';
+    public const PRODUCT_VARIANT_ID = 'product_variant_id';
+
+    public const SUPPLIER_USER_ID = 'supplier_user_id';
+
+    public const PRODUCT_NAME = 'product_name';
+
+    public const VARIANT_SKU = 'variant_sku';
+
+    public const QUANTITY_DETAILS = 'quantity_details';
+
+    public const WEIGHT = 'weight';
+
+    public const QUANTITY = 'quantity';
+
+    public const UNIT_NAME = 'unit_name';
+
+    public const UNIT_PRICE = 'unit_price';
+
+    public const TOTAL_PRICE = 'total_price';
+
+    public const CREATED_AT = 'created_at';
+
+    public const UPDATED_AT = 'updated_at';
 
     protected $fillable = [
         self::ORDER_ID,
@@ -47,7 +57,7 @@ class OrderItem extends Model
         self::QUANTITY_DETAILS => 'array',
         self::UNIT_PRICE => 'decimal:2',
         self::TOTAL_PRICE => 'decimal:2',
-        self::WEIGHT => 'decimal:3',  
+        self::WEIGHT => 'decimal:3',
         self::QUANTITY => 'decimal:2',
     ];
 

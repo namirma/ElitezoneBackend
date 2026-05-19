@@ -16,7 +16,7 @@ return new class extends Migration
             $table->decimal('final_price', 15, 2)->default(0);
 
             $table->timestamps();
-            
+
             $table->index(['product_id', 'role_code']);
             $table->unique(['product_variant_id', 'role_code'], 'unique_variant_role_price');
         });

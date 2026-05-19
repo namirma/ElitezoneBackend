@@ -2,7 +2,6 @@
 
 namespace App\Http\Resources;
 
-use App\Models\SupplierActivityCategory;
 use App\Models\SupplierProfile;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -35,7 +34,7 @@ class SupplierProfileResource extends JsonResource
             'created_at_p' => $this->created_at_p,
             'created_at_diff' => $this->created_at_diff,
 
-            'activity_categories' => SupplierCategoryResource::collection($this->activities)
+            'activity_categories' => SupplierCategoryResource::collection($this->activities),
         ];
     }
 }

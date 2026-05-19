@@ -10,20 +10,31 @@ class JobExperience extends Model
 {
     use HasFactory;
 
-    public const
-        ID = 'id',
-        USER_ID = 'user_id',
-        TITLE = 'title',
-        ORGANIZATION_NAME = 'organization_name',
-        PROJECT_ADDRESS = 'project_address',
-        FILE_PATH = 'file_path',
-        START_DATE = 'start_date',
-        END_DATE = 'end_date',
-        STATUS = 'status',
-        REJECTION_REASON = 'rejection_reason',
-        STATUS_PENDING = 'pending',
-        STATUS_APPROVED = 'approved',
-        STATUS_REJECTED = 'rejected';
+    public const ID = 'id';
+
+    public const USER_ID = 'user_id';
+
+    public const TITLE = 'title';
+
+    public const ORGANIZATION_NAME = 'organization_name';
+
+    public const PROJECT_ADDRESS = 'project_address';
+
+    public const FILE_PATH = 'file_path';
+
+    public const START_DATE = 'start_date';
+
+    public const END_DATE = 'end_date';
+
+    public const STATUS = 'status';
+
+    public const REJECTION_REASON = 'rejection_reason';
+
+    public const STATUS_PENDING = 'pending';
+
+    public const STATUS_APPROVED = 'approved';
+
+    public const STATUS_REJECTED = 'rejected';
 
     protected $fillable = [
         self::USER_ID,

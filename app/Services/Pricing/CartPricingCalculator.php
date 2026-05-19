@@ -54,18 +54,18 @@ class CartPricingCalculator
             $baseQtyStr = (string) $baseQty;
 
             $unitPriceStr = (string) (float) $pricing->finalPrice;
-            $unitVatStr   = (string) (float) ($pricing->vatAmount ?? 0.0);
+            $unitVatStr = (string) (float) ($pricing->vatAmount ?? 0.0);
             $discountPerUnitStr = (string) (float) ($pricing->variantDiscountAmount ?? 0.0);
 
             $priceWithoutVatStr = bcsub($unitPriceStr, $unitVatStr, 4);
-            $lineSubtotalStr    = bcmul($baseQtyStr, $priceWithoutVatStr, 4);
-            $lineVatStr         = bcmul($baseQtyStr, $unitVatStr, 4);
-            $lineTotalStr       = bcadd($lineSubtotalStr, $lineVatStr, 4);
-            $lineDiscountStr    = bcmul($discountPerUnitStr, $baseQtyStr, 4);
+            $lineSubtotalStr = bcmul($baseQtyStr, $priceWithoutVatStr, 4);
+            $lineVatStr = bcmul($baseQtyStr, $unitVatStr, 4);
+            $lineTotalStr = bcadd($lineSubtotalStr, $lineVatStr, 4);
+            $lineDiscountStr = bcmul($discountPerUnitStr, $baseQtyStr, 4);
 
             // جمع‌زدن کل فاکتور
-            $subtotalStr             = bcadd($subtotalStr, $lineSubtotalStr, 4);
-            $vatAmountStr            = bcadd($vatAmountStr, $lineVatStr, 4);
+            $subtotalStr = bcadd($subtotalStr, $lineSubtotalStr, 4);
+            $vatAmountStr = bcadd($vatAmountStr, $lineVatStr, 4);
             $totalVariantDiscountStr = bcadd($totalVariantDiscountStr, $lineDiscountStr, 4);
 
             $lines[] = new CartLinePricingResult(
@@ -95,7 +95,9 @@ class CartPricingCalculator
 
         // محاسبه مجموع نهایی: (subtotal - offerDiscount) + vat + shipping
         $afterOfferStr = bcsub($subtotalStr, (string) $offerDiscountFloat, 4);
-        if ((float)$afterOfferStr < 0) $afterOfferStr = '0.0000';
+        if ((float) $afterOfferStr < 0) {
+            $afterOfferStr = '0.0000';
+        }
 
         $totalStr = bcadd($afterOfferStr, $vatAmountStr, 4);
         $totalStr = bcadd($totalStr, $shippingCostStr, 4);
@@ -114,19 +116,20 @@ class CartPricingCalculator
 
     private function unitsMap(): Collection
     {
-        return Cache::remember('order_units_map', 86400, fn() => OrderUnit::all()->keyBy('id'));
+        return Cache::remember('order_units_map', 86400, fn () => OrderUnit::all()->keyBy('id'));
     }
 
     private function calculateBaseQuantity(array $quantities, Collection $unitsMap): float
     {
         $baseStr = '0.0000';
         foreach ($quantities as $unitId => $qty) {
-            $unit = $unitsMap->get((int)$unitId);
-            if ($unit && (float)$unit->amount > 0) {
-                $addedQty = bcmul((string)$qty, (string)$unit->amount, 4);
+            $unit = $unitsMap->get((int) $unitId);
+            if ($unit && (float) $unit->amount > 0) {
+                $addedQty = bcmul((string) $qty, (string) $unit->amount, 4);
                 $baseStr = bcadd($baseStr, $addedQty, 4);
             }
         }
+
         return (float) $baseStr;
     }
 
@@ -139,15 +142,18 @@ class CartPricingCalculator
                 ? json_decode($item->{CartItem::QUANTITIES}, true)
                 : $item->{CartItem::QUANTITIES};
 
-            if (!is_array($quantities)) $quantities = [];
+            if (! is_array($quantities)) {
+                $quantities = [];
+            }
 
             $thresholdValue = $offerBasis === 'count'
                 ? array_sum($quantities)
                 : $this->calculateBaseQuantity($quantities, $unitsMap);
 
             return $item->productVariant->product->offers->filter(function ($offer) use ($thresholdValue, $now) {
-                $isCurrent = (!$offer->start_date || $offer->start_date <= $now) &&
-                             (!$offer->end_date || $offer->end_date >= $now);
+                $isCurrent = (! $offer->start_date || $offer->start_date <= $now) &&
+                             (! $offer->end_date || $offer->end_date >= $now);
+
                 return $isCurrent && $offer->minimum_quantity <= $thresholdValue;
             });
         })->unique('id')->values();
@@ -158,21 +164,22 @@ class CartPricingCalculator
         foreach ($offers as $offer) {
             $dStr = '0.0000';
             if ($offer->type === 'percentage') {
-                $rateStr = bcdiv((string)$offer->value, '100', 4);
-                $dStr = bcmul((string)$subtotal, $rateStr, 4);
+                $rateStr = bcdiv((string) $offer->value, '100', 4);
+                $dStr = bcmul((string) $subtotal, $rateStr, 4);
             } elseif ($offer->type === 'fixed_amount') {
-                $dStr = (string)$offer->value;
+                $dStr = (string) $offer->value;
             }
             $discountStr = bcadd($discountStr, $dStr, 4);
 
             $applied[] = [
                 'id' => $offer->id,
                 'type' => $offer->type,
-                'value' => (float)$offer->value,
+                'value' => (float) $offer->value,
             ];
         }
 
-        $finalDiscount = min((float)$discountStr, max(0, $subtotal));
+        $finalDiscount = min((float) $discountStr, max(0, $subtotal));
+
         return [$finalDiscount, $applied];
     }
 }

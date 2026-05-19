@@ -33,8 +33,8 @@ class SubmitWeighbridgeRequest extends FormRequest
     {
         return [
             'weight_after_scale.required' => '.وارد کردن وزن نهایی باسکول الزامی است',
-            'weight_after_scale.numeric'  => 'وزن باسکول باید یک عدد معتبر باشد.',
-            'weight_after_scale.min'      => 'وزن باسکول نمی‌تواند کمتر از ۱ کیلوگرم باشد.',
+            'weight_after_scale.numeric' => 'وزن باسکول باید یک عدد معتبر باشد.',
+            'weight_after_scale.min' => 'وزن باسکول نمی‌تواند کمتر از ۱ کیلوگرم باشد.',
         ];
     }
 

@@ -10,108 +10,172 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class Order extends Model
 {
     use HasFactory,
-        PersianDate,
-        LogsActivity,
+        HasOrderActions,
         HasOrderProgress,
-        HasOrderActions;
+        LogsActivity,
+        PersianDate;
 
     // =========================================================================
     //  Constants (Database Columns)
     // =========================================================================
-    public const
-        ID = 'id',
-        PLACER_USER_ID = 'placer_user_id',
-        BENEFICIARY_USER_ID = 'beneficiary_user_id',
-        ADDRESS_ID = 'address_id',
-        ORDER_NUMBER = 'order_number',
-        STATUS = 'status',
-        SUBTOTAL = 'subtotal',
-        DISCOUNT_AMOUNT = 'discount_amount',
-        SHIPPING_COST = 'shipping_cost',
-        VAT_AMOUNT = 'vat_amount',
-        FINAL_AMOUNT = 'final_amount',
-        PAYMENT_METHOD = 'payment_method',
-        PAYMENT_STATUS = 'payment_status',
-        NOTES = 'notes',
-        PAID_AT = 'paid_at',
-        WEIGHBRIDGE_REGISTERED_AT = 'weighbridge_registered_at',
-        INITIAL_INVOICE_REF = 'initial_invoice_ref',
-        FINAL_INVOICE_REF = 'final_invoice_ref',
-        TAX_INVOICE_REF = 'tax_invoice_ref',
-        EXPERT_FEE_AMOUNT = 'expert_fee_amount',
-        EXPERT_FEE_PAYMENT_STATUS = 'expert_fee_payment_status',
-        ENGINEER_FEE_AMOUNT = 'engineer_fee_amount',
-        ENGINEER_FEE_PAYMENT_STATUS = 'engineer_fee_payment_status',
-        CONTRACTOR_FEE_AMOUNT = 'contractor_fee_amount',
-        CONTRACTOR_FEE_PAYMENT_STATUS = 'contractor_fee_payment_status',
-        EXPERT_FEE_INVOICE_REF = 'expert_fee_invoice_ref',
-        CANCEL_REASON = 'cancel_reason',
-        SURVEY_STATUS = 'survey_status',
-        PREPARED_AT = 'prepared_at',
-        SHIPPED_AT = 'shipped_at',
-        PAYMENT_RECEIPT_REF = 'payment_receipt_ref',
-        ESPADANA_ORDER_REF = 'espadana_order_ref',
-        WAYBILL_REF = 'waybill_ref',
-        RESERVATION_EXPIRES_AT = 'reservation_expires_at',
-        PARTIAL_PAYMENT_AMOUNT = 'partial_payment_amount',
-        CREATED_AT = 'created_at',
-        UPDATED_AT = 'updated_at';
+    public const ID = 'id';
+
+    public const PLACER_USER_ID = 'placer_user_id';
+
+    public const BENEFICIARY_USER_ID = 'beneficiary_user_id';
+
+    public const ADDRESS_ID = 'address_id';
+
+    public const ORDER_NUMBER = 'order_number';
+
+    public const STATUS = 'status';
+
+    public const SUBTOTAL = 'subtotal';
+
+    public const DISCOUNT_AMOUNT = 'discount_amount';
+
+    public const SHIPPING_COST = 'shipping_cost';
+
+    public const VAT_AMOUNT = 'vat_amount';
+
+    public const FINAL_AMOUNT = 'final_amount';
+
+    public const PAYMENT_METHOD = 'payment_method';
+
+    public const PAYMENT_STATUS = 'payment_status';
+
+    public const NOTES = 'notes';
+
+    public const PAID_AT = 'paid_at';
+
+    public const WEIGHBRIDGE_REGISTERED_AT = 'weighbridge_registered_at';
+
+    public const INITIAL_INVOICE_REF = 'initial_invoice_ref';
+
+    public const FINAL_INVOICE_REF = 'final_invoice_ref';
+
+    public const TAX_INVOICE_REF = 'tax_invoice_ref';
+
+    public const EXPERT_FEE_AMOUNT = 'expert_fee_amount';
+
+    public const EXPERT_FEE_PAYMENT_STATUS = 'expert_fee_payment_status';
+
+    public const ENGINEER_FEE_AMOUNT = 'engineer_fee_amount';
+
+    public const ENGINEER_FEE_PAYMENT_STATUS = 'engineer_fee_payment_status';
+
+    public const CONTRACTOR_FEE_AMOUNT = 'contractor_fee_amount';
+
+    public const CONTRACTOR_FEE_PAYMENT_STATUS = 'contractor_fee_payment_status';
+
+    public const EXPERT_FEE_INVOICE_REF = 'expert_fee_invoice_ref';
+
+    public const CANCEL_REASON = 'cancel_reason';
+
+    public const SURVEY_STATUS = 'survey_status';
+
+    public const PREPARED_AT = 'prepared_at';
+
+    public const SHIPPED_AT = 'shipped_at';
+
+    public const PAYMENT_RECEIPT_REF = 'payment_receipt_ref';
+
+    public const ESPADANA_ORDER_REF = 'espadana_order_ref';
+
+    public const WAYBILL_REF = 'waybill_ref';
+
+    public const RESERVATION_EXPIRES_AT = 'reservation_expires_at';
+
+    public const PARTIAL_PAYMENT_AMOUNT = 'partial_payment_amount';
+
+    public const CREATED_AT = 'created_at';
+
+    public const UPDATED_AT = 'updated_at';
 
     // =========================================================================
     //  Constants (Business Logic / Statuses)
     // =========================================================================
-    public const
-        STATUS_PENDING = 'pending',
-        STATUS_RESERVED = 'reserved',
-        STATUS_RESERVED_EXTENDED = 'reserved_extended',
-        STATUS_PROCESSING = 'processing',
-        STATUS_PREPARING = 'preparing',
-        STATUS_WEIGHBRIDGE_DONE = 'weighbridge_done',
-        STATUS_WAYBILL_ISSUED = 'waybill_issued',
-        STATUS_SHIPPED = 'shipped',
-        STATUS_DELIVERED = 'delivered',
-        STATUS_COMPLETED = 'completed',
-        STATUS_CANCELLED = 'cancelled',
-        STATUS_FAILED = 'failed',
-        STATUS_PENDING_SURPLUS_PAYMENT = 'pending_surplus_payment',
+    public const STATUS_PENDING = 'pending';
 
-        PAYMENT_PENDING = 'pending',
-        PAYMENT_PAID = 'paid',
-        PAYMENT_FAILED = 'failed',
-        PAYMENT_REFUND_PENDING = 'refund_pending',
-        PAYMENT_REFUNDED = 'refunded',
+    public const STATUS_RESERVED = 'reserved';
 
-        FEE_PAYMENT_PENDING = 'pending',
-        FEE_PAYMENT_PAID = 'paid',
+    public const STATUS_RESERVED_EXTENDED = 'reserved_extended';
 
-        SURVEY_PENDING = 'pending',
-        SURVEY_REQUESTED = 'requested',
-        SURVEY_COMPLETED = 'completed';
+    public const STATUS_PROCESSING = 'processing';
 
+    public const STATUS_PREPARING = 'preparing';
+
+    public const STATUS_WEIGHBRIDGE_DONE = 'weighbridge_done';
+
+    public const STATUS_WAYBILL_ISSUED = 'waybill_issued';
+
+    public const STATUS_SHIPPED = 'shipped';
+
+    public const STATUS_DELIVERED = 'delivered';
+
+    public const STATUS_COMPLETED = 'completed';
+
+    public const STATUS_CANCELLED = 'cancelled';
+
+    public const STATUS_FAILED = 'failed';
+
+    public const STATUS_PENDING_SURPLUS_PAYMENT = 'pending_surplus_payment';
+
+    public const PAYMENT_PENDING = 'pending';
+
+    public const PAYMENT_PAID = 'paid';
+
+    public const PAYMENT_FAILED = 'failed';
+
+    public const PAYMENT_REFUND_PENDING = 'refund_pending';
+
+    public const PAYMENT_REFUNDED = 'refunded';
+
+    public const FEE_PAYMENT_PENDING = 'pending';
+
+    public const FEE_PAYMENT_PAID = 'paid';
+
+    public const SURVEY_PENDING = 'pending';
+
+    public const SURVEY_REQUESTED = 'requested';
+
+    public const SURVEY_COMPLETED = 'completed';
 
     //  Financial Constants (Elite Zone Logic)
     // =========================================================================
-    public const
-        OFFICIAL_PRICE = 'official_price',
-        WEIGHT_BEFORE_SCALE = 'weight_before_scale',
-        COMMISSION_RATE = 'commission_rate',
-        OWNER_DISCOUNT_RATE = 'owner_discount_rate',
-        SAZE_SHARE_RATE = 'saze_share_rate',
-        CONSULTANT_SHARE_RATE = 'consultant_share_rate',
-        VAT_RATE = 'vat_rate',
-        PAYMENT_OF_OWNER = 'payment_of_owner',
-        PAYMENT_TO_SUPPLIER = 'payment_to_supplier',
-        PAYMENT_TO_CONSULTANT = 'payment_to_consultant',
-        PAYMENT_TO_RESERVE = 'payment_to_reserve',
-        VALIDATION_OF_RESERVE = 'validation_of_reserve',
-        WEIGHT_AFTER_SCALE = 'weight_after_scale',
-        WEIGHING_COMPLETED_AT = 'weighing_completed_at';
+    public const OFFICIAL_PRICE = 'official_price';
+
+    public const WEIGHT_BEFORE_SCALE = 'weight_before_scale';
+
+    public const COMMISSION_RATE = 'commission_rate';
+
+    public const OWNER_DISCOUNT_RATE = 'owner_discount_rate';
+
+    public const SAZE_SHARE_RATE = 'saze_share_rate';
+
+    public const CONSULTANT_SHARE_RATE = 'consultant_share_rate';
+
+    public const VAT_RATE = 'vat_rate';
+
+    public const PAYMENT_OF_OWNER = 'payment_of_owner';
+
+    public const PAYMENT_TO_SUPPLIER = 'payment_to_supplier';
+
+    public const PAYMENT_TO_CONSULTANT = 'payment_to_consultant';
+
+    public const PAYMENT_TO_RESERVE = 'payment_to_reserve';
+
+    public const VALIDATION_OF_RESERVE = 'validation_of_reserve';
+
+    public const WEIGHT_AFTER_SCALE = 'weight_after_scale';
+
+    public const WEIGHING_COMPLETED_AT = 'weighing_completed_at';
 
     // =========================================================================
     //  Configurations
@@ -240,8 +304,9 @@ class Order extends Model
                     'created' => 'ثبت',
                     'updated' => 'ویرایش',
                     'deleted' => 'حذف',
-                    default   => $eventName,
+                    default => $eventName,
                 };
+
                 return "سفارش شماره {$this->order_number} {$action} شد.";
             });
     }

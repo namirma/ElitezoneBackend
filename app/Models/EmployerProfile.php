@@ -15,21 +15,24 @@ class EmployerProfile extends Model
 {
     use HasFactory ,PersianDate;
 
-    const
-        ID = 'id',
-        USER_ID = 'user_id',
-        PROJECT_DONE = 'project_done',
-        PROJECT_IN_PROGRESS = 'project_in_progress',
-        ACTIVITY_PROVINCES = 'activity_provinces',
-        HAS_CONSULTANT = 'has_consultant';
+    const ID = 'id';
 
+    const USER_ID = 'user_id';
+
+    const PROJECT_DONE = 'project_done';
+
+    const PROJECT_IN_PROGRESS = 'project_in_progress';
+
+    const ACTIVITY_PROVINCES = 'activity_provinces';
+
+    const HAS_CONSULTANT = 'has_consultant';
 
     protected $fillable = [
-      self::USER_ID,
-      self::PROJECT_DONE,
-      self::PROJECT_IN_PROGRESS,
-      self::ACTIVITY_PROVINCES,
-      self::HAS_CONSULTANT
+        self::USER_ID,
+        self::PROJECT_DONE,
+        self::PROJECT_IN_PROGRESS,
+        self::ACTIVITY_PROVINCES,
+        self::HAS_CONSULTANT,
     ];
 
     // public function getCreatedAtAttribute()
@@ -50,5 +53,4 @@ class EmployerProfile extends Model
     {
         return $this->belongsTo(User::class);
     }
-
 }

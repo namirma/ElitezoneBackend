@@ -21,7 +21,7 @@ class WalletDepositTest extends TestCase
         $type = \App\Models\UserType::create([
             'name' => 'customer',
             'slug' => 'customer',
-            'icon' => 'user' // <--- این خط اضافه شد تا ارور رفع شود
+            'icon' => 'user', // <--- این خط اضافه شد تا ارور رفع شود
         ]);
 
         // 2. ایجاد کاربر
@@ -44,16 +44,16 @@ class WalletDepositTest extends TestCase
                 'data' => [
                     'transaction_id',
                     'type',
-                    'redirect_url'
-                ]
+                    'redirect_url',
+                ],
             ]);
 
         // 5. بررسی دیتابیس
         $this->assertDatabaseHas('wallet_transactions', [
             'wallet_id' => $user->wallet->id,
-            'amount'    => 500000,
-            'type'      => WalletTransaction::TYPE_DEPOSIT,
-            'status'    => WalletTransaction::STATUS_PENDING,
+            'amount' => 500000,
+            'type' => WalletTransaction::TYPE_DEPOSIT,
+            'status' => WalletTransaction::STATUS_PENDING,
         ]);
     }
 
@@ -67,7 +67,7 @@ class WalletDepositTest extends TestCase
             ['slug' => 'customer'],
             [
                 'name' => 'customer',
-                'icon' => 'user' // <--- این خط اضافه شد
+                'icon' => 'user', // <--- این خط اضافه شد
             ]
         );
 
@@ -78,7 +78,7 @@ class WalletDepositTest extends TestCase
         // مبلغ کم
         $response = $this->postJson('/api/profile/financial/wallet/deposit', [
             'amount' => 1000,
-            'payment_method' => 'shaparak'
+            'payment_method' => 'shaparak',
         ]);
 
         $response->assertStatus(422)

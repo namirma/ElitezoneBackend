@@ -43,7 +43,7 @@ class OrderController extends Controller
             'items.supplier.profile',
             'address',
             'placer.profile',
-            'beneficiary.profile'
+            'beneficiary.profile',
         ]);
 
         return success(new OrderResource($order), __('global.received_successfully'));
@@ -60,6 +60,7 @@ class OrderController extends Controller
             statusGroup: $statusGroup,
             perPage: $request->input('per_page', 10)
         );
+
         return success(OrderResource::collection($orders));
     }
 
@@ -81,7 +82,7 @@ class OrderController extends Controller
                     Order::STATUS_PROCESSING,
                     Order::STATUS_WEIGHBRIDGE_DONE,
                     Order::STATUS_PREPARING,
-                    Order::STATUS_SHIPPED
+                    Order::STATUS_SHIPPED,
                 ]);
                 break;
 
@@ -94,7 +95,16 @@ class OrderController extends Controller
                 break;
         }
 
-        $orders = $query->latest()->get();
+        $orders = $query
+            ->with([
+                'items.productVariant',
+                'placer.profile',
+                'beneficiary.profile',
+                'address.city',
+                'address.province',
+            ])
+            ->latest()
+            ->paginate($request->input('per_page', 10));
 
         return success(OrderResource::collection($orders), 'global.received_successfully');
     }

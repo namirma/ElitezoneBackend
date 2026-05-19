@@ -17,12 +17,14 @@ class SendOrderCancellationNotification implements ShouldQueue
         $order = $event->order;
         $user = $order->placer;
 
-        if (!$user) return;
+        if (! $user) {
+            return;
+        }
 
         try {
             $message = "سفارش {$order->order_number} لغو شد.\n";
             if ($order->payment_status === 'refunded') {
-                $message .= ".مبلغ سفارش به کیف پول شما بازگشت داده شد";
+                $message .= '.مبلغ سفارش به کیف پول شما بازگشت داده شد';
             }
             $message .= "\nالیت زون";
 
@@ -30,7 +32,7 @@ class SendOrderCancellationNotification implements ShouldQueue
 
             Log::info("Cancellation SMS sent for Order {$order->id}");
         } catch (\Exception $e) {
-            Log::error("Failed to send cancellation SMS: " . $e->getMessage());
+            Log::error('Failed to send cancellation SMS: '.$e->getMessage());
         }
     }
 }

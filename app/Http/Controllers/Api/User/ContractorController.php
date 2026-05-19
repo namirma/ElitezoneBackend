@@ -16,7 +16,7 @@ class ContractorController extends Controller
     {
         $user = Auth::user();
         $expertTypeId = UserType::where('slug', 'consultant')->value('id');
-        if ($user->type_id == $expertTypeId && !$user->hasRole('contractor')) {
+        if ($user->type_id == $expertTypeId && ! $user->hasRole('contractor')) {
             $user->addRole('contractor');
         }
         // if (!ContractorProfile::where([ContractorProfile::USER_ID => Auth::id()])->exists())

@@ -10,15 +10,21 @@ class ProductVideo extends Model
 {
     use HasFactory;
 
-    const
-        ID = 'id',
-        PRODUCT_ID = 'product_id',
-        VIDEO_PATH = 'video_path',
-        THUMBNAIL_PATH = 'thumbnail_path',
-        TITLE = 'title',
-        SORT_ORDER = 'sort_order',
-        CREATED_AT = 'created_at',
-        UPDATED_AT = 'updated_at';
+    const ID = 'id';
+
+    const PRODUCT_ID = 'product_id';
+
+    const VIDEO_PATH = 'video_path';
+
+    const THUMBNAIL_PATH = 'thumbnail_path';
+
+    const TITLE = 'title';
+
+    const SORT_ORDER = 'sort_order';
+
+    const CREATED_AT = 'created_at';
+
+    const UPDATED_AT = 'updated_at';
 
     protected $fillable = [
         self::PRODUCT_ID,
@@ -32,5 +38,4 @@ class ProductVideo extends Model
     {
         return $this->belongsTo(Product::class);
     }
-
 }

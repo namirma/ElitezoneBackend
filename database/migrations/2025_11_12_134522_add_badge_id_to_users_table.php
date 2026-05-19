@@ -16,6 +16,7 @@ return new class extends Migration
                 ->constrained('badges')->nullOnDelete();
         });
     }
+
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {

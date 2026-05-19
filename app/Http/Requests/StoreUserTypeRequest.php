@@ -14,10 +14,10 @@ class StoreUserTypeRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'roles'   => 'required|array|min:1',
+            'roles' => 'required|array|min:1',
             'roles.*' => 'in:employer,supplier,expert',
             'employer_has_consultant' => 'nullable|boolean',
-            'type_id'                 => 'nullable|integer|exists:user_types,id',
+            'type_id' => 'nullable|integer|exists:user_types,id',
         ];
     }
 
@@ -25,9 +25,9 @@ class StoreUserTypeRequest extends FormRequest
     {
         return [
             'roles.required' => '.انتخاب حداقل یک نقش الزامی است',
-            'roles.min'      => '.انتخاب حداقل یک نقش الزامی است',
+            'roles.min' => '.انتخاب حداقل یک نقش الزامی است',
             'roles.*.in' => 'نقش نامعتبر است. نقش‌های مجاز: employer, supplier, expert',
-            'roles.array'    => '.باید آرایه باشد roles فیلد ',
+            'roles.array' => '.باید آرایه باشد roles فیلد ',
         ];
     }
 
@@ -48,8 +48,8 @@ class StoreUserTypeRequest extends FormRequest
         }
 
         $roles = array_values(array_unique(array_map(
-            fn($v) => strtolower(trim($v)),
-            array_filter($roles, fn($v) => $v !== '')
+            fn ($v) => strtolower(trim($v)),
+            array_filter($roles, fn ($v) => $v !== '')
         )));
 
         $this->merge(['roles' => $roles]);

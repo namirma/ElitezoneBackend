@@ -23,7 +23,7 @@ class OrderPriceRequest extends FormRequest
             'filter_categories.*' => 'exists:price_filter_categories,id',
             'quantities' => 'required|array',
             'quantities.*' => 'required|integer|min:1',
-            'with_vat' => 'nullable|boolean'
+            'with_vat' => 'nullable|boolean',
         ];
     }
 }

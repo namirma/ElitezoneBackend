@@ -35,7 +35,7 @@ class StoreEngineerProfileRequest extends FormRequest
             EngineerProfile::PROVINCE_ID => 'nullable|exists:province,id',
             EngineerProfile::ACTIVITY_PROVINCE_ID => 'nullable|exists:province,id',
             EngineerProfile::CITY_ID => 'nullable|exists:province_city,id',
-            EngineerProfile::ACTIVITY_CITY_ID => 'nullable|exists:province_city,id'
+            EngineerProfile::ACTIVITY_CITY_ID => 'nullable|exists:province_city,id',
         ];
     }
 }

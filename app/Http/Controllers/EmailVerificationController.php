@@ -4,8 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\VerifyEmailRequest;
 use App\Mail\TestEmail;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 
 class EmailVerificationController extends Controller
@@ -14,6 +12,6 @@ class EmailVerificationController extends Controller
     {
         $email = $request->input('email');
 
-        Mail::to($email)->send(new TestEmail());
+        Mail::to($email)->send(new TestEmail);
     }
 }

@@ -32,7 +32,7 @@ class WalletGateway implements PaymentGatewayInterface
         // ۲. دریافت کیف پول با قفل دیتابیس برای جلوگیری از Race Condition
         $wallet = $user->wallet()->lockForUpdate()->first();
 
-        if (!$wallet) {
+        if (! $wallet) {
             throw new WalletNotFoundException(__('wallet.errors.not_found'));
         }
 
@@ -48,9 +48,9 @@ class WalletGateway implements PaymentGatewayInterface
         // ۵. بازگشت اطلاعات تراکنش
         return [
             'transaction_id' => null, // کیف پول تراکنش گیت‌وی خارجی نداره
-            'reference_id'   => 'WALLET-' . Str::upper(Str::random(16)),
-            'gateway'        => $this->getName(),
-            'paid_at'        => now()->toIso8601String(),
+            'reference_id' => 'WALLET-'.Str::upper(Str::random(16)),
+            'gateway' => $this->getName(),
+            'paid_at' => now()->toIso8601String(),
         ];
     }
 }

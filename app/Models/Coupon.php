@@ -15,24 +15,32 @@ class Coupon extends Model
     /* -------------------------------------------------------------------------- */
     const TABLE = 'coupons';
 
-    const
-        ID = 'id',
-        CODE = 'code',
-        TYPE = 'type',
-        AMOUNT = 'amount',
-        USER_ID = 'user_id',
-        EXPIRES_AT = 'expires_at',
-        USED_AT = 'used_at',
-        REASON = 'reason',
-        CREATED_AT = 'created_at',
-        UPDATED_AT = 'updated_at';
+    const ID = 'id';
+
+    const CODE = 'code';
+
+    const TYPE = 'type';
+
+    const AMOUNT = 'amount';
+
+    const USER_ID = 'user_id';
+
+    const EXPIRES_AT = 'expires_at';
+
+    const USED_AT = 'used_at';
+
+    const REASON = 'reason';
+
+    const CREATED_AT = 'created_at';
+
+    const UPDATED_AT = 'updated_at';
 
     /* -------------------------------------------------------------------------- */
     /* Constants (Values)                                                         */
     /* -------------------------------------------------------------------------- */
-    const
-        TYPE_PERCENT = 'percent',
-        TYPE_FIXED = 'fixed';
+    const TYPE_PERCENT = 'percent';
+
+    const TYPE_FIXED = 'fixed';
 
     protected $table = self::TABLE;
 
@@ -70,7 +78,7 @@ class Coupon extends Model
     public function isValid(): bool
     {
         // ۱. بررسی استفاده شدن
-        if (!is_null($this->{self::USED_AT})) {
+        if (! is_null($this->{self::USED_AT})) {
             return false;
         }
 

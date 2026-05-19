@@ -2,11 +2,11 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
+use App\Models\CustomerType;
 use App\Models\PriceFilterCategory;
 use App\Models\PurchaseParameterGroup;
 use App\Models\PurchaseParameterValue;
-use App\Models\CustomerType;
+use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
 class PurchaseParameterSeeder extends Seeder
@@ -23,10 +23,10 @@ class PurchaseParameterSeeder extends Seeder
                 PriceFilterCategory::updateOrCreate(
                     ['code' => $cat['code']],
                     [
-                        'name'        => $cat['name'],
+                        'name' => $cat['name'],
                         'description' => "فیلترهای قیمت برای {$cat['name']}",
-                        'sort_order'  => $cat['sort_order'],
-                        'is_active'   => true,
+                        'sort_order' => $cat['sort_order'],
+                        'is_active' => true,
                     ]
                 );
             }
@@ -52,12 +52,12 @@ class PurchaseParameterSeeder extends Seeder
                 PurchaseParameterValue::updateOrCreate(
                     ['group_id' => $purchasePurpose->id, 'code' => $v['code']],
                     [
-                        'group_id'                 => $purchasePurpose->id,
-                        'name'                     => $v['name'],
-                        'slug'                     => $v['code'],
-                        'code'                     => $v['code'],
-                        'order'                    => $v['order'],
-                        'is_active'                => true,
+                        'group_id' => $purchasePurpose->id,
+                        'name' => $v['name'],
+                        'slug' => $v['code'],
+                        'code' => $v['code'],
+                        'order' => $v['order'],
+                        'is_active' => true,
                         'price_filter_category_id' => null,
                     ]
                 );

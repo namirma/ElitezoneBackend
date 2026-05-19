@@ -10,30 +10,51 @@ class EduixRecord extends Model
 {
     use HasFactory;
 
-    const
-        ID            = 'id',
-        USER_ID       = 'user_id',
-        NATIONAL_CODE = 'national_code',
-        TRACE_CODE    = 'trace_code',
-        NAME          = 'name',
-        FAMILY        = 'family',
-        FATHER_NAME   = 'father_name',
-        ID_NUMBER     = 'id_number',
-        BIRTH_DATE    = 'birth_date',
-        UNIVERSITY    = 'university',
-        FIELD         = 'field',
-        COURSE_TYPE   = 'course_type',
-        ENTRY_DATE    = 'entry_date',
-        GRADUATE_DATE = 'graduate_date',
-        GPA           = 'gpa',
-        STATUS        = 'status',
-        ADMIN_STATUS  = 'admin_status',
-        REJECTION_REASON = 'rejection_reason',
-        CREATED_AT    = 'created_at',
-        UPDATED_AT    = 'updated_at',
-        STATUS_PENDING = 'pending',
-        STATUS_APPROVED = 'approved',
-        STATUS_REJECTED = 'rejected';
+    const ID = 'id';
+
+    const USER_ID = 'user_id';
+
+    const NATIONAL_CODE = 'national_code';
+
+    const TRACE_CODE = 'trace_code';
+
+    const NAME = 'name';
+
+    const FAMILY = 'family';
+
+    const FATHER_NAME = 'father_name';
+
+    const ID_NUMBER = 'id_number';
+
+    const BIRTH_DATE = 'birth_date';
+
+    const UNIVERSITY = 'university';
+
+    const FIELD = 'field';
+
+    const COURSE_TYPE = 'course_type';
+
+    const ENTRY_DATE = 'entry_date';
+
+    const GRADUATE_DATE = 'graduate_date';
+
+    const GPA = 'gpa';
+
+    const STATUS = 'status';
+
+    const ADMIN_STATUS = 'admin_status';
+
+    const REJECTION_REASON = 'rejection_reason';
+
+    const CREATED_AT = 'created_at';
+
+    const UPDATED_AT = 'updated_at';
+
+    const STATUS_PENDING = 'pending';
+
+    const STATUS_APPROVED = 'approved';
+
+    const STATUS_REJECTED = 'rejected';
 
     protected $fillable = [
         self::USER_ID,

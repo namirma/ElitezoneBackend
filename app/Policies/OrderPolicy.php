@@ -76,7 +76,7 @@ class OrderPolicy
      */
     public function manageAsSupplier(User $user, Order $order): Response
     {
-        if (!$user->hasRole('supplier')) {
+        if (! $user->hasRole('supplier')) {
             return Response::deny(__('auth.policy.not_supplier'));
         }
 

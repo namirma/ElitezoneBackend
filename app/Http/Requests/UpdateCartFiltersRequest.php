@@ -22,9 +22,9 @@ class UpdateCartFiltersRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'filter_categories'   => 'nullable|array',
+            'filter_categories' => 'nullable|array',
             'filter_categories.*' => 'exists:price_filter_categories,id',
-            'with_vat'            => 'nullable|boolean',
+            'with_vat' => 'nullable|boolean',
         ];
 
     }

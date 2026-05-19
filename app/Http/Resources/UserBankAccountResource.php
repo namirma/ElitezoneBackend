@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Resources;
 
 use App\Models\UserBankAccount;
@@ -9,7 +10,7 @@ class UserBankAccountResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        $statusText = match($this->{UserBankAccount::STATUS}) {
+        $statusText = match ($this->{UserBankAccount::STATUS}) {
             UserBankAccount::STATUS_PENDING => 'در انتظار تایید',
             UserBankAccount::STATUS_APPROVED => 'تایید شده',
             UserBankAccount::STATUS_REJECTED => 'ناموفق',

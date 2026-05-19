@@ -9,14 +9,14 @@ class PodiumBatchSettlementService
 {
     public function settle(array $payload): array
     {
-        $url = rtrim(config('podium.base_url'), '/') . config('podium.endpoints.do_service_call');
+        $url = rtrim(config('podium.base_url'), '/').config('podium.endpoints.do_service_call');
 
         $headers = [
-            'accept'         => 'application/json',
-            '_token_'        => (string) config('podium.business_token'),
+            'accept' => 'application/json',
+            '_token_' => (string) config('podium.business_token'),
             '_token_issuer_' => (string) config('podium.defaults._token_issuer'),
-            'scWrapper'      => 'true',
-            'Content-Type'   => 'application/x-www-form-urlencoded',
+            'scWrapper' => 'true',
+            'Content-Type' => 'application/x-www-form-urlencoded',
         ];
 
         $scApiKey = (string) config('podium.sc_api_keys.batch_settlement');
@@ -32,38 +32,39 @@ class PodiumBatchSettlementService
 
         $body = [
             'scProductId' => 1688541,
-            'scApiKey'    => $scApiKey,
-            'batchId'     => (string) $payload['batchId'],
-            'list'        => $listJson,
+            'scApiKey' => $scApiKey,
+            'batchId' => (string) $payload['batchId'],
+            'list' => $listJson,
         ];
 
-        $resp   = Http::asForm()
+        $resp = Http::asForm()
             ->timeout((int) config('podium.defaults.timeout'))
             ->withHeaders($headers)
             ->post($url, $body);
 
         $status = $resp->status();
-        $raw    = $resp->body();
-        $json   = $resp->json();
+        $raw = $resp->body();
+        $json = $resp->json();
 
-        if (!$resp->successful()) {
+        if (! $resp->successful()) {
             Log::error('[Podium][Batch] HTTP error', ['status' => $status, 'raw' => $raw]);
             throw new \RuntimeException('Podium HTTP error: '.$status);
         }
 
-        if (!is_array($json)) {
+        if (! is_array($json)) {
             $json = json_decode($raw, true);
         }
 
         $json = $this->normalizeBatchResponse($json, $raw, $status);
 
         Log::info('[Podium][Batch] OK', ['status' => $status, 'ref' => $json['referenceNumber'] ?? null]);
+
         return $json;
     }
 
     private function normalizeBatchResponse($json, string $raw, int $status): array
     {
-        if (!is_array($json)) {
+        if (! is_array($json)) {
             Log::error('[Podium][Batch] Non-JSON body', ['status' => $status, 'raw' => $raw]);
             throw new \RuntimeException('Unexpected Podium schema.');
         }
@@ -83,40 +84,41 @@ class PodiumBatchSettlementService
 
         if (array_key_exists('hasError', $json)) {
             if ($json['hasError'] === true) {
-                $ref  = $json['referenceNumber'] ?? null;
-                $msg  = $json['message'] ?? 'Unknown business error';
+                $ref = $json['referenceNumber'] ?? null;
+                $msg = $json['message'] ?? 'Unknown business error';
                 $code = $json['errorCode'] ?? null;
                 throw new \RuntimeException("Podium business error: {$msg} (code={$code}, ref={$ref})");
             }
+
             return $json;
         }
 
         $looksLikeBatch = isset($json['batchId']) ||
-                          isset($json['items'])   ||
+                          isset($json['items']) ||
                           isset($json['results']) ||
                           isset($json['successCount']) ||
                           isset($json['failedCount']);
         if ($looksLikeBatch) {
             return [
-                'hasError'        => false,
-                'messageId'       => $json['messageId'] ?? 0,
+                'hasError' => false,
+                'messageId' => $json['messageId'] ?? 0,
                 'referenceNumber' => $json['referenceNumber'] ?? null,
-                'errorCode'       => $json['errorCode'] ?? 0,
-                'count'           => $json['count'] ?? 0,
-                'ott'             => $json['ott'] ?? null,
-                'result'          => $json,
+                'errorCode' => $json['errorCode'] ?? 0,
+                'count' => $json['count'] ?? 0,
+                'ott' => $json['ott'] ?? null,
+                'result' => $json,
             ];
         }
 
         if (isset($json['result']) && is_array($json['result'])) {
             return [
-                'hasError'        => false,
-                'messageId'       => $json['messageId'] ?? 0,
+                'hasError' => false,
+                'messageId' => $json['messageId'] ?? 0,
                 'referenceNumber' => $json['referenceNumber'] ?? null,
-                'errorCode'       => $json['errorCode'] ?? 0,
-                'count'           => $json['count'] ?? 0,
-                'ott'             => $json['ott'] ?? null,
-                'result'          => $json['result'],
+                'errorCode' => $json['errorCode'] ?? 0,
+                'count' => $json['count'] ?? 0,
+                'ott' => $json['ott'] ?? null,
+                'result' => $json['result'],
             ];
         }
 

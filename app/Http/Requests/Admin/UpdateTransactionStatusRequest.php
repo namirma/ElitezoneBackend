@@ -15,7 +15,7 @@ class UpdateTransactionStatusRequest extends FormRequest
     {
         return [
             'status' => 'required|in:confirmed,rejected',
-            'note'   => 'nullable|string|max:255', 
+            'note' => 'nullable|string|max:255',
         ];
     }
 
@@ -23,7 +23,7 @@ class UpdateTransactionStatusRequest extends FormRequest
     {
         return [
             'status.required' => __('admin.wallet.status_required'),
-            'status.in'       => __('admin.wallet.status_invalid'),
+            'status.in' => __('admin.wallet.status_invalid'),
         ];
     }
 }

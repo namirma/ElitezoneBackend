@@ -41,7 +41,7 @@ class SearchController extends Controller
 
         return new SearchResource([
             'related_searches' => $relatedSearches,
-            'latest_searches'  => $latestSearches,
+            'latest_searches' => $latestSearches,
             'popular_searches' => $popularSearches,
         ]);
     }
@@ -54,9 +54,9 @@ class SearchController extends Controller
         return SupplierActivityCategory::query()
             ->where(function (Builder $q) use ($query) {
                 $q->where('name', 'LIKE', "%{$query}%")
-                  ->orWhereHas('children', function (Builder $subQ) use ($query) {
-                      $subQ->where('name', 'LIKE', "%{$query}%");
-                  });
+                    ->orWhereHas('children', function (Builder $subQ) use ($query) {
+                        $subQ->where('name', 'LIKE', "%{$query}%");
+                    });
             })
             ->with('children')
             ->get()
@@ -70,7 +70,7 @@ class SearchController extends Controller
 
                 // اگر اسم زیرمجموعه‌ها شبیه بود
                 $childMatches = $category->children
-                    ->filter(fn($child) => Str::contains($child->name, $query))
+                    ->filter(fn ($child) => Str::contains($child->name, $query))
                     ->pluck('name');
 
                 return $matches->merge($childMatches);
@@ -84,12 +84,12 @@ class SearchController extends Controller
     private function logSearchActivity(SearchRequest $request, string $query, int $resultsCount): void
     {
         Search::create([
-            Search::QUERY         => $query,
+            Search::QUERY => $query,
             Search::RESULTS_COUNT => $resultsCount,
-            Search::USER_ID       => Auth::id(),
-            Search::IP_ADDRESS    => $request->ip(),
-            Search::USER_AGENT    => $request->userAgent(),
-            Search::CREATED_AT    => now(),
+            Search::USER_ID => Auth::id(),
+            Search::IP_ADDRESS => $request->ip(),
+            Search::USER_AGENT => $request->userAgent(),
+            Search::CREATED_AT => now(),
         ]);
     }
 
@@ -117,12 +117,12 @@ class SearchController extends Controller
     {
         $validCategoriesSubQuery = function ($q) {
             $q->select('name')
-              ->from('supplier_activity_categories')
-              ->union(
-                  SupplierActivityCategory::select('name')
-                      ->whereHas('children')
-                      ->getQuery()
-              );
+                ->from('supplier_activity_categories')
+                ->union(
+                    SupplierActivityCategory::select('name')
+                        ->whereHas('children')
+                        ->getQuery()
+                );
         };
 
         return Search::select(Search::QUERY)
@@ -140,7 +140,7 @@ class SearchController extends Controller
     {
         return new SearchResource([
             'related_searches' => [],
-            'latest_searches'  => [],
+            'latest_searches' => [],
             'popular_searches' => $this->getPopularSearches(),
         ]);
     }

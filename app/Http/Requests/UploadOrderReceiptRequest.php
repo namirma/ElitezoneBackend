@@ -14,7 +14,7 @@ class UploadOrderReceiptRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'receipt' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120', 
+            'receipt' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
         ];
     }
 
@@ -22,8 +22,8 @@ class UploadOrderReceiptRequest extends FormRequest
     {
         return [
             'receipt.required' => __('orders.receipt_required'),
-            'receipt.mimes'    => __('orders.receipt_mimes'),
-            'receipt.max'      => __('orders.receipt_max'),
+            'receipt.mimes' => __('orders.receipt_mimes'),
+            'receipt.max' => __('orders.receipt_max'),
         ];
     }
 }

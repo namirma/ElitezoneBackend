@@ -47,11 +47,11 @@ class Idempotency
 
         $lock = Cache::lock($lockKey, 10);
 
-        if (!$lock->get()) {
+        if (! $lock->get()) {
             return response()->json([
                 'status' => false,
                 'message' => '.درخواست تکراری در حال پردازش است. لطفاً صبر کنید',
-                'code' => 'DUPLICATE_REQUEST_PROCESSING'
+                'code' => 'DUPLICATE_REQUEST_PROCESSING',
             ], 409);
         }
 

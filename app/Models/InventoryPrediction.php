@@ -12,23 +12,33 @@ class InventoryPrediction extends Model
     /* -------------------------------------------------------------------------- */
     /* Constants                                                                  */
     /* -------------------------------------------------------------------------- */
-    const
-        ID = 'id',
-        PRODUCT_VARIANT_ID = 'product_variant_id',
-        CURRENT_STOCK = 'current_stock',
-        SALES_VELOCITY_30D = 'sales_velocity_30d',
-        SEARCH_VOLUME_7D = 'search_volume_7d',
-        PREDICTED_DEMAND_NEXT_7D = 'predicted_demand_next_7d',
-        RECOMMENDED_RESTOCK_AMOUNT = 'recommended_restock_amount',
-        PRIORITY = 'priority',
-        REASON = 'reason',
-        CALCULATED_AT = 'calculated_at';
+    const ID = 'id';
 
-    const
-        PRIORITY_CRITICAL = 'critical', 
-        PRIORITY_HIGH = 'high',
-        PRIORITY_NORMAL = 'normal',
-        PRIORITY_LOW = 'low';
+    const PRODUCT_VARIANT_ID = 'product_variant_id';
+
+    const CURRENT_STOCK = 'current_stock';
+
+    const SALES_VELOCITY_30D = 'sales_velocity_30d';
+
+    const SEARCH_VOLUME_7D = 'search_volume_7d';
+
+    const PREDICTED_DEMAND_NEXT_7D = 'predicted_demand_next_7d';
+
+    const RECOMMENDED_RESTOCK_AMOUNT = 'recommended_restock_amount';
+
+    const PRIORITY = 'priority';
+
+    const REASON = 'reason';
+
+    const CALCULATED_AT = 'calculated_at';
+
+    const PRIORITY_CRITICAL = 'critical';
+
+    const PRIORITY_HIGH = 'high';
+
+    const PRIORITY_NORMAL = 'normal';
+
+    const PRIORITY_LOW = 'low';
 
     protected $fillable = [
         self::PRODUCT_VARIANT_ID,
@@ -39,7 +49,7 @@ class InventoryPrediction extends Model
         self::RECOMMENDED_RESTOCK_AMOUNT,
         self::PRIORITY,
         self::REASON,
-        self::CALCULATED_AT
+        self::CALCULATED_AT,
     ];
 
     public function variant(): BelongsTo

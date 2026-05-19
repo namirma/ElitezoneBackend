@@ -19,7 +19,7 @@ class ApplyVariantDiscount implements PricingPipe
             $amountStr = '0.0000';
 
             if ($discountDetails['type'] === 'percentage') {
-                
+
                 $rateStr = bcdiv((string) $context->variantDiscountValue, '100', 4);
                 $amountStr = bcmul($baseForDiscount, $rateStr, 4);
             } elseif ($discountDetails['type'] === 'fixed_amount') {

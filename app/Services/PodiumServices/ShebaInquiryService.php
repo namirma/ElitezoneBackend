@@ -2,10 +2,10 @@
 
 namespace App\Services\PodiumServices;
 
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\Log;
 use Exception;
+use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class ShebaInquiryService
 {
@@ -15,14 +15,14 @@ class ShebaInquiryService
 
         // 2. تنظیم آدرس و هدرها
         $endpoint = config('podium.endpoints.do_service_call', '/srv/sc/nzh/doServiceCall');
-        $url = rtrim(config('podium.base_url'), '/') . $endpoint;
+        $url = rtrim(config('podium.base_url'), '/').$endpoint;
 
         $headers = [
-            'accept'         => 'application/json',
-            '_token_'        => (string) config('podium.business_token'), // توکن کسب‌وکار
+            'accept' => 'application/json',
+            '_token_' => (string) config('podium.business_token'), // توکن کسب‌وکار
             '_token_issuer_' => (string) config('podium.defaults._token_issuer', '1'),
-            'scWrapper'      => 'true',
-            'Content-Type'   => 'application/x-www-form-urlencoded',
+            'scWrapper' => 'true',
+            'Content-Type' => 'application/x-www-form-urlencoded',
         ];
 
         // 3. دریافت تنظیمات سرویس
@@ -33,11 +33,11 @@ class ShebaInquiryService
 
         // 4. ساخت بدنه درخواست
         $body = [
-            'scProductId'  => $serviceConfig['sc_product_id'],
-            'scApiKey'     => $serviceConfig['sc_api_key'],
-            'iban'         => $iban,
+            'scProductId' => $serviceConfig['sc_product_id'],
+            'scApiKey' => $serviceConfig['sc_api_key'],
+            'iban' => $iban,
             'nationalCode' => $nationalCode,
-            'birthDate'    => $birthDate,
+            'birthDate' => $birthDate,
         ];
 
         try {
@@ -47,7 +47,7 @@ class ShebaInquiryService
                 ->post($url, $body);
 
             $json = $resp->json();
-            if (!$resp->successful()) {
+            if (! $resp->successful()) {
                 Log::error('Sheba Inquiry HTTP Error', ['status' => $resp->status(), 'body' => $resp->body()]);
                 throw new Exception('خطا در ارتباط با سرویس بانکی.');
             }
@@ -63,18 +63,18 @@ class ShebaInquiryService
             $resultData = $json['result'] ?? [];
 
             if (isset($resultData['result']) && is_string($resultData['result'])) {
-                 $innerResult = json_decode($resultData['result'], true);
-                 $matched = $innerResult['matched'] ?? false;
+                $innerResult = json_decode($resultData['result'], true);
+                $matched = $innerResult['matched'] ?? false;
             } elseif (isset($resultData['matched'])) {
-                 $matched = $resultData['matched'];
+                $matched = $resultData['matched'];
             } else {
-                 $matched = false;
+                $matched = false;
             }
 
             return (bool) $matched;
 
         } catch (\Throwable $e) {
-            Log::error('Sheba Inquiry Exception: ' . $e->getMessage());
+            Log::error('Sheba Inquiry Exception: '.$e->getMessage());
 
             throw new Exception('سرویس استعلام شبا در دسترس نیست یا اطلاعات نامعتبر است.');
         }

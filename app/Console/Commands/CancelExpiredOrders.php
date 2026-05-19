@@ -4,10 +4,10 @@ namespace App\Console\Commands;
 
 use App\Actions\Order\CancelOrderAction;
 use App\Models\Order;
+use Exception;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
-use Exception;
 
 class CancelExpiredOrders extends Command
 {
@@ -39,6 +39,7 @@ class CancelExpiredOrders extends Command
 
         if ($totalOrders === 0) {
             $this->warn('No expired orders found.');
+
             return 0;
         }
 
@@ -59,7 +60,7 @@ class CancelExpiredOrders extends Command
                     $count++;
                 } catch (Exception $e) {
                     // ثبت خطا بدون متوقف کردن کل فرآیند
-                    Log::error("Failed to auto-cancel order #{$order->id}: " . $e->getMessage());
+                    Log::error("Failed to auto-cancel order #{$order->id}: ".$e->getMessage());
                 }
 
                 $bar->advance();

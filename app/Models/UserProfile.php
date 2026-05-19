@@ -19,27 +19,43 @@ class UserProfile extends Model
 {
     use HasApiTokens, HasFactory, Notifiable, PersianDate;
 
-    CONST
-        ID = 'id',
-        USER_ID = 'user_id',
-        NAME = 'name',
-        FAMILY = 'family',
-        EMAIL = 'email',
-        EMAIL_VERIFICATION_TOKEN = 'email_verification_token',
-        EMAIL_VERIFIED_AT = 'email_verified_at',
-        NATIONAL_CODE = 'national_code',
-        NATIONAL_ID = 'national_id',
-        BIRTHDAY = 'birthday',
-        COMPANY = 'company',
-        ECONOMIC_CODE = 'economic_code',
-        REGISTER_ID = 'register_id',
-        PHONE = 'phone',
-        PROVINCE_ID = 'province_id',
-        CITY_ID = 'city_id',
-        ENTITY = 'entity',
-        CREATED_AT = 'created_at',
-        UPDATED_AT = 'updated_at';
+    const ID = 'id';
 
+    const USER_ID = 'user_id';
+
+    const NAME = 'name';
+
+    const FAMILY = 'family';
+
+    const EMAIL = 'email';
+
+    const EMAIL_VERIFICATION_TOKEN = 'email_verification_token';
+
+    const EMAIL_VERIFIED_AT = 'email_verified_at';
+
+    const NATIONAL_CODE = 'national_code';
+
+    const NATIONAL_ID = 'national_id';
+
+    const BIRTHDAY = 'birthday';
+
+    const COMPANY = 'company';
+
+    const ECONOMIC_CODE = 'economic_code';
+
+    const REGISTER_ID = 'register_id';
+
+    const PHONE = 'phone';
+
+    const PROVINCE_ID = 'province_id';
+
+    const CITY_ID = 'city_id';
+
+    const ENTITY = 'entity';
+
+    const CREATED_AT = 'created_at';
+
+    const UPDATED_AT = 'updated_at';
 
     /**
      * The attributes that are mass assignable.
@@ -64,7 +80,7 @@ class UserProfile extends Model
         self::CITY_ID,
         self::ENTITY,
         self::CREATED_AT,
-        self::UPDATED_AT
+        self::UPDATED_AT,
     ];
 
     /**
@@ -78,21 +94,22 @@ class UserProfile extends Model
 
     public function getCreatedAtAttribute()
     {
-        $this->appends[] = "created_at_p";
-        $this->appends[] = "created_at_diff";
-        return $this->attributes["created_at"];
+        $this->appends[] = 'created_at_p';
+        $this->appends[] = 'created_at_diff';
+
+        return $this->attributes['created_at'];
     }
 
     public function getUpdatedAtAttribute()
     {
-        $this->appends[] = "updated_at_p";
-        $this->appends[] = "updated_at_diff";
-        return $this->attributes["updated_at"];
+        $this->appends[] = 'updated_at_p';
+        $this->appends[] = 'updated_at_diff';
+
+        return $this->attributes['updated_at'];
     }
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
-
 }

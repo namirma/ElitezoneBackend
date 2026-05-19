@@ -3,15 +3,16 @@
 namespace App\Providers;
 
 use App\Models\Order;
+use App\Models\ProductPrice;
 use App\Models\Ticket;
 use App\Models\User;
+use App\Observers\OrderObserver;
+use App\Observers\ProductPriceObserver;
 use App\Observers\TicketObserver;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
-use App\Models\ProductPrice;
-use App\Observers\OrderObserver;
-use App\Observers\ProductPriceObserver;
+
 use function in_array;
 
 class AppServiceProvider extends ServiceProvider
@@ -21,12 +22,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        if (!env("APP_DEBUG")) {
+        if (! env('APP_DEBUG')) {
             URL::forceScheme('https');
         }
 
-        if (env("APP_DEBUG")) {
-            URL::forceScheme("http");
+        if (env('APP_DEBUG')) {
+            URL::forceScheme('http');
         }
     }
 
@@ -39,6 +40,7 @@ class AppServiceProvider extends ServiceProvider
             if (app()->environment('local')) {
                 return true;
             }
+
             return $user && in_array($user->email, [
                 'navidm632@gmail.com',
                 //'zarsanjsajad@gmail.com',

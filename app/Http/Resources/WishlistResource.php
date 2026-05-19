@@ -2,9 +2,9 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Wishlist;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use App\Models\Wishlist;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 class WishlistResource extends JsonResource
@@ -24,9 +24,9 @@ class WishlistResource extends JsonResource
                 function () {
                     return [
                         'current_page' => $this->resource->variants->currentPage(),
-                        'last_page'    => $this->resource->variants->lastPage(),
-                        'per_page'     => $this->resource->variants->perPage(),
-                        'total'        => $this->resource->variants->total(),
+                        'last_page' => $this->resource->variants->lastPage(),
+                        'per_page' => $this->resource->variants->perPage(),
+                        'total' => $this->resource->variants->total(),
                     ];
                 }
             ),

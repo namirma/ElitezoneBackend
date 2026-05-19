@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Http\Requests\SavePurchaseParametersRequest;
 use App\Http\Resources\PurchaseParameterGroupResource;
 use App\Http\Resources\PurchaseParameterValueResource;
@@ -29,13 +28,13 @@ class PurchaseParameterController extends Controller
             $sessionId = $request->cookie('cart_session_id', (string) Str::uuid());
             $cart = Cart::firstOrCreate(
                 [Cart::SESSION_ID => $sessionId],
-                [Cart::USER_ID    => null]
+                [Cart::USER_ID => null]
             );
             cookie()->queue('cart_session_id', $sessionId, 60 * 24 * 30);
         }
-        $tableName = (new PurchaseParameterValue())->getTable();
+        $tableName = (new PurchaseParameterValue)->getTable();
         $currentParameterIds = $cart->purchaseParameters()
-            ->pluck($tableName . '.' . PurchaseParameterValue::ID)
+            ->pluck($tableName.'.'.PurchaseParameterValue::ID)
             ->all();
 
         $priceCategory = app(ParameterDetectionController::class)
@@ -43,7 +42,7 @@ class PurchaseParameterController extends Controller
             ?? PriceFilterCategory::where(PriceFilterCategory::CODE, 'employer_without_consultant')->first();
 
         if ($priceCategory) {
-            if (!$cart->relationLoaded('priceFilterCategories') || $cart->priceFilterCategories->pluck(PriceFilterCategory::ID)->sort()->values()->all() !== [$priceCategory->id]) {
+            if (! $cart->relationLoaded('priceFilterCategories') || $cart->priceFilterCategories->pluck(PriceFilterCategory::ID)->sort()->values()->all() !== [$priceCategory->id]) {
                 $cart->priceFilterCategories()->sync([$priceCategory->id]);
             }
 
@@ -53,7 +52,7 @@ class PurchaseParameterController extends Controller
                     $cart->update([Cart::CUSTOMER_TYPE_ID => $customerTypeModel->id]);
                 }
             }
-        } elseif (!$cart->{Cart::CUSTOMER_TYPE_ID}) {
+        } elseif (! $cart->{Cart::CUSTOMER_TYPE_ID}) {
             $defaultCustomerType = CustomerType::where(CustomerType::CODE, 'employer_without_consultant')->firstOrFail();
             $cart->update([Cart::CUSTOMER_TYPE_ID => $defaultCustomerType->id]);
         }
@@ -68,7 +67,6 @@ class PurchaseParameterController extends Controller
         $cart->purchaseParameters()->sync($parameterIds);
 
         $cart = $this->resolveCart($request);
-
 
         return success(
             [],
@@ -89,9 +87,9 @@ class PurchaseParameterController extends Controller
         }
 
         $defaultParameterValueCodesByGroup = [
-            'customer_type'     => 'employer',
+            'customer_type' => 'employer',
             'consultant_status' => 'without_consultant',
-            'purchase_purpose'  => 'for_myself',
+            'purchase_purpose' => 'for_myself',
         ];
 
         $defaultValuesToReturn = collect();
@@ -120,7 +118,7 @@ class PurchaseParameterController extends Controller
         $groups = PurchaseParameterGroup::query()
             ->active()
             ->ordered()
-            ->with(['values' => fn($query) => $query->active()->ordered()])
+            ->with(['values' => fn ($query) => $query->active()->ordered()])
             ->get();
 
         return success(

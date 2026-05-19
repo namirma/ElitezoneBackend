@@ -10,16 +10,23 @@ class PriceSetting extends Model
 {
     use HasFactory;
 
-    const
-        ID = 'id',
-        NAME = 'name',
-        CODE = 'code',
-        VALUE = 'value',
-        DESCRIPTION = 'description',
-        CREATED_AT = 'created_at',
-        UPDATED_AT = 'updated_at',
-        CODE_VAT_RATE = 'vat_rate',
-        CODE_SHOW_PRICES_WITH_VAT = 'show_prices_with_vat';
+    const ID = 'id';
+
+    const NAME = 'name';
+
+    const CODE = 'code';
+
+    const VALUE = 'value';
+
+    const DESCRIPTION = 'description';
+
+    const CREATED_AT = 'created_at';
+
+    const UPDATED_AT = 'updated_at';
+
+    const CODE_VAT_RATE = 'vat_rate';
+
+    const CODE_SHOW_PRICES_WITH_VAT = 'show_prices_with_vat';
 
     protected $fillable = [
         self::NAME,
@@ -43,7 +50,7 @@ class PriceSetting extends Model
     {
         $setting = self::where(self::CODE, $code)->first();
 
-        if (!$setting) {
+        if (! $setting) {
             return $default;
         }
 
@@ -59,9 +66,14 @@ class PriceSetting extends Model
     {
         $value = self::getValue($code, $default);
         if (is_string($value)) {
-            if (strtolower($value) === 'true') return true;
-            if (strtolower($value) === 'false') return false;
+            if (strtolower($value) === 'true') {
+                return true;
+            }
+            if (strtolower($value) === 'false') {
+                return false;
+            }
         }
+
         return filter_var($value, FILTER_VALIDATE_BOOLEAN);
     }
 }

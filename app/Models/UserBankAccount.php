@@ -2,30 +2,39 @@
 
 namespace App\Models;
 
-use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class UserBankAccount extends Model
 {
     use HasFactory, LogsActivity;
 
-    public const
-        ID = 'id',
-        USER_ID = 'user_id',
-        BANK_NAME = 'bank_name',
-        ACCOUNT_HOLDER_NAME = 'account_holder_name',
-        SHABA = 'shaba',
-        CARD_NUMBER = 'card_number',
-        STATUS = 'status',
-        REJECTION_REASON = 'rejection_reason',
-        IS_DEFAULT = 'is_default',
-        STATUS_PENDING = 'pending',
-        STATUS_APPROVED = 'approved',
-        STATUS_REJECTED = 'rejected';
+    public const ID = 'id';
+
+    public const USER_ID = 'user_id';
+
+    public const BANK_NAME = 'bank_name';
+
+    public const ACCOUNT_HOLDER_NAME = 'account_holder_name';
+
+    public const SHABA = 'shaba';
+
+    public const CARD_NUMBER = 'card_number';
+
+    public const STATUS = 'status';
+
+    public const REJECTION_REASON = 'rejection_reason';
+
+    public const IS_DEFAULT = 'is_default';
+
+    public const STATUS_PENDING = 'pending';
+
+    public const STATUS_APPROVED = 'approved';
+
+    public const STATUS_REJECTED = 'rejected';
 
     protected $fillable = [
         self::USER_ID,
@@ -57,8 +66,9 @@ class UserBankAccount extends Model
                     'created' => 'ثبت',
                     'updated' => 'ویرایش',
                     'deleted' => 'حذف',
-                    default   => $eventName,
+                    default => $eventName,
                 };
+
                 return "حساب بانکی {$action} شد.";
             });
     }

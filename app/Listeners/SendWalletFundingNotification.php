@@ -17,7 +17,9 @@ class SendWalletFundingNotification implements ShouldQueue
         $transaction = $event->transaction;
         $user = $transaction->wallet->user;
 
-        if (!$user) return;
+        if (! $user) {
+            return;
+        }
 
         try {
             $amount = number_format($transaction->amount);
@@ -27,7 +29,7 @@ class SendWalletFundingNotification implements ShouldQueue
 
             Log::info("Wallet funded SMS sent to User {$user->id}");
         } catch (\Exception $e) {
-            Log::error("Failed to send wallet SMS: " . $e->getMessage());
+            Log::error('Failed to send wallet SMS: '.$e->getMessage());
         }
     }
 }

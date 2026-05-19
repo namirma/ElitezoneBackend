@@ -15,7 +15,9 @@ class CustomerSegmentChanged
      * اطلاعاتی که باید منتقل شود
      */
     public User $user;
+
     public string $oldSegment;
+
     public string $newSegment;
 
     /**

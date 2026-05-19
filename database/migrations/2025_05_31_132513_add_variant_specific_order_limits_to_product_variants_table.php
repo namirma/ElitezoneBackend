@@ -12,7 +12,7 @@ return new class extends Migration
             $table->decimal('min_order_value', 12, 2)->nullable()->after('stock_quantity');
             $table->decimal('max_order_value', 12, 2)->nullable()->after('min_order_value');
             $table->foreignId('limit_order_unit_id')->nullable()->after('max_order_value')
-                  ->constrained('order_units')->onDelete('set null');
+                ->constrained('order_units')->onDelete('set null');
         });
     }
 

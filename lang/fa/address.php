@@ -1,4 +1,5 @@
 <?php
+
 return [
     'postal_address_required' => '.وارد کردن آدرس پستی الزامی است',
     'receiver_name_required' => '.وارد کردن نام گیرنده الزامی است',

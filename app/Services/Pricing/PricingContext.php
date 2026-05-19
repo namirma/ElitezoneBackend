@@ -27,6 +27,7 @@ class PricingContext
 
     // === وضعیت محاسباتی (State) ===
     public float $baseGeneralPrice = 0.0;
+
     public float $baseSpecialPrice = 0.0;
 
     // مسیری که قیمت نهایی را می‌سازد (Special Path)
@@ -36,7 +37,9 @@ class PricingContext
     public float $listPrice = 0.0;
 
     public float $customerAdjustment = 0.0;
+
     public float $vatAmount = 0.0;
+
     public float $vatRate = 0.0;
 
     // === گزارش (Logs/Breakdown) ===
@@ -44,7 +47,9 @@ class PricingContext
 
     // اطلاعات تخفیف واریانت (برای نمایش)
     public ?string $variantDiscountType = null;
+
     public ?float $variantDiscountValue = null;
+
     public float $variantDiscountAmount = 0.0;
 
     /**
@@ -54,7 +59,7 @@ class PricingContext
     {
         $this->breakdown[$key] = [
             'value' => $value,
-            'description' => $description
+            'description' => $description,
         ];
     }
 
@@ -67,24 +72,24 @@ class PricingContext
         $totalWithVat = $finalPrice + $this->vatAmount;
 
         return [
-            'base_general_price'           => (string) $this->baseGeneralPrice,
-            'base_special_price'           => (string) $this->baseSpecialPrice,
-            'variant_discount_type'        => $this->variantDiscountType,
-            'variant_discount_value'       => $this->variantDiscountValue !== null ? (string) $this->variantDiscountValue : null,
-            'variant_discount_amount'      => (string) $this->variantDiscountAmount,
+            'base_general_price' => (string) $this->baseGeneralPrice,
+            'base_special_price' => (string) $this->baseSpecialPrice,
+            'variant_discount_type' => $this->variantDiscountType,
+            'variant_discount_value' => $this->variantDiscountValue !== null ? (string) $this->variantDiscountValue : null,
+            'variant_discount_amount' => (string) $this->variantDiscountAmount,
 
-            'general_price_with_filters'   => (string) $this->listPrice,
-            'special_price_with_filters'   => (string) $this->payablePrice,
+            'general_price_with_filters' => (string) $this->listPrice,
+            'special_price_with_filters' => (string) $this->payablePrice,
 
-            'customer_adjustment'          => (string) $this->customerAdjustment,
-            'role_golden_figure'           => (string) max(0.0, $this->listPrice - $this->payablePrice),
+            'customer_adjustment' => (string) $this->customerAdjustment,
+            'role_golden_figure' => (string) max(0.0, $this->listPrice - $this->payablePrice),
 
-            'final_price'                  => (string) $finalPrice,
-            'vat_amount'                   => (string) $this->vatAmount,
-            'vat_rate'                     => (string) $this->vatRate,
-            'price_with_vat'               => (string) $totalWithVat,
-            'with_vat'                     => $this->withVat,
-            'debug_breakdown'              => $this->breakdown,
+            'final_price' => (string) $finalPrice,
+            'vat_amount' => (string) $this->vatAmount,
+            'vat_rate' => (string) $this->vatRate,
+            'price_with_vat' => (string) $totalWithVat,
+            'with_vat' => $this->withVat,
+            'debug_breakdown' => $this->breakdown,
         ];
     }
 
@@ -106,7 +111,7 @@ class PricingContext
             baseSpecialPrice: $this->baseSpecialPrice,
             priceAfterVariantDiscount: max(0.0, $priceAfterDiscount),
             listPrice: $this->listPrice,
-            payablePrice: $this->payablePrice, 
+            payablePrice: $this->payablePrice,
             customerAdjustment: $this->customerAdjustment,
             finalPrice: $finalPrice,
             vatAmount: $this->vatAmount,

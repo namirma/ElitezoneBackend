@@ -19,15 +19,14 @@ class SendSmsJob implements ShouldQueue
      */
     public $tries = 3;
 
-    public function __construct(protected string $mobile, protected string $message)
-    {}
+    public function __construct(protected string $mobile, protected string $message) {}
 
     public function handle(SmsService $smsService): void
     {
         try {
             $smsService->send($this->mobile, $this->message);
         } catch (\Exception $e) {
-            Log::error("SMS Job Failed for {$this->mobile}: " . $e->getMessage());
+            Log::error("SMS Job Failed for {$this->mobile}: ".$e->getMessage());
             throw $e;
         }
     }

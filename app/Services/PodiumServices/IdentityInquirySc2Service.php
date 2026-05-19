@@ -16,6 +16,7 @@ class IdentityInquirySc2Service
         if (empty($svc['sc_product_id']) || empty($svc['sc_api_key'])) {
             throw new InvalidArgumentException('Identity Inquiry service not configured (sc_product_id/sc_api_key missing).');
         }
+
         return $svc;
     }
 
@@ -29,17 +30,18 @@ class IdentityInquirySc2Service
         $svc = $this->cfg();
 
         $payload = [
-            'apiKey'          => $svc['sc_api_key'],
+            'apiKey' => $svc['sc_api_key'],
             'productEntityId' => (int) $svc['sc_product_id'],
             'providerParameters' => [
                 'nationalCode' => $nationalCode,
-                'birthDate'    => $this->normalizeBirthDate($birthDateJalali),
+                'birthDate' => $this->normalizeBirthDate($birthDateJalali),
             ],
             'asyncCall' => false,
-            'wrapper'   => true,
+            'wrapper' => true,
         ];
 
-        $res  = $this->client->callSc2($payload);
+        $res = $this->client->callSc2($payload);
+
         return PodiumClient::normalize($res);
     }
 }

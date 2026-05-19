@@ -32,7 +32,7 @@ class UpdateMobileRequest extends FormRequest
     {
         return [
             'username' => '',
-            'code' => ''
+            'code' => '',
         ];
     }
 }

@@ -15,9 +15,9 @@ return new class extends Migration
             $table->id(); // Primary key
             $table->string('query'); // The search term
             $table->foreignId('user_id') // Foreign key to the users table
-                  ->nullable() // Allow null for guest users
-                  ->constrained('users') // References the users table
-                  ->cascadeOnDelete(); // Delete searches if the user is deleted
+                ->nullable() // Allow null for guest users
+                ->constrained('users') // References the users table
+                ->cascadeOnDelete(); // Delete searches if the user is deleted
             $table->timestamps(); // created_at and updated_at
         });
     }
