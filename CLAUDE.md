@@ -165,13 +165,19 @@ Actions/
   Profile/     — SetUserTypeAction, SignAgreementAction, SyncUserRolesAction
 ```
 
-### Enums
+### Enums — Domain Subfolders
 
-`app/Enums/` — backed PHP 8.1 enums for all status/type values:
-- `OrderStatus`, `PaymentStatus` — order lifecycle
-- `WalletTransactionType`, `WalletTransactionStatus` — financial
-- `UserRoleSlug` — role slugs
-- `SurveyStatus` — survey states
+`app/Enums/` is organized into domain subfolders (commit `874e7ed`):
+
+```
+Enums/
+  Order/   — OrderStatus, PaymentStatus
+  Wallet/  — WalletTransactionStatus, WalletTransactionType
+  User/    — UserRoleSlug
+  Survey/  — SurveyStatus
+```
+
+Backed PHP 8.1 enums for all status/type values. **Note:** the codebase currently uses Model string constants (`Order::STATUS_CANCELLED`) rather than these enum values — future refactoring should switch to enum references for type safety.
 
 ### Support
 
