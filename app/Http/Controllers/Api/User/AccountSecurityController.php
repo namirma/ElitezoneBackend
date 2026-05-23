@@ -126,6 +126,10 @@ class AccountSecurityController extends Controller
             }
         } catch (\Throwable $e) {
             Log::error('Mobile match failed: '.$e->getMessage());
+
+            // احراز هویت Podium شرط لازم برای تغییر شماره است.
+            // اگر سرویس در دسترس نباشد، عملیات باید متوقف شود.
+            return error(__('auth.identity_verification_unavailable'), [], 503);
         }
 
         $code = generateVerifyCode();
