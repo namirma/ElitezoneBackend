@@ -33,11 +33,17 @@ class PayHoldFeeActionTest extends TestCase
         parent::setUp();
         $this->action = app(PayHoldFeeAction::class);
 
-        // Create minimal test user
-        $this->buyer = User::create([
-            'mobile'    => '09' . rand(100000000, 999999999),
-            'password'  => bcrypt('secret'),
+        // System (Saze) user/wallet — PayHoldFeeAction transfers the fee here
+        $systemUser = User::factory()->create();
+        config(['financial.system_user_id' => $systemUser->id]);
+        Wallet::create([
+            Wallet::USER_ID      => $systemUser->id,
+            Wallet::BALANCE      => 0,
+            Wallet::BALANCE_HOLD => 0,
         ]);
+
+        // Create minimal test user (factory sets type_id automatically)
+        $this->buyer = User::factory()->create();
 
         // Fund the wallet above the hold fee
         $this->wallet = Wallet::create([
@@ -87,7 +93,7 @@ class PayHoldFeeActionTest extends TestCase
         $this->action->execute($this->order);
 
         $tx = WalletTransaction::where('order_id', $this->order->id)
-            ->where('user_id', $this->buyer->id)
+            ->where('wallet_id', $this->wallet->id)
             ->latest()
             ->first();
 

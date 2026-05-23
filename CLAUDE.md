@@ -175,12 +175,38 @@ When adding a new DTO, place it in the matching domain subfolder and use the nam
 ```
 Actions/
   Auth/        — RequestOtpAction, VerifyIdentityWithPodiumAction, SyncIdentityToProfileAction
-  Cart/        — AddToCartAction, UpdateCartItemAction
-  Financial/   — RequestWithdrawalAction, DebitWalletAction, FundWalletAction
-  Order/       — PlaceOrderAction, RefundOrderToWalletAction
+  Cart/        — AddToCartAction, UpdateCartItemAction, RemoveCartItemAction, SyncCartFiltersAction
+  Financial/   — RequestWithdrawalAction, DebitWalletAction, FundWalletAction,
+                 PayHoldFeeAction, ProcessPreScalePaymentAction,
+                 ProcessReservationPaymentAction, ProcessReservationCompletionAction,
+                 ProcessWeighbridgeResultAction,
+                 AttachReceiptToDepositAction, DeleteReceiptAction
+  Order/       — PlaceOrderAction, RefundOrderToWalletAction, CancelOrderAction
   Product/
   Profile/     — SetUserTypeAction, SignAgreementAction, SyncUserRolesAction
 ```
+
+### Services (domain helpers)
+
+```
+Services/
+  Cart/
+    CartResolver         — resolves the request's Cart (user or guest session)
+                           and syncs customer_type_id / badge_id
+    CartResponseBuilder  — loads display relations, runs pricing pipeline,
+                           builds the standard { cart, totals } response
+  Invoice/
+    InvoiceGenerator     — orchestrator (~110 lines)
+    InvoiceDataBuilder   — Blade-view data prep (line items, totals, buyer info)
+    InvoicePdfRenderer   — PDF rendering + Storage::disk('public') write
+  Financial/
+    WalletTransactionEngine    — multi-wallet operations (owner/supplier/saze)
+    SettlementCalculatorService — POO/PTS commission math
+  Pricing/                       — pipeline (SetBasePrice → ApplyPriceFilters → ApplyVariantDiscount → ApplyVat)
+```
+
+When a controller method grows past ~30 lines of business logic, extract it
+into an Action (write side-effects) or a Service (read/composition).
 
 ### Enums — Domain Subfolders
 
@@ -317,15 +343,30 @@ Orchestrated by `CartPricingCalculator` and `PriceCalculationService`. The activ
 
 ### Route Structure
 
-- `routes/api.php` — main API routes
-- `routes/v1/api.php` — ticket sub-routes (included via `Route::prefix('ticket')`)
-- `routes/v1/ticket.php` — ticket-specific routes
+`routes/api.php` is a slim 23-line glue file that includes three domain subfiles:
 
-Route groups:
-- Public: products, categories, factories, search, payment callbacks
-- Auth required: profile, cart, checkout, orders, wallet, wishlists
-- Admin: `prefix('admin')->middleware(['auth:sanctum', 'role:admin'])`
-- Podium (external services): `prefix('v1/podium')->middleware(['auth:sanctum', 'role:admin'])` — proxies outbound calls to Podium API (identity verification, bank settlements); admin-only
+```
+routes/
+├── api.php           — entry point (only require/include statements)
+├── api/
+│   ├── public.php    — payment callbacks, search, products listing,
+│   │                   factories, customer-types, price-filters,
+│   │                   purchase-parameters, /authenticate group
+│   ├── user.php      — every auth:sanctum route: cart, checkout,
+│   │                   /profile/* (orders, financial, addresses,
+│   │                   wishlists, education, consultants, etc.),
+│   │                   beneficiaries, listophers, /user
+│   └── admin.php     — /admin/* panel + /v1/podium/* services
+│                       (both behind auth:sanctum + role:admin)
+└── v1/
+    ├── api.php       — ticket sub-routes (included via prefix('ticket'))
+    └── ticket.php
+```
+
+When adding a route, put it in the subfile that matches its middleware layer
+(public vs. authenticated vs. admin). Internal `Route::prefix()` /
+`Route::middleware()` groups stay inside that file. **Never** define routes
+directly in `routes/api.php` — it must stay a thin glue file.
 
 ### Key Middleware
 
@@ -389,6 +430,74 @@ Scheduled jobs (crons, wired in `Console/Kernel.php`):
 - `Order/CheckReservationExpiryJob` — cancels expired reservations
 - `Financial/CheckSupplierBalancesJob` — monitors supplier wallet balances
 - `Analytics/CalculateCustomerRfm` — customer segmentation analytics
+
+### Authorization (Policies)
+
+`app/Policies/` contains five policies, all registered in `AuthServiceProvider`:
+
+| Policy | Resource | Pattern |
+|---|---|---|
+| `OrderPolicy` | `Order` | `view`, `pay`, `cancel`, `manageAsSupplier`, `finalizeInvoice` |
+| `CartPolicy` | `Cart` | `view`, `update`, `delete` — owner-only |
+| `AddressPolicy` | `Address` | `view`, `update`, `delete` — owner-only |
+| `WishlistPolicy` | `Wishlist` | `view`, `update`, `delete` — owner-only |
+| `UserBankAccountPolicy` | `UserBankAccount` | `view`, `update`, `delete` — strict owner-only (sensitive) |
+
+All policies share the same shape:
+- `before(User, ability)` returns `true` for admins (admin bypass)
+- Each ability returns `Response::allow()` / `Response::deny('Persian message')`
+- Ownership is checked via the model's `USER_ID` constant
+
+In controllers, call `$this->authorize('view', $resource);` — the Handler
+catches `AuthorizationException` and returns 403 with the policy's deny message.
+
+### Testing
+
+`tests/Feature/` covers two main areas. All tests use the `DatabaseTransactions`
+trait so the live local database is **not** mutated (per user requirement).
+
+```
+tests/
+  Feature/
+    Financial/   — PayHoldFeeActionTest, ProcessPreScalePaymentActionTest,
+                   ProcessReservationPaymentActionTest, WalletDepositTest
+    Policies/    — OrderPolicyTest, UserBankAccountPolicyTest
+  Unit/          — (empty placeholder dir — kept so phpunit.xml works)
+```
+
+Patterns to follow when adding tests:
+- **Use factories**, never `User::create([...])` with raw arrays — `UserFactory`
+  sets `type_id` via `firstOrCreate`; manual creation will hit a NOT-NULL error.
+- **Use `OrderItem::factory()->create([...])`** for line items — the factory
+  fills `product_name`, `quantity_details`, `unit_price`, `total_price`.
+- **Set up the Saze system user** in `setUp()` for Action tests:
+  ```php
+  $sys = User::factory()->create();
+  config(['financial.system_user_id' => $sys->id]);
+  Wallet::create([Wallet::USER_ID => $sys->id, Wallet::BALANCE => 0, Wallet::BALANCE_HOLD => 0]);
+  ```
+  The system wallet user defaults to `id=1`; in a fresh test DB that user
+  doesn't exist, so create one and point config at it.
+- **Roles**: Laratrust's role attach method is `$user->addRole($role)` (NOT
+  `attachRole`). Create roles with `Role::firstOrCreate(['name' => 'admin'], ...)`.
+- Prefer behavioural assertions (`assertLessThan(balanceBefore, balanceAfter)`)
+  over exact-amount assertions for financial flows — the POO/PTS formulas
+  depend on badge rates and aren't trivially reproducible in test setup.
+
+### Database Indexes
+
+Performance-critical indexes added in `2026_05_23_120000_add_performance_indexes`:
+
+| Table | Index | Reason |
+|---|---|---|
+| `orders` | `orders_status_idx` | scope queries (`current`/`delivered`/`cancelled`) |
+| `orders` | `orders_payment_status_idx` | admin filtering |
+| `orders` | `orders_reservation_expires_at_idx` | `CheckReservationExpiryJob` cron |
+| `orders` | `orders_placer_status_idx` (composite) | "my orders" lists |
+| `users` | `users_national_code_idx` | admin back-office search |
+
+When adding queries that filter heavily on a column, check this list and
+add an index in a new migration if needed. Always make migrations additive.
 
 ## Key Conventions
 

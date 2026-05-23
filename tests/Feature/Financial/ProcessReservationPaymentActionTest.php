@@ -34,10 +34,16 @@ class ProcessReservationPaymentActionTest extends TestCase
         $this->action    = app(ProcessReservationPaymentAction::class);
         $this->threshold = (float) config('financial.reservation_threshold', 1_950_000_000);
 
-        $this->buyer = User::create([
-            'mobile'   => '09' . rand(100000000, 999999999),
-            'password' => bcrypt('secret'),
+        // System (Saze) user/wallet — Action expects user at financial.system_user_id
+        $systemUser = User::factory()->create();
+        config(['financial.system_user_id' => $systemUser->id]);
+        Wallet::create([
+            Wallet::USER_ID      => $systemUser->id,
+            Wallet::BALANCE      => 0,
+            Wallet::BALANCE_HOLD => 0,
         ]);
+
+        $this->buyer = User::factory()->create();
 
         // Wallet funded exactly at the threshold (just enough)
         $this->wallet = Wallet::create([
