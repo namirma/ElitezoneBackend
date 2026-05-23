@@ -298,13 +298,33 @@ Route groups:
 - `track` — logs dashboard page visits for analytics
 - `can-see-ticket` — ticket ownership check
 
-### Event-Driven Side Effects
+### Event-Driven Side Effects — Domain Subfolders
 
-Events dispatched from Actions trigger Jobs and listeners:
+`app/Events/` and `app/Listeners/` are organized into domain subfolders (commit `7f0ca9f`):
+
+```
+Events/
+  Cart/      — CartItemChanged
+  Order/     — OrderCancelled, OrderPaid, OrderPlaced
+  Financial/ — TransactionProcessed, WalletFunded
+  User/      — CustomerSegmentChanged
+
+Listeners/
+  Cart/      — LogCartEvent
+  Order/     — HandleSuccessfulPayment, SendOrderCancellationNotification,
+               SendOrderPaymentNotification, SendOrderPlacedNotification
+  Financial/ — SendTransactionNotification, SendWalletFundingNotification
+  User/      — SendWinBackOffer
+```
+
+Event → Listener wiring is registered in `app/Providers/EventServiceProvider.php`.
+
+Dispatch flow:
 - `OrderPlaced` → inventory deduction, notifications
-- `OrderPaid` → status transitions
+- `OrderPaid` → status transitions (HandleSuccessfulPayment)
 - `OrderCancelled` → stock restoration, wallet refund
-- `CartItemChanged` → analytics tracking
+- `CartItemChanged` → analytics tracking (LogCartEvent)
+- `WalletFunded` / `TransactionProcessed` → financial notifications
 
 ### User Roles (Laratrust)
 
