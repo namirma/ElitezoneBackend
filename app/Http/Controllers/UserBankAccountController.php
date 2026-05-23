@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Financial\StoreUserBankAccountRequest;
-use App\Http\Resources\UserBankAccountResource;
+use App\Http\Resources\Financial\UserBankAccountResource;
 use App\Models\User;
 use App\Models\UserBankAccount;
 use App\Services\PodiumServices\CardInquiryService;

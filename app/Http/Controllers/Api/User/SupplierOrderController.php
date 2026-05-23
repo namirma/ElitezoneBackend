@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api\User;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Order\AddWaybillRequest;
 use App\Http\Requests\Order\UploadOrderReceiptRequest;
-use App\Http\Resources\OrderResource;
+use App\Http\Resources\Order\OrderResource;
 use App\Models\Order;
 use Illuminate\Http\JsonResponse;
 

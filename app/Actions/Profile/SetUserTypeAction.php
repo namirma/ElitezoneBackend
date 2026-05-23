@@ -2,7 +2,7 @@
 
 namespace App\Actions\Profile;
 
-use App\Http\Resources\UserResource;
+use App\Http\Resources\Profile\UserResource;
 use App\Models\User;
 use App\Models\UserType;
 use Illuminate\Http\JsonResponse;

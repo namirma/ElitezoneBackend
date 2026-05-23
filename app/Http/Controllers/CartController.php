@@ -11,7 +11,7 @@ use App\Http\Requests\Cart\AddToCartRequest;
 use App\Http\Requests\Cart\UpdateCartFiltersRequest;
 use App\Http\Requests\Cart\UpdateCartItemRequest;
 use App\Http\Requests\Cart\UpdateCustomerTypeRequest;
-use App\Http\Resources\CartResource;
+use App\Http\Resources\Cart\CartResource;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\CustomerType;

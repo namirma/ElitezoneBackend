@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api\Ticket;
 
 use App\DataTransferObjects\TicketReplyDTO;
 use App\Http\Controllers\Controller;
-use App\Http\Resources\CreatedResource;
+use App\Http\Resources\Shared\CreatedResource;
 use App\Models\Ticket;
 use App\Services\TicketReplyService;
 use Illuminate\Http\JsonResponse;

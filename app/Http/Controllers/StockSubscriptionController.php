@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Product\ToggleStockSubscriptionRequest;
-use App\Http\Resources\SubscribedVariantResource;
+use App\Http\Resources\Product\SubscribedVariantResource;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\StockSubscription;

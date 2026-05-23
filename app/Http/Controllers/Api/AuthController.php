@@ -7,7 +7,7 @@ use App\Actions\Auth\SyncIdentityToProfileAction;
 use App\Actions\Auth\VerifyIdentityWithPodiumAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\StoreUserRequest;
-use App\Http\Resources\UserResource;
+use App\Http\Resources\Profile\UserResource;
 use App\Jobs\SendSmsJob;
 use App\Models\User;
 use App\Models\UserNotification;

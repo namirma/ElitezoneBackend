@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Resources\EduixRecordResource;
+use App\Http\Resources\Profile\EduixRecordResource;
 use App\Models\EduixRecord;
 use App\Models\User;
 use App\Services\EduixScraperService;

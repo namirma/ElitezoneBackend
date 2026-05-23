@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Actions\Financial\ProcessTransactionAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UpdateTransactionStatusRequest;
-use App\Http\Resources\WalletTransactionResource;
+use App\Http\Resources\Financial\WalletTransactionResource;
 use App\Models\WalletTransaction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;

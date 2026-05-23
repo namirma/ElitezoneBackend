@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Profile\StoreJobExperienceRequest;
-use App\Http\Resources\JobExperienceResource;
+use App\Http\Resources\Profile\JobExperienceResource;
 use App\Models\JobExperience;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;

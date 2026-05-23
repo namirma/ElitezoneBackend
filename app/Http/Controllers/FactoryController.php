@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Resources\FactoryLocationResource;
-use App\Http\Resources\FactoryResource;
+use App\Http\Resources\Supplier\FactoryLocationResource;
+use App\Http\Resources\Supplier\FactoryResource;
 use App\Models\Factory;
 use Illuminate\Http\Request;
 

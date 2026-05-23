@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Payment;
 use App\Actions\Financial\ProcessPreScalePaymentAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Payment\PayWithWalletRequest;
-use App\Http\Resources\OrderResource;
+use App\Http\Resources\Order\OrderResource;
 use App\Models\Order;
 use Exception;
 use Illuminate\Support\Facades\Auth;

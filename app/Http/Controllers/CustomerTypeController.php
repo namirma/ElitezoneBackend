@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Resources\BadgeResource;
-use App\Http\Resources\CustomerTypeResource;
+use App\Http\Resources\Profile\BadgeResource;
+use App\Http\Resources\Profile\CustomerTypeResource;
 use App\Models\Badge;
 use App\Models\CustomerType;
 use Illuminate\Http\JsonResponse;

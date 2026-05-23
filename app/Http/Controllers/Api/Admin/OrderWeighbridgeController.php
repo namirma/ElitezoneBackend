@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Actions\Financial\ProcessWeighbridgeResultAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Order\SubmitWeighbridgeRequest;
-use App\Http\Resources\OrderResource;
+use App\Http\Resources\Order\OrderResource;
 use App\Models\Order;
 use Exception;
 use Illuminate\Http\JsonResponse;

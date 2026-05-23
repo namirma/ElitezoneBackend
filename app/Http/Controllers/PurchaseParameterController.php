@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Cart\SavePurchaseParametersRequest;
-use App\Http\Resources\PurchaseParameterGroupResource;
-use App\Http\Resources\PurchaseParameterValueResource;
+use App\Http\Resources\Cart\PurchaseParameterGroupResource;
+use App\Http\Resources\Cart\PurchaseParameterValueResource;
 use App\Models\Cart;
 use App\Models\CustomerType;
 use App\Models\PriceFilterCategory;

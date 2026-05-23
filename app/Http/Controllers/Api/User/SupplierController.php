@@ -4,9 +4,9 @@ namespace App\Http\Controllers\Api\User;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Profile\StoreSupplierProfileRequest;
-use App\Http\Resources\SupplierCategoryResource;
-use App\Http\Resources\SupplierProfileResource;
-use App\Http\Resources\UserResource;
+use App\Http\Resources\Supplier\SupplierCategoryResource;
+use App\Http\Resources\Supplier\SupplierProfileResource;
+use App\Http\Resources\Profile\UserResource;
 use App\Models\SupplierActivityCategory;
 use App\Models\SupplierProfile;
 use App\Models\User;

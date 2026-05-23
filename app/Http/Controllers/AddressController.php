@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Address\StoreAddressRequest;
 use App\Http\Requests\Address\UpdateAddressRequest;
-use App\Http\Resources\AddressResource;
+use App\Http\Resources\Profile\AddressResource;
 use App\Models\Address;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;

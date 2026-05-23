@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Product\SearchRequest;
-use App\Http\Resources\SearchResource;
+use App\Http\Resources\Product\SearchResource;
 use App\Models\Search;
 use App\Models\SupplierActivityCategory;
 use Illuminate\Database\Eloquent\Builder;

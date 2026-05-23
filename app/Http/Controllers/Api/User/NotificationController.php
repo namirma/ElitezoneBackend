@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api\User;
 
 use App\Http\Controllers\Controller;
-use App\Http\Resources\UserMessageResource;
+use App\Http\Resources\Shared\UserMessageResource;
 use App\Models\UserNotification;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;

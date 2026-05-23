@@ -4,9 +4,9 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UserSearchRequest;
-use App\Http\Resources\OrderResource;
-use App\Http\Resources\UserResource;
-use App\Http\Resources\WalletTransactionResource;
+use App\Http\Resources\Order\OrderResource;
+use App\Http\Resources\Profile\UserResource;
+use App\Http\Resources\Financial\WalletTransactionResource;
 use App\Models\Order;
 use App\Models\User;
 use App\Models\UserProfile;

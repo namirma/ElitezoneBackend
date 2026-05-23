@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Resources\PriceFilterCategoryResource;
-use App\Http\Resources\PriceFilterTypeResource;
+use App\Http\Resources\Product\PriceFilterCategoryResource;
+use App\Http\Resources\Product\PriceFilterTypeResource;
 use App\Models\PriceFilterCategory;
 use App\Models\PriceFilterType;
 use Illuminate\Http\JsonResponse;

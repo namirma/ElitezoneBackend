@@ -12,7 +12,7 @@ use App\Http\Requests\Profile\StoreUserTypeRequest;
 use App\Http\Requests\Profile\UpdateLegalProfileRequest;
 use App\Http\Requests\Profile\UpdateRealProfileRequest;
 use App\Http\Requests\Auth\VerifyEmailRequest;
-use App\Http\Resources\UserResource;
+use App\Http\Resources\Profile\UserResource;
 use App\Jobs\SendSmsJob;
 use App\Mail\VerifyEmail;
 use App\Models\User;

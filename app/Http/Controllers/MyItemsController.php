@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Resources\BadgeResource;
-use App\Http\Resources\OrderSurveyResource;
+use App\Http\Resources\Profile\BadgeResource;
+use App\Http\Resources\Order\OrderSurveyResource;
 use App\Models\OrderSurvey;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;

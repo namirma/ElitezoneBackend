@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api\User;
 
 use App\Http\Controllers\Controller;
-use App\Http\Resources\DashboardResource;
+use App\Http\Resources\Shared\DashboardResource;
 use App\Models\Order;
 use App\Services\DashboardAlertsService;
 use Illuminate\Http\JsonResponse;

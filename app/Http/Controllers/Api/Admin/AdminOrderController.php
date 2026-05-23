@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\OrderFilterRequest;
-use App\Http\Resources\OrderResource;
+use App\Http\Resources\Order\OrderResource;
 use App\Models\Order;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;

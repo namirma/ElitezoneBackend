@@ -11,7 +11,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Order\PayFullOrderRequest;
 use App\Http\Requests\Order\PayHoldFeeRequest;
 use App\Http\Requests\Order\UploadOrderReceiptRequest;
-use App\Http\Resources\OrderResource;
+use App\Http\Resources\Order\OrderResource;
 use App\Models\Order;
 use Exception;
 use Illuminate\Http\JsonResponse;

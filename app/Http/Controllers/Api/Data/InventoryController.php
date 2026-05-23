@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api\Data;
 
 use App\Http\Controllers\Controller;
-use App\Http\Resources\InventoryPredictionResource;
+use App\Http\Resources\Product\InventoryPredictionResource;
 use App\Models\InventoryPrediction;
 
 class InventoryController extends Controller
