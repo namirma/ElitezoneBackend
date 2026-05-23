@@ -5,6 +5,9 @@ namespace App\Http\Resources\Shared;
 use Illuminate\Http\Request;
 use App\Http\Resources\BaseJsonResource;
 
+/**
+ * @mixin \Spatie\Activitylog\Models\Activity
+ */
 class ActivityLogResource extends BaseJsonResource
 {
     public function toArray(Request $request): array

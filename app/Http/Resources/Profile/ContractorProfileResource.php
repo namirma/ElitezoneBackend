@@ -6,6 +6,9 @@ use App\Models\ContractorProfile;
 use Illuminate\Http\Request;
 use App\Http\Resources\BaseJsonResource;
 
+/**
+ * @mixin \App\Models\ContractorProfile
+ */
 class ContractorProfileResource extends BaseJsonResource
 {
     /**

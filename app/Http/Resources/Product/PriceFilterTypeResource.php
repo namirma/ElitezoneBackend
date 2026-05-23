@@ -6,6 +6,9 @@ use App\Models\PriceFilterType;
 use Illuminate\Http\Request;
 use App\Http\Resources\BaseJsonResource;
 
+/**
+ * @mixin \App\Models\PriceFilterType
+ */
 class PriceFilterTypeResource extends BaseJsonResource
 {
     public function toArray(Request $request): array

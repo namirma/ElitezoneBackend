@@ -6,6 +6,9 @@ use App\Models\ProductCategory;
 use Illuminate\Http\Request;
 use App\Http\Resources\BaseJsonResource;
 
+/**
+ * @mixin \App\Models\ProductCategory
+ */
 class ProductCategoryResource extends BaseJsonResource
 {
     public function toArray(Request $request): array

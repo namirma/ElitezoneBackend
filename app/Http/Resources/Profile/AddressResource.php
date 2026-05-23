@@ -6,6 +6,9 @@ use App\Models\Address;
 use Illuminate\Http\Request;
 use App\Http\Resources\BaseJsonResource;
 
+/**
+ * @mixin \App\Models\Address
+ */
 class AddressResource extends BaseJsonResource
 {
     public function toArray(Request $request): array

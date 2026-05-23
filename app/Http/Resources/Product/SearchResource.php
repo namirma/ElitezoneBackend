@@ -5,6 +5,9 @@ namespace App\Http\Resources\Product;
 use Illuminate\Http\Request;
 use App\Http\Resources\BaseJsonResource;
 
+/**
+ * @mixin \App\Models\Search
+ */
 class SearchResource extends BaseJsonResource
 {
     /**

@@ -7,6 +7,9 @@ use App\Models\ProductVariantAttribute;
 use Illuminate\Http\Request;
 use App\Http\Resources\BaseJsonResource;
 
+/**
+ * @mixin \App\Models\ProductVariantAttribute
+ */
 class ProductVariantAttributeResource extends BaseJsonResource
 {
     public function toArray(Request $request): array

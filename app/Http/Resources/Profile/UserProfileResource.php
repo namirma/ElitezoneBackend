@@ -6,6 +6,9 @@ use App\Models\UserProfile;
 use Illuminate\Http\Request;
 use App\Http\Resources\BaseJsonResource;
 
+/**
+ * @mixin \App\Models\UserProfile
+ */
 class UserProfileResource extends BaseJsonResource
 {
     /**

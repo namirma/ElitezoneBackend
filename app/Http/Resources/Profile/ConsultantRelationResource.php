@@ -8,6 +8,9 @@ use App\Models\UserProfile;
 use Illuminate\Http\Request;
 use App\Http\Resources\BaseJsonResource;
 
+/**
+ * @mixin \App\Models\EmployerConsultant
+ */
 class ConsultantRelationResource extends BaseJsonResource
 {
     public function toArray(Request $request): array

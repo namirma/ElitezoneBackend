@@ -7,6 +7,9 @@ use Illuminate\Http\Request;
 use App\Http\Resources\BaseJsonResource;
 use App\Http\Resources\Supplier\SupplierProfileResource;
 
+/**
+ * @mixin \App\Models\User
+ */
 class UserResource extends BaseJsonResource
 {
     public function toArray(Request $request): array

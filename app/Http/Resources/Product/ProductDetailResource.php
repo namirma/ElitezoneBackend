@@ -7,6 +7,9 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use App\Http\Resources\BaseJsonResource;
 
+/**
+ * @mixin \App\Models\Product
+ */
 class ProductDetailResource extends BaseJsonResource
 {
     public function toArray(Request $request): array

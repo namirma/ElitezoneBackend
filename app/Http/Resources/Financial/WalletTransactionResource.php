@@ -6,6 +6,9 @@ use App\Models\WalletTransaction;
 use Illuminate\Http\Request;
 use App\Http\Resources\BaseJsonResource;
 
+/**
+ * @mixin \App\Models\WalletTransaction
+ */
 class WalletTransactionResource extends BaseJsonResource
 {
     public function toArray(Request $request): array

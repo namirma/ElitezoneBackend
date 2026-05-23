@@ -5,6 +5,9 @@ namespace App\Http\Resources\Profile;
 use App\Models\CustomerType;
 use App\Http\Resources\BaseJsonResource;
 
+/**
+ * @mixin \App\Models\CustomerType
+ */
 class CustomerTypeResource extends BaseJsonResource
 {
     public function toArray($request): array

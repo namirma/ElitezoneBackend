@@ -7,6 +7,9 @@ use Illuminate\Http\Request;
 use App\Http\Resources\BaseJsonResource;
 use Illuminate\Pagination\LengthAwarePaginator;
 
+/**
+ * @mixin \App\Models\Wishlist
+ */
 class WishlistResource extends BaseJsonResource
 {
     public function toArray(Request $request): array

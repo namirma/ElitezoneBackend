@@ -7,6 +7,9 @@ use App\Http\Resources\BaseJsonResource;
 use App\Http\Resources\Profile\CustomerTypeResource;
 use App\Http\Resources\Profile\BadgeResource;
 
+/**
+ * @mixin \App\Models\Cart
+ */
 class CartResource extends BaseJsonResource
 {
     public function toArray($request): array

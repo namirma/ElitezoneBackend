@@ -7,6 +7,9 @@ use App\Models\ProductVariant;
 use Illuminate\Http\Request;
 use App\Http\Resources\BaseJsonResource;
 
+/**
+ * @mixin \App\Models\ProductVariant
+ */
 class VariantInWishlistResource extends BaseJsonResource
 {
     public function toArray(Request $request): array

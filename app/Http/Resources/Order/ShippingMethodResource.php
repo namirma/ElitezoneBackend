@@ -5,6 +5,9 @@ namespace App\Http\Resources\Order;
 use App\Models\ShippingMethod;
 use App\Http\Resources\BaseJsonResource;
 
+/**
+ * @mixin \App\Models\ShippingMethod
+ */
 class ShippingMethodResource extends BaseJsonResource
 {
     public function toArray($request): array

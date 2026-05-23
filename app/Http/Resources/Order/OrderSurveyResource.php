@@ -7,6 +7,9 @@ use App\Models\OrderSurvey;
 use Illuminate\Http\Request;
 use App\Http\Resources\BaseJsonResource;
 
+/**
+ * @mixin \App\Models\OrderSurvey
+ */
 class OrderSurveyResource extends BaseJsonResource
 {
     public function toArray(Request $request): array

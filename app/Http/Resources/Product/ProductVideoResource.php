@@ -6,6 +6,9 @@ use App\Models\ProductVideo;
 use Illuminate\Http\Request;
 use App\Http\Resources\BaseJsonResource;
 
+/**
+ * @mixin \App\Models\ProductVideo
+ */
 class ProductVideoResource extends BaseJsonResource
 {
     public function toArray(Request $request): array

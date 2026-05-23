@@ -5,6 +5,9 @@ namespace App\Http\Resources\Financial;
 use Illuminate\Http\Request;
 use App\Http\Resources\BaseJsonResource;
 
+/**
+ * @mixin \App\Models\Wallet
+ */
 class WalletResource extends BaseJsonResource
 {
     public function toArray(Request $request): array

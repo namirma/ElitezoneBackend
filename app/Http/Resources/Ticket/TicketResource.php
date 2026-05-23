@@ -5,6 +5,9 @@ namespace App\Http\Resources\Ticket;
 use Illuminate\Http\Request;
 use App\Http\Resources\BaseJsonResource;
 
+/**
+ * @mixin \App\Models\Ticket
+ */
 class TicketResource extends BaseJsonResource
 {
     /**

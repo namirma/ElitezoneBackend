@@ -7,6 +7,9 @@ use Illuminate\Http\Request;
 use App\Http\Resources\BaseJsonResource;
 use Illuminate\Support\Facades\Auth;
 
+/**
+ * @mixin \App\Models\Order
+ */
 class OrderResource extends BaseJsonResource
 {
     public function toArray(Request $request): array

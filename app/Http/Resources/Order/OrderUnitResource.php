@@ -6,6 +6,9 @@ use App\Models\OrderUnit;
 use Illuminate\Http\Request;
 use App\Http\Resources\BaseJsonResource;
 
+/**
+ * @mixin \App\Models\OrderUnit
+ */
 class OrderUnitResource extends BaseJsonResource
 {
     public function toArray(Request $request): array

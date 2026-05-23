@@ -9,6 +9,9 @@ use App\Http\Resources\BaseJsonResource;
 /**
  * @property mixed $activities
  */
+/**
+ * @mixin \App\Models\SupplierProfile
+ */
 class SupplierProfileResource extends BaseJsonResource
 {
     /**

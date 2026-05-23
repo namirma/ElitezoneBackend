@@ -6,6 +6,9 @@ use App\Models\ProductImage;
 use Illuminate\Http\Request;
 use App\Http\Resources\BaseJsonResource;
 
+/**
+ * @mixin \App\Models\ProductImage
+ */
 class ProductImageResource extends BaseJsonResource
 {
     public function toArray(Request $request): array

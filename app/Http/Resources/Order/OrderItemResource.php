@@ -8,6 +8,9 @@ use App\Http\Resources\BaseJsonResource;
 use App\Http\Resources\Product\ProductVariantResource;
 use App\Http\Resources\Profile\UserResource;
 
+/**
+ * @mixin \App\Models\OrderItem
+ */
 class OrderItemResource extends BaseJsonResource
 {
     public function toArray(Request $request): array

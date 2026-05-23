@@ -6,6 +6,9 @@ use App\Models\UserType;
 use Illuminate\Http\Request;
 use App\Http\Resources\BaseJsonResource;
 
+/**
+ * @mixin \App\Models\UserType
+ */
 class UserTypeResource extends BaseJsonResource
 {
     /**

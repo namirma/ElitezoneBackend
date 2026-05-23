@@ -15,6 +15,9 @@ use App\Http\Resources\BaseJsonResource;
  *
  * @method relationLoaded(string $string)
  */
+/**
+ * @mixin \App\Models\SupplierActivityCategory
+ */
 class SupplierCategoryResource extends BaseJsonResource
 {
     /**

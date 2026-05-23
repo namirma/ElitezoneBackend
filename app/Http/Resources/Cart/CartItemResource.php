@@ -9,6 +9,9 @@ use App\Http\Resources\Supplier\FactoryResource;
 use App\Http\Resources\Supplier\FactoryLocationResource;
 use App\Http\Resources\Order\ShippingMethodResource;
 
+/**
+ * @mixin \App\Models\CartItem
+ */
 class CartItemResource extends BaseJsonResource
 {
     public function toArray($request): array
