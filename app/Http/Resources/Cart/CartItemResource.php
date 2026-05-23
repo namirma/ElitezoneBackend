@@ -25,11 +25,10 @@ class CartItemResource extends BaseJsonResource
                 ->where('factory_location_id', (int) $this->factory_location_id)
         );
 
-        // 2. دیکد کردن و تضمین ساختار صحیح برای quantities
-        // اگر رشته است دیکد کن، در غیر این صورت خود آرایه را بردار
-        $quantities = is_string($this->quantities)
-            ? json_decode($this->quantities, true)
-            : $this->quantities;
+        // CartItem::quantities is cast to 'array' by the model, so Eloquent
+        // always decodes the JSON column automatically. The previous is_string()
+        // + json_decode() branch was unreachable dead code.
+        $quantities = (array) ($this->quantities ?? []);
 
         return [
             CartItem::ID => (string) $this->id,
