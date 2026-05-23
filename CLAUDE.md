@@ -102,7 +102,7 @@ Http/Resources/
 - `Order/OrderItemResource` → `Product\ProductVariantResource`, `Profile\UserResource`
 - `Profile/UserResource` → `Supplier\SupplierProfileResource`
 
-When adding a new Resource, place it in the matching domain subfolder, use the namespace `App\Http\Resources\<Domain>`, extend `BaseJsonResource` (not `JsonResource` directly), and add explicit `use` imports for any sibling resource from a different domain.
+When adding a new Resource, place it in the matching domain subfolder, use the namespace `App\Http\Resources\<Domain>`, extend `BaseJsonResource` (not `JsonResource` directly), add `@mixin \App\Models\YourModel` in the class docblock so Intelephense resolves `$this->` property accesses without PHP0416 false-positives, and add explicit `use` imports for any sibling resource from a different domain.
 
 ```php
 use App\Http\Resources\BaseJsonResource;  // ← always, not JsonResource
@@ -135,7 +135,9 @@ Controllers/
               PodiumBatchSettlementController, PodiumSettlementInquiryController,
               IdentityInquirySc2Controller, MobileNidMatchController
     Ticket/ — TicketController, TicketReplyController
-    User/   — ProfileController, DashboardController, CartController,
+    User/   — ProfileController (profile data: name, legal info, role selection),
+              AccountSecurityController (password, mobile change, email change),
+              DashboardController, CartController,
               CheckoutController, OrderController, OrderPaymentController,
               OrderActionController, OrderInvoiceController, OrderSurveyController,
               WalletController, UserBankAccountController, AddressController,

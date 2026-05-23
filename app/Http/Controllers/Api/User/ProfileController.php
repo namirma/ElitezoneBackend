@@ -2,34 +2,21 @@
 
 namespace App\Http\Controllers\Api\User;
 
-use App\Actions\Auth\RequestOtpAction;
 use App\Actions\Profile\SetUserTypeAction;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Auth\ChangeMobileRequest;
-use App\Http\Requests\Auth\StorePasswordRequest;
 use App\Http\Requests\Profile\StoreUserProfileRequest;
 use App\Http\Requests\Profile\StoreUserTypeRequest;
 use App\Http\Requests\Profile\UpdateLegalProfileRequest;
 use App\Http\Requests\Profile\UpdateRealProfileRequest;
-use App\Http\Requests\Auth\VerifyEmailRequest;
 use App\Http\Resources\Profile\UserResource;
-use App\Jobs\Notification\SendSmsJob;
-use App\Mail\VerifyEmail;
 use App\Models\User;
 use App\Models\UserProfile;
-use App\Services\PodiumClient;
 use App\Services\PodiumServices\CompanyInquiryService;
-use App\Support\PhoneNumber;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Str;
 
 class ProfileController extends Controller
 {
@@ -211,150 +198,7 @@ class ProfileController extends Controller
         return success(new UserResource($user->fresh('profile')), __('profile.updated_successfully'));
     }
 
-    public function setPassword(StorePasswordRequest $request): JsonResponse
-    {
-        $user = User::findOrFail(Auth::id());
-        $user->update([User::PASSWORD => Hash::make($request->validated()[User::PASSWORD])]);
-
-        return success(new UserResource($user), __('auth.password_changed_successfully'));
-    }
-
-    public function changePasswordFirstAttempt(RequestOtpAction $otpAction): JsonResponse
-    {
-        $user = User::findOrFail(Auth::id());
-        $notExpired = $user->{User::SECRET_EXPIRES_AT}
-            ? ! Carbon::parse($user->{User::SECRET_EXPIRES_AT})->isPast()
-            : false;
-
-        if ($notExpired) {
-            return success([], __('auth.code_sent_recently'), 202);
-        }
-
-        $otpAction->execute($user, $user->{User::MOBILE});
-
-        return success([], __('auth.change_password_first_attempt'), 200);
-    }
-
-    public function requestChangeMobile(ChangeMobileRequest $request): JsonResponse
-    {
-        $user = Auth::user();
-        $validated = $request->validated();
-
-        $currentProfile = $user->profile;
-        if (
-            ! $currentProfile ||
-            $currentProfile->{UserProfile::NATIONAL_CODE} !== $validated['national_code'] ||
-            $currentProfile->{UserProfile::BIRTHDAY} !== $validated['birth_date']
-        ) {
-            return error(__('auth.identity_mismatch'), [], 403);
-        }
-        try {
-            $client = app(PodiumClient::class);
-            $newMobile09 = PhoneNumber::to09($validated['new_mobile']);
-
-            $matchPayload = [
-                'apiKey' => (string) config('podium.services.nid_mobile_match.sc_api_key'),
-                'productEntityId' => (int) config('podium.services.nid_mobile_match.sc_product_id'),
-                'providerParameters' => ['body' => ['nationalCode' => $validated['national_code'], 'mobileNumber' => $newMobile09]],
-                'asyncCall' => false,
-                'wrapper' => true,
-            ];
-            $matchRes = PodiumClient::normalize($client->callSc2($matchPayload));
-            $matched = data_get($matchRes, 'result.matched');
-            $matchCode = (string) data_get($matchRes, 'result.resultCode', '');
-
-            if (! ($matched === true || $matched === 'true' || $matchCode === '1')) {
-                return error(__('auth.mobile_nid_mismatch'), [], 422);
-            }
-        } catch (\Throwable $e) {
-            Log::error('Mobile match failed: '.$e->getMessage());
-        }
-
-        $code = generateVerifyCode();
-        $user->update([
-            User::SECRET => $code,
-            User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2),
-        ]);
-
-        // ذخیره شماره جدید در کش موقت
-        Cache::put('pending_mobile_change_'.$user->id, $validated['new_mobile'], 120);
-
-        SendSmsJob::dispatch($validated['new_mobile'], $code);
-
-        return success([], __('auth.verification_code_sent_to_new_mobile'));
-    }
-
-    public function confirmChangeMobile(Request $request): JsonResponse
-    {
-        $user = Auth::user();
-        $request->validate(['code' => 'required|digits:6']);
-
-        $cachedMobile = Cache::get('pending_mobile_change_'.$user->id);
-
-        if (! $cachedMobile) {
-            return error(__('auth.request_expired'), [], 400);
-        }
-
-        if ($user->{User::SECRET} != $request->input('code') || Carbon::parse($user->{User::SECRET_EXPIRES_AT})->isPast()) {
-            return error(__('auth.verification_code_not_match'), [], 400);
-        }
-
-        $user->update([
-            User::MOBILE => $cachedMobile,
-            User::SECRET => null,
-            User::SECRET_EXPIRES_AT => null,
-        ]);
-
-        // آپدیت پروفایل
-        $user->profile()->update([UserProfile::PHONE => $cachedMobile]);
-
-        Cache::forget(key: 'pending_mobile_change_'.$user->id);
-
-        return success([], __('profile.mobile_updated_successfully'));
-    }
-
-    // confirmUpdateMobile() removed — it used session() which does not exist in a
-    // stateless API and was never registered in routes/api.php. The working mobile
-    // update flow is: requestUpdateMobile (sends OTP) → updateMobile (verifies via
-    // Cache key 'pending_mobile_change_{id}', no session involved).
-
-    public function setEmail(VerifyEmailRequest $request): JsonResponse
-    {
-        $user = Auth::user();
-        if (! $user) {
-            return error(__('auth.unauthenticated'), [], 401);
-        }
-        $token = Str::uuid()->toString();
-        $email = $request->validated()['email'];
-        $profile = UserProfile::firstOrCreate(
-            [UserProfile::USER_ID => $user->id],
-            [UserProfile::NATIONAL_CODE => $user->{User::NATIONAL_CODE}, UserProfile::BIRTHDAY => $user->{User::BIRTH_DATE} ? Carbon::parse($user->{User::BIRTH_DATE})->format('Y-m-d') : null]
-        );
-        $profile->update([UserProfile::EMAIL => $email, UserProfile::EMAIL_VERIFIED_AT => null, UserProfile::EMAIL_VERIFICATION_TOKEN => $token]);
-        try {
-            Mail::to($email)->send(new VerifyEmail($token));
-
-            return success(['email' => $email], __('global.verificationEmailSentSuccessfully'));
-        } catch (\Throwable $e) {
-            Log::error("Failed to send verification email to {$email}: ".$e->getMessage());
-
-            return error(__('profile.email_send_failed'), [], 500);
-        }
-    }
-
-    public function checkToken(Request $request): JsonResponse
-    {
-        $token = $request->input('token');
-        if (! $token) {
-            return error(__('validation.required'), ['token'], 422);
-        }
-        $profile = UserProfile::where([UserProfile::EMAIL_VERIFICATION_TOKEN], $token)->whereNull(UserProfile::EMAIL_VERIFIED_AT)->first();
-        if ($profile) {
-            $profile->update([UserProfile::EMAIL_VERIFIED_AT => Carbon::now(), UserProfile::EMAIL_VERIFICATION_TOKEN => null]);
-
-            return success(['email' => $profile->{UserProfile::EMAIL}], __('global.emailVerifiedSuccessfully'));
-        }
-
-        return error(__('global.invalid_verification_token'), [], 400);
-    }
+    // Password, mobile-change, and email management have been moved to
+    // AccountSecurityController (same namespace) to keep this controller
+    // focused on profile data (name, legal info, role selection).
 }

@@ -22,6 +22,7 @@ use App\Http\Controllers\Api\User\NotificationController;
 use App\Http\Controllers\Api\User\OrderActionController;
 use App\Http\Controllers\Api\User\OrderInvoiceController;
 use App\Http\Controllers\Api\User\OrderPaymentController;
+use App\Http\Controllers\Api\User\AccountSecurityController;
 use App\Http\Controllers\Api\User\ProfileController;
 use App\Http\Controllers\Api\User\SupplierController;
 use App\Http\Controllers\Api\User\SupplierOrderController;
@@ -243,11 +244,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/role-options', [ProfileController::class, 'getRoleOptions']);
         Route::get('/user-types', [AuthController::class, 'types']);
 
-        Route::post('/verify-email', [ProfileController::class, 'setEmail']);
-        Route::post('/check-email-token', [ProfileController::class, 'checkToken']);
-        Route::post('/password', [ProfileController::class, 'setPassword']);
+        // ── Account security (password / mobile / email) ──────────────────
+        Route::post('/verify-email', [AccountSecurityController::class, 'setEmail']);
+        Route::post('/check-email-token', [AccountSecurityController::class, 'checkToken']);
+        Route::post('/password/otp', [AccountSecurityController::class, 'changePasswordFirstAttempt']);
+        Route::post('/password', [AccountSecurityController::class, 'setPassword']);
 
-        Route::prefix('change-mobile')->controller(ProfileController::class)->group(function () {
+        Route::prefix('change-mobile')->controller(AccountSecurityController::class)->group(function () {
             Route::get('/', 'updateMobile');
             Route::post('/request', 'requestChangeMobile');
             Route::post('/confirm', 'confirmChangeMobile');

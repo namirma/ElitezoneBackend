@@ -74,6 +74,7 @@ class Kernel extends HttpKernel
         ],
 
         'api' => [
+            SecurityHeaders::class,
             EnsureFrontendRequestsAreStateful::class,
             ThrottleRequests::class.':api',
             SubstituteBindings::class,
