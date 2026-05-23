@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Jobs;
+namespace App\Jobs\Notification;
 
 use App\Services\SmsService;
 use Illuminate\Bus\Queueable;

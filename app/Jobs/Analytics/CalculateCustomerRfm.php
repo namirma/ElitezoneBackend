@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Jobs;
+namespace App\Jobs\Analytics;
 
 use App\Events\User\CustomerSegmentChanged;
 use App\Models\CustomerStat;

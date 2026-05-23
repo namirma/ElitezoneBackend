@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Jobs;
+namespace App\Jobs\Order;
 
 use App\Actions\Order\CancelOrderAction;
 use App\Models\Order;

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Jobs;
+namespace App\Jobs\Analytics;
 
 use App\Models\Product;
 use App\Models\ProductView;

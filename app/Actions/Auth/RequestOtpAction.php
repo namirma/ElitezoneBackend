@@ -2,7 +2,7 @@
 
 namespace App\Actions\Auth;
 
-use App\Jobs\SendSmsJob;
+use App\Jobs\Notification\SendSmsJob;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 

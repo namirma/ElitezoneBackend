@@ -7,7 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Profile\InviteConsultantRequest;
 use App\Http\Requests\Profile\RejectInvitationRequest;
 use App\Http\Resources\Profile\ConsultantRelationResource;
-use App\Jobs\SendSmsJob;
+use App\Jobs\Notification\SendSmsJob;
 use App\Models\EmployerConsultant;
 use App\Models\User;
 use App\Models\UserNotification;

@@ -3,9 +3,9 @@
 namespace App\Console;
 
 use App\Console\Commands\CancelExpiredOrders;
-use App\Jobs\CalculateCustomerRfm;
-use App\Jobs\CheckSupplierBalancesJob;
-use App\Jobs\PredictInventoryNeeds;
+use App\Jobs\Analytics\CalculateCustomerRfm;
+use App\Jobs\Financial\CheckSupplierBalancesJob;
+use App\Jobs\Analytics\PredictInventoryNeeds;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 

@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api\User;
 
 use App\Http\Controllers\Controller;
 
-use App\Jobs\SendSmsJob;
+use App\Jobs\Notification\SendSmsJob;
 use App\Models\User;
 use App\Models\UserProfile;
 use App\Models\UserType;

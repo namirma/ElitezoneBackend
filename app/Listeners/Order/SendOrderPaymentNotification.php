@@ -3,7 +3,7 @@
 namespace App\Listeners\Order;
 
 use App\Events\Order\OrderPaid;
-use App\Jobs\SendSmsJob;
+use App\Jobs\Notification\SendSmsJob;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Log;

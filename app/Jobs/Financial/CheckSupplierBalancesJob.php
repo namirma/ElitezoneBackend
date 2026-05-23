@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Jobs;
+namespace App\Jobs\Financial;
 
 use App\Constants\FinancialCodes;
 use App\Models\WalletTransaction;
