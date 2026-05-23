@@ -1,6 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api\Podium;
+
+use App\Http\Controllers\Controller;
 
 use App\Http\Requests\Podium\GetBalanceRequest;
 use App\Services\PodiumServices\PodiumBalanceService;

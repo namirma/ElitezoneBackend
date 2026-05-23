@@ -1,6 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api\User;
+
+use App\Http\Controllers\Controller;
 
 use App\Http\Requests\Product\ToggleStockSubscriptionRequest;
 use App\Http\Resources\Product\SubscribedVariantResource;

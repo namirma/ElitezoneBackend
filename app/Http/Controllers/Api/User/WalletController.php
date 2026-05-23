@@ -1,6 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api\User;
+
+use App\Http\Controllers\Controller;
 
 use App\Actions\Financial\DebitWalletAction;
 use App\Actions\Financial\FundWalletAction;

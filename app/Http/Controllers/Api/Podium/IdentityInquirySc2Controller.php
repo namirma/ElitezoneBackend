@@ -1,6 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api\Podium;
+
+use App\Http\Controllers\Controller;
 
 use App\Services\Gateways\GatewayFactory;
 use Illuminate\Http\Request;

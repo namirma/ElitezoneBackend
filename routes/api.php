@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\AddressController;
+use App\Http\Controllers\Api\User\AddressController;
 use App\Http\Controllers\Api\Admin\AdminActivityLogController;
 use App\Http\Controllers\Api\Admin\AdminFinancialController;
 use App\Http\Controllers\Api\Admin\AdminOrderController;
@@ -25,36 +25,36 @@ use App\Http\Controllers\Api\User\OrderPaymentController;
 use App\Http\Controllers\Api\User\ProfileController;
 use App\Http\Controllers\Api\User\SupplierController;
 use App\Http\Controllers\Api\User\SupplierOrderController;
-use App\Http\Controllers\CartController;
-use App\Http\Controllers\CheckoutController;
-use App\Http\Controllers\ConsultantRelationController;
+use App\Http\Controllers\Api\User\CartController;
+use App\Http\Controllers\Api\User\CheckoutController;
+use App\Http\Controllers\Api\User\ConsultantRelationController;
 use App\Http\Controllers\CustomerTypeController;
-use App\Http\Controllers\EduixController;
+use App\Http\Controllers\Api\User\EduixController;
 use App\Http\Controllers\FactoryController;
-use App\Http\Controllers\IdentityInquirySc2Controller;
-use App\Http\Controllers\JobExperienceController;
-use App\Http\Controllers\MobileNidMatchController;
-use App\Http\Controllers\MyItemsController;
-use App\Http\Controllers\OrderController;
-use App\Http\Controllers\OrderSurveyController;
+use App\Http\Controllers\Api\Podium\IdentityInquirySc2Controller;
+use App\Http\Controllers\Api\User\JobExperienceController;
+use App\Http\Controllers\Api\Podium\MobileNidMatchController;
+use App\Http\Controllers\Api\User\MyItemsController;
+use App\Http\Controllers\Api\User\OrderController;
+use App\Http\Controllers\Api\User\OrderSurveyController;
 use App\Http\Controllers\ParameterDetectionController;
 use App\Http\Controllers\Payment\WalletPaymentController;
 use App\Http\Controllers\PaymentController;
-use App\Http\Controllers\PodiumBalanceController;
+use App\Http\Controllers\Api\Podium\PodiumBalanceController;
 // Admin Controllers
-use App\Http\Controllers\PodiumBatchSettlementController;
-use App\Http\Controllers\PodiumSettlementController;
-use App\Http\Controllers\PodiumSettlementInquiryController;
+use App\Http\Controllers\Api\Podium\PodiumBatchSettlementController;
+use App\Http\Controllers\Api\Podium\PodiumSettlementController;
+use App\Http\Controllers\Api\Podium\PodiumSettlementInquiryController;
 use App\Http\Controllers\PriceFilterController;
 use App\Http\Controllers\ProductCategoryController;
 use App\Http\Controllers\ProductController;
-use App\Http\Controllers\ProfileSearchController;
+use App\Http\Controllers\Api\User\ProfileSearchController;
 use App\Http\Controllers\PurchaseParameterController;
 use App\Http\Controllers\SearchController;
-use App\Http\Controllers\StockSubscriptionController;
-use App\Http\Controllers\UserBankAccountController;
-use App\Http\Controllers\WalletController;
-use App\Http\Controllers\WishlistController;
+use App\Http\Controllers\Api\User\StockSubscriptionController;
+use App\Http\Controllers\Api\User\UserBankAccountController;
+use App\Http\Controllers\Api\User\WalletController;
+use App\Http\Controllers\Api\User\WishlistController;
 use App\Http\Middleware\EnsureRoleIsSelected;
 use Illuminate\Http\Request;
 // Middleware
@@ -429,8 +429,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // ذی‌نفعان
     Route::group(['prefix' => 'beneficiaries'], function () {
-        Route::post('/start-verification', [\App\Http\Controllers\BeneficiaryController::class, 'startVerification']);
-        Route::post('/confirm-verification', [\App\Http\Controllers\BeneficiaryController::class, 'confirmVerification']);
+        Route::post('/start-verification', [\App\Http\Controllers\Api\User\BeneficiaryController::class, 'startVerification']);
+        Route::post('/confirm-verification', [\App\Http\Controllers\Api\User\BeneficiaryController::class, 'confirmVerification']);
     });
 
     // Refactored User Route

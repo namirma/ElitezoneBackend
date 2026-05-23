@@ -1,6 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api\User;
+
+use App\Http\Controllers\Controller;
 
 use App\Jobs\SendSmsJob;
 use App\Models\User;

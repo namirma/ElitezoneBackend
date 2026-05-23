@@ -1,6 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api\User;
+
+use App\Http\Controllers\Controller;
 
 use App\Http\Requests\Wishlist\StoreWishlistRequest;
 use App\Http\Requests\Wishlist\UpdateWishlistRequest;
