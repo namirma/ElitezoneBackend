@@ -288,7 +288,7 @@ Route groups:
 - Public: products, categories, factories, search, payment callbacks
 - Auth required: profile, cart, checkout, orders, wallet, wishlists
 - Admin: `prefix('admin')->middleware(['auth:sanctum', 'role:admin'])`
-- Podium (external services): `prefix('v1/podium')` — **currently has no auth middleware**
+- Podium (external services): `prefix('v1/podium')->middleware(['auth:sanctum', 'role:admin'])` — proxies outbound calls to Podium API (identity verification, bank settlements); admin-only
 
 ### Key Middleware
 
