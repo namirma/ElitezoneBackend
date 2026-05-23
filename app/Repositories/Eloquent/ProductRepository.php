@@ -15,7 +15,7 @@ class ProductRepository implements ProductRepositoryInterface
     public function getFilterQuery(ProductFilterData $filters): Builder
     {
         return Product::query()
-            ->with(['variants.prices', 'category', 'images'])
+            ->with(['variants.prices.factory', 'variants.prices.factoryLocation', 'category', 'images'])
             ->active()
 
             // فیلتر جستجو

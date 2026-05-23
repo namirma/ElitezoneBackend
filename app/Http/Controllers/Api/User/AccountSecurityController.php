@@ -209,7 +209,7 @@ class AccountSecurityController extends Controller
         ]);
 
         try {
-            Mail::to($email)->send(new VerifyEmail($token));
+            Mail::to($email)->queue(new VerifyEmail($token));
 
             return success(['email' => $email], __('global.verificationEmailSentSuccessfully'));
         } catch (\Throwable $e) {

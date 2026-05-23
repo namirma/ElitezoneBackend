@@ -78,7 +78,7 @@ Route::post('/new-question', [QuestionController::class, 'submitQuestion']);
 
 Route::middleware(['auth:sanctum'])->group(function () {
     // درگاه پرداخت کیف پول
-    Route::post('payment/wallet', [WalletPaymentController::class, 'pay'])->name('payment.wallet');
+    Route::post('payment/wallet', [WalletPaymentController::class, 'pay'])->middleware('throttle:10,1')->name('payment.wallet');
 
     // جستجوی نویگیشن پروفایل
     Route::prefix('profile/search-navigation')->controller(ProfileSearchController::class)->group(function () {
@@ -309,8 +309,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
             // عملیات مالی
             Route::controller(OrderPaymentController::class)->group(function () {
-                Route::post('/{order}/pay-hold-fee', 'payHoldFee')->whereNumber('order')->middleware('idempotency');
-                Route::post('/{order}/pay-full', 'payFullOrder')->whereNumber('order')->middleware('idempotency')->name('api.user.orders.pay_full');
+                Route::post('/{order}/pay-hold-fee', 'payHoldFee')->whereNumber('order')->middleware(['idempotency', 'throttle:10,1']);
+                Route::post('/{order}/pay-full', 'payFullOrder')->whereNumber('order')->middleware(['idempotency', 'throttle:10,1'])->name('api.user.orders.pay_full');
                 Route::post('/{order}/upload-receipt', 'uploadReceipt')->whereNumber('order');
             });
 

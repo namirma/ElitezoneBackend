@@ -15,9 +15,9 @@ class QuestionController extends Controller
     {
         Question::create($request->validated());
 
-        Mail::to($request->email)->send(new QuestionEmail($request->validated(), 'user'));
+        Mail::to($request->email)->queue(new QuestionEmail($request->validated(), 'user'));
 
-        Mail::to(Config::get('app.companyInfoEmailAddress'))->send(new QuestionEmail($request->validated(), 'support'));
+        Mail::to(Config::get('app.companyInfoEmailAddress'))->queue(new QuestionEmail($request->validated(), 'support'));
 
         return success([], __('global.received_successfully'));
     }
