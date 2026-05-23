@@ -21,6 +21,8 @@ class SupplierOrderController extends Controller
                 Order::PREPARED_AT => now(),
             ]);
 
+            $order->loadMissing(Order::resourceRelations());
+
             return success(new OrderResource($order), __('orders.marked_as_prepared'));
         }
 
@@ -33,10 +35,12 @@ class SupplierOrderController extends Controller
 
         if (in_array($order->status, [Order::STATUS_PREPARING, Order::STATUS_WEIGHBRIDGE_DONE])) {
             $order->update([
-                Order::STATUS => Order::STATUS_WAYBILL_ISSUED,
-                Order::WAYBILL_REF => $request->validated('waybill_ref'), // اصلاح نام فیلد بر اساس مدل
+                Order::STATUS     => Order::STATUS_WAYBILL_ISSUED,
+                Order::WAYBILL_REF => $request->validated('waybill_ref'),
                 Order::SHIPPED_AT => now(),
             ]);
+
+            $order->loadMissing(Order::resourceRelations());
 
             return success(new OrderResource($order), __('orders.waybill_added'));
         }
@@ -50,6 +54,8 @@ class SupplierOrderController extends Controller
 
         $order->update([Order::ESPADANA_ORDER_REF => 'ESPADANA_'.$order->id.'_'.time()]);
 
+        $order->loadMissing(Order::resourceRelations());
+
         return success(new OrderResource($order), __('orders.espadana_command_issued'));
     }
 
@@ -59,6 +65,8 @@ class SupplierOrderController extends Controller
 
         $path = $request->file('receipt')->store('supplier_receipts', 'public');
         $order->update([Order::PAYMENT_RECEIPT_REF => $path]);
+
+        $order->loadMissing(Order::resourceRelations());
 
         return success(new OrderResource($order), __('orders.receipt_attached'));
     }

@@ -258,6 +258,31 @@ class Order extends Model
     ];
 
     // =========================================================================
+    //  Resource Helpers
+    // =========================================================================
+
+    /**
+     * Relations required by OrderResource::toArray().
+     *
+     * Use this whenever constructing an OrderResource or OrderResource::collection()
+     * so the Resource never triggers lazy-loads itself:
+     *
+     *   $order->fresh(Order::resourceRelations())
+     *   $order->load(Order::resourceRelations())
+     *   ->with(Order::resourceRelations())
+     */
+    public static function resourceRelations(): array
+    {
+        return [
+            'items.productVariant',
+            'placer',
+            'beneficiary.profile',
+            'address.city',
+            'address.province',
+        ];
+    }
+
+    // =========================================================================
     //  Relationships
     // =========================================================================
     public function placer(): BelongsTo

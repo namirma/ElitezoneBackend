@@ -36,7 +36,7 @@ class OrderWeighbridgeController extends Controller
             };
 
             return success([
-                'order' => new OrderResource($order->fresh()),
+                'order' => new OrderResource($order->fresh(Order::resourceRelations())),
                 'weight_details' => $result,
                 'message' => $message,
             ]);

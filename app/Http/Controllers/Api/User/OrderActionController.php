@@ -38,7 +38,7 @@ class OrderActionController extends Controller
 
         $cancelAction->execute($order, 'لغو توسط کاربر');
 
-        return success(new OrderResource($order->fresh()), __('orders.cancelled_successfully'));
+        return success(new OrderResource($order->fresh(Order::resourceRelations())), __('orders.cancelled_successfully'));
     }
 
     /**

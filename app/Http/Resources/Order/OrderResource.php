@@ -17,8 +17,6 @@ class OrderResource extends BaseJsonResource
         $user = Auth::user();
         $isSupplier = $user ? $user->hasRole('supplier') : false;
 
-        $this->loadMissing(['items', 'placer.profile', 'beneficiary.profile', 'address.city', 'address.province']);
-
         $progress = $this->dashboard_progress ?? [];
 
         $statusKey = $this->{Order::STATUS};

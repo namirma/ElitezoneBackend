@@ -49,24 +49,39 @@ class AdminUserController extends Controller
         return success(new UserResource($user));
     }
 
+    /**
+     * فعال/غیرفعال کردن حساب کاربری
+     *
+     * @todo ستون is_active هنوز به جدول users اضافه نشده است.
+     *       migration زیر را اجرا کنید و سپس این متد را فعال کنید:
+     *       php artisan make:migration add_is_active_to_users_table
+     *       $table->boolean('is_active')->default(true)->after('mobile');
+     */
     public function toggleStatus(User $user): JsonResponse
     {
-        // فرض بر اینکه ستون is_active در جدول users دارید (اگر ندارید باید اضافه کنید)
-        // $user->update(['is_active' => ! $user->is_active]);
-
-        // فعلا چون ستون is_active در مایگریشن‌های شما نبود، فقط پیام موفقیت برمی‌گردانم
-        // لطفا ستون is_active را به جدول users اضافه کنید.
-        return success(null, __('admin.users.activated'));
+        return response()->json([
+            'status' => false,
+            'message' => 'این قابلیت هنوز پیاده‌سازی نشده است. '
+                .'ابتدا ستون is_active را به جدول users اضافه کنید.',
+        ], 501);
     }
 
+    /**
+     * افزودن یادداشت ادمین روی کاربر
+     *
+     * @todo جدول user_notes هنوز ساخته نشده است.
+     *       migration زیر را اجرا کنید و سپس این متد را فعال کنید:
+     *       php artisan make:migration create_user_notes_table
+     */
     public function addNote(Request $request, User $user): JsonResponse
     {
-        // نیاز به جدول user_notes دارد که در پاسخ قبلی مایگریشن آن را دادم
         $request->validate(['note' => 'required|string|max:1000']);
 
-        // $user->notes()->create([...]);
-
-        return success(null, __('admin.users.note_added'));
+        return response()->json([
+            'status' => false,
+            'message' => 'این قابلیت هنوز پیاده‌سازی نشده است. '
+                .'ابتدا جدول user_notes را بسازید.',
+        ], 501);
     }
 
     public function getUserProfileForBackOffice(Request $request): JsonResponse
@@ -121,7 +136,7 @@ class AdminUserController extends Controller
     {
         $orders = Order::query()
             ->where(Order::PLACER_USER_ID, $user->id)
-            ->with(['items', 'shippingMethod'])
+            ->with(Order::resourceRelations())
             ->latest()
             ->paginate($request->get('per_page', 10));
 

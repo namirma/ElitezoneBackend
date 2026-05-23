@@ -40,13 +40,9 @@ class OrderController extends Controller
     {
         $this->authorize('view', $order);
 
-        $order->load([
-            'items.productVariant',
-            'items.supplier.profile',
-            'address',
-            'placer.profile',
-            'beneficiary.profile',
-        ]);
+        $order->load(array_merge(Order::resourceRelations(), [
+            'items.supplier.profile',   // extra: نمایش اطلاعات تامین‌کننده در detail
+        ]));
 
         return success(new OrderResource($order), __('global.received_successfully'));
     }

@@ -86,7 +86,9 @@ class CheckoutController extends Controller
 
         $user = $user->fresh(['cart.items.productVariant']);
         $order = $this->placeOrderAction->execute($user, $orderData);
-        $order->load(['items.productVariant', 'address', 'shippingMethod']);
+        $order->load(array_merge(Order::resourceRelations(), [
+            'shippingMethod',   // extra: برای صفحه تأیید سفارش
+        ]));
 
         return success(
             new OrderResource($order),

@@ -68,7 +68,7 @@ class OrderPaymentController extends Controller
                 $this->completionAction->execute($order);
 
                 return success([
-                    'order' => new OrderResource($order->fresh()),
+                    'order' => new OrderResource($order->fresh(Order::resourceRelations())),
                     'documents' => [
                         FinancialCodes::DOC_FINAL_RECEIPT_OWNER,   // G
                         FinancialCodes::DOC_FINAL_REPORT_SUPPLIER, // H
@@ -96,7 +96,7 @@ class OrderPaymentController extends Controller
                 $this->purchaseAction->execute($order);
 
                 return success([
-                    'order' => new OrderResource($order->fresh()),
+                    'order' => new OrderResource($order->fresh(Order::resourceRelations())),
                     'documents' => [
                         FinancialCodes::DOC_RECEIPT_OWNER,    // A (رسید خریدار)
                         FinancialCodes::DOC_REPORT_SUPPLIER,  // B (گزارش سوپلایر)
@@ -119,7 +119,7 @@ class OrderPaymentController extends Controller
                 $this->reservationAction->execute($order, $reserveAmount, validityHours: 2);
 
                 return success([
-                    'order' => new OrderResource($order->fresh()),
+                    'order' => new OrderResource($order->fresh(Order::resourceRelations())),
                     'documents' => [
                         FinancialCodes::DOC_RESERVE_RECEIPT, // E
                         FinancialCodes::DOC_RESERVE_REPORT,   // F
@@ -166,7 +166,7 @@ class OrderPaymentController extends Controller
             $this->holdFeeAction->execute($order);
 
             return success([
-                'order' => new OrderResource($order->fresh()),
+                'order' => new OrderResource($order->fresh(Order::resourceRelations())),
                 'fee_amount' => PayHoldFeeAction::fee(),
             ], 'هزینه تمدید با موفقیت پرداخت شد');
         } catch (Exception $e) {
@@ -182,6 +182,6 @@ class OrderPaymentController extends Controller
 
         $order->update([Order::PAYMENT_RECEIPT_REF => $path]);
 
-        return success(new OrderResource($order->fresh()), 'فیش بانکی با موفقیت ثبت شد');
+        return success(new OrderResource($order->fresh(Order::resourceRelations())), 'فیش بانکی با موفقیت ثبت شد');
     }
 }

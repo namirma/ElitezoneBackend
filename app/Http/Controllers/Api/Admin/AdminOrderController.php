@@ -37,7 +37,7 @@ class AdminOrderController extends Controller
     {
 
         $orders = Order::query()
-            ->with(['placer:id,mobile'])
+            ->with(Order::resourceRelations())
             ->when($request->filled('order_number'), fn (Builder $q) => $q->where(Order::ORDER_NUMBER, 'like', "%{$request->order_number}%")
                 ->orWhere(Order::ID, $request->order_number)
             )
@@ -55,7 +55,7 @@ class AdminOrderController extends Controller
 
     public function show(Order $order): JsonResponse
     {
-        $order->load(['items', 'address', 'placer.profile']);
+        $order->load(Order::resourceRelations());
 
         return success(new OrderResource($order));
     }

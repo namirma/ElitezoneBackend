@@ -60,7 +60,7 @@ class WalletPaymentController extends Controller
             $this->purchaseAction->execute($order);
 
             return success([
-                'order' => new OrderResource($order->fresh()),
+                'order' => new OrderResource($order->fresh(Order::resourceRelations())),
                 'new_balance' => (float) $user->wallet->fresh()->balance,
                 'tracking_code' => $order->id,
             ], __('payment.success.payment_completed'));
