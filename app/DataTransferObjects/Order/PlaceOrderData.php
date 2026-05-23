@@ -1,6 +1,6 @@
 <?php
 
-namespace App\DataTransferObjects;
+namespace App\DataTransferObjects\Order;
 
 use App\Http\Requests\Order\StoreOrderRequest;
 

@@ -2,7 +2,7 @@
 
 namespace App\Actions\Product;
 
-use App\DataTransferObjects\ProductFilterData;
+use App\DataTransferObjects\Product\ProductFilterData;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Repositories\Contracts\ProductRepositoryInterface;

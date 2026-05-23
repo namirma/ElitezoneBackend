@@ -2,7 +2,7 @@
 
 namespace App\Repositories\Contracts;
 
-use App\DataTransferObjects\ProductFilterData;
+use App\DataTransferObjects\Product\ProductFilterData;
 use App\Models\Product;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;

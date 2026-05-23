@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests\Product;
 
-use App\DataTransferObjects\ProductFilterData;
+use App\DataTransferObjects\Product\ProductFilterData;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 

@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Api\Ticket;
 
-use App\DataTransferObjects\TicketReplyDTO;
+use App\DataTransferObjects\Ticket\TicketReplyDTO;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Shared\CreatedResource;
 use App\Models\Ticket;

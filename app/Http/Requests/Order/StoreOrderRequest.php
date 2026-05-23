@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests\Order;
 
-use App\DataTransferObjects\PlaceOrderData;
+use App\DataTransferObjects\Order\PlaceOrderData;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;

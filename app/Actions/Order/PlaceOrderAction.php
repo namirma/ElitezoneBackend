@@ -2,7 +2,7 @@
 
 namespace App\Actions\Order;
 
-use App\DataTransferObjects\PlaceOrderData;
+use App\DataTransferObjects\Order\PlaceOrderData;
 use App\Events\OrderPlaced;
 use App\Exceptions\Order\CartIsEmptyException;
 use App\Models\Cart;

@@ -2,7 +2,7 @@
 
 namespace App\Repositories\Eloquent;
 
-use App\DataTransferObjects\ProductFilterData;
+use App\DataTransferObjects\Product\ProductFilterData;
 use App\Models\Factory;
 use App\Models\Product;
 use App\Models\ProductVariantAttribute;

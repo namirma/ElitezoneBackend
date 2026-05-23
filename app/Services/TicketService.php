@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\DataTransferObjects\TicketDTO;
+use App\DataTransferObjects\Ticket\TicketDTO;
 use App\Models\Ticket;
 use App\Repositories\Contracts\TicketRepositoryInterface;
 use Illuminate\Support\Facades\Auth;
