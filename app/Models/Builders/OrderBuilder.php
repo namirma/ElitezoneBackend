@@ -52,6 +52,25 @@ class OrderBuilder extends Builder
     }
 
     /**
+     * فقط سفارش‌های تحویل‌داده‌شده
+     */
+    public function delivered(): self
+    {
+        return $this->where(Order::STATUS, Order::STATUS_DELIVERED);
+    }
+
+    /**
+     * سفارش‌های لغو یا ناموفق
+     */
+    public function cancelled(): self
+    {
+        return $this->whereIn(Order::STATUS, [
+            Order::STATUS_CANCELLED,
+            Order::STATUS_FAILED,
+        ]);
+    }
+
+    /**
      * سفارش‌های مربوط به یک تامین‌کننده خاص
      * (با استفاده از Relationship)
      */

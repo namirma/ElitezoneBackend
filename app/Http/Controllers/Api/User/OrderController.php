@@ -69,38 +69,13 @@ class OrderController extends Controller
     {
         $userId = Auth::id();
 
-        $query = Order::query()
-            ->where('placer_user_id', $userId)
-            ->whereNotNull('beneficiary_user_id');
-
-        switch ($type) {
-            case 'current':
-                $query->whereIn('status', [
-                    Order::STATUS_PENDING,
-                    Order::STATUS_PROCESSING,
-                    Order::STATUS_WEIGHBRIDGE_DONE,
-                    Order::STATUS_PREPARING,
-                    Order::STATUS_SHIPPED,
-                ]);
-                break;
-
-            case 'delivered':
-                $query->where('status', Order::STATUS_DELIVERED);
-                break;
-
-            case 'cancelled':
-                $query->whereIn('status', [Order::STATUS_CANCELLED, Order::STATUS_FAILED]);
-                break;
-        }
-
-        $orders = $query
-            ->with([
-                'items.productVariant',
-                'placer.profile',
-                'beneficiary.profile',
-                'address.city',
-                'address.province',
-            ])
+        $orders = Order::query()
+            ->where(Order::PLACER_USER_ID, $userId)
+            ->whereNotNull(Order::BENEFICIARY_USER_ID)
+            ->when($type === 'current',   fn ($q) => $q->current())
+            ->when($type === 'delivered', fn ($q) => $q->delivered())
+            ->when($type === 'cancelled', fn ($q) => $q->cancelled())
+            ->with(Order::resourceRelations())
             ->latest()
             ->paginate($request->input('per_page', 10));
 

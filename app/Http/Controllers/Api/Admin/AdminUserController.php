@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\UserBackOfficeSearchRequest;
 use App\Http\Requests\Admin\UserSearchRequest;
 use App\Http\Resources\Order\OrderResource;
 use App\Http\Resources\Profile\UserResource;
@@ -84,13 +85,9 @@ class AdminUserController extends Controller
         ], 501);
     }
 
-    public function getUserProfileForBackOffice(Request $request): JsonResponse
+    public function getUserProfileForBackOffice(UserBackOfficeSearchRequest $request): JsonResponse
     {
-        $request->validate([
-            'keyword' => 'required|string|min:3',
-        ]);
-
-        $keyword = $request->input('keyword');
+        $keyword = $request->validated('keyword');
 
         $user = User::query()
             ->with([

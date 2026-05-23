@@ -49,23 +49,10 @@ class OrderRepository implements OrderRepositoryInterface
                         });
                 }
             })
-            // فیلتر بر اساس گروه‌های وضعیت (جاری، تحویل شده، لغو شده)
-            ->when($statusGroup === 'current', function (Builder $q) {
-                $q->whereIn(Order::STATUS, [
-                    'pending',
-                    'processing',
-                    'preparing',
-                    'weighbridge_done',
-                    'waybill_issued',
-                    'shipped',
-                ]);
-            })
-            ->when($statusGroup === 'delivered', function (Builder $q) {
-                $q->where(Order::STATUS, 'delivered');
-            })
-            ->when($statusGroup === 'cancelled', function (Builder $q) {
-                $q->where(Order::STATUS, 'cancelled');
-            })
+            // فیلتر بر اساس گروه‌های وضعیت — از OrderBuilder scopes استفاده می‌شود
+            ->when($statusGroup === 'current',   fn ($q) => $q->current())
+            ->when($statusGroup === 'delivered', fn ($q) => $q->delivered())
+            ->when($statusGroup === 'cancelled', fn ($q) => $q->cancelled())
             ->latest()
             ->paginate($perPage);
     }
