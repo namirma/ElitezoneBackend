@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\SavePurchaseParametersRequest;
+use App\Http\Requests\Cart\SavePurchaseParametersRequest;
 use App\Http\Resources\PurchaseParameterGroupResource;
 use App\Http\Resources\PurchaseParameterValueResource;
 use App\Models\Cart;

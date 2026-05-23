@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Actions\Order\PlaceOrderAction;
 use App\DataTransferObjects\PlaceOrderData;
-use App\Http\Requests\StoreOrderRequest;
+use App\Http\Requests\Order\StoreOrderRequest;
 use App\Http\Resources\OrderResource;
 use App\Models\Cart;
 use App\Models\Order;

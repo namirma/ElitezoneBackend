@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api\User;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\StoreSupplierProfileRequest;
+use App\Http\Requests\Profile\StoreSupplierProfileRequest;
 use App\Http\Resources\SupplierCategoryResource;
 use App\Http\Resources\SupplierProfileResource;
 use App\Http\Resources\UserResource;

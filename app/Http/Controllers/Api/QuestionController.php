@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\StoreQuestionRequest;
+use App\Http\Requests\Shared\StoreQuestionRequest;
 use App\Mail\QuestionEmail;
 use App\Models\Question;
 use Illuminate\Support\Facades\Config;

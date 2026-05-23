@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\StoreOrderSurveyRequest;
+use App\Http\Requests\Order\StoreOrderSurveyRequest;
 use App\Models\Order;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;

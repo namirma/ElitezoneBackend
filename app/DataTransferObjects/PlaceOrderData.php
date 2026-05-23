@@ -2,7 +2,7 @@
 
 namespace App\DataTransferObjects;
 
-use App\Http\Requests\StoreOrderRequest;
+use App\Http\Requests\Order\StoreOrderRequest;
 
 class PlaceOrderData
 {

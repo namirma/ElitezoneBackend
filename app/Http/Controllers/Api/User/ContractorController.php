@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api\User;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\StoreContractorProfileRequest;
+use App\Http\Requests\Profile\StoreContractorProfileRequest;
 use App\Http\Resources\UserResource;
 use App\Models\ContractorProfile;
 use App\Models\User;

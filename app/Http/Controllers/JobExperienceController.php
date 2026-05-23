@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\StoreJobExperienceRequest;
+use App\Http\Requests\Profile\StoreJobExperienceRequest;
 use App\Http\Resources\JobExperienceResource;
 use App\Models\JobExperience;
 use Illuminate\Http\JsonResponse;

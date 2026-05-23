@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\StoreUserBankAccountRequest;
+use App\Http\Requests\Financial\StoreUserBankAccountRequest;
 use App\Http\Resources\UserBankAccountResource;
 use App\Models\User;
 use App\Models\UserBankAccount;

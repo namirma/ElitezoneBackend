@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api\User;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\StoreEngineerProfileRequest;
+use App\Http\Requests\Profile\StoreEngineerProfileRequest;
 use App\Http\Resources\UserResource;
 use App\Models\EngineerProfile;
 use App\Models\User;

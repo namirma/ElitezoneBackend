@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\StoreListopherRequest;
+use App\Http\Requests\Profile\StoreListopherRequest;
 use App\Models\Listopher;
 
 class ListopherController extends Controller

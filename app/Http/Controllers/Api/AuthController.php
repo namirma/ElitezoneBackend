@@ -6,7 +6,7 @@ use App\Actions\Auth\RequestOtpAction;
 use App\Actions\Auth\SyncIdentityToProfileAction;
 use App\Actions\Auth\VerifyIdentityWithPodiumAction;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\StoreUserRequest;
+use App\Http\Requests\Auth\StoreUserRequest;
 use App\Http\Resources\UserResource;
 use App\Jobs\SendSmsJob;
 use App\Models\User;

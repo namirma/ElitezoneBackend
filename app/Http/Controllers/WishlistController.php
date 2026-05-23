@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\StoreWishlistRequest;
-use App\Http\Requests\UpdateWishlistRequest;
+use App\Http\Requests\Wishlist\StoreWishlistRequest;
+use App\Http\Requests\Wishlist\UpdateWishlistRequest;
 use App\Http\Resources\WishlistResource;
 use App\Models\ProductVariant;
 use App\Models\Wishlist;

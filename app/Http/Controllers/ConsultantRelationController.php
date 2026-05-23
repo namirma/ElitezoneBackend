@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\InviteConsultantRequest;
-use App\Http\Requests\RejectInvitationRequest;
+use App\Http\Requests\Profile\InviteConsultantRequest;
+use App\Http\Requests\Profile\RejectInvitationRequest;
 use App\Http\Resources\ConsultantRelationResource;
 use App\Jobs\SendSmsJob;
 use App\Models\EmployerConsultant;
