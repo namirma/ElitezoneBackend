@@ -66,6 +66,37 @@ Http/Requests/
 
 When adding a new FormRequest, place it in the matching domain subfolder and use the namespace `App\Http\Requests\<Domain>`.
 
+### Http/Resources — Domain Subfolders
+
+`app/Http/Resources/` is organized into domain subfolders (55 files moved, commit `1873264`):
+
+```
+Http/Resources/
+  Cart/      — CartResource, CartItemResource, PurchaseParameterGroupResource, PurchaseParameterValueResource
+  Order/     — OrderResource, OrderItemResource, OrderSurveyResource, OrderUnitResource, ShippingMethodResource
+  Product/   — ProductResource, ProductDetailResource, ProductCategoryResource, ProductVariantResource,
+               ProductVariantAttributeResource, ProductImageResource, ProductVideoResource,
+               AttributeResource, AttributeTypeResource, AttributeValueResource,
+               OfferResource, InventoryPredictionResource, SubscribedVariantResource,
+               SearchResource, PriceFilterResource, PriceFilterCategoryResource, PriceFilterTypeResource
+  Supplier/  — FactoryResource, FactoryLocationResource, SupplierProfileResource, SupplierCategoryResource
+  Profile/   — UserResource, UserProfileResource, UserTypeResource, BadgeResource, CustomerTypeResource,
+               EngineerProfileResourse, ContractorProfileResource, EmployerProfileResource,
+               ConsultantRelationResource, JobExperienceResource, AddressResource, EduixRecordResource
+  Financial/ — WalletResource, WalletTransactionResource, UserBankAccountResource
+  Ticket/    — TicketResource, TicketReplyResource, TicketFileResource, DepartmentResource
+  Wishlist/  — WishlistResource, VariantInWishlistResource
+  Shared/    — DashboardResource, ActivityLogResource, CreatedResource, UserMessageResource
+```
+
+**Cross-domain resource references** — when a resource in one domain instantiates a resource from another domain inline (e.g. `new ProductVariantResource(...)`), it must have an explicit `use` import for the foreign class. Current cross-domain imports already added:
+- `Cart/CartItemResource` → `Product\ProductVariantResource`, `Supplier\FactoryResource`, `Supplier\FactoryLocationResource`, `Order\ShippingMethodResource`
+- `Cart/CartResource` → `Profile\CustomerTypeResource`, `Profile\BadgeResource`
+- `Order/OrderItemResource` → `Product\ProductVariantResource`, `Profile\UserResource`
+- `Profile/UserResource` → `Supplier\SupplierProfileResource`
+
+When adding a new Resource, place it in the matching domain subfolder, use the namespace `App\Http\Resources\<Domain>`, and add explicit `use` imports for any sibling resource from a different domain.
+
 ### Actions
 
 `app/Actions/` contains single-responsibility injectable business logic units:
