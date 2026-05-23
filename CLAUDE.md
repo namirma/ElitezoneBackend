@@ -97,6 +97,44 @@ Http/Resources/
 
 When adding a new Resource, place it in the matching domain subfolder, use the namespace `App\Http\Resources\<Domain>`, and add explicit `use` imports for any sibling resource from a different domain.
 
+### Http/Controllers — Subfolder Layout
+
+All controllers now live under `app/Http/Controllers/Api/` (commit `d5ab517`):
+
+```
+Controllers/
+  Controller.php          — base class (stays at root)
+  PaymentController.php   — payment gateway callbacks (stays flat, public)
+  ProductController.php, ProductCategoryController.php, FactoryController.php,
+  SearchController.php, CustomerTypeController.php, PriceFilterController.php,
+  PurchaseParameterController.php, ParameterDetectionController.php
+                          — public-facing endpoints (stay flat)
+  Api/
+    AuthController.php    — authentication (stays at Api/ root)
+    ListopherController.php, QuestionController.php, DebugController.php
+    Admin/  — AdminOrderController, AdminUserController, AdminWalletController,
+              AdminFinancialController, AdminActivityLogController,
+              AdminSearchController, AdminTicketController, OrderWeighbridgeController
+    Data/   — AnalyticsController, InventoryController
+    Podium/ — PodiumSettlementController, PodiumBalanceController,
+              PodiumBatchSettlementController, PodiumSettlementInquiryController,
+              IdentityInquirySc2Controller, MobileNidMatchController
+    Ticket/ — TicketController, TicketReplyController
+    User/   — ProfileController, DashboardController, CartController,
+              CheckoutController, OrderController, OrderPaymentController,
+              OrderActionController, OrderInvoiceController, OrderSurveyController,
+              WalletController, UserBankAccountController, AddressController,
+              WishlistController, StockSubscriptionController, MyItemsController,
+              ConsultantRelationController, BeneficiaryController,
+              EngineerController, ContractorController, EmployerController,
+              SupplierController, SupplierOrderController, NotificationController,
+              ProfileSearchController, JobExperienceController, EduixController,
+              UserBankAccountController
+    Payment/ — WalletPaymentController
+```
+
+**Important**: Any controller moved out of the flat `App\Http\Controllers` namespace **must** add `use App\Http\Controllers\Controller;` explicitly — it cannot rely on same-namespace resolution anymore.
+
 ### Actions
 
 `app/Actions/` contains single-responsibility injectable business logic units:
