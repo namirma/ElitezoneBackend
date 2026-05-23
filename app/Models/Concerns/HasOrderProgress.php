@@ -17,8 +17,11 @@ trait HasOrderProgress
 
         $isCancelled = in_array($status, [Order::STATUS_CANCELLED, Order::STATUS_FAILED]);
 
-        // تشخیص پرداخت یکجا (زیر 195 میلیون یا پرداخت کل مبلغ در رزرو)
-        $isFullPayment = (float) $this->final_amount < 195000000 || $this->payment_to_reserve == $this->final_amount;
+        // تشخیص پرداخت یکجا: کمتر از سقف رزرو یا پرداخت کل مبلغ در رزرو
+        // سقف از config/financial.php خوانده می‌شود (نه hardcode)
+        $threshold = (float) config('financial.reservation_threshold', 1_950_000_000);
+        $isFullPayment = (float) $this->final_amount < $threshold
+            || $this->payment_to_reserve == $this->final_amount;
 
         // ترجمه وضعیت فعلی برای نمایش در هدر کارت
         $transKey = "orders.status.{$status}";

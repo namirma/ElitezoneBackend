@@ -307,7 +307,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
             // عملیات مالی
             Route::controller(OrderPaymentController::class)->group(function () {
                 Route::post('/{order}/pay-hold-fee', 'payHoldFee')->whereNumber('order')->middleware('idempotency');
-                Route::post('/{order}/pay-full', 'payFullOrder')->whereNumber('order')->name('api.user.orders.pay_full');
+                Route::post('/{order}/pay-full', 'payFullOrder')->whereNumber('order')->middleware('idempotency')->name('api.user.orders.pay_full');
                 Route::post('/{order}/upload-receipt', 'uploadReceipt')->whereNumber('order');
             });
 

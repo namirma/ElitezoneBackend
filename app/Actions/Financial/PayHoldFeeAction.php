@@ -14,7 +14,16 @@ use Illuminate\Support\Facades\Log;
 
 class PayHoldFeeAction
 {
-    // Fixed server-side fee in Rials. Move to config/financial.php once confirmed by business.
+    /**
+     * مبلغ هزینه تمدید — از config/financial.php خوانده می‌شود.
+     * مقدار پیشفرض: 50,000,000 ریال = 5 میلیون تومان
+     */
+    public static function fee(): float
+    {
+        return (float) config('financial.hold_fee', 50_000_000);
+    }
+
+    /** @deprecated use self::fee() — kept for backward compatibility */
     public const FEE_RIALS = 50_000_000;
 
     public function __construct(
@@ -48,13 +57,13 @@ class PayHoldFeeAction
             $buyerId = $lockedOrder->placer_user_id;
             $buyerWallet = Wallet::where('user_id', $buyerId)->lockForUpdate()->first();
 
-            if (! $buyerWallet || $buyerWallet->balance < self::FEE_RIALS) {
-                throw new InsufficientBalanceException(self::FEE_RIALS, (float) ($buyerWallet?->balance ?? 0));
+            if (! $buyerWallet || $buyerWallet->balance < self::fee()) {
+                throw new InsufficientBalanceException(self::fee(), (float) ($buyerWallet?->balance ?? 0));
             }
 
             $this->walletEngine->process(
                 '-',
-                self::FEE_RIALS,
+                self::fee(),
                 FinancialCodes::WALLET_OWNER,
                 FinancialCodes::STATUS_AVAILABLE,
                 $lockedOrder,

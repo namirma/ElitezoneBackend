@@ -20,9 +20,13 @@ use Illuminate\Support\Facades\Auth;
 class OrderPaymentController extends Controller
 {
     /**
-     * سقف مبلغ مجاز برای رزرو (۱۹۵ میلیون تومان)
+     * سقف مبلغ مجاز برای رزرو — از config/financial.php
+     * (1,950,000,000 ریال = 195 میلیون تومان)
      */
-    private const RESERVATION_THRESHOLD = 1950000000;
+    private function reservationThreshold(): float
+    {
+        return (float) config('financial.reservation_threshold', 1_950_000_000);
+    }
 
     public function __construct(
         protected ProcessPreScalePaymentAction $purchaseAction,
@@ -81,7 +85,7 @@ class OrderPaymentController extends Controller
             $isReserveRequested = $request->input('payment_type') === 'reserve';
 
             // --- حالت الف: خرید مستقیم (Direct Purchase) ---
-            if ($totalAmount < self::RESERVATION_THRESHOLD || ! $isReserveRequested) {
+            if ($totalAmount < $this->reservationThreshold() || ! $isReserveRequested) {
 
                 // *** گارد موجودی برای کل مبلغ ***
                 if ($wallet->balance < $totalAmount) {
@@ -106,7 +110,7 @@ class OrderPaymentController extends Controller
             // --- حالت ب: رزرو (Reservation) ---
             // مبلغ بالای ۱۹۵ میلیون و درخواست رزرو
             if ($isReserveRequested) {
-                $reserveAmount = self::RESERVATION_THRESHOLD;
+                $reserveAmount = $this->reservationThreshold();
 
                 if ($wallet->balance < $reserveAmount) {
                     return $this->balanceError($wallet->balance, $reserveAmount);
@@ -163,7 +167,7 @@ class OrderPaymentController extends Controller
 
             return success([
                 'order' => new OrderResource($order->fresh()),
-                'fee_amount' => PayHoldFeeAction::FEE_RIALS,
+                'fee_amount' => PayHoldFeeAction::fee(),
             ], 'هزینه تمدید با موفقیت پرداخت شد');
         } catch (Exception $e) {
             return error($e->getMessage(), [], 400);

@@ -257,13 +257,33 @@ class Order extends Model {
 }
 ```
 
+### Financial Configuration (`config/financial.php`)
+
+All financial constants live in `config/financial.php` — **never hardcode amounts**. Always read via `config()`:
+
+| Key | Env var | Default | Meaning |
+|-----|---------|---------|---------|
+| `financial.reservation_threshold` | `RESERVATION_THRESHOLD_RIALS` | `1_950_000_000` | Orders above this require reservation flow (195M Tomans) |
+| `financial.hold_fee` | `HOLD_FEE_RIALS` | `50_000_000` | Fee to extend a reservation by 24h (5M Tomans) |
+| `financial.system_user_id` | `FINANCIAL_SYSTEM_USER_ID` | `1` | User ID of the platform's central "Saze" wallet |
+
+```php
+// ✅ correct
+config('financial.reservation_threshold')
+PayHoldFeeAction::fee()   // wraps config('financial.hold_fee')
+
+// ❌ wrong — never hardcode
+1_950_000_000
+self::FEE_RIALS   // deprecated constant in PayHoldFeeAction, kept for BC only
+```
+
 ### Financial Flow (Critical Path)
 
 The system has a wallet-based payment model with three entry points:
 
 1. **WalletPaymentController** — generic wallet payment for orders
-2. **OrderPaymentController::payFullOrder** — handles 3 scenarios: direct purchase, reservation (>195M Rials), and completion of reserved orders
-3. **OrderPaymentController::payHoldFee** — hold fee extension
+2. **OrderPaymentController::payFullOrder** — handles 3 scenarios: direct purchase, reservation (>195M Rials), and completion of reserved orders; protected by `idempotency` middleware
+3. **OrderPaymentController::payHoldFee** — hold fee extension; protected by `idempotency` middleware
 
 Financial safety pattern (should be followed everywhere):
 ```php
@@ -369,4 +389,5 @@ Scheduled jobs (crons, wired in `Console/Kernel.php`):
 - Phone numbers are normalized to `09xxxxxxxxx` format using `PhoneNumber::to09($mobile)` from `app/Support/PhoneNumber.php` — **never** write a local helper
 - Verification codes are stored in `users.secret` with expiry in `users.secret_expires_at`
 - Financial amounts are in **Rials** (not Tomans)
-- The system admin wallet uses hardcoded `user_id = 1` (see `WalletTransactionEngine::resolveUserId`)
+- The system admin wallet user ID is `config('financial.system_user_id')` (default 1) — read from `config/financial.php`, **never hardcode**
+- All financial thresholds/fees are in `config/financial.php` — always use `config('financial.*')` or the Action's static helper (e.g. `PayHoldFeeAction::fee()`)
