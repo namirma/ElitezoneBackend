@@ -4,9 +4,9 @@ namespace App\Http\Resources\Product;
 
 use App\Models\ProductImage;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\JsonResource;
+use App\Http\Resources\BaseJsonResource;
 
-class ProductImageResource extends JsonResource
+class ProductImageResource extends BaseJsonResource
 {
     public function toArray(Request $request): array
     {

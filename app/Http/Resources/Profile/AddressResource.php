@@ -4,9 +4,9 @@ namespace App\Http\Resources\Profile;
 
 use App\Models\Address;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\JsonResource;
+use App\Http\Resources\BaseJsonResource;
 
-class AddressResource extends JsonResource
+class AddressResource extends BaseJsonResource
 {
     public function toArray(Request $request): array
     {

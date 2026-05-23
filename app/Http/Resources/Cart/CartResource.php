@@ -3,11 +3,11 @@
 namespace App\Http\Resources\Cart;
 
 use App\Models\Cart;
-use Illuminate\Http\Resources\Json\JsonResource;
+use App\Http\Resources\BaseJsonResource;
 use App\Http\Resources\Profile\CustomerTypeResource;
 use App\Http\Resources\Profile\BadgeResource;
 
-class CartResource extends JsonResource
+class CartResource extends BaseJsonResource
 {
     public function toArray($request): array
     {

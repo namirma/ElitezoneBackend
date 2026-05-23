@@ -5,9 +5,9 @@ namespace App\Http\Resources\Supplier;
 use App\Models\FactoryLocation;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\JsonResource;
+use App\Http\Resources\BaseJsonResource;
 
-class FactoryLocationResource extends JsonResource
+class FactoryLocationResource extends BaseJsonResource
 {
     public function toArray(Request $request): array
     {

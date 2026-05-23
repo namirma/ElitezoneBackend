@@ -5,9 +5,9 @@ namespace App\Http\Resources\Product;
 use App\Models\Attribute;
 use App\Models\ProductVariantAttribute;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\JsonResource;
+use App\Http\Resources\BaseJsonResource;
 
-class ProductVariantAttributeResource extends JsonResource
+class ProductVariantAttributeResource extends BaseJsonResource
 {
     public function toArray(Request $request): array
     {

@@ -5,9 +5,9 @@ namespace App\Http\Resources\Cart;
 use App\Models\PurchaseParameterValue;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\JsonResource;
+use App\Http\Resources\BaseJsonResource;
 
-class PurchaseParameterValueResource extends JsonResource
+class PurchaseParameterValueResource extends BaseJsonResource
 {
     public function toArray(Request $request): array
     {

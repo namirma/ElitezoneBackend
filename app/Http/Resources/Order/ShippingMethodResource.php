@@ -3,9 +3,9 @@
 namespace App\Http\Resources\Order;
 
 use App\Models\ShippingMethod;
-use Illuminate\Http\Resources\Json\JsonResource;
+use App\Http\Resources\BaseJsonResource;
 
-class ShippingMethodResource extends JsonResource
+class ShippingMethodResource extends BaseJsonResource
 {
     public function toArray($request): array
     {

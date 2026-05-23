@@ -3,13 +3,13 @@
 namespace App\Http\Resources\Cart;
 
 use App\Models\CartItem;
-use Illuminate\Http\Resources\Json\JsonResource;
+use App\Http\Resources\BaseJsonResource;
 use App\Http\Resources\Product\ProductVariantResource;
 use App\Http\Resources\Supplier\FactoryResource;
 use App\Http\Resources\Supplier\FactoryLocationResource;
 use App\Http\Resources\Order\ShippingMethodResource;
 
-class CartItemResource extends JsonResource
+class CartItemResource extends BaseJsonResource
 {
     public function toArray($request): array
     {

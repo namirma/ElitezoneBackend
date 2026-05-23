@@ -4,9 +4,9 @@ namespace App\Http\Resources\Order;
 
 use App\Models\OrderUnit;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\JsonResource;
+use App\Http\Resources\BaseJsonResource;
 
-class OrderUnitResource extends JsonResource
+class OrderUnitResource extends BaseJsonResource
 {
     public function toArray(Request $request): array
     {

@@ -4,9 +4,9 @@ namespace App\Http\Resources\Product;
 
 use App\Models\PriceFilter;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\JsonResource;
+use App\Http\Resources\BaseJsonResource;
 
-class PriceFilterResource extends JsonResource
+class PriceFilterResource extends BaseJsonResource
 {
     public function toArray(Request $request): array
     {

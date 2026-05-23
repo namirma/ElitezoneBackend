@@ -3,9 +3,9 @@
 namespace App\Http\Resources\Product;
 
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\JsonResource;
+use App\Http\Resources\BaseJsonResource;
 
-class SearchResource extends JsonResource
+class SearchResource extends BaseJsonResource
 {
     /**
      * Transform the resource into an array.

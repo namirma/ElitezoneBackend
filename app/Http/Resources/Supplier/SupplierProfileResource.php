@@ -4,12 +4,12 @@ namespace App\Http\Resources\Supplier;
 
 use App\Models\SupplierProfile;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\JsonResource;
+use App\Http\Resources\BaseJsonResource;
 
 /**
  * @property mixed $activities
  */
-class SupplierProfileResource extends JsonResource
+class SupplierProfileResource extends BaseJsonResource
 {
     /**
      * Transform the resource into an array.

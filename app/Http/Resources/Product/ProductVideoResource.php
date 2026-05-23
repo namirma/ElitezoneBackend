@@ -4,9 +4,9 @@ namespace App\Http\Resources\Product;
 
 use App\Models\ProductVideo;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\JsonResource;
+use App\Http\Resources\BaseJsonResource;
 
-class ProductVideoResource extends JsonResource
+class ProductVideoResource extends BaseJsonResource
 {
     public function toArray(Request $request): array
     {

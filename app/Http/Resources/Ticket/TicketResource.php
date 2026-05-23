@@ -3,9 +3,9 @@
 namespace App\Http\Resources\Ticket;
 
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\JsonResource;
+use App\Http\Resources\BaseJsonResource;
 
-class TicketResource extends JsonResource
+class TicketResource extends BaseJsonResource
 {
     /**
      * Transform the resource into an array.

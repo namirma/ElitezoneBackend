@@ -4,10 +4,10 @@ namespace App\Http\Resources\Wishlist;
 
 use App\Models\Wishlist;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\JsonResource;
+use App\Http\Resources\BaseJsonResource;
 use Illuminate\Pagination\LengthAwarePaginator;
 
-class WishlistResource extends JsonResource
+class WishlistResource extends BaseJsonResource
 {
     public function toArray(Request $request): array
     {

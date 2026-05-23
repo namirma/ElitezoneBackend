@@ -4,9 +4,9 @@ namespace App\Http\Resources\Financial;
 
 use App\Models\UserBankAccount;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\JsonResource;
+use App\Http\Resources\BaseJsonResource;
 
-class UserBankAccountResource extends JsonResource
+class UserBankAccountResource extends BaseJsonResource
 {
     public function toArray(Request $request): array
     {

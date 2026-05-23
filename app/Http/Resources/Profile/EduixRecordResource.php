@@ -5,9 +5,9 @@ namespace App\Http\Resources\Profile;
 use App\Models\EduixRecord;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\JsonResource;
+use App\Http\Resources\BaseJsonResource;
 
-class EduixRecordResource extends JsonResource
+class EduixRecordResource extends BaseJsonResource
 {
     public function toArray(Request $request): array
     {

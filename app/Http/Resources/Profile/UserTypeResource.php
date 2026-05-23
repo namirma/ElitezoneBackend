@@ -4,9 +4,9 @@ namespace App\Http\Resources\Profile;
 
 use App\Models\UserType;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\JsonResource;
+use App\Http\Resources\BaseJsonResource;
 
-class UserTypeResource extends JsonResource
+class UserTypeResource extends BaseJsonResource
 {
     /**
      * Transform the resource into an array.

@@ -4,7 +4,7 @@ namespace App\Http\Resources\Supplier;
 
 use App\Models\SupplierActivityCategory;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\JsonResource;
+use App\Http\Resources\BaseJsonResource;
 
 /**
  * @property mixed $id
@@ -15,7 +15,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  *
  * @method relationLoaded(string $string)
  */
-class SupplierCategoryResource extends JsonResource
+class SupplierCategoryResource extends BaseJsonResource
 {
     /**
      * Transform the resource into an array.

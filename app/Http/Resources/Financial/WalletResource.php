@@ -3,9 +3,9 @@
 namespace App\Http\Resources\Financial;
 
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\JsonResource;
+use App\Http\Resources\BaseJsonResource;
 
-class WalletResource extends JsonResource
+class WalletResource extends BaseJsonResource
 {
     public function toArray(Request $request): array
     {

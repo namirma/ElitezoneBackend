@@ -4,9 +4,9 @@ namespace App\Http\Resources\Profile;
 
 use App\Models\ContractorProfile;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\JsonResource;
+use App\Http\Resources\BaseJsonResource;
 
-class ContractorProfileResource extends JsonResource
+class ContractorProfileResource extends BaseJsonResource
 {
     /**
      * Transform the resource into an array.

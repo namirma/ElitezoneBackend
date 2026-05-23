@@ -6,9 +6,9 @@ use App\Models\EmployerConsultant;
 use App\Models\User;
 use App\Models\UserProfile;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\JsonResource;
+use App\Http\Resources\BaseJsonResource;
 
-class ConsultantRelationResource extends JsonResource
+class ConsultantRelationResource extends BaseJsonResource
 {
     public function toArray(Request $request): array
     {

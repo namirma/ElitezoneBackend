@@ -4,9 +4,9 @@ namespace App\Http\Resources\Profile;
 
 use App\Models\EmployerProfile;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\JsonResource;
+use App\Http\Resources\BaseJsonResource;
 
-class EmployerProfileResource extends JsonResource
+class EmployerProfileResource extends BaseJsonResource
 {
     /**
      * Transform the resource into an array.

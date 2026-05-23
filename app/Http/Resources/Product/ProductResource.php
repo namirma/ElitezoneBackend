@@ -5,9 +5,9 @@ namespace App\Http\Resources\Product;
 use App\Models\Product;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\JsonResource;
+use App\Http\Resources\BaseJsonResource;
 
-class ProductResource extends JsonResource
+class ProductResource extends BaseJsonResource
 {
     public function toArray(Request $request): array
     {

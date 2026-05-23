@@ -4,10 +4,10 @@ namespace App\Http\Resources\Order;
 
 use App\Models\Order;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\JsonResource;
+use App\Http\Resources\BaseJsonResource;
 use Illuminate\Support\Facades\Auth;
 
-class OrderResource extends JsonResource
+class OrderResource extends BaseJsonResource
 {
     public function toArray(Request $request): array
     {

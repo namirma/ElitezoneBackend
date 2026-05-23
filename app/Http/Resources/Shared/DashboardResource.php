@@ -3,9 +3,9 @@
 namespace App\Http\Resources\Shared;
 
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\JsonResource;
+use App\Http\Resources\BaseJsonResource;
 
-class DashboardResource extends JsonResource
+class DashboardResource extends BaseJsonResource
 {
     public function toArray(Request $request): array
     {

@@ -5,9 +5,9 @@ namespace App\Http\Resources\Shared;
 use App\Models\UserNotification;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\JsonResource;
+use App\Http\Resources\BaseJsonResource;
 
-class UserMessageResource extends JsonResource
+class UserMessageResource extends BaseJsonResource
 {
     /**
      * Transform the resource into an array.

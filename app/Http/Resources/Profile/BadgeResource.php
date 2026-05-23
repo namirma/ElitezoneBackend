@@ -4,9 +4,9 @@ namespace App\Http\Resources\Profile;
 
 use App\Models\Badge;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\JsonResource;
+use App\Http\Resources\BaseJsonResource;
 
-class BadgeResource extends JsonResource
+class BadgeResource extends BaseJsonResource
 {
     public function toArray(Request $request): array
     {

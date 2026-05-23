@@ -3,9 +3,9 @@
 namespace App\Http\Resources\Profile;
 
 use App\Models\CustomerType;
-use Illuminate\Http\Resources\Json\JsonResource;
+use App\Http\Resources\BaseJsonResource;
 
-class CustomerTypeResource extends JsonResource
+class CustomerTypeResource extends BaseJsonResource
 {
     public function toArray($request): array
     {
