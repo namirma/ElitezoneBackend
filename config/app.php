@@ -206,7 +206,6 @@ return [
         ResponseServiceProvider::class,
         Mccarlosen\LaravelMpdf\LaravelMpdfServiceProvider::class,
         RepositoryServiceProvider::class,
-        App\Providers\ObserverServiceProvider::class,
     ])->toArray(),
 
     /*

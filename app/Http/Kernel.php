@@ -78,7 +78,8 @@ class Kernel extends HttpKernel
             EnsureFrontendRequestsAreStateful::class,
             ThrottleRequests::class.':api',
             SubstituteBindings::class,
-            //EnsureRoleIsSelected::class,
+            // EnsureRoleIsSelected is applied per-route in routes/api.php (place/checkout
+            // require it; profile/role-selection explicitly opts out). Not global.
         ],
     ];
 

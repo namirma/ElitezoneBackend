@@ -18,19 +18,13 @@ class CustomerTypeController extends Controller
     {
         $types = Cache::remember('customer_types', self::CACHE_TTL, fn () => CustomerType::all());
 
-        return response()->json([
-            'status' => 'success',
-            'data' => CustomerTypeResource::collection($types),
-        ]);
+        return success(CustomerTypeResource::collection($types));
     }
 
     public function getBadges(): JsonResponse
     {
         $badges = Cache::remember('badges', self::CACHE_TTL, fn () => Badge::all());
 
-        return response()->json([
-            'status' => 'success',
-            'data' => BadgeResource::collection($badges),
-        ]);
+        return success(BadgeResource::collection($badges));
     }
 }

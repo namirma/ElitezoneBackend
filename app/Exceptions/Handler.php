@@ -3,7 +3,7 @@
 namespace App\Exceptions;
 
 use Illuminate\Auth\Access\AuthorizationException;
-use Illuminate\Auth\AuthenticationException;
+use Illuminate\Auth\AuthenticationException;  // used by unauthenticated() hook
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
@@ -53,12 +53,11 @@ class Handler extends ExceptionHandler
             return $e->getResponse();
         }
 
-        // 2. احراز هویت (401)
-        if ($e instanceof AuthenticationException) {
-            return $this->jsonResponse('احراز هویت نشده‌اید. لطفاً وارد حساب کاربری شوید.', 401);
-        }
+        // توجه: AuthenticationException اینجا نمی‌رسد — Laravel آن را قبل از
+        // renderable() به متد unauthenticated() تحویل می‌دهد. حذف شده تا dead
+        // code نباشد.
 
-        // 3. مشکل روت لاگین
+        // 2. مشکل روت لاگین
         if ($e instanceof RouteNotFoundException) {
             if (str_contains($e->getMessage(), 'Route [login] not defined')) {
                 return $this->jsonResponse('احراز هویت نشده‌اید. لطفاً وارد حساب کاربری شوید.', 401);
