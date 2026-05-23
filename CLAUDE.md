@@ -36,6 +36,13 @@ php artisan optimize:clear
 
 # Generate API docs (Scramble)
 php artisan scramble:export
+
+# Regenerate IDE helper files (after adding models or migrations)
+composer ide-helper
+# This runs three artisan commands:
+#   ide-helper:generate  → _ide_helper.php       (facade type hints)
+#   ide-helper:models    → _ide_helper_models.php (Eloquent @property docblocks)
+#   ide-helper:meta      → .phpstorm.meta.php     (container resolution)
 ```
 
 ## Directory Structure
@@ -201,7 +208,7 @@ Request → FormRequest (validation) → Controller
 
 **Modules that follow this well:** Cart (AddToCartAction, UpdateCartItemAction), Order placement (PlaceOrderData → PlaceOrderAction), Tickets (TicketDTO → TicketService), Auth (RequestOtpAction, VerifyIdentityWithPodiumAction), Profile (SetUserTypeAction), Financial (RequestWithdrawalAction).
 
-**Modules that bypass the pattern:** OrderPayment (payHoldFee does raw wallet decrement without Action).
+**All payment flows now follow the pattern:** `payHoldFee` uses `PayHoldFeeAction` (DB::transaction + lockForUpdate + idempotency guard).
 
 ### Two DTO Styles Coexist
 
