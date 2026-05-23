@@ -135,6 +135,22 @@ Controllers/
 
 **Important**: Any controller moved out of the flat `App\Http\Controllers` namespace **must** add `use App\Http\Controllers\Controller;` explicitly — it cannot rely on same-namespace resolution anymore.
 
+### DataTransferObjects — Domain Subfolders
+
+`app/DataTransferObjects/` is organized into domain subfolders (commit `798a2dc`):
+
+```
+DataTransferObjects/
+  BaseDTO.php          — base class (stays at root; rarely extended)
+  Order/               — PlaceOrderData
+  Pricing/             — CartLinePricingResult, CartPricingResult,
+                         PriceCalculationResult, PricingContextData  (already grouped)
+  Product/             — ProductFilterData
+  Ticket/              — TicketDTO, TicketReplyDTO
+```
+
+When adding a new DTO, place it in the matching domain subfolder and use the namespace `App\DataTransferObjects\<Domain>`. Prefer the readonly-constructor pattern over the legacy `BaseDTO` / `validateAndMake` style.
+
 ### Actions
 
 `app/Actions/` contains single-responsibility injectable business logic units:
