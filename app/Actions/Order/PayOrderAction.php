@@ -2,7 +2,7 @@
 
 namespace App\Actions\Order;
 
-use App\Events\OrderPaid;
+use App\Events\Order\OrderPaid;
 use App\Exceptions\Order\OrderNotPayableException;
 use App\Models\Order;
 use App\Models\User;

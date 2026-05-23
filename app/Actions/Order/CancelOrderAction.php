@@ -3,7 +3,7 @@
 namespace App\Actions\Order;
 
 use App\Constants\FinancialCodes;
-use App\Events\OrderCancelled;
+use App\Events\Order\OrderCancelled;
 use App\Models\Order;
 use App\Services\Financial\WalletTransactionEngine;
 use App\Services\InventoryService;

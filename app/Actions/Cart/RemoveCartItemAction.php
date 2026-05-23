@@ -2,7 +2,7 @@
 
 namespace App\Actions\Cart;
 
-use App\Events\CartItemChanged;
+use App\Events\Cart\CartItemChanged;
 use App\Models\Cart;
 use App\Models\CartEvent;
 use App\Models\CartItem;

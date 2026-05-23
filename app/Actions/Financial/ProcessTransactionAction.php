@@ -2,7 +2,7 @@
 
 namespace App\Actions\Financial;
 
-use App\Events\TransactionProcessed;
+use App\Events\Financial\TransactionProcessed;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;

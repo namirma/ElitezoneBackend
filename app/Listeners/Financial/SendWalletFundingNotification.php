@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Listeners;
+namespace App\Listeners\Financial;
 
-use App\Events\WalletFunded;
+use App\Events\Financial\WalletFunded;
 use App\Jobs\SendSmsJob;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;

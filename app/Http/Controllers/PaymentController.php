@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Events\WalletFunded;
+use App\Events\Financial\WalletFunded;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use App\Services\Payment\PaymentGatewayFactory;

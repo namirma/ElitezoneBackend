@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Listeners;
+namespace App\Listeners\Order;
 
-use App\Events\OrderCancelled;
+use App\Events\Order\OrderCancelled;
 use App\Jobs\SendSmsJob;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;

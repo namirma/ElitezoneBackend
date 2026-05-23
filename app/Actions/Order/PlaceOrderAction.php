@@ -3,7 +3,7 @@
 namespace App\Actions\Order;
 
 use App\DataTransferObjects\Order\PlaceOrderData;
-use App\Events\OrderPlaced;
+use App\Events\Order\OrderPlaced;
 use App\Exceptions\Order\CartIsEmptyException;
 use App\Models\Cart;
 use App\Models\CartItem;

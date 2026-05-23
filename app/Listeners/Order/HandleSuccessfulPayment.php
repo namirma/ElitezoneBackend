@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Listeners;
+namespace App\Listeners\Order;
 
 use App\Actions\Financial\ProcessPreScalePaymentAction;
-use App\Events\OrderPaid;
+use App\Events\Order\OrderPaid;
 use Illuminate\Contracts\Queue\ShouldQueue;
 
 class HandleSuccessfulPayment implements ShouldQueue

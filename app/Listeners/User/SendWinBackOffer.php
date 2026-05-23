@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Listeners;
+namespace App\Listeners\User;
 
-use App\Events\CustomerSegmentChanged;
+use App\Events\User\CustomerSegmentChanged;
 use App\Models\CustomerStat;
 use App\Models\UserProfile;
 use App\Services\Marketing\CouponService;

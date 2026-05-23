@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Listeners;
+namespace App\Listeners\Cart;
 
-use App\Events\CartItemChanged;
+use App\Events\Cart\CartItemChanged;
 use App\Models\CartEvent;
 use Illuminate\Contracts\Queue\ShouldQueue;
 

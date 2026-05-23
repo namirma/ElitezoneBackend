@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Listeners;
+namespace App\Listeners\Order;
 
-use App\Events\OrderPlaced;
+use App\Events\Order\OrderPlaced;
 use App\Jobs\SendSmsJob;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;

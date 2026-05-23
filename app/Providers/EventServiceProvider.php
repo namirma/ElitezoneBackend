@@ -2,18 +2,18 @@
 
 namespace App\Providers;
 
-use App\Events\CartItemChanged;
-use App\Events\CustomerSegmentChanged;
-use App\Events\OrderCancelled;
-use App\Events\OrderPaid;
-use App\Events\OrderPlaced;
-use App\Events\WalletFunded;
-use App\Listeners\LogCartEvent;
-use App\Listeners\SendOrderCancellationNotification;
-use App\Listeners\SendOrderPaymentNotification;
-use App\Listeners\SendOrderPlacedNotification;
-use App\Listeners\SendWalletFundingNotification;
-use App\Listeners\SendWinBackOffer;
+use App\Events\Cart\CartItemChanged;
+use App\Events\User\CustomerSegmentChanged;
+use App\Events\Order\OrderCancelled;
+use App\Events\Order\OrderPaid;
+use App\Events\Order\OrderPlaced;
+use App\Events\Financial\WalletFunded;
+use App\Listeners\Cart\LogCartEvent;
+use App\Listeners\Order\SendOrderCancellationNotification;
+use App\Listeners\Order\SendOrderPaymentNotification;
+use App\Listeners\Order\SendOrderPlacedNotification;
+use App\Listeners\Financial\SendWalletFundingNotification;
+use App\Listeners\User\SendWinBackOffer;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;

@@ -2,7 +2,7 @@
 
 namespace App\Jobs;
 
-use App\Events\CustomerSegmentChanged;
+use App\Events\User\CustomerSegmentChanged;
 use App\Models\CustomerStat;
 use App\Models\Order;
 use App\Models\User;

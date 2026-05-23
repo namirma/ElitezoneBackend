@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Events;
+namespace App\Events\Financial;
 
 use App\Models\WalletTransaction;
 use Illuminate\Foundation\Events\Dispatchable;

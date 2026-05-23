@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Events;
+namespace App\Events\Cart;
 
 use App\Models\Cart;
 use App\Models\ProductVariant;
