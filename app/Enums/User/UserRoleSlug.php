@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Enums;
+namespace App\Enums\User;
 
 /**
  * Laratrust role slugs used throughout the application.

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Enums;
+namespace App\Enums\Order;
 
 /**
  * Payment states for an Order (Order::PAYMENT_STATUS column).

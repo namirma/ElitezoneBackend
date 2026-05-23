@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Enums;
+namespace App\Enums\Survey;
 
 /**
  * Survey states for an Order (Order::SURVEY_STATUS column).

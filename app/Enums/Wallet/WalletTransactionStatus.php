@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Enums;
+namespace App\Enums\Wallet;
 
 /**
  * Transaction statuses for WalletTransaction (STATUS column).
