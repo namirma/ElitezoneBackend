@@ -81,7 +81,7 @@ class ProcessReservationCompletionAction
 
             $buyerId = $locked->placer_user_id;
             $realSupplierId = $firstItem->supplier_user_id;
-            $systemUserId = 1;
+            $systemUserId = (int) config('financial.system_user_id', 1);
             $systemWalletCode = FinancialCodes::WALLET_SAZE;
 
             // Guard: check buyer balance against the actual debit amount (POO - PTR),

@@ -78,7 +78,7 @@ class ProcessPreScalePaymentAction
 
             $buyerId = $locked->placer_user_id;
             $realSupplierId = $firstItem->supplier_user_id;
-            $systemUserId = 1;
+            $systemUserId = (int) config('financial.system_user_id', 1);
             $systemWalletCode = FinancialCodes::WALLET_SAZE;
 
             $this->walletEngine->process('-', $POO, FinancialCodes::WALLET_OWNER, FinancialCodes::STATUS_AVAILABLE, $locked, "پرداخت وجه سفارش {$locked->order_number}", $buyerId);

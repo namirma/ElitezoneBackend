@@ -313,27 +313,10 @@ class ProfileController extends Controller
         return success([], __('profile.mobile_updated_successfully'));
     }
 
-    public function confirmUpdateMobile(Request $request): JsonResponse
-    {
-        $user = Auth::user();
-        if (! $user) {
-            return error(__('auth.unauthenticated'), [], 401);
-        }
-        $code = $request->input('code');
-        $newMobile = session('pending_mobile_update');
-        if (is_null($code) || is_null($newMobile)) {
-            return error(__('validation.required'), ['code', 'username'], 422);
-        }
-        $notExpired = $user->{User::SECRET_EXPIRES_AT} ? ! Carbon::parse($user->{User::SECRET_EXPIRES_AT})->isPast() : false;
-        if ((int) ($user->{User::SECRET} ?? 0) === (int) $code && $notExpired) {
-            $user->update([User::MOBILE => $newMobile, User::SECRET => null, User::SECRET_EXPIRES_AT => null]);
-            session()->forget('pending_mobile_update');
-
-            return success(['mobile' => $newMobile], __('profile.mobileUpdateSuccessfully'), 200);
-        }
-
-        return error(__('auth.verification_code_not_match_or_expired'), [], 400);
-    }
+    // confirmUpdateMobile() removed — it used session() which does not exist in a
+    // stateless API and was never registered in routes/api.php. The working mobile
+    // update flow is: requestUpdateMobile (sends OTP) → updateMobile (verifies via
+    // Cache key 'pending_mobile_change_{id}', no session involved).
 
     public function setEmail(VerifyEmailRequest $request): JsonResponse
     {

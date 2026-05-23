@@ -22,11 +22,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        if (! env('APP_DEBUG')) {
+        // env() is intentionally NOT used here — use config() so that
+        // `php artisan config:cache` is respected in production.
+        if (! config('app.debug')) {
             URL::forceScheme('https');
         }
 
-        if (env('APP_DEBUG')) {
+        if (config('app.debug')) {
             URL::forceScheme('http');
         }
     }
@@ -41,10 +43,11 @@ class AppServiceProvider extends ServiceProvider
                 return true;
             }
 
-            return $user && in_array($user->email, [
-                'navidm632@gmail.com',
-                //'zarsanjsajad@gmail.com',
-            ]);
+            // Authorised emails are set via APP_API_DOCS_EMAILS= in .env
+            // (comma-separated). Managed in config/app.php → api_docs_emails.
+            $allowed = (array) config('app.api_docs_emails', []);
+
+            return $user && in_array($user->email, $allowed, strict: true);
         });
         ProductPrice::observe(ProductPriceObserver::class);
         Order::observe(OrderObserver::class);

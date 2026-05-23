@@ -15,7 +15,7 @@ class VerifyEmail extends Mailable
 
     public function __construct(?string $token)
     {
-        $this->link = env('FRONT_APP_URL').'/verify-email/'.$token;
+        $this->link = rtrim((string) config('app.front_url'), '/').'/verify-email/'.$token;
     }
 
     public function build(): VerifyEmail

@@ -31,6 +31,30 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Front-end Application URL
+    |--------------------------------------------------------------------------
+    |
+    | Base URL of the front-end SPA — used in transactional emails (e.g. links
+    | inside verify-email messages). Never reference FRONT_APP_URL via env()
+    | directly in application code; always read config('app.front_url').
+    |
+    */
+    'front_url' => env('FRONT_APP_URL', 'http://localhost:3000'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | API Docs Authorised Emails
+    |--------------------------------------------------------------------------
+    |
+    | Comma-separated list of email addresses that may access the Scramble
+    | API documentation in non-local environments.
+    | e.g. APP_API_DOCS_EMAILS=alice@example.com,bob@example.com
+    |
+    */
+    'api_docs_emails' => array_filter(explode(',', (string) env('APP_API_DOCS_EMAILS', ''))),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Environment
     |--------------------------------------------------------------------------
     |

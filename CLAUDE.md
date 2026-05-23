@@ -102,7 +102,15 @@ Http/Resources/
 - `Order/OrderItemResource` → `Product\ProductVariantResource`, `Profile\UserResource`
 - `Profile/UserResource` → `Supplier\SupplierProfileResource`
 
-When adding a new Resource, place it in the matching domain subfolder, use the namespace `App\Http\Resources\<Domain>`, and add explicit `use` imports for any sibling resource from a different domain.
+When adding a new Resource, place it in the matching domain subfolder, use the namespace `App\Http\Resources\<Domain>`, extend `BaseJsonResource` (not `JsonResource` directly), and add explicit `use` imports for any sibling resource from a different domain.
+
+```php
+use App\Http\Resources\BaseJsonResource;  // ← always, not JsonResource
+
+class MyNewResource extends BaseJsonResource { ... }
+```
+
+`BaseJsonResource` (`app/Http/Resources/BaseJsonResource.php`) declares an explicit `__construct(mixed $resource)` so that Intelephense resolves `new FooResource($model)` calls without raising PHP0441 false-positives.
 
 ### Http/Controllers — Subfolder Layout
 
@@ -391,3 +399,6 @@ Scheduled jobs (crons, wired in `Console/Kernel.php`):
 - Financial amounts are in **Rials** (not Tomans)
 - The system admin wallet user ID is `config('financial.system_user_id')` (default 1) — read from `config/financial.php`, **never hardcode**
 - All financial thresholds/fees are in `config/financial.php` — always use `config('financial.*')` or the Action's static helper (e.g. `PayHoldFeeAction::fee()`)
+- **Never call `env()` outside config files** — `env()` returns `null` in production once `php artisan config:cache` is run. All `env()` calls belong exclusively in `config/*.php` files; application code must use `config('key')`.
+- The front-end SPA base URL is `config('app.front_url')` (env `FRONT_APP_URL`) — used in transactional emails
+- API-docs authorised emails are `config('app.api_docs_emails')` (env `APP_API_DOCS_EMAILS`, comma-separated)

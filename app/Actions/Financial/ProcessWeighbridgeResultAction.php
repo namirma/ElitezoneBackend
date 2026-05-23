@@ -84,7 +84,7 @@ class ProcessWeighbridgeResultAction
 
             $buyerId = $locked->placer_user_id;
             $realSupplierId = $locked->items->first()->supplier_user_id;
-            $systemUserId = 1;
+            $systemUserId = (int) config('financial.system_user_id', 1);
             $systemWalletCode = FinancialCodes::WALLET_SAZE;
 
             if ($diffPOO > self::FINANCIAL_TOLERANCE) {

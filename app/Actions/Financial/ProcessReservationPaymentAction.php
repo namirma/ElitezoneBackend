@@ -43,7 +43,7 @@ class ProcessReservationPaymentAction
             }
 
             $buyerId = $locked->placer_user_id;
-            $systemUserId = 1;
+            $systemUserId = (int) config('financial.system_user_id', 1);
             $systemWalletCode = FinancialCodes::WALLET_SAZE;
 
             $this->walletEngine->process('-', $reserveAmount, FinancialCodes::WALLET_OWNER, FinancialCodes::STATUS_AVAILABLE, $locked, "پرداخت مبلغ بیعانه برای رزرو سفارش {$locked->order_number}", $buyerId);
