@@ -336,11 +336,22 @@ Users can have roles: `admin`, `engineer`, `contractor`, `employer`, `supplier`.
 - **TSMS** — SMS OTP delivery (via `SmsService`, dispatched as `SendSmsJob`)
 - **Espadana** — loading order commands for suppliers
 
-### Cron Jobs
+### Jobs — Domain Subfolders
 
-- `CheckReservationExpiryJob` — cancels expired reservations
-- `CheckSupplierBalancesJob` — monitors supplier wallet balances
-- `CalculateCustomerRfm` — customer segmentation analytics
+`app/Jobs/` is organized into domain subfolders (commit `d03182e`):
+
+```
+Jobs/
+  Analytics/    — CalculateCustomerRfm, LogProductView, PredictInventoryNeeds
+  Financial/    — CheckSupplierBalancesJob
+  Notification/ — SendSmsJob
+  Order/        — CheckReservationExpiryJob
+```
+
+Scheduled jobs (crons, wired in `Console/Kernel.php`):
+- `Order/CheckReservationExpiryJob` — cancels expired reservations
+- `Financial/CheckSupplierBalancesJob` — monitors supplier wallet balances
+- `Analytics/CalculateCustomerRfm` — customer segmentation analytics
 
 ## Key Conventions
 
