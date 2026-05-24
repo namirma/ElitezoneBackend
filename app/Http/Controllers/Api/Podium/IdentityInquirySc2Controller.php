@@ -21,9 +21,9 @@ class IdentityInquirySc2Controller extends Controller
         $data = $this->service->mapIdentityResponse($normalized);
 
         if ($normalized['has_error']) {
-            return error('خطا در استعلام هویتی', [], 422);
+            return error(__('podium.identity_inquiry_error'), [], 422);
         }
 
-        return success($data, 'اطلاعات با موفقیت دریافت شد.');
+        return success($data, __('podium.inquiry_success'));
     }
 }

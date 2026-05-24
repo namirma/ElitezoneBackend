@@ -30,7 +30,7 @@ class AdminOrderController extends Controller
             ];
         });
 
-        return success($history, 'تاریخچه سفارش دریافت شد.');
+        return success($history, __('admin.order_history_received'));
     }
 
     public function index(OrderFilterRequest $request): JsonResponse

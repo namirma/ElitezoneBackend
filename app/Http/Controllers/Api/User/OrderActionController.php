@@ -51,7 +51,7 @@ class OrderActionController extends Controller
         $validated = $request->validated();
 
         if ($order->status !== Order::STATUS_PROCESSING) {
-            return error('سفارش در وضعیت مناسب برای ثبت فاکتور نهایی نیست.', [], 400);
+            return error(__('orders.cannot_finalize_invoice'), [], 400);
         }
 
         $feeAmount = null;
@@ -90,6 +90,6 @@ class OrderActionController extends Controller
             }
         });
 
-        return success([], 'فاکتور نهایی با موفقیت ثبت شد.');
+        return success([], __('orders.finalize_invoice_success'));
     }
 }

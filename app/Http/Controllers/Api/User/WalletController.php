@@ -177,7 +177,7 @@ class WalletController extends Controller
         $path = $meta['receipt_path'] ?? ($meta['receipt_info']['image_path'] ?? null);
 
         if (! $path || ! Storage::disk('public')->exists($path)) {
-            return error('فایل رسید یافت نشد.', [], 404);
+            return error(__('wallet.receipt_file_not_found'), [], 404);
         }
 
         $downloadName = $meta['receipt_info']['original_name'] ?? basename($path);

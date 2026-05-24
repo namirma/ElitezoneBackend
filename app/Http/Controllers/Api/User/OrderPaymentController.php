@@ -54,7 +54,7 @@ class OrderPaymentController extends Controller
             $wallet = $user->wallet;
 
             if (! $wallet) {
-                return error('کیف پول برای حساب کاربری شما فعال نشده است.', [], 400);
+                return error(__('wallet.wallet_not_activated'), [], 400);
             }
 
             // =================================================================
@@ -74,7 +74,7 @@ class OrderPaymentController extends Controller
                         FinancialCodes::DOC_FINAL_REPORT_SUPPLIER, // H
                         FinancialCodes::DOC_LOADING_ORDER,          // C
                     ],
-                    'message' => 'تکمیل وجه با موفقیت انجام شد.',
+                    'message' => __('orders.completion_successful'),
                 ]);
             }
 
@@ -103,7 +103,7 @@ class OrderPaymentController extends Controller
                         FinancialCodes::DOC_LOADING_ORDER,    // C (دستور بارگیری)
                         FinancialCodes::DOC_CONSULTANT_REPORT, // D (گزارش مشاور فنی)
                     ],
-                    'message' => 'پرداخت کامل انجام شد.',
+                    'message' => __('orders.full_payment_successful'),
                 ]);
             }
 
@@ -124,14 +124,14 @@ class OrderPaymentController extends Controller
                         FinancialCodes::DOC_RESERVE_RECEIPT, // E
                         FinancialCodes::DOC_RESERVE_REPORT,   // F
                     ],
-                    'message' => 'سفارش با موفقیت رزرو شد.',
+                    'message' => __('orders.reservation_successful'),
                 ]);
             }
         } catch (Exception $e) {
             return error($e->getMessage(), [], 400);
         }
 
-        return error('خطای ناشناخته در پردازش سفارش', [], 500);
+        return error(__('orders.unknown_processing_error'), [], 500);
     }
 
     /**
@@ -142,7 +142,7 @@ class OrderPaymentController extends Controller
         $shortage = $requiredAmount - $currentBalance;
 
         return error(
-            'موجودی کیف پول کافی نیست. لطفاً جهت ادامه، مبلغ '.number_format($shortage).' ریال کیف پول خود را شارژ کنید.',
+            __('wallet.insufficient_balance_with_shortage', ['shortage' => number_format($shortage)]),
             [
                 'error_code' => 'insufficient_balance',
                 'current_balance' => $currentBalance,
@@ -168,7 +168,7 @@ class OrderPaymentController extends Controller
             return success([
                 'order' => new OrderResource($order->fresh(Order::resourceRelations())),
                 'fee_amount' => PayHoldFeeAction::fee(),
-            ], 'هزینه تمدید با موفقیت پرداخت شد');
+            ], __('orders.hold_fee_successful'));
         } catch (Exception $e) {
             return error($e->getMessage(), [], 400);
         }
@@ -182,6 +182,6 @@ class OrderPaymentController extends Controller
 
         $order->update([Order::PAYMENT_RECEIPT_REF => $path]);
 
-        return success(new OrderResource($order->fresh(Order::resourceRelations())), 'فیش بانکی با موفقیت ثبت شد');
+        return success(new OrderResource($order->fresh(Order::resourceRelations())), __('orders.receipt_uploaded_success'));
     }
 }

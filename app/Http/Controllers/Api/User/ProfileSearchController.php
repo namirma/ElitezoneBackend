@@ -23,11 +23,11 @@ class ProfileSearchController extends Controller
         if ($keyword) {
             return success([
                 'quick_access' => $action->search($keyword),
-            ], 'نتیجه جستجو');
+            ], __('profile.search_results'));
         }
 
         // اگر تازه روی باکس کلیک کرده (بدون سرچ)، هر ۳ بخش را بده
-        return success($action->getInitialData(), 'اطلاعات اولیه جستجوی پروفایل');
+        return success($action->getInitialData(), __('profile.search_initial_data'));
     }
 
     /**
@@ -42,7 +42,7 @@ class ProfileSearchController extends Controller
             'keyword' => $request->input('keyword'),
         ]);
 
-        return success([], 'جستجو با موفقیت ثبت شد.');
+        return success([], __('profile.search_saved_successfully'));
     }
 
     /**
@@ -52,6 +52,6 @@ class ProfileSearchController extends Controller
     {
         ProfileSearchHistory::where('user_id', Auth::id())->delete();
 
-        return success([], 'تاریخچه جستجو پاک شد.');
+        return success([], __('profile.search_history_cleared'));
     }
 }

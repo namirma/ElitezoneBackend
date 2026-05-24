@@ -15,4 +15,5 @@ return [
     'search_initial_data' => 'اطلاعات اولیه جستجوی پروفایل.',
     'search_saved_successfully' => 'جستجو با موفقیت ثبت شد.',
     'search_history_cleared' => 'تاریخچه جستجو پاک شد.',
+    'search_results' => 'نتیجه جستجو.',
 ];

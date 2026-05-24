@@ -30,6 +30,6 @@ class AdminActivityLogController extends Controller
 
         $logs = $query->latest()->paginate($request->input('per_page', 20));
 
-        return success(ActivityLogResource::collection($logs), '.گزارش فعالیت‌ها دریافت شد');
+        return success(ActivityLogResource::collection($logs), __('admin.activity_log_received'));
     }
 }

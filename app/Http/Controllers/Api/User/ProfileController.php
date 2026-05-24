@@ -161,7 +161,7 @@ class ProfileController extends Controller
                 'status' => $raw['status'] ?? '',
             ];
 
-            return success($response, 'اطلاعات شرکت با موفقیت دریافت شد.');
+            return success($response, __('profile.company_info_received'));
         } catch (\Exception $e) {
             return error($e->getMessage(), [], 422);
         }

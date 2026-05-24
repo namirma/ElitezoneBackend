@@ -39,7 +39,7 @@ class JobExperienceController extends Controller
 
         $path = $data['file']->store('job_experiences', 'public');
         if (! $path) {
-            return error('خطا در آپلود فایل.', [], 500);
+            return error(__('credential.file_upload_error'), [], 500);
         }
         $url = Storage::disk('public')->url($path);
 

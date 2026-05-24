@@ -10,7 +10,7 @@ class InsufficientBalanceException extends BusinessException
     {
         $shortage = $required - $available;
         parent::__construct(
-            __('wallet.insufficient_balance').' '.sprintf('(کسری: %s ریال)', number_format($shortage)),
+            __('wallet.insufficient_balance_with_shortage', ['shortage' => number_format($shortage)]),
             Response::HTTP_PAYMENT_REQUIRED
         );
     }
