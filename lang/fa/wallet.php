@@ -37,5 +37,8 @@ return [
 
     'order_payment' => 'پرداخت سفارش شماره :order_number',
     'deposit' => 'افزایش موجودی کیف پول',
+    'wallet_not_activated' => 'کیف پول برای حساب کاربری شما فعال نشده است.',
+    'receipt_file_not_found' => 'فایل رسید یافت نشد.',
+    'insufficient_balance_with_shortage' => 'موجودی کیف پول کافی نیست. لطفاً جهت ادامه، مبلغ :shortage ریال را شارژ نمایید.',
 
 ];

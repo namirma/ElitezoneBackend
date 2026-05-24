@@ -22,6 +22,11 @@ return [
     'cannot_extend_reservation_expired' => 'زمان رزرو اولیه (۲ ساعته) این سفارش به پایان رسیده و امکان تمدید آن وجود ندارد.',
     'already_paid' => 'این سفارش قبلاً پرداخت شده است.',
     'receipt_uploaded_success' => 'فیش پرداخت با موفقیت ثبت شد و در انتظار بررسی است.',
+    'completion_successful' => 'تکمیل وجه با موفقیت انجام شد.',
+    'full_payment_successful' => 'پرداخت کامل با موفقیت انجام شد.',
+    'reservation_successful' => 'سفارش با موفقیت رزرو شد.',
+    'unknown_processing_error' => 'خطای ناشناخته در پردازش سفارش.',
+    'hold_fee_successful' => 'هزینه تمدید با موفقیت پرداخت شد.',
 
     'status' => [
         Order::STATUS_PENDING => 'در انتظار تایید (رزرو شده)',

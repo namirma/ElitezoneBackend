@@ -11,4 +11,8 @@ return [
     'all_messages_marked_read' => 'تمام پیام‌ها به عنوان خوانده شده علامت‌گذاری شدند.',
     'email_send_failed' => 'خطا در ارسال ایمیل تایید. لطفا دوباره تلاش کنید یا با پشتیبانی تماس بگیرید.',
     'cannot_delete_last_address' => 'امکان حذف آخرین آدرس وجود ندارد.',
+    'company_info_received' => 'اطلاعات شرکت با موفقیت دریافت شد.',
+    'search_initial_data' => 'اطلاعات اولیه جستجوی پروفایل.',
+    'search_saved_successfully' => 'جستجو با موفقیت ثبت شد.',
+    'search_history_cleared' => 'تاریخچه جستجو پاک شد.',
 ];
