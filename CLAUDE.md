@@ -158,7 +158,6 @@ Controllers/
 
 ```
 DataTransferObjects/
-  BaseDTO.php          — base class (stays at root; rarely extended)
   Order/               — PlaceOrderData
   Pricing/             — CartLinePricingResult, CartPricingResult,
                          PriceCalculationResult, PricingContextData  (already grouped)
@@ -166,7 +165,9 @@ DataTransferObjects/
   Ticket/              — TicketDTO, TicketReplyDTO
 ```
 
-When adding a new DTO, place it in the matching domain subfolder and use the namespace `App\DataTransferObjects\<Domain>`. Prefer the readonly-constructor pattern over the legacy `BaseDTO` / `validateAndMake` style.
+> **`BaseDTO.php` was deleted** (commit `26b2c66`) — it was an abstract base class with `validateAndMake()` that zero DTOs ever extended. All DTOs already used the readonly-constructor pattern independently.
+
+When adding a new DTO, place it in the matching domain subfolder and use the namespace `App\DataTransferObjects\<Domain>`. **Always** use the readonly-constructor pattern.
 
 ### Actions
 
@@ -246,30 +247,27 @@ Request → FormRequest (validation) → Controller
 
 **All payment flows now follow the pattern:** `payHoldFee` uses `PayHoldFeeAction` (DB::transaction + lockForUpdate + idempotency guard).
 
-### Two DTO Styles Coexist
+### DTO Style — Readonly Constructor (Only Pattern)
 
-1. **BaseDTO pattern** (older) — uses `const fields` array and `validateAndMake()`:
-   ```php
-   class TicketDTO extends BaseDTO {
-       const fields = ['user_id', 'subject', 'message'];
-       public static function fromRequest(Request $request): self {
-           return self::validateAndMake($request, [...rules...]);
-       }
-   }
-   ```
+All DTOs use PHP 8.1 readonly properties. `BaseDTO` was deleted (commit `26b2c66`) — do not reintroduce it.
 
-2. **Readonly constructor pattern** (newer, preferred) — uses PHP 8.1 readonly properties:
-   ```php
-   class PlaceOrderData {
-       public function __construct(
-           public readonly ?int $beneficiaryUserId,
-           ...
-       ) {}
-       public static function fromRequest(StoreOrderRequest $request): self { ... }
-   }
-   ```
+```php
+class PlaceOrderData {
+    public function __construct(
+        public readonly ?int $beneficiaryUserId,
+        public readonly int  $addressId,
+        // ...
+    ) {}
 
-New DTOs should use the readonly constructor pattern.
+    public static function fromRequest(StoreOrderRequest $request): self
+    {
+        return new self(
+            beneficiaryUserId: $request->integer('beneficiary_user_id') ?: null,
+            addressId:         $request->integer('address_id'),
+        );
+    }
+}
+```
 
 ### Response Helpers
 
@@ -397,6 +395,8 @@ Listeners/
 
 Event → Listener wiring is registered in `app/Providers/EventServiceProvider.php`.
 
+**All listeners implement `ShouldQueue`** (commit `26b2c66`). The last synchronous listener (`SendWinBackOffer`) was queued in Sprint 1. Never add a new listener without `ShouldQueue` + `InteractsWithQueue`.
+
 Dispatch flow:
 - `OrderPlaced` → inventory deduction, notifications
 - `OrderPaid` → status transitions (HandleSuccessfulPayment)
@@ -459,11 +459,18 @@ trait so the live local database is **not** mutated (per user requirement).
 ```
 tests/
   Feature/
+    Checkout/    — PlaceOrderTest (9 tests: auth, validation, cart-empty, security)
     Financial/   — PayHoldFeeActionTest, ProcessPreScalePaymentActionTest,
                    ProcessReservationPaymentActionTest, WalletDepositTest
-    Policies/    — OrderPolicyTest, UserBankAccountPolicyTest
+    Policies/    — OrderPolicyTest, UserBankAccountPolicyTest,
+                   CartPolicyTest, AddressPolicyTest, WishlistPolicyTest
+    Pricing/     — CreatesPricingFixtures (shared trait),
+                   SetBasePriceTest, ApplyPriceFiltersTest,
+                   ApplyVariantDiscountTest, ApplyVatTest
   Unit/          — (empty placeholder dir — kept so phpunit.xml works)
 ```
+
+**Total: 110 tests, 189 assertions (all green).**
 
 Patterns to follow when adding tests:
 - **Use factories**, never `User::create([...])` with raw arrays — `UserFactory`
@@ -483,6 +490,28 @@ Patterns to follow when adding tests:
 - Prefer behavioural assertions (`assertLessThan(balanceBefore, balanceAfter)`)
   over exact-amount assertions for financial flows — the POO/PTS formulas
   depend on badge rates and aren't trivially reproducible in test setup.
+- **Policy tests** — use `Sanctum::actingAs($user)` + HTTP verb so the full
+  middleware/policy chain runs:
+  ```php
+  Sanctum::actingAs($stranger);
+  $this->deleteJson("/api/cart-items/{$item->id}")->assertForbidden();
+  ```
+- **Pricing pipe tests** — instantiate the pipe directly and call `handle()`:
+  ```php
+  $this->pipe->handle($ctx, fn ($c) => $c);
+  $this->assertSame(1_500_000.0, $ctx->baseGeneralPrice);
+  ```
+
+### Known Test Gotchas
+
+- **`SetBasePriceTest`** — the pipe caches results; call `Cache::flush()` between
+  assertions on the same (variant, factory, location) triple.
+- **`ApplyPriceFiltersTest`** — `PriceFilter ↔ PriceFilterCategory` is
+  `BelongsToMany` through `price_filter_category_items` pivot. Never set
+  `price_filter_category_id` directly; use `$category->filters()->attach($filter->id)`.
+- **`ProductPrice` unique constraint** — `(product_variant_id, factory_id, factory_location_id)`
+  is uniquely indexed. Tests that need to simulate a price update must `update()` the
+  existing row, not create a second one.
 
 ### Database Indexes
 
@@ -498,6 +527,48 @@ Performance-critical indexes added in `2026_05_23_120000_add_performance_indexes
 
 When adding queries that filter heavily on a column, check this list and
 add an index in a new migration if needed. Always make migrations additive.
+
+## Known Architectural Gotchas
+
+### Exception Handler — `renderable()` runs before `unauthenticated()`
+
+`app/Exceptions/Handler.php` registers a `renderable()` callback that calls `handleApiException()`. This callback fires **before** Laravel's built-in `unauthenticated()` hook, so `AuthenticationException` **must** be handled inside `handleApiException()` — not delegated to `unauthenticated()`.
+
+```php
+// CORRECT — inside handleApiException():
+if ($e instanceof AuthenticationException) {
+    return $this->jsonResponse('احراز هویت نشده‌اید...', 401);
+}
+```
+
+Removing this branch causes every unauthenticated API request to return 500 instead of 401 (regression introduced and fixed in commit `26b2c66`).
+
+### `FinalizeOrderInvoiceRequest` — Policy-gated Authorization
+
+`authorize()` delegates to `OrderPolicy::finalizeInvoice`. Any change must keep the policy check — never return `true` unconditionally:
+
+```php
+public function authorize(): bool
+{
+    $order = $this->route('order');
+    if (! $order instanceof Order) { return false; }
+    return $this->user()?->can('finalizeInvoice', $order) ?? false;
+}
+```
+
+### Pricing — `PriceFilter ↔ PriceFilterCategory` is Many-to-Many
+
+The join is through the `price_filter_category_items` pivot table, NOT a direct FK column on `price_filters`. Always attach via the relationship:
+
+```php
+// ✅ correct
+$category->filters()->attach($filter->id);
+
+// ❌ wrong — column does not exist
+PriceFilter::create(['price_filter_category_id' => $cat->id, ...]);
+```
+
+---
 
 ## Key Conventions
 
