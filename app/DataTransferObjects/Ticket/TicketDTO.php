@@ -8,8 +8,8 @@ use Illuminate\Http\UploadedFile;
 /**
  * Data transfer object for creating a new ticket.
  *
- * Uses the readonly constructor pattern (PHP 8.1) instead of the legacy
- * BaseDTO / validateAndMake style for consistency with newer DTOs.
+ * Uses the readonly constructor pattern (PHP 8.1) — the standard DTO style
+ * across the codebase.
  */
 final class TicketDTO
 {

@@ -2,23 +2,29 @@
 
 namespace App\Http\Requests\Order;
 
+use App\Models\Order;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Facades\Auth;
 
 class FinalizeOrderInvoiceRequest extends FormRequest
 {
     /**
-     * Determine if the user is authorized to make this request.
+     * Defense-in-depth authorization — delegates to OrderPolicy::finalizeInvoice
+     * (placer / beneficiary / admin via before()). The controller also calls
+     * $this->authorize('finalizeInvoice', $order), so a failure here would be
+     * caught at the policy layer too — but we want to reject early.
      */
     public function authorize(): bool
     {
-        // TODO: چک کنید کاربر ادمین باشد
-        return Auth::check(); // فعلا برای تست
+        $order = $this->route('order');
+
+        if (! $order instanceof Order) {
+            return false;
+        }
+
+        return $this->user()?->can('finalizeInvoice', $order) ?? false;
     }
 
     /**
-     * Get the validation rules that apply to the request.
-     *
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
      */
     public function rules(): array
