@@ -3,10 +3,8 @@
 namespace App\Http\Controllers\Api\User;
 
 use App\Actions\Financial\PayHoldFeeAction;
-use App\Actions\Financial\ProcessPreScalePaymentAction;
-use App\Actions\Financial\ProcessReservationCompletionAction;
-use App\Actions\Financial\ProcessReservationPaymentAction;
-use App\Constants\FinancialCodes;
+use App\Actions\Order\ProcessFullOrderPaymentAction;
+use App\Exceptions\InsufficientBalanceException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Order\PayFullOrderRequest;
 use App\Http\Requests\Order\PayHoldFeeRequest;
@@ -19,143 +17,42 @@ use Illuminate\Support\Facades\Auth;
 
 class OrderPaymentController extends Controller
 {
-    /**
-     * سقف مبلغ مجاز برای رزرو — از config/financial.php
-     * (1,950,000,000 ریال = 195 میلیون تومان)
-     */
-    private function reservationThreshold(): float
-    {
-        return (float) config('financial.reservation_threshold', 1_950_000_000);
-    }
-
     public function __construct(
-        protected ProcessPreScalePaymentAction $purchaseAction,
-        protected ProcessReservationPaymentAction $reservationAction,
-        protected ProcessReservationCompletionAction $completionAction,
-        protected PayHoldFeeAction $holdFeeAction
+        protected ProcessFullOrderPaymentAction $payFullOrderAction,
+        protected PayHoldFeeAction              $holdFeeAction,
     ) {}
 
-    /**
-     * متد اصلی پرداخت (خرید مستقیم / رزرو / تکمیل وجه)
-     */
     public function payFullOrder(PayFullOrderRequest $request, Order $order): JsonResponse
     {
-        // بررسی دسترسی کاربر به سفارش
         $this->authorize('pay', $order);
 
-        // بررسی وضعیت‌های مجاز برای پرداخت
         $payableStatuses = [Order::STATUS_PENDING, Order::STATUS_RESERVED, Order::STATUS_RESERVED_EXTENDED];
-        if (! \in_array($order->status, $payableStatuses)) {
+        if (! in_array($order->status, $payableStatuses)) {
             return error(__('orders.cannot_pay_order'), [], 400);
         }
 
+        $wallet = Auth::user()->wallet;
+        if (! $wallet) {
+            return error(__('wallet.wallet_not_activated'), [], 400);
+        }
+
         try {
-            $user = Auth::user();
-            $wallet = $user->wallet;
+            $result = $this->payFullOrderAction->execute(
+                $order,
+                $request->input('payment_type') === 'reserve',
+                $wallet,
+            );
 
-            if (! $wallet) {
-                return error(__('wallet.wallet_not_activated'), [], 400);
-            }
-
-            // =================================================================
-            // سناریو ۱: تکمیل وجه (Completion) - برای سفارش‌های رزرو شده
-            // =================================================================
-            if (\in_array($order->status, [Order::STATUS_RESERVED, Order::STATUS_RESERVED_EXTENDED])) {
-
-                // Balance is checked inside completionAction using the actual POO formula.
-                // A pre-check here would use final_amount (a stale snapshot) and diverge
-                // from the settlement math, giving the user a wrong shortage figure.
-                $this->completionAction->execute($order);
-
-                return success([
-                    'order' => new OrderResource($order->fresh(Order::resourceRelations())),
-                    'documents' => [
-                        FinancialCodes::DOC_FINAL_RECEIPT_OWNER,   // G
-                        FinancialCodes::DOC_FINAL_REPORT_SUPPLIER, // H
-                        FinancialCodes::DOC_LOADING_ORDER,          // C
-                    ],
-                    'message' => __('orders.completion_successful'),
-                ]);
-            }
-
-            // =================================================================
-            // سناریو ۲: سفارش جدید (خرید یا شروع رزرو)
-            // =================================================================
-            $totalAmount = $order->final_amount;
-            $isReserveRequested = $request->input('payment_type') === 'reserve';
-
-            // --- حالت الف: خرید مستقیم (Direct Purchase) ---
-            if ($totalAmount < $this->reservationThreshold() || ! $isReserveRequested) {
-
-                // *** گارد موجودی برای کل مبلغ ***
-                if ($wallet->balance < $totalAmount) {
-                    return $this->balanceError($wallet->balance, $totalAmount);
-                }
-
-                // اجرای عملیات خرید و تراکنش‌ها
-                $this->purchaseAction->execute($order);
-
-                return success([
-                    'order' => new OrderResource($order->fresh(Order::resourceRelations())),
-                    'documents' => [
-                        FinancialCodes::DOC_RECEIPT_OWNER,    // A (رسید خریدار)
-                        FinancialCodes::DOC_REPORT_SUPPLIER,  // B (گزارش سوپلایر)
-                        FinancialCodes::DOC_LOADING_ORDER,    // C (دستور بارگیری)
-                        FinancialCodes::DOC_CONSULTANT_REPORT, // D (گزارش مشاور فنی)
-                    ],
-                    'message' => __('orders.full_payment_successful'),
-                ]);
-            }
-
-            // --- حالت ب: رزرو (Reservation) ---
-            // مبلغ بالای ۱۹۵ میلیون و درخواست رزرو
-            if ($isReserveRequested) {
-                $reserveAmount = $this->reservationThreshold();
-
-                if ($wallet->balance < $reserveAmount) {
-                    return $this->balanceError($wallet->balance, $reserveAmount);
-                }
-
-                $this->reservationAction->execute($order, $reserveAmount, validityHours: 2);
-
-                return success([
-                    'order' => new OrderResource($order->fresh(Order::resourceRelations())),
-                    'documents' => [
-                        FinancialCodes::DOC_RESERVE_RECEIPT, // E
-                        FinancialCodes::DOC_RESERVE_REPORT,   // F
-                    ],
-                    'message' => __('orders.reservation_successful'),
-                ]);
-            }
+            return success([
+                'order'     => new OrderResource($order->fresh(Order::resourceRelations())),
+                'documents' => $result->documents,
+                'message'   => __($result->messageKey),
+            ]);
+        } catch (InsufficientBalanceException $e) {
+            return $this->balanceError($e->available, $e->required);
         } catch (Exception $e) {
             return error($e->getMessage(), [], 400);
         }
-
-        return error(__('orders.unknown_processing_error'), [], 500);
-    }
-
-    /**
-     * مدیریت خطای موجودی و تولید پاسخ هدایت به شارژ
-     */
-    private function balanceError(float $currentBalance, float $requiredAmount): JsonResponse
-    {
-        $shortage = $requiredAmount - $currentBalance;
-
-        return error(
-            __('wallet.insufficient_balance_with_shortage', ['shortage' => number_format($shortage)]),
-            [
-                'error_code' => 'insufficient_balance',
-                'current_balance' => $currentBalance,
-                'required_amount' => $requiredAmount,
-                'shortage' => $shortage,
-                'action' => [
-                    'type' => 'navigate_to_deposit',
-                    'api_route' => '/api/profile/financial/wallet/deposit',
-                    'required_deposit_amount' => $shortage,
-                ],
-            ],
-            400
-        );
     }
 
     public function payHoldFee(PayHoldFeeRequest $request, Order $order): JsonResponse
@@ -166,7 +63,7 @@ class OrderPaymentController extends Controller
             $this->holdFeeAction->execute($order);
 
             return success([
-                'order' => new OrderResource($order->fresh(Order::resourceRelations())),
+                'order'      => new OrderResource($order->fresh(Order::resourceRelations())),
                 'fee_amount' => PayHoldFeeAction::fee(),
             ], __('orders.hold_fee_successful'));
         } catch (Exception $e) {
@@ -182,6 +79,30 @@ class OrderPaymentController extends Controller
 
         $order->update([Order::PAYMENT_RECEIPT_REF => $path]);
 
-        return success(new OrderResource($order->fresh(Order::resourceRelations())), __('orders.receipt_uploaded_success'));
+        return success(
+            new OrderResource($order->fresh(Order::resourceRelations())),
+            __('orders.receipt_uploaded_success'),
+        );
+    }
+
+    private function balanceError(float $currentBalance, float $requiredAmount): JsonResponse
+    {
+        $shortage = $requiredAmount - $currentBalance;
+
+        return error(
+            __('wallet.insufficient_balance_with_shortage', ['shortage' => number_format($shortage)]),
+            [
+                'error_code'      => 'insufficient_balance',
+                'current_balance' => $currentBalance,
+                'required_amount' => $requiredAmount,
+                'shortage'        => $shortage,
+                'action'          => [
+                    'type'                    => 'navigate_to_deposit',
+                    'api_route'               => '/api/profile/financial/wallet/deposit',
+                    'required_deposit_amount' => $shortage,
+                ],
+            ],
+            400
+        );
     }
 }
