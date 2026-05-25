@@ -17,30 +17,28 @@ use App\Http\Resources\Product\ProductResource;
 use App\Http\Resources\Product\ProductVariantResource;
 use App\Models\AttributeType;
 use App\Models\Badge;
-use App\Models\Cart;
 use App\Models\CustomerType;
 use App\Models\Factory;
 use App\Models\FactoryLocation;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Repositories\Contracts\ProductRepositoryInterface;
+use App\Services\Cart\CartResolver;
 use App\Services\PriceCalculationService;
-use App\Services\PricingRoleResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str;
 
 class ProductController extends Controller
 {
     public function __construct(
-        private readonly PricingRoleResolver $roleResolver,
+        private readonly CartResolver $cartResolver,
         private readonly ProductRepositoryInterface $productRepo,
         private readonly PriceCalculationService $priceService
     ) {}
 
     public function index(ProductIndexRequest $request, FilterProductsAction $action): JsonResponse
     {
-        $activeCode = $this->resolveActiveCode();
+        $activeCode = $this->cartResolver->activeCode();
 
         $filterData = $request->toDto($activeCode);
 
@@ -91,7 +89,7 @@ class ProductController extends Controller
      */
     public function variants(ProductVariantFilterRequest $request, Product $product, FilterProductVariantsAction $action): JsonResponse
     {
-        $activeCode = $this->resolveActiveCode();
+        $activeCode = $this->cartResolver->activeCode();
 
         $paginator = $action->execute(
             product: $product,
@@ -143,14 +141,14 @@ class ProductController extends Controller
     public function getVariantPrice(ProductVariantPriceRequest $request): JsonResponse
     {
         $data = $request->validated();
-        $this->handleCartSession($request);
+        $cart = $this->cartResolver->resolve($request);
 
         $variant = ProductVariant::findOrFail($data['variant_id']);
         $factory = Factory::findOrFail($data['factory_id']);
         $location = FactoryLocation::findOrFail($data['location_id']);
 
-        $activeCode = $this->resolveActiveCode();
-        $badge = $this->getCartBadge();
+        $activeCode = $this->cartResolver->activeCode();
+        $badge = $cart->badge_id ? Badge::find($cart->badge_id) : null;
         $customerType = CustomerType::where(CustomerType::CODE, $activeCode)->first();
 
         $priceDto = $this->priceService->calculatePrice(
@@ -172,8 +170,11 @@ class ProductController extends Controller
      */
     public function calculateOrderPrice(OrderPriceRequest $request, CalculateOrderEstimateAction $action): JsonResponse
     {
-        $activeCode = $this->resolveActiveCode();
-        $badge = ! empty($request->badge_id) ? Badge::find($request->badge_id) : $this->getCartBadge();
+        $activeCode = $this->cartResolver->activeCode();
+        $cart = $this->cartResolver->resolve($request);
+        $badge = ! empty($request->badge_id)
+            ? Badge::find($request->badge_id)
+            : ($cart->badge_id ? Badge::find($cart->badge_id) : null);
 
         $result = $action->execute($request->validated(), $activeCode, $badge);
 
@@ -186,40 +187,4 @@ class ProductController extends Controller
         ], 'global.received_successfully');
     }
 
-    // =========================================================================
-    //  Private Helpers
-    // =========================================================================
-
-    private function resolveActiveCode(): string
-    {
-        if (! Auth::check()) {
-            return 'employer_without_consultant';
-        }
-
-        return $this->roleResolver->resolve(Auth::user());
-    }
-
-    private function handleCartSession($request): void
-    {
-        if (Auth::check()) {
-            Cart::firstOrCreate([Cart::USER_ID => Auth::id()]);
-        } else {
-            $sessionId = $request->cookie('cart_session_id', Str::uuid()->toString());
-            if (! Cart::where(Cart::SESSION_ID, $sessionId)->exists()) {
-                $cart = Cart::create([Cart::SESSION_ID => $sessionId, Cart::USER_ID => null]);
-                cookie()->queue('cart_session_id', $cart->session_id, 60 * 24 * 30);
-            }
-        }
-    }
-
-    private function getCartBadge(): ?Badge
-    {
-        $query = Auth::check()
-            ? Cart::where(Cart::USER_ID, Auth::id())
-            : Cart::where(Cart::SESSION_ID, request()->cookie('cart_session_id'));
-
-        $cart = $query->first();
-
-        return $cart && $cart->badge_id ? Badge::find($cart->badge_id) : null;
-    }
 }
