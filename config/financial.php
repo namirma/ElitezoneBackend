@@ -36,10 +36,27 @@ return [
     | System (Saze) Wallet User ID
     |--------------------------------------------------------------------------
     |
-    | The user_id that owns the platform's central "Saze" wallet.
-    | Used for hold/escrow fund movements in WalletTransactionEngine.
+    | The user_id that owns the platform's central "Saze" (WSSG) wallet.
+    | Used for platform-revenue movements in WalletTransactionEngine.
     |
     */
     'system_user_id' => env('FINANCIAL_SYSTEM_USER_ID', 1),
+
+    /*
+    |--------------------------------------------------------------------------
+    | VAT Escrow Wallet User ID
+    |--------------------------------------------------------------------------
+    |
+    | The user_id that owns the dedicated VAT escrow (WVAT) wallet.
+    | Keeping WVAT separate from WSSG allows the finance team to report and
+    | remit collected VAT independently from platform revenue.
+    |
+    | Default: falls back to system_user_id so existing deployments continue
+    | to work before a dedicated VAT user is created and the env var set.
+    | Once FINANCIAL_VAT_USER_ID is set in .env, VAT movements go to their
+    | own wallet row and can be audited separately.
+    |
+    */
+    'vat_user_id' => env('FINANCIAL_VAT_USER_ID', env('FINANCIAL_SYSTEM_USER_ID', 1)),
 
 ];

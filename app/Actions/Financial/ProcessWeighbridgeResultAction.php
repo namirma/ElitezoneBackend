@@ -102,6 +102,7 @@ class ProcessWeighbridgeResultAction
             $buyerId = $locked->placer_user_id;
             $realSupplierId = $locked->items->first()->supplier_user_id;
             $systemUserId = (int) config('financial.system_user_id', 1);
+            $vatUserId    = (int) config('financial.vat_user_id', $systemUserId); // P5: separate VAT escrow
             $systemWalletCode = FinancialCodes::WALLET_SAZE;
 
             if ($diffPOO > self::FINANCIAL_TOLERANCE) {
@@ -209,7 +210,7 @@ class ProcessWeighbridgeResultAction
 
                 $this->walletEngine->process('-', $candidateGross, FinancialCodes::WALLET_SAZE, FinancialCodes::STATUS_AVAILABLE, $locked, "تخصیص سهم مشاور فنی سفارش {$locked->order_number}", $systemUserId);
                 $this->walletEngine->process('+', $consultantNet, FinancialCodes::WALLET_CONSULTANT, FinancialCodes::STATUS_HOLD, $locked, 'کمیسیون امانی مشاور فنی', $consultantUserId);
-                $this->walletEngine->process('+', $consultantVat, FinancialCodes::WALLET_VAT, FinancialCodes::STATUS_HOLD, $locked, 'مالیات کمیسیون مشاور فنی امانی', $systemUserId);
+                $this->walletEngine->process('+', $consultantVat, FinancialCodes::WALLET_VAT, FinancialCodes::STATUS_HOLD, $locked, 'مالیات کمیسیون مشاور فنی امانی', $vatUserId);
 
                 $consultantGross = $candidateGross;
             }
@@ -217,14 +218,14 @@ class ProcessWeighbridgeResultAction
             $supplierVat = $newPTS * $vatMultiplier;
             if ($supplierVat > 0) {
                 $this->walletEngine->process('-', $supplierVat, FinancialCodes::WALLET_SUPPLIER, FinancialCodes::STATUS_AVAILABLE, $locked, "کسر مالیات امانی سفارش {$locked->order_number}", $realSupplierId);
-                $this->walletEngine->process('+', $supplierVat, FinancialCodes::WALLET_VAT, FinancialCodes::STATUS_HOLD, $locked, 'مالیات تامین‌کننده امانی', $systemUserId);
+                $this->walletEngine->process('+', $supplierVat, FinancialCodes::WALLET_VAT, FinancialCodes::STATUS_HOLD, $locked, 'مالیات تامین‌کننده امانی', $vatUserId);
             }
 
             $sazeGross = ($newPOO - $newPTS) - $consultantGross;
             $sazeVat = $sazeGross * $vatMultiplier;
             if ($sazeVat > 0) {
                 $this->walletEngine->process('-', $sazeVat, FinancialCodes::WALLET_SAZE, FinancialCodes::STATUS_AVAILABLE, $locked, 'کسر مالیات بر ارزش افزوده پلتفرم', $systemUserId);
-                $this->walletEngine->process('+', $sazeVat, FinancialCodes::WALLET_VAT, FinancialCodes::STATUS_HOLD, $locked, 'مالیات گروه سازه امانی', $systemUserId);
+                $this->walletEngine->process('+', $sazeVat, FinancialCodes::WALLET_VAT, FinancialCodes::STATUS_HOLD, $locked, 'مالیات گروه سازه امانی', $vatUserId);
             }
 
             $locked->update([
