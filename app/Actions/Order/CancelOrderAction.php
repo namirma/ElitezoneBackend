@@ -75,7 +75,7 @@ class CancelOrderAction
     private function processRefund(Order $order): void
     {
         $buyerId = $order->placer_user_id;
-        $systemUserId = 1; // شناسه گروه سازه
+        $systemUserId = (int) config('financial.system_user_id', 1);
 
         // الف) اگر سفارش رزرو بوده: باید پول هولد شده در سازه به خریدار برگردد
         if (in_array($order->status, [Order::STATUS_RESERVED, Order::STATUS_RESERVED_EXTENDED])) {

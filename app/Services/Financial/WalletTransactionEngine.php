@@ -82,8 +82,8 @@ class WalletTransactionEngine
     {
         return match ($code) {
             FinancialCodes::WALLET_OWNER => $order->placer_user_id,
-            FinancialCodes::WALLET_SUPPLIER => $order->beneficiary_user_id ?? $order->supplier_user_id ?? 1, // فال‌بک ایمن‌تر
-            FinancialCodes::WALLET_SAZE => 1, // بهتر است این آیدی از کانفیگ خوانده شود: config('app.admin_id')
+            FinancialCodes::WALLET_SUPPLIER => $order->beneficiary_user_id ?? $order->supplier_user_id ?? (int) config('financial.system_user_id', 1),
+            FinancialCodes::WALLET_SAZE => (int) config('financial.system_user_id', 1),
             default => throw new Exception("کد کیف پول ناشناخته: $code"),
         };
     }
