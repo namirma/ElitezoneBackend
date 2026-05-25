@@ -36,11 +36,10 @@ trait HasWallet
      */
     public function getWalletOrCreate(): Wallet
     {
-        return $this->wallet()->firstOrCreate([
-            'user_id' => $this->id,
-        ], [
-            'balance' => 0,
-            'is_active' => true,
-        ]);
+        // Wallets table has: user_id, balance, balance_hold — no is_active column.
+        return $this->wallet()->firstOrCreate(
+            ['user_id' => $this->id],
+            ['balance' => 0, 'balance_hold' => 0],
+        );
     }
 }

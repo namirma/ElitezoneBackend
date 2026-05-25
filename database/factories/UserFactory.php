@@ -38,12 +38,14 @@ class UserFactory extends Factory
     }
 
     /**
-     * Indicate that the model's email address should be unverified.
+     * Return a user with no password set (simulates OTP-only registration).
+     * The `email_verified_at` state was removed — users table has no such column;
+     * this app uses OTP via `users.secret` / `users.secret_expires_at` instead.
      */
-    public function unverified(): static
+    public function withoutPassword(): static
     {
         return $this->state(fn (array $attributes) => [
-            'email_verified_at' => null,
+            'password' => null,
         ]);
     }
 }
