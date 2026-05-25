@@ -31,7 +31,7 @@ class EngineerProfileResourse extends BaseJsonResource
             EngineerProfile::CITY_ID => $this->city_id,
             EngineerProfile::ACTIVITY_CITY_ID => $this->activity_city_id,
             EngineerProfile::UNIVERSITY_NAME => $this->university_name,
-            EngineerProfile::CREATED_AT => $this->created_at_,
+            EngineerProfile::CREATED_AT => $this->created_at,
             'created_at_p' => $this->created_at_p,
             'created_at_diff' => $this->created_at_diff,
         ];

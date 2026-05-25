@@ -33,7 +33,7 @@ class UserProfileResource extends BaseJsonResource
             UserProfile::PROVINCE_ID => $this->province_id,
             UserProfile::CITY_ID => $this->city_id,
             UserProfile::ENTITY => $this->entity,
-            UserProfile::CREATED_AT => $this->created_at_,
+            UserProfile::CREATED_AT => $this->created_at,
             'created_at_p' => $this->created_at_p,
             'created_at_diff' => $this->created_at_diff,
             //'user' => UserResource::collection($this->whenLoaded('profile')),

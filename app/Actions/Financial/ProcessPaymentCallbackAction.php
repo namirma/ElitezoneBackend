@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Financial;
 
 use App\Events\Financial\WalletFunded;
+use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use App\Services\Payment\PaymentGatewayFactory;
@@ -59,7 +60,8 @@ class ProcessPaymentCallbackAction
                 'meta'   => $meta,
             ]);
 
-            WalletFunded::dispatch($transaction);
+            $user = User::find($wallet->user_id);
+            WalletFunded::dispatch($user, $transaction);
         });
     }
 }

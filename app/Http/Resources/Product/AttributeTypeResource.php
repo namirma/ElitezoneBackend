@@ -20,7 +20,7 @@ class AttributeTypeResource extends BaseJsonResource
             AttributeType::DISPLAY_NAME => $this->display_name,
             AttributeType::INPUT_TYPE => $this->input_type,
             AttributeType::CREATED_AT => $this->created_at ? Carbon::parse($this->created_at)->format('Y-m-d H:i:s') : null,
-            AttributeType::UPDATED_AT => $this->updated_at ? Carbon::parse($this->created_at)->format('Y-m-d H:i:s') : null,
+            AttributeType::UPDATED_AT => $this->updated_at ? Carbon::parse($this->updated_at)->format('Y-m-d H:i:s') : null,
             'attributes' => AttributeResource::collection($this->whenLoaded('attributes')),
         ];
     }
