@@ -31,6 +31,23 @@ return [
     'finalize_invoice_success' => 'فاکتور نهایی با موفقیت ثبت شد.',
     'fee_hold_description' => 'سهم رزرو شده برای سفارش :order_number',
 
+    // ── Doc Q: Consultant Moadian invoice ──────────────────────────────────
+    'consultant_moadian_submitted'      => 'فاکتور مودیان مشاور فنی ثبت شد و کمیسیون آزاد شد.',
+    'consultant_moadian_already_done'   => 'فاکتور مودیان مشاور فنی این سفارش قبلاً ثبت شده است.',
+
+    // ── Doc O: Supplier Moadian invoice ────────────────────────────────────
+    'supplier_moadian_submitted'        => 'فاکتور مودیان سوپلایر ثبت شد و مالیات آزاد شد.',
+    'supplier_moadian_already_done'     => 'فاکتور مودیان سوپلایر این سفارش قبلاً ثبت شده است.',
+
+    // ── Errors ─────────────────────────────────────────────────────────────
+    'errors' => [
+        'invalid_amount'           => 'مبلغ سفارش نامعتبر است.',
+        'stock_unavailable'        => 'موجودی محصول :product کافی نیست.',
+        'weighbridge_not_completed'=> 'نتیجه باسکول برای این سفارش هنوز ثبت نشده است.',
+        'no_consultant'            => 'این سفارش مشاور فنی ندارد.',
+        'moadian_ref_required'     => 'شماره فاکتور مودیان الزامی است.',
+    ],
+
     'status' => [
         Order::STATUS_PENDING => 'در انتظار تایید (رزرو شده)',
         Order::STATUS_RESERVED_EXTENDED => 'رزرو تمدید شده',

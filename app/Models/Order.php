@@ -183,6 +183,24 @@ class Order extends Model
     /** +VAT snapshot: آیا مالیات روی هزینه حمل اعمال شده؟ */
     public const TRANS_VAT = 'trans_vat';
 
+    /** Doc Q: شماره فاکتور مودیان مشاور فنی */
+    public const CONSULTANT_MOADIAN_REF = 'consultant_moadian_ref';
+
+    /** زمان آزادسازی هولد کمیسیون مشاور */
+    public const CONSULTANT_HOLD_RELEASED_AT = 'consultant_hold_released_at';
+
+    /** Doc O: شماره فاکتور مودیان سوپلایر */
+    public const SUPPLIER_MOADIAN_REF = 'supplier_moadian_ref';
+
+    /** زمان آزادسازی هولد مالیات سوپلایر */
+    public const SUPPLIER_HOLD_RELEASED_AT = 'supplier_hold_released_at';
+
+    /** آیا سوپلایر بدهی باسکول دارد؟ */
+    public const SUPPLIER_DEBT_PENDING = 'supplier_debt_pending';
+
+    /** مبلغ بدهی سوپلایر (ریال) */
+    public const SUPPLIER_DEBT_AMOUNT = 'supplier_debt_amount';
+
     // =========================================================================
     //  Configurations
     // =========================================================================
@@ -238,6 +256,12 @@ class Order extends Model
         self::WEIGHING_COMPLETED_AT,
         self::TRANS_COMMISSION,
         self::TRANS_VAT,
+        self::CONSULTANT_MOADIAN_REF,
+        self::CONSULTANT_HOLD_RELEASED_AT,
+        self::SUPPLIER_MOADIAN_REF,
+        self::SUPPLIER_HOLD_RELEASED_AT,
+        self::SUPPLIER_DEBT_PENDING,
+        self::SUPPLIER_DEBT_AMOUNT,
     ];
 
     protected $casts = [
@@ -263,8 +287,12 @@ class Order extends Model
         self::VALIDATION_OF_RESERVE => 'datetime',
         self::WEIGHT_AFTER_SCALE => 'decimal:3',
         self::WEIGHING_COMPLETED_AT => 'datetime',
-        self::TRANS_COMMISSION => 'boolean',
-        self::TRANS_VAT        => 'boolean',
+        self::TRANS_COMMISSION             => 'boolean',
+        self::TRANS_VAT                    => 'boolean',
+        self::CONSULTANT_HOLD_RELEASED_AT  => 'datetime',
+        self::SUPPLIER_HOLD_RELEASED_AT    => 'datetime',
+        self::SUPPLIER_DEBT_PENDING        => 'boolean',
+        self::SUPPLIER_DEBT_AMOUNT         => 'decimal:2',
     ];
 
     // =========================================================================

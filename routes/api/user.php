@@ -183,8 +183,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
             // Order status actions
             Route::controller(OrderActionController::class)->group(function () {
-                Route::post('/{order}/cancel',           'cancel')->whereNumber('order');
-                Route::post('/{order}/finalize-invoice', 'finalizeInvoice')->whereNumber('order');
+                Route::post('/{order}/cancel',                      'cancel')->whereNumber('order');
+                Route::post('/{order}/finalize-invoice',            'finalizeInvoice')->whereNumber('order');
+                // Doc Q: consultant submits Moadian invoice → releases commission hold
+                Route::post('/{order}/consultant-moadian-invoice',  'submitConsultantMoadianInvoice')->whereNumber('order');
             });
 
             // Invoice downloads
