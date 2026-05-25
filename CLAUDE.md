@@ -180,22 +180,45 @@ Actions/
   Financial/   — RequestWithdrawalAction, DebitWalletAction, FundWalletAction,
                  PayHoldFeeAction, ProcessPreScalePaymentAction,
                  ProcessReservationPaymentAction, ProcessReservationCompletionAction,
-                 ProcessWeighbridgeResultAction,
+                 ProcessWeighbridgeResultAction, ProcessPaymentCallbackAction,
                  AttachReceiptToDepositAction, DeleteReceiptAction
-  Order/       — PlaceOrderAction, RefundOrderToWalletAction, CancelOrderAction
+  Order/       — PlaceOrderAction, RefundOrderToWalletAction, CancelOrderAction,
+                 FinalizeInvoiceAction, ProcessFullOrderPaymentAction
+                 PayOrderResult  ← readonly DTO (scenario, documents[], messageKey)
   Product/
   Profile/     — SetUserTypeAction, SignAgreementAction, SyncUserRolesAction
 ```
+
+`ProcessFullOrderPaymentAction` — orchestrates the three full-payment scenarios
+(direct purchase, reservation, completion) and returns a `PayOrderResult` DTO.
+`OrderPaymentController::payFullOrder()` only injects this one action now.
+
+`ProcessPaymentCallbackAction` — verifies the gateway receipt and settles the
+wallet (DB::transaction + lockForUpdate + WalletFunded dispatch). `PaymentController`
+delegates entirely to this action; it holds no DB or financial logic itself.
+
+`FinalizeInvoiceAction` — atomically updates `final_invoice_ref` and holds the
+consultant fee (TYPE_FEE_HOLD WalletTransaction + balance_hold increment) inside a
+single DB::transaction. `OrderActionController::finalizeInvoice()` delegates to it.
 
 ### Services (domain helpers)
 
 ```
 Services/
   Cart/
-    CartResolver         — resolves the request's Cart (user or guest session)
-                           and syncs customer_type_id / badge_id
-    CartResponseBuilder  — loads display relations, runs pricing pipeline,
-                           builds the standard { cart, totals } response
+    CartResolver                   — resolves the request's Cart (user or guest session)
+                                     and syncs customer_type_id / badge_id;
+                                     activeCode() is the single source of truth for the
+                                     active price-filter category code (middleware → role → guest)
+    CartResponseBuilder            — loads display relations, runs pricing pipeline,
+                                     builds the standard { cart, totals } response
+    CartParameterSyncService       — syncs purchase parameters to cart (used by
+                                     PurchaseParameterController); delegates detection
+                                     to PriceFilterCategoryDetectorService
+    PriceFilterCategoryDetectorService — pure read service: maps a list of
+                                     PurchaseParameterValue IDs to a PriceFilterCategory;
+                                     used by both CartParameterSyncService and
+                                     ParameterDetectionController
   Invoice/
     InvoiceGenerator     — orchestrator (~110 lines)
     InvoiceDataBuilder   — Blade-view data prep (line items, totals, buyer info)
@@ -208,6 +231,12 @@ Services/
 
 When a controller method grows past ~30 lines of business logic, extract it
 into an Action (write side-effects) or a Service (read/composition).
+
+**`CartResolver::activeCode()`** is the canonical way to get the active pricing
+code anywhere in the codebase. It checks (in order): middleware-bound container
+value → authenticated user's role via `PricingRoleResolver` → `'employer_without_consultant'`
+guest default. `ProductController` was previously duplicating this logic in a
+private `resolveActiveCode()` method — that was removed in favour of `CartResolver`.
 
 ### Enums — Domain Subfolders
 
@@ -245,7 +274,10 @@ Request → FormRequest (validation) → Controller
 
 **Modules that follow this well:** Cart (AddToCartAction, UpdateCartItemAction), Order placement (PlaceOrderData → PlaceOrderAction), Tickets (TicketDTO → TicketService), Auth (RequestOtpAction, VerifyIdentityWithPodiumAction), Profile (SetUserTypeAction), Financial (RequestWithdrawalAction).
 
-**All payment flows now follow the pattern:** `payHoldFee` uses `PayHoldFeeAction` (DB::transaction + lockForUpdate + idempotency guard).
+**All payment flows follow the pattern:**
+- `payFullOrder` → `ProcessFullOrderPaymentAction` (selects scenario, delegates to sub-actions)
+- `payHoldFee` → `PayHoldFeeAction` (DB::transaction + lockForUpdate + idempotency guard)
+- Gateway callback → `ProcessPaymentCallbackAction` (verify + settle in one transaction)
 
 ### DTO Style — Readonly Constructor (Only Pattern)
 
@@ -568,6 +600,23 @@ $category->filters()->attach($filter->id);
 PriceFilter::create(['price_filter_category_id' => $cat->id, ...]);
 ```
 
+### Cross-Controller Calls are Forbidden
+
+Never resolve one controller from inside another:
+
+```php
+// ❌ wrong — creates tight coupling, bypasses DI, breaks testability
+$category = app(ParameterDetectionController::class)->detectPriceFilterCategoryFromValues($ids);
+
+// ✅ correct — inject the shared Service directly
+$category = $this->detector->detectFromParameterIds($ids);
+```
+
+If two controllers share logic, extract it into a Service and inject the Service
+into both. `CartParameterSyncService` and `PriceFilterCategoryDetectorService`
+were created precisely to eliminate the cross-controller call that existed between
+`PurchaseParameterController` and `ParameterDetectionController`.
+
 ---
 
 ## Key Conventions
@@ -575,6 +624,8 @@ PriceFilter::create(['price_filter_category_id' => $cat->id, ...]);
 - All API responses use the `success()`/`error()` helpers — never return raw `response()->json()` from authenticated endpoints
 - Model column names are accessed via class constants (`Order::STATUS`, not `'status'`)
 - Translations use Laravel's `__()` with keys like `'orders.cannot_cancel'`, `'wallet.insufficient_balance'`
+- **FormRequest `messages()` must use `__()` calls** — never return hardcoded Persian strings. Each validation message must have a matching key in the relevant `lang/fa/*.php` file (e.g. `orders.store_address_required`). The same rule applies to controller response messages passed to `success()`/`error()`
+- **Never hardcode user-facing strings anywhere in PHP** — all strings that could appear in an API response or be stored as a user-visible description must go through `__('domain.key')`. The only exception is internal log messages (passed to `Log::error()` etc.) which may remain in English
 - Persian dates use the `PersianDate` trait (provides `created_at_p`, `created_at_diff` appended attributes via Verta)
 - Phone numbers are normalized to `09xxxxxxxxx` format using `PhoneNumber::to09($mobile)` from `app/Support/PhoneNumber.php` — **never** write a local helper
 - Verification codes are stored in `users.secret` with expiry in `users.secret_expires_at`
