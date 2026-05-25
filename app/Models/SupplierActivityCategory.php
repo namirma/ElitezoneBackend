@@ -76,7 +76,8 @@ class SupplierActivityCategory extends Model
 
     public function suppliers(): BelongsToMany
     {
-        return $this->belongsToMany(SupplierProfile::class, 'supplier_activity_categories', 'supplier_category_id', 'supplier_id');
+        // Pivot table: supplier_activities(activity_category_id, supplier_id)
+        return $this->belongsToMany(SupplierProfile::class, 'supplier_activities', 'activity_category_id', 'supplier_id');
     }
 
     public function scopeWithoutChildren($query)

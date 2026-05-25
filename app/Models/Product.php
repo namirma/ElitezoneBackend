@@ -89,11 +89,6 @@ class Product extends Model
         return $this->belongsTo(ProductCategory::class, self::CATEGORY_ID);
     }
 
-    public function prices(): HasMany
-    {
-        return $this->hasMany(ProductPrice::class, ProductPrice::PRODUCT_VARIANT_ID, self::ID);
-    }
-
     public function images(): HasMany
     {
         return $this->hasMany(ProductImage::class, ProductImage::PRODUCT_ID, self::ID);
