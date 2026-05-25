@@ -200,10 +200,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
             // Supplier operations
             Route::controller(SupplierOrderController::class)->group(function () {
-                Route::post('/{order}/prepare',  'markAsPrepared')->whereNumber('order');
-                Route::post('/{order}/waybill',  'addWaybill')->whereNumber('order');
-                Route::post('/{order}/espadana', 'issueEspadanaCommand')->whereNumber('order');
-                Route::post('/{order}/receipt',  'attachPaymentReceipt')->whereNumber('order');
+                Route::post('/{order}/prepare',                   'markAsPrepared')->whereNumber('order');
+                Route::post('/{order}/waybill',                   'addWaybill')->whereNumber('order');
+                Route::post('/{order}/espadana',                  'issueEspadanaCommand')->whereNumber('order');
+                Route::post('/{order}/receipt',                   'attachPaymentReceipt')->whereNumber('order');
+                // Doc O: supplier submits Moadian invoice → releases supplier VAT hold
+                Route::post('/{order}/supplier-moadian-invoice',  'submitSupplierMoadianInvoice')->whereNumber('order');
             });
 
             // Detail view (MUST be the last route in the orders group — wildcard)

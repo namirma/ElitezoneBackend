@@ -6,10 +6,12 @@ namespace App\Actions\Financial;
 
 use App\Constants\FinancialCodes;
 use App\Models\Order;
+use App\Models\Wallet;
 use App\Services\Financial\SettlementCalculatorService;
 use App\Services\Financial\WalletTransactionEngine;
 use App\Services\InventoryService;
 use App\Services\Invoice\InvoiceGenerator;
+use App\Services\SmsService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -21,7 +23,8 @@ class ProcessWeighbridgeResultAction
         protected WalletTransactionEngine $walletEngine,
         protected SettlementCalculatorService $calculator,
         protected InvoiceGenerator $invoiceGenerator,
-        protected InventoryService $inventoryService
+        protected InventoryService $inventoryService,
+        protected SmsService $smsService,
     ) {}
 
     public function execute(Order $order, float $actualWeight): array
@@ -119,15 +122,70 @@ class ProcessWeighbridgeResultAction
                 $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_SUPPLEMENTARY_RECEIPT);
                 $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_SUPPLEMENTARY_REPORT);
             } elseif ($diffPOO < -self::FINANCIAL_TOLERANCE) {
-                $status = 'deficit';
-                $refundAmount = abs($diffPOO);
-                $reclaimAmount = abs($diffPTS);
+                $status        = 'deficit';
+                $refundAmount  = abs($diffPOO); // POO − POOM (buyer refund)
+                $reclaimAmount = abs($diffPTS); // PTS − PTSM (amount owed by supplier)
 
-                $this->walletEngine->process('-', $refundAmount, $systemWalletCode, FinancialCodes::STATUS_AVAILABLE, $locked, "پرداخت وجه کسری باسکول سفارش {$locked->order_number} به خریدار", $systemUserId);
-                $this->walletEngine->process('+', $refundAmount, FinancialCodes::WALLET_OWNER, FinancialCodes::STATUS_AVAILABLE, $locked, 'بازگشت وجه ناشی از کسری باسکول', $buyerId);
+                // ── Saze refunds the buyer (POO − POOM): WSSG(−) → WO(?) ─────
+                // Saze already holds POO; it pays back the over-paid portion.
+                $this->walletEngine->process(
+                    '-', $refundAmount, $systemWalletCode, FinancialCodes::STATUS_AVAILABLE,
+                    $locked, "پرداخت وجه کسری باسکول سفارش {$locked->order_number} به خریدار",
+                    $systemUserId
+                );
 
-                $this->walletEngine->process('-', $reclaimAmount, FinancialCodes::WALLET_SUPPLIER, FinancialCodes::STATUS_AVAILABLE, $locked, 'کسر بابت کسری باسکول', $realSupplierId);
-                $this->walletEngine->process('+', $reclaimAmount, $systemWalletCode, FinancialCodes::STATUS_AVAILABLE, $locked, "بازپس‌گیری از تامین‌کننده بابت کسری باسکول سفارش {$locked->order_number}", $systemUserId);
+                // ── Check if supplier can cover the PTS delta right now ────────
+                // If the supplier wallet has enough balance, take it immediately
+                // and release the buyer refund as AVAILABLE.
+                // If not, hold the buyer refund until the supplier tops up.
+                $supplierWallet   = Wallet::where('user_id', $realSupplierId)->lockForUpdate()->first();
+                $supplierCanCover = $supplierWallet && ((float) $supplierWallet->balance >= $reclaimAmount);
+
+                if ($supplierCanCover) {
+                    // Supplier pays the delta now — buyer gets refund immediately
+                    $this->walletEngine->process(
+                        '+', $refundAmount, FinancialCodes::WALLET_OWNER, FinancialCodes::STATUS_AVAILABLE,
+                        $locked, 'بازگشت وجه ناشی از کسری باسکول', $buyerId
+                    );
+                    $this->walletEngine->process(
+                        '-', $reclaimAmount, FinancialCodes::WALLET_SUPPLIER, FinancialCodes::STATUS_AVAILABLE,
+                        $locked, 'کسر بابت کسری باسکول', $realSupplierId
+                    );
+                    $this->walletEngine->process(
+                        '+', $reclaimAmount, $systemWalletCode, FinancialCodes::STATUS_AVAILABLE,
+                        $locked, "بازپس‌گیری از تامین‌کننده بابت کسری باسکول سفارش {$locked->order_number}",
+                        $systemUserId
+                    );
+                } else {
+                    // Supplier cannot cover the delta — park buyer refund in HOLD
+                    // and notify the supplier to top up their wallet.
+                    $this->walletEngine->process(
+                        '+', $refundAmount, FinancialCodes::WALLET_OWNER, FinancialCodes::STATUS_HOLD,
+                        $locked, 'بازگشت وجه ناشی از کسری باسکول (در انتظار تسویه سوپلایر)', $buyerId
+                    );
+
+                    // Record the pending debt so CheckSupplierBalancesJob can
+                    // release the hold automatically when the supplier tops up.
+                    $locked->update([
+                        Order::SUPPLIER_DEBT_PENDING => true,
+                        Order::SUPPLIER_DEBT_AMOUNT  => $reclaimAmount,
+                    ]);
+
+                    // Notify supplier to top up
+                    $supplierUser = $locked->items->first()?->supplier;
+                    if ($supplierUser?->mobile) {
+                        $this->smsService->send(
+                            $supplierUser->mobile,
+                            __('sms.supplier_debt_notification', [
+                                'order_number' => $locked->order_number,
+                                'amount'       => number_format((int) $reclaimAmount),
+                            ])
+                        );
+                    }
+
+                    Log::warning("Supplier {$realSupplierId} insufficient balance for deficit reclaim on order {$locked->id}. Debt: {$reclaimAmount}");
+                    $status = 'deficit_pending_supplier';
+                }
 
                 $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_MODIFIED_INVOICE_OWNER);
                 $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_MODIFIED_INVOICE_SUPPLIER);

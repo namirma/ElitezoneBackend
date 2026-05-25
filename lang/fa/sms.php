@@ -20,4 +20,7 @@ return [
     'transaction_rejected' => 'کاربر گرامی، درخواست :type مبلغ :amount .ریال شما رد شد',
 
     'order_placed' => "سفارش شما با شماره :order_number رزرو شد.\nجهت تکمیل خرید، لطفاً پرداخت را انجام دهید.\nالیت زون",
+
+    // Supplier debt notification (sent when deficit-weighbridge finds insufficient balance)
+    'supplier_debt_notification' => "سوپلایر گرامی، بابت کسری باسکول سفارش :order_number مبلغ :amount ریال از شما دریافت خواهد شد. لطفاً کیف پول خود را شارژ کنید.\nالیت زون",
 ];
