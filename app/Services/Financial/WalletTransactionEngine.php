@@ -9,7 +9,6 @@ use App\Exceptions\InsufficientBalanceException;
 use App\Models\Order;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
-use Exception;
 use Illuminate\Support\Facades\DB;
 
 class WalletTransactionEngine
@@ -77,14 +76,35 @@ class WalletTransactionEngine
 
     /**
      * تشخیص آیدی کاربر بر اساس کد کیف پول
+     *
+     * Note: callers that know the target user ID up-front should always pass
+     * $targetUserId explicitly to process() — this fallback is a safety-net.
+     *
+     * WALLET_CONSULTANT → beneficiary_user_id (the consultant on the order)
+     * WALLET_VAT        → financial.vat_user_id (separate VAT escrow user; P5)
      */
     private function resolveUserId(string $code, Order $order): int
     {
         return match ($code) {
-            FinancialCodes::WALLET_OWNER => $order->placer_user_id,
-            FinancialCodes::WALLET_SUPPLIER => $order->beneficiary_user_id ?? $order->supplier_user_id ?? (int) config('financial.system_user_id', 1),
+            FinancialCodes::WALLET_OWNER => (int) $order->placer_user_id,
+
+            // Supplier user is stored on order items, not the order itself;
+            // callers must always pass $targetUserId explicitly for WALLET_SUPPLIER.
+            FinancialCodes::WALLET_SUPPLIER => (int) ($order->supplier_user_id
+                ?? throw new \RuntimeException("WALLET_SUPPLIER: targetUserId must be supplied explicitly (order {$order->id})")),
+
             FinancialCodes::WALLET_SAZE => (int) config('financial.system_user_id', 1),
-            default => throw new Exception("کد کیف پول ناشناخته: $code"),
+
+            // Consultant commission wallet — beneficiary_user_id is the consultant.
+            FinancialCodes::WALLET_CONSULTANT => (int) ($order->beneficiary_user_id
+                ?? throw new \RuntimeException("WALLET_CONSULTANT: order {$order->id} has no consultant (beneficiary_user_id is null)")),
+
+            // VAT escrow wallet — uses dedicated vat_user_id when configured (P5),
+            // falls back to system_user_id so the system stays correct before
+            // the env var is deployed.
+            FinancialCodes::WALLET_VAT => (int) config('financial.vat_user_id', config('financial.system_user_id', 1)),
+
+            default => throw new \RuntimeException("کد کیف پول ناشناخته: $code"),
         };
     }
 }
