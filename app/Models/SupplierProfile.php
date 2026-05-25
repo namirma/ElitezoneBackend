@@ -43,6 +43,12 @@ class SupplierProfile extends Model
 
     const COMPANY = 'company';
 
+    /** +%TC: کمیسیون روی هزینه حمل اعمال می‌شود؟ (پیش‌فرض: بله) */
+    const TRANS_COMMISSION = 'trans_commission';
+
+    /** +VAT: مالیات بر ارزش افزوده روی هزینه حمل اعمال می‌شود؟ (پیش‌فرض: بله) */
+    const TRANS_VAT = 'trans_vat';
+
     const CREATED_AT = 'created_at';
 
     const UPDATED_AT = 'updated_at';
@@ -65,8 +71,16 @@ class SupplierProfile extends Model
         self::WEBSITE,
         self::WEBSITE_NOT_RELATED,
         self::COMPANY,
+        self::TRANS_COMMISSION,
+        self::TRANS_VAT,
         self::CREATED_AT,
         self::UPDATED_AT,
+    ];
+
+    /** @var array<string, string> */
+    protected $casts = [
+        self::TRANS_COMMISSION => 'boolean',
+        self::TRANS_VAT        => 'boolean',
     ];
 
     public function user(): BelongsTo

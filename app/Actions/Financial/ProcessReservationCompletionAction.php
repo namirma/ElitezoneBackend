@@ -7,6 +7,7 @@ namespace App\Actions\Financial;
 use App\Constants\FinancialCodes;
 use App\Exceptions\InsufficientBalanceException;
 use App\Models\Order;
+use App\Models\SupplierProfile;
 use App\Models\Wallet;
 use App\Services\Financial\SettlementCalculatorService;
 use App\Services\Financial\WalletTransactionEngine;
@@ -55,20 +56,30 @@ class ProcessReservationCompletionAction
                 throw new \RuntimeException('Order items missing for reservation completion.');
             }
 
-            $op = (float) ($locked->official_price ?: ($firstItem->unit_price ?? 0));
-            $wbs = (float) ($locked->weight_before_scale ?: 1);
+            $op    = (float) ($locked->official_price ?: ($firstItem->unit_price ?? 0));
+            $wbs   = (float) ($locked->weight_before_scale ?: 1);
             $trans = (float) ($locked->shipping_cost ?: 0);
-            $vat = (float) ($locked->vat_rate ?: 10.0);
+            $vat   = (float) ($locked->vat_rate ?: 10.0);
 
             $badgeCode = $locked->beneficiary?->badge?->code ?? 'pioneer';
-            $rates = $this->calculator->getCommissionRates($badgeCode);
+            $rates     = $this->calculator->getCommissionRates($badgeCode);
 
-            $ow = $rates['ow_final_rate'];
+            $ow  = $rates['ow_final_rate'];
             $ssg = $rates['ssg_final_rate'];
-            $co = $rates['co_final_rate'];
+            $co  = $rates['co_final_rate'];
 
-            $POO = $this->calculator->calculatePOO($trans, $op, $wbs, $ow, $vat);
-            $PTS = $this->calculator->calculatePTS($trans, $op, $wbs, $ow, $ssg, $co, $vat);
+            // ── Snapshot formula-variant flags from supplier contract ──────────
+            // Prefer the already-snapshotted value on the order (set during the
+            // reservation payment step), but fall back to the supplier profile in
+            // case the order pre-dates this feature.
+            $realSupplierId  = $firstItem->supplier_user_id;
+            $transCommission = $locked->{Order::TRANS_COMMISSION}
+                ?? (bool) (SupplierProfile::where(SupplierProfile::USER_ID, $realSupplierId)->value(SupplierProfile::TRANS_COMMISSION) ?? true);
+            $transVat        = $locked->{Order::TRANS_VAT}
+                ?? (bool) (SupplierProfile::where(SupplierProfile::USER_ID, $realSupplierId)->value(SupplierProfile::TRANS_VAT) ?? true);
+
+            $POO = $this->calculator->calculatePOO($trans, $op, $wbs, $ow, $vat, $transCommission, $transVat);
+            $PTS = $this->calculator->calculatePTS($trans, $op, $wbs, $ow, $ssg, $co, $vat, $transCommission, $transVat);
 
             if ($POO <= 0 || $PTS <= 0) {
                 Log::critical("Invalid financial calculation for order {$locked->id}", compact('POO', 'PTS'));
@@ -111,11 +122,13 @@ class ProcessReservationCompletionAction
             $this->walletEngine->process('+', $PTS, FinancialCodes::WALLET_SUPPLIER, FinancialCodes::STATUS_AVAILABLE, $locked, "واریز سهم فروش سفارش {$locked->order_number}", $realSupplierId);
 
             $locked->update([
-                Order::STATUS => Order::STATUS_PROCESSING,
-                Order::PAYMENT_STATUS => Order::PAYMENT_PAID,
-                Order::PAYMENT_OF_OWNER => $POO,
+                Order::STATUS              => Order::STATUS_PROCESSING,
+                Order::PAYMENT_STATUS      => Order::PAYMENT_PAID,
+                Order::PAYMENT_OF_OWNER    => $POO,
                 Order::PAYMENT_TO_SUPPLIER => $PTS,
-                Order::PAID_AT => now(),
+                Order::TRANS_COMMISSION    => $transCommission,
+                Order::TRANS_VAT           => $transVat,
+                Order::PAID_AT             => now(),
             ]);
 
             $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_FINAL_RECEIPT_OWNER);

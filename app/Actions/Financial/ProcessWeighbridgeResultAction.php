@@ -66,15 +66,29 @@ class ProcessWeighbridgeResultAction
             }
 
             $badgeCode = $locked->beneficiary->badge->code ?? 'pioneer';
-            $rates = $this->calculator->getCommissionRates($badgeCode);
-            $trans = (float) $locked->shipping_cost;
-            $vat = (float) ($locked->vat_rate ?? 10.0);
-            $op = ((float) $locked->official_price > 0)
+            $rates     = $this->calculator->getCommissionRates($badgeCode);
+            $trans     = (float) $locked->shipping_cost;
+            $vat       = (float) ($locked->vat_rate ?? 10.0);
+            $op        = ((float) $locked->official_price > 0)
                 ? (float) $locked->official_price
                 : (float) ($locked->items->first()->unit_price ?? 0);
 
-            $newPOO = $this->calculator->calculatePOO($trans, $op, $actualWeight, $rates['ow_final_rate'], $vat);
-            $newPTS = $this->calculator->calculatePTS($trans, $op, $actualWeight, $rates['ow_final_rate'], $rates['ssg_final_rate'], $rates['co_final_rate'], $vat);
+            // Read formula-variant flags from the order snapshot (written at payment time)
+            $transCommission = (bool) ($locked->{Order::TRANS_COMMISSION} ?? true);
+            $transVat        = (bool) ($locked->{Order::TRANS_VAT} ?? true);
+
+            // POOM = POO with WAS (weight after scale) — same formula, different weight
+            $newPOO = $this->calculator->calculatePOO(
+                $trans, $op, $actualWeight,
+                $rates['ow_final_rate'], $vat,
+                $transCommission, $transVat
+            );
+            // PTSM = PTS with WAS
+            $newPTS = $this->calculator->calculatePTS(
+                $trans, $op, $actualWeight,
+                $rates['ow_final_rate'], $rates['ssg_final_rate'], $rates['co_final_rate'], $vat,
+                $transCommission, $transVat
+            );
 
             $diffPOO = $newPOO - $oldPOO;
             $diffPTS = $newPTS - $oldPTS;

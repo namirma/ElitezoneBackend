@@ -4,140 +4,216 @@ declare(strict_types=1);
 
 namespace App\Services\Financial;
 
+/**
+ * Financial settlement calculator.
+ *
+ * Implements all four POO / PTS formula variants defined in the purchase-process
+ * design document ("پروسه خرید"), selected by two per-supplier contract flags:
+ *
+ *   +%TC (transCommission=true)  — commission is deducted from Trans as well as
+ *                                   the product price
+ *   -%TC (transCommission=false) — Trans is excluded from commission deduction
+ *   +VAT (transVat=true)         — VAT is applied to Trans
+ *   -VAT (transVat=false)        — Trans is excluded from VAT
+ *
+ * The current default %TC rate is 1 % of the invoice subtotal (ex-VAT).
+ * This is a per-supplier contract parameter; a super-admin may edit it in the
+ * supplier profile. The rate breakdown per badge:
+ *
+ *   %TC = %OW + %CO + %SSG      (%OW = 40 %, %CO+%SSG = 60 %)
+ *
+ *   Badge     %CO      %SSG
+ *   Normal    25 %     35 %
+ *   Pioneer   25 %     35 %
+ *   Gold     37.5 %   22.5 %
+ *   Silver   32.5 %   27.5 %
+ *   Bronze    30 %     30 %
+ */
 class SettlementCalculatorService
 {
-    // درصد کارمزد کل (1 درصد از مبلغ ساب‌توتال)
+    /** کل درصد کارمزد (فعلاً ۱ درصد — قابل تنظیم از پروفایل سوپلایر) */
     private const TC_PERCENTAGE = 1.0;
 
+    // =========================================================================
+    // Public API
+    // =========================================================================
+
     /**
-     * متد ۱: محاسبه ریز مبالغ کارمزد برای ثبت اولیه سفارش
-     * (استفاده در PlaceOrderAction)
+     * Calculate commissions for the initial order placement snapshot.
+     * Used by PlaceOrderAction / ProcessPreScalePaymentAction.
      *
-     * * @param float $subtotal مبلغ کل بدون مالیات
-     * @param  string|null  $badgeCode  کد نشان مشاور
-     * @return array [TC, OW, CO, SSG] (مبالغ ریالی)
+     * @param  float       $subtotal  مبلغ کل بدون مالیات
+     * @param  string|null $badgeCode کد نشان مشاور (golden, silver, bronze, pioneer, null)
+     * @return array{TC: float, OW: float, CO: float, SSG: float}
      */
     public function calculateCommissions(float $subtotal, ?string $badgeCode): array
     {
-        // 1. دریافت درصدهای تقسیم (نسبت به 1 درصد کل)
         $rates = $this->getCommissionRates($badgeCode);
 
-        // 2. محاسبه مبلغ کل کارمزد (TC)
-        $TC_Amount = $subtotal * (self::TC_PERCENTAGE / 100);
-
-        // 3. محاسبه مبالغ سهم‌ها
-        // فرمول: مبلغ کل کارمزد * درصد سهم
-        // نکته: درصدهای getCommissionRates بر اساس سهم از TC هستند (نه کل مبلغ)
-        // اما برای سهولت، ما فرض می‌کنیم rates مستقیم درصد از TC را برمی‌گردانند (مثلا 40 برای 40%)
-
-        $OW = $TC_Amount * ($rates['ow_percent_of_tc'] / 100);
-        $CO = $TC_Amount * ($rates['co_percent_of_tc'] / 100);
-        $SSG = $TC_Amount * ($rates['ssg_percent_of_tc'] / 100);
+        $TC = $subtotal * (self::TC_PERCENTAGE / 100);
+        $OW  = $TC * ($rates['ow_percent_of_tc'] / 100);
+        $CO  = $TC * ($rates['co_percent_of_tc'] / 100);
+        $SSG = $TC * ($rates['ssg_percent_of_tc'] / 100);
 
         return [
-            'TC' => round($TC_Amount),
-            'OW' => round($OW),
-            'CO' => round($CO),
+            'TC'  => round($TC),
+            'OW'  => round($OW),
+            'CO'  => round($CO),
             'SSG' => round($SSG),
         ];
     }
 
     /**
-     * متد ۲: محاسبه POO (مبلغ پرداختی خریدار)
-     * (استفاده در ProcessWeighbridgeResultAction)
-     * فرمول: [Trans + OP x WBS] x (1-%OW) x (1+VAT)
-     * * نکته: owPercent باید درصد واقعی از کل باشد.
-     * چون TC یک درصد است و OW چهل درصدِ TC است، پس OW نهایی 0.4 درصد است.
-     * ورودی این متد باید 0.4 باشد.
+     * Calculate POO — Payment Of Owner (مبلغ پرداختی خریدار).
+     *
+     * Uses the initial weight (WBS) for the pre-scale payment, or
+     * the actual weighbridge weight (WAS) for the modified POOM calculation.
+     * The formula variant is selected by the supplier-contract flags.
+     *
+     * Four variants:
+     *   +TC +VAT: [Trans + OP×W] × (1−%OW) × (1+VAT)
+     *   +TC −VAT: [OP×W × (1−%OW) × (1+VAT)] + [Trans × (1−%OW)]
+     *   −TC +VAT: [Trans + OP×W × (1−%OW)] × (1+VAT)
+     *   −TC −VAT: [OP×W × (1−%OW) × (1+VAT)] + Trans
+     *
+     * @param  float $trans           هزینه حمل و نقل
+     * @param  float $op              قیمت رسمی (OP)
+     * @param  float $weight          وزن (WBS قبل از باسکول، یا WAS بعد از باسکول)
+     * @param  float $owPercent       %OW به صورت درصد نهایی (مثال: ۰.۴ برای ۰.۴٪)
+     * @param  float $vatPercent      %VAT به صورت درصد (مثال: ۱۰ برای ۱۰٪)
+     * @param  bool  $transCommission آیا کمیسیون روی Trans اعمال می‌شود؟
+     * @param  bool  $transVat        آیا VAT روی Trans اعمال می‌شود؟
      */
-    public function calculatePOO(float $trans, float $op, float $wbs, float $owPercent, float $vatPercent): float
-    {
-        $base = $trans + ($op * $wbs);
+    public function calculatePOO(
+        float $trans,
+        float $op,
+        float $weight,
+        float $owPercent,
+        float $vatPercent,
+        bool $transCommission = true,
+        bool $transVat = true,
+    ): float {
+        $owFactor    = 1.0 - ($owPercent / 100.0);
+        $vatFactor   = 1.0 + ($vatPercent / 100.0);
+        $productBase = $op * $weight;
 
-        // اعمال تخفیف سهم مالک
-        $afterDiscount = $base * (1 - ($owPercent / 100));
+        if ($transCommission && $transVat) {
+            // +TC +VAT: [Trans + OP×W] × (1−%OW) × (1+VAT)
+            return ($trans + $productBase) * $owFactor * $vatFactor;
+        }
 
-        // اعمال مالیات بر ارزش افزوده
-        return $afterDiscount * (1 + ($vatPercent / 100));
+        if ($transCommission) {
+            // +TC −VAT: [OP×W × (1−%OW) × (1+VAT)] + [Trans × (1−%OW)]
+            return ($productBase * $owFactor * $vatFactor) + ($trans * $owFactor);
+        }
+
+        if ($transVat) {
+            // −TC +VAT: [Trans + OP×W × (1−%OW)] × (1+VAT)
+            return ($trans + ($productBase * $owFactor)) * $vatFactor;
+        }
+
+        // −TC −VAT: [OP×W × (1−%OW) × (1+VAT)] + Trans
+        return ($productBase * $owFactor * $vatFactor) + $trans;
     }
 
     /**
-     * متد ۳: محاسبه PTS (مبلغ پرداختی به سوپلایر)
-     * (استفاده در ProcessWeighbridgeResultAction)
-     * فرمول: [Trans + OP x WBS] x (1 - (%OW + %SSG + %CO)) x (1+VAT)
-     * * نکته: مجموع درصدها همان TC (یک درصد) می‌شود.
+     * Calculate PTS — Payment To Supplier (مبلغ پرداختی به سوپلایر).
+     *
+     * Uses the initial weight (WBS) for the pre-scale payment, or
+     * the actual weighbridge weight (WAS) for the modified PTSM calculation.
+     *
+     * Four variants (same transport-flag logic as POO, but TC = OW+SSG+CO):
+     *   +TC +VAT: [Trans + OP×W] × (1−TC) × (1+VAT)
+     *   +TC −VAT: [OP×W × (1−TC) × (1+VAT)] + [Trans × (1−TC)]
+     *   −TC +VAT: [Trans + OP×W × (1−TC)] × (1+VAT)
+     *   −TC −VAT: [OP×W × (1−TC) × (1+VAT)] + Trans
+     *
+     * @param  float $trans           هزینه حمل و نقل
+     * @param  float $op              قیمت رسمی
+     * @param  float $weight          وزن
+     * @param  float $owPercent       %OW نهایی
+     * @param  float $ssgPercent      %SSG نهایی
+     * @param  float $coPercent       %CO نهایی
+     * @param  float $vatPercent      %VAT
+     * @param  bool  $transCommission آیا کمیسیون روی Trans اعمال می‌شود؟
+     * @param  bool  $transVat        آیا VAT روی Trans اعمال می‌شود؟
      */
     public function calculatePTS(
-        float $trans, float $op, float $wbs,
-        float $owPercent, float $ssgPercent, float $coPercent, float $vatPercent
+        float $trans,
+        float $op,
+        float $weight,
+        float $owPercent,
+        float $ssgPercent,
+        float $coPercent,
+        float $vatPercent,
+        bool $transCommission = true,
+        bool $transVat = true,
     ): float {
-        $base = $trans + ($op * $wbs);
+        $totalDeduction = ($owPercent + $ssgPercent + $coPercent) / 100.0;
+        $deductFactor   = 1.0 - $totalDeduction;
+        $vatFactor      = 1.0 + ($vatPercent / 100.0);
+        $productBase    = $op * $weight;
 
-        // کسر کل کارمزدها از مبلغ پایه
-        $totalDeduction = ($owPercent + $ssgPercent + $coPercent) / 100;
+        if ($transCommission && $transVat) {
+            // +TC +VAT: [Trans + OP×W] × (1−TC) × (1+VAT)
+            return ($trans + $productBase) * $deductFactor * $vatFactor;
+        }
 
-        $share = $base * (1 - $totalDeduction);
+        if ($transCommission) {
+            // +TC −VAT: [OP×W × (1−TC) × (1+VAT)] + [Trans × (1−TC)]
+            return ($productBase * $deductFactor * $vatFactor) + ($trans * $deductFactor);
+        }
 
-        // اعمال مالیات
-        return $share * (1 + ($vatPercent / 100));
+        if ($transVat) {
+            // −TC +VAT: [Trans + OP×W × (1−TC)] × (1+VAT)
+            return ($trans + ($productBase * $deductFactor)) * $vatFactor;
+        }
+
+        // −TC −VAT: [OP×W × (1−TC) × (1+VAT)] + Trans
+        return ($productBase * $deductFactor * $vatFactor) + $trans;
     }
 
     /**
-     * متد کمکی: دریافت درصدهای دقیق بر اساس بج
-     * خروجی این متد هم برای محاسبه ریالی استفاده می‌شود و هم برای پاس دادن به متدهای باسکول
-     * * خروجی به صورت "درصد از کل مبلغ" تنظیم می‌شود تا در فرمول‌های بالا کار کند.
-     * مثلا اگر TC یک درصد است و OW چهل درصدِ آن است، خروجی ow_rate برابر 0.4 خواهد بود.
+     * Return commission-rate percentages for a given badge.
+     *
+     * Returns two sets of rates:
+     *  - `*_percent_of_tc`  — share as a % of TC (used in calculateCommissions)
+     *  - `*_final_rate`     — absolute % of the invoice total (used in
+     *                          calculatePOO / calculatePTS as owPercent / ssgPercent / coPercent)
+     *
+     * @param  string|null $badgeCode
+     * @return array{
+     *   ow_percent_of_tc: float,
+     *   co_percent_of_tc: float,
+     *   ssg_percent_of_tc: float,
+     *   ow_final_rate: float,
+     *   co_final_rate: float,
+     *   ssg_final_rate: float,
+     * }
      */
     public function getCommissionRates(?string $badgeCode): array
     {
         $badge = strtolower(trim($badgeCode ?? ''));
 
-        // درصدهای سهم از خودِ کارمزد (Share of TC)
-        $shareOfTC = [
-            'ow' => 40.0, // همیشه 40 درصد از TC
-            'co' => 0.0,
-            'ssg' => 0.0,
-        ];
+        // Share-of-TC percentages (always sum to 100 %)
+        $shares = match ($badge) {
+            'golden'  => ['ow' => 40.0, 'co' => 37.5, 'ssg' => 22.5],
+            'silver'  => ['ow' => 40.0, 'co' => 32.5, 'ssg' => 27.5],
+            'bronze'  => ['ow' => 40.0, 'co' => 30.0, 'ssg' => 30.0],
+            default   => ['ow' => 40.0, 'co' => 25.0, 'ssg' => 35.0], // normal / pioneer
+        };
 
-        switch ($badge) {
-            case 'golden':
-                // طلایی: CO = 37.5%, SSG = 22.5%
-                $shareOfTC['co'] = 12.5 + 25; // 37.5
-                $shareOfTC['ssg'] = 22.5;
-                break;
-
-            case 'silver':
-                // نقره‌ای: CO = 32.5%, SSG = 27.5%
-                $shareOfTC['co'] = 7.5 + 25; // 32.5
-                $shareOfTC['ssg'] = 27.5;
-                break;
-
-            case 'bronze':
-                // برنزی: CO = 30%, SSG = 30%
-                $shareOfTC['co'] = 5 + 25; // 30
-                $shareOfTC['ssg'] = 30;
-                break;
-
-            case 'pioneer':
-            default:
-                // عادی: CO = 25%, SSG = 35%
-                $shareOfTC['co'] = 25.0;
-                $shareOfTC['ssg'] = 35.0;
-                break;
-        }
-
-        // تبدیل به "درصد نهایی از مبلغ کل" برای استفاده در فرمول‌های باسکول
-        // مثال: اگر TC=1% و OW_Share=40% -> OW_Final = 0.4%
         return [
-            // درصدهای نسبی (برای محاسبه Amount در PlaceOrder)
-            'ow_percent_of_tc' => $shareOfTC['ow'],
-            'co_percent_of_tc' => $shareOfTC['co'],
-            'ssg_percent_of_tc' => $shareOfTC['ssg'],
+            // Percentages relative to TC (for commission-amount calculations)
+            'ow_percent_of_tc'  => $shares['ow'],
+            'co_percent_of_tc'  => $shares['co'],
+            'ssg_percent_of_tc' => $shares['ssg'],
 
-            // درصدهای مطلق (برای فرمول‌های calculatePOO و calculatePTS)
-            'ow_final_rate' => self::TC_PERCENTAGE * ($shareOfTC['ow'] / 100),
-            'co_final_rate' => self::TC_PERCENTAGE * ($shareOfTC['co'] / 100),
-            'ssg_final_rate' => self::TC_PERCENTAGE * ($shareOfTC['ssg'] / 100),
+            // Absolute percentages of invoice total (for POO / PTS formula inputs)
+            // Example: TC=1 %, OW=40 % of TC → ow_final_rate = 0.4 %
+            'ow_final_rate'  => self::TC_PERCENTAGE * ($shares['ow']  / 100.0),
+            'co_final_rate'  => self::TC_PERCENTAGE * ($shares['co']  / 100.0),
+            'ssg_final_rate' => self::TC_PERCENTAGE * ($shares['ssg'] / 100.0),
         ];
     }
 }

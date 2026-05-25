@@ -177,6 +177,12 @@ class Order extends Model
 
     public const WEIGHING_COMPLETED_AT = 'weighing_completed_at';
 
+    /** +%TC snapshot: آیا کمیسیون روی هزینه حمل اعمال شده؟ */
+    public const TRANS_COMMISSION = 'trans_commission';
+
+    /** +VAT snapshot: آیا مالیات روی هزینه حمل اعمال شده؟ */
+    public const TRANS_VAT = 'trans_vat';
+
     // =========================================================================
     //  Configurations
     // =========================================================================
@@ -230,6 +236,8 @@ class Order extends Model
         self::VALIDATION_OF_RESERVE,
         self::WEIGHT_AFTER_SCALE,
         self::WEIGHING_COMPLETED_AT,
+        self::TRANS_COMMISSION,
+        self::TRANS_VAT,
     ];
 
     protected $casts = [
@@ -255,6 +263,8 @@ class Order extends Model
         self::VALIDATION_OF_RESERVE => 'datetime',
         self::WEIGHT_AFTER_SCALE => 'decimal:3',
         self::WEIGHING_COMPLETED_AT => 'datetime',
+        self::TRANS_COMMISSION => 'boolean',
+        self::TRANS_VAT        => 'boolean',
     ];
 
     // =========================================================================
