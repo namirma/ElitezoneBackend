@@ -82,6 +82,8 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
         Route::get('/{order}/history', 'history');
         Route::get('/{order}', 'show');
         Route::post('/{order}/status', 'changeStatus');
+        // Doc P — فاکتور مودیان سیستم (سازه → خریدار)، آزادسازی WVAT hold
+        Route::post('/{order}/system-moadian-invoice', 'submitSystemMoadianInvoice');
     });
 
     // Wallet

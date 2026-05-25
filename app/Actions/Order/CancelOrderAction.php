@@ -7,6 +7,7 @@ use App\Events\Order\OrderCancelled;
 use App\Models\Order;
 use App\Services\Financial\WalletTransactionEngine;
 use App\Services\InventoryService;
+use App\Services\Invoice\InvoiceGenerator;
 use Exception;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -16,6 +17,7 @@ class CancelOrderAction
     public function __construct(
         protected InventoryService $inventoryService,
         protected WalletTransactionEngine $walletEngine,
+        protected InvoiceGenerator $invoiceGenerator,
     ) {}
 
     /**
@@ -38,6 +40,14 @@ class CancelOrderAction
 
         return DB::transaction(function () use ($order, $reason, $refundWallet, $isSystemCron) {
 
+            // ── وضعیت مالی قبل از تغییر — برای تصمیم‌گیری درباره اسناد ────
+            // باید قبل از update ذخیره شود، چون update مقادیر مدل را تغییر می‌دهد.
+            $wasReserved = in_array($order->status, [
+                Order::STATUS_RESERVED,
+                Order::STATUS_RESERVED_EXTENDED,
+            ]);
+            $wasPaid = ($order->payment_status === Order::PAYMENT_PAID);
+
             // ۱. بازگرداندن موجودی کالا به انبار
             $this->inventoryService->restoreStock($order);
 
@@ -58,6 +68,16 @@ class CancelOrderAction
 
             // ۵. ارسال ایونت
             OrderCancelled::dispatch($order);
+
+            // ۶. صدور اسناد لغو (فقط اگر تراکنش مالی وجود داشته) ──────────
+            // i — رسید استرداد وجه برای خریدار (فقط اگر واقعاً استرداد شد)
+            if ($refundWallet && ($wasReserved || $wasPaid)) {
+                $this->invoiceGenerator->generate($order, FinancialCodes::DOC_REFUND_RECEIPT);
+            }
+            // j — گزارش لغو برای سوپلایر (هر بار که سفارش پولی داشت)
+            if ($wasReserved || $wasPaid) {
+                $this->invoiceGenerator->generate($order, FinancialCodes::DOC_CANCEL_REPORT);
+            }
 
             Log::info("سفارش شماره {$order->order_number} با موفقیت لغو شد.", [
                 'reason' => $reason,

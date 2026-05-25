@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\User;
 use App\Models\Wallet;
+use App\Services\Invoice\InvoiceGenerator;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
@@ -34,6 +35,14 @@ class ProcessPreScalePaymentActionTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        // InvoiceGenerator performs file I/O (Blade view rendering + Storage write).
+        // These tests verify financial side-effects only; PDF generation is mocked
+        // so that missing test-environment Blade views don't break unrelated assertions.
+        $this->mock(InvoiceGenerator::class)
+            ->shouldReceive('generate')
+            ->andReturn('test/invoice-stub.pdf');
+
         $this->action      = app(ProcessPreScalePaymentAction::class);
         $this->orderAmount = (float) config('financial.reservation_threshold', 1_950_000_000) - 1;
 

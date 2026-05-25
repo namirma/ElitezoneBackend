@@ -7,13 +7,15 @@ namespace App\Actions\Financial;
 use App\Constants\FinancialCodes;
 use App\Models\Order;
 use App\Services\Financial\WalletTransactionEngine;
+use App\Services\Invoice\InvoiceGenerator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class ProcessReservationPaymentAction
 {
     public function __construct(
-        protected WalletTransactionEngine $walletEngine
+        protected WalletTransactionEngine $walletEngine,
+        protected InvoiceGenerator $invoiceGenerator,
     ) {}
 
     public function execute(Order $order, float $reserveAmount, int $validityHours = 2): void
@@ -55,6 +57,12 @@ class ProcessReservationPaymentAction
                 Order::PAYMENT_TO_RESERVE => $reserveAmount,
                 'reservation_expires_at' => now()->addHours($validityHours),
             ]);
+
+            // ── صدور اسناد مالی رزرو ─────────────────────────────────────
+            // E — رسید پرداخت رزرو برای خریدار
+            $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_RESERVE_RECEIPT);
+            // F — گزارش رزرو برای سوپلایر
+            $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_RESERVE_REPORT);
 
             Log::info("سفارش {$locked->order_number} رزرو شد.");
         }, 3);

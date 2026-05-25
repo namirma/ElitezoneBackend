@@ -201,6 +201,12 @@ class Order extends Model
     /** مبلغ بدهی سوپلایر (ریال) */
     public const SUPPLIER_DEBT_AMOUNT = 'supplier_debt_amount';
 
+    /** Doc P: شماره فاکتور مودیان سیستم (پلتفرم) برای خریدار */
+    public const SYSTEM_MOADIAN_REF = 'system_moadian_ref';
+
+    /** زمان آزادسازی هولد مالیات پلتفرم (sazeVat) از WVAT */
+    public const SYSTEM_HOLD_RELEASED_AT = 'system_hold_released_at';
+
     // =========================================================================
     //  Configurations
     // =========================================================================
@@ -262,6 +268,8 @@ class Order extends Model
         self::SUPPLIER_HOLD_RELEASED_AT,
         self::SUPPLIER_DEBT_PENDING,
         self::SUPPLIER_DEBT_AMOUNT,
+        self::SYSTEM_MOADIAN_REF,
+        self::SYSTEM_HOLD_RELEASED_AT,
     ];
 
     protected $casts = [
@@ -293,6 +301,7 @@ class Order extends Model
         self::SUPPLIER_HOLD_RELEASED_AT    => 'datetime',
         self::SUPPLIER_DEBT_PENDING        => 'boolean',
         self::SUPPLIER_DEBT_AMOUNT         => 'decimal:2',
+        self::SYSTEM_HOLD_RELEASED_AT      => 'datetime',
     ];
 
     // =========================================================================
