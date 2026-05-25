@@ -214,6 +214,13 @@ submits their Moadian invoice, releases WVAT hold→available (supplier VAT port
 PTSM). Idempotent via `supplier_moadian_ref` guard.
 Route: `POST /profile/orders/{order}/supplier-moadian-invoice` (SupplierOrderController).
 
+`RecordSystemMoadianInvoiceAction` — Doc P post-weighbridge: when an admin issues
+the platform's (Saze) Moadian invoice to the buyer, releases `sazeVat` from
+WVAT hold→available. `sazeVat` is re-derived at release time from the stored
+POOM/PTSM/consultantGross snapshots and `vat_rate`. Idempotent via
+`system_moadian_ref` guard; pre-condition: `weighing_completed_at ≠ null`.
+Route: `POST /admin/orders/{order}/system-moadian-invoice` (AdminOrderController).
+
 ### Services (domain helpers)
 
 ```
@@ -233,7 +240,9 @@ Services/
                                      used by both CartParameterSyncService and
                                      ParameterDetectionController
   Invoice/
-    InvoiceGenerator     — orchestrator (~110 lines)
+    InvoiceGenerator     — orchestrator; getViewName() maps all 19+ doc codes to
+                           Blade views; createInvoiceRecord() stores Invoice model;
+                           generate(order, docType, 'save'|'download'|'stream')
     InvoiceDataBuilder   — Blade-view data prep (line items, totals, buyer info)
     InvoicePdfRenderer   — PDF rendering + Storage::disk('public') write
   Financial/
@@ -411,6 +420,14 @@ documents are submitted:
 - Order fields set: `supplier_moadian_ref`, `supplier_hold_released_at`
 - Authorization: `OrderPolicy::manageAsSupplier`
 
+**Doc P — System (Saze) Moadian Invoice** (submitted by admin)
+- At weighbridge: `sazeVat = sazeGross × vatMultiplier → WVAT balance_hold`
+  where `sazeGross = (POOM − PTSM) − consultantGross`
+- On submission: `RecordSystemMoadianInvoiceAction` derives `sazeVat` from stored
+  POOM/PTSM/consultantGross snapshots and releases the WVAT hold to available
+- Order fields set: `system_moadian_ref`, `system_hold_released_at`
+- Authorization: admin only (`POST /admin/orders/{order}/system-moadian-invoice`)
+
 **Weighbridge deficit — insufficient supplier balance**
 If at weighbridge time the supplier's wallet balance < `PTS − PTSM` (reclaimAmount):
 - Buyer refund is credited in `HOLD` (not AVAILABLE) to `WO`
@@ -432,7 +449,42 @@ Order::SUPPLIER_MOADIAN_REF        // string|null — set when Doc O submitted
 Order::SUPPLIER_HOLD_RELEASED_AT   // datetime|null
 Order::SUPPLIER_DEBT_PENDING       // bool — true while deficit awaits supplier top-up
 Order::SUPPLIER_DEBT_AMOUNT        // decimal — Rials owed by supplier
+Order::SYSTEM_MOADIAN_REF          // string|null — set when Doc P submitted (admin)
+Order::SYSTEM_HOLD_RELEASED_AT     // datetime|null
 ```
+
+### Document Generation — Which Action Emits Which Doc
+
+Every `InvoiceGenerator::generate()` call is triggered from inside a `DB::transaction`
+so that PDF failure rolls back the financial entry too. All generation uses `'save'`
+mode (file stored on disk, `Invoice` DB record created).
+
+| Doc | Code | Triggered by | Action |
+|-----|------|--------------|--------|
+| A | `DOC_RECEIPT_OWNER` | Direct purchase | `ProcessPreScalePaymentAction` |
+| B | `DOC_REPORT_SUPPLIER` | Direct purchase | `ProcessPreScalePaymentAction` |
+| C | `DOC_LOADING_ORDER` | Direct purchase | `ProcessPreScalePaymentAction` |
+| D | `DOC_CONSULTANT_REPORT` | Direct purchase + has beneficiary | `ProcessPreScalePaymentAction` |
+| E | `DOC_RESERVE_RECEIPT` | Reservation start | `ProcessReservationPaymentAction` |
+| F | `DOC_RESERVE_REPORT` | Reservation start | `ProcessReservationPaymentAction` |
+| G | `DOC_FINAL_RECEIPT_OWNER` | Reservation completion | `ProcessReservationCompletionAction` |
+| H | `DOC_FINAL_REPORT_SUPPLIER` | Reservation completion | `ProcessReservationCompletionAction` |
+| i | `DOC_REFUND_RECEIPT` | Cancellation (paid/reserved) | `CancelOrderAction` |
+| j | `DOC_CANCEL_REPORT` | Cancellation (paid/reserved) | `CancelOrderAction` |
+| I | `DOC_EXIT_PERMIT` | Weighbridge (equal/deficit) | `ProcessWeighbridgeResultAction` |
+| J | `DOC_SUPPLEMENTARY_RECEIPT` | Weighbridge surplus | `ProcessWeighbridgeResultAction` |
+| K | `DOC_SUPPLEMENTARY_REPORT` | Weighbridge surplus | `ProcessWeighbridgeResultAction` |
+| LO | `DOC_MODIFIED_INVOICE_OWNER` | Weighbridge surplus/deficit | `ProcessWeighbridgeResultAction` |
+| LS | `DOC_MODIFIED_INVOICE_SUPPLIER` | Weighbridge surplus/deficit | `ProcessWeighbridgeResultAction` |
+| M | `DOC_REFUND_REPORT_WEIGH` | Weighbridge deficit | `ProcessWeighbridgeResultAction` |
+| O | `DOC_TAX_INVOICE_SUPPLIER` | Supplier submits Moadian invoice | `RecordSupplierMoadianInvoiceAction` |
+| P | `DOC_TAX_INVOICE_BUYER` | Admin submits system Moadian invoice | `RecordSystemMoadianInvoiceAction` |
+| Q | `DOC_TAX_INVOICE_CONSULTANT` | Consultant submits Moadian invoice | `ReleaseConsultantHoldAction` |
+
+**`OrderInvoiceController::download()`** serves any of the above by slug (e.g.
+`GET /profile/orders/{order}/invoices/receipt` → `DOC_RECEIPT_OWNER`). The slug→code
+map is an explicit `$typeMap` array; unknown slugs return 422. Never add a
+`default` fallback that silently returns a different document.
 
 ### Financial Flow (Critical Path)
 
@@ -453,6 +505,7 @@ Payment entry points:
 3. **OrderPaymentController::payHoldFee** — hold fee extension; protected by `idempotency` middleware
 4. **OrderActionController::submitConsultantMoadianInvoice** — Doc Q; releases WCT+WVAT holds
 5. **SupplierOrderController::submitSupplierMoadianInvoice** — Doc O; releases WVAT hold
+6. **AdminOrderController::submitSystemMoadianInvoice** — Doc P; releases sazeVat WVAT hold
 
 Financial safety pattern (should be followed everywhere):
 ```php
@@ -611,7 +664,7 @@ tests/
   Unit/          — (empty placeholder dir — kept so phpunit.xml works)
 ```
 
-**Total: 110 tests, 189 assertions (all green).** (after P1–P5 formula-variant and post-weighbridge-document changes)
+**Total: 110 tests, 189 assertions (all green).** (after B1–B5 document-generation gap fixes)
 
 Patterns to follow when adding tests:
 - **Use factories**, never `User::create([...])` with raw arrays — `UserFactory`
@@ -655,6 +708,21 @@ Patterns to follow when adding tests:
   ```
 
 ### Known Test Gotchas
+
+- **Actions that inject `InvoiceGenerator`** — `ProcessPreScalePaymentAction`,
+  `ProcessReservationPaymentAction`, `CancelOrderAction`, `ProcessWeighbridgeResultAction`,
+  and the three Moadian-invoice actions all call `InvoiceGenerator::generate()`. In
+  feature tests that resolve these via `app()`, mock the generator **before** the
+  `app()` call so the container injects the mock instead of the real implementation:
+  ```php
+  $this->mock(InvoiceGenerator::class)
+      ->shouldReceive('generate')
+      ->andReturn('test/stub.pdf');
+
+  $this->action = app(ProcessPreScalePaymentAction::class);
+  ```
+  Without this, tests fail with `View [pdf.xxx] not found` because PDF Blade views
+  only exist in the production environment.
 
 - **`SetBasePriceTest`** — the pipe caches results; call `Cache::flush()` between
   assertions on the same (variant, factory, location) triple.
