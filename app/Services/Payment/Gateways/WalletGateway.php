@@ -3,7 +3,7 @@
 namespace App\Services\Payment\Gateways;
 
 use App\Actions\Financial\ProcessPreScalePaymentAction;
-use App\Exceptions\Wallet\InsufficientBalanceException;
+use App\Exceptions\InsufficientBalanceException;
 use App\Exceptions\Wallet\WalletNotFoundException;
 use App\Models\Order;
 use App\Models\User;
@@ -38,7 +38,7 @@ class WalletGateway implements PaymentGatewayInterface
 
         // ۳. بررسی موجودی
         if ((float) $wallet->balance < $amount) {
-            throw new InsufficientBalanceException(__('wallet.errors.insufficient_balance'));
+            throw new InsufficientBalanceException($amount, (float) $wallet->balance);
         }
 
         // ۴. اجرای فلوی مالی کامل (کسر از خریدار، تقسیم بین سازه و سوپلایر)
