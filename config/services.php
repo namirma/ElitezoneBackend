@@ -49,7 +49,7 @@ return [
         ],
     ],
     'company_inquiry' => [
-        'sc_api_key' => env('PODIUM_SC_API_KEY_COMPANY', '3105832128-1e267305e48a45e6a30541a855f6b597.XzIwMjUxMQ'),
+        'sc_api_key' => env('PODIUM_SC_API_KEY_COMPANY'),
         'sc_product_id' => env('PODIUM_SC_PRODUCT_ID_COMPANY', 46953),
     ],
 
