@@ -3,19 +3,20 @@
 namespace App\Http\Controllers\Api\User;
 
 use App\Actions\Order\CancelOrderAction;
+use App\Actions\Order\FinalizeInvoiceAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Order\FinalizeOrderInvoiceRequest;
 use App\Http\Resources\Order\OrderResource;
 use App\Models\Order;
-use App\Models\User;
-use App\Models\WalletTransaction;
 use Exception;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class OrderActionController extends Controller
 {
+    public function __construct(
+        private readonly FinalizeInvoiceAction $finalizeAction,
+    ) {}
+
     /**
      * لغو سفارش توسط کاربر
      */
@@ -48,47 +49,15 @@ class OrderActionController extends Controller
     {
         $this->authorize('finalizeInvoice', $order);
 
-        $validated = $request->validated();
-
         if ($order->status !== Order::STATUS_PROCESSING) {
             return error(__('orders.cannot_finalize_invoice'), [], 400);
         }
 
-        $feeAmount = null;
-        $consultantUserId = null;
-
-        if ($order->engineer_fee_amount > 0) {
-            $feeAmount = $order->engineer_fee_amount;
-            $consultantUserId = $order->beneficiary_user_id;
-        } elseif ($order->contractor_fee_amount > 0) {
-            $feeAmount = $order->contractor_fee_amount;
-            $consultantUserId = $order->beneficiary_user_id;
+        try {
+            $this->finalizeAction->execute($order, $request->validated('final_invoice_ref'));
+        } catch (Exception $e) {
+            return error(__('orders.unknown_processing_error'), [], 500);
         }
-
-        DB::transaction(function () use ($order, $validated, $feeAmount, $consultantUserId) {
-            $order->update([
-                Order::FINAL_INVOICE_REF => $validated['final_invoice_ref'],
-            ]);
-
-            if ($feeAmount && $consultantUserId) {
-                $consultant = User::find($consultantUserId);
-                if (! $consultant) {
-                    Log::error("User not found for consultant fee hold. Order: {$order->id}");
-                    throw new Exception('Consultant user not found.');
-                }
-
-                $wallet = $consultant->wallet ?: $consultant->wallet()->create([]);
-
-                $wallet->transactions()->create([
-                    'order_id' => $order->id,
-                    'amount' => $feeAmount,
-                    'type' => WalletTransaction::TYPE_FEE_HOLD,
-                    'status' => WalletTransaction::STATUS_PENDING,
-                    'description' => 'سهم رزرو شده برای سفارش '.$order->order_number,
-                ]);
-                $wallet->increment('balance_hold', $feeAmount);
-            }
-        });
 
         return success([], __('orders.finalize_invoice_success'));
     }

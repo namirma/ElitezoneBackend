@@ -29,6 +29,7 @@ return [
     'hold_fee_successful' => 'هزینه تمدید با موفقیت پرداخت شد.',
     'cannot_finalize_invoice' => 'سفارش در وضعیت مناسب برای ثبت فاکتور نهایی نیست.',
     'finalize_invoice_success' => 'فاکتور نهایی با موفقیت ثبت شد.',
+    'fee_hold_description' => 'سهم رزرو شده برای سفارش :order_number',
 
     'status' => [
         Order::STATUS_PENDING => 'در انتظار تایید (رزرو شده)',
