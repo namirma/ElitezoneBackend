@@ -8,6 +8,7 @@ use App\Http\Requests\Profile\StoreUserProfileRequest;
 use App\Http\Requests\Profile\StoreUserTypeRequest;
 use App\Http\Requests\Profile\UpdateLegalProfileRequest;
 use App\Http\Requests\Profile\UpdateRealProfileRequest;
+use App\Http\Requests\Profile\UpdateUserProfileRequest;
 use App\Http\Resources\Profile\UserResource;
 use App\Models\User;
 use App\Models\UserProfile;
@@ -165,6 +166,35 @@ class ProfileController extends Controller
         } catch (\Exception $e) {
             return error($e->getMessage(), [], 422);
         }
+    }
+
+    /**
+     * General-purpose profile update (PUT /profile).
+     *
+     * Accepts any subset of profile fields. Locked fields (name, family,
+     * national_code, birthday) can only be written the first time — once set,
+     * subsequent requests silently preserve the existing value so they cannot
+     * be changed via this endpoint.
+     */
+    public function updateProfile(UpdateUserProfileRequest $request): JsonResponse
+    {
+        $user = Auth::user();
+        $profile = $user->profile()->firstOrCreate([UserProfile::USER_ID => $user->id]);
+        $data = $request->validated();
+
+        $locked = [UserProfile::NAME, UserProfile::FAMILY, UserProfile::NATIONAL_CODE, UserProfile::BIRTHDAY];
+
+        foreach ($data as $key => $value) {
+            if (in_array($key, $locked, true) && ! is_null($profile->{$key})) {
+                // Locked field already has a value — do not overwrite.
+                continue;
+            }
+            $profile->{$key} = $value;
+        }
+
+        $profile->save();
+
+        return success(new UserResource($user->fresh('profile')), __('profile.updated_successfully'));
     }
 
     public function updateRealProfile(UpdateRealProfileRequest $request): JsonResponse
