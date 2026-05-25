@@ -56,7 +56,8 @@ Http/Requests/
   Auth/        — StoreUserRequest, ChangeMobileRequest, VerifyEmailRequest, StorePasswordRequest, UpdateMobileRequest
   Cart/        — AddToCartRequest, UpdateCartItemRequest, UpdateCartFiltersRequest, SavePurchaseParametersRequest, UpdateCustomerTypeRequest
   Order/       — StoreOrderRequest, PayFullOrderRequest, PayHoldFeeRequest, AddWaybillRequest, SubmitWeighbridgeRequest,
-                 UploadOrderReceiptRequest, StoreOrderSurveyRequest, FinalizeOrderInvoiceRequest, OrderPriceRequest
+                 UploadOrderReceiptRequest, StoreOrderSurveyRequest, FinalizeOrderInvoiceRequest, OrderPriceRequest,
+                 SubmitMoadianInvoiceRequest  ← shared by Doc Q (consultant) and Doc O (supplier) endpoints
   Product/     — ProductIndexRequest, ProductVariantFilterRequest, ProductVariantPriceRequest, SearchRequest, ToggleStockSubscriptionRequest
   Profile/     — UpdateRealProfileRequest, UpdateLegalProfileRequest, StoreUserTypeRequest, StoreEngineerProfileRequest,
                  StoreContractorProfileRequest, StoreEmployerProfileRequest, StoreSupplierProfileRequest,
@@ -181,6 +182,8 @@ Actions/
                  PayHoldFeeAction, ProcessPreScalePaymentAction,
                  ProcessReservationPaymentAction, ProcessReservationCompletionAction,
                  ProcessWeighbridgeResultAction, ProcessPaymentCallbackAction,
+                 ReleaseConsultantHoldAction,    ← Doc Q: releases WCT+WVAT holds
+                 RecordSupplierMoadianInvoiceAction, ← Doc O: releases WVAT hold
                  AttachReceiptToDepositAction, DeleteReceiptAction
   Order/       — PlaceOrderAction, RefundOrderToWalletAction, CancelOrderAction,
                  FinalizeInvoiceAction, ProcessFullOrderPaymentAction
@@ -200,6 +203,16 @@ delegates entirely to this action; it holds no DB or financial logic itself.
 `FinalizeInvoiceAction` — atomically updates `final_invoice_ref` and holds the
 consultant fee (TYPE_FEE_HOLD WalletTransaction + balance_hold increment) inside a
 single DB::transaction. `OrderActionController::finalizeInvoice()` delegates to it.
+
+`ReleaseConsultantHoldAction` — Doc Q post-weighbridge: when the consultant submits
+their Moadian invoice, releases WCT hold→available (consultant net) and WVAT
+hold→available (consultant VAT). Idempotent via `consultant_moadian_ref` guard.
+Route: `POST /profile/orders/{order}/consultant-moadian-invoice` (OrderActionController).
+
+`RecordSupplierMoadianInvoiceAction` — Doc O post-weighbridge: when the supplier
+submits their Moadian invoice, releases WVAT hold→available (supplier VAT portion of
+PTSM). Idempotent via `supplier_moadian_ref` guard.
+Route: `POST /profile/orders/{order}/supplier-moadian-invoice` (SupplierOrderController).
 
 ### Services (domain helpers)
 
@@ -224,8 +237,16 @@ Services/
     InvoiceDataBuilder   — Blade-view data prep (line items, totals, buyer info)
     InvoicePdfRenderer   — PDF rendering + Storage::disk('public') write
   Financial/
-    WalletTransactionEngine    — multi-wallet operations (owner/supplier/saze)
-    SettlementCalculatorService — POO/PTS commission math
+    WalletTransactionEngine    — multi-wallet operations for all 5 wallet codes:
+                                 WO (buyer), WS (supplier), WSSG (Saze/system),
+                                 WCT (consultant), WVAT (VAT escrow).
+                                 resolveUserId() maps each code to a user_id;
+                                 WALLET_SUPPLIER always requires explicit targetUserId
+                                 (supplier lives on order items, not the order row).
+    SettlementCalculatorService — POO/PTS commission math with 4 formula variants
+                                 (+/-TC controls commission on Trans, +/-VAT controls
+                                 VAT on Trans). Flags are read from supplier_profiles
+                                 and snapshotted to the order at payment time.
   Pricing/                       — pipeline (SetBasePrice → ApplyPriceFilters → ApplyVariantDiscount → ApplyVat)
 ```
 
@@ -344,13 +365,94 @@ PayHoldFeeAction::fee()   // wraps config('financial.hold_fee')
 self::FEE_RIALS   // deprecated constant in PayHoldFeeAction, kept for BC only
 ```
 
+### Financial — POO/PTS Formula Variants
+
+`SettlementCalculatorService` supports four formula variants per order, controlled
+by two boolean flags snapshotted at payment time:
+
+| Flag | Meaning |
+|------|---------|
+| `trans_commission` (`+TC`) | commission percentage `%OW` applies to Trans (shipping cost) |
+| `trans_vat` (`+VAT`) | VAT applies to the Trans portion |
+
+The flags are stored per-supplier in `supplier_profiles.trans_commission` /
+`supplier_profiles.trans_vat` (both default `true`; editable by super-admin) and
+snapshotted onto `orders.trans_commission` / `orders.trans_vat` at payment time so
+they are immutable for the life of the order.
+
+`ProcessWeighbridgeResultAction` reads the snapshot from the locked order and passes
+the flags to both `calculatePOO()` and `calculatePTS()`. POOM and PTSM (the
+post-weighbridge recalculations) use the same flags but with `actualWeight`.
+
+Badge-based commission splits (`getCommissionRates()`):
+
+| Badge | `%OW` | `%CO` | `%SSG` |
+|-------|-------|-------|--------|
+| golden | 40% | 37.5% | 22.5% |
+| silver | 40% | 32.5% | 27.5% |
+| bronze | 40% | 30.0% | 30.0% |
+| pioneer / default | 40% | 25.0% | 35.0% |
+
+### Financial — Weighbridge Post-Flow (Doc Q & Doc O)
+
+After the weighbridge result is processed, two VAT-related holds remain open until
+documents are submitted:
+
+**Doc Q — Consultant Moadian Invoice** (submitted by consultant)
+- At weighbridge: `consultantNet → WCT balance_hold`, `consultantVat → WVAT balance_hold`
+- VAT split: `vatMultiplier = (vat%/100) / (1 + vat%/100)`; `consultantVat = gross × vatMultiplier`
+- On submission: `ReleaseConsultantHoldAction` releases both holds to available
+- Order fields set: `consultant_moadian_ref`, `consultant_hold_released_at`
+- Authorization: only `order.beneficiary_user_id` (the consultant) can call this
+
+**Doc O — Supplier Moadian Invoice** (submitted by supplier)
+- At weighbridge: `supplierVat = PTSM × vatMultiplier → WVAT balance_hold`
+- On submission: `RecordSupplierMoadianInvoiceAction` releases the VAT hold to available
+- Order fields set: `supplier_moadian_ref`, `supplier_hold_released_at`
+- Authorization: `OrderPolicy::manageAsSupplier`
+
+**Weighbridge deficit — insufficient supplier balance**
+If at weighbridge time the supplier's wallet balance < `PTS − PTSM` (reclaimAmount):
+- Buyer refund is credited in `HOLD` (not AVAILABLE) to `WO`
+- `order.supplier_debt_pending = true`, `order.supplier_debt_amount = reclaimAmount`
+- Supplier receives an SMS to top up their wallet (`sms.supplier_debt_notification`)
+- `CheckSupplierBalancesJob` (cron) polls orders with `supplier_debt_pending = true`:
+  when balance ≥ debt, it locks order + wallets, reclaims the debt, finds the specific
+  hold WalletTransaction (by `order_id/type=deposit/status=hold`), releases it to
+  AVAILABLE, notifies the buyer via SMS (`sms.buyer_refund_released`), and clears
+  the debt flags.
+
+**Order model constants for this flow:**
+```php
+Order::TRANS_COMMISSION            // bool snapshot of supplier formula flag
+Order::TRANS_VAT                   // bool snapshot of supplier formula flag
+Order::CONSULTANT_MOADIAN_REF      // string|null — set when Doc Q submitted
+Order::CONSULTANT_HOLD_RELEASED_AT // datetime|null
+Order::SUPPLIER_MOADIAN_REF        // string|null — set when Doc O submitted
+Order::SUPPLIER_HOLD_RELEASED_AT   // datetime|null
+Order::SUPPLIER_DEBT_PENDING       // bool — true while deficit awaits supplier top-up
+Order::SUPPLIER_DEBT_AMOUNT        // decimal — Rials owed by supplier
+```
+
 ### Financial Flow (Critical Path)
 
-The system has a wallet-based payment model with three entry points:
+The system has a wallet-based payment model. Five wallet codes are in use:
+
+| Code | Constant | Wallet owner |
+|------|----------|--------------|
+| `WO` | `WALLET_OWNER` | buyer (`placer_user_id`) |
+| `WS` | `WALLET_SUPPLIER` | supplier (from `order.items.first().supplier_user_id`) |
+| `WSSG` | `WALLET_SAZE` | platform system (`financial.system_user_id`) |
+| `WCT` | `WALLET_CONSULTANT` | consultant (`beneficiary_user_id`) |
+| `WVAT` | `WALLET_VAT` | VAT escrow (`financial.vat_user_id`, falls back to system_user_id) |
+
+Payment entry points:
 
 1. **WalletPaymentController** — generic wallet payment for orders
 2. **OrderPaymentController::payFullOrder** — handles 3 scenarios: direct purchase, reservation (>195M Rials), and completion of reserved orders; protected by `idempotency` middleware
 3. **OrderPaymentController::payHoldFee** — hold fee extension; protected by `idempotency` middleware
+4. **OrderActionController::submitConsultantMoadianInvoice** — Doc Q; releases WCT+WVAT holds
+5. **SupplierOrderController::submitSupplierMoadianInvoice** — Doc O; releases WVAT hold
 
 Financial safety pattern (should be followed everywhere):
 ```php
@@ -362,7 +464,12 @@ DB::transaction(function () {
 });
 ```
 
-`WalletTransactionEngine` handles complex multi-wallet operations (owner, supplier, saze system wallet). `DebitWalletAction` and `FundWalletAction` are the clean Action-based entry points.
+`WalletTransactionEngine::process()` always accepts an optional `$targetUserId`; pass
+it explicitly whenever you know the user (e.g. supplier). `resolveUserId()` is the
+fallback — it maps wallet codes to user IDs from the order or config. **Always pass
+`$targetUserId` for `WALLET_SUPPLIER`** — the supplier ID is not stored on the order
+row and `resolveUserId()` will throw if omitted. `DebitWalletAction` and
+`FundWalletAction` are the clean Action-based entry points for simple single-wallet ops.
 
 ### Pricing Pipeline
 
@@ -461,7 +568,8 @@ Jobs/
 
 Scheduled jobs (crons, wired in `Console/Kernel.php`):
 - `Order/CheckReservationExpiryJob` — cancels expired reservations
-- `Financial/CheckSupplierBalancesJob` — monitors supplier wallet balances
+- `Financial/CheckSupplierBalancesJob` — polls `supplier_debt_pending = true` orders;
+  when supplier balance ≥ debt, reclaims it and releases buyer's HOLD refund to AVAILABLE
 - `Analytics/CalculateCustomerRfm` — customer segmentation analytics
 
 ### Authorization (Policies)
@@ -503,7 +611,7 @@ tests/
   Unit/          — (empty placeholder dir — kept so phpunit.xml works)
 ```
 
-**Total: 110 tests, 189 assertions (all green).**
+**Total: 110 tests, 189 assertions (all green).** (after P1–P5 formula-variant and post-weighbridge-document changes)
 
 Patterns to follow when adding tests:
 - **Use factories**, never `User::create([...])` with raw arrays — `UserFactory`
@@ -518,6 +626,17 @@ Patterns to follow when adding tests:
   ```
   The system wallet user defaults to `id=1`; in a fresh test DB that user
   doesn't exist, so create one and point config at it.
+- **Set up a separate VAT user** for tests that exercise `WALLET_VAT` operations
+  (e.g. `ProcessWeighbridgeResultAction`, `ReleaseConsultantHoldAction`,
+  `RecordSupplierMoadianInvoiceAction`) when `financial.vat_user_id` is distinct:
+  ```php
+  $vat = User::factory()->create();
+  config(['financial.vat_user_id' => $vat->id]);
+  Wallet::create([Wallet::USER_ID => $vat->id, Wallet::BALANCE => 0, Wallet::BALANCE_HOLD => 0]);
+  ```
+  If you omit this and `vat_user_id` falls back to `system_user_id`, the system
+  wallet absorbs both WSSG and WVAT movements — fine for tests that don't assert
+  wallet separation, but wrong for tests that verify VAT auditing.
 - **Roles**: Laratrust's role attach method is `$user->addRole($role)` (NOT
   `attachRole`). Create roles with `Role::firstOrCreate(['name' => 'admin'], ...)`.
 - Prefer behavioural assertions (`assertLessThan(balanceBefore, balanceAfter)`)
@@ -600,6 +719,33 @@ $category->filters()->attach($filter->id);
 // ❌ wrong — column does not exist
 PriceFilter::create(['price_filter_category_id' => $cat->id, ...]);
 ```
+
+### `CheckSupplierBalancesJob` — scope to `supplier_debt_pending` only
+
+This job must query **only** orders where `supplier_debt_pending = true`. Querying
+all hold transactions would accidentally release consultant-commission holds (WCT)
+that are waiting for Doc Q. The scoping pattern:
+
+```php
+Order::where(Order::SUPPLIER_DEBT_PENDING, true)
+    ->with(['items.supplier.wallet'])
+    ->get();
+```
+
+Inside the transaction, it finds the specific buyer hold via:
+```php
+$buyerWallet->transactions()
+    ->where('order_id', $lockedOrder->id)
+    ->where('type', 'deposit')
+    ->where('status', FinancialCodes::STATUS_HOLD)
+    ->latest()->first();
+```
+
+### `WalletTransactionEngine` — always pass `$targetUserId` for `WALLET_SUPPLIER`
+
+The supplier user ID lives on `order.items.first().supplier_user_id`, NOT on the
+order row itself. `resolveUserId()` throws a `RuntimeException` for `WALLET_SUPPLIER`
+if `$targetUserId` is omitted — this is intentional to catch bugs early.
 
 ### Cross-Controller Calls are Forbidden
 
