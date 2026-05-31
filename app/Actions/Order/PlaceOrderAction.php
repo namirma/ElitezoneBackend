@@ -230,9 +230,9 @@ class PlaceOrderAction
         $engineerTypeId = Cache::remember('user_type_id_engineer', 86400, fn () => UserType::where('slug', 'engineer')->value('id'));
         $contractorTypeId = Cache::remember('user_type_id_contractor', 86400, fn () => UserType::where('slug', 'contractor')->value('id'));
 
-        if ($beneficiary->hasRole('engineer') || $beneficiary->user_type_id === $engineerTypeId) {
+        if ($beneficiary->hasRole('engineer') || $beneficiary->{User::TYPE_ID} === $engineerTypeId) {
             $fees['engineer'] = $amount;
-        } elseif ($beneficiary->hasRole('contractor') || $beneficiary->user_type_id === $contractorTypeId) {
+        } elseif ($beneficiary->hasRole('contractor') || $beneficiary->{User::TYPE_ID} === $contractorTypeId) {
             $fees['contractor'] = $amount;
         }
 
@@ -286,7 +286,15 @@ class PlaceOrderAction
     private function createOrderItems(Order $order, Cart $cart, array $itemsData): void
     {
         foreach ($cart->items as $item) {
-            $supplierId = $item->factory->supplier_user_id ?? 1;
+            // An order line must map to a real supplier — the supplier wallet (WS) is
+            // settled by this ID. Defaulting to the system user (the old `?? 1`) would
+            // misattribute payouts, so surface the data problem instead of hiding it.
+            $supplierId = $item->factory?->supplier_user_id;
+            if (! $supplierId) {
+                throw new \RuntimeException(
+                    "Cart item {$item->id} has no factory supplier_user_id; cannot place order."
+                );
+            }
 
             $calc = $itemsData[$item->id] ?? [
                 'weight' => 0,

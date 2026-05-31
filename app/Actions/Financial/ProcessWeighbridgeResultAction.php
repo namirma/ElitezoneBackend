@@ -60,35 +60,48 @@ class ProcessWeighbridgeResultAction
             $oldPOO = (float) $locked->payment_of_owner;
             $oldPTS = (float) $locked->payment_to_supplier;
 
-            $weightDiff = $actualWeight - (float) $locked->weight_before_scale;
-            if ($locked->items->isNotEmpty()) {
+            $wbs = (float) $locked->weight_before_scale;
+
+            // Physical stock is adjusted by the REAL weight delta (what actually left the
+            // warehouse): positive → more delivered than ordered, so decrement stock;
+            // negative → less delivered, so return the shortfall to stock.
+            $weightDiff = $actualWeight - $wbs;
+            $firstVariantId = $locked->items->first()?->product_variant_id;
+            if ($firstVariantId) {
                 $this->inventoryService->updateStockAfterWeighbridge(
-                    $locked->items->first()->product_variant_id,
+                    (int) $firstVariantId,
                     $weightDiff
                 );
             }
 
+            // Business invariant (spec "پروسه خرید"): the final invoice is ALWAYS ≤ the
+            // initial invoice. The buyer is never billed for more than the ordered weight,
+            // so the billing weight is capped at WBS. Over-delivery (actualWeight > WBS) is
+            // recorded physically (weight_after_scale + stock) but never charged — there is
+            // deliberately no "surplus" payment path.
+            $billingWeight = min($actualWeight, $wbs);
+
             $badgeCode = $locked->beneficiary->badge->code ?? 'pioneer';
-            $rates     = $this->calculator->getCommissionRates($badgeCode);
-            $trans     = (float) $locked->shipping_cost;
-            $vat       = (float) ($locked->vat_rate ?? 10.0);
-            $op        = ((float) $locked->official_price > 0)
+            $rates = $this->calculator->getCommissionRates($badgeCode);
+            $trans = (float) $locked->shipping_cost;
+            $vat = (float) ($locked->vat_rate ?? 10.0);
+            $op = ((float) $locked->official_price > 0)
                 ? (float) $locked->official_price
                 : (float) ($locked->items->first()->unit_price ?? 0);
 
             // Read formula-variant flags from the order snapshot (written at payment time)
             $transCommission = (bool) ($locked->{Order::TRANS_COMMISSION} ?? true);
-            $transVat        = (bool) ($locked->{Order::TRANS_VAT} ?? true);
+            $transVat = (bool) ($locked->{Order::TRANS_VAT} ?? true);
 
-            // POOM = POO with WAS (weight after scale) — same formula, different weight
+            // POOM = POO recomputed with the (capped) billing weight.
             $newPOO = $this->calculator->calculatePOO(
-                $trans, $op, $actualWeight,
+                $trans, $op, $billingWeight,
                 $rates['ow_final_rate'], $vat,
                 $transCommission, $transVat
             );
-            // PTSM = PTS with WAS
+            // PTSM = PTS recomputed with the (capped) billing weight.
             $newPTS = $this->calculator->calculatePTS(
-                $trans, $op, $actualWeight,
+                $trans, $op, $billingWeight,
                 $rates['ow_final_rate'], $rates['ssg_final_rate'], $rates['co_final_rate'], $vat,
                 $transCommission, $transVat
             );
@@ -102,29 +115,15 @@ class ProcessWeighbridgeResultAction
             $buyerId = $locked->placer_user_id;
             $realSupplierId = $locked->items->first()->supplier_user_id;
             $systemUserId = (int) config('financial.system_user_id', 1);
-            $vatUserId    = (int) config('financial.vat_user_id', $systemUserId); // P5: separate VAT escrow
+            $vatUserId = (int) config('financial.vat_user_id', $systemUserId); // P5: separate VAT escrow
             $systemWalletCode = FinancialCodes::WALLET_SAZE;
 
-            if ($diffPOO > self::FINANCIAL_TOLERANCE) {
-                $status = 'surplus';
-                $chargeAmount = abs($diffPOO);
-                $payoutAmount = abs($diffPTS);
-
-                $this->walletEngine->process('-', $chargeAmount, FinancialCodes::WALLET_OWNER, FinancialCodes::STATUS_AVAILABLE, $locked, 'بدهی ایجاد شده بابت سرک باسکول', $buyerId);
-                $this->walletEngine->process('+', $chargeAmount, $systemWalletCode, FinancialCodes::STATUS_AVAILABLE, $locked, "دریافت بدهی خریدار بابت سرک باسکول سفارش {$locked->order_number}", $systemUserId);
-
-                $this->walletEngine->process('-', $payoutAmount, $systemWalletCode, FinancialCodes::STATUS_AVAILABLE, $locked, "پرداخت سهم تامین‌کننده بابت سرک باسکول سفارش {$locked->order_number}", $systemUserId);
-                $this->walletEngine->process('+', $payoutAmount, FinancialCodes::WALLET_SUPPLIER, FinancialCodes::STATUS_AVAILABLE, $locked, 'دریافت وجه بابت سرک باسکول', $realSupplierId);
-
-                $orderStatus = Order::STATUS_PENDING_SURPLUS_PAYMENT;
-
-                $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_MODIFIED_INVOICE_OWNER);
-                $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_MODIFIED_INVOICE_SUPPLIER);
-                $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_SUPPLEMENTARY_RECEIPT);
-                $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_SUPPLEMENTARY_REPORT);
-            } elseif ($diffPOO < -self::FINANCIAL_TOLERANCE) {
-                $status        = 'deficit';
-                $refundAmount  = abs($diffPOO); // POO − POOM (buyer refund)
+            // Because billingWeight is capped at WBS, newPOO ≤ oldPOO always: the only
+            // non-equal outcome is a deficit (under-delivery). Charging the buyer more than
+            // the initial invoice would violate the spec, so there is no surplus branch.
+            if ($diffPOO < -self::FINANCIAL_TOLERANCE) {
+                $status = 'deficit';
+                $refundAmount = abs($diffPOO); // POO − POOM (buyer refund)
                 $reclaimAmount = abs($diffPTS); // PTS − PTSM (amount owed by supplier)
 
                 // ── Saze refunds the buyer (POO − POOM): WSSG(−) → WO(?) ─────
@@ -139,7 +138,7 @@ class ProcessWeighbridgeResultAction
                 // If the supplier wallet has enough balance, take it immediately
                 // and release the buyer refund as AVAILABLE.
                 // If not, hold the buyer refund until the supplier tops up.
-                $supplierWallet   = Wallet::where('user_id', $realSupplierId)->lockForUpdate()->first();
+                $supplierWallet = Wallet::where('user_id', $realSupplierId)->lockForUpdate()->first();
                 $supplierCanCover = $supplierWallet && ((float) $supplierWallet->balance >= $reclaimAmount);
 
                 if ($supplierCanCover) {
@@ -169,7 +168,7 @@ class ProcessWeighbridgeResultAction
                     // release the hold automatically when the supplier tops up.
                     $locked->update([
                         Order::SUPPLIER_DEBT_PENDING => true,
-                        Order::SUPPLIER_DEBT_AMOUNT  => $reclaimAmount,
+                        Order::SUPPLIER_DEBT_AMOUNT => $reclaimAmount,
                     ]);
 
                     // Notify supplier to top up
@@ -179,7 +178,7 @@ class ProcessWeighbridgeResultAction
                             $supplierUser->mobile,
                             __('sms.supplier_debt_notification', [
                                 'order_number' => $locked->order_number,
-                                'amount'       => number_format((int) $reclaimAmount),
+                                'amount' => number_format((int) $reclaimAmount),
                             ])
                         );
                     }
@@ -196,23 +195,41 @@ class ProcessWeighbridgeResultAction
                 $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_EXIT_PERMIT);
             }
 
-            $base = $trans + ($op * $actualWeight);
             $vatMultiplier = ($vat / 100) / (1 + ($vat / 100));
 
+            // Consultant gross (PTC) is the %CO slice of the platform commission pool.
+            // Deriving it from (POOM − PTSM) inherits the correct ±TC/±VAT handling that
+            // calculatePOO()/calculatePTS() already applied, instead of re-deriving an
+            // ad-hoc formula that ignored the per-order transport flags:
+            //   POOM − PTSM = base × (%SSG + %CO) × (flag/VAT factors)
+            //   consultantGross = (POOM − PTSM) × %CO / (%CO + %SSG)
+            $commissionPool = $newPOO - $newPTS;
+            $coRate = $rates['co_final_rate'];
+            $ssgRate = $rates['ssg_final_rate'];
+            $candidateGross = ($coRate + $ssgRate) > 0
+                ? $commissionPool * ($coRate / ($coRate + $ssgRate))
+                : 0.0;
+
             $consultantUserId = $locked->beneficiary_user_id;
-            $coRate = $rates['co_final_rate'] / 100;
-            $candidateGross = $base * $coRate * (1 + ($vat / 100));
             $consultantGross = 0;
 
             if ($consultantUserId && $consultantUserId !== $buyerId && $candidateGross > 0) {
-                $consultantVat = $candidateGross * $vatMultiplier;
-                $consultantNet = $candidateGross - $consultantVat;
+                // Cap the payout to the consultant's remaining lifetime headroom (spec:
+                // ≤ 2× the badge-purchase invoice). Inert until the ceiling is modelled.
+                $candidateGross = $this->applyConsultantLifetimeCap(
+                    (int) $consultantUserId, (int) $locked->id, $candidateGross
+                );
 
-                $this->walletEngine->process('-', $candidateGross, FinancialCodes::WALLET_SAZE, FinancialCodes::STATUS_AVAILABLE, $locked, "تخصیص سهم مشاور فنی سفارش {$locked->order_number}", $systemUserId);
-                $this->walletEngine->process('+', $consultantNet, FinancialCodes::WALLET_CONSULTANT, FinancialCodes::STATUS_HOLD, $locked, 'کمیسیون امانی مشاور فنی', $consultantUserId);
-                $this->walletEngine->process('+', $consultantVat, FinancialCodes::WALLET_VAT, FinancialCodes::STATUS_HOLD, $locked, 'مالیات کمیسیون مشاور فنی امانی', $vatUserId);
+                if ($candidateGross > 0) {
+                    $consultantVat = $candidateGross * $vatMultiplier;
+                    $consultantNet = $candidateGross - $consultantVat;
 
-                $consultantGross = $candidateGross;
+                    $this->walletEngine->process('-', $candidateGross, FinancialCodes::WALLET_SAZE, FinancialCodes::STATUS_AVAILABLE, $locked, "تخصیص سهم مشاور فنی سفارش {$locked->order_number}", $systemUserId);
+                    $this->walletEngine->process('+', $consultantNet, FinancialCodes::WALLET_CONSULTANT, FinancialCodes::STATUS_HOLD, $locked, 'کمیسیون امانی مشاور فنی', $consultantUserId);
+                    $this->walletEngine->process('+', $consultantVat, FinancialCodes::WALLET_VAT, FinancialCodes::STATUS_HOLD, $locked, 'مالیات کمیسیون مشاور فنی امانی', $vatUserId);
+
+                    $consultantGross = $candidateGross;
+                }
             }
 
             $supplierVat = $newPTS * $vatMultiplier;
@@ -248,6 +265,47 @@ class ProcessWeighbridgeResultAction
                 'final_amount' => (string) $newPOO,
             ];
         }, 3);
+    }
+
+    /**
+     * Cap a consultant's commission payout to their remaining lifetime headroom.
+     *
+     * Spec: the total lifetime commission paid to a gold/silver/bronze consultant may
+     * not exceed `consultant_lifetime_cap_multiplier` × the invoice they paid when
+     * buying their badge. Returns the (possibly reduced) gross — never below zero.
+     * When no ceiling is configured (the common case today) the candidate passes through
+     * unchanged, so current behaviour is preserved.
+     */
+    private function applyConsultantLifetimeCap(int $consultantUserId, int $currentOrderId, float $candidateGross): float
+    {
+        $ceiling = $this->consultantLifetimeCeiling($consultantUserId);
+        if ($ceiling === null) {
+            return $candidateGross;
+        }
+
+        $alreadyPaid = (float) Order::query()
+            ->where(Order::BENEFICIARY_USER_ID, $consultantUserId)
+            ->whereNotNull(Order::WEIGHING_COMPLETED_AT)
+            ->where(Order::ID, '!=', $currentOrderId)
+            ->sum(Order::PAYMENT_TO_CONSULTANT);
+
+        $headroom = max(0.0, $ceiling - $alreadyPaid);
+
+        return min($candidateGross, $headroom);
+    }
+
+    /**
+     * Lifetime commission ceiling for a consultant, or null when uncapped.
+     *
+     * TODO(product): the cap equals `consultant_lifetime_cap_multiplier` × the
+     * consultant's badge-purchase invoice amount. That per-consultant amount is not
+     * modelled yet, so this returns null (uncapped). Resolve it here — e.g.
+     *   $base = ...badge-purchase invoice for $consultantUserId...;
+     *   return $base * (float) config('financial.consultant_lifetime_cap_multiplier', 2.0);
+     */
+    private function consultantLifetimeCeiling(int $consultantUserId): ?float
+    {
+        return null;
     }
 
     private function isAlreadyProcessed(Order $order): bool

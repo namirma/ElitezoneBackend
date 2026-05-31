@@ -399,13 +399,28 @@ they are immutable for the life of the order.
 
 `ProcessWeighbridgeResultAction` reads the snapshot from the locked order and passes
 the flags to both `calculatePOO()` and `calculatePTS()`. POOM and PTSM (the
-post-weighbridge recalculations) use the same flags but with `actualWeight`.
+post-weighbridge recalculations) use the same flags but with the **billing weight**,
+which is `min(actualWeight, weight_before_scale)` — never the raw `actualWeight`.
 
-Badge-based commission splits (`getCommissionRates()`):
+**Spec invariant — final invoice ≤ initial invoice.** The buyer is never billed for
+more than the ordered weight, so over-delivery (`actualWeight > WBS`) is recorded
+physically (`weight_after_scale` + stock) but clamped for billing. There is **no
+"surplus" branch** that charges the buyer extra; the only non-equal outcome is a
+deficit (under-delivery → buyer refunded POO − POOM).
+
+**Consultant gross (PTC)** is the `%CO` slice of the commission pool:
+`(POOM − PTSM) × %CO / (%CO + %SSG)`. Deriving it from POOM−PTSM inherits the same
+±TC/±VAT handling as POO/PTS instead of an ad-hoc formula. The lifetime cap
+(`consultant_lifetime_cap_multiplier`, default 2) is enforced in
+`applyConsultantLifetimeCap()` but is currently inert until the per-consultant
+badge-purchase amount is modelled (`consultantLifetimeCeiling()` returns null).
+
+Badge-based commission splits (`getCommissionRates()`) — canonical codes are
+`gold` / `silver` / `bronze` / `pioneer` (`golden` accepted as an alias):
 
 | Badge | `%OW` | `%CO` | `%SSG` |
 |-------|-------|-------|--------|
-| golden | 40% | 37.5% | 22.5% |
+| gold | 40% | 37.5% | 22.5% |
 | silver | 40% | 32.5% | 27.5% |
 | bronze | 40% | 30.0% | 30.0% |
 | pioneer / default | 40% | 25.0% | 35.0% |
@@ -480,10 +495,10 @@ mode (file stored on disk, `Invoice` DB record created).
 | i | `DOC_REFUND_RECEIPT` | Cancellation (paid/reserved) | `CancelOrderAction` |
 | j | `DOC_CANCEL_REPORT` | Cancellation (paid/reserved) | `CancelOrderAction` |
 | I | `DOC_EXIT_PERMIT` | Weighbridge (equal/deficit) | `ProcessWeighbridgeResultAction` |
-| J | `DOC_SUPPLEMENTARY_RECEIPT` | Weighbridge surplus | `ProcessWeighbridgeResultAction` |
-| K | `DOC_SUPPLEMENTARY_REPORT` | Weighbridge surplus | `ProcessWeighbridgeResultAction` |
-| LO | `DOC_MODIFIED_INVOICE_OWNER` | Weighbridge surplus/deficit | `ProcessWeighbridgeResultAction` |
-| LS | `DOC_MODIFIED_INVOICE_SUPPLIER` | Weighbridge surplus/deficit | `ProcessWeighbridgeResultAction` |
+| J | `DOC_SUPPLEMENTARY_RECEIPT` | *(not emitted — surplus path removed per spec)* | — |
+| K | `DOC_SUPPLEMENTARY_REPORT` | *(not emitted — surplus path removed per spec)* | — |
+| LO | `DOC_MODIFIED_INVOICE_OWNER` | Weighbridge deficit | `ProcessWeighbridgeResultAction` |
+| LS | `DOC_MODIFIED_INVOICE_SUPPLIER` | Weighbridge deficit | `ProcessWeighbridgeResultAction` |
 | M | `DOC_REFUND_REPORT_WEIGH` | Weighbridge deficit | `ProcessWeighbridgeResultAction` |
 | O | `DOC_TAX_INVOICE_SUPPLIER` | Supplier submits Moadian invoice | `RecordSupplierMoadianInvoiceAction` |
 | P | `DOC_TAX_INVOICE_BUYER` | Admin submits system Moadian invoice | `RecordSystemMoadianInvoiceAction` |
