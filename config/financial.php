@@ -33,6 +33,27 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Time windows (hours)
+    |--------------------------------------------------------------------------
+    |
+    | All order/reservation time windows live here so they are never hardcoded
+    | in Actions. Read them via config('financial.*'):
+    |
+    |   pending_order_ttl_hours      — a freshly placed (unpaid) order auto-cancels
+    |                                  after this many hours (CheckReservationExpiryJob).
+    |   reservation_validity_hours   — how long a paid reservation stays valid before
+    |                                  it must be completed or extended.
+    |   hold_fee_extension_hours     — how much paying the hold fee extends a reservation.
+    |
+    */
+    'pending_order_ttl_hours' => (int) env('PENDING_ORDER_TTL_HOURS', 2),
+
+    'reservation_validity_hours' => (int) env('RESERVATION_VALIDITY_HOURS', 2),
+
+    'hold_fee_extension_hours' => (int) env('HOLD_FEE_EXTENSION_HOURS', 24),
+
+    /*
+    |--------------------------------------------------------------------------
     | System (Saze) Wallet User ID
     |--------------------------------------------------------------------------
     |

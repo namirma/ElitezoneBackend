@@ -5,6 +5,7 @@ namespace App\Jobs\Financial;
 use App\Constants\FinancialCodes;
 use App\Models\Order;
 use App\Models\Wallet;
+use App\Services\Financial\WalletTransactionEngine;
 use App\Services\SmsService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -33,7 +34,7 @@ class CheckSupplierBalancesJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public function handle(SmsService $smsService): void
+    public function handle(SmsService $smsService, WalletTransactionEngine $walletEngine): void
     {
         // Only look at orders with a pending supplier debt
         $pendingOrders = Order::where(Order::SUPPLIER_DEBT_PENDING, true)
@@ -42,14 +43,14 @@ class CheckSupplierBalancesJob implements ShouldQueue
 
         foreach ($pendingOrders as $order) {
             try {
-                $this->processOrder($order, $smsService);
+                $this->processOrder($order, $smsService, $walletEngine);
             } catch (\Exception $e) {
                 Log::error("CheckSupplierBalancesJob error for order {$order->id}: ".$e->getMessage());
             }
         }
     }
 
-    private function processOrder(Order $order, SmsService $smsService): void
+    private function processOrder(Order $order, SmsService $smsService, WalletTransactionEngine $walletEngine): void
     {
         $firstItem = $order->items->first();
         if (! $firstItem) {
@@ -66,7 +67,7 @@ class CheckSupplierBalancesJob implements ShouldQueue
             // Debt already cleared or zero — just unflag
             $order->update([
                 Order::SUPPLIER_DEBT_PENDING => false,
-                Order::SUPPLIER_DEBT_AMOUNT  => 0,
+                Order::SUPPLIER_DEBT_AMOUNT => 0,
             ]);
 
             return;
@@ -77,7 +78,7 @@ class CheckSupplierBalancesJob implements ShouldQueue
         }
 
         // Supplier now has enough — process the reclaim and release the buyer hold
-        DB::transaction(function () use ($order, $debtAmount, $supplierUser, $smsService) {
+        DB::transaction(function () use ($order, $debtAmount, $supplierUser, $smsService, $walletEngine) {
 
             // Re-lock the order and supplier wallet
             $lockedOrder = Order::where('id', $order->id)->lockForUpdate()->first();
@@ -92,11 +93,21 @@ class CheckSupplierBalancesJob implements ShouldQueue
 
             $systemUserId = (int) config('financial.system_user_id', 1);
 
-            // 1. Reclaim from supplier: WS(−) → WSSG(+)
-            $supplierWallet->decrement('balance', $debtAmount);
-            $supplierWallet->save();
+            // 1. Reclaim the debt from the supplier into the system wallet: WS(−) → WSSG(+).
+            //    Routed through WalletTransactionEngine so BOTH legs leave an auditable
+            //    WalletTransaction (the previous raw increment/decrement left no trail).
+            $reclaimDescription = __('wallet.descriptions.supplier_debt_reclaim', [
+                'order_number' => $lockedOrder->order_number,
+            ]);
 
-            Wallet::where('user_id', $systemUserId)->lockForUpdate()->first()?->increment('balance', $debtAmount);
+            $walletEngine->process(
+                '-', $debtAmount, FinancialCodes::WALLET_SUPPLIER, FinancialCodes::STATUS_AVAILABLE,
+                $lockedOrder, $reclaimDescription, $supplierUser->id,
+            );
+            $walletEngine->process(
+                '+', $debtAmount, FinancialCodes::WALLET_SAZE, FinancialCodes::STATUS_AVAILABLE,
+                $lockedOrder, $reclaimDescription, $systemUserId,
+            );
 
             // 2. Release the buyer's parked refund: WO balance_hold(−) → WO balance(+)
             $buyerWallet = Wallet::where('user_id', $lockedOrder->placer_user_id)->lockForUpdate()->first();
@@ -120,7 +131,7 @@ class CheckSupplierBalancesJob implements ShouldQueue
                         $smsService->send(
                             $buyer->mobile,
                             __('sms.buyer_refund_released', [
-                                'amount'       => number_format((int) $holdTx->amount),
+                                'amount' => number_format((int) $holdTx->amount),
                                 'order_number' => $lockedOrder->order_number,
                             ])
                         );
@@ -131,7 +142,7 @@ class CheckSupplierBalancesJob implements ShouldQueue
             // 3. Clear the pending debt flag on the order
             $lockedOrder->update([
                 Order::SUPPLIER_DEBT_PENDING => false,
-                Order::SUPPLIER_DEBT_AMOUNT  => 0,
+                Order::SUPPLIER_DEBT_AMOUNT => 0,
             ]);
 
             Log::info("Supplier debt cleared for order {$lockedOrder->id}. Debt: {$debtAmount}");

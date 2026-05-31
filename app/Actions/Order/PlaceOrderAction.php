@@ -278,7 +278,7 @@ class PlaceOrderAction
             Order::ENGINEER_FEE_PAYMENT_STATUS => $fins['commissions']['engineer'] > 0 ? Order::FEE_PAYMENT_PENDING : null,
             Order::CONTRACTOR_FEE_PAYMENT_STATUS => $fins['commissions']['contractor'] > 0 ? Order::FEE_PAYMENT_PENDING : null,
 
-            Order::RESERVATION_EXPIRES_AT => now()->addHours(2),
+            Order::RESERVATION_EXPIRES_AT => now()->addHours((int) config('financial.pending_order_ttl_hours', 2)),
             Order::NOTES => $data->description,
         ]);
     }

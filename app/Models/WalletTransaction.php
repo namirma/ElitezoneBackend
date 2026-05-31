@@ -49,6 +49,13 @@ class WalletTransaction extends Model
 
     public const STATUS_REJECTED = 'rejected';
 
+    /**
+     * Escrow status used by the order-financial flow (WalletTransactionEngine).
+     * Funds counted in the wallet's balance_hold, awaiting release to available.
+     * Mirrors App\Constants\FinancialCodes::STATUS_HOLD.
+     */
+    public const STATUS_HOLD = 'hold';
+
     public const METHOD_BANK_TRANSFER = 'bank_transfer';
 
     public const METHOD_GATEWAY = 'gateway';
@@ -77,6 +84,7 @@ class WalletTransaction extends Model
         return match ($this->{self::STATUS}) {
             self::STATUS_PENDING => 'در انتظار بررسی',
             self::STATUS_CONFIRMED => 'موفق',
+            self::STATUS_HOLD => 'هولد (در انتظار آزادسازی)',
             self::STATUS_REJECTED => 'رد شده',
             self::STATUS_FAILED => 'ناموفق',
             default => 'نامشخص',
@@ -88,6 +96,7 @@ class WalletTransaction extends Model
         return match ($this->{self::STATUS}) {
             self::STATUS_PENDING => 'warning',
             self::STATUS_CONFIRMED => 'success',
+            self::STATUS_HOLD => 'info',
             self::STATUS_REJECTED, self::STATUS_FAILED => 'danger',
             default => 'secondary',
         };

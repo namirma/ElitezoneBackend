@@ -28,16 +28,14 @@ class OrderActionController extends Controller
     {
         $this->authorize('cancel', $order);
 
-        $cancelableStatuses = [
-            Order::STATUS_PENDING,
-            Order::STATUS_RESERVED_EXTENDED,
-            Order::STATUS_PROCESSING,
-            Order::STATUS_PREPARING,
-            Order::STATUS_WEIGHBRIDGE_DONE,
-            Order::STATUS_WAYBILL_ISSUED,
-        ];
-
-        if (! in_array($order->status, $cancelableStatuses)) {
+        // A buyer may only self-cancel an order that has NOT been paid yet.
+        // - PENDING orders carry no money, so cancellation is always safe.
+        // - RESERVED / RESERVED_EXTENDED orders cannot be cancelled before expiry
+        //   (CancelOrderAction enforces this); the system auto-cancels them on expiry.
+        // - PROCESSING and later states are paid/settled and must NOT be unwound by a
+        //   simple refund (supplier/consultant/VAT legs are involved). Those go through
+        //   the dedicated return/dispute flow (مرجوعی/داوری), never self-cancel.
+        if ($order->status !== Order::STATUS_PENDING) {
             return error(__('orders.cannot_cancel'), [], 400);
         }
 

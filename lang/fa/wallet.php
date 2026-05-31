@@ -23,6 +23,10 @@ return [
     'insufficient_balance' => 'موجودی کیف پول برای انجام این عملیات کافی نیست',
     'descriptions' => [
         'refund_order' => 'بازگشت وجه بابت لغو سفارش #:order_number',
+        'refund_reverse_supplier' => 'بازپس‌گیری سهم تامین‌کننده بابت لغو سفارش #:order_number',
+        'refund_reclaim_system' => 'بازگشت سهم تامین‌کننده به حساب سیستم بابت لغو سفارش #:order_number',
+        'refund_release_system' => 'آزادسازی وجه خریدار از حساب سیستم بابت لغو سفارش #:order_number',
+        'supplier_debt_reclaim' => 'بازپس‌گیری بدهی کسری باسکول از تامین‌کننده بابت سفارش #:order_number',
         'deposit' => 'شارژ کیف پول',
         'withdraw' => 'برداشت از کیف پول',
     ],

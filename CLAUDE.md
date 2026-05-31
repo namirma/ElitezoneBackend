@@ -360,9 +360,17 @@ All financial constants live in `config/financial.php` — **never hardcode amou
 | Key | Env var | Default | Meaning |
 |-----|---------|---------|---------|
 | `financial.reservation_threshold` | `RESERVATION_THRESHOLD_RIALS` | `1_950_000_000` | Orders above this require reservation flow (195M Tomans) |
-| `financial.hold_fee` | `HOLD_FEE_RIALS` | `50_000_000` | Fee to extend a reservation by 24h (5M Tomans) |
+| `financial.hold_fee` | `HOLD_FEE_RIALS` | `50_000_000` | Fee to extend a reservation (5M Tomans) |
 | `financial.system_user_id` | `FINANCIAL_SYSTEM_USER_ID` | `1` | User ID of the platform's central "Saze" (WSSG) wallet |
 | `financial.vat_user_id` | `FINANCIAL_VAT_USER_ID` | *(falls back to system_user_id)* | User ID of the dedicated VAT escrow (WVAT) wallet; set in .env once a separate VAT user is created |
+| `financial.pending_order_ttl_hours` | `PENDING_ORDER_TTL_HOURS` | `2` | Hours before an unpaid PENDING order auto-cancels (`CheckReservationExpiryJob`) |
+| `financial.reservation_validity_hours` | `RESERVATION_VALIDITY_HOURS` | `2` | Hours a paid reservation stays valid before it must be completed/extended |
+| `financial.hold_fee_extension_hours` | `HOLD_FEE_EXTENSION_HOURS` | `24` | Hours that paying the hold fee extends a reservation (`PayHoldFeeAction::extensionHours()`) |
+
+> **Never hardcode time windows in Actions.** Read them via `config('financial.*')`
+> — e.g. `now()->addHours((int) config('financial.reservation_validity_hours', 2))`,
+> or `PayHoldFeeAction::extensionHours()`. The 2h / 24h literals were removed from
+> `PlaceOrderAction`, `ProcessFullOrderPaymentAction`, and `PayHoldFeeAction`.
 
 ```php
 // ✅ correct
@@ -814,6 +822,59 @@ $buyerWallet->transactions()
 The supplier user ID lives on `order.items.first().supplier_user_id`, NOT on the
 order row itself. `resolveUserId()` throws a `RuntimeException` for `WALLET_SUPPLIER`
 if `$targetUserId` is omitted — this is intentional to catch bugs early.
+
+### `WalletTransactionEngine` — `meta` must be a plain array
+
+`WalletTransaction` casts `meta` to `array`. Pass a **plain array** to `process()`
+(`'meta' => ['code' => ..., 'op' => ...]`). **Never** `json_encode()` it — the cast
+would double-encode it, store a JSON string, and break `meta`-based accessors
+(`receipt_details`) when the row is serialized.
+
+### Refunds must reverse EVERY leg via the engine (never mint money)
+
+`RefundOrderToWalletAction` reverses a paid, **pre-weighbridge** order in full:
+
+```
+WS(−PTS) → WSSG(+PTS)     reverse the supplier leg first
+WSSG(−POO) → WO(+POO)     then refund the buyer
+```
+
+Rules:
+- Use the snapshotted **`payment_of_owner` (POO)** / **`payment_to_supplier` (PTS)** —
+  **never `final_amount`**, and **never** a bare `Wallet::increment()` that credits the
+  buyer without clawing the money back from WS/WSSG (the old money-minting bug).
+- Always go through `WalletTransactionEngine` so every leg is an auditable
+  `WalletTransaction`.
+- The action **refuses** orders past the weighbridge (`weighing_completed_at !== null`):
+  they carry supplier/consultant/VAT holds and must go through the return/settlement
+  flow, not a simple refund.
+
+`CheckSupplierBalancesJob` follows the same rule — the supplier-debt reclaim
+(`WS → WSSG`) now runs through the engine, not raw `increment`/`decrement`.
+
+### Cancellable states — a buyer may only self-cancel a PENDING order
+
+`OrderActionController::cancel` allows **only `Order::STATUS_PENDING`** (no money moved).
+`RESERVED`/`RESERVED_EXTENDED` auto-cancel on expiry via the system cron (never by the
+user before expiry). `PROCESSING` and later are paid/settled and must go through the
+dedicated return/dispute flow (مرجوعی/داوری) — **never** self-cancel, which would
+trigger an incomplete refund.
+
+### Badge codes are `gold` / `silver` / `bronze` / `pioneer`
+
+The seeder (`database/seeders/ProductSeeder.php`) is the source of truth: the gold tier
+code is **`gold`** (not `golden`). `SettlementCalculatorService::getCommissionRates()`
+matches `'gold', 'golden'` (alias) so a legacy value never silently falls through to the
+default rate and underpays a gold-tier consultant.
+
+### Wallet status vocabulary — cover `hold` everywhere
+
+The `wallet_transactions.status` column mixes two vocabularies:
+`pending`/`confirmed`/`failed`/`rejected` (deposits/withdrawals) and the
+order-financial escrow values `FinancialCodes::STATUS_HOLD = 'hold'` /
+`STATUS_AVAILABLE = 'confirmed'`. Any new status must have a label + color in
+`WalletTransaction::getStatusLabel/Color` **and** a case in the
+`WalletTransactionStatus` enum — `hold` is now covered in both.
 
 ### Cross-Controller Calls are Forbidden
 
