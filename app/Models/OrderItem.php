@@ -19,6 +19,10 @@ class OrderItem extends Model
 
     public const SUPPLIER_USER_ID = 'supplier_user_id';
 
+    public const FACTORY_ID = 'factory_id';
+
+    public const FACTORY_LOCATION_ID = 'factory_location_id';
+
     public const PRODUCT_NAME = 'product_name';
 
     public const VARIANT_SKU = 'variant_sku';
@@ -35,6 +39,8 @@ class OrderItem extends Model
 
     public const TOTAL_PRICE = 'total_price';
 
+    public const SHIPPING_COST = 'shipping_cost';
+
     public const CREATED_AT = 'created_at';
 
     public const UPDATED_AT = 'updated_at';
@@ -43,6 +49,8 @@ class OrderItem extends Model
         self::ORDER_ID,
         self::PRODUCT_VARIANT_ID,
         self::SUPPLIER_USER_ID,
+        self::FACTORY_ID,
+        self::FACTORY_LOCATION_ID,
         self::PRODUCT_NAME,
         self::VARIANT_SKU,
         self::QUANTITY_DETAILS,
@@ -51,12 +59,14 @@ class OrderItem extends Model
         self::UNIT_NAME,
         self::UNIT_PRICE,
         self::TOTAL_PRICE,
+        self::SHIPPING_COST,
     ];
 
     protected $casts = [
         self::QUANTITY_DETAILS => 'array',
         self::UNIT_PRICE => 'decimal:2',
         self::TOTAL_PRICE => 'decimal:2',
+        self::SHIPPING_COST => 'decimal:2',
         self::WEIGHT => 'decimal:3',
         self::QUANTITY => 'decimal:2',
     ];
@@ -74,6 +84,18 @@ class OrderItem extends Model
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(User::class, self::SUPPLIER_USER_ID);
+    }
+
+    // NOTE: do not name this relation factory() — it would collide with the
+    // HasFactory trait's static factory() method and break OrderItem::factory().
+    public function originFactory(): BelongsTo
+    {
+        return $this->belongsTo(Factory::class, self::FACTORY_ID);
+    }
+
+    public function originFactoryLocation(): BelongsTo
+    {
+        return $this->belongsTo(FactoryLocation::class, self::FACTORY_LOCATION_ID);
     }
 
     /**

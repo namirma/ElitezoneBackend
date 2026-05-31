@@ -382,6 +382,30 @@ PayHoldFeeAction::fee()   // wraps config('financial.hold_fee')
 self::FEE_RIALS   // deprecated constant in PayHoldFeeAction, kept for BC only
 ```
 
+### Shipping — Per-Factory Freight (origin → destination)
+
+A cart/order can hold items from multiple factories. Freight is computed **per origin
+factory location → the order's destination**, then summed into `Trans` / `shipping_cost`.
+
+- `shipping_rates` table: `(factory_location_id origin, destination_province_id,
+  destination_city_id nullable, flat_cost, per_kg_cost, is_active)`. A city-specific row
+  wins; the province-level row (`destination_city_id = null`) is the fallback. **No matching
+  row → that origin costs 0** (graceful degradation until an admin enters rates).
+- `ShippingCostCalculator::quote($lines, $provinceId, $cityId)` groups lines by origin,
+  prices each group `flat + per_kg × groupWeight`, and allocates the group cost back onto
+  its lines by weight (last line absorbs the rounding remainder). Returns a `ShippingQuote`
+  (`total`, `perLine`, `perLocation`).
+- `PlaceOrderAction` calls it with the cart lines + the order's `Address` (province/city),
+  stores `orders.shipping_cost = total` and per-line `order_items.shipping_cost`, and now
+  persists `order_items.factory_id` / `factory_location_id` so each line's origin is kept.
+- **`OrderItem` relations are `originFactory()` / `originFactoryLocation()`** — never name a
+  relation `factory()`, it collides with the `HasFactory` trait's static `factory()`.
+- Scope today: **one order, one destination address**; per-factory origin shipping is summed.
+  Splitting into one order per factory (independent settlement) and multiple destinations per
+  order are larger, separate features. The financial settlement actions still treat an order
+  as a single product line (`items->first()`), so true multi-product-per-order settlement is
+  also a future change.
+
 ### Financial — POO/PTS Formula Variants
 
 `SettlementCalculatorService` supports four formula variants per order, controlled

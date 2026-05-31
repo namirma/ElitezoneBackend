@@ -5,6 +5,7 @@ namespace App\Actions\Order;
 use App\DataTransferObjects\Order\PlaceOrderData;
 use App\Events\Order\OrderPlaced;
 use App\Exceptions\Order\CartIsEmptyException;
+use App\Models\Address;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\CustomerType;
@@ -12,7 +13,6 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderUnit;
 use App\Models\PriceFilterCategory;
-use App\Models\ShippingMethod;
 use App\Models\User;
 use App\Models\UserType;
 use App\Services\DocumentSequenceService;
@@ -20,6 +20,7 @@ use App\Services\Financial\SettlementCalculatorService;
 use App\Services\InventoryService;
 use App\Services\PriceCalculationService;
 use App\Services\PricingRoleResolver;
+use App\Services\Shipping\ShippingCostCalculator;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
@@ -30,7 +31,8 @@ class PlaceOrderAction
         private readonly PricingRoleResolver $roleResolver,
         private readonly InventoryService $inventoryService,
         private readonly SettlementCalculatorService $settlementCalculator,
-        private readonly DocumentSequenceService $sequenceService
+        private readonly DocumentSequenceService $sequenceService,
+        private readonly ShippingCostCalculator $shippingCalculator,
     ) {}
 
     public function execute(User $user, PlaceOrderData $data): Order
@@ -188,11 +190,26 @@ class PlaceOrderAction
             ];
         }
 
-        // هزینه ارسال
-        $shippingCost = 0.0;
-        if ($data->shippingMethodId) {
-            $shippingMethod = ShippingMethod::find($data->shippingMethodId);
-            $shippingCost = $shippingMethod ? (float) ($shippingMethod->cost ?? $shippingMethod->price ?? 0.0) : 0.0;
+        // هزینه حمل — به‌ازای هر کارخانه‌ی مبدأ تا مقصد (آدرس سفارش) محاسبه و جمع می‌شود.
+        // اقلام بر اساس محل کارخانه گروه‌بندی شده و سهم هر قلم در itemsData ذخیره می‌شود.
+        $shippingLines = [];
+        foreach ($cart->items as $item) {
+            $shippingLines[$item->id] = [
+                'factory_location_id' => $item->factory_location_id ? (int) $item->factory_location_id : null,
+                'weight' => (float) ($itemsData[$item->id]['weight'] ?? 0),
+            ];
+        }
+
+        $address = $data->addressId ? Address::find($data->addressId) : null;
+        $shippingQuote = $this->shippingCalculator->quote(
+            $shippingLines,
+            $address?->{Address::PROVINCE_ID} ? (int) $address->{Address::PROVINCE_ID} : null,
+            $address?->{Address::CITY_ID} ? (int) $address->{Address::CITY_ID} : null,
+        );
+
+        $shippingCost = $shippingQuote->total;
+        foreach ($itemsData as $itemId => $line) {
+            $itemsData[$itemId]['shipping_cost'] = (float) ($shippingQuote->perLine[$itemId] ?? 0.0);
         }
 
         $finalAmount = max(0, $subtotal + $totalVat + $shippingCost - $totalDiscount);
@@ -302,12 +319,16 @@ class PlaceOrderAction
                 'unit_name' => '',
                 'unit_price' => 0,
                 'total_price' => 0,
+                'shipping_cost' => 0,
             ];
 
             OrderItem::create([
                 OrderItem::ORDER_ID => $order->id,
                 'product_variant_id' => $item->product_variant_id,
                 'supplier_user_id' => $supplierId,
+                // Preserve the line's origin so per-factory freight can be reconstructed.
+                OrderItem::FACTORY_ID => $item->factory_id,
+                OrderItem::FACTORY_LOCATION_ID => $item->factory_location_id,
                 'product_name' => $item->productVariant->product->name ?? 'Unknown',
                 'variant_sku' => $item->productVariant->sku,
 
@@ -318,6 +339,7 @@ class PlaceOrderAction
 
                 'unit_price' => $calc['unit_price'],
                 'total_price' => $calc['total_price'],
+                OrderItem::SHIPPING_COST => $calc['shipping_cost'] ?? 0,
             ]);
         }
     }
