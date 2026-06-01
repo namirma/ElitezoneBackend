@@ -16,6 +16,19 @@ function faToEn($string): array|string
     return str_replace($arabic, $num, $convertedPersianNums);
 }
 
+/**
+ * Convert ASCII digits to Persian digits (۰-۹) for display — letters/symbols untouched.
+ * Mirrors how the "Yekan Bakh FaNum" design font renders numerals, so PDFs/invoices match
+ * the UI/UX spec exactly.
+ */
+function enToFa(string|int|float|null $value): string
+{
+    $en = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+    $fa = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+
+    return str_replace($en, $fa, (string) $value);
+}
+
 function success($data, string $message = 'global.received_successfully', int $status = 200, array $headers = [])
 {
     return Response::success($data, __($message), $status, $headers);
