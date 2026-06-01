@@ -3,16 +3,15 @@
 namespace App\Actions\Product;
 
 use App\Models\Product;
-use App\Models\ProductVariant;
 use App\Models\ProductVariantAttribute;
-use App\Services\PriceCalculationService;
+use App\Services\Pricing\VariantPriceHydrator;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 
 class FilterProductVariantsAction
 {
     public function __construct(
-        private readonly PriceCalculationService $priceService
+        private readonly VariantPriceHydrator $priceHydrator
     ) {}
 
     public function execute(Product $product, array $filters, string $roleCode): LengthAwarePaginator
@@ -31,7 +30,7 @@ class FilterProductVariantsAction
         $variants = $query->get();
 
         // محاسبه قیمت برای تک‌تک واریانت‌ها
-        $variants->each(fn ($variant) => $this->hydrateVariantPrice($variant, $roleCode, $filters['debug_prices'] ?? false));
+        $this->priceHydrator->hydrateMany($variants, $roleCode, $filters['debug_prices'] ?? false);
 
         // ۴. مرتب‌سازی
         $sortKey = $filters['sort'] ?? 'newest';
@@ -39,34 +38,6 @@ class FilterProductVariantsAction
 
         // ۵. صفحه‌بندی
         return $this->paginate($sortedVariants, $filters['per_page'] ?? 10);
-    }
-
-    private function hydrateVariantPrice(ProductVariant $variant, string $roleCode, bool $debug): void
-    {
-        $variant->prices->each(function ($price) use ($variant, $roleCode, $debug) {
-            $dto = $this->priceService->calculatePrice(
-                variant: $variant,
-                factory: $price->factory,
-                location: $price->factoryLocation,
-                customerType: null,
-                badge: null,
-                filterCategoryIds: null,
-                withVAT: false,
-                filterCategoryCode: $roleCode
-            );
-
-            $price->final_price = $dto->finalPrice;
-            $price->role_special_price = $dto->payablePrice;
-            $price->role_general_price = $dto->listPrice;
-            $price->role_golden_figure = max(0.0, $dto->listPrice - $dto->payablePrice);
-            $price->vat_rate = $dto->vatRate;
-
-            if ($debug) {
-                $price->pricing_debug = $dto->toArray();
-            }
-        });
-
-        $variant->min_price = $variant->prices->min('final_price');
     }
 
     private function sortVariants(Collection $variants, string $sortKey): Collection
