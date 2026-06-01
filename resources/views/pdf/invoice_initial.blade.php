@@ -25,19 +25,19 @@
         td, th { vertical-align: middle; }
 
         /* ---------- 1) BRAND BAR (لوگو چپ، آدرس سایت راست) ---------- */
-        table.brand { margin-bottom: 5px; }
-        table.brand td { border: none; padding: 0 2px 6px; }
+        table.brand { margin-bottom: 4px; }
+        table.brand td { border: none; padding: 0 2px 3px; vertical-align: bottom; }
         td.brand-web  { text-align: right; }
         td.brand-logo { text-align: left; }
-        td.brand-web  img { height: 15px; }
-        td.brand-logo img { height: 30px; }
+        td.brand-web  img { width: 235px; height: 20px; }
+        td.brand-logo img { width: 188px; height: 34px; }
 
         /* ---------- borders ---------- */
         .grid td { border: 0.75pt solid #000; }
 
         /* ---------- 2) HEADER ---------- */
-        .lbl   { font-weight: bold; text-align: right; padding: 3pt 7pt; font-size: 8pt; }
-        .val   { font-weight: bold; text-align: right; padding: 3pt 7pt; font-size: 8pt; }
+        .lbl   { font-weight: bold; text-align: right; padding: 4pt 6pt; font-size: 7pt; white-space: nowrap; }
+        .val   { font-weight: bold; text-align: right; padding: 4pt 6pt; font-size: 7.5pt; }
         .title { font-weight: bold; text-align: center; font-size: 13pt; }
 
         /* ---------- 3) STATUS ---------- */
@@ -55,8 +55,8 @@
         }
 
         /* ---------- 5) PARTY (buyer / seller) ---------- */
-        .p-lbl { font-weight: bold; text-align: right; font-size: 7.5pt; padding: 3pt 7pt; }
-        .p-val { text-align: right; font-size: 7.5pt; padding: 3pt 7pt; }
+        .p-lbl { font-weight: bold; text-align: right; font-size: 6.5pt; padding: 3.5pt 5pt; white-space: nowrap; }
+        .p-val { text-align: right; font-size: 7pt; padding: 3.5pt 6pt; }
 
         /* ---------- 6) ITEMS ---------- */
         table.items td { border: 0.75pt solid #000; }
@@ -69,10 +69,10 @@
         .ih-sub.red { color: #FF0000; font-weight: bold; }
         .ih-bottom { border-bottom: 1.5pt solid #000; }
 
-        .it-num  { text-align: center; font-size: 7.5pt; padding: 3pt 2pt; }
-        .it-desc { text-align: right;  font-size: 7pt;   padding: 3pt 6pt; }
-        .it-qty  { text-align: center; font-size: 7.5pt; padding: 3pt 2pt; }
-        .it-amt  { text-align: left;   font-size: 7.5pt; padding: 3pt 6pt; }
+        .it-num  { text-align: center; font-size: 7.5pt; padding: 4pt 2pt; }
+        .it-desc { text-align: right;  font-size: 7pt;   padding: 4pt 6pt; }
+        .it-qty  { text-align: center; font-size: 7.5pt; padding: 4pt 2pt; }
+        .it-amt  { text-align: left;   font-size: 7.5pt; padding: 4pt 6pt; }
         .it-note { text-align: center; font-size: 7pt; }
 
         /* جمع کل */
@@ -90,7 +90,7 @@
         /* ---------- 8) NOTES ---------- */
         table.notes td { border: 1pt solid #000; }
         .notes-lbl  { background: #E9ECEF; font-weight: bold; text-align: center; font-size: 8pt; padding: 5pt; }
-        .notes-body { text-align: right; font-size: 7pt; line-height: 1.8; padding: 6pt 9pt; }
+        .notes-body { text-align: right; font-size: 7pt; line-height: 1.55; padding: 4pt 8pt; }
         .notes-body .red { color: #FF0000; }
     </style>
 </head>
