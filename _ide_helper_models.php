@@ -271,6 +271,7 @@ namespace App\Models{
  * @property int $product_variant_id
  * @property int $factory_id
  * @property int $factory_location_id
+ * @property int|null $address_id
  * @property int $shipping_method_id
  * @property array $quantities
  * @property string $weight Total logistics weight in KG
@@ -283,6 +284,7 @@ namespace App\Models{
  * @property bool $with_vat
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Address|null $address
  * @property-read \App\Models\Cart $cart
  * @property-read \App\Models\Factory $factory
  * @property-read \App\Models\FactoryLocation $factoryLocation
@@ -291,6 +293,7 @@ namespace App\Models{
  * @method static \Illuminate\Database\Eloquent\Builder|CartItem newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|CartItem newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|CartItem query()
+ * @method static \Illuminate\Database\Eloquent\Builder|CartItem whereAddressId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|CartItem whereCartId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|CartItem whereCreatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder|CartItem whereFactoryId($value)
@@ -974,6 +977,8 @@ namespace App\Models{
  * @property string $owner_discount_rate %OW: درصد تخفیف خریدار
  * @property string $saze_share_rate %SSG: درصد سهم سازه
  * @property string $consultant_share_rate %CO: درصد سهم مشاور
+ * @property bool $trans_commission +%TC snapshot: کمیسیون روی حمل؟ (از پروفایل سوپلایر در زمان پرداخت کپی می‌شود)
+ * @property bool $trans_vat +VAT snapshot: مالیات روی حمل؟ (از پروفایل سوپلایر در زمان پرداخت کپی می‌شود)
  * @property string $vat_rate %VAT: درصد ارزش افزوده
  * @property string|null $payment_of_owner POO: پرداختی خریدار
  * @property string|null $payment_to_supplier PTS: پرداختی به سوپلایر
@@ -982,6 +987,14 @@ namespace App\Models{
  * @property \Illuminate\Support\Carbon|null $validation_of_reserve VOR: تاریخ اعتبار رزرو
  * @property string|null $weight_after_scale WAS: وزن باسکول
  * @property \Illuminate\Support\Carbon|null $weighing_completed_at
+ * @property string|null $consultant_moadian_ref Doc Q: شماره فاکتور مودیان صادر شده توسط مشاور فنی
+ * @property \Illuminate\Support\Carbon|null $consultant_hold_released_at زمان آزادسازی هولد کمیسیون مشاور
+ * @property string|null $supplier_moadian_ref Doc O: شماره فاکتور مودیان صادر شده توسط سوپلایر
+ * @property \Illuminate\Support\Carbon|null $supplier_hold_released_at زمان آزادسازی هولد مالیات سوپلایر در WVAT
+ * @property bool $supplier_debt_pending آیا سوپلایر بدهی باسکول دارد که هنوز تسویه نشده؟
+ * @property string $supplier_debt_amount مبلغ بدهی سوپلایر بابت کسری باسکول (ریال)
+ * @property string|null $system_moadian_ref Doc P: شماره فاکتور مودیان صادر شده توسط سازه (پلتفرم) برای خریدار
+ * @property \Illuminate\Support\Carbon|null $system_hold_released_at زمان آزادسازی هولد مالیات پلتفرم (sazeVat) از WVAT
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \Spatie\Activitylog\Models\Activity> $activities
  * @property-read int|null $activities_count
  * @property-read \App\Models\Address|null $address
@@ -995,10 +1008,14 @@ namespace App\Models{
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\OrderItem> $items
  * @property-read int|null $items_count
  * @property-read \App\Models\User $placer
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Shipment> $shipments
+ * @property-read int|null $shipments_count
  * @property-read \App\Models\ShippingMethod|null $shippingMethod
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\OrderSurvey> $surveys
  * @property-read int|null $surveys_count
+ * @method static \App\Models\Builders\OrderBuilder|Order cancelled()
  * @method static \App\Models\Builders\OrderBuilder|Order current()
+ * @method static \App\Models\Builders\OrderBuilder|Order delivered()
  * @method static \App\Models\Builders\OrderBuilder|Order expired()
  * @method static \App\Models\Builders\OrderBuilder|Order forSupplier(int $supplierId)
  * @method static \App\Models\Builders\OrderBuilder|Order forUser(int $userId)
@@ -1010,6 +1027,8 @@ namespace App\Models{
  * @method static \App\Models\Builders\OrderBuilder|Order whereBeneficiaryUserId($value)
  * @method static \App\Models\Builders\OrderBuilder|Order whereCancelReason($value)
  * @method static \App\Models\Builders\OrderBuilder|Order whereCommissionRate($value)
+ * @method static \App\Models\Builders\OrderBuilder|Order whereConsultantHoldReleasedAt($value)
+ * @method static \App\Models\Builders\OrderBuilder|Order whereConsultantMoadianRef($value)
  * @method static \App\Models\Builders\OrderBuilder|Order whereConsultantShareRate($value)
  * @method static \App\Models\Builders\OrderBuilder|Order whereContractorFeeAmount($value)
  * @method static \App\Models\Builders\OrderBuilder|Order whereContractorFeePaymentStatus($value)
@@ -1046,8 +1065,16 @@ namespace App\Models{
  * @method static \App\Models\Builders\OrderBuilder|Order whereShippingCost($value)
  * @method static \App\Models\Builders\OrderBuilder|Order whereStatus($value)
  * @method static \App\Models\Builders\OrderBuilder|Order whereSubtotal($value)
+ * @method static \App\Models\Builders\OrderBuilder|Order whereSupplierDebtAmount($value)
+ * @method static \App\Models\Builders\OrderBuilder|Order whereSupplierDebtPending($value)
+ * @method static \App\Models\Builders\OrderBuilder|Order whereSupplierHoldReleasedAt($value)
+ * @method static \App\Models\Builders\OrderBuilder|Order whereSupplierMoadianRef($value)
  * @method static \App\Models\Builders\OrderBuilder|Order whereSurveyStatus($value)
+ * @method static \App\Models\Builders\OrderBuilder|Order whereSystemHoldReleasedAt($value)
+ * @method static \App\Models\Builders\OrderBuilder|Order whereSystemMoadianRef($value)
  * @method static \App\Models\Builders\OrderBuilder|Order whereTaxInvoiceRef($value)
+ * @method static \App\Models\Builders\OrderBuilder|Order whereTransCommission($value)
+ * @method static \App\Models\Builders\OrderBuilder|Order whereTransVat($value)
  * @method static \App\Models\Builders\OrderBuilder|Order whereUpdatedAt($value)
  * @method static \App\Models\Builders\OrderBuilder|Order whereValidationOfReserve($value)
  * @method static \App\Models\Builders\OrderBuilder|Order whereVatAmount($value)
@@ -1065,8 +1092,11 @@ namespace App\Models{
 /**
  * @property int $id
  * @property int $order_id
+ * @property int|null $shipment_id
  * @property int|null $product_variant_id
  * @property int|null $supplier_user_id User ID of the supplier fulfilling this item
+ * @property int|null $factory_id
+ * @property int|null $factory_location_id
  * @property string $product_name
  * @property string|null $variant_sku
  * @property array $quantity_details
@@ -1075,22 +1105,31 @@ namespace App\Models{
  * @property string|null $unit_name Snapshot of the unit name (e.g., Bundle, M2, Branch)
  * @property string $unit_price
  * @property string $total_price
+ * @property string $shipping_cost
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read \App\Models\Order $order
+ * @property-read \App\Models\Factory|null $originFactory
+ * @property-read \App\Models\FactoryLocation|null $originFactoryLocation
  * @property-read \App\Models\ProductVariant|null $productVariant
+ * @property-read \App\Models\Shipment|null $shipment
  * @property-read \App\Models\User|null $supplier
+ * @method static \Database\Factories\OrderItemFactory factory($count = null, $state = [])
  * @method static \Illuminate\Database\Eloquent\Builder|OrderItem newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|OrderItem newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|OrderItem query()
  * @method static \Illuminate\Database\Eloquent\Builder|OrderItem sumQuantity()
  * @method static \Illuminate\Database\Eloquent\Builder|OrderItem whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|OrderItem whereFactoryId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|OrderItem whereFactoryLocationId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|OrderItem whereId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|OrderItem whereOrderId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|OrderItem whereProductName($value)
  * @method static \Illuminate\Database\Eloquent\Builder|OrderItem whereProductVariantId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|OrderItem whereQuantity($value)
  * @method static \Illuminate\Database\Eloquent\Builder|OrderItem whereQuantityDetails($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|OrderItem whereShipmentId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|OrderItem whereShippingCost($value)
  * @method static \Illuminate\Database\Eloquent\Builder|OrderItem whereSupplierUserId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|OrderItem whereTotalPrice($value)
  * @method static \Illuminate\Database\Eloquent\Builder|OrderItem whereUnitName($value)
@@ -1406,8 +1445,6 @@ namespace App\Models{
  * @property-read int|null $offers_count
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\OrderUnit> $orderUnits
  * @property-read int|null $order_units_count
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ProductPrice> $prices
- * @property-read int|null $prices_count
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ProductPrice> $variantPrices
  * @property-read int|null $variant_prices_count
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ProductVariant> $variants
@@ -1859,6 +1896,53 @@ namespace App\Models{
 
 namespace App\Models{
 /**
+ * One delivery leg of an order: items from a single origin factory location to a single
+ * destination address, with its own freight cost and lifecycle status.
+ *
+ * @see ShippingCostCalculator
+ * @property int $id
+ * @property int $order_id
+ * @property int|null $factory_id
+ * @property int|null $factory_location_id
+ * @property int|null $address_id
+ * @property int|null $destination_province_id
+ * @property int|null $destination_city_id
+ * @property string $weight
+ * @property string $billed_count
+ * @property \App\Enums\Shipping\ShippingCostBasis $cost_basis
+ * @property string $shipping_cost
+ * @property string $status
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Address|null $destinationAddress
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\OrderItem> $items
+ * @property-read int|null $items_count
+ * @property-read \App\Models\Order $order
+ * @property-read \App\Models\Factory|null $originFactory
+ * @property-read \App\Models\FactoryLocation|null $originFactoryLocation
+ * @method static \Illuminate\Database\Eloquent\Builder|Shipment newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|Shipment newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|Shipment query()
+ * @method static \Illuminate\Database\Eloquent\Builder|Shipment whereAddressId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Shipment whereBilledCount($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Shipment whereCostBasis($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Shipment whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Shipment whereDestinationCityId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Shipment whereDestinationProvinceId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Shipment whereFactoryId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Shipment whereFactoryLocationId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Shipment whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Shipment whereOrderId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Shipment whereShippingCost($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Shipment whereStatus($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Shipment whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Shipment whereWeight($value)
+ */
+	class Shipment extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
  * @property int $id
  * @property string $name
  * @property string $code
@@ -1876,6 +1960,46 @@ namespace App\Models{
  * @method static \Illuminate\Database\Eloquent\Builder|ShippingMethod whereUpdatedAt($value)
  */
 	class ShippingMethod extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * Freight rate for an origin (factory location) → destination (province / optional city).
+ *
+ * Cost is always `flat_cost + variable`, where the variable component depends on
+ * {@see self::COST_BASIS}: 'weight' uses per_kg_cost × kg (e.g. rebar), 'count' uses
+ * per_count_cost × sales-count (e.g. brick / wall-mesh). Each route picks its own basis.
+ *
+ * @see ShippingCostCalculator
+ * @property int $id
+ * @property int $factory_location_id
+ * @property int $destination_province_id
+ * @property int|null $destination_city_id
+ * @property string $flat_cost
+ * @property string $per_kg_cost
+ * @property \App\Enums\Shipping\ShippingCostBasis $cost_basis
+ * @property string $per_count_cost
+ * @property bool $is_active
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\FactoryLocation $factoryLocation
+ * @method static \Illuminate\Database\Eloquent\Builder|ShippingRate active()
+ * @method static \Illuminate\Database\Eloquent\Builder|ShippingRate newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|ShippingRate newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|ShippingRate query()
+ * @method static \Illuminate\Database\Eloquent\Builder|ShippingRate whereCostBasis($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ShippingRate whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ShippingRate whereDestinationCityId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ShippingRate whereDestinationProvinceId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ShippingRate whereFactoryLocationId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ShippingRate whereFlatCost($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ShippingRate whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ShippingRate whereIsActive($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ShippingRate wherePerCountCost($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ShippingRate wherePerKgCost($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ShippingRate whereUpdatedAt($value)
+ */
+	class ShippingRate extends \Eloquent {}
 }
 
 namespace App\Models{
@@ -1948,6 +2072,8 @@ namespace App\Models{
  * @property string|null $website
  * @property int $website_not_related
  * @property string|null $company
+ * @property bool $trans_commission +%TC: آیا کمیسیون روی هزینه حمل اعمال می‌شود؟
+ * @property bool $trans_vat +VAT: آیا مالیات بر ارزش افزوده روی هزینه حمل اعمال می‌شود؟
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SupplierActivityCategory> $activities
@@ -1972,6 +2098,8 @@ namespace App\Models{
  * @method static \Illuminate\Database\Eloquent\Builder|SupplierProfile whereProductionAmount($value)
  * @method static \Illuminate\Database\Eloquent\Builder|SupplierProfile whereStandards($value)
  * @method static \Illuminate\Database\Eloquent\Builder|SupplierProfile whereStandardsNotRelated($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|SupplierProfile whereTransCommission($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|SupplierProfile whereTransVat($value)
  * @method static \Illuminate\Database\Eloquent\Builder|SupplierProfile whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder|SupplierProfile whereUserId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|SupplierProfile whereWebsite($value)
@@ -2048,7 +2176,7 @@ namespace App\Models{
 namespace App\Models{
 /**
  * @property int $id
- * @property int|null $type_id
+ * @property int $type_id
  * @property int|null $badge_id
  * @property string $mobile
  * @property string|null $national_code
@@ -2106,7 +2234,7 @@ namespace App\Models{
  * @property-read int|null $technical_consultants_count
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \Laravel\Sanctum\PersonalAccessToken> $tokens
  * @property-read int|null $tokens_count
- * @property-read \App\Models\UserType|null $type
+ * @property-read \App\Models\UserType $type
  * @property-read \App\Models\Wallet|null $wallet
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Wishlist> $wishlists
  * @property-read int|null $wishlists_count
@@ -2264,7 +2392,7 @@ namespace App\Models{
  * @property int $id
  * @property string $name
  * @property string $slug
- * @property string|null $icon
+ * @property string $icon
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\User> $user
  * @property-read int|null $user_count
  * @method static \Illuminate\Database\Eloquent\Builder|UserType newModelQuery()

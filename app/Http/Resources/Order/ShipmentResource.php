@@ -32,6 +32,12 @@ class ShipmentResource extends BaseJsonResource
             ],
 
             'weight' => (string) $this->weight,
+            Shipment::BILLED_COUNT => (string) $this->billed_count,
+
+            // How freight was billed for this leg (e.g. rebar by weight, brick by count).
+            'cost_basis' => $this->cost_basis?->value,
+            'cost_basis_label' => $this->cost_basis?->label(),
+
             Shipment::SHIPPING_COST => (string) $this->shipping_cost,
             Shipment::STATUS => $this->status,
         ];

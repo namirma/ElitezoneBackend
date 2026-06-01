@@ -216,7 +216,10 @@ class PlaceOrderAction
                 'address_id' => $addrId ? (int) $addrId : null,
                 'destination_province_id' => $address?->{Address::PROVINCE_ID} ? (int) $address->{Address::PROVINCE_ID} : null,
                 'destination_city_id' => $address?->{Address::CITY_ID} ? (int) $address->{Address::CITY_ID} : null,
+                // Both metrics are passed so the rate can bill by weight (kg) OR by count
+                // (sales units) per the factory/supplier directive.
                 'weight' => (float) ($itemsData[$item->id]['weight'] ?? 0),
+                'count' => (float) ($itemsData[$item->id]['quantity'] ?? 0),
             ];
         }
 
@@ -336,6 +339,8 @@ class PlaceOrderAction
                 Shipment::DESTINATION_PROVINCE_ID => $group->destinationProvinceId,
                 Shipment::DESTINATION_CITY_ID => $group->destinationCityId,
                 Shipment::WEIGHT => $group->weight,
+                Shipment::BILLED_COUNT => $group->count,
+                Shipment::COST_BASIS => $group->costBasis,
                 Shipment::SHIPPING_COST => $group->cost,
                 Shipment::STATUS => Shipment::STATUS_PENDING,
             ]);

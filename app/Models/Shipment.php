@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\Shipping\ShippingCostBasis;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -33,6 +34,10 @@ class Shipment extends Model
 
     public const WEIGHT = 'weight';
 
+    public const BILLED_COUNT = 'billed_count';
+
+    public const COST_BASIS = 'cost_basis';
+
     public const SHIPPING_COST = 'shipping_cost';
 
     public const STATUS = 'status';
@@ -53,12 +58,16 @@ class Shipment extends Model
         self::DESTINATION_PROVINCE_ID,
         self::DESTINATION_CITY_ID,
         self::WEIGHT,
+        self::BILLED_COUNT,
+        self::COST_BASIS,
         self::SHIPPING_COST,
         self::STATUS,
     ];
 
     protected $casts = [
         self::WEIGHT => 'decimal:3',
+        self::BILLED_COUNT => 'decimal:3',
+        self::COST_BASIS => ShippingCostBasis::class,
         self::SHIPPING_COST => 'decimal:2',
     ];
 

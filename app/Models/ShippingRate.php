@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\Shipping\ShippingCostBasis;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -9,6 +10,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Freight rate for an origin (factory location) → destination (province / optional city).
+ *
+ * Cost is always `flat_cost + variable`, where the variable component depends on
+ * {@see self::COST_BASIS}: 'weight' uses per_kg_cost × kg (e.g. rebar), 'count' uses
+ * per_count_cost × sales-count (e.g. brick / wall-mesh). Each route picks its own basis.
  *
  * @see ShippingCostCalculator
  */
@@ -28,6 +33,10 @@ class ShippingRate extends Model
 
     public const PER_KG_COST = 'per_kg_cost';
 
+    public const COST_BASIS = 'cost_basis';
+
+    public const PER_COUNT_COST = 'per_count_cost';
+
     public const IS_ACTIVE = 'is_active';
 
     protected $fillable = [
@@ -36,12 +45,16 @@ class ShippingRate extends Model
         self::DESTINATION_CITY_ID,
         self::FLAT_COST,
         self::PER_KG_COST,
+        self::COST_BASIS,
+        self::PER_COUNT_COST,
         self::IS_ACTIVE,
     ];
 
     protected $casts = [
         self::FLAT_COST => 'decimal:2',
         self::PER_KG_COST => 'decimal:2',
+        self::PER_COUNT_COST => 'decimal:2',
+        self::COST_BASIS => ShippingCostBasis::class,
         self::IS_ACTIVE => 'boolean',
     ];
 

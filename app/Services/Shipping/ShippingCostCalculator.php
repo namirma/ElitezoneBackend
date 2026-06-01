@@ -4,6 +4,7 @@ namespace App\Services\Shipping;
 
 use App\DataTransferObjects\Shipping\ShipmentGroup;
 use App\DataTransferObjects\Shipping\ShippingQuote;
+use App\Enums\Shipping\ShippingCostBasis;
 use App\Models\ShippingRate;
 
 /**
@@ -11,10 +12,19 @@ use App\Models\ShippingRate;
  * destinations.
  *
  * Lines are grouped into SHIPMENTS by (origin factory location → destination address);
- * each shipment is priced with the matching ShippingRate (flat + per-kg) for the
- * destination province/city, then its cost is allocated back onto its lines proportional
- * to weight. When no rate matches a route the shipment costs 0 — so the platform degrades
- * gracefully until an admin enters rates, instead of inventing a number.
+ * each shipment is priced with the matching ShippingRate for the destination
+ * province/city, then its cost is allocated back onto its lines.
+ *
+ * Cost is UNIT-AWARE — `flat_cost + variable`, where the variable component follows the
+ * rate's {@see ShippingCostBasis}:
+ *   - WEIGHT: per_kg_cost   × total logistics weight (kg)  — e.g. میلگرد (rebar)
+ *   - COUNT:  per_count_cost × total sales count (items)   — e.g. آجر / وال‌مش (per piece)
+ *
+ * The cost is then split across the shipment's lines proportional to that same basis
+ * metric (weight for WEIGHT, count for COUNT), so each line carries its fair share.
+ *
+ * When no rate matches a route the shipment costs 0 — so the platform degrades gracefully
+ * until an admin enters rates, instead of inventing a number.
  *
  * Rate selection per route: a city-specific row wins; otherwise the province-level row
  * (destination_city_id = null) is the fallback.
@@ -34,7 +44,8 @@ class ShippingCostCalculator
      *     address_id?: int|null,
      *     destination_province_id?: int|null,
      *     destination_city_id?: int|null,
-     *     weight?: float
+     *     weight?: float,
+     *     count?: float
      * }>  $lines  keyed by an arbitrary line key (e.g. cart item id)
      */
     public function quote(array $lines): ShippingQuote
@@ -54,13 +65,17 @@ class ShippingCostCalculator
                 )
                 : null;
 
-            $cost = $rate
-                ? round((float) $rate->flat_cost + ((float) $rate->per_kg_cost * $group['weight']), 2)
-                : 0.0;
+            $basis = $rate
+                ? ShippingCostBasis::fromValue($rate->{ShippingRate::COST_BASIS})
+                : ShippingCostBasis::WEIGHT;
 
+            $cost = $this->priceShipment($rate, $basis, $group);
             $total += $cost;
 
-            $this->allocate($cost, $group['line_keys'], $lines, $group['weight'], $perLine);
+            // Allocate by the same metric that priced the leg, so the split is consistent
+            // with the charge (weight-billed → split by weight; count-billed → by count).
+            $measureKey = $basis->measureKey();
+            $this->allocate($cost, $group['line_keys'], $lines, $group[$measureKey], $measureKey, $perLine);
 
             $shipments[] = new ShipmentGroup(
                 factoryId: $group['factory_id'],
@@ -69,6 +84,8 @@ class ShippingCostCalculator
                 destinationProvinceId: $group['destination_province_id'],
                 destinationCityId: $group['destination_city_id'],
                 weight: round($group['weight'], 3),
+                count: round($group['count'], 3),
+                costBasis: $basis,
                 cost: $cost,
                 lineKeys: $group['line_keys'],
             );
@@ -78,9 +95,26 @@ class ShippingCostCalculator
     }
 
     /**
+     * Price a single shipment leg: flat_cost + (basis-driven variable component).
+     */
+    private function priceShipment(?ShippingRate $rate, ShippingCostBasis $basis, array $group): float
+    {
+        if (! $rate) {
+            return 0.0;
+        }
+
+        $variable = match ($basis) {
+            ShippingCostBasis::COUNT => (float) $rate->{ShippingRate::PER_COUNT_COST} * $group['count'],
+            ShippingCostBasis::WEIGHT => (float) $rate->{ShippingRate::PER_KG_COST} * $group['weight'],
+        };
+
+        return round((float) $rate->{ShippingRate::FLAT_COST} + $variable, 2);
+    }
+
+    /**
      * Group lines by (origin factory location, destination address). Each group is one
      * shipment leg. The destination province/city are carried from the lines so the rate
-     * lookup has them.
+     * lookup has them. Both weight and count are accumulated so either basis can price it.
      */
     private function groupIntoShipments(array $lines): array
     {
@@ -101,21 +135,25 @@ class ShippingCostCalculator
                     'destination_city_id' => isset($line['destination_city_id']) ? (int) $line['destination_city_id'] : null,
                     'line_keys' => [],
                     'weight' => 0.0,
+                    'count' => 0.0,
                 ];
             }
 
             $groups[$bucket]['line_keys'][] = $key;
             $groups[$bucket]['weight'] += max(0.0, (float) ($line['weight'] ?? 0));
+            $groups[$bucket]['count'] += max(0.0, (float) ($line['count'] ?? 0));
         }
 
         return $groups;
     }
 
     /**
-     * Split a shipment's cost across its lines, proportional to weight; the last line
-     * absorbs the rounding remainder so the parts sum exactly to the shipment cost.
+     * Split a shipment's cost across its lines, proportional to the basis metric
+     * ($measureKey = 'weight' or 'count'); the last line absorbs the rounding remainder
+     * so the parts sum exactly to the shipment cost. When the group metric is 0 the cost
+     * is split evenly.
      */
-    private function allocate(float $groupCost, array $keys, array $lines, float $groupWeight, array &$perLine): void
+    private function allocate(float $groupCost, array $keys, array $lines, float $groupMeasure, string $measureKey, array &$perLine): void
     {
         $count = count($keys);
 
@@ -135,8 +173,9 @@ class ShippingCostCalculator
                 continue;
             }
 
-            $share = $groupWeight > 0.0
-                ? round($groupCost * (max(0.0, (float) ($lines[$k]['weight'] ?? 0)) / $groupWeight), 2)
+            $lineMeasure = max(0.0, (float) ($lines[$k][$measureKey] ?? 0));
+            $share = $groupMeasure > 0.0
+                ? round($groupCost * ($lineMeasure / $groupMeasure), 2)
                 : round($groupCost / $count, 2);
 
             $perLine[$k] = $share;

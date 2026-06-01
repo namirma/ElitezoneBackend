@@ -390,30 +390,46 @@ with its own cost and lifecycle status. An order has one or more shipments;
 `orders.shipping_cost` (= `Trans`) is the sum of all shipment costs.
 
 - **`shipments` table**: `(order_id, factory_id/factory_location_id origin, address_id +
-  destination_province_id/destination_city_id, weight, shipping_cost, status)`. `Order
-  hasMany shipments`; each `order_items.shipment_id` points to its shipment.
+  destination_province_id/destination_city_id, weight, billed_count, cost_basis,
+  shipping_cost, status)`. `Order hasMany shipments`; each `order_items.shipment_id` points to
+  its shipment. `billed_count` + `cost_basis` record HOW the leg was billed (auditable).
 - **Per-line destination**: `cart_items.address_id` (nullable) holds the chosen destination
   for that line (set via Add/Update cart, validated to belong to the user). At placement a
   line's destination = `cart_item.address_id` ?? the order's primary `address_id`.
-- **`shipping_rates` table**: `(factory_location_id origin, destination_province_id,
-  destination_city_id nullable, flat_cost, per_kg_cost, is_active)`. City-specific row wins;
-  province-level row (`destination_city_id = null`) is the fallback. **No matching row → that
-  shipment costs 0** (graceful degradation until an admin enters rates).
+- **Unit-aware freight (`shipping_rates` table)**: `(factory_location_id origin,
+  destination_province_id, destination_city_id nullable, flat_cost, per_kg_cost, cost_basis,
+  per_count_cost, is_active)`. Each route picks its own **billing basis** via `cost_basis`
+  (cast to `App\Enums\Shipping\ShippingCostBasis`):
+  - `weight` (default) → cost = `flat_cost + per_kg_cost × total_weight_kg` — goods sold by
+    mass, e.g. **میلگرد** (rebar).
+  - `count` → cost = `flat_cost + per_count_cost × total_sales_count` — goods billed per
+    piece/pack regardless of weight, e.g. **آجر / وال‌مش** (brick / wall-mesh), per the
+    factory/supplier directive.
+  City-specific row wins; province-level row (`destination_city_id = null`) is the fallback.
+  **No matching row → that shipment costs 0** (graceful degradation until rates are entered).
+  Backward compatible: legacy weight-only rows default to `cost_basis = 'weight'`,
+  `per_count_cost = 0` and price exactly as before.
 - **`ShippingCostCalculator::quote($lines)`** — each line carries `factory_id`,
   `factory_location_id`, `address_id`, `destination_province_id`, `destination_city_id`,
-  `weight`. It groups lines into shipments by `(factory_location_id, address_id)`, prices each
-  `flat + per_kg × weight`, allocates the cost back onto lines by weight (last line absorbs the
-  rounding remainder), and returns a `ShippingQuote` (`total`, `perLine`, `shipments[]` of
-  `ShipmentGroup`). Single-destination orders are just the case where every line shares one
-  address → one shipment per origin.
-- **`PlaceOrderAction`** resolves each line's destination, calls `quote()`, creates one
-  `Shipment` row per `ShipmentGroup`, links each `OrderItem` to its shipment, and stores
-  `orders.shipping_cost = total` + per-line `order_items.shipping_cost` (+ origin
-  `factory_id`/`factory_location_id`).
+  **`weight` AND `count`** (both metrics, so either basis can price it). It groups lines into
+  shipments by `(factory_location_id, address_id)`, picks the rate's basis, prices the leg
+  (`flat + per_kg × weight` OR `flat + per_count × count`), allocates the cost back onto lines
+  **proportional to that same basis metric** (last line absorbs the rounding remainder), and
+  returns a `ShippingQuote` (`total`, `perLine`, `shipments[]` of `ShipmentGroup` — which now
+  carries `weight`, `count`, `costBasis`). Single-destination orders are just the case where
+  every line shares one address → one shipment per origin.
+- **`PlaceOrderAction`** resolves each line's destination, passes both `weight` (logistics =
+  Σ qty × order_unit.amount) and `count` (sales quantity), calls `quote()`, creates one
+  `Shipment` row per `ShipmentGroup` (persisting `billed_count` + `cost_basis`), links each
+  `OrderItem` to its shipment, and stores `orders.shipping_cost = total` + per-line
+  `order_items.shipping_cost` (+ origin `factory_id`/`factory_location_id`).
 - **Relation naming gotcha**: `OrderItem`/`Shipment` use `originFactory()` /
   `originFactoryLocation()` — never name a relation `factory()`, it collides with the
   `HasFactory` trait's static `factory()` (this broke 25 tests once).
-- Still out of scope: **splitting into one Order per factory** (independent settlement), and
+- Still out of scope: **an admin/supplier CRUD panel to enter `shipping_rates`** (basis,
+  per_kg/per_count, flat) — rates are currently inserted directly (seed/tinker); when the
+  panel is built, validate `cost_basis` with `Rule::enum(ShippingCostBasis::class)`.
+  Also out of scope: **splitting into one Order per factory** (independent settlement), and
   per-shipment delivery tracking is scaffolded (`shipments.status`) but not driven yet. The
   financial settlement actions still treat an order as a single product line
   (`items->first()`), so true multi-product-per-order settlement remains a future change.
