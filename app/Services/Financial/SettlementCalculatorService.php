@@ -42,8 +42,8 @@ class SettlementCalculatorService
      * Calculate commissions for the initial order placement snapshot.
      * Used by PlaceOrderAction / ProcessPreScalePaymentAction.
      *
-     * @param  float       $subtotal  مبلغ کل بدون مالیات
-     * @param  string|null $badgeCode کد نشان مشاور (golden, silver, bronze, pioneer, null)
+     * @param  float  $subtotal  مبلغ کل بدون مالیات
+     * @param  string|null  $badgeCode  کد نشان مشاور (golden, silver, bronze, pioneer, null)
      * @return array{TC: float, OW: float, CO: float, SSG: float}
      */
     public function calculateCommissions(float $subtotal, ?string $badgeCode): array
@@ -51,14 +51,14 @@ class SettlementCalculatorService
         $rates = $this->getCommissionRates($badgeCode);
 
         $TC = $subtotal * (self::TC_PERCENTAGE / 100);
-        $OW  = $TC * ($rates['ow_percent_of_tc'] / 100);
-        $CO  = $TC * ($rates['co_percent_of_tc'] / 100);
+        $OW = $TC * ($rates['ow_percent_of_tc'] / 100);
+        $CO = $TC * ($rates['co_percent_of_tc'] / 100);
         $SSG = $TC * ($rates['ssg_percent_of_tc'] / 100);
 
         return [
-            'TC'  => round($TC),
-            'OW'  => round($OW),
-            'CO'  => round($CO),
+            'TC' => round($TC),
+            'OW' => round($OW),
+            'CO' => round($CO),
             'SSG' => round($SSG),
         ];
     }
@@ -76,13 +76,13 @@ class SettlementCalculatorService
      *   −TC +VAT: [Trans + OP×W × (1−%OW)] × (1+VAT)
      *   −TC −VAT: [OP×W × (1−%OW) × (1+VAT)] + Trans
      *
-     * @param  float $trans           هزینه حمل و نقل
-     * @param  float $op              قیمت رسمی (OP)
-     * @param  float $weight          وزن (WBS قبل از باسکول، یا WAS بعد از باسکول)
-     * @param  float $owPercent       %OW به صورت درصد نهایی (مثال: ۰.۴ برای ۰.۴٪)
-     * @param  float $vatPercent      %VAT به صورت درصد (مثال: ۱۰ برای ۱۰٪)
-     * @param  bool  $transCommission آیا کمیسیون روی Trans اعمال می‌شود؟
-     * @param  bool  $transVat        آیا VAT روی Trans اعمال می‌شود؟
+     * @param  float  $trans  هزینه حمل و نقل
+     * @param  float  $op  قیمت رسمی (OP)
+     * @param  float  $weight  وزن (WBS قبل از باسکول، یا WAS بعد از باسکول)
+     * @param  float  $owPercent  %OW به صورت درصد نهایی (مثال: ۰.۴ برای ۰.۴٪)
+     * @param  float  $vatPercent  %VAT به صورت درصد (مثال: ۱۰ برای ۱۰٪)
+     * @param  bool  $transCommission  آیا کمیسیون روی Trans اعمال می‌شود؟
+     * @param  bool  $transVat  آیا VAT روی Trans اعمال می‌شود؟
      */
     public function calculatePOO(
         float $trans,
@@ -93,8 +93,8 @@ class SettlementCalculatorService
         bool $transCommission = true,
         bool $transVat = true,
     ): float {
-        $owFactor    = 1.0 - ($owPercent / 100.0);
-        $vatFactor   = 1.0 + ($vatPercent / 100.0);
+        $owFactor = 1.0 - ($owPercent / 100.0);
+        $vatFactor = 1.0 + ($vatPercent / 100.0);
         $productBase = $op * $weight;
 
         if ($transCommission && $transVat) {
@@ -128,15 +128,15 @@ class SettlementCalculatorService
      *   −TC +VAT: [Trans + OP×W × (1−TC)] × (1+VAT)
      *   −TC −VAT: [OP×W × (1−TC) × (1+VAT)] + Trans
      *
-     * @param  float $trans           هزینه حمل و نقل
-     * @param  float $op              قیمت رسمی
-     * @param  float $weight          وزن
-     * @param  float $owPercent       %OW نهایی
-     * @param  float $ssgPercent      %SSG نهایی
-     * @param  float $coPercent       %CO نهایی
-     * @param  float $vatPercent      %VAT
-     * @param  bool  $transCommission آیا کمیسیون روی Trans اعمال می‌شود؟
-     * @param  bool  $transVat        آیا VAT روی Trans اعمال می‌شود؟
+     * @param  float  $trans  هزینه حمل و نقل
+     * @param  float  $op  قیمت رسمی
+     * @param  float  $weight  وزن
+     * @param  float  $owPercent  %OW نهایی
+     * @param  float  $ssgPercent  %SSG نهایی
+     * @param  float  $coPercent  %CO نهایی
+     * @param  float  $vatPercent  %VAT
+     * @param  bool  $transCommission  آیا کمیسیون روی Trans اعمال می‌شود؟
+     * @param  bool  $transVat  آیا VAT روی Trans اعمال می‌شود؟
      */
     public function calculatePTS(
         float $trans,
@@ -150,9 +150,9 @@ class SettlementCalculatorService
         bool $transVat = true,
     ): float {
         $totalDeduction = ($owPercent + $ssgPercent + $coPercent) / 100.0;
-        $deductFactor   = 1.0 - $totalDeduction;
-        $vatFactor      = 1.0 + ($vatPercent / 100.0);
-        $productBase    = $op * $weight;
+        $deductFactor = 1.0 - $totalDeduction;
+        $vatFactor = 1.0 + ($vatPercent / 100.0);
+        $productBase = $op * $weight;
 
         if ($transCommission && $transVat) {
             // +TC +VAT: [Trans + OP×W] × (1−TC) × (1+VAT)
@@ -181,7 +181,6 @@ class SettlementCalculatorService
      *  - `*_final_rate`     — absolute % of the invoice total (used in
      *                          calculatePOO / calculatePTS as owPercent / ssgPercent / coPercent)
      *
-     * @param  string|null $badgeCode
      * @return array{
      *   ow_percent_of_tc: float,
      *   co_percent_of_tc: float,
@@ -195,24 +194,27 @@ class SettlementCalculatorService
     {
         $badge = strtolower(trim($badgeCode ?? ''));
 
-        // Share-of-TC percentages (always sum to 100 %)
+        // Share-of-TC percentages (always sum to 100 %).
+        // NOTE: the canonical badge codes seeded in the DB are gold / silver / bronze
+        // (see database/seeders/ProductSeeder.php). 'golden' is accepted as an alias
+        // so a legacy value never silently falls through to the default rate.
         $shares = match ($badge) {
-            'golden'  => ['ow' => 40.0, 'co' => 37.5, 'ssg' => 22.5],
-            'silver'  => ['ow' => 40.0, 'co' => 32.5, 'ssg' => 27.5],
-            'bronze'  => ['ow' => 40.0, 'co' => 30.0, 'ssg' => 30.0],
-            default   => ['ow' => 40.0, 'co' => 25.0, 'ssg' => 35.0], // normal / pioneer
+            'gold', 'golden' => ['ow' => 40.0, 'co' => 37.5, 'ssg' => 22.5],
+            'silver' => ['ow' => 40.0, 'co' => 32.5, 'ssg' => 27.5],
+            'bronze' => ['ow' => 40.0, 'co' => 30.0, 'ssg' => 30.0],
+            default => ['ow' => 40.0, 'co' => 25.0, 'ssg' => 35.0], // normal / pioneer
         };
 
         return [
             // Percentages relative to TC (for commission-amount calculations)
-            'ow_percent_of_tc'  => $shares['ow'],
-            'co_percent_of_tc'  => $shares['co'],
+            'ow_percent_of_tc' => $shares['ow'],
+            'co_percent_of_tc' => $shares['co'],
             'ssg_percent_of_tc' => $shares['ssg'],
 
             // Absolute percentages of invoice total (for POO / PTS formula inputs)
             // Example: TC=1 %, OW=40 % of TC → ow_final_rate = 0.4 %
-            'ow_final_rate'  => self::TC_PERCENTAGE * ($shares['ow']  / 100.0),
-            'co_final_rate'  => self::TC_PERCENTAGE * ($shares['co']  / 100.0),
+            'ow_final_rate' => self::TC_PERCENTAGE * ($shares['ow'] / 100.0),
+            'co_final_rate' => self::TC_PERCENTAGE * ($shares['co'] / 100.0),
             'ssg_final_rate' => self::TC_PERCENTAGE * ($shares['ssg'] / 100.0),
         ];
     }

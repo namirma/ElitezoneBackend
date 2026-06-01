@@ -23,4 +23,7 @@ return [
 
     // Supplier debt notification (sent when deficit-weighbridge finds insufficient balance)
     'supplier_debt_notification' => "سوپلایر گرامی، بابت کسری باسکول سفارش :order_number مبلغ :amount ریال از شما دریافت خواهد شد. لطفاً کیف پول خود را شارژ کنید.\nالیت زون",
+
+    // Buyer refund released (CheckSupplierBalancesJob — supplier topped up, parked refund freed)
+    'buyer_refund_released' => "کاربر گرامی، مبلغ :amount ریال بابت کسری باسکول سفارش :order_number به کیف پول شما بازگردانده شد.\nالیت زون",
 ];

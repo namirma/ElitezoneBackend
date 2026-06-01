@@ -39,14 +39,14 @@ return [
     'supplier_moadian_submitted'        => 'فاکتور مودیان سوپلایر ثبت شد و مالیات آزاد شد.',
     'supplier_moadian_already_done'     => 'فاکتور مودیان سوپلایر این سفارش قبلاً ثبت شده است.',
 
-    // ── Errors ─────────────────────────────────────────────────────────────
-    'errors' => [
-        'invalid_amount'           => 'مبلغ سفارش نامعتبر است.',
-        'stock_unavailable'        => 'موجودی محصول :product کافی نیست.',
-        'weighbridge_not_completed'=> 'نتیجه باسکول برای این سفارش هنوز ثبت نشده است.',
-        'no_consultant'            => 'این سفارش مشاور فنی ندارد.',
-        'moadian_ref_required'     => 'شماره فاکتور مودیان الزامی است.',
-    ],
+    // ── Doc P: System (Saze) Moadian invoice ───────────────────────────────
+    'system_moadian_submitted'          => 'فاکتور مودیان سیستم ثبت شد و مالیات پلتفرم آزاد شد.',
+    'system_moadian_already_done'       => 'فاکتور مودیان سیستم این سفارش قبلاً ثبت شده است.',
+
+    // ── Survey ─────────────────────────────────────────────────────────────
+    'survey_not_allowed_for_status'     => 'ثبت نظرسنجی فقط برای سفارش‌های تحویل‌داده‌شده امکان‌پذیر است.',
+    'survey_already_submitted'          => 'نظرسنجی این سفارش قبلاً ثبت شده است.',
+    'survey_submitted_successfully'     => 'نظرسنجی شما با موفقیت ثبت شد.',
 
     'status' => [
         Order::STATUS_PENDING => 'در انتظار تایید (رزرو شده)',
@@ -114,15 +114,21 @@ return [
         'get_tax_invoice' => 'دریافت فاکتور رسمی',
     ],
 
+    // ── Errors (merged — single block) ─────────────────────────────────────
     'errors' => [
-        'cart_empty' => 'سبد خرید شما خالی است.',
-        'stock_unavailable' => 'موجودی محصول «:product» کافی نیست.',
-        'system_error' => 'خطای سیستمی رخ داده است (تامین‌کننده یافت نشد).',
-        'not_payable' => 'این سفارش با وضعیت «:status» قابل پرداخت نیست.',
-        'already_paid' => 'این سفارش قبلاً پرداخت شده است.',
-        'gateway_not_implemented' => 'درگاه پرداخت انتخاب شده هنوز فعال نشده است.',
-        'not_owner' => 'شما اجازه پرداخت این سفارش را ندارید.',
-        'invalid_amount' => 'مبلغ سفارش معتبر نیست.',
+        // Financial / validation
+        'invalid_amount'                => 'مبلغ سفارش معتبر نیست.',
+        'stock_unavailable'             => 'موجودی محصول «:product» کافی نیست.',
+        'system_error'                  => 'خطای سیستمی رخ داده است (تامین‌کننده یافت نشد).',
+        'not_payable'                   => 'این سفارش با وضعیت «:status» قابل پرداخت نیست.',
+        'already_paid'                  => 'این سفارش قبلاً پرداخت شده است.',
+        'gateway_not_implemented'       => 'درگاه پرداخت انتخاب شده هنوز فعال نشده است.',
+        'not_owner'                     => 'شما اجازه پرداخت این سفارش را ندارید.',
+        'cart_empty'                    => 'سبد خرید شما خالی است.',
+        // Moadian / post-weighbridge
+        'weighbridge_not_completed'     => 'نتیجه باسکول برای این سفارش هنوز ثبت نشده است.',
+        'no_consultant'                 => 'این سفارش مشاور فنی ندارد.',
+        'moadian_ref_required'          => 'شماره فاکتور مودیان الزامی است.',
     ],
 
     'messages' => [

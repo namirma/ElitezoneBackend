@@ -57,8 +57,11 @@ class CartPricingCalculator
             $unitVatStr = (string) (float) ($pricing->vatAmount ?? 0.0);
             $discountPerUnitStr = (string) (float) ($pricing->variantDiscountAmount ?? 0.0);
 
-            $priceWithoutVatStr = bcsub($unitPriceStr, $unitVatStr, 4);
-            $lineSubtotalStr = bcmul($baseQtyStr, $priceWithoutVatStr, 4);
+            // finalPrice is already the ex-VAT payable price (see PricingContext::toDto,
+            // where priceWithVat = finalPrice + vatAmount). The previous code subtracted
+            // VAT from it again, so the line subtotal — and the cart total — came out one
+            // VAT step short. The subtotal is baseQty × finalPrice; VAT is added on top.
+            $lineSubtotalStr = bcmul($baseQtyStr, $unitPriceStr, 4);
             $lineVatStr = bcmul($baseQtyStr, $unitVatStr, 4);
             $lineTotalStr = bcadd($lineSubtotalStr, $lineVatStr, 4);
             $lineDiscountStr = bcmul($discountPerUnitStr, $baseQtyStr, 4);

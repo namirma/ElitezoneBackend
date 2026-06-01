@@ -201,6 +201,12 @@ class Order extends Model
     /** مبلغ بدهی سوپلایر (ریال) */
     public const SUPPLIER_DEBT_AMOUNT = 'supplier_debt_amount';
 
+    /** Doc P: شماره فاکتور مودیان سیستم (پلتفرم) برای خریدار */
+    public const SYSTEM_MOADIAN_REF = 'system_moadian_ref';
+
+    /** زمان آزادسازی هولد مالیات پلتفرم (sazeVat) از WVAT */
+    public const SYSTEM_HOLD_RELEASED_AT = 'system_hold_released_at';
+
     // =========================================================================
     //  Configurations
     // =========================================================================
@@ -262,6 +268,8 @@ class Order extends Model
         self::SUPPLIER_HOLD_RELEASED_AT,
         self::SUPPLIER_DEBT_PENDING,
         self::SUPPLIER_DEBT_AMOUNT,
+        self::SYSTEM_MOADIAN_REF,
+        self::SYSTEM_HOLD_RELEASED_AT,
     ];
 
     protected $casts = [
@@ -287,12 +295,13 @@ class Order extends Model
         self::VALIDATION_OF_RESERVE => 'datetime',
         self::WEIGHT_AFTER_SCALE => 'decimal:3',
         self::WEIGHING_COMPLETED_AT => 'datetime',
-        self::TRANS_COMMISSION             => 'boolean',
-        self::TRANS_VAT                    => 'boolean',
-        self::CONSULTANT_HOLD_RELEASED_AT  => 'datetime',
-        self::SUPPLIER_HOLD_RELEASED_AT    => 'datetime',
-        self::SUPPLIER_DEBT_PENDING        => 'boolean',
-        self::SUPPLIER_DEBT_AMOUNT         => 'decimal:2',
+        self::TRANS_COMMISSION => 'boolean',
+        self::TRANS_VAT => 'boolean',
+        self::CONSULTANT_HOLD_RELEASED_AT => 'datetime',
+        self::SUPPLIER_HOLD_RELEASED_AT => 'datetime',
+        self::SUPPLIER_DEBT_PENDING => 'boolean',
+        self::SUPPLIER_DEBT_AMOUNT => 'decimal:2',
+        self::SYSTEM_HOLD_RELEASED_AT => 'datetime',
     ];
 
     // =========================================================================
@@ -317,6 +326,10 @@ class Order extends Model
             'beneficiary.profile',
             'address.city',
             'address.province',
+            'shipments.originFactory',
+            'shipments.originFactoryLocation',
+            'shipments.destinationAddress.city',
+            'shipments.destinationAddress.province',
         ];
     }
 
@@ -341,6 +354,11 @@ class Order extends Model
     public function items(): HasMany
     {
         return $this->hasMany(OrderItem::class, OrderItem::ORDER_ID);
+    }
+
+    public function shipments(): HasMany
+    {
+        return $this->hasMany(Shipment::class, Shipment::ORDER_ID);
     }
 
     public function surveys(): HasMany

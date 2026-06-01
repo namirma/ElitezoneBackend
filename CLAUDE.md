@@ -214,6 +214,13 @@ submits their Moadian invoice, releases WVAT hold→available (supplier VAT port
 PTSM). Idempotent via `supplier_moadian_ref` guard.
 Route: `POST /profile/orders/{order}/supplier-moadian-invoice` (SupplierOrderController).
 
+`RecordSystemMoadianInvoiceAction` — Doc P post-weighbridge: when an admin issues
+the platform's (Saze) Moadian invoice to the buyer, releases `sazeVat` from
+WVAT hold→available. `sazeVat` is re-derived at release time from the stored
+POOM/PTSM/consultantGross snapshots and `vat_rate`. Idempotent via
+`system_moadian_ref` guard; pre-condition: `weighing_completed_at ≠ null`.
+Route: `POST /admin/orders/{order}/system-moadian-invoice` (AdminOrderController).
+
 ### Services (domain helpers)
 
 ```
@@ -233,7 +240,9 @@ Services/
                                      used by both CartParameterSyncService and
                                      ParameterDetectionController
   Invoice/
-    InvoiceGenerator     — orchestrator (~110 lines)
+    InvoiceGenerator     — orchestrator; getViewName() maps all 19+ doc codes to
+                           Blade views; createInvoiceRecord() stores Invoice model;
+                           generate(order, docType, 'save'|'download'|'stream')
     InvoiceDataBuilder   — Blade-view data prep (line items, totals, buyer info)
     InvoicePdfRenderer   — PDF rendering + Storage::disk('public') write
   Financial/
@@ -351,9 +360,17 @@ All financial constants live in `config/financial.php` — **never hardcode amou
 | Key | Env var | Default | Meaning |
 |-----|---------|---------|---------|
 | `financial.reservation_threshold` | `RESERVATION_THRESHOLD_RIALS` | `1_950_000_000` | Orders above this require reservation flow (195M Tomans) |
-| `financial.hold_fee` | `HOLD_FEE_RIALS` | `50_000_000` | Fee to extend a reservation by 24h (5M Tomans) |
+| `financial.hold_fee` | `HOLD_FEE_RIALS` | `50_000_000` | Fee to extend a reservation (5M Tomans) |
 | `financial.system_user_id` | `FINANCIAL_SYSTEM_USER_ID` | `1` | User ID of the platform's central "Saze" (WSSG) wallet |
 | `financial.vat_user_id` | `FINANCIAL_VAT_USER_ID` | *(falls back to system_user_id)* | User ID of the dedicated VAT escrow (WVAT) wallet; set in .env once a separate VAT user is created |
+| `financial.pending_order_ttl_hours` | `PENDING_ORDER_TTL_HOURS` | `2` | Hours before an unpaid PENDING order auto-cancels (`CheckReservationExpiryJob`) |
+| `financial.reservation_validity_hours` | `RESERVATION_VALIDITY_HOURS` | `2` | Hours a paid reservation stays valid before it must be completed/extended |
+| `financial.hold_fee_extension_hours` | `HOLD_FEE_EXTENSION_HOURS` | `24` | Hours that paying the hold fee extends a reservation (`PayHoldFeeAction::extensionHours()`) |
+
+> **Never hardcode time windows in Actions.** Read them via `config('financial.*')`
+> — e.g. `now()->addHours((int) config('financial.reservation_validity_hours', 2))`,
+> or `PayHoldFeeAction::extensionHours()`. The 2h / 24h literals were removed from
+> `PlaceOrderAction`, `ProcessFullOrderPaymentAction`, and `PayHoldFeeAction`.
 
 ```php
 // ✅ correct
@@ -364,6 +381,58 @@ PayHoldFeeAction::fee()   // wraps config('financial.hold_fee')
 1_950_000_000
 self::FEE_RIALS   // deprecated constant in PayHoldFeeAction, kept for BC only
 ```
+
+### Shipping — Shipments (multi-origin + multi-destination freight)
+
+A cart/order can hold items from multiple factories going to multiple destinations. The
+unit of freight is a **Shipment**: one origin (factory location) → one destination (address),
+with its own cost and lifecycle status. An order has one or more shipments;
+`orders.shipping_cost` (= `Trans`) is the sum of all shipment costs.
+
+- **`shipments` table**: `(order_id, factory_id/factory_location_id origin, address_id +
+  destination_province_id/destination_city_id, weight, billed_count, cost_basis,
+  shipping_cost, status)`. `Order hasMany shipments`; each `order_items.shipment_id` points to
+  its shipment. `billed_count` + `cost_basis` record HOW the leg was billed (auditable).
+- **Per-line destination**: `cart_items.address_id` (nullable) holds the chosen destination
+  for that line (set via Add/Update cart, validated to belong to the user). At placement a
+  line's destination = `cart_item.address_id` ?? the order's primary `address_id`.
+- **Unit-aware freight (`shipping_rates` table)**: `(factory_location_id origin,
+  destination_province_id, destination_city_id nullable, flat_cost, per_kg_cost, cost_basis,
+  per_count_cost, is_active)`. Each route picks its own **billing basis** via `cost_basis`
+  (cast to `App\Enums\Shipping\ShippingCostBasis`):
+  - `weight` (default) → cost = `flat_cost + per_kg_cost × total_weight_kg` — goods sold by
+    mass, e.g. **میلگرد** (rebar).
+  - `count` → cost = `flat_cost + per_count_cost × total_sales_count` — goods billed per
+    piece/pack regardless of weight, e.g. **آجر / وال‌مش** (brick / wall-mesh), per the
+    factory/supplier directive.
+  City-specific row wins; province-level row (`destination_city_id = null`) is the fallback.
+  **No matching row → that shipment costs 0** (graceful degradation until rates are entered).
+  Backward compatible: legacy weight-only rows default to `cost_basis = 'weight'`,
+  `per_count_cost = 0` and price exactly as before.
+- **`ShippingCostCalculator::quote($lines)`** — each line carries `factory_id`,
+  `factory_location_id`, `address_id`, `destination_province_id`, `destination_city_id`,
+  **`weight` AND `count`** (both metrics, so either basis can price it). It groups lines into
+  shipments by `(factory_location_id, address_id)`, picks the rate's basis, prices the leg
+  (`flat + per_kg × weight` OR `flat + per_count × count`), allocates the cost back onto lines
+  **proportional to that same basis metric** (last line absorbs the rounding remainder), and
+  returns a `ShippingQuote` (`total`, `perLine`, `shipments[]` of `ShipmentGroup` — which now
+  carries `weight`, `count`, `costBasis`). Single-destination orders are just the case where
+  every line shares one address → one shipment per origin.
+- **`PlaceOrderAction`** resolves each line's destination, passes both `weight` (logistics =
+  Σ qty × order_unit.amount) and `count` (sales quantity), calls `quote()`, creates one
+  `Shipment` row per `ShipmentGroup` (persisting `billed_count` + `cost_basis`), links each
+  `OrderItem` to its shipment, and stores `orders.shipping_cost = total` + per-line
+  `order_items.shipping_cost` (+ origin `factory_id`/`factory_location_id`).
+- **Relation naming gotcha**: `OrderItem`/`Shipment` use `originFactory()` /
+  `originFactoryLocation()` — never name a relation `factory()`, it collides with the
+  `HasFactory` trait's static `factory()` (this broke 25 tests once).
+- Still out of scope: **an admin/supplier CRUD panel to enter `shipping_rates`** (basis,
+  per_kg/per_count, flat) — rates are currently inserted directly (seed/tinker); when the
+  panel is built, validate `cost_basis` with `Rule::enum(ShippingCostBasis::class)`.
+  Also out of scope: **splitting into one Order per factory** (independent settlement), and
+  per-shipment delivery tracking is scaffolded (`shipments.status`) but not driven yet. The
+  financial settlement actions still treat an order as a single product line
+  (`items->first()`), so true multi-product-per-order settlement remains a future change.
 
 ### Financial — POO/PTS Formula Variants
 
@@ -382,13 +451,28 @@ they are immutable for the life of the order.
 
 `ProcessWeighbridgeResultAction` reads the snapshot from the locked order and passes
 the flags to both `calculatePOO()` and `calculatePTS()`. POOM and PTSM (the
-post-weighbridge recalculations) use the same flags but with `actualWeight`.
+post-weighbridge recalculations) use the same flags but with the **billing weight**,
+which is `min(actualWeight, weight_before_scale)` — never the raw `actualWeight`.
 
-Badge-based commission splits (`getCommissionRates()`):
+**Spec invariant — final invoice ≤ initial invoice.** The buyer is never billed for
+more than the ordered weight, so over-delivery (`actualWeight > WBS`) is recorded
+physically (`weight_after_scale` + stock) but clamped for billing. There is **no
+"surplus" branch** that charges the buyer extra; the only non-equal outcome is a
+deficit (under-delivery → buyer refunded POO − POOM).
+
+**Consultant gross (PTC)** is the `%CO` slice of the commission pool:
+`(POOM − PTSM) × %CO / (%CO + %SSG)`. Deriving it from POOM−PTSM inherits the same
+±TC/±VAT handling as POO/PTS instead of an ad-hoc formula. The lifetime cap
+(`consultant_lifetime_cap_multiplier`, default 2) is enforced in
+`applyConsultantLifetimeCap()` but is currently inert until the per-consultant
+badge-purchase amount is modelled (`consultantLifetimeCeiling()` returns null).
+
+Badge-based commission splits (`getCommissionRates()`) — canonical codes are
+`gold` / `silver` / `bronze` / `pioneer` (`golden` accepted as an alias):
 
 | Badge | `%OW` | `%CO` | `%SSG` |
 |-------|-------|-------|--------|
-| golden | 40% | 37.5% | 22.5% |
+| gold | 40% | 37.5% | 22.5% |
 | silver | 40% | 32.5% | 27.5% |
 | bronze | 40% | 30.0% | 30.0% |
 | pioneer / default | 40% | 25.0% | 35.0% |
@@ -411,6 +495,14 @@ documents are submitted:
 - Order fields set: `supplier_moadian_ref`, `supplier_hold_released_at`
 - Authorization: `OrderPolicy::manageAsSupplier`
 
+**Doc P — System (Saze) Moadian Invoice** (submitted by admin)
+- At weighbridge: `sazeVat = sazeGross × vatMultiplier → WVAT balance_hold`
+  where `sazeGross = (POOM − PTSM) − consultantGross`
+- On submission: `RecordSystemMoadianInvoiceAction` derives `sazeVat` from stored
+  POOM/PTSM/consultantGross snapshots and releases the WVAT hold to available
+- Order fields set: `system_moadian_ref`, `system_hold_released_at`
+- Authorization: admin only (`POST /admin/orders/{order}/system-moadian-invoice`)
+
 **Weighbridge deficit — insufficient supplier balance**
 If at weighbridge time the supplier's wallet balance < `PTS − PTSM` (reclaimAmount):
 - Buyer refund is credited in `HOLD` (not AVAILABLE) to `WO`
@@ -432,7 +524,42 @@ Order::SUPPLIER_MOADIAN_REF        // string|null — set when Doc O submitted
 Order::SUPPLIER_HOLD_RELEASED_AT   // datetime|null
 Order::SUPPLIER_DEBT_PENDING       // bool — true while deficit awaits supplier top-up
 Order::SUPPLIER_DEBT_AMOUNT        // decimal — Rials owed by supplier
+Order::SYSTEM_MOADIAN_REF          // string|null — set when Doc P submitted (admin)
+Order::SYSTEM_HOLD_RELEASED_AT     // datetime|null
 ```
+
+### Document Generation — Which Action Emits Which Doc
+
+Every `InvoiceGenerator::generate()` call is triggered from inside a `DB::transaction`
+so that PDF failure rolls back the financial entry too. All generation uses `'save'`
+mode (file stored on disk, `Invoice` DB record created).
+
+| Doc | Code | Triggered by | Action |
+|-----|------|--------------|--------|
+| A | `DOC_RECEIPT_OWNER` | Direct purchase | `ProcessPreScalePaymentAction` |
+| B | `DOC_REPORT_SUPPLIER` | Direct purchase | `ProcessPreScalePaymentAction` |
+| C | `DOC_LOADING_ORDER` | Direct purchase | `ProcessPreScalePaymentAction` |
+| D | `DOC_CONSULTANT_REPORT` | Direct purchase + has beneficiary | `ProcessPreScalePaymentAction` |
+| E | `DOC_RESERVE_RECEIPT` | Reservation start | `ProcessReservationPaymentAction` |
+| F | `DOC_RESERVE_REPORT` | Reservation start | `ProcessReservationPaymentAction` |
+| G | `DOC_FINAL_RECEIPT_OWNER` | Reservation completion | `ProcessReservationCompletionAction` |
+| H | `DOC_FINAL_REPORT_SUPPLIER` | Reservation completion | `ProcessReservationCompletionAction` |
+| i | `DOC_REFUND_RECEIPT` | Cancellation (paid/reserved) | `CancelOrderAction` |
+| j | `DOC_CANCEL_REPORT` | Cancellation (paid/reserved) | `CancelOrderAction` |
+| I | `DOC_EXIT_PERMIT` | Weighbridge (equal/deficit) | `ProcessWeighbridgeResultAction` |
+| J | `DOC_SUPPLEMENTARY_RECEIPT` | *(not emitted — surplus path removed per spec)* | — |
+| K | `DOC_SUPPLEMENTARY_REPORT` | *(not emitted — surplus path removed per spec)* | — |
+| LO | `DOC_MODIFIED_INVOICE_OWNER` | Weighbridge deficit | `ProcessWeighbridgeResultAction` |
+| LS | `DOC_MODIFIED_INVOICE_SUPPLIER` | Weighbridge deficit | `ProcessWeighbridgeResultAction` |
+| M | `DOC_REFUND_REPORT_WEIGH` | Weighbridge deficit | `ProcessWeighbridgeResultAction` |
+| O | `DOC_TAX_INVOICE_SUPPLIER` | Supplier submits Moadian invoice | `RecordSupplierMoadianInvoiceAction` |
+| P | `DOC_TAX_INVOICE_BUYER` | Admin submits system Moadian invoice | `RecordSystemMoadianInvoiceAction` |
+| Q | `DOC_TAX_INVOICE_CONSULTANT` | Consultant submits Moadian invoice | `ReleaseConsultantHoldAction` |
+
+**`OrderInvoiceController::download()`** serves any of the above by slug (e.g.
+`GET /profile/orders/{order}/invoices/receipt` → `DOC_RECEIPT_OWNER`). The slug→code
+map is an explicit `$typeMap` array; unknown slugs return 422. Never add a
+`default` fallback that silently returns a different document.
 
 ### Financial Flow (Critical Path)
 
@@ -453,6 +580,7 @@ Payment entry points:
 3. **OrderPaymentController::payHoldFee** — hold fee extension; protected by `idempotency` middleware
 4. **OrderActionController::submitConsultantMoadianInvoice** — Doc Q; releases WCT+WVAT holds
 5. **SupplierOrderController::submitSupplierMoadianInvoice** — Doc O; releases WVAT hold
+6. **AdminOrderController::submitSystemMoadianInvoice** — Doc P; releases sazeVat WVAT hold
 
 Financial safety pattern (should be followed everywhere):
 ```php
@@ -611,7 +739,7 @@ tests/
   Unit/          — (empty placeholder dir — kept so phpunit.xml works)
 ```
 
-**Total: 110 tests, 189 assertions (all green).** (after P1–P5 formula-variant and post-weighbridge-document changes)
+**Total: 110 tests, 189 assertions (all green).** (after B1–B5 document-generation gap fixes)
 
 Patterns to follow when adding tests:
 - **Use factories**, never `User::create([...])` with raw arrays — `UserFactory`
@@ -655,6 +783,21 @@ Patterns to follow when adding tests:
   ```
 
 ### Known Test Gotchas
+
+- **Actions that inject `InvoiceGenerator`** — `ProcessPreScalePaymentAction`,
+  `ProcessReservationPaymentAction`, `CancelOrderAction`, `ProcessWeighbridgeResultAction`,
+  and the three Moadian-invoice actions all call `InvoiceGenerator::generate()`. In
+  feature tests that resolve these via `app()`, mock the generator **before** the
+  `app()` call so the container injects the mock instead of the real implementation:
+  ```php
+  $this->mock(InvoiceGenerator::class)
+      ->shouldReceive('generate')
+      ->andReturn('test/stub.pdf');
+
+  $this->action = app(ProcessPreScalePaymentAction::class);
+  ```
+  Without this, tests fail with `View [pdf.xxx] not found` because PDF Blade views
+  only exist in the production environment.
 
 - **`SetBasePriceTest`** — the pipe caches results; call `Cache::flush()` between
   assertions on the same (variant, factory, location) triple.
@@ -746,6 +889,59 @@ $buyerWallet->transactions()
 The supplier user ID lives on `order.items.first().supplier_user_id`, NOT on the
 order row itself. `resolveUserId()` throws a `RuntimeException` for `WALLET_SUPPLIER`
 if `$targetUserId` is omitted — this is intentional to catch bugs early.
+
+### `WalletTransactionEngine` — `meta` must be a plain array
+
+`WalletTransaction` casts `meta` to `array`. Pass a **plain array** to `process()`
+(`'meta' => ['code' => ..., 'op' => ...]`). **Never** `json_encode()` it — the cast
+would double-encode it, store a JSON string, and break `meta`-based accessors
+(`receipt_details`) when the row is serialized.
+
+### Refunds must reverse EVERY leg via the engine (never mint money)
+
+`RefundOrderToWalletAction` reverses a paid, **pre-weighbridge** order in full:
+
+```
+WS(−PTS) → WSSG(+PTS)     reverse the supplier leg first
+WSSG(−POO) → WO(+POO)     then refund the buyer
+```
+
+Rules:
+- Use the snapshotted **`payment_of_owner` (POO)** / **`payment_to_supplier` (PTS)** —
+  **never `final_amount`**, and **never** a bare `Wallet::increment()` that credits the
+  buyer without clawing the money back from WS/WSSG (the old money-minting bug).
+- Always go through `WalletTransactionEngine` so every leg is an auditable
+  `WalletTransaction`.
+- The action **refuses** orders past the weighbridge (`weighing_completed_at !== null`):
+  they carry supplier/consultant/VAT holds and must go through the return/settlement
+  flow, not a simple refund.
+
+`CheckSupplierBalancesJob` follows the same rule — the supplier-debt reclaim
+(`WS → WSSG`) now runs through the engine, not raw `increment`/`decrement`.
+
+### Cancellable states — a buyer may only self-cancel a PENDING order
+
+`OrderActionController::cancel` allows **only `Order::STATUS_PENDING`** (no money moved).
+`RESERVED`/`RESERVED_EXTENDED` auto-cancel on expiry via the system cron (never by the
+user before expiry). `PROCESSING` and later are paid/settled and must go through the
+dedicated return/dispute flow (مرجوعی/داوری) — **never** self-cancel, which would
+trigger an incomplete refund.
+
+### Badge codes are `gold` / `silver` / `bronze` / `pioneer`
+
+The seeder (`database/seeders/ProductSeeder.php`) is the source of truth: the gold tier
+code is **`gold`** (not `golden`). `SettlementCalculatorService::getCommissionRates()`
+matches `'gold', 'golden'` (alias) so a legacy value never silently falls through to the
+default rate and underpays a gold-tier consultant.
+
+### Wallet status vocabulary — cover `hold` everywhere
+
+The `wallet_transactions.status` column mixes two vocabularies:
+`pending`/`confirmed`/`failed`/`rejected` (deposits/withdrawals) and the
+order-financial escrow values `FinancialCodes::STATUS_HOLD = 'hold'` /
+`STATUS_AVAILABLE = 'confirmed'`. Any new status must have a label + color in
+`WalletTransaction::getStatusLabel/Color` **and** a case in the
+`WalletTransactionStatus` enum — `hold` is now covered in both.
 
 ### Cross-Controller Calls are Forbidden
 

@@ -15,8 +15,8 @@ use App\Models\Wallet;
 class ProcessFullOrderPaymentAction
 {
     public function __construct(
-        private readonly ProcessPreScalePaymentAction       $purchaseAction,
-        private readonly ProcessReservationPaymentAction    $reservationAction,
+        private readonly ProcessPreScalePaymentAction $purchaseAction,
+        private readonly ProcessReservationPaymentAction $reservationAction,
         private readonly ProcessReservationCompletionAction $completionAction,
     ) {}
 
@@ -51,11 +51,13 @@ class ProcessFullOrderPaymentAction
         $totalAmount = (float) $order->final_amount;
 
         // ── Scenario 2: direct purchase ─────────────────────────────────────────
+        // `final_amount` only decides reservation-vs-direct (an order-size check).
+        // The balance guard is delegated to ProcessPreScalePaymentAction: it recomputes
+        // the authoritative payable amount (POO) inside its locked transaction and the
+        // buyer debit throws InsufficientBalanceException(POO, balance) if the wallet
+        // can't cover it. Guarding here against final_amount would compare the wrong
+        // number (final_amount ≠ POO) and is the previous "two sources of truth" bug.
         if ($totalAmount < $this->threshold() || ! $isReserveRequested) {
-            if ($wallet->balance < $totalAmount) {
-                throw new InsufficientBalanceException($totalAmount, $wallet->balance);
-            }
-
             $this->purchaseAction->execute($order);
 
             return new PayOrderResult(
@@ -77,7 +79,11 @@ class ProcessFullOrderPaymentAction
             throw new InsufficientBalanceException($reserveAmount, $wallet->balance);
         }
 
-        $this->reservationAction->execute($order, $reserveAmount, validityHours: 2);
+        $this->reservationAction->execute(
+            $order,
+            $reserveAmount,
+            validityHours: (int) config('financial.reservation_validity_hours', 2),
+        );
 
         return new PayOrderResult(
             scenario: 'reservation',

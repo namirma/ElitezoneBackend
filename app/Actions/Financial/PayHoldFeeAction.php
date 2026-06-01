@@ -23,6 +23,12 @@ class PayHoldFeeAction
         return (float) config('financial.hold_fee', 50_000_000);
     }
 
+    /** تعداد ساعتی که پرداخت هزینه هولد، اعتبار رزرو را تمدید می‌کند. */
+    public static function extensionHours(): int
+    {
+        return (int) config('financial.hold_fee_extension_hours', 24);
+    }
+
     /** @deprecated use self::fee() — kept for backward compatibility */
     public const FEE_RIALS = 50_000_000;
 
@@ -73,7 +79,7 @@ class PayHoldFeeAction
 
             $lockedOrder->update([
                 Order::STATUS => Order::STATUS_RESERVED_EXTENDED,
-                Order::RESERVATION_EXPIRES_AT => now()->addHours(24),
+                Order::RESERVATION_EXPIRES_AT => now()->addHours(self::extensionHours()),
             ]);
 
             Log::info("PayHoldFeeAction: سفارش {$lockedOrder->id} با موفقیت تمدید شد.");

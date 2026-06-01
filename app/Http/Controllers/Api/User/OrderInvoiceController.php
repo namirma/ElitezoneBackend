@@ -13,12 +13,45 @@ class OrderInvoiceController extends Controller
     {
         $this->authorize('view', $order);
 
-        $financialCode = match ($type) {
-            'initial' => FinancialCodes::DOC_PRE_INVOICE,
-            default => FinancialCodes::DOC_PRE_INVOICE,
-        };
-        $pdf = $generator->generate($order, $financialCode, 'download');
+        // Map URL-friendly slugs to document codes.
+        // All document types are explicitly listed — no silent fallback to an
+        // unrelated document. An unknown type returns 422 instead of sending
+        // the wrong PDF to the client.
+        $typeMap = [
+            // Stage 0
+            'initial'                => FinancialCodes::DOC_PRE_INVOICE,
+            // Stage 1 — direct purchase
+            'receipt'                => FinancialCodes::DOC_RECEIPT_OWNER,
+            'supplier_report'        => FinancialCodes::DOC_REPORT_SUPPLIER,
+            'loading'                => FinancialCodes::DOC_LOADING_ORDER,
+            'consultant_report'      => FinancialCodes::DOC_CONSULTANT_REPORT,
+            // Stage 2 — reservation
+            'reserve_receipt'        => FinancialCodes::DOC_RESERVE_RECEIPT,
+            'reserve_report'         => FinancialCodes::DOC_RESERVE_REPORT,
+            // Stage 3 — reservation completion
+            'final'                  => FinancialCodes::DOC_FINAL_RECEIPT_OWNER,
+            'final_supplier'         => FinancialCodes::DOC_FINAL_REPORT_SUPPLIER,
+            // Stage 4 — cancellation
+            'refund'                 => FinancialCodes::DOC_REFUND_RECEIPT,
+            'cancel_report'          => FinancialCodes::DOC_CANCEL_REPORT,
+            // Stage 5 — post-weighbridge
+            'exit_permit'            => FinancialCodes::DOC_EXIT_PERMIT,
+            'supplementary_receipt'  => FinancialCodes::DOC_SUPPLEMENTARY_RECEIPT,
+            'supplementary_report'   => FinancialCodes::DOC_SUPPLEMENTARY_REPORT,
+            'modified_owner'         => FinancialCodes::DOC_MODIFIED_INVOICE_OWNER,
+            'modified_supplier'      => FinancialCodes::DOC_MODIFIED_INVOICE_SUPPLIER,
+            // Stage 6 — Moadian taxpayer system
+            'tax'                    => FinancialCodes::DOC_TAX_INVOICE_BUYER,
+            'tax_supplier'           => FinancialCodes::DOC_TAX_INVOICE_SUPPLIER,
+            'tax_consultant'         => FinancialCodes::DOC_TAX_INVOICE_CONSULTANT,
+        ];
 
-        return $pdf->download("invoice-{$order->order_number}.pdf");
+        if (! array_key_exists($type, $typeMap)) {
+            return error(__('orders.invalid_invoice_type'), [], 422);
+        }
+
+        $pdf = $generator->generate($order, $typeMap[$type], 'download');
+
+        return $pdf->download("invoice-{$order->order_number}-{$type}.pdf");
     }
 }

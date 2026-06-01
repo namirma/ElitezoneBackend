@@ -93,6 +93,8 @@ class InvoiceGenerator
             FinancialCodes::DOC_FINAL_REPORT_SUPPLIER,
             FinancialCodes::DOC_MODIFIED_INVOICE_SUPPLIER,
             FinancialCodes::DOC_SUPPLEMENTARY_REPORT,
+            FinancialCodes::DOC_CANCEL_REPORT,         // j — گزارش لغو برای سوپلایر
+            FinancialCodes::DOC_TAX_INVOICE_SUPPLIER,  // O — فاکتور مودیان سوپلایر
         ];
 
         $userId = in_array($docType, $supplierDocs)
@@ -123,20 +125,33 @@ class InvoiceGenerator
     private function getViewName(string $docType): string
     {
         return match ($docType) {
+            // ── Stage 0: pre-payment ───────────────────────────────────────
             FinancialCodes::DOC_PRE_INVOICE                => 'pdf.invoice_initial',
+            // ── Stage 1: direct purchase ───────────────────────────────────
             FinancialCodes::DOC_RECEIPT_OWNER              => 'pdf.receipt_owner',
             FinancialCodes::DOC_REPORT_SUPPLIER            => 'pdf.report_supplier',
             FinancialCodes::DOC_LOADING_ORDER              => 'pdf.loading_order',
+            FinancialCodes::DOC_CONSULTANT_REPORT          => 'pdf.consultant_report',
+            // ── Stage 2: reservation ───────────────────────────────────────
             FinancialCodes::DOC_RESERVE_RECEIPT            => 'pdf.reserve_receipt',
             FinancialCodes::DOC_RESERVE_REPORT             => 'pdf.reserve_report',
+            // ── Stage 3: reservation completion ───────────────────────────
             FinancialCodes::DOC_FINAL_RECEIPT_OWNER        => 'pdf.final_receipt',
             FinancialCodes::DOC_FINAL_REPORT_SUPPLIER      => 'pdf.final_report',
+            // ── Stage 4: cancellation ──────────────────────────────────────
+            FinancialCodes::DOC_REFUND_RECEIPT             => 'pdf.refund_receipt',
+            FinancialCodes::DOC_CANCEL_REPORT              => 'pdf.cancel_report',
+            // ── Stage 5: post-weighbridge ──────────────────────────────────
             FinancialCodes::DOC_EXIT_PERMIT                => 'pdf.exit_permit',
             FinancialCodes::DOC_SUPPLEMENTARY_RECEIPT      => 'pdf.supplementary_receipt',
             FinancialCodes::DOC_SUPPLEMENTARY_REPORT       => 'pdf.supplementary_report',
             FinancialCodes::DOC_MODIFIED_INVOICE_OWNER     => 'pdf.modified_invoice_owner',
             FinancialCodes::DOC_MODIFIED_INVOICE_SUPPLIER  => 'pdf.modified_invoice_supplier',
             FinancialCodes::DOC_REFUND_REPORT_WEIGH        => 'pdf.refund_report',
+            // ── Stage 6: Moadian taxpayer system ──────────────────────────
+            FinancialCodes::DOC_TAX_INVOICE_SUPPLIER       => 'pdf.tax_invoice_supplier',
+            FinancialCodes::DOC_TAX_INVOICE_BUYER          => 'pdf.tax_invoice_buyer',
+            FinancialCodes::DOC_TAX_INVOICE_CONSULTANT     => 'pdf.tax_invoice_consultant',
             default                                        => 'pdf.invoice_default',
         };
     }

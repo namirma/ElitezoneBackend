@@ -9,6 +9,7 @@ use App\Models\Order;
 use App\Models\SupplierProfile;
 use App\Services\Financial\SettlementCalculatorService;
 use App\Services\Financial\WalletTransactionEngine;
+use App\Services\Invoice\InvoiceGenerator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -16,7 +17,8 @@ class ProcessPreScalePaymentAction
 {
     public function __construct(
         protected SettlementCalculatorService $calculator,
-        protected WalletTransactionEngine $walletEngine
+        protected WalletTransactionEngine $walletEngine,
+        protected InvoiceGenerator $invoiceGenerator,
     ) {}
 
     public function execute(Order $order): void
@@ -123,6 +125,18 @@ class ProcessPreScalePaymentAction
                 'payment_status' => Order::PAYMENT_PAID,
                 'paid_at'        => now(),
             ]);
+
+            // ── صدور اسناد مالی خرید مستقیم ─────────────────────────────
+            // A — رسید پرداخت برای خریدار
+            $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_RECEIPT_OWNER);
+            // B — گزارش پرداخت برای سوپلایر
+            $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_REPORT_SUPPLIER);
+            // C — دستور بارگیری (مشترک)
+            $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_LOADING_ORDER);
+            // D — گزارش مشاور فنی (فقط اگر سفارش مشاور دارد)
+            if ($locked->{Order::BENEFICIARY_USER_ID} !== null) {
+                $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_CONSULTANT_REPORT);
+            }
 
             Log::info("پرداخت سفارش {$locked->id} با موفقیت انجام شد. فرمول: TC={$transCommission} VAT={$transVat}");
         }, 3);

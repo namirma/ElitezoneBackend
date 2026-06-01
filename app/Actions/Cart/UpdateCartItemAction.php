@@ -68,6 +68,10 @@ class UpdateCartItemAction
                 $cartItem->factory_location_id = $data['factory_location_id'];
             }
 
+            if (array_key_exists('address_id', $data)) {
+                $cartItem->address_id = $data['address_id'];
+            }
+
             $calculatedPhys = $this->calculatePhysicalAttributes($newQuantities, $orderUnitsMap, $variant);
 
             $priceData = $this->calculateItemPrice(

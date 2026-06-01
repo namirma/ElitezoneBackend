@@ -69,7 +69,9 @@ class WalletTransactionEngine
                 'type' => $type,
                 'status' => $status,
                 'description' => $description,
-                'meta' => json_encode(['code' => $walletCode, 'op' => $operation]),
+                // WalletTransaction casts `meta` to array — pass a plain array and let
+                // Eloquent encode it once. json_encode() here would double-encode it.
+                'meta' => ['code' => $walletCode, 'op' => $operation],
             ]);
         });
     }
