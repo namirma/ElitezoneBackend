@@ -82,10 +82,11 @@
         .tot-r   { text-align: right; }
 
         /* ---------- 7) PAYABLE ---------- */
-        table.payable td { border: 1pt solid #000; background: #E9ECEF; }
-        .pay-lbl   { font-weight: bold; text-align: right; font-size: 8pt; padding: 5pt 7pt; }
-        .pay-words { font-weight: bold; text-align: right; font-size: 8pt; padding: 5pt 7pt; }
-        .pay-amt   { font-weight: bold; text-align: left;  font-size: 9pt; padding: 5pt 7pt; }
+        table.payable td { border: none; }
+        /* فقط لیبل خاکستری؛ حروف و عدد سفید و وسط‌چین. تنها یک خط عمودی بین لیبل و حروف. */
+        .pay-lbl   { background: #E9ECEF; font-weight: bold; text-align: right;  font-size: 8pt; padding: 6pt 7pt; border: 1pt solid #000; }
+        .pay-words { background: #fff;    font-weight: bold; text-align: center; font-size: 8pt; padding: 6pt 7pt; border-top: 1pt solid #000; border-bottom: 1pt solid #000; }
+        .pay-amt   { background: #fff;    font-weight: bold; text-align: center; font-size: 9pt; padding: 6pt 7pt; border-top: 1pt solid #000; border-bottom: 1pt solid #000; border-left: 1pt solid #000; }
 
         /* ---------- 8) NOTES ---------- */
         table.notes td { border: 1pt solid #000; }
