@@ -3,17 +3,18 @@
 namespace App\DataTransferObjects\Shipping;
 
 /**
- * Result of a freight calculation for a set of order/cart lines shipping to one
- * destination from one or more origin factories.
+ * Result of a freight calculation for a set of order/cart lines. Supports multiple
+ * origins AND multiple destinations: lines are grouped into shipments by
+ * (origin factory location → destination address), each shipment priced on its own route.
  */
 class ShippingQuote
 {
     public function __construct(
-        /** Total freight across every factory-origin group (Rials). */
+        /** Total freight across every shipment (Rials). */
         public readonly float $total,
         /** Cost allocated to each line, keyed by the line key passed in (e.g. cart item id). */
         public readonly array $perLine,
-        /** Cost grouped by origin factory_location_id. */
-        public readonly array $perLocation,
+        /** @var ShipmentGroup[] one entry per (origin → destination) leg */
+        public readonly array $shipments,
     ) {}
 }

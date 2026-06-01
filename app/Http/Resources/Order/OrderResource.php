@@ -2,9 +2,9 @@
 
 namespace App\Http\Resources\Order;
 
+use App\Http\Resources\BaseJsonResource;
 use App\Models\Order;
 use Illuminate\Http\Request;
-use App\Http\Resources\BaseJsonResource;
 use Illuminate\Support\Facades\Auth;
 
 /**
@@ -130,6 +130,9 @@ class OrderResource extends BaseJsonResource
                     'phone' => $this->address->receiver_mobile,
                 ];
             }),
+
+            // --- Shipments (one leg per origin factory → destination address) ---
+            'shipments' => ShipmentResource::collection($this->whenLoaded('shipments')),
 
             // --- Actions ---
             'actions' => [

@@ -295,13 +295,13 @@ class Order extends Model
         self::VALIDATION_OF_RESERVE => 'datetime',
         self::WEIGHT_AFTER_SCALE => 'decimal:3',
         self::WEIGHING_COMPLETED_AT => 'datetime',
-        self::TRANS_COMMISSION             => 'boolean',
-        self::TRANS_VAT                    => 'boolean',
-        self::CONSULTANT_HOLD_RELEASED_AT  => 'datetime',
-        self::SUPPLIER_HOLD_RELEASED_AT    => 'datetime',
-        self::SUPPLIER_DEBT_PENDING        => 'boolean',
-        self::SUPPLIER_DEBT_AMOUNT         => 'decimal:2',
-        self::SYSTEM_HOLD_RELEASED_AT      => 'datetime',
+        self::TRANS_COMMISSION => 'boolean',
+        self::TRANS_VAT => 'boolean',
+        self::CONSULTANT_HOLD_RELEASED_AT => 'datetime',
+        self::SUPPLIER_HOLD_RELEASED_AT => 'datetime',
+        self::SUPPLIER_DEBT_PENDING => 'boolean',
+        self::SUPPLIER_DEBT_AMOUNT => 'decimal:2',
+        self::SYSTEM_HOLD_RELEASED_AT => 'datetime',
     ];
 
     // =========================================================================
@@ -326,6 +326,10 @@ class Order extends Model
             'beneficiary.profile',
             'address.city',
             'address.province',
+            'shipments.originFactory',
+            'shipments.originFactoryLocation',
+            'shipments.destinationAddress.city',
+            'shipments.destinationAddress.province',
         ];
     }
 
@@ -350,6 +354,11 @@ class Order extends Model
     public function items(): HasMany
     {
         return $this->hasMany(OrderItem::class, OrderItem::ORDER_ID);
+    }
+
+    public function shipments(): HasMany
+    {
+        return $this->hasMany(Shipment::class, Shipment::ORDER_ID);
     }
 
     public function surveys(): HasMany

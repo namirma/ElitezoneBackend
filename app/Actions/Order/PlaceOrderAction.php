@@ -13,6 +13,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderUnit;
 use App\Models\PriceFilterCategory;
+use App\Models\Shipment;
 use App\Models\User;
 use App\Models\UserType;
 use App\Services\DocumentSequenceService;
@@ -45,9 +46,10 @@ class PlaceOrderAction
             // ۲. محاسبه مبالغ
             $financials = $this->calculateOrderFinancials($cart, $user, $data);
 
-            // ۳. ایجاد سفارش
+            // ۳. ایجاد سفارش + مرسوله‌ها (هر مبدأ→مقصد یک مرسوله) + اقلام
             $order = $this->createOrderRecord($user, $data, $financials, $cart);
-            $this->createOrderItems($order, $cart, $financials['items_data']);
+            $shipmentMap = $this->createShipments($order, $financials['shipments']);
+            $this->createOrderItems($order, $cart, $financials['items_data'], $shipmentMap);
 
             // ۴. کسر از انبار
             $this->inventoryService->deductStockForOrder($order);
@@ -190,22 +192,35 @@ class PlaceOrderAction
             ];
         }
 
-        // هزینه حمل — به‌ازای هر کارخانه‌ی مبدأ تا مقصد (آدرس سفارش) محاسبه و جمع می‌شود.
-        // اقلام بر اساس محل کارخانه گروه‌بندی شده و سهم هر قلم در itemsData ذخیره می‌شود.
+        // هزینه حمل — هر قلم بر اساس کارخانه‌ی مبدأ و مقصدِ خودش گروه‌بندی (مرسوله) و قیمت‌گذاری
+        // می‌شود. مقصدِ هر قلم: آدرسِ خودِ قلم (سبد چندمقصدی) و در نبود آن، آدرسِ اصلی سفارش.
+        $primaryAddressId = $data->addressId;
+
+        $neededAddressIds = [];
+        foreach ($cart->items as $item) {
+            $addrId = $item->address_id ?: $primaryAddressId;
+            if ($addrId) {
+                $neededAddressIds[(int) $addrId] = true;
+            }
+        }
+        $addresses = Address::whereIn(Address::ID, array_keys($neededAddressIds))->get()->keyBy(Address::ID);
+
         $shippingLines = [];
         foreach ($cart->items as $item) {
+            $addrId = $item->address_id ?: $primaryAddressId;
+            $address = $addrId ? $addresses->get((int) $addrId) : null;
+
             $shippingLines[$item->id] = [
+                'factory_id' => $item->factory_id ? (int) $item->factory_id : null,
                 'factory_location_id' => $item->factory_location_id ? (int) $item->factory_location_id : null,
+                'address_id' => $addrId ? (int) $addrId : null,
+                'destination_province_id' => $address?->{Address::PROVINCE_ID} ? (int) $address->{Address::PROVINCE_ID} : null,
+                'destination_city_id' => $address?->{Address::CITY_ID} ? (int) $address->{Address::CITY_ID} : null,
                 'weight' => (float) ($itemsData[$item->id]['weight'] ?? 0),
             ];
         }
 
-        $address = $data->addressId ? Address::find($data->addressId) : null;
-        $shippingQuote = $this->shippingCalculator->quote(
-            $shippingLines,
-            $address?->{Address::PROVINCE_ID} ? (int) $address->{Address::PROVINCE_ID} : null,
-            $address?->{Address::CITY_ID} ? (int) $address->{Address::CITY_ID} : null,
-        );
+        $shippingQuote = $this->shippingCalculator->quote($shippingLines);
 
         $shippingCost = $shippingQuote->total;
         foreach ($itemsData as $itemId => $line) {
@@ -224,6 +239,7 @@ class PlaceOrderAction
             'total_weight' => $totalWeight,
             'commissions' => $commissions,
             'items_data' => $itemsData,
+            'shipments' => $shippingQuote->shipments,
         ];
     }
 
@@ -300,7 +316,39 @@ class PlaceOrderAction
         ]);
     }
 
-    private function createOrderItems(Order $order, Cart $cart, array $itemsData): void
+    /**
+     * Create one Shipment per (origin → destination) leg and return a map of
+     * cart item id → shipment id so order items can be linked to their shipment.
+     *
+     * @param  \App\DataTransferObjects\Shipping\ShipmentGroup[]  $shipments
+     * @return array<int|string, int>
+     */
+    private function createShipments(Order $order, array $shipments): array
+    {
+        $map = [];
+
+        foreach ($shipments as $group) {
+            $shipment = Shipment::create([
+                Shipment::ORDER_ID => $order->id,
+                Shipment::FACTORY_ID => $group->factoryId,
+                Shipment::FACTORY_LOCATION_ID => $group->factoryLocationId,
+                Shipment::ADDRESS_ID => $group->addressId,
+                Shipment::DESTINATION_PROVINCE_ID => $group->destinationProvinceId,
+                Shipment::DESTINATION_CITY_ID => $group->destinationCityId,
+                Shipment::WEIGHT => $group->weight,
+                Shipment::SHIPPING_COST => $group->cost,
+                Shipment::STATUS => Shipment::STATUS_PENDING,
+            ]);
+
+            foreach ($group->lineKeys as $cartItemId) {
+                $map[$cartItemId] = $shipment->id;
+            }
+        }
+
+        return $map;
+    }
+
+    private function createOrderItems(Order $order, Cart $cart, array $itemsData, array $shipmentMap): void
     {
         foreach ($cart->items as $item) {
             // An order line must map to a real supplier — the supplier wallet (WS) is
@@ -324,6 +372,7 @@ class PlaceOrderAction
 
             OrderItem::create([
                 OrderItem::ORDER_ID => $order->id,
+                OrderItem::SHIPMENT_ID => $shipmentMap[$item->id] ?? null,
                 'product_variant_id' => $item->product_variant_id,
                 'supplier_user_id' => $supplierId,
                 // Preserve the line's origin so per-factory freight can be reconstructed.

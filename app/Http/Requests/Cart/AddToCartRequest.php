@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Cart;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 
 class AddToCartRequest extends FormRequest
@@ -24,6 +25,9 @@ class AddToCartRequest extends FormRequest
                 Rule::exists('factory_locations', 'id')->where('factory_id', $this->factory_id),
             ],
             'shipping_method_id' => ['required', 'integer', 'exists:shipping_methods,id'],
+            // Optional per-line delivery destination (multi-destination carts). Must belong
+            // to the authenticated user; guests have none, so it stays null for them.
+            'address_id' => ['nullable', 'integer', Rule::exists('addresses', 'id')->where('user_id', Auth::id())],
             'quantities' => ['required', 'array'],
             'quantities.*' => ['required', 'integer', 'min:1'],
             'filter_categories' => ['nullable', 'array'],

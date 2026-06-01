@@ -15,6 +15,8 @@ class OrderItem extends Model
 
     public const ORDER_ID = 'order_id';
 
+    public const SHIPMENT_ID = 'shipment_id';
+
     public const PRODUCT_VARIANT_ID = 'product_variant_id';
 
     public const SUPPLIER_USER_ID = 'supplier_user_id';
@@ -47,6 +49,7 @@ class OrderItem extends Model
 
     protected $fillable = [
         self::ORDER_ID,
+        self::SHIPMENT_ID,
         self::PRODUCT_VARIANT_ID,
         self::SUPPLIER_USER_ID,
         self::FACTORY_ID,
@@ -74,6 +77,11 @@ class OrderItem extends Model
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);
+    }
+
+    public function shipment(): BelongsTo
+    {
+        return $this->belongsTo(Shipment::class, self::SHIPMENT_ID);
     }
 
     public function productVariant(): BelongsTo

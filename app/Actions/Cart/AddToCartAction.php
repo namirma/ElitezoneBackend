@@ -70,6 +70,8 @@ class AddToCartAction
             $saveData = [
                 CartItem::QUANTITIES => $itemFinalQuantities,
                 CartItem::FACTORY_LOCATION_ID => $data['location_id'],
+                // Per-line destination (multi-destination carts); preserve existing if not sent.
+                CartItem::ADDRESS_ID => $data['address_id'] ?? ($existingItem->address_id ?? null),
                 'weight' => $calculatedPhys['weight'],
                 'quantity' => $calculatedPhys['quantity'],
                 'unit_name' => $calculatedPhys['unit_name'],

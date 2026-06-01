@@ -382,29 +382,41 @@ PayHoldFeeAction::fee()   // wraps config('financial.hold_fee')
 self::FEE_RIALS   // deprecated constant in PayHoldFeeAction, kept for BC only
 ```
 
-### Shipping — Per-Factory Freight (origin → destination)
+### Shipping — Shipments (multi-origin + multi-destination freight)
 
-A cart/order can hold items from multiple factories. Freight is computed **per origin
-factory location → the order's destination**, then summed into `Trans` / `shipping_cost`.
+A cart/order can hold items from multiple factories going to multiple destinations. The
+unit of freight is a **Shipment**: one origin (factory location) → one destination (address),
+with its own cost and lifecycle status. An order has one or more shipments;
+`orders.shipping_cost` (= `Trans`) is the sum of all shipment costs.
 
-- `shipping_rates` table: `(factory_location_id origin, destination_province_id,
-  destination_city_id nullable, flat_cost, per_kg_cost, is_active)`. A city-specific row
-  wins; the province-level row (`destination_city_id = null`) is the fallback. **No matching
-  row → that origin costs 0** (graceful degradation until an admin enters rates).
-- `ShippingCostCalculator::quote($lines, $provinceId, $cityId)` groups lines by origin,
-  prices each group `flat + per_kg × groupWeight`, and allocates the group cost back onto
-  its lines by weight (last line absorbs the rounding remainder). Returns a `ShippingQuote`
-  (`total`, `perLine`, `perLocation`).
-- `PlaceOrderAction` calls it with the cart lines + the order's `Address` (province/city),
-  stores `orders.shipping_cost = total` and per-line `order_items.shipping_cost`, and now
-  persists `order_items.factory_id` / `factory_location_id` so each line's origin is kept.
-- **`OrderItem` relations are `originFactory()` / `originFactoryLocation()`** — never name a
-  relation `factory()`, it collides with the `HasFactory` trait's static `factory()`.
-- Scope today: **one order, one destination address**; per-factory origin shipping is summed.
-  Splitting into one order per factory (independent settlement) and multiple destinations per
-  order are larger, separate features. The financial settlement actions still treat an order
-  as a single product line (`items->first()`), so true multi-product-per-order settlement is
-  also a future change.
+- **`shipments` table**: `(order_id, factory_id/factory_location_id origin, address_id +
+  destination_province_id/destination_city_id, weight, shipping_cost, status)`. `Order
+  hasMany shipments`; each `order_items.shipment_id` points to its shipment.
+- **Per-line destination**: `cart_items.address_id` (nullable) holds the chosen destination
+  for that line (set via Add/Update cart, validated to belong to the user). At placement a
+  line's destination = `cart_item.address_id` ?? the order's primary `address_id`.
+- **`shipping_rates` table**: `(factory_location_id origin, destination_province_id,
+  destination_city_id nullable, flat_cost, per_kg_cost, is_active)`. City-specific row wins;
+  province-level row (`destination_city_id = null`) is the fallback. **No matching row → that
+  shipment costs 0** (graceful degradation until an admin enters rates).
+- **`ShippingCostCalculator::quote($lines)`** — each line carries `factory_id`,
+  `factory_location_id`, `address_id`, `destination_province_id`, `destination_city_id`,
+  `weight`. It groups lines into shipments by `(factory_location_id, address_id)`, prices each
+  `flat + per_kg × weight`, allocates the cost back onto lines by weight (last line absorbs the
+  rounding remainder), and returns a `ShippingQuote` (`total`, `perLine`, `shipments[]` of
+  `ShipmentGroup`). Single-destination orders are just the case where every line shares one
+  address → one shipment per origin.
+- **`PlaceOrderAction`** resolves each line's destination, calls `quote()`, creates one
+  `Shipment` row per `ShipmentGroup`, links each `OrderItem` to its shipment, and stores
+  `orders.shipping_cost = total` + per-line `order_items.shipping_cost` (+ origin
+  `factory_id`/`factory_location_id`).
+- **Relation naming gotcha**: `OrderItem`/`Shipment` use `originFactory()` /
+  `originFactoryLocation()` — never name a relation `factory()`, it collides with the
+  `HasFactory` trait's static `factory()` (this broke 25 tests once).
+- Still out of scope: **splitting into one Order per factory** (independent settlement), and
+  per-shipment delivery tracking is scaffolded (`shipments.status`) but not driven yet. The
+  financial settlement actions still treat an order as a single product line
+  (`items->first()`), so true multi-product-per-order settlement remains a future change.
 
 ### Financial — POO/PTS Formula Variants
 

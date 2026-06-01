@@ -18,6 +18,7 @@ class OrderItemResource extends BaseJsonResource
         return [
             OrderItem::ID => $this->id,
             OrderItem::ORDER_ID => $this->order_id,
+            OrderItem::SHIPMENT_ID => $this->shipment_id,
             OrderItem::PRODUCT_VARIANT_ID => $this->product_variant_id,
             OrderItem::SUPPLIER_USER_ID => $this->supplier_user_id,
             OrderItem::FACTORY_ID => $this->factory_id,

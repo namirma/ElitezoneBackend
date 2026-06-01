@@ -20,6 +20,9 @@ class CartItem extends Model
 
     public const FACTORY_LOCATION_ID = 'factory_location_id';
 
+    /** Per-line delivery destination (enables multi-destination carts; null = order default). */
+    public const ADDRESS_ID = 'address_id';
+
     public const SHIPPING_METHOD_ID = 'shipping_method_id';
 
     public const QUANTITIES = 'quantities';
@@ -49,6 +52,7 @@ class CartItem extends Model
         self::PRODUCT_VARIANT_ID,
         self::FACTORY_ID,
         self::FACTORY_LOCATION_ID,
+        self::ADDRESS_ID,
         self::SHIPPING_METHOD_ID,
         self::QUANTITIES,
         self::WEIGHT,
@@ -92,6 +96,11 @@ class CartItem extends Model
     public function factoryLocation(): BelongsTo
     {
         return $this->belongsTo(FactoryLocation::class);
+    }
+
+    public function address(): BelongsTo
+    {
+        return $this->belongsTo(Address::class);
     }
 
     public function shippingMethod(): BelongsTo

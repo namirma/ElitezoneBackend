@@ -9,9 +9,8 @@ use Tests\Feature\Pricing\CreatesPricingFixtures;
 use Tests\TestCase;
 
 /**
- * Freight is computed per origin factory location → destination, then summed.
- * This is the manager's scenario: rebar from one factory and brick from another,
- * each with its own origin→destination cost.
+ * Freight is grouped into shipments by (origin factory location → destination address)
+ * and each shipment is priced on its own route. Covers multi-origin AND multi-destination.
  */
 class ShippingCostCalculatorTest extends TestCase
 {
@@ -39,42 +38,63 @@ class ShippingCostCalculatorTest extends TestCase
     }
 
     /** @test */
-    public function it_prices_each_factory_origin_separately_and_sums_the_total(): void
+    public function it_prices_each_factory_origin_separately_to_one_destination(): void
     {
-        $provinceId = 100;
-        $cityId = 5;
+        $province = 100;
+        $city = 5;
 
-        $kavirLoc = $this->makeLocation($this->makeFactory());
-        $zagrosLoc = $this->makeLocation($this->makeFactory());
-
-        $this->rate($kavirLoc->id, $provinceId, null, flat: 500_000, perKg: 100);   // 1000kg → 600,000
-        $this->rate($zagrosLoc->id, $provinceId, null, flat: 300_000, perKg: 50);    // 2000kg → 400,000
+        $kavir = $this->makeLocation($this->makeFactory());
+        $zagros = $this->makeLocation($this->makeFactory());
+        $this->rate($kavir->id, $province, null, flat: 500_000, perKg: 100); // 1000kg → 600,000
+        $this->rate($zagros->id, $province, null, flat: 300_000, perKg: 50);  // 2000kg → 400,000
 
         $lines = [
-            'rebar' => ['factory_location_id' => $kavirLoc->id, 'weight' => 1000],
-            'brick' => ['factory_location_id' => $zagrosLoc->id, 'weight' => 2000],
+            'rebar' => ['factory_location_id' => $kavir->id, 'address_id' => 9, 'destination_province_id' => $province, 'destination_city_id' => $city, 'weight' => 1000],
+            'brick' => ['factory_location_id' => $zagros->id, 'address_id' => 9, 'destination_province_id' => $province, 'destination_city_id' => $city, 'weight' => 2000],
         ];
 
-        $quote = $this->calc->quote($lines, $provinceId, $cityId);
+        $quote = $this->calc->quote($lines);
 
+        $this->assertCount(2, $quote->shipments, 'two origins → two shipments');
         $this->assertEqualsWithDelta(600_000, $quote->perLine['rebar'], 1);
         $this->assertEqualsWithDelta(400_000, $quote->perLine['brick'], 1);
         $this->assertEqualsWithDelta(1_000_000, $quote->total, 1);
-        $this->assertEqualsWithDelta(600_000, $quote->perLocation[$kavirLoc->id], 1);
-        $this->assertEqualsWithDelta(400_000, $quote->perLocation[$zagrosLoc->id], 1);
+    }
+
+    /** @test */
+    public function it_ships_to_multiple_destinations_each_with_its_own_cost(): void
+    {
+        // Same origin factory, two different destination provinces → two shipments.
+        $kavir = $this->makeLocation($this->makeFactory());
+        $this->rate($kavir->id, 100, null, flat: 500_000, perKg: 0); // → Tehran
+        $this->rate($kavir->id, 200, null, flat: 800_000, perKg: 0); // → Isfahan
+
+        $lines = [
+            'to_tehran' => ['factory_location_id' => $kavir->id, 'address_id' => 11, 'destination_province_id' => 100, 'destination_city_id' => null, 'weight' => 10],
+            'to_isfahan' => ['factory_location_id' => $kavir->id, 'address_id' => 22, 'destination_province_id' => 200, 'destination_city_id' => null, 'weight' => 10],
+        ];
+
+        $quote = $this->calc->quote($lines);
+
+        $this->assertCount(2, $quote->shipments, 'two destinations → two shipments');
+        $this->assertEqualsWithDelta(500_000, $quote->perLine['to_tehran'], 1);
+        $this->assertEqualsWithDelta(800_000, $quote->perLine['to_isfahan'], 1);
+        $this->assertEqualsWithDelta(1_300_000, $quote->total, 1);
     }
 
     /** @test */
     public function a_city_specific_rate_overrides_the_province_fallback(): void
     {
-        $provinceId = 100;
-        $cityId = 5;
+        $province = 100;
+        $city = 5;
         $loc = $this->makeLocation($this->makeFactory());
 
-        $this->rate($loc->id, $provinceId, null, flat: 900_000, perKg: 0);   // province fallback
-        $this->rate($loc->id, $provinceId, $cityId, flat: 100_000, perKg: 0); // cheaper city-specific
+        $this->rate($loc->id, $province, null, flat: 900_000, perKg: 0);
+        $this->rate($loc->id, $province, $city, flat: 100_000, perKg: 0);
 
-        $quote = $this->calc->quote(['x' => ['factory_location_id' => $loc->id, 'weight' => 10]], $provinceId, $cityId);
+        $quote = $this->calc->quote([
+            'x' => ['factory_location_id' => $loc->id, 'address_id' => 1, 'destination_province_id' => $province, 'destination_city_id' => $city, 'weight' => 10],
+        ]);
 
         $this->assertEqualsWithDelta(100_000, $quote->total, 1);
     }
@@ -84,30 +104,33 @@ class ShippingCostCalculatorTest extends TestCase
     {
         $loc = $this->makeLocation($this->makeFactory());
 
-        $quote = $this->calc->quote(['x' => ['factory_location_id' => $loc->id, 'weight' => 10]], 999, 888);
+        $quote = $this->calc->quote([
+            'x' => ['factory_location_id' => $loc->id, 'address_id' => 1, 'destination_province_id' => 999, 'destination_city_id' => 888, 'weight' => 10],
+        ]);
 
         $this->assertEqualsWithDelta(0, $quote->total, 0.01);
         $this->assertEqualsWithDelta(0, $quote->perLine['x'], 0.01);
     }
 
     /** @test */
-    public function it_allocates_a_group_cost_across_lines_by_weight(): void
+    public function it_allocates_a_shipment_cost_across_lines_by_weight(): void
     {
-        $provinceId = 100;
+        $province = 100;
         $loc = $this->makeLocation($this->makeFactory());
-        $this->rate($loc->id, $provinceId, null, flat: 0, perKg: 10); // 1000kg → 10,000
+        $this->rate($loc->id, $province, null, flat: 0, perKg: 10); // 1000kg → 10,000
 
+        // two lines, same origin + same destination → one shipment, split by weight
         $lines = [
-            'a' => ['factory_location_id' => $loc->id, 'weight' => 300],
-            'b' => ['factory_location_id' => $loc->id, 'weight' => 700],
+            'a' => ['factory_location_id' => $loc->id, 'address_id' => 7, 'destination_province_id' => $province, 'destination_city_id' => null, 'weight' => 300],
+            'b' => ['factory_location_id' => $loc->id, 'address_id' => 7, 'destination_province_id' => $province, 'destination_city_id' => null, 'weight' => 700],
         ];
 
-        $quote = $this->calc->quote($lines, $provinceId, null);
+        $quote = $this->calc->quote($lines);
 
+        $this->assertCount(1, $quote->shipments, 'same origin+destination → one shipment');
         $this->assertEqualsWithDelta(10_000, $quote->total, 1);
         $this->assertEqualsWithDelta(3_000, $quote->perLine['a'], 1);
         $this->assertEqualsWithDelta(7_000, $quote->perLine['b'], 1);
-        // parts must sum exactly to the group cost
         $this->assertEqualsWithDelta(10_000, $quote->perLine['a'] + $quote->perLine['b'], 0.01);
     }
 }

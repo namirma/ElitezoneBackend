@@ -2,12 +2,12 @@
 
 namespace App\Http\Resources\Cart;
 
-use App\Models\CartItem;
 use App\Http\Resources\BaseJsonResource;
-use App\Http\Resources\Product\ProductVariantResource;
-use App\Http\Resources\Supplier\FactoryResource;
-use App\Http\Resources\Supplier\FactoryLocationResource;
 use App\Http\Resources\Order\ShippingMethodResource;
+use App\Http\Resources\Product\ProductVariantResource;
+use App\Http\Resources\Supplier\FactoryLocationResource;
+use App\Http\Resources\Supplier\FactoryResource;
+use App\Models\CartItem;
 
 /**
  * @mixin \App\Models\CartItem
@@ -37,6 +37,7 @@ class CartItemResource extends BaseJsonResource
 
             'factory' => new FactoryResource($this->whenLoaded('factory')),
             'factory_location' => new FactoryLocationResource($this->whenLoaded('factoryLocation')),
+            CartItem::ADDRESS_ID => $this->address_id,
             'shipping_method' => new ShippingMethodResource($this->whenLoaded('shippingMethod')),
 
             CartItem::QUANTITIES => (object) ($quantities ?? []),
