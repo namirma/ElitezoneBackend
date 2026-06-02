@@ -170,4 +170,313 @@ trait HasOrderProgress
             'steps' => $steps,
         ];
     }
+
+    /**
+     * محاسبه مراحل پیشرفت سفارش از دیدِ مشاور فنی (beneficiary)
+     *
+     * چهار مرحله ثابت — وضعیت مرحله بر اساس فیلدهای مدل تعیین می‌شود،
+     * نه فقط ستون status، تا رویدادهایی مانند ثبت فاکتور مودیان نیز
+     * به‌درستی منعکس شوند.
+     */
+    public function getConsultantProgressAttribute(): array
+    {
+        $status = $this->status;
+        $id = $this->id;
+
+        $isCancelled = in_array($status, [Order::STATUS_CANCELLED, Order::STATUS_FAILED]);
+
+        $transKey = "orders.status.{$status}";
+        $currentStatusLabel = Lang::has($transKey) ? __($transKey) : __('orders.status.unknown');
+
+        // ---------------------------------------------------------
+        // ۱. ساختار چهار مرحله (عناوین ثابت؛ بدون trigger-list)
+        // ---------------------------------------------------------
+        $stepsBlueprint = [
+            ['title' => 'کارفرما خرید کرد'],
+            ['title' => 'حق مشاوره منظور شد'],
+            ['title' => 'فاکتور خدمات ثبت شد'],
+            ['title' => 'حق مشاوره در دسترس است'],
+        ];
+
+        // ---------------------------------------------------------
+        // ۲. تشخیص پیشرفته‌ترین مرحله فعال (از آخر به اول)
+        //    چون ReleaseConsultantHoldAction هر دو فیلد را اتمیک ست
+        //    می‌کند، مرحله ۳ (consultant_moadian_ref) عملاً هرگز
+        //    به‌عنوان «current» نمایش داده نمی‌شود — اما منطقاً
+        //    پوشش داده شده است.
+        // ---------------------------------------------------------
+        $currentIndex = -1;
+
+        if (! $isCancelled) {
+            if ($this->{Order::CONSULTANT_HOLD_RELEASED_AT} !== null) {
+                $currentIndex = 3; // مرحله ۴: وجه آزاد شد
+            } elseif ($this->{Order::CONSULTANT_MOADIAN_REF} !== null) {
+                $currentIndex = 2; // مرحله ۳: فاکتور خدمات ثبت شد
+            } elseif (in_array($status, [Order::STATUS_WEIGHBRIDGE_DONE, Order::STATUS_PENDING_SURPLUS_PAYMENT])) {
+                $currentIndex = 1; // مرحله ۲: حق مشاوره منظور شد
+            } elseif (in_array($status, [
+                Order::STATUS_PROCESSING,
+                Order::STATUS_PREPARING,
+                Order::STATUS_WEIGHBRIDGE_DONE,
+                Order::STATUS_PENDING_SURPLUS_PAYMENT,
+                Order::STATUS_WAYBILL_ISSUED,
+                Order::STATUS_SHIPPED,
+                Order::STATUS_DELIVERED,
+                Order::STATUS_COMPLETED,
+            ])) {
+                $currentIndex = 0; // مرحله ۱: کارفرما خرید کرد
+            }
+        }
+
+        // ---------------------------------------------------------
+        // ۳. تخصیص وضعیت و دکمه‌های هر مرحله
+        // ---------------------------------------------------------
+        $steps = [];
+        $stepCounter = 1;
+
+        foreach ($stepsBlueprint as $index => $blueprint) {
+
+            // تعیین رنگ دایره
+            if ($isCancelled) {
+                $state = ($index === 0) ? 'cancelled' : 'inactive';
+            } elseif ($currentIndex === -1) {
+                $state = 'inactive'; // هنوز هیچ مرحله‌ای شروع نشده
+            } elseif ($index < $currentIndex) {
+                $state = 'completed';
+            } elseif ($index === $currentIndex) {
+                $state = 'current';
+            } else {
+                $state = 'inactive';
+            }
+
+            // لینک‌ها فقط برای مراحل تکمیل‌شده یا فعلی نشان داده می‌شوند
+            $actions = [];
+
+            if ($state === 'completed' || $state === 'current') {
+                switch ($blueprint['title']) {
+
+                    case 'کارفرما خرید کرد':
+                        $actions[] = [
+                            'label' => 'دانلود فاکتور کالای خریداری شده',
+                            'link' => "/api/profile/orders/{$id}/invoices/initial",
+                            'type' => 'secondary',
+                            'downloadable' => true,
+                        ];
+                        break;
+
+                    case 'حق مشاوره منظور شد':
+                        $actions[] = [
+                            'label' => 'مشاهده کیف پول',
+                            'link' => '/profile/finance',
+                            'type' => 'secondary',
+                        ];
+                        $actions[] = [
+                            'label' => 'فاکتور خدمات خود را ثبت کنید',
+                            'link' => "/api/profile/orders/{$id}/consultant-moadian-invoice",
+                            'type' => 'primary',
+                        ];
+                        break;
+
+                    case 'فاکتور خدمات ثبت شد':
+                        $actions[] = [
+                            'label' => 'فاکتور خدمات خود را ثبت کنید',
+                            'link' => "/api/profile/orders/{$id}/consultant-moadian-invoice",
+                            'type' => 'secondary',
+                        ];
+                        break;
+
+                        // مرحله ۴ (حق مشاوره در دسترس است): بدون دکمه
+                }
+            }
+
+            $steps[] = [
+                'step' => $stepCounter++,
+                'title' => $blueprint['title'],
+                'state' => $state,
+                'actions' => $actions,
+            ];
+        }
+
+        // وقتی hold آزاد شده، آخرین مرحله کاملاً تکمیل‌شده است —
+        // مشابه باگ‌فیکس مرحله آخر در getDashboardProgressAttribute
+        if ($this->{Order::CONSULTANT_HOLD_RELEASED_AT} !== null) {
+            $steps[count($steps) - 1]['state'] = 'completed';
+        }
+
+        return [
+            'is_cancelled' => $isCancelled,
+            'current_status_label' => $currentStatusLabel,
+            'steps' => $steps,
+        ];
+    }
+
+    /**
+     * محاسبه مراحل پیشرفت سفارش از دیدِ سوپلایر
+     *
+     * ساختار مشابه getDashboardProgressAttribute (خریدار)؛
+     * عناوین و لینک‌های اکشن متفاوت است.
+     * مرحله رزرو فقط در سفارش‌های رزروی (غیر پرداخت کامل) اضافه می‌شود.
+     */
+    public function getSupplierProgressAttribute(): array
+    {
+        $status = $this->status;
+        $id = $this->id;
+
+        $isCancelled = in_array($status, [Order::STATUS_CANCELLED, Order::STATUS_FAILED]);
+
+        $threshold = (float) config('financial.reservation_threshold', 1_950_000_000);
+        $isFullPayment = (float) $this->final_amount < $threshold
+            || $this->payment_to_reserve == $this->final_amount;
+
+        $transKey = "orders.status.{$status}";
+        $currentStatusLabel = Lang::has($transKey) ? __($transKey) : __('orders.status.unknown');
+
+        // ---------------------------------------------------------
+        // ۱. ساختار مراحل (مرحله رزرو در صورت نیاز اضافه می‌شود)
+        // ---------------------------------------------------------
+        $stepsBlueprint = [];
+
+        if (! $isFullPayment) {
+            $stepsBlueprint[] = [
+                'title' => 'رزرو سفارش ثبت شد',
+                'triggers' => [Order::STATUS_PENDING, Order::STATUS_RESERVED, Order::STATUS_RESERVED_EXTENDED],
+            ];
+        }
+
+        $stepsBlueprint[] = [
+            'title' => 'سفارش دریافت شد',
+            'triggers' => [Order::STATUS_PROCESSING, Order::STATUS_PREPARING],
+        ];
+
+        $stepsBlueprint[] = [
+            'title' => 'باسکول تأیید شد',
+            'triggers' => [Order::STATUS_WEIGHBRIDGE_DONE, Order::STATUS_PENDING_SURPLUS_PAYMENT],
+        ];
+
+        $stepsBlueprint[] = [
+            'title' => 'کالا ارسال شد',
+            'triggers' => [Order::STATUS_WAYBILL_ISSUED, Order::STATUS_SHIPPED],
+        ];
+
+        $stepsBlueprint[] = [
+            'title' => 'مبلغ تسویه شد',
+            'triggers' => [Order::STATUS_DELIVERED, Order::STATUS_COMPLETED],
+        ];
+
+        // ---------------------------------------------------------
+        // ۲. پیدا کردن مرحله فعلی (مشابه getDashboardProgressAttribute)
+        // ---------------------------------------------------------
+        $currentIndex = 0;
+        if (! $isCancelled) {
+            foreach ($stepsBlueprint as $index => $blueprint) {
+                if (in_array($status, $blueprint['triggers'])) {
+                    $currentIndex = $index;
+                    break;
+                }
+            }
+            if (in_array($status, [Order::STATUS_DELIVERED, Order::STATUS_COMPLETED])) {
+                $currentIndex = count($stepsBlueprint) - 1;
+            }
+        }
+
+        // ---------------------------------------------------------
+        // ۳. تخصیص وضعیت و اکشن‌های هر مرحله
+        // ---------------------------------------------------------
+        $steps = [];
+        $stepCounter = 1;
+
+        foreach ($stepsBlueprint as $index => $blueprint) {
+
+            if ($isCancelled) {
+                $state = ($index === 0) ? 'cancelled' : 'inactive';
+            } else {
+                if ($index < $currentIndex) {
+                    $state = 'completed';
+                } elseif ($index === $currentIndex) {
+                    $state = 'current';
+                } else {
+                    $state = 'inactive';
+                }
+            }
+
+            $actions = [];
+
+            if ($state !== 'inactive') {
+                switch ($blueprint['title']) {
+
+                    case 'رزرو سفارش ثبت شد':
+                        $actions[] = [
+                            'label' => 'دانلود گزارش رزرو',
+                            'link' => "/api/profile/orders/{$id}/invoices/reserve_report",
+                            'method' => 'GET',
+                            'downloadable' => true,
+                        ];
+                        break;
+
+                    case 'سفارش دریافت شد':
+                        $actions[] = [
+                            'label' => 'دانلود دستور بارگیری',
+                            'link' => "/api/profile/orders/{$id}/invoices/loading_order",
+                            'method' => 'GET',
+                            'downloadable' => true,
+                        ];
+                        break;
+
+                    case 'باسکول تأیید شد':
+                        $actions[] = [
+                            'label' => 'دانلود مجوز خروج',
+                            'link' => "/api/profile/orders/{$id}/invoices/exit_permit",
+                            'method' => 'GET',
+                            'downloadable' => true,
+                        ];
+                        // لینک ثبت فاکتور مودیان فقط تا زمانی که ارسال نشده
+                        if ($this->{Order::SUPPLIER_MOADIAN_REF} === null) {
+                            $actions[] = [
+                                'label' => 'ثبت فاکتور مودیان',
+                                'link' => "/api/profile/orders/{$id}/supplier-moadian-invoice",
+                                'method' => 'POST',
+                                'downloadable' => false,
+                            ];
+                        }
+                        break;
+
+                    case 'کالا ارسال شد':
+                        $actions[] = [
+                            'label' => 'مشاهده بارنامه',
+                            'link' => "/api/profile/orders/{$id}/invoices/exit_permit",
+                            'method' => 'GET',
+                            'downloadable' => true,
+                        ];
+                        break;
+
+                    case 'مبلغ تسویه شد':
+                        $actions[] = [
+                            'label' => 'مشاهده کیف پول',
+                            'link' => '/profile/finance',
+                            'method' => 'GET',
+                            'downloadable' => false,
+                        ];
+                        break;
+                }
+            }
+
+            $steps[] = [
+                'step' => $stepCounter++,
+                'title' => $blueprint['title'],
+                'state' => $state,
+                'actions' => $actions,
+            ];
+        }
+
+        // مانند getDashboardProgressAttribute: آخرین مرحله وقتی تکمیل شده «completed» است
+        if (in_array($status, [Order::STATUS_DELIVERED, Order::STATUS_COMPLETED])) {
+            $steps[count($steps) - 1]['state'] = 'completed';
+        }
+
+        return [
+            'is_cancelled' => $isCancelled,
+            'current_status_label' => $currentStatusLabel,
+            'steps' => $steps,
+        ];
+    }
 }

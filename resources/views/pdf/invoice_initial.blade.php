@@ -55,11 +55,12 @@
         .title-main { font-size: 15pt; font-weight: bold; }
         .section-title { font-size: 10pt; font-weight: bold; text-align: center; background-color: #E9ECEF; padding: 4.5px 0; }
 
-        .lbl { font-size: 7.5pt; font-weight: bold; background-color: #fcfcfc; }
+        /* لیبل‌ها وزن نرمال دارند (دقیقاً مطابق اکسل؛ فقط بخش‌بندها/جمع‌کل/قابل‌پرداخت بولد می‌مانند) */
+        .lbl { font-size: 7.5pt; font-weight: normal; background-color: #fcfcfc; }
         .val { font-size: 7.5pt; }
 
-        /* هدر اقلام - باریک‌تر شدن طبق درخواست شما */
-        .items-head td { text-align: center; font-size: 7.5pt; font-weight: bold; padding: 2px; }
+        /* هدر اقلام - وزن نرمال مطابق اکسل */
+        .items-head td { text-align: center; font-size: 7.5pt; font-weight: normal; padding: 2px; }
 
         .amount-cell { font-size: 7.5pt; white-space: nowrap; text-align: center; }
 
@@ -219,10 +220,10 @@
 
         {{-- ===== PAYABLE ===== --}}
         <tr class="bg-gray">
-            {{-- رنگِ متنِ کل ردیف آبی (#0070C0) و یکدست؛ لیبل هم پس‌زمینه خاکستریِ ردیف را می‌گیرد --}}
-            <td colspan="1" class="text-center font-bold" style="border-left: none; font-size: 9pt; padding: 6px; color: #0070C0;">مبلغ قابل پرداخت:</td>
-            <td colspan="5" class="text-center font-bold" style="border-right: none; border-left: none; font-size: 9.5pt; color: #0070C0;">{{ $amount_words ?? 'صفر' }} ریال</td>
-            <td colspan="5" class="text-center font-bold nowrap" style="border-right: none; font-size: 10pt; color: #0070C0;">{{ enToFa(number_format($totals['final'] ?? 0)) }}</td>
+            {{-- دقیقاً مطابق اکسل (xl85/xl145/xl152): متنِ مشکیِ بولد روی پس‌زمینهٔ خاکستری — بدون رنگ --}}
+            <td colspan="1" class="text-center font-bold" style="border-left: none; font-size: 9pt; padding: 6px;">مبلغ قابل پرداخت:</td>
+            <td colspan="5" class="text-center font-bold" style="border-right: none; border-left: none; font-size: 9.5pt;">{{ $amount_words ?? 'صفر' }} ریال</td>
+            <td colspan="5" class="text-center font-bold nowrap" style="border-right: none; font-size: 10pt;">{{ enToFa(number_format($totals['final'] ?? 0)) }}</td>
         </tr>
 
         {{-- ===== NOTES ===== --}}

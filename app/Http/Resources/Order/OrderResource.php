@@ -55,6 +55,12 @@ class OrderResource extends BaseJsonResource
                     default => 'primary',
                 },
                 'progress_data' => $progress,
+                'consultant_progress_data' => $this->{Order::BENEFICIARY_USER_ID}
+                    ? $this->consultant_progress
+                    : null,
+                'supplier_progress_data' => $isSupplier
+                    ? $this->supplier_progress
+                    : null,
             ],
 
             // --- Items Summary (FIXED LOGIC) ---
