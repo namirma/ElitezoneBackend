@@ -9,6 +9,7 @@ use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\PriceFilterCategory;
 use App\Services\Pricing\CartPricingCalculator;
+use App\Services\Pricing\VariantPriceHydrator;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -25,6 +26,11 @@ class CartResponseBuilder
         'items.productVariant.product.images',
         'items.productVariant.variantAttributes.attributeType',
         'items.productVariant.product.orderUnits',
+        // Prices + their sub-relations must be eager-loaded so CartItemResource →
+        // ProductVariantResource can render role-based final_price / role_* fields
+        // without N+1 queries and without falling back to the raw DB special_price.
+        'items.productVariant.prices.factory',
+        'items.productVariant.prices.factoryLocation',
         'items.factory',
         'items.factoryLocation',
         'items.shippingMethod',
@@ -36,6 +42,7 @@ class CartResponseBuilder
     public function __construct(
         private readonly CartPricingCalculator $cartPricing,
         private readonly CartResolver $resolver,
+        private readonly VariantPriceHydrator $priceHydrator,
     ) {}
 
     /**
@@ -55,6 +62,14 @@ class CartResponseBuilder
         // on the product. Re-pricing here keeps the price consistent from the product
         // page through to the order, exactly as PlaceOrderAction recomputes it.
         $this->persistLinePricing($cart, $result);
+
+        // Hydrate role-based pricing onto each item's product-variant price rows so that
+        // CartItemResource → ProductVariantResource renders the same final_price / role_*
+        // figures as the product-listing endpoint (FilterProductVariantsAction).
+        // Without this, ProductVariantResource falls back to the raw DB special_price,
+        // causing the frontend to display a different price/discount-badge on the cart
+        // page than on the product page.
+        $this->hydrateItemVariantPrices($cart, $context->activeCode);
 
         $response = success([
             'cart' => new CartResource($cart),
@@ -94,6 +109,25 @@ class CartResponseBuilder
             withVat: true,
             offerBasis: 'weight',
         );
+    }
+
+    /**
+     * Run the pricing pipeline on the product-variant price rows that are attached to
+     * each cart item, so that CartItemResource → ProductVariantResource serialises the
+     * same role-based final_price / role_* / min_price as the product-listing endpoint.
+     *
+     * Variants are deduplicated so a variant referenced by multiple cart items is only
+     * hydrated once.
+     */
+    private function hydrateItemVariantPrices(Cart $cart, string $activeCode): void
+    {
+        $variants = $cart->items
+            ->map(fn ($item) => $item->productVariant)
+            ->filter()
+            ->unique('id')
+            ->values();
+
+        $this->priceHydrator->hydrateMany($variants, $activeCode);
     }
 
     /**

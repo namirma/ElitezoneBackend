@@ -3,17 +3,23 @@
 namespace App\Http\Controllers\Api\User;
 
 use App\Http\Controllers\Controller;
-
 use App\Http\Requests\Product\ToggleStockSubscriptionRequest;
 use App\Http\Resources\Product\SubscribedVariantResource;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\StockSubscription;
+use App\Services\Cart\CartResolver;
+use App\Services\Pricing\VariantPriceHydrator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 
 class StockSubscriptionController extends Controller
 {
+    public function __construct(
+        private readonly CartResolver $cartResolver,
+        private readonly VariantPriceHydrator $priceHydrator,
+    ) {}
+
     public function index(): JsonResponse
     {
         $user = Auth::user();
@@ -24,8 +30,12 @@ class StockSubscriptionController extends Controller
             ->with([
                 'product:'.Product::ID.','.Product::NAME.','.Product::SLUG,
                 'variantAttributes.attributeType',
+                'prices.factory',
+                'prices.factoryLocation',
             ])
             ->paginate(10);
+
+        $this->priceHydrator->hydrateMany($variants->getCollection(), $this->cartResolver->activeCode());
 
         return success(
             SubscribedVariantResource::collection($variants)->response()->getData(true),

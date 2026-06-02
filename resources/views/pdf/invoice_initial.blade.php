@@ -2,461 +2,241 @@
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>پیش فاکتور فروش {{ $invoice_number ?? $order->order_number }}</title>
+    <title>پیش فاکتور فروش {{ $invoice_number ?? ($order->order_number ?? '') }}</title>
     <style>
         /* ============================================================
-           FONT — yekanbakh از طریق config/pdf.php لود می‌شود
-           (mPDF با @font-face درست کار نمی‌کند، فقط با font_data در config)
+           mPDF Bulletproof Stylesheet - 11-Column Mathematical Grid
            ============================================================ */
+        * { box-sizing: border-box; }
+
         body {
-            font-family: yekanbakh, sans-serif;
-            font-size: 9pt;
-            color: #000;
+            font-family: yekanbakh, "Yekan Bakh FaNum", Tahoma, sans-serif;
             direction: rtl;
+            color: #000;
             margin: 0;
             padding: 0;
-        }
-        table, td, th, div, span {
-            font-family: yekanbakh, sans-serif;
+            font-size: 7.5pt;
         }
 
-        table {
+        /* 1. Brand Logos */
+        table.brand { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
+        table.brand td { border: none; padding: 0 2px; vertical-align: middle; }
+        td.brand-web  { text-align: right; }
+        td.brand-logo { text-align: left; }
+
+        /* 2. Master Grid */
+        table.master-grid {
             width: 100%;
             border-collapse: collapse;
-            border-spacing: 0;
+            border: 1.5pt solid #000; /* کادر بیرونی ضخیم‌ */
             table-layout: fixed;
         }
-
-        /* ============================================================
-           1) BRAND BAR
-           ============================================================ */
-        table.brand td {
-            border: none;
-            padding: 0 4px 6px;
+        table.master-grid td, table.master-grid th {
+            border: 0.75pt solid #000; /* خطوط داخلی ظریف */
             vertical-align: middle;
-        }
-        .brand-left {
-            text-align: left;
-            font-size: 26pt;
-            font-weight: bold;
-            color: #c8c8c8;
-            letter-spacing: 1px;
-            line-height: 1;
-        }
-        .brand-icon {
-            background-color: #D60A69;
-            color: #fff;
-            padding: 1px 8px 4px 8px;
-            font-size: 16pt;
-            font-weight: bold;
-        }
-        .brand-right {
-            text-align: right;
-            color: #888;
-            font-size: 10pt;
-            letter-spacing: 5px;
-            vertical-align: bottom;
-            padding-bottom: 8px;
+            padding: 3.5px 3px;
         }
 
-        /* ============================================================
-           2) HEADER — سربرگ (طبق merge اکسل: B-C برای label/value و D-L برای عنوان)
-           ============================================================ */
-        table.header td {
-            border: 1px solid #000;
-            padding: 6px 10px;
-            vertical-align: middle;
-            font-size: 10pt;
-        }
-        .h-lbl {
-            font-weight: bold;
-            text-align: right;
-            background: #fff;
-        }
-        .h-val {
-            text-align: right;
-            font-weight: bold;
-            background: #fff;
-        }
-        .h-title {
-            text-align: center;
-            font-size: 22pt;
-            font-weight: bold;
-            background: #fff;
-            line-height: 1;
-        }
+        /* کلاس‌های کمکی */
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .text-left { text-align: left; }
+        .font-bold { font-weight: bold; }
+        .nowrap { white-space: nowrap; overflow: hidden; }
 
-        /* ============================================================
-           3) STATUS BAR
-           ============================================================ */
-        table.status td {
-            background-color: #D60A69;
-            color: #ffffff;
-            text-align: center;
-            font-weight: bold;
-            font-size: 13pt;
-            padding: 10px 10px;
-            border: 1px solid #000;
-        }
+        /* رنگ‌بندی */
+        .bg-gray { background-color: #E9ECEF; }
+        .bg-pink { background-color: #D60A69; color: #ffffff; }
+        .bg-white { background-color: #ffffff; }
+        .text-red { color: #FF0000; }
+        .text-muted { color: #A6A6A6; } /* دقیقاً مطابق اکسل (xl118/xl190) */
 
-        /* ============================================================
-           4) SECTION TITLE — نوار خاکستری
-           ============================================================ */
-        .section {
-            background-color: #E9ECEF;
-            border: 1px solid #000;
-            padding: 8px 8px;
-            text-align: center;
-            font-weight: bold;
-            font-size: 11pt;
-            margin-top: 6px;
-        }
+        /* سایز فونت‌ها و فواصل */
+        .title-main { font-size: 15pt; font-weight: bold; }
+        .section-title { font-size: 10pt; font-weight: bold; text-align: center; background-color: #E9ECEF; padding: 4.5px 0; }
 
-        /* ============================================================
-           5) PARTY TABLE — اطلاعات خریدار/فروشنده
-           ============================================================ */
-        table.party td {
-            border: 1px solid #000;
-            padding: 6px 8px;
-            vertical-align: middle;
-            font-size: 9pt;
-            text-align: right;
-            background: #fff;
-        }
-        table.party td.lbl {
-            font-weight: bold;
-        }
+        .lbl { font-size: 7.5pt; font-weight: bold; background-color: #fcfcfc; }
+        .val { font-size: 7.5pt; }
 
-        /* ============================================================
-           6) ITEMS TABLE — جدول اقلام
-           ============================================================ */
-        table.items th,
-        table.items td {
-            border: 1px solid #000;
-            padding: 5px 3px;
-            text-align: center;
-            font-size: 8.5pt;
-            vertical-align: middle;
-        }
-        table.items thead th {
-            background-color: #E9ECEF;
-            font-weight: bold;
-            padding: 6px 3px;
-            line-height: 1.25;
-            font-size: 8.5pt;
-        }
-        table.items td.desc {
-            text-align: right;
-            font-size: 8.5pt;
-            padding: 5px 6px;
-        }
-        table.items tfoot td {
-            background-color: #E9ECEF;
-            font-weight: bold;
-            padding: 7px 3px;
-            font-size: 9pt;
-        }
+        /* هدر اقلام - باریک‌تر شدن طبق درخواست شما */
+        .items-head td { text-align: center; font-size: 7.5pt; font-weight: bold; padding: 2px; }
 
-        /* ============================================================
-           7) PAYABLE — مبلغ قابل پرداخت
-           ============================================================ */
-        table.payable td {
-            border: 1px solid #000;
-            padding: 9px 10px;
-            font-size: 10pt;
-            vertical-align: middle;
-            background: #fff;
-        }
-        table.payable td.lbl {
-            font-weight: bold;
-            text-align: right;
-        }
-        table.payable td.words {
-            text-align: right;
-            font-weight: bold;
-        }
-        table.payable td.amount {
-            font-weight: bold;
-            text-align: center;
-            font-size: 11pt;
-        }
+        .amount-cell { font-size: 7.5pt; white-space: nowrap; text-align: center; }
 
-        /* ============================================================
-           8) NOTES — توضیحات مهم
-           ============================================================ */
-        table.notes td {
-            border: 1px solid #000;
-            padding: 8px 10px;
-            vertical-align: middle;
-            background: #fff;
-        }
-        table.notes td.lbl {
-            font-weight: bold;
-            text-align: center;
-            font-size: 11pt;
-        }
-        table.notes td.body {
-            text-align: justify;
-            font-size: 9pt;
-            line-height: 1.9;
-            color: #000;
-        }
+        .notes-text { line-height: 1.6; font-size: 7.5pt; padding: 6px 10px !important; }
     </style>
 </head>
 <body>
 
-    {{-- ============================================================
-         تعریف عرض ستون‌ها (دقیقاً مطابق اکسل / 11 ستون B..L)
-         B=10.01  C=22.39  D=4.84  E=6.15  F=5.32  G..K=8.07 ×5  L=10.94
-         ============================================================ --}}
-
-    {{-- 1) BRAND BAR --}}
-    <table class="brand" cellpadding="0" cellspacing="0">
+    {{-- ================= 1. BRAND (LOGOS) ================= --}}
+    <table class="brand">
         <tr>
-            <td class="brand-left" style="width:50%;">
-                ELITEZONE<span class="brand-icon">e</span>
+            <td class="brand-web" style="width:50%;">
+                @if(!empty($brand_web))<img src="{{ $brand_web }}" alt="www.elitezone.me" width="200" height="37" style="width:49mm;height:9mm;">@endif
             </td>
-            <td class="brand-right" style="width:50%;">
-                w w w . e l i t e z o n e . m e
+            <td class="brand-logo" style="width:50%;">
+                @if(!empty($brand_logo))<img src="{{ $brand_logo }}" alt="ELITEZONE" width="217" height="40" style="width:53mm;height:9.9mm;">@endif
             </td>
         </tr>
     </table>
 
-    {{-- 2) HEADER — سربرگ سفارش
-         B = label (10.01%), C = value (22.39%), D-L = عنوان (67.60%) --}}
-    <table class="header" cellpadding="0" cellspacing="0">
+    {{-- ================= 2. THE MASTER GRID ================= --}}
+    <table class="master-grid">
+        {{-- ماتریس ۱۱ ستونه دقیق --}}
         <colgroup>
-            <col style="width:10.01%;">
-            <col style="width:22.39%;">
-            <col style="width:67.60%;">
-        </colgroup>
-        <tr>
-            <td class="h-lbl">شماره سفارش :</td>
-            <td class="h-val">{{ $invoice_number ?? $order->order_number }}</td>
-            <td rowspan="3" class="h-title">پیش فاکتور فروش</td>
-        </tr>
-        <tr>
-            <td class="h-lbl" style="border-top:none;">تاریخ صدور :</td>
-            <td class="h-val" style="border-top:none;">{{ $date_shamsi }}</td>
-        </tr>
-        <tr>
-            <td class="h-lbl" style="border-top:none;">تاریخ اعتبار :</td>
-            <td class="h-val" style="border-top:none;">{{ $date_shamsi }}</td>
-        </tr>
-    </table>
+            <col style="width: 10.01%;"> <col style="width: 22.39%;"> <col style="width: 4.84%;">  <col style="width: 6.15%;">  <col style="width: 5.32%;">  <col style="width: 8.07%;">  <col style="width: 8.07%;">  <col style="width: 8.07%;">  <col style="width: 8.07%;">  <col style="width: 8.07%;">  <col style="width: 10.94%;"> </colgroup>
 
-    {{-- 3) STATUS BAR — B+C = وضعیت (32.40%), D-L = وضعیت متن (67.60%) --}}
-    <table class="status" cellpadding="0" cellspacing="0">
-        <colgroup>
-            <col style="width:32.40%;">
-            <col style="width:67.60%;">
-        </colgroup>
+        {{-- ===== HEADER ===== --}}
         <tr>
-            <td>وضعیت</td>
-            <td>{{ $payment_label ?? 'پرداخت نشده' }}</td>
+            <td class="lbl text-right">شماره سفارش :</td>
+            <td class="val text-right font-bold">{{ enToFa($invoice_number ?? ($order->order_number ?? '-')) }}</td>
+            <td colspan="9" rowspan="3" class="title-main text-center bg-white">پیش فاکتور فروش</td>
         </tr>
-    </table>
+        <tr>
+            <td class="lbl text-right">تاریخ صدور :</td>
+            <td class="val text-right">{{ enToFa($date_shamsi ?? '-') }}</td>
+        </tr>
+        <tr>
+            <td class="lbl text-right">تاریخ اعتبار :</td>
+            <td class="val text-right">{{ enToFa($validity_shamsi ?? $date_shamsi ?? '-') }}</td>
+        </tr>
 
-    {{-- 4) BUYER --}}
-    <div class="section">مشخصات خریدار</div>
-    <table class="party" cellpadding="0" cellspacing="0">
-        <colgroup>
-            <col style="width:10.01%;"> {{-- B label1 --}}
-            <col style="width:22.39%;"> {{-- C    --}}
-            <col style="width:4.84%;">  {{-- D    value1 (C-F merged) --}}
-            <col style="width:6.15%;">  {{-- E    --}}
-            <col style="width:5.32%;">  {{-- F    --}}
-            <col style="width:8.07%;">  {{-- G label2 --}}
-            <col style="width:8.07%;">  {{-- H    --}}
-            <col style="width:8.07%;">  {{-- I    value2 (H-J merged) --}}
-            <col style="width:8.07%;">  {{-- J    --}}
-            <col style="width:8.07%;">  {{-- K label3 --}}
-            <col style="width:10.94%;"> {{-- L    value3 --}}
-        </colgroup>
+        {{-- ===== STATUS ===== --}}
         <tr>
-            <td class="lbl">نام و نام خانوادگی :</td>
-            <td colspan="4">{{ $buyer['name'] ?? '' }}</td>
-            <td class="lbl">کد ملی :</td>
-            <td colspan="3">{{ $buyer['national_id'] ?? '' }}</td>
-            <td class="lbl">شماره اقتصادی :</td>
-            <td>{{ $buyer['economic_code'] ?? '' }}</td>
+            <td colspan="2" class="bg-pink text-center font-bold" style="font-size: 11pt; border-left: 1.5pt solid #fff;">وضعیت</td>
+            <td colspan="9" class="bg-pink text-center font-bold" style="font-size: 11pt;">
+                {{ $payment_label ?? 'پرداخت نشده' }}
+            </td>
         </tr>
-        <tr>
-            <td class="lbl">استان :</td>
-            <td colspan="4">{{ $buyer['province'] ?? '' }}</td>
-            <td class="lbl">شهر :</td>
-            <td colspan="3">{{ $buyer['city'] ?? '' }}</td>
-            <td class="lbl">کد پستی :</td>
-            <td>{{ $buyer['postal_code'] ?? '' }}</td>
-        </tr>
-        <tr>
-            <td class="lbl">نشانی :</td>
-            <td colspan="4">{{ $buyer['address'] ?? '' }}</td>
-            <td class="lbl">شماره موبایل :</td>
-            <td colspan="5">{{ $buyer['phone'] ?? '' }}</td>
-        </tr>
-    </table>
 
-    {{-- 5) SELLER --}}
-    <div class="section">مشخصات فروشنده</div>
-    <table class="party" cellpadding="0" cellspacing="0">
-        <colgroup>
-            <col style="width:10.01%;">
-            <col style="width:22.39%;">
-            <col style="width:4.84%;">
-            <col style="width:6.15%;">
-            <col style="width:5.32%;">
-            <col style="width:8.07%;">
-            <col style="width:8.07%;">
-            <col style="width:8.07%;">
-            <col style="width:8.07%;">
-            <col style="width:8.07%;">
-            <col style="width:10.94%;">
-        </colgroup>
+        {{-- ===== BUYER ===== --}}
+        <tr><td colspan="11" class="section-title">مشخصات خریدار</td></tr>
         <tr>
-            <td class="lbl">نام شخص حقیقی/حقوقی :</td>
-            <td colspan="4">{{ $seller['name'] }}</td>
-            <td class="lbl">شماره اقتصادی :</td>
-            <td colspan="3">{{ $seller['economic_code'] }}</td>
-            <td class="lbl">شماره ثبت :</td>
-            <td>{{ $seller['reg_id'] }}</td>
+            <td class="lbl text-right">نام و نام خانوادگی:</td>
+            <td colspan="4" class="val text-right">{{ $buyer['name'] ?? '-' }}</td>
+            <td class="lbl text-right">کد ملی:</td>
+            <td colspan="3" class="val text-right">{{ enToFa($buyer['national_id'] ?? '-') }}</td>
+            <td class="lbl text-right">شماره اقتصادی:</td>
+            <td class="val text-right">{{ enToFa($buyer['economic_code'] ?? '-') }}</td>
         </tr>
         <tr>
-            <td class="lbl">شهر/استان :</td>
-            <td colspan="4">{{ $seller['city'] ?? 'اصفهان/اصفهان' }}</td>
-            <td class="lbl">کد پستی :</td>
-            <td colspan="3">{{ $seller['postal_code'] }}</td>
-            <td class="lbl">شناسه ملی :</td>
-            <td>{{ $seller['national_id'] }}</td>
+            <td class="lbl text-right">استان:</td>
+            <td colspan="4" class="val text-right">{{ $buyer['province'] ?? '-' }}</td>
+            <td class="lbl text-right">شهر:</td>
+            <td colspan="3" class="val text-right">{{ $buyer['city'] ?? '-' }}</td>
+            <td class="lbl text-right">کد پستی:</td>
+            <td class="val text-right">{{ enToFa($buyer['postal_code'] ?? '-') }}</td>
         </tr>
         <tr>
-            <td class="lbl">نشانی :</td>
-            <td colspan="4">{{ $seller['address'] }}</td>
-            <td class="lbl">شماره تلفن :</td>
-            <td colspan="3">{{ $seller['phone'] }}</td>
-            <td class="lbl">شماره نمابر :</td>
-            <td>{{ $seller['fax'] ?? $seller['phone'] }}</td>
+            <td class="lbl text-right">نشانی:</td>
+            <td colspan="4" class="val text-right">{{ $buyer['address'] ?? '-' }}</td>
+            <td class="lbl text-right">شماره موبایل:</td>
+            <td colspan="5" class="val text-right">{{ enToFa($buyer['phone'] ?? '-') }}</td>
         </tr>
-    </table>
 
-    {{-- 6) ITEMS --}}
-    <div class="section">مشخصات کالا یا خدمات مورد معامله</div>
-    <table class="items" cellpadding="0" cellspacing="0">
-        <colgroup>
-            <col style="width:10.01%;"> {{-- B ردیف --}}
-            <col style="width:22.39%;"> {{-- C شرح --}}
-            <col style="width:4.84%;">  {{-- D مقدار part1 --}}
-            <col style="width:6.15%;">  {{-- E مقدار part2 --}}
-            <col style="width:5.32%;">  {{-- F مبلغ واحد --}}
-            <col style="width:8.07%;">  {{-- G مبلغ --}}
-            <col style="width:8.07%;">  {{-- H تخفیف --}}
-            <col style="width:8.07%;">  {{-- I پس از تخفیف --}}
-            <col style="width:8.07%;">  {{-- J مالیات --}}
-            <col style="width:8.07%;">  {{-- K قابل پرداخت --}}
-            <col style="width:10.94%;"> {{-- L توضیحات --}}
-        </colgroup>
-        <thead>
-            <tr>
-                <th rowspan="2">ردیف</th>
-                <th rowspan="2">شرح کالا یا خدمات</th>
-                <th colspan="2">واحد(کیلوگرم)</th>
-                <th colspan="6">واحد مبالغ (ریال)</th>
-                <th rowspan="2">توضیحات کالا</th>
-            </tr>
-            <tr>
-                <th colspan="2">مقدار</th>
-                <th>مبلغ واحد</th>
-                <th>مبلغ</th>
-                <th>تخفیف</th>
-                <th>مبلغ پس از تخفیف</th>
-                <th>جمع مالیات</th>
-                <th>مبلغ قابل پرداخت</th>
-            </tr>
-        </thead>
-        <tbody>
-            @php
-                $sumQty=$sumGross=$sumDiscount=$sumAfterDisc=$sumTax=$sumFinal=0;
-            @endphp
-            @foreach($order->items as $index => $item)
-                @php
-                    $qty       = (float) ($item->quantity ?? $item->weight ?? 0);
-                    $unitPrice = (float) ($item->unit_price ?? $item->price ?? 0);
-                    $gross     = (float) ($item->total_price ?? ($qty * $unitPrice));
-                    $discount  = (float) ($item->discount_amount ?? 0);
-                    $afterDisc = max(0, $gross - $discount);
-                    $tax       = (float) ($item->tax_amount ?? $item->vat_amount ?? 0);
-                    $final     = $afterDisc + $tax;
-                    $sumQty       += $qty;
-                    $sumGross     += $gross;
-                    $sumDiscount  += $discount;
-                    $sumAfterDisc += $afterDisc;
-                    $sumTax       += $tax;
-                    $sumFinal     += $final;
-                    $name = $item->product_name
-                            ?? optional($item->productVariant)->name
-                            ?? optional(optional($item->productVariant)->product)->name
-                            ?? 'محصول';
-                    $itemNote = $item->note ?? $item->description ?? '';
-                @endphp
+        {{-- ===== SELLER ===== --}}
+        <tr><td colspan="11" class="section-title">مشخصات فروشنده</td></tr>
+        <tr>
+            <td class="lbl text-right">نام شخص حقیقی/حقوقی:</td>
+            <td colspan="4" class="val text-right">{{ $seller['name'] ?? '-' }}</td>
+            <td class="lbl text-right">شماره اقتصادی:</td>
+            <td colspan="3" class="val text-right">{{ enToFa($seller['economic_code'] ?? '-') }}</td>
+            <td class="lbl text-right">شماره ثبت:</td>
+            <td class="val text-right">{{ enToFa($seller['reg_id'] ?? '-') }}</td>
+        </tr>
+        <tr>
+            <td class="lbl text-right">شهر/استان:</td>
+            <td colspan="4" class="val text-right">{{ $seller['city'] ?? 'اصفهان/اصفهان' }}</td>
+            <td class="lbl text-right">کد پستی:</td>
+            <td colspan="3" class="val text-right">{{ enToFa($seller['postal_code'] ?? '-') }}</td>
+            <td class="lbl text-right">شناسه ملی:</td>
+            <td class="val text-right">{{ enToFa($seller['national_id'] ?? '-') }}</td>
+        </tr>
+        <tr>
+            <td class="lbl text-right">نشانی:</td>
+            <td colspan="4" class="val text-right">{{ enToFa($seller['address'] ?? '-') }}</td>
+            <td class="lbl text-right">شماره تلفن/نمابر:</td>
+            <td colspan="5" class="val text-right">{{ enToFa($seller['phone'] ?? '-') }}</td>
+        </tr>
+
+        {{-- ===== ITEMS HEADER ===== --}}
+        <tr><td colspan="11" class="section-title">مشخصات کالا یا خدمات مورد معامله</td></tr>
+        {{-- رنگ سفید شد و عرض‌ها کم شد --}}
+        <tr class="items-head bg-white">
+            <td rowspan="2" style="border-bottom: 1.5pt solid #000;">ردیف</td>
+            <td rowspan="2" style="border-bottom: 1.5pt solid #000;">شرح کالا یا خدمات</td>
+            <td colspan="2" class="text-muted" style="border-bottom: none;">واحد(کیلوگرم)</td>
+            <td colspan="6" class="text-muted" style="border-bottom: none;">واحد مبالغ (ریال)</td>
+            <td rowspan="2" style="border-bottom: 1.5pt solid #000;">توضیحات کالا</td>
+        </tr>
+        <tr class="items-head bg-white">
+            <td colspan="2" style="border-top: none; border-bottom: 1.5pt solid #000;">مقدار</td>
+            <td style="border-top: none; border-bottom: 1.5pt solid #000;">مبلغ واحد</td>
+            <td style="border-top: none; border-bottom: 1.5pt solid #000;">مبلغ</td>
+            <td class="text-red" style="border-top: none; border-bottom: 1.5pt solid #000;">تخفیف</td>
+            <td style="border-top: none; border-bottom: 1.5pt solid #000;">پس از تخفیف</td>
+            <td style="border-top: none; border-bottom: 1.5pt solid #000;">جمع مالیات</td>
+            <td style="border-top: none; border-bottom: 1.5pt solid #000;">مبلغ قابل پرداخت</td>
+        </tr>
+
+        {{-- ===== ITEMS LOOP ===== --}}
+        @if(isset($line_items) && count($line_items) > 0)
+            @foreach($line_items as $line)
+                @php $q = (float) ($line['quantity'] ?? 0); $qf = number_format($q, $q == floor($q) ? 0 : 2); @endphp
                 <tr>
-                    <td>{{ $index + 1 }}</td>
-                    <td class="desc">{{ $name }}</td>
-                    <td colspan="2">{{ number_format($qty, $qty == floor($qty) ? 0 : 2) }}</td>
-                    <td>{{ number_format($unitPrice) }}</td>
-                    <td>{{ number_format($gross) }}</td>
-                    <td>{{ number_format($discount) }}</td>
-                    <td>{{ number_format($afterDisc) }}</td>
-                    <td>{{ number_format($tax) }}</td>
-                    <td>{{ number_format($final) }}</td>
-                    <td>{{ $itemNote }}</td>
+                    <td class="amount-cell">{{ enToFa($line['row'] ?? $loop->iteration) }}</td>
+                    <td class="text-right val">{{ $line['name'] ?? '-' }}</td>
+                    <td colspan="2" class="amount-cell">{{ enToFa($qf) }}</td>
+                    <td class="amount-cell">{{ enToFa(number_format($line['unit_price'] ?? 0)) }}</td>
+                    <td class="amount-cell">{{ enToFa(number_format($line['gross'] ?? 0)) }}</td>
+                    <td class="amount-cell">{{ enToFa(number_format($line['discount'] ?? 0)) }}</td>
+                    <td class="amount-cell">{{ enToFa(number_format($line['after_discount'] ?? 0)) }}</td>
+                    <td class="amount-cell">{{ enToFa(number_format($line['tax'] ?? 0)) }}</td>
+                    <td class="amount-cell font-bold">{{ enToFa(number_format($line['final'] ?? 0)) }}</td>
+                    <td class="amount-cell" style="font-size: 6pt;">{{ $line['note'] ?? '-' }}</td>
                 </tr>
             @endforeach
-        </tbody>
-        <tfoot>
-            <tr>
-                <td colspan="2">جمع کل :</td>
-                <td colspan="2">{{ number_format($sumQty, $sumQty == floor($sumQty) ? 0 : 2) }}</td>
-                <td>-</td>
-                <td>{{ number_format($sumGross) }}</td>
-                <td>{{ number_format($sumDiscount) }}</td>
-                <td>{{ number_format($sumAfterDisc) }}</td>
-                <td>{{ number_format($sumTax) }}</td>
-                <td>{{ number_format($sumFinal) }}</td>
-                <td>-</td>
-            </tr>
-        </tfoot>
-    </table>
+        @else
+            <tr><td colspan="11" class="text-center">اقلامی یافت نشد.</td></tr>
+        @endif
 
-    {{-- 7) PAYABLE — B=10.01% (label), C-G=46.77% (words), H-L=43.22% (amount) --}}
-    <table class="payable" cellpadding="0" cellspacing="0">
-        <colgroup>
-            <col style="width:10.01%;">
-            <col style="width:46.77%;">
-            <col style="width:43.22%;">
-        </colgroup>
+        {{-- ===== TOTALS ROW ===== --}}
+        @php
+            $tq = (float) ($totals['quantity'] ?? 0);
+            $tqf = number_format($tq, $tq == floor($tq) ? 0 : 2);
+        @endphp
         <tr>
-            <td class="lbl">مبلغ قابل پرداخت :</td>
-            <td class="words">{{ $amount_words }} ریال</td>
-            <td class="amount">{{ number_format($sumFinal) }}</td>
+            <td colspan="2" class="text-center font-bold" style="font-size: 9pt;">جمع کل :</td>
+            <td colspan="2" class="amount-cell font-bold">{{ enToFa($tqf) }}</td>
+            <td class="amount-cell font-bold">-</td>
+            <td class="amount-cell font-bold">{{ enToFa(number_format($totals['gross'] ?? 0)) }}</td>
+            <td class="amount-cell font-bold">{{ enToFa(number_format($totals['discount'] ?? 0)) }}</td>
+            <td class="amount-cell font-bold">{{ enToFa(number_format($totals['after_discount'] ?? 0)) }}</td>
+            <td class="amount-cell font-bold">{{ enToFa(number_format($totals['tax'] ?? 0)) }}</td>
+            <td class="amount-cell font-bold" style="font-size: 8.5pt;">{{ enToFa(number_format($totals['final'] ?? 0)) }}</td>
+            <td class="text-center font-bold">-</td>
         </tr>
-    </table>
 
-    {{-- 8) NOTES — B=10.01% (label), C-L=89.99% (body) --}}
-    <table class="notes" cellpadding="0" cellspacing="0">
-        <colgroup>
-            <col style="width:10.01%;">
-            <col style="width:89.99%;">
-        </colgroup>
+        {{-- ===== PAYABLE ===== --}}
+        <tr class="bg-gray">
+            {{-- رنگِ متنِ کل ردیف آبی (#0070C0) و یکدست؛ لیبل هم پس‌زمینه خاکستریِ ردیف را می‌گیرد --}}
+            <td colspan="1" class="text-center font-bold" style="border-left: none; font-size: 9pt; padding: 6px; color: #0070C0;">مبلغ قابل پرداخت:</td>
+            <td colspan="5" class="text-center font-bold" style="border-right: none; border-left: none; font-size: 9.5pt; color: #0070C0;">{{ $amount_words ?? 'صفر' }} ریال</td>
+            <td colspan="5" class="text-center font-bold nowrap" style="border-right: none; font-size: 10pt; color: #0070C0;">{{ enToFa(number_format($totals['final'] ?? 0)) }}</td>
+        </tr>
+
+        {{-- ===== NOTES ===== --}}
         <tr>
-            <td class="lbl">توضیحات مهم</td>
-            <td class="body">
+            {{-- خط عمودی مشکی بین لیبل و متن حذف شد --}}
+            <td colspan="1" class="bg-gray font-bold text-center" valign="top" style="border-left: none; padding-top: 10px;">توضیحات مهم</td>
+            <td colspan="10" class="notes-text text-right bg-white" valign="top" style="border-right: none;">
                 @if(!empty($order->notes))
                     {{ $order->notes }}
                 @else
                     مهلت واریز مبلغ پیش فاکتور تا ساعت ۱۰:۰۰ صبح روز چهارشنبه می‌باشد. در صورتی که وجه پیش فاکتور قبل از این مهلت پرداخت نگردد پیش فاکتور صادره منقضی شده و از درجه اعتبار ساقط می‌گردد و خریدار حق هیچگونه مطالبه ای ندارد.<br>
-                    زمان تحویل محصولات فوق طبق برنامه تولید مجتمع فولاد کویر می‌باشد.<br>
-                    محصولات فوق با نشان کویر عرضه می گردد.<br>
-                    بعد از صدور فاکتور چنانچه وزن ارسالی با وزن پیش فاکتور متفاوت بود، مابه التفاوت حساب از طریق کیف پول تسویه می شود.
+                    زمان تحویل محصولات فوق طبق برنامه تولید مجتمع فولاد می‌باشد.<br>
+                    محصولات فوق با نشان کارخانه عرضه می گردد.<br>
+                    <span class="text-red font-bold">بعد از صدور فاکتور چنانچه وزن ارسالی با وزن پیش فاکتور متفاوت بود، مابه‌التفاوت حساب از طریق کیف پول تسویه می‌شود.</span>
                 @endif
             </td>
         </tr>

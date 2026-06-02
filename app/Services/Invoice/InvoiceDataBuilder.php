@@ -19,16 +19,18 @@ class InvoiceDataBuilder
     use ConvertNumberToWord;
 
     /**
-     * اطلاعات ثابت فروشنده (گروه نرم‌افزاری سازه)
+     * اطلاعات ثابت فروشنده — دقیقاً مطابق طراحی اکسل تیم UI/UX.
      */
     private const SELLER_INFO = [
-        'name'          => 'شرکت نرم‌افزاری سازه اسپادانا',
+        'name' => 'شرکت نرم افزاری سازه اسپادانا',
         'economic_code' => '411347688653',
-        'reg_id'        => '31106',
-        'national_id'   => '10260516722',
-        'address'       => 'اصفهان، پارک علم و فناوری، ساختمان شهرک علمی تحقیقاتی، واحد 114',
-        'phone'         => '03134005000',
-        'postal_code'   => '8158184500',
+        'reg_id' => '31106',
+        'national_id' => '10260516722',
+        'city' => 'اصفهان/اصفهان',
+        'address' => 'پارک علم و فناوری/خیابان سلمان فارسی(مشتاق سوم)/بعد از پل شهرستان/ساختمان شهرک علمی تحقیقاتی/ طبقه اول/ واحد 114',
+        'phone' => '03134005000',
+        'fax' => '03134005000',
+        'postal_code' => '8158184500',
     ];
 
     /**
@@ -40,44 +42,51 @@ class InvoiceDataBuilder
     public function build(Order $order, string $docType, string $invoiceNumber): array
     {
         $buyerProfile = $order->placer?->profile;
-        $lineItems    = $this->buildLineItems($order);
-        $totals       = $this->buildTotals($order, $lineItems);
+        $lineItems = $this->buildLineItems($order);
+        $totals = $this->buildTotals($order, $lineItems);
 
         $amountToConvert = match ($docType) {
             FinancialCodes::DOC_RESERVE_RECEIPT,
             FinancialCodes::DOC_RESERVE_REPORT => (float) $order->payment_to_reserve,
-            default                             => (float) $order->final_amount,
+            default => (float) $order->final_amount,
         };
 
         return [
-            'invoice_number'       => $invoiceNumber,
-            'order'                => $order,
-            'seller'               => self::SELLER_INFO,
-            'buyer'                => [
-                'name'          => $this->resolveBuyerName($buyerProfile),
+            'invoice_number' => $invoiceNumber,
+            'order' => $order,
+            'seller' => self::SELLER_INFO,
+            // Brand artwork from the UI/UX design (embedded so the PDF is self-contained).
+            'brand_logo' => $this->assetDataUri('elitezone-logo.png'),
+            'brand_web' => $this->assetDataUri('elitezone-web.png'),
+            'buyer' => [
+                'name' => $this->resolveBuyerName($buyerProfile),
                 'economic_code' => $buyerProfile?->economic_code ?? '-',
-                'national_id'   => $buyerProfile?->national_code
+                'national_id' => $buyerProfile?->national_code
                     ?? $buyerProfile?->national_id
                     ?? $order->placer?->national_code
                     ?? '-',
-                'phone'       => $buyerProfile?->phone ?? $order->placer?->mobile ?? '-',
+                'phone' => $buyerProfile?->phone ?? $order->placer?->mobile ?? '-',
                 'postal_code' => $order->address?->postal_code ?? '-',
-                'address'     => $order->address?->postal_address
+                'address' => $order->address?->postal_address
                     ?? $order->address?->address
                     ?? '-',
                 'province' => $order->address?->province?->name ?? '',
-                'city'     => $order->address?->city?->name ?? '',
+                'city' => $order->address?->city?->name ?? '',
             ],
-            'line_items'           => $lineItems,
-            'totals'               => $totals,
-            'doc_type'             => $docType,
-            'date_shamsi'          => verta()->format('Y/m/d'),
-            'amount_words'         => $this->numberToWords((int) round($amountToConvert)),
-            'payment_label'        => match ($order->payment_status) {
-                Order::PAYMENT_PAID    => 'پرداخت شده',
-                Order::PAYMENT_FAILED  => 'ناموفق',
+            'line_items' => $lineItems,
+            'totals' => $totals,
+            'doc_type' => $docType,
+            'date_shamsi' => verta()->format('Y/m/d'),
+            // اعتبار پیش‌فاکتور: تا انقضای رزرو سفارش، و در نبود آن، ۲ روز پس از صدور.
+            'validity_shamsi' => $order->reservation_expires_at
+                ? verta($order->reservation_expires_at)->format('Y/m/d')
+                : verta()->addDays(2)->format('Y/m/d'),
+            'amount_words' => $this->numberToWords((int) round($amountToConvert)),
+            'payment_label' => match ($order->payment_status) {
+                Order::PAYMENT_PAID => 'پرداخت شده',
+                Order::PAYMENT_FAILED => 'ناموفق',
                 Order::PAYMENT_PENDING => 'پرداخت نشده',
-                default                => 'پرداخت نشده',
+                default => 'پرداخت نشده',
             },
             'payment_status_class' => $order->payment_status === Order::PAYMENT_PAID ? 'paid' : 'unpaid',
         ];
@@ -98,18 +107,18 @@ class InvoiceDataBuilder
             return [];
         }
 
-        $sumGross      = array_sum(array_column($lines, 'gross'));
+        $sumGross = array_sum(array_column($lines, 'gross'));
         $orderDiscount = (float) $order->discount_amount;
-        $orderVat      = (float) $order->vat_amount;
+        $orderVat = (float) $order->vat_amount;
 
         foreach ($lines as &$line) {
-            $ratio              = $sumGross > 0
+            $ratio = $sumGross > 0
                 ? ($line['gross'] / $sumGross)
                 : (1 / count($lines));
-            $line['discount']       = (int) round($orderDiscount * $ratio);
+            $line['discount'] = (int) round($orderDiscount * $ratio);
             $line['after_discount'] = max(0, (int) round($line['gross'] - $line['discount']));
-            $line['tax']            = (int) round($orderVat * $ratio);
-            $line['final']          = $line['after_discount'] + $line['tax'];
+            $line['tax'] = (int) round($orderVat * $ratio);
+            $line['final'] = $line['after_discount'] + $line['tax'];
         }
         unset($line);
 
@@ -123,27 +132,27 @@ class InvoiceDataBuilder
     {
         $subtotal = (float) $order->subtotal;
         $discount = (float) $order->discount_amount;
-        $vat      = (float) $order->vat_amount;
-        $final    = (float) $order->final_amount;
+        $vat = (float) $order->vat_amount;
+        $final = (float) $order->final_amount;
 
         if ($lineItems !== []) {
             return [
-                'quantity'       => array_sum(array_column($lineItems, 'quantity')),
-                'gross'          => $subtotal > 0 ? $subtotal : array_sum(array_column($lineItems, 'gross')),
-                'discount'       => $discount,
+                'quantity' => array_sum(array_column($lineItems, 'quantity')),
+                'gross' => $subtotal > 0 ? $subtotal : array_sum(array_column($lineItems, 'gross')),
+                'discount' => $discount,
                 'after_discount' => max(0, $subtotal - $discount),
-                'tax'            => $vat,
-                'final'          => $final > 0 ? $final : array_sum(array_column($lineItems, 'final')),
+                'tax' => $vat,
+                'final' => $final > 0 ? $final : array_sum(array_column($lineItems, 'final')),
             ];
         }
 
         return [
-            'quantity'       => 0,
-            'gross'          => $subtotal,
-            'discount'       => $discount,
+            'quantity' => 0,
+            'gross' => $subtotal,
+            'discount' => $discount,
             'after_discount' => max(0, $subtotal - $discount),
-            'tax'            => $vat,
-            'final'          => $final,
+            'tax' => $vat,
+            'final' => $final,
         ];
     }
 
@@ -152,20 +161,20 @@ class InvoiceDataBuilder
      */
     private function normalizeLineItem(OrderItem $item, int $row): array
     {
-        $unitPrice  = (float) $item->unit_price;
+        $unitPrice = (float) $item->unit_price;
         $totalPrice = (float) $item->total_price;
-        $weight     = (float) ($item->weight ?? 0);
-        $qty        = (float) ($item->quantity ?? 0);
-        $unitName   = $item->unit_name ?: 'عدد';
+        $weight = (float) ($item->weight ?? 0);
+        $qty = (float) ($item->quantity ?? 0);
+        $unitName = $item->unit_name ?: 'عدد';
 
         if ($weight > 0) {
-            $displayQty  = $weight;
+            $displayQty = $weight;
             $displayUnit = 'کیلوگرم';
         } elseif ($qty > 0) {
-            $displayQty  = $qty;
+            $displayQty = $qty;
             $displayUnit = $unitName;
         } else {
-            $displayQty  = $this->sumQuantityDetails($item->quantity_details);
+            $displayQty = $this->sumQuantityDetails($item->quantity_details);
             $displayUnit = $unitName;
         }
 
@@ -181,13 +190,13 @@ class InvoiceDataBuilder
             ?? 'محصول';
 
         return [
-            'row'        => $row,
-            'name'       => $name,
-            'quantity'   => $displayQty,
-            'unit'       => $displayUnit,
+            'row' => $row,
+            'name' => $name,
+            'quantity' => $displayQty,
+            'unit' => $displayUnit,
             'unit_price' => $unitPrice,
-            'gross'      => (int) round($gross),
-            'note'       => '',
+            'gross' => (int) round($gross),
+            'note' => '',
         ];
     }
 
@@ -202,6 +211,21 @@ class InvoiceDataBuilder
         }
 
         return (float) array_sum(array_map('floatval', array_values($details)));
+    }
+
+    /**
+     * Read a PDF brand asset and return it as a base64 data URI so the rendered PDF
+     * carries the image inline (no filesystem/URL dependency at view time).
+     */
+    private function assetDataUri(string $file): string
+    {
+        $path = resource_path('views/pdf/assets/'.$file);
+
+        if (! is_file($path)) {
+            return '';
+        }
+
+        return 'data:image/png;base64,'.base64_encode((string) file_get_contents($path));
     }
 
     private function resolveBuyerName(?UserProfile $profile): string

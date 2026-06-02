@@ -105,7 +105,13 @@ trait HasOrderProgress
             if ($state !== 'inactive') {
 
                 if ($blueprint['title'] === 'سفارش رزرو شد') {
-                    $actions[] = ['label' => 'دریافت رسید', 'link' => "/profile/orders/{$id}/invoice/initial", 'type' => 'secondary'];
+                    // پیش‌فاکتور (initial = DOC_PRE_INVOICE) همیشه قابل دانلود است
+                    $actions[] = [
+                        'label' => 'دریافت رسید',
+                        'link' => "/api/profile/orders/{$id}/invoices/initial",
+                        'type' => 'secondary',
+                        'downloadable' => true,
+                    ];
                     if ($state === 'current') {
                         $actions[] = ['label' => 'پرداخت فاکتور', 'link' => "/checkout/payment/{$id}", 'type' => 'primary'];
                     }
@@ -115,15 +121,29 @@ trait HasOrderProgress
                 }
 
                 if ($blueprint['title'] === 'سفارش ثبت شد') {
-                    $actions[] = ['label' => 'فاکتور اولیه پرداخت شده', 'link' => "/profile/orders/{$id}/invoice/initial", 'type' => 'secondary'];
+                    // پیش‌فاکتور (initial = DOC_PRE_INVOICE) — نشان داده می‌شود در هر دو حالت current و completed
+                    $actions[] = [
+                        'label' => 'فاکتور اولیه پرداخت شده',
+                        'link' => "/api/profile/orders/{$id}/invoices/initial",
+                        'type' => 'secondary',
+                        'downloadable' => true,
+                    ];
                 }
 
                 if ($blueprint['title'] === 'مقدار(وزن) تایید شد') {
-                    $actions[] = ['label' => 'فاکتور نهایی', 'link' => "/profile/orders/{$id}/invoice/final", 'type' => 'secondary'];
+                    // مجوز خروج (exit_permit = DOC_EXIT_PERMIT) — فاکتور نهایی پس از وزن‌کشی
+                    $actions[] = [
+                        'label' => 'فاکتور نهایی',
+                        'link' => "/api/profile/orders/{$id}/invoices/exit_permit",
+                        'type' => 'secondary',
+                        'downloadable' => true,
+                    ];
+                    // بارنامه: لینک صفحه جزئیات سفارش در SPA (navigate، نه دانلود)
                     $actions[] = ['label' => 'بارنامه', 'link' => "/profile/orders/{$id}", 'type' => 'secondary'];
                 }
 
                 if ($blueprint['title'] === 'سفارش حمل شد') {
+                    // لینک SPA صفحه جزئیات سفارش (navigate، نه دانلود)
                     $actions[] = ['label' => 'لینک فرآیند تحویل', 'link' => "/profile/orders/{$id}", 'type' => 'secondary'];
                 }
             }
@@ -134,6 +154,14 @@ trait HasOrderProgress
                 'state' => $state,
                 'actions' => $actions,
             ];
+        }
+
+        // باگ: وقتی status = delivered/completed، currentIndex برابر آخرین index می‌شود
+        // و آخرین مرحله وضعیت 'current' می‌گیرد — در حالی که سفارش کاملاً تمام شده است.
+        // رفع: آخرین step را به 'completed' تغییر می‌دهیم تا فرانت‌اند بداند همه مراحل
+        // به پایان رسیده‌اند و نیازی به workaround normalizeSteps نیست.
+        if (in_array($status, [Order::STATUS_DELIVERED, Order::STATUS_COMPLETED])) {
+            $steps[count($steps) - 1]['state'] = 'completed';
         }
 
         return [

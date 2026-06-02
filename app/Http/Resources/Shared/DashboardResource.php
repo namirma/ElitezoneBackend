@@ -2,21 +2,23 @@
 
 namespace App\Http\Resources\Shared;
 
-use Illuminate\Http\Request;
 use App\Http\Resources\BaseJsonResource;
+use Illuminate\Http\Request;
 
 class DashboardResource extends BaseJsonResource
 {
     public function toArray(Request $request): array
     {
         return [
-            'active_order' => isset($this['active_order']) ? [
-                'id' => $this['active_order']->id,
-                'order_number' => $this['active_order']->order_number,
-                'status_text' => __('orders.status.'.$this['active_order']->status),
-                'progress' => $this['active_order']->dashboard_progress,
-                'created_at_p' => $this['active_order']->created_at_p,
-            ] : null,
+            'active_orders' => $this['active_orders']->map(function ($order) {
+                return [
+                    'id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'status_text' => __('orders.status.'.$order->status),
+                    'progress' => $order->dashboard_progress,
+                    'created_at_p' => $order->created_at_p,
+                ];
+            })->values(),
             'quick_access' => $this['quick_access'],
             'alerts' => $this['alerts'],
         ];

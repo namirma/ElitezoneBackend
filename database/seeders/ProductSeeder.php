@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Attribute;
+use App\Models\AttributeValue;
 use App\Models\AttributeType;
 use App\Models\Badge;
 use App\Models\CategoryAttribute;
@@ -200,7 +201,19 @@ class ProductSeeder extends Seeder
                         ProductVariant::DISCOUNT_END_DATE => $data[ProductVariant::DISCOUNT_END_DATE],
                     ]
                 );
-                $variant->variantAttributes()->sync(array_filter($data['attrs_ids']));
+                // Build pivot data with attribute_value_id (required by new schema)
+                $syncData = [];
+                foreach (array_filter($data['attrs_ids']) as $attrId) {
+                    $attr = Attribute::find($attrId);
+                    if ($attr) {
+                        $av = AttributeValue::firstOrCreate(
+                            ['attribute_id' => $attrId, 'value' => $attr->name],
+                            ['display_value' => $attr->display_name ?? $attr->name]
+                        );
+                        $syncData[$attrId] = ['attribute_value_id' => $av->id];
+                    }
+                }
+                $variant->variantAttributes()->sync($syncData);
             }
         }
 

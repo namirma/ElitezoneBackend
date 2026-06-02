@@ -23,15 +23,26 @@ class DashboardController extends Controller
     {
         $user = Auth::user();
 
-        $latestOrder = Order::where(function ($q) use ($user) {
+        $activeOrders = Order::where(function ($q) use ($user) {
             $q->where(Order::PLACER_USER_ID, $user->id)
                 ->orWhere(Order::BENEFICIARY_USER_ID, $user->id);
         })
+            ->whereIn(Order::STATUS, [
+                Order::STATUS_PENDING,
+                Order::STATUS_RESERVED,
+                Order::STATUS_RESERVED_EXTENDED,
+                Order::STATUS_PROCESSING,
+                Order::STATUS_PREPARING,
+                Order::STATUS_WEIGHBRIDGE_DONE,
+                Order::STATUS_PENDING_SURPLUS_PAYMENT,
+                Order::STATUS_WAYBILL_ISSUED,
+                Order::STATUS_SHIPPED,
+            ])
             ->latest()
-            ->first();
+            ->get();
 
         $data = [
-            'active_order' => $latestOrder,
+            'active_orders' => $activeOrders,
             'quick_access' => $this->getQuickAccessLinks($user->id),
             'alerts' => $this->alertsService->collectAlerts($user),
         ];

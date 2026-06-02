@@ -3,18 +3,24 @@
 namespace App\Http\Controllers\Api\User;
 
 use App\Http\Controllers\Controller;
-
 use App\Http\Requests\Wishlist\StoreWishlistRequest;
 use App\Http\Requests\Wishlist\UpdateWishlistRequest;
 use App\Http\Resources\Wishlist\WishlistResource;
 use App\Models\ProductVariant;
 use App\Models\Wishlist;
+use App\Services\Cart\CartResolver;
+use App\Services\Pricing\VariantPriceHydrator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class WishlistController extends Controller
 {
+    public function __construct(
+        private readonly CartResolver $cartResolver,
+        private readonly VariantPriceHydrator $priceHydrator,
+    ) {}
+
     private function findOrCreateDefaultWishlist()
     {
         return Auth::user()->wishlists()->firstOrCreate(
@@ -43,7 +49,17 @@ class WishlistController extends Controller
         if (Auth::id() !== $wishlist->{Wishlist::USER_ID}) {
             return error('global.unauthorized', [], 403);
         }
-        $variants = $wishlist->variants()->with('product:id,name,slug')->latest()->paginate(10);
+        $variants = $wishlist->variants()
+            ->with([
+                'product:id,name,slug',
+                'prices.factory',
+                'prices.factoryLocation',
+            ])
+            ->latest()
+            ->paginate(10);
+
+        $this->priceHydrator->hydrateMany($variants->getCollection(), $this->cartResolver->activeCode());
+
         $wishlist->setRelation('variants', $variants);
 
         return success(new WishlistResource($wishlist), 'wishlist.show.success');
