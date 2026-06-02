@@ -220,10 +220,10 @@
 
         {{-- ===== PAYABLE ===== --}}
         <tr class="bg-gray">
-            {{-- رنگِ متنِ کل ردیف آبی (#0070C0) و یکدست؛ لیبل هم پس‌زمینه خاکستریِ ردیف را می‌گیرد --}}
-            <td colspan="1" class="text-center font-bold" style="border-left: none; font-size: 9pt; padding: 6px; color: #0070C0;">مبلغ قابل پرداخت:</td>
-            <td colspan="5" class="text-center font-bold" style="border-right: none; border-left: none; font-size: 9.5pt; color: #0070C0;">{{ $amount_words ?? 'صفر' }} ریال</td>
-            <td colspan="5" class="text-center font-bold nowrap" style="border-right: none; font-size: 10pt; color: #0070C0;">{{ enToFa(number_format($totals['final'] ?? 0)) }}</td>
+            {{-- دقیقاً مطابق اکسل (xl85/xl145/xl152): متنِ مشکیِ بولد روی پس‌زمینهٔ خاکستری — بدون رنگ --}}
+            <td colspan="1" class="text-center font-bold" style="border-left: none; font-size: 9pt; padding: 6px;">مبلغ قابل پرداخت:</td>
+            <td colspan="5" class="text-center font-bold" style="border-right: none; border-left: none; font-size: 9.5pt;">{{ $amount_words ?? 'صفر' }} ریال</td>
+            <td colspan="5" class="text-center font-bold nowrap" style="border-right: none; font-size: 10pt;">{{ enToFa(number_format($totals['final'] ?? 0)) }}</td>
         </tr>
 
         {{-- ===== NOTES ===== --}}
