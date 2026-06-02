@@ -55,11 +55,12 @@
         .title-main { font-size: 15pt; font-weight: bold; }
         .section-title { font-size: 10pt; font-weight: bold; text-align: center; background-color: #E9ECEF; padding: 4.5px 0; }
 
-        .lbl { font-size: 7.5pt; font-weight: bold; background-color: #fcfcfc; }
+        /* لیبل‌ها وزن نرمال دارند (دقیقاً مطابق اکسل؛ فقط بخش‌بندها/جمع‌کل/قابل‌پرداخت بولد می‌مانند) */
+        .lbl { font-size: 7.5pt; font-weight: normal; background-color: #fcfcfc; }
         .val { font-size: 7.5pt; }
 
-        /* هدر اقلام - باریک‌تر شدن طبق درخواست شما */
-        .items-head td { text-align: center; font-size: 7.5pt; font-weight: bold; padding: 2px; }
+        /* هدر اقلام - وزن نرمال مطابق اکسل */
+        .items-head td { text-align: center; font-size: 7.5pt; font-weight: normal; padding: 2px; }
 
         .amount-cell { font-size: 7.5pt; white-space: nowrap; text-align: center; }
 
