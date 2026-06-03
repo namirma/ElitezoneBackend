@@ -2,57 +2,42 @@
 
 namespace Database\Seeders;
 
+use App\Models\Role;
 use App\Models\UserType;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
 
 class UserTypeSeeder extends Seeder
 {
     /**
-     * Run the database seeds.
+     * Idempotent — can be run multiple times safely.
+     * Uses updateOrCreate / firstOrCreate so duplicate runs don't error.
      */
     public function run(): void
     {
-        DB::table('user_types')->insert([
-            [
-                UserType::NAME => 'مهندس',
-                UserType::SLUG => 'engineer',
-            ],
-            [
-                UserType::NAME => 'پیمانکار',
-                UserType::SLUG => 'contractor',
-            ],
-            [
-                UserType::NAME => 'سوپلایر',
-                UserType::SLUG => 'supplier',
-            ],
-            [
-                UserType::NAME => 'کارفرما',
-                UserType::SLUG => 'employer',
-            ],
-            [
-                UserType::NAME => 'مشاور فنی',
-                UserType::SLUG => 'expert',
-            ],
-        ]);
+        // user_types (icon column is required — no default in schema)
+        $userTypes = [
+            ['slug' => 'engineer',   'name' => 'مهندس',    'icon' => 'hard-hat'],
+            ['slug' => 'contractor', 'name' => 'پیمانکار', 'icon' => 'briefcase'],
+            ['slug' => 'supplier',   'name' => 'سوپلایر',  'icon' => 'factory'],
+            ['slug' => 'employer',   'name' => 'کارفرما',  'icon' => 'building'],
+            ['slug' => 'expert',     'name' => 'مشاور فنی','icon' => 'star'],
+        ];
 
-        DB::table('roles')->insert([
-            [
-                'name' => 'engineer',
-                'display_name' => 'مهندس',
-            ],
-            [
-                'name' => 'contractor',
-                'display_name' => 'پیمانکار',
-            ],
-            [
-                'name' => 'supplier',
-                'display_name' => 'سوپلایر',
-            ],
-            [
-                'name' => 'employer',
-                'display_name' => 'کارفرما',
-            ],
-        ]);
+        foreach ($userTypes as $t) {
+            UserType::updateOrCreate(['slug' => $t['slug']], $t);
+        }
+
+        // Laratrust roles (admin + all user roles)
+        $roles = [
+            ['name' => 'admin',      'display_name' => 'مدیر'],
+            ['name' => 'employer',   'display_name' => 'کارفرما'],
+            ['name' => 'engineer',   'display_name' => 'مهندس'],
+            ['name' => 'contractor', 'display_name' => 'پیمانکار'],
+            ['name' => 'supplier',   'display_name' => 'سوپلایر'],
+        ];
+
+        foreach ($roles as $r) {
+            Role::firstOrCreate(['name' => $r['name']], $r);
+        }
     }
 }
