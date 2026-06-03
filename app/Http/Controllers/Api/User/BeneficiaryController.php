@@ -81,6 +81,12 @@ class BeneficiaryController extends Controller
             ]
         );
 
+        // مشاور فنی (expert) نمی‌تواند به عنوان ذی‌نفع خرید دیگری اضافه شود
+        $expertTypeId = UserType::where('slug', 'expert')->value('id');
+        if ($expertTypeId && $beneficiaryUser->{User::TYPE_ID} == $expertTypeId) {
+            return error(__('beneficiary.cannot_be_consultant'), [], 422);
+        }
+
         $info = data_get($idenRes, 'result.identityInfo', []);
         $fname = (string) data_get($info, 'firstName', '');
         $lname = (string) data_get($info, 'lastName', '');
