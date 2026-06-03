@@ -27,9 +27,9 @@
             table-layout: fixed;
         }
         table.master-grid td, table.master-grid th {
-            border: 0.3pt solid #000; /* خطوط داخلی ظریف — کمتر از 0.5pt تا در PDF هم مینیمال باشد */
+            border: 0.3pt solid #000;
             vertical-align: middle;
-            padding: 3.5px 3px;
+            padding: 6px 4px;   /* ↑ از 3.5px/3px — فاصله عمودی بیشتر بین ردیف‌ها */
         }
 
         /* کلاس‌های کمکی */
@@ -44,20 +44,20 @@
         .bg-pink { background-color: #D60A69; color: #ffffff; }
         .bg-white { background-color: #ffffff; }
         .text-red { color: #FF0000; }
-        .text-muted { color: #A6A6A6; } /* دقیقاً مطابق اکسل (xl118/xl190) */
+        .text-muted { color: #A6A6A6; }
 
         /* سایز فونت‌ها و فواصل */
         .title-main { font-size: 15pt; font-weight: bold; }
-        .section-title { font-size: 10pt; font-weight: bold; text-align: center; background-color: #E9ECEF; padding: 4.5px 0; }
+        .section-title { font-size: 10pt; font-weight: bold; text-align: center; background-color: #E9ECEF; padding: 7px 0; }
 
-        /* لیبل‌ها وزن نرمال دارند (دقیقاً مطابق اکسل؛ فقط بخش‌بندها/جمع‌کل/قابل‌پرداخت بولد می‌مانند) */
+        /* لیبل‌ها */
         .lbl { font-size: 7.5pt; font-weight: normal; background-color: #fcfcfc; }
         .val { font-size: 7.5pt; }
 
-        /* هدر اقلام - وزن نرمال مطابق اکسل */
-        .items-head td { text-align: center; font-size: 7.5pt; font-weight: normal; padding: 2px; }
+        /* هدر اقلام */
+        .items-head td { text-align: center; font-size: 7.5pt; font-weight: normal; padding: 5px 3px; }
 
         .amount-cell { font-size: 7.5pt; white-space: nowrap; text-align: center; }
 
-        .notes-text { line-height: 1.6; font-size: 7.5pt; padding: 6px 10px !important; }
+        .notes-text { line-height: 1.8; font-size: 7.5pt; padding: 10px 12px !important; }
     </style>
