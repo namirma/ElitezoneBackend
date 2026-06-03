@@ -27,6 +27,7 @@ class DashboardController extends Controller
             $q->where(Order::PLACER_USER_ID, $user->id)
                 ->orWhere(Order::BENEFICIARY_USER_ID, $user->id);
         })
+            ->with(['placer.profile', 'placer.type', 'beneficiary.profile'])
             ->whereIn(Order::STATUS, [
                 Order::STATUS_PENDING,
                 Order::STATUS_RESERVED,

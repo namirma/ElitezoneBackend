@@ -15,7 +15,16 @@ class OrderResource extends BaseJsonResource
     public function toArray(Request $request): array
     {
         $user = Auth::user();
+        $viewerId = Auth::id();
         $isSupplier = $user ? $user->hasRole('supplier') : false;
+
+        // مشاورِ سفارش: اگر خودِ خریدار «مشاور فنی» (type=expert) باشد، مشاورِ سفارش خودِ اوست
+        // (چون مشاور نمی‌تواند برای خریدِ خودش مشاورِ دیگری معرفی کند)؛ در غیر این صورت
+        // مشاورِ نام‌برده‌شده همان beneficiary است.
+        $placerIsConsultant = optional($this->placer?->type)->slug === 'expert';
+        $consultantUser = $placerIsConsultant
+            ? $this->placer
+            : ($this->{Order::BENEFICIARY_USER_ID} ? $this->beneficiary : null);
 
         $progress = $this->dashboard_progress ?? [];
 
@@ -55,7 +64,7 @@ class OrderResource extends BaseJsonResource
                     default => 'primary',
                 },
                 'progress_data' => $progress,
-                'consultant_progress_data' => $this->{Order::BENEFICIARY_USER_ID}
+                'consultant_progress_data' => $consultantUser
                     ? $this->consultant_progress
                     : null,
                 'supplier_progress_data' => $isSupplier
@@ -99,15 +108,23 @@ class OrderResource extends BaseJsonResource
                 ];
             }),
 
-            // --- Beneficiary Info ---
-            'beneficiary' => $this->when($this->{Order::BENEFICIARY_USER_ID}, function () {
+            // --- Beneficiary Info (گیرنده سفارش) ---
+            'beneficiary' => $this->when($this->{Order::BENEFICIARY_USER_ID}, function () use ($viewerId) {
                 return [
                     'id' => $this->{Order::BENEFICIARY_USER_ID},
                     'full_name' => $this->beneficiary->full_name ?? 'نامشخص',
                     'national_id' => $this->beneficiary->profile->national_code ?? null,
                     'mobile' => $this->beneficiary->mobile ?? null,
+                    'is_self' => $this->{Order::BENEFICIARY_USER_ID} === $viewerId,
                 ];
             }, null),
+
+            // --- Consultant Info (مشاور فنی سفارش) — برای عنوانِ تایم‌لاین ---
+            'consultant' => $consultantUser ? [
+                'id' => $consultantUser->id,
+                'full_name' => $consultantUser->full_name,
+                'is_self' => $consultantUser->id === $viewerId,
+            ] : null,
 
             // --- Financial Info ---
             'financial' => [
