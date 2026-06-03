@@ -43,7 +43,7 @@ class SupplierController extends Controller
     public function store(StoreSupplierProfileRequest $request)
     {
         if (! SupplierProfile::where([SupplierProfile::USER_ID => Auth::id()])->exists()) {
-            ProfileController::removeProfile();
+            // ProfileController::removeProfile();  // ← متد وجود ندارد؛ در سایر کنترلرها نیز کامنت است
         }
 
         $supplierProfile = SupplierProfile::updateOrCreate(
