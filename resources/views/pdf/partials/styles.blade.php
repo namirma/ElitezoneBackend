@@ -47,7 +47,7 @@
         .text-muted { color: #A6A6A6; }
 
         /* سایز فونت‌ها و فواصل */
-        .title-main { font-size: 20pt; font-weight: bold; }
+        .title-main { font-size: 15pt; font-weight: bold; }
         .section-title { font-size: 10pt; font-weight: bold; text-align: center; background-color: #E9ECEF; padding: 7px 0; }
 
         /* لیبل‌ها */
