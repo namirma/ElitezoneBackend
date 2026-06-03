@@ -34,7 +34,7 @@
 
         {{-- ===== STATUS ===== --}}
         <tr>
-            <td colspan="2" class="bg-pink text-center font-bold" style="font-size: 11pt; border-left: 1.5pt solid #fff;">وضعیت</td>
+            <td colspan="2" class="bg-pink text-center font-bold" style="font-size: 11pt; border-left: 0.75pt solid #fff;">وضعیت</td>
             <td colspan="9" class="bg-pink text-center font-bold" style="font-size: 11pt;">
                 مجوز صادر شده
             </td>
@@ -45,10 +45,10 @@
         {{-- ===== ITEMS HEADER (minimal: product name + weight) ===== --}}
         <tr><td colspan="11" class="section-title">مشخصات کالای مجاز برای خروج</td></tr>
         <tr class="items-head bg-white">
-            <td style="border-bottom: 1.5pt solid #000;">ردیف</td>
-            <td colspan="3" style="border-bottom: 1.5pt solid #000;">شرح کالا</td>
-            <td colspan="3" style="border-bottom: 1.5pt solid #000;">وزن سفارش (کیلوگرم)</td>
-            <td colspan="4" style="border-bottom: 1.5pt solid #000;">وزن باسکول (کیلوگرم)</td>
+            <td style="border-bottom: 0.75pt solid #000;">ردیف</td>
+            <td colspan="3" style="border-bottom: 0.75pt solid #000;">شرح کالا</td>
+            <td colspan="3" style="border-bottom: 0.75pt solid #000;">وزن سفارش (کیلوگرم)</td>
+            <td colspan="4" style="border-bottom: 0.75pt solid #000;">وزن باسکول (کیلوگرم)</td>
         </tr>
 
         {{-- ===== ITEMS LOOP (minimal) ===== --}}

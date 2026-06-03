@@ -30,7 +30,7 @@
 
         {{-- ===== STATUS ===== --}}
         <tr>
-            <td colspan="2" class="bg-pink text-center font-bold" style="font-size: 11pt; border-left: 1.5pt solid #fff;">وضعیت</td>
+            <td colspan="2" class="bg-pink text-center font-bold" style="font-size: 11pt; border-left: 0.75pt solid #fff;">وضعیت</td>
             <td colspan="9" class="bg-pink text-center font-bold" style="font-size: 11pt;">
                 {{ $payment_label ?? 'پرداخت شده' }}
             </td>
@@ -41,20 +41,20 @@
         {{-- ===== ITEMS HEADER (loading order uses different section title) ===== --}}
         <tr><td colspan="11" class="section-title">مشخصات کالا جهت بارگیری</td></tr>
         <tr class="items-head bg-white">
-            <td rowspan="2" style="border-bottom: 1.5pt solid #000;">ردیف</td>
-            <td rowspan="2" style="border-bottom: 1.5pt solid #000;">شرح کالا یا خدمات</td>
+            <td rowspan="2" style="border-bottom: 0.75pt solid #000;">ردیف</td>
+            <td rowspan="2" style="border-bottom: 0.75pt solid #000;">شرح کالا یا خدمات</td>
             <td colspan="2" class="text-muted" style="border-bottom: none;">واحد(کیلوگرم)</td>
             <td colspan="6" class="text-muted" style="border-bottom: none;">واحد مبالغ (ریال)</td>
-            <td rowspan="2" style="border-bottom: 1.5pt solid #000;">توضیحات کالا</td>
+            <td rowspan="2" style="border-bottom: 0.75pt solid #000;">توضیحات کالا</td>
         </tr>
         <tr class="items-head bg-white">
-            <td colspan="2" style="border-top: none; border-bottom: 1.5pt solid #000;">مقدار</td>
-            <td style="border-top: none; border-bottom: 1.5pt solid #000;">مبلغ واحد</td>
-            <td style="border-top: none; border-bottom: 1.5pt solid #000;">مبلغ</td>
-            <td class="text-red" style="border-top: none; border-bottom: 1.5pt solid #000;">تخفیف</td>
-            <td style="border-top: none; border-bottom: 1.5pt solid #000;">پس از تخفیف</td>
-            <td style="border-top: none; border-bottom: 1.5pt solid #000;">جمع مالیات</td>
-            <td style="border-top: none; border-bottom: 1.5pt solid #000;">مبلغ قابل پرداخت</td>
+            <td colspan="2" style="border-top: none; border-bottom: 0.75pt solid #000;">مقدار</td>
+            <td style="border-top: none; border-bottom: 0.75pt solid #000;">مبلغ واحد</td>
+            <td style="border-top: none; border-bottom: 0.75pt solid #000;">مبلغ</td>
+            <td class="text-red" style="border-top: none; border-bottom: 0.75pt solid #000;">تخفیف</td>
+            <td style="border-top: none; border-bottom: 0.75pt solid #000;">پس از تخفیف</td>
+            <td style="border-top: none; border-bottom: 0.75pt solid #000;">جمع مالیات</td>
+            <td style="border-top: none; border-bottom: 0.75pt solid #000;">مبلغ قابل پرداخت</td>
         </tr>
 
         {{-- ===== ITEMS LOOP ===== --}}

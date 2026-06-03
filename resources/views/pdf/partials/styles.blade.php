@@ -23,11 +23,11 @@
         table.master-grid {
             width: 100%;
             border-collapse: collapse;
-            border: 1.5pt solid #000; /* کادر بیرونی ضخیم‌ */
+            border: 0.75pt solid #000; /* کادر بیرونی */
             table-layout: fixed;
         }
         table.master-grid td, table.master-grid th {
-            border: 0.75pt solid #000; /* خطوط داخلی ظریف */
+            border: 0.3pt solid #000; /* خطوط داخلی ظریف — کمتر از 0.5pt تا در PDF هم مینیمال باشد */
             vertical-align: middle;
             padding: 3.5px 3px;
         }

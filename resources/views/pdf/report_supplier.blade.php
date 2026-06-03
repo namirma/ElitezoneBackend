@@ -36,7 +36,7 @@
 
         {{-- ===== STATUS ===== --}}
         <tr>
-            <td colspan="2" class="bg-pink text-center font-bold" style="font-size: 11pt; border-left: 1.5pt solid #fff;">وضعیت</td>
+            <td colspan="2" class="bg-pink text-center font-bold" style="font-size: 11pt; border-left: 0.75pt solid #fff;">وضعیت</td>
             <td colspan="9" class="bg-pink text-center font-bold" style="font-size: 11pt;">
                 {{ $payment_label ?? 'پرداخت شده' }}
             </td>
