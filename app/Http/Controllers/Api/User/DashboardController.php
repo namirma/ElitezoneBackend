@@ -38,6 +38,7 @@ class DashboardController extends Controller
                 Order::STATUS_WAYBILL_ISSUED,
                 Order::STATUS_SHIPPED,
             ])
+            ->with(['placer', 'beneficiary']) // eager-load برای buyer/beneficiary در DashboardResource
             ->latest()
             ->get();
 

@@ -208,21 +208,23 @@ trait HasOrderProgress
         $currentIndex = -1;
 
         if (! $isCancelled) {
-            if ($this->{Order::CONSULTANT_HOLD_RELEASED_AT} !== null) {
-                $currentIndex = 3; // مرحله ۴: وجه آزاد شد
+            // باگ ۱ (رفع‌شده): delivered/completed باید به مرحله ۴ برسد، نه مرحله ۱
+            if (in_array($status, [Order::STATUS_DELIVERED, Order::STATUS_COMPLETED])
+                || $this->{Order::CONSULTANT_HOLD_RELEASED_AT} !== null) {
+                $currentIndex = 3; // مرحله ۴: سفارش تکمیل شد / وجه آزاد شد
             } elseif ($this->{Order::CONSULTANT_MOADIAN_REF} !== null) {
                 $currentIndex = 2; // مرحله ۳: فاکتور خدمات ثبت شد
-            } elseif (in_array($status, [Order::STATUS_WEIGHBRIDGE_DONE, Order::STATUS_PENDING_SURPLUS_PAYMENT])) {
-                $currentIndex = 1; // مرحله ۲: حق مشاوره منظور شد
             } elseif (in_array($status, [
-                Order::STATUS_PROCESSING,
-                Order::STATUS_PREPARING,
+                // باگ ۲ (رفع‌شده): waybill_issued/shipped باید در مرحله ۲ بمانند، نه به ۱ برگردند
                 Order::STATUS_WEIGHBRIDGE_DONE,
                 Order::STATUS_PENDING_SURPLUS_PAYMENT,
                 Order::STATUS_WAYBILL_ISSUED,
                 Order::STATUS_SHIPPED,
-                Order::STATUS_DELIVERED,
-                Order::STATUS_COMPLETED,
+            ])) {
+                $currentIndex = 1; // مرحله ۲: حق مشاوره منظور شد
+            } elseif (in_array($status, [
+                Order::STATUS_PROCESSING,
+                Order::STATUS_PREPARING,
             ])) {
                 $currentIndex = 0; // مرحله ۱: کارفرما خرید کرد
             }
@@ -270,11 +272,14 @@ trait HasOrderProgress
                             'link' => '/profile/finance',
                             'type' => 'secondary',
                         ];
-                        $actions[] = [
-                            'label' => 'فاکتور خدمات خود را ثبت کنید',
-                            'link' => "/api/profile/orders/{$id}/consultant-moadian-invoice",
-                            'type' => 'primary',
-                        ];
+                        // دکمه ثبت فاکتور فقط تا زمانی که مودیان ارسال نشده نشان داده می‌شود
+                        if ($this->{Order::CONSULTANT_MOADIAN_REF} === null) {
+                            $actions[] = [
+                                'label' => 'فاکتور خدمات خود را ثبت کنید',
+                                'link' => "/api/profile/orders/{$id}/consultant-moadian-invoice",
+                                'type' => 'primary',
+                            ];
+                        }
                         break;
 
                     case 'فاکتور خدمات ثبت شد':
@@ -297,9 +302,10 @@ trait HasOrderProgress
             ];
         }
 
-        // وقتی hold آزاد شده، آخرین مرحله کاملاً تکمیل‌شده است —
+        // وقتی سفارش تحویل داده شد یا hold آزاد شده، آخرین مرحله کاملاً تکمیل‌شده است —
         // مشابه باگ‌فیکس مرحله آخر در getDashboardProgressAttribute
-        if ($this->{Order::CONSULTANT_HOLD_RELEASED_AT} !== null) {
+        if (in_array($status, [Order::STATUS_DELIVERED, Order::STATUS_COMPLETED])
+            || $this->{Order::CONSULTANT_HOLD_RELEASED_AT} !== null) {
             $steps[count($steps) - 1]['state'] = 'completed';
         }
 

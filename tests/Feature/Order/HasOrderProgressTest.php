@@ -102,6 +102,71 @@ class HasOrderProgressTest extends TestCase
         }
     }
 
+    /**
+     * باگ ۱ (رفع‌شده): سفارش delivered بدون moadian → همه مراحل باید completed باشند
+     * قبلاً مرحله ۱ current می‌شد چون delivered در elseif آخر بود.
+     */
+    public function test_consultant_progress_delivered_without_moadian_all_completed(): void
+    {
+        $order = $this->makeOrder([
+            Order::STATUS => Order::STATUS_DELIVERED,
+            Order::CONSULTANT_MOADIAN_REF => null,
+            Order::CONSULTANT_HOLD_RELEASED_AT => null,
+        ]);
+
+        $progress = $order->consultant_progress;
+
+        foreach ($progress['steps'] as $step) {
+            $this->assertSame('completed', $step['state'],
+                "Bug 1 regression: Step «{$step['title']}» should be completed for delivered order");
+        }
+    }
+
+    /**
+     * باگ ۲ (رفع‌شده): waybill_issued → مرحله ۲ باید current باشد، نه مرحله ۱
+     * قبلاً waybill_issued در elseif مرحله ۱ بود و به ۱ برمی‌گشت.
+     */
+    public function test_consultant_progress_waybill_issued_stays_at_step2(): void
+    {
+        $order = $this->makeOrder([Order::STATUS => Order::STATUS_WAYBILL_ISSUED]);
+
+        $progress = $order->consultant_progress;
+
+        $this->assertSame('completed', $progress['steps'][0]['state'],
+            'Bug 2 regression: step 1 should be completed when waybill_issued');
+        $this->assertSame('current', $progress['steps'][1]['state'],
+            'Bug 2 regression: step 2 should be current for waybill_issued, not step 1');
+        $this->assertSame('inactive', $progress['steps'][2]['state']);
+        $this->assertSame('inactive', $progress['steps'][3]['state']);
+    }
+
+    /** shipped → همان رفتار waybill_issued — مرحله ۲ current */
+    public function test_consultant_progress_shipped_stays_at_step2(): void
+    {
+        $order = $this->makeOrder([Order::STATUS => Order::STATUS_SHIPPED]);
+
+        $progress = $order->consultant_progress;
+
+        $this->assertSame('completed', $progress['steps'][0]['state']);
+        $this->assertSame('current', $progress['steps'][1]['state']);
+    }
+
+    /** وقتی moadian_ref ست شده، دکمه «ثبت فاکتور» در مرحله ۲ باید مخفی شود */
+    public function test_consultant_progress_step2_hides_submit_button_when_moadian_submitted(): void
+    {
+        $order = $this->makeOrder([
+            Order::STATUS => Order::STATUS_WEIGHBRIDGE_DONE,
+            Order::CONSULTANT_MOADIAN_REF => 'TAX-REF-DONE',
+        ]);
+
+        $progress = $order->consultant_progress;
+
+        $step2Labels = array_column($progress['steps'][1]['actions'], 'label');
+        $this->assertContains('مشاهده کیف پول', $step2Labels);
+        $this->assertNotContains('فاکتور خدمات خود را ثبت کنید', $step2Labels,
+            'Submit button should be hidden when moadian_ref is already set');
+    }
+
     /** سفارش لغو شده → مرحله اول cancelled، بقیه inactive */
     public function test_consultant_progress_cancelled_order(): void
     {

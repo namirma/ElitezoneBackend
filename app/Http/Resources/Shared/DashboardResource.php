@@ -27,6 +27,15 @@ class DashboardResource extends BaseJsonResource
                     'supplier_progress' => $currentUser?->hasRole('supplier')
                         ? $order->supplier_progress
                         : null,
+                    // اطلاعات خریدار و مشاور برای نمایش عنوان تایم‌لاین در فرانت‌اند
+                    'buyer' => [
+                        'id' => $order->placer_user_id,
+                        'full_name' => $order->placer?->full_name,
+                    ],
+                    'beneficiary' => $order->beneficiary_user_id ? [
+                        'id' => $order->beneficiary_user_id,
+                        'full_name' => $order->beneficiary?->full_name,
+                    ] : null,
                     'created_at_p' => $order->created_at_p,
                 ];
             })->values(),
