@@ -44,13 +44,12 @@ class InvoicePdfRenderer
      */
     private function buildPdf(string $viewName, array $data, string $docType, string $invoiceNumber)
     {
-        // پیش‌فاکتور به دلیل تعداد ستون‌های زیاد در حالت Landscape طراحی شده
-        $isLandscape = ($docType === FinancialCodes::DOC_PRE_INVOICE);
-
+        // همه اسناد در قالب Landscape A4 صادر می‌شوند —
+        // گرید ۱۱-ستونه برای عرض landscape طراحی شده و در portrait به‌هم می‌ریزد.
         return PDF::loadView($viewName, $data, [], [
             'mode'         => 'utf-8',
-            'format'       => $isLandscape ? 'A4-L' : 'A4',
-            'orientation'  => $isLandscape ? 'L' : 'P',
+            'format'       => 'A4-L',
+            'orientation'  => 'L',
             'margin_left'  => 8,
             'margin_right' => 8,
             'margin_top'   => 8,
