@@ -103,10 +103,15 @@ class HasOrderProgressTest extends TestCase
     }
 
     /**
-     * باگ ۱ (رفع‌شده): سفارش delivered بدون moadian → همه مراحل باید completed باشند
-     * قبلاً مرحله ۱ current می‌شد چون delivered در elseif آخر بود.
+     * رفتار صحیح: سفارش delivered بدون Doc Q (بدون hold_released_at) → مرحله ۲ current
+     *
+     * طبق پروسه خرید (بخش «الگوریتم وابستگی واریزها»):
+     * «تا زمان صدور فاکتور سامانه مودیان توسط مشاور فنی در کیف پول وی هولد می‌شود».
+     * پس صرف تحویل کالا hold را آزاد نمی‌کند — مشاور باید خودش Doc Q ثبت کند.
+     *
+     * نکته: قبل از این fix، delivered → همه مراحل completed نشان داده می‌شد (اشتباه).
      */
-    public function test_consultant_progress_delivered_without_moadian_all_completed(): void
+    public function test_consultant_progress_delivered_without_hold_release_stays_at_step2(): void
     {
         $order = $this->makeOrder([
             Order::STATUS => Order::STATUS_DELIVERED,
@@ -116,10 +121,44 @@ class HasOrderProgressTest extends TestCase
 
         $progress = $order->consultant_progress;
 
-        foreach ($progress['steps'] as $step) {
-            $this->assertSame('completed', $step['state'],
-                "Bug 1 regression: Step «{$step['title']}» should be completed for delivered order");
-        }
+        $this->assertFalse($progress['is_cancelled']);
+
+        // مرحله ۱: کارفرما خرید کرده → completed
+        $this->assertSame('completed', $progress['steps'][0]['state'],
+            'Step 1 should be completed (purchase happened)');
+
+        // مرحله ۲: حق مشاوره منظور شده ولی Hold است → current (منتظر Doc Q)
+        $this->assertSame('current', $progress['steps'][1]['state'],
+            'Step 2 must be current: commission is in hold, waiting for consultant to submit Doc Q');
+
+        // مراحل ۳ و ۴ هنوز inactive
+        $this->assertSame('inactive', $progress['steps'][2]['state'],
+            'Step 3 should be inactive until Doc Q is submitted');
+        $this->assertSame('inactive', $progress['steps'][3]['state'],
+            'Step 4 should be inactive until hold_released_at is set by ReleaseConsultantHoldAction');
+
+        // دکمه «ثبت فاکتور» باید نمایش داشته باشد — بدون آن مشاور نمی‌تواند پولش را آزاد کند
+        $step2Labels = array_column($progress['steps'][1]['actions'], 'label');
+        $this->assertContains('فاکتور خدمات خود را ثبت کنید', $step2Labels,
+            'Submit invoice button must be visible for delivered orders awaiting Doc Q');
+    }
+
+    /** completed (مانند delivered) بدون Doc Q → همان رفتار delivered: مرحله ۲ current */
+    public function test_consultant_progress_completed_without_hold_release_stays_at_step2(): void
+    {
+        $order = $this->makeOrder([
+            Order::STATUS => Order::STATUS_COMPLETED,
+            Order::CONSULTANT_MOADIAN_REF => null,
+            Order::CONSULTANT_HOLD_RELEASED_AT => null,
+        ]);
+
+        $progress = $order->consultant_progress;
+
+        $this->assertSame('completed', $progress['steps'][0]['state']);
+        $this->assertSame('current',   $progress['steps'][1]['state'],
+            'STATUS_COMPLETED without Doc Q must also stay at step 2');
+        $this->assertSame('inactive',  $progress['steps'][2]['state']);
+        $this->assertSame('inactive',  $progress['steps'][3]['state']);
     }
 
     /**
