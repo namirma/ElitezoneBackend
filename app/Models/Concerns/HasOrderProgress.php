@@ -208,24 +208,23 @@ trait HasOrderProgress
         $currentIndex = -1;
 
         if (! $isCancelled) {
-            // باگ ۱ (رفع‌شده): delivered/completed باید به مرحله ۴ برسد، نه مرحله ۱
+            // سفارشِ تحویل‌شده/تکمیل‌شده = پورسانت مشاور واریز شده → مرحله ۴.
+            // هم‌راستا با getDashboardProgressAttribute که delivered/completed را کاملاً تمام‌شده می‌داند.
             if (in_array($status, [Order::STATUS_DELIVERED, Order::STATUS_COMPLETED])
                 || $this->{Order::CONSULTANT_HOLD_RELEASED_AT} !== null) {
-                $currentIndex = 3; // مرحله ۴: سفارش تکمیل شد / وجه آزاد شد
+                $currentIndex = 3; // مرحله ۴: حق مشاوره در دسترس
             } elseif ($this->{Order::CONSULTANT_MOADIAN_REF} !== null) {
                 $currentIndex = 2; // مرحله ۳: فاکتور خدمات ثبت شد
             } elseif (in_array($status, [
-                // باگ ۲ (رفع‌شده): waybill_issued/shipped باید در مرحله ۲ بمانند، نه به ۱ برگردند
                 Order::STATUS_WEIGHBRIDGE_DONE,
                 Order::STATUS_PENDING_SURPLUS_PAYMENT,
                 Order::STATUS_WAYBILL_ISSUED,
                 Order::STATUS_SHIPPED,
             ])) {
+                // از باسکول به بعد تا پیش از تحویل، «حق مشاوره منظور شده» باقی می‌ماند
+                // (تا وقتی فاکتور مودیان ثبت یا hold آزاد شود) — وگرنه با حمل، تایم‌لاین به مرحله ۱ پس‌رفت می‌کرد.
                 $currentIndex = 1; // مرحله ۲: حق مشاوره منظور شد
-            } elseif (in_array($status, [
-                Order::STATUS_PROCESSING,
-                Order::STATUS_PREPARING,
-            ])) {
+            } elseif (in_array($status, [Order::STATUS_PROCESSING, Order::STATUS_PREPARING])) {
                 $currentIndex = 0; // مرحله ۱: کارفرما خرید کرد
             }
         }
@@ -272,14 +271,11 @@ trait HasOrderProgress
                             'link' => '/profile/finance',
                             'type' => 'secondary',
                         ];
-                        // دکمه ثبت فاکتور فقط تا زمانی که مودیان ارسال نشده نشان داده می‌شود
-                        if ($this->{Order::CONSULTANT_MOADIAN_REF} === null) {
-                            $actions[] = [
-                                'label' => 'فاکتور خدمات خود را ثبت کنید',
-                                'link' => "/api/profile/orders/{$id}/consultant-moadian-invoice",
-                                'type' => 'primary',
-                            ];
-                        }
+                        $actions[] = [
+                            'label' => 'فاکتور خدمات خود را ثبت کنید',
+                            'link' => "/api/profile/orders/{$id}/consultant-moadian-invoice",
+                            'type' => 'primary',
+                        ];
                         break;
 
                     case 'فاکتور خدمات ثبت شد':
@@ -302,7 +298,7 @@ trait HasOrderProgress
             ];
         }
 
-        // وقتی سفارش تحویل داده شد یا hold آزاد شده، آخرین مرحله کاملاً تکمیل‌شده است —
+        // وقتی hold آزاد شده یا سفارش تحویل/تکمیل شده، آخرین مرحله کاملاً تکمیل‌شده است —
         // مشابه باگ‌فیکس مرحله آخر در getDashboardProgressAttribute
         if (in_array($status, [Order::STATUS_DELIVERED, Order::STATUS_COMPLETED])
             || $this->{Order::CONSULTANT_HOLD_RELEASED_AT} !== null) {

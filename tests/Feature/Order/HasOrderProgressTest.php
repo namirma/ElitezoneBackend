@@ -151,20 +151,19 @@ class HasOrderProgressTest extends TestCase
         $this->assertSame('current', $progress['steps'][1]['state']);
     }
 
-    /** وقتی moadian_ref ست شده، دکمه «ثبت فاکتور» در مرحله ۲ باید مخفی شود */
-    public function test_consultant_progress_step2_hides_submit_button_when_moadian_submitted(): void
+    /**
+     * مرحله ۲ — دکمه «ثبت فاکتور» همیشه نشان داده می‌شود
+     * (اندپوینت idempotent است، ثبت مجدد بی‌خطر است)
+     */
+    public function test_consultant_progress_step2_always_shows_submit_button(): void
     {
-        $order = $this->makeOrder([
-            Order::STATUS => Order::STATUS_WEIGHBRIDGE_DONE,
-            Order::CONSULTANT_MOADIAN_REF => 'TAX-REF-DONE',
-        ]);
+        $order = $this->makeOrder([Order::STATUS => Order::STATUS_WEIGHBRIDGE_DONE]);
 
         $progress = $order->consultant_progress;
 
         $step2Labels = array_column($progress['steps'][1]['actions'], 'label');
         $this->assertContains('مشاهده کیف پول', $step2Labels);
-        $this->assertNotContains('فاکتور خدمات خود را ثبت کنید', $step2Labels,
-            'Submit button should be hidden when moadian_ref is already set');
+        $this->assertContains('فاکتور خدمات خود را ثبت کنید', $step2Labels);
     }
 
     /** سفارش لغو شده → مرحله اول cancelled، بقیه inactive */

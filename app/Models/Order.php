@@ -322,7 +322,8 @@ class Order extends Model
     {
         return [
             'items.productVariant',
-            'placer',
+            'placer.profile',
+            'placer.type',
             'beneficiary.profile',
             'address.city',
             'address.province',

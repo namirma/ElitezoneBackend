@@ -34,6 +34,7 @@ class OrderRepository implements OrderRepositoryInterface
             ->with([
                 'items.productVariant',
                 'placer.profile',
+                'placer.type',
                 'beneficiary.profile',
                 'address.city',
                 'address.province',
@@ -50,7 +51,7 @@ class OrderRepository implements OrderRepositoryInterface
                 }
             })
             // فیلتر بر اساس گروه‌های وضعیت — از OrderBuilder scopes استفاده می‌شود
-            ->when($statusGroup === 'current',   fn ($q) => $q->current())
+            ->when($statusGroup === 'current', fn ($q) => $q->current())
             ->when($statusGroup === 'delivered', fn ($q) => $q->delivered())
             ->when($statusGroup === 'cancelled', fn ($q) => $q->cancelled())
             ->latest()
