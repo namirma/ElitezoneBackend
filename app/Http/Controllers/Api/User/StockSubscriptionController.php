@@ -33,7 +33,7 @@ class StockSubscriptionController extends Controller
                 'prices.factory',
                 'prices.factoryLocation',
             ])
-            ->paginate(10);
+            ->paginate($this->perPage(10));
 
         $this->priceHydrator->hydrateMany($variants->getCollection(), $this->cartResolver->activeCode());
 

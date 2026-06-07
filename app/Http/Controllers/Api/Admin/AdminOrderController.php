@@ -53,7 +53,7 @@ class AdminOrderController extends Controller
             ->when($request->filled('status'), fn (Builder $q) => $q->where('status', $request->status)
             )
             ->latest()
-            ->paginate($request->get('per_page', 20));
+            ->paginate($this->perPage());
 
         return success(OrderResource::collection($orders));
     }

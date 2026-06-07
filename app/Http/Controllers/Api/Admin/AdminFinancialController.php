@@ -36,7 +36,7 @@ class AdminFinancialController extends Controller
             // فیلتر فاکتور رسمی/مالیاتی
             ->when($type === 'tax', fn (Builder $query) => $query->whereNotNull(Order::TAX_INVOICE_REF))
             ->latest(Order::CREATED_AT)
-            ->paginate($request->input('per_page', 20));
+            ->paginate($this->perPage());
 
         return success($invoices, __('admin.invoices_list_success'));
     }
@@ -67,7 +67,7 @@ class AdminFinancialController extends Controller
             ]);
         }
 
-        $data = $shares->latest(WalletTransaction::CREATED_AT)->paginate(20);
+        $data = $shares->latest(WalletTransaction::CREATED_AT)->paginate($this->perPage());
 
         return success($data, __('admin.expert_shares_success'));
     }
@@ -84,7 +84,7 @@ class AdminFinancialController extends Controller
             ->when($docType === 'waybill', fn (Builder $query) => $query->whereNotNull(Order::WAYBILL_REF))
             ->when($docType === 'tax', fn (Builder $query) => $query->whereNotNull('payment_receipt_ref'))
             ->latest(Order::UPDATED_AT)
-            ->paginate($request->input('per_page', 20));
+            ->paginate($this->perPage());
 
         return success($documents, __('admin.supplier_docs_success'));
     }
@@ -99,7 +99,7 @@ class AdminFinancialController extends Controller
             ->where(WalletTransaction::TYPE, WalletTransaction::TYPE_WITHDRAW)
             ->whereNotNull(WalletTransaction::META.'->invoice_path') // چک کردن وجود فایل فاکتور در متادیتا
             ->latest(WalletTransaction::CREATED_AT)
-            ->paginate($request->input('per_page', 20));
+            ->paginate($this->perPage());
 
         return success($documents, __('admin.expert_docs_success'));
     }

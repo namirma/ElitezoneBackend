@@ -28,7 +28,7 @@ class AdminActivityLogController extends Controller
             $query->where('causer_id', $request->causer_id);
         }
 
-        $logs = $query->latest()->paginate($request->input('per_page', 20));
+        $logs = $query->latest()->paginate($this->perPage());
 
         return success(ActivityLogResource::collection($logs), __('admin.activity_log_received'));
     }

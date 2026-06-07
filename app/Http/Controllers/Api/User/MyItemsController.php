@@ -30,7 +30,7 @@ class MyItemsController extends Controller
             ->where(OrderSurvey::USER_ID, Auth::id())
             ->with('order')
             ->latest()
-            ->paginate(10);
+            ->paginate($this->perPage(10));
 
         return success(
             OrderSurveyResource::collection($surveys),

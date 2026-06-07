@@ -34,6 +34,14 @@ class CheckSupplierBalancesJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    /**
+     * اگر بررسی موجودی سوپلایرها با خطا مواجه شد، یک بار دیگر بعد از ۲ دقیقه تلاش می‌کند.
+     * این job در Kernel::schedule() زمان‌بندی شده و اجرای مجدد از دست نمی‌رود.
+     */
+    public int $tries = 2;
+
+    public array $backoff = [120];
+
     public function handle(SmsService $smsService, WalletTransactionEngine $walletEngine): void
     {
         // Only look at orders with a pending supplier debt

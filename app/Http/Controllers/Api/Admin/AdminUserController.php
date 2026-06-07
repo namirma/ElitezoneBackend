@@ -40,7 +40,7 @@ class AdminUserController extends Controller
                 fn (Builder $q) => $q->where('is_active', $request->boolean('is_active'))
             )
             ->latest()
-            ->paginate($request->get('per_page', 20));
+            ->paginate($this->perPage());
 
         return success(UserResource::collection($users));
     }
@@ -130,7 +130,7 @@ class AdminUserController extends Controller
             ->where(Order::PLACER_USER_ID, $user->id)
             ->with(Order::resourceRelations())
             ->latest()
-            ->paginate($request->get('per_page', 10));
+            ->paginate($this->perPage(10));
 
         return success(
             OrderResource::collection($orders),
@@ -146,14 +146,14 @@ class AdminUserController extends Controller
         $wallet = $user->wallet;
 
         if (! $wallet) {
-            $empty = WalletTransaction::query()->whereNull(WalletTransaction::ID)->paginate($request->get('per_page', 10));
+            $empty = WalletTransaction::query()->whereNull(WalletTransaction::ID)->paginate($this->perPage(10));
 
             return success(WalletTransactionResource::collection($empty));
         }
         $transactions = WalletTransaction::query()
             ->where(WalletTransaction::WALLET_ID, $wallet->id)
             ->latest()
-            ->paginate($request->get('per_page', 10));
+            ->paginate($this->perPage(10));
 
         return success(
             WalletTransactionResource::collection($transactions),

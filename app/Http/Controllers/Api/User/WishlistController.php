@@ -56,7 +56,7 @@ class WishlistController extends Controller
                 'prices.factoryLocation',
             ])
             ->latest()
-            ->paginate(10);
+            ->paginate($this->perPage(10));
 
         $this->priceHydrator->hydrateMany($variants->getCollection(), $this->cartResolver->activeCode());
 

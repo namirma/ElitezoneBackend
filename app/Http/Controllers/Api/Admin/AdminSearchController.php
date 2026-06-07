@@ -28,7 +28,7 @@ class AdminSearchController extends Controller
                     });
             })
             ->latest(User::CREATED_AT)
-            ->paginate($request->input('per_page', 20));
+            ->paginate($this->perPage());
 
         // در اینجا می‌توان از UserResource استفاده کرد اما برای سرچ کلی، جیسون مستقیم هم اوکی است
         return success($users, __('admin.user_search_success'));
@@ -49,7 +49,7 @@ class AdminSearchController extends Controller
                 });
             })
             ->latest(WalletTransaction::CREATED_AT)
-            ->paginate($request->input('per_page', 20));
+            ->paginate($this->perPage());
 
         return success($transactions, __('admin.transaction_search_success'));
     }

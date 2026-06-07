@@ -28,7 +28,7 @@ class NotificationController extends Controller
             $query->whereNotNull(UserNotification::READ_AT);
         }
 
-        $items = $query->latest()->paginate(20);
+        $items = $query->latest()->paginate($this->perPage());
 
         return success(
             UserMessageResource::collection($items)->response()->getData(true),

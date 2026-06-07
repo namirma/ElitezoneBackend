@@ -18,6 +18,15 @@ class CalculateCustomerRfm implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    /**
+     * محاسبه RFM یک job سنگین است (روی همه کاربران).
+     * اگر با شکست مواجه شد، بعد از ۵ دقیقه یک بار دیگر تلاش می‌کند.
+     * اگر دوباره هم شکست خورد، در failed_jobs ثبت می‌شود.
+     */
+    public int $tries = 2;
+
+    public array $backoff = [300];
+
     public function handle(): void
     {
         // دریافت آمار خرید کاربران
