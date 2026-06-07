@@ -1,9 +1,12 @@
 <?php
 
 use App\Http\Controllers\Api\Admin\AdminActivityLogController;
+use App\Http\Controllers\Api\Admin\AdminDashboardController;
 use App\Http\Controllers\Api\Admin\AdminFinancialController;
 use App\Http\Controllers\Api\Admin\AdminOrderController;
 use App\Http\Controllers\Api\Admin\AdminSearchController;
+use App\Http\Controllers\Api\Admin\AdminSupplierController;
+use App\Http\Controllers\Api\Admin\AdminTicketController;
 use App\Http\Controllers\Api\Admin\AdminUserController;
 use App\Http\Controllers\Api\Admin\AdminWalletController;
 use App\Http\Controllers\Api\Admin\OrderWeighbridgeController;
@@ -40,6 +43,9 @@ Route::prefix('v1/podium')
 // ── Admin panel (auth + role:admin) ───────────────────────────────────────
 Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(function () {
 
+    // Dashboard — KPI اجرایی
+    Route::get('/dashboard', [AdminDashboardController::class, 'index']);
+
     // Debug helpers
     Route::get('/debug/test-cache', [DebugController::class, 'testCache']);
     Route::get('/debug/kavir-products', [DebugController::class, 'kavirProducts']);
@@ -60,12 +66,16 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
         Route::get('/{user}/transactions', 'getUserTransactions');
     });
 
-    // Financial documents
+    // Financial documents + health
     Route::controller(AdminFinancialController::class)->prefix('financial')->group(function () {
         Route::get('/company/invoices', 'getCompanyInvoices');
         Route::get('/company/expert-shares', 'getExpertShares');
         Route::get('/supplier/documents', 'getSupplierDocuments');
         Route::get('/expert/documents', 'getExpertDocuments');
+        // Financial health & alerts
+        Route::get('/health', 'financialHealth');
+        Route::get('/pending-debts', 'pendingDebts');
+        Route::get('/pending-moadian', 'pendingMoadianInvoices');
     });
 
     // Users — CRUD (group 2)
@@ -76,6 +86,14 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
         Route::post('/{user}/note', 'addNote');
     });
 
+    // Suppliers — مدیریت سوپلایرها
+    Route::controller(AdminSupplierController::class)->prefix('suppliers')->group(function () {
+        Route::get('/', 'index');
+        Route::get('/{user}', 'show');
+        Route::put('/{user}/formula', 'updateFormula');
+        Route::get('/{user}/orders', 'orders');
+    });
+
     // Orders
     Route::controller(AdminOrderController::class)->prefix('orders')->group(function () {
         Route::get('/', 'index');
@@ -84,6 +102,14 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
         Route::post('/{order}/status', 'changeStatus');
         // Doc P — فاکتور مودیان سیستم (سازه → خریدار)، آزادسازی WVAT hold
         Route::post('/{order}/system-moadian-invoice', 'submitSystemMoadianInvoice');
+    });
+
+    // Tickets — مدیریت تیکت‌های پشتیبانی
+    Route::controller(AdminTicketController::class)->prefix('tickets')->group(function () {
+        Route::get('/', 'index');
+        Route::get('/{ticket}', 'show');
+        Route::post('/{ticket}/reply', 'reply');
+        Route::post('/{ticket}/status', 'changeStatus');
     });
 
     // Wallet

@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\FinancialFilterRequest;
+use App\Http\Resources\Order\OrderResource;
 use App\Models\Order;
+use App\Models\Wallet;
 use App\Models\WalletTransaction;
-use Illuminate\Database\Eloquent\Builder; // کلاس صحیح برای کوئری‌ها
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -102,5 +104,119 @@ class AdminFinancialController extends Controller
             ->paginate($this->perPage());
 
         return success($documents, __('admin.expert_docs_success'));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Financial Health — مشاهده سلامت مالی سیستم
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * سفارشاتی که سوپلایر بدهی باسکول دارد و هنوز تصفیه نشده‌اند
+     *
+     * (orders.supplier_debt_pending = true)
+     */
+    public function pendingDebts(): JsonResponse
+    {
+        $orders = Order::query()
+            ->where(Order::SUPPLIER_DEBT_PENDING, true)
+            ->with(['placer.profile', 'items.originFactory'])
+            ->latest()
+            ->paginate($this->perPage(20));
+
+        return success(OrderResource::collection($orders), __('admin.financial.pending_debts_received'));
+    }
+
+    /**
+     * سفارشاتی که باسکول شده‌اند اما یک یا چند سند مودیان هنوز ثبت نشده
+     *
+     * Doc Q (consultant) | Doc O (supplier) | Doc P (system/Saze)
+     */
+    public function pendingMoadianInvoices(): JsonResponse
+    {
+        $orders = Order::query()
+            ->whereNotNull(Order::WEIGHING_COMPLETED_AT)
+            ->where(function ($q) {
+                $q->whereNull(Order::CONSULTANT_MOADIAN_REF)
+                    ->orWhereNull(Order::SUPPLIER_MOADIAN_REF)
+                    ->orWhereNull(Order::SYSTEM_MOADIAN_REF);
+            })
+            ->whereIn(Order::STATUS, [
+                Order::STATUS_WEIGHBRIDGE_DONE,
+                Order::STATUS_WAYBILL_ISSUED,
+                Order::STATUS_DELIVERED,
+                Order::STATUS_COMPLETED,
+            ])
+            ->with(['placer.profile'])
+            ->latest()
+            ->paginate($this->perPage(20));
+
+        $enriched = $orders->through(fn (Order $order) => [
+            'id'                         => $order->id,
+            'order_number'               => $order->{Order::ORDER_NUMBER},
+            'status'                     => $order->{Order::STATUS},
+            'placer'                     => $order->placer?->profile?->name,
+            'final_amount'               => (float) $order->{Order::FINAL_AMOUNT},
+            'weighing_completed_at'      => $order->{Order::WEIGHING_COMPLETED_AT},
+            'consultant_moadian_done'    => $order->{Order::CONSULTANT_MOADIAN_REF} !== null,
+            'supplier_moadian_done'      => $order->{Order::SUPPLIER_MOADIAN_REF} !== null,
+            'system_moadian_done'        => $order->{Order::SYSTEM_MOADIAN_REF} !== null,
+            'has_beneficiary'            => $order->{Order::BENEFICIARY_USER_ID} !== null,
+        ]);
+
+        return success($enriched, __('admin.financial.pending_moadian_received'));
+    }
+
+    /**
+     * سلامت مالی کلی پلتفرم
+     *
+     * شامل: موجودی کیف‌پول سیستم و VAT، جمع کل موجودی/هولد تمام کیف‌پول‌ها،
+     * واریزها و برداشت‌های معلق، بدهی‌های سوپلایر
+     */
+    public function financialHealth(): JsonResponse
+    {
+        $systemUserId = (int) config('financial.system_user_id', 1);
+        $vatUserId    = (int) config('financial.vat_user_id', $systemUserId);
+
+        $systemWallet = Wallet::where(Wallet::USER_ID, $systemUserId)->first();
+        $vatWallet    = ($vatUserId !== $systemUserId)
+            ? Wallet::where(Wallet::USER_ID, $vatUserId)->first()
+            : null;
+
+        // مجموع کل موجودی و هولد در سراسر پلتفرم
+        $platformBalance = (float) Wallet::sum(Wallet::BALANCE);
+        $platformHold    = (float) Wallet::sum(Wallet::BALANCE_HOLD);
+
+        // تراکنش‌های معلق
+        $pendingDepositAmount    = (float) WalletTransaction::where(WalletTransaction::TYPE, WalletTransaction::TYPE_DEPOSIT)
+            ->where(WalletTransaction::STATUS, WalletTransaction::STATUS_PENDING)
+            ->sum(WalletTransaction::AMOUNT);
+        $pendingWithdrawalAmount = (float) WalletTransaction::where(WalletTransaction::TYPE, WalletTransaction::TYPE_WITHDRAW)
+            ->where(WalletTransaction::STATUS, WalletTransaction::STATUS_PENDING)
+            ->sum(WalletTransaction::AMOUNT);
+
+        // بدهی سوپلایرها
+        $supplierDebtCount  = Order::where(Order::SUPPLIER_DEBT_PENDING, true)->count();
+        $supplierDebtAmount = (float) Order::where(Order::SUPPLIER_DEBT_PENDING, true)->sum(Order::SUPPLIER_DEBT_AMOUNT);
+
+        return success([
+            'system_wallet' => $systemWallet ? [
+                'balance'      => (float) $systemWallet->{Wallet::BALANCE},
+                'balance_hold' => (float) $systemWallet->{Wallet::BALANCE_HOLD},
+            ] : null,
+            'vat_wallet' => $vatWallet ? [
+                'balance'      => (float) $vatWallet->{Wallet::BALANCE},
+                'balance_hold' => (float) $vatWallet->{Wallet::BALANCE_HOLD},
+            ] : null,
+            'platform_totals' => [
+                'total_balance'          => $platformBalance,
+                'total_hold'             => $platformHold,
+                'pending_deposit_amount' => $pendingDepositAmount,
+                'pending_withdrawal_amount' => $pendingWithdrawalAmount,
+            ],
+            'supplier_debts' => [
+                'count'  => $supplierDebtCount,
+                'amount' => $supplierDebtAmount,
+            ],
+        ], __('admin.financial.health_received'));
     }
 }
