@@ -7,6 +7,7 @@ namespace App\Actions\Financial;
 use App\Constants\FinancialCodes;
 use App\Models\Order;
 use App\Services\Financial\WalletTransactionEngine;
+use App\Services\Invoice\InvoiceGenerator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -27,12 +28,13 @@ use Illuminate\Support\Facades\Log;
 class RecordSupplierMoadianInvoiceAction
 {
     public function __construct(
-        private readonly WalletTransactionEngine $walletEngine
+        private readonly WalletTransactionEngine $walletEngine,
+        private readonly InvoiceGenerator $invoiceGenerator,
     ) {}
 
     /**
-     * @param  Order  $order      The order whose supplier VAT hold should be released.
-     * @param  string $moadianRef Doc-O reference from the Moadian system.
+     * @param  Order  $order  The order whose supplier VAT hold should be released.
+     * @param  string  $moadianRef  Doc-O reference from the Moadian system.
      */
     public function execute(Order $order, string $moadianRef): void
     {
@@ -52,18 +54,18 @@ class RecordSupplierMoadianInvoiceAction
         // PTSM is stored as payment_to_supplier after the weighbridge action
         // updates it. The VAT portion embedded in PTSM is:
         //   supplierVat = PTSM × (vat% / 100) / (1 + vat% / 100)
-        $ptsm          = (float) $order->{Order::PAYMENT_TO_SUPPLIER};
-        $vatRate        = (float) ($order->{Order::VAT_RATE} ?? 10.0);
-        $vatMultiplier  = ($vatRate / 100.0) / (1.0 + ($vatRate / 100.0));
-        $supplierVat    = $ptsm * $vatMultiplier;
+        $ptsm = (float) $order->{Order::PAYMENT_TO_SUPPLIER};
+        $vatRate = (float) ($order->{Order::VAT_RATE} ?? 10.0);
+        $vatMultiplier = ($vatRate / 100.0) / (1.0 + ($vatRate / 100.0));
+        $supplierVat = $ptsm * $vatMultiplier;
 
         $realSupplierId = $this->resolveSupplierUserId($order);
-        $systemUserId   = (int) config('financial.system_user_id', 1);
-        $vatUserId      = (int) config('financial.vat_user_id', $systemUserId);
+        $systemUserId = (int) config('financial.system_user_id', 1);
+        $vatUserId = (int) config('financial.vat_user_id', $systemUserId);
 
         DB::transaction(function () use (
             $order, $moadianRef,
-            $supplierVat, $realSupplierId, $vatUserId
+            $supplierVat, $vatUserId
         ) {
             $locked = Order::where('id', $order->id)->lockForUpdate()->first();
 
@@ -95,9 +97,12 @@ class RecordSupplierMoadianInvoiceAction
             }
 
             $locked->update([
-                Order::SUPPLIER_MOADIAN_REF      => $moadianRef,
+                Order::SUPPLIER_MOADIAN_REF => $moadianRef,
                 Order::SUPPLIER_HOLD_RELEASED_AT => now(),
             ]);
+
+            // Doc O — فاکتور مودیان سوپلایر (سوپلایر → سازه)
+            $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_TAX_INVOICE_SUPPLIER);
 
             Log::info("Supplier VAT hold released for order {$locked->id}. Ref: {$moadianRef}. VAT: {$supplierVat}");
         }, 3);

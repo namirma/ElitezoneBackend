@@ -5,16 +5,18 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UserBackOfficeSearchRequest;
 use App\Http\Requests\Admin\UserSearchRequest;
+use App\Http\Resources\Financial\WalletTransactionResource;
 use App\Http\Resources\Order\OrderResource;
 use App\Http\Resources\Profile\UserResource;
-use App\Http\Resources\Financial\WalletTransactionResource;
 use App\Models\Order;
 use App\Models\User;
+use App\Models\UserNote;
 use App\Models\UserProfile;
 use App\Models\WalletTransaction;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class AdminUserController extends Controller
 {
@@ -52,37 +54,30 @@ class AdminUserController extends Controller
 
     /**
      * فعال/غیرفعال کردن حساب کاربری
-     *
-     * @todo ستون is_active هنوز به جدول users اضافه نشده است.
-     *       migration زیر را اجرا کنید و سپس این متد را فعال کنید:
-     *       php artisan make:migration add_is_active_to_users_table
-     *       $table->boolean('is_active')->default(true)->after('mobile');
      */
     public function toggleStatus(User $user): JsonResponse
     {
-        return response()->json([
-            'status' => false,
-            'message' => 'این قابلیت هنوز پیاده‌سازی نشده است. '
-                .'ابتدا ستون is_active را به جدول users اضافه کنید.',
-        ], 501);
+        $user->update([User::IS_ACTIVE => ! $user->{User::IS_ACTIVE}]);
+
+        return success(
+            new UserResource($user),
+            $user->{User::IS_ACTIVE} ? __('admin.users.activated') : __('admin.users.deactivated')
+        );
     }
 
     /**
-     * افزودن یادداشت ادمین روی کاربر
-     *
-     * @todo جدول user_notes هنوز ساخته نشده است.
-     *       migration زیر را اجرا کنید و سپس این متد را فعال کنید:
-     *       php artisan make:migration create_user_notes_table
+     * افزودن یادداشت ادمین روی کاربر (یادداشت عمومی کاربر)
      */
     public function addNote(Request $request, User $user): JsonResponse
     {
-        $request->validate(['note' => 'required|string|max:1000']);
+        $validated = $request->validate(['note' => 'required|string|max:1000']);
 
-        return response()->json([
-            'status' => false,
-            'message' => 'این قابلیت هنوز پیاده‌سازی نشده است. '
-                .'ابتدا جدول user_notes را بسازید.',
-        ], 501);
+        $user->notes()->create([
+            UserNote::ADMIN_ID => Auth::id(),
+            UserNote::NOTE => $validated['note'],
+        ]);
+
+        return success(null, __('admin.users.note_added'));
     }
 
     public function getUserProfileForBackOffice(UserBackOfficeSearchRequest $request): JsonResponse

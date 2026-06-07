@@ -32,21 +32,21 @@ return [
     'fee_hold_description' => 'سهم رزرو شده برای سفارش :order_number',
 
     // ── Doc Q: Consultant Moadian invoice ──────────────────────────────────
-    'consultant_moadian_submitted'      => 'فاکتور مودیان مشاور فنی ثبت شد و کمیسیون آزاد شد.',
-    'consultant_moadian_already_done'   => 'فاکتور مودیان مشاور فنی این سفارش قبلاً ثبت شده است.',
+    'consultant_moadian_submitted' => 'فاکتور مودیان مشاور فنی ثبت شد و کمیسیون آزاد شد.',
+    'consultant_moadian_already_done' => 'فاکتور مودیان مشاور فنی این سفارش قبلاً ثبت شده است.',
 
     // ── Doc O: Supplier Moadian invoice ────────────────────────────────────
-    'supplier_moadian_submitted'        => 'فاکتور مودیان سوپلایر ثبت شد و مالیات آزاد شد.',
-    'supplier_moadian_already_done'     => 'فاکتور مودیان سوپلایر این سفارش قبلاً ثبت شده است.',
+    'supplier_moadian_submitted' => 'فاکتور مودیان سوپلایر ثبت شد و مالیات آزاد شد.',
+    'supplier_moadian_already_done' => 'فاکتور مودیان سوپلایر این سفارش قبلاً ثبت شده است.',
 
     // ── Doc P: System (Saze) Moadian invoice ───────────────────────────────
-    'system_moadian_submitted'          => 'فاکتور مودیان سیستم ثبت شد و مالیات پلتفرم آزاد شد.',
-    'system_moadian_already_done'       => 'فاکتور مودیان سیستم این سفارش قبلاً ثبت شده است.',
+    'system_moadian_submitted' => 'فاکتور مودیان سیستم ثبت شد و مالیات پلتفرم آزاد شد.',
+    'system_moadian_already_done' => 'فاکتور مودیان سیستم این سفارش قبلاً ثبت شده است.',
 
     // ── Survey ─────────────────────────────────────────────────────────────
-    'survey_not_allowed_for_status'     => 'ثبت نظرسنجی فقط برای سفارش‌های تحویل‌داده‌شده امکان‌پذیر است.',
-    'survey_already_submitted'          => 'نظرسنجی این سفارش قبلاً ثبت شده است.',
-    'survey_submitted_successfully'     => 'نظرسنجی شما با موفقیت ثبت شد.',
+    'survey_not_allowed_for_status' => 'ثبت نظرسنجی فقط برای سفارش‌های تحویل‌داده‌شده امکان‌پذیر است.',
+    'survey_already_submitted' => 'نظرسنجی این سفارش قبلاً ثبت شده است.',
+    'survey_submitted_successfully' => 'نظرسنجی شما با موفقیت ثبت شد.',
 
     'status' => [
         Order::STATUS_PENDING => 'در انتظار تایید (رزرو شده)',
@@ -86,6 +86,7 @@ return [
     'store_shipping_exists' => 'روش ارسال انتخاب شده در سیستم معتبر نیست.',
     'store_beneficiary_integer' => 'فرمت کاربر ذینفع نامعتبر است.',
     'store_beneficiary_exists' => 'کاربر ذینفع در سیستم یافت نشد.',
+    'store_beneficiary_not_approved_consultant' => 'کاربر انتخاب‌شده مشاور فنی تأییدشدهٔ شما نیست.',
     'store_description_max' => 'توضیحات سفارش نمی‌تواند بیشتر از 1000 کاراکتر باشد.',
 
     // ----------------------------------------------------
@@ -117,18 +118,18 @@ return [
     // ── Errors (merged — single block) ─────────────────────────────────────
     'errors' => [
         // Financial / validation
-        'invalid_amount'                => 'مبلغ سفارش معتبر نیست.',
-        'stock_unavailable'             => 'موجودی محصول «:product» کافی نیست.',
-        'system_error'                  => 'خطای سیستمی رخ داده است (تامین‌کننده یافت نشد).',
-        'not_payable'                   => 'این سفارش با وضعیت «:status» قابل پرداخت نیست.',
-        'already_paid'                  => 'این سفارش قبلاً پرداخت شده است.',
-        'gateway_not_implemented'       => 'درگاه پرداخت انتخاب شده هنوز فعال نشده است.',
-        'not_owner'                     => 'شما اجازه پرداخت این سفارش را ندارید.',
-        'cart_empty'                    => 'سبد خرید شما خالی است.',
+        'invalid_amount' => 'مبلغ سفارش معتبر نیست.',
+        'stock_unavailable' => 'موجودی محصول «:product» کافی نیست.',
+        'system_error' => 'خطای سیستمی رخ داده است (تامین‌کننده یافت نشد).',
+        'not_payable' => 'این سفارش با وضعیت «:status» قابل پرداخت نیست.',
+        'already_paid' => 'این سفارش قبلاً پرداخت شده است.',
+        'gateway_not_implemented' => 'درگاه پرداخت انتخاب شده هنوز فعال نشده است.',
+        'not_owner' => 'شما اجازه پرداخت این سفارش را ندارید.',
+        'cart_empty' => 'سبد خرید شما خالی است.',
         // Moadian / post-weighbridge
-        'weighbridge_not_completed'     => 'نتیجه باسکول برای این سفارش هنوز ثبت نشده است.',
-        'no_consultant'                 => 'این سفارش مشاور فنی ندارد.',
-        'moadian_ref_required'          => 'شماره فاکتور مودیان الزامی است.',
+        'weighbridge_not_completed' => 'نتیجه باسکول برای این سفارش هنوز ثبت نشده است.',
+        'no_consultant' => 'این سفارش مشاور فنی ندارد.',
+        'moadian_ref_required' => 'شماره فاکتور مودیان الزامی است.',
     ],
 
     'messages' => [

@@ -67,6 +67,11 @@ class PayHoldFeeAction
                 throw new InsufficientBalanceException(self::fee(), (float) ($buyerWallet?->balance ?? 0));
             }
 
+            // Double-entry: the hold fee leaves the buyer (WO) and is recognised as
+            // platform revenue in the Saze system wallet (WSSG). Crediting WSSG keeps
+            // the ledger balanced — never debit a wallet without a matching credit.
+            $systemUserId = (int) config('financial.system_user_id', 1);
+
             $this->walletEngine->process(
                 '-',
                 self::fee(),
@@ -75,6 +80,16 @@ class PayHoldFeeAction
                 $lockedOrder,
                 "هزینه تمدید رزرو سفارش {$lockedOrder->order_number}",
                 $buyerId
+            );
+
+            $this->walletEngine->process(
+                '+',
+                self::fee(),
+                FinancialCodes::WALLET_SAZE,
+                FinancialCodes::STATUS_AVAILABLE,
+                $lockedOrder,
+                "دریافت هزینه تمدید رزرو سفارش {$lockedOrder->order_number}",
+                $systemUserId
             );
 
             $lockedOrder->update([

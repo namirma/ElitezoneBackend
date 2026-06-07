@@ -7,6 +7,7 @@ namespace App\Actions\Financial;
 use App\Constants\FinancialCodes;
 use App\Models\Order;
 use App\Services\Financial\WalletTransactionEngine;
+use App\Services\Invoice\InvoiceGenerator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -29,12 +30,13 @@ use Illuminate\Support\Facades\Log;
 class ReleaseConsultantHoldAction
 {
     public function __construct(
-        private readonly WalletTransactionEngine $walletEngine
+        private readonly WalletTransactionEngine $walletEngine,
+        private readonly InvoiceGenerator $invoiceGenerator,
     ) {}
 
     /**
-     * @param  Order  $order        The order whose consultant hold should be released.
-     * @param  string $moadianRef   Doc-Q reference from the Moadian system.
+     * @param  Order  $order  The order whose consultant hold should be released.
+     * @param  string  $moadianRef  Doc-Q reference from the Moadian system.
      */
     public function execute(Order $order, string $moadianRef): void
     {
@@ -55,8 +57,8 @@ class ReleaseConsultantHoldAction
             // No consultant commission was held for this order (no consultant)
             Log::info("ReleaseConsultantHoldAction: order {$order->id} has no consultant commission — only recording ref.");
             $order->update([
-                Order::CONSULTANT_MOADIAN_REF       => $moadianRef,
-                Order::CONSULTANT_HOLD_RELEASED_AT  => now(),
+                Order::CONSULTANT_MOADIAN_REF => $moadianRef,
+                Order::CONSULTANT_HOLD_RELEASED_AT => now(),
             ]);
 
             return;
@@ -72,13 +74,13 @@ class ReleaseConsultantHoldAction
         //   vatMultiplier = (vat% / 100) / (1 + vat% / 100)
         //   consultantVat = gross × vatMultiplier
         //   consultantNet = gross − consultantVat
-        $vatRate       = (float) ($order->{Order::VAT_RATE} ?? 10.0);
+        $vatRate = (float) ($order->{Order::VAT_RATE} ?? 10.0);
         $vatMultiplier = ($vatRate / 100.0) / (1.0 + ($vatRate / 100.0));
         $consultantVat = $consultantGross * $vatMultiplier;
         $consultantNet = $consultantGross - $consultantVat;
 
         $systemUserId = (int) config('financial.system_user_id', 1);
-        $vatUserId    = (int) config('financial.vat_user_id', $systemUserId);
+        $vatUserId = (int) config('financial.vat_user_id', $systemUserId);
 
         DB::transaction(function () use (
             $order, $moadianRef,
@@ -129,9 +131,12 @@ class ReleaseConsultantHoldAction
             );
 
             $locked->update([
-                Order::CONSULTANT_MOADIAN_REF      => $moadianRef,
+                Order::CONSULTANT_MOADIAN_REF => $moadianRef,
                 Order::CONSULTANT_HOLD_RELEASED_AT => now(),
             ]);
+
+            // Doc Q — فاکتور مودیان مشاور فنی (مشاور → سازه)
+            $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_TAX_INVOICE_CONSULTANT);
 
             Log::info("Consultant hold released for order {$locked->id}. Ref: {$moadianRef}. Net: {$consultantNet}, VAT: {$consultantVat}");
         }, 3);

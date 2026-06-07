@@ -3,6 +3,8 @@
 namespace App\Http\Requests\Order;
 
 use App\DataTransferObjects\Order\PlaceOrderData;
+use App\Models\EmployerConsultant;
+use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -17,7 +19,29 @@ class StoreOrderRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'beneficiary_user_id' => ['nullable', 'integer', 'exists:users,id'],
+            'beneficiary_user_id' => [
+                'nullable',
+                'integer',
+                'exists:users,id',
+                // The beneficiary drives consultant-commission routing, so it must be
+                // an APPROVED technical consultant of the placing user (or the user
+                // themselves). Prevents naming an arbitrary user as the order's consultant.
+                function (string $attribute, $value, Closure $fail): void {
+                    if ($value === null || (int) $value === (int) Auth::id()) {
+                        return; // no beneficiary, or buying for self
+                    }
+
+                    $isApprovedConsultant = Auth::user()
+                        ->technicalConsultants()
+                        ->where('users.id', $value)
+                        ->wherePivot(EmployerConsultant::STATUS, EmployerConsultant::STATUS_APPROVED)
+                        ->exists();
+
+                    if (! $isApprovedConsultant) {
+                        $fail(__('orders.store_beneficiary_not_approved_consultant'));
+                    }
+                },
+            ],
             'address_id' => [
                 'required',
                 'integer',
@@ -42,15 +66,15 @@ class StoreOrderRequest extends FormRequest
     {
         return [
             'address_id.required' => __('orders.store_address_required'),
-            'address_id.integer'  => __('orders.store_address_integer'),
-            'address_id.exists'   => __('orders.store_address_exists'),
+            'address_id.integer' => __('orders.store_address_integer'),
+            'address_id.exists' => __('orders.store_address_exists'),
 
             'shipping_method_id.required' => __('orders.store_shipping_required'),
-            'shipping_method_id.integer'  => __('orders.store_shipping_integer'),
-            'shipping_method_id.exists'   => __('orders.store_shipping_exists'),
+            'shipping_method_id.integer' => __('orders.store_shipping_integer'),
+            'shipping_method_id.exists' => __('orders.store_shipping_exists'),
 
             'beneficiary_user_id.integer' => __('orders.store_beneficiary_integer'),
-            'beneficiary_user_id.exists'  => __('orders.store_beneficiary_exists'),
+            'beneficiary_user_id.exists' => __('orders.store_beneficiary_exists'),
 
             'description.max' => __('orders.store_description_max'),
         ];

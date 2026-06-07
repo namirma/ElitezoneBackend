@@ -16,6 +16,7 @@ return [
     ],
     'orders' => [
         'status_updated' => 'وضعیت سفارش با موفقیت تغییر کرد.',
+        'cancelled_by_admin' => 'لغو توسط مدیر سیستم',
     ],
     'tickets' => [
         'reply_sent' => 'پاسخ شما با موفقیت ارسال شد.',

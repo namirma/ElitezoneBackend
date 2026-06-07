@@ -48,20 +48,31 @@ class ProcessPaymentCallbackAction
     private function settle(WalletTransaction $transaction, string $refId): void
     {
         DB::transaction(function () use ($transaction, $refId) {
-            $wallet = Wallet::where('id', $transaction->wallet_id)->lockForUpdate()->first();
-            $wallet->increment(Wallet::BALANCE, $transaction->amount);
+            // Re-fetch and lock the transaction row, then re-check its status under
+            // the lock. Banks routinely retry callbacks; without this guard two
+            // concurrent/retried callbacks could both credit the wallet (double-credit).
+            $locked = WalletTransaction::where('id', $transaction->id)
+                ->lockForUpdate()
+                ->first();
 
-            $meta                = $transaction->meta ?? [];
-            $meta['ref_id']      = $refId;
+            if (! $locked || $locked->status !== WalletTransaction::STATUS_PENDING) {
+                return; // already settled (or vanished) — do not credit again
+            }
+
+            $wallet = Wallet::where('id', $locked->wallet_id)->lockForUpdate()->first();
+            $wallet->increment(Wallet::BALANCE, $locked->amount);
+
+            $meta = $locked->meta ?? [];
+            $meta['ref_id'] = $refId;
             $meta['verified_at'] = now()->toDateTimeString();
 
-            $transaction->update([
+            $locked->update([
                 'status' => WalletTransaction::STATUS_CONFIRMED,
-                'meta'   => $meta,
+                'meta' => $meta,
             ]);
 
             $user = User::find($wallet->user_id);
-            WalletFunded::dispatch($user, $transaction);
+            WalletFunded::dispatch($user, $locked);
         });
     }
 }
