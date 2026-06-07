@@ -53,7 +53,7 @@ class ProcessWeighbridgeResultAction
                 return $this->buildAlreadyProcessedResponse($locked);
             }
 
-            $locked->load('items', 'beneficiary.badge');
+            $locked->load('items', 'consultant.badge');
 
             Log::channel('financial')->info("شروع پردازش باسکول سفارش {$locked->id}.");
 
@@ -81,7 +81,7 @@ class ProcessWeighbridgeResultAction
             // deliberately no "surplus" payment path.
             $billingWeight = min($actualWeight, $wbs);
 
-            $badgeCode = $locked->beneficiary->badge->code ?? 'pioneer';
+            $badgeCode = $locked->consultant?->badge?->code ?? 'pioneer';
             $rates = $this->calculator->getCommissionRates($badgeCode);
             $trans = (float) $locked->shipping_cost;
             $vat = (float) ($locked->vat_rate ?? 10.0);
@@ -210,7 +210,7 @@ class ProcessWeighbridgeResultAction
                 ? $commissionPool * ($coRate / ($coRate + $ssgRate))
                 : 0.0;
 
-            $consultantUserId = $locked->beneficiary_user_id;
+            $consultantUserId = $locked->{Order::CONSULTANT_USER_ID};
             $consultantGross = 0;
 
             if ($consultantUserId && $consultantUserId !== $buyerId && $candidateGross > 0) {
@@ -284,7 +284,7 @@ class ProcessWeighbridgeResultAction
         }
 
         $alreadyPaid = (float) Order::query()
-            ->where(Order::BENEFICIARY_USER_ID, $consultantUserId)
+            ->where(Order::CONSULTANT_USER_ID, $consultantUserId)
             ->whereNotNull(Order::WEIGHING_COMPLETED_AT)
             ->where(Order::ID, '!=', $currentOrderId)
             ->sum(Order::PAYMENT_TO_CONSULTANT);

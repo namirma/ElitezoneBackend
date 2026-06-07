@@ -64,7 +64,7 @@ class ReleaseConsultantHoldAction
             return;
         }
 
-        $consultantUserId = $order->{Order::BENEFICIARY_USER_ID};
+        $consultantUserId = $order->{Order::CONSULTANT_USER_ID};
         if (! $consultantUserId) {
             throw new \RuntimeException(__('orders.errors.no_consultant'));
         }

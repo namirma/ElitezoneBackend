@@ -19,6 +19,11 @@ class ContractorProfile extends Model
 
     const USER_ID = 'user_id';
 
+    /** true وقتی ادمین مدارک مشاور را تأیید کرد */
+    const IS_VERIFIED = 'is_verified';
+
+    const VERIFIED_AT = 'verified_at';
+
     const ENGINEER_MEMBER = 'engineer_member';
 
     const COMPANY_NAME = 'company_name';
@@ -52,6 +57,8 @@ class ContractorProfile extends Model
      */
     protected $fillable = [
         self::USER_ID,
+        self::IS_VERIFIED,
+        self::VERIFIED_AT,
         self::ENGINEER_MEMBER,
         self::COMPANY_NAME,
         self::NOT_RELATED,

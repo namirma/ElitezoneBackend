@@ -20,6 +20,11 @@ class EngineerProfile extends Model
 
     const USER_ID = 'user_id';
 
+    /** true وقتی ادمین مدارک مشاور را تأیید کرد */
+    const IS_VERIFIED = 'is_verified';
+
+    const VERIFIED_AT = 'verified_at';
+
     const ENGINEER_MEMBER = 'engineer_member';
 
     const LICENSE_MEMBER = 'license_number';
@@ -55,6 +60,8 @@ class EngineerProfile extends Model
      */
     protected $fillable = [
         self::USER_ID,
+        self::IS_VERIFIED,
+        self::VERIFIED_AT,
         self::ENGINEER_MEMBER,
         self::LICENSE_MEMBER,
         self::SUPERVISION_BASE,

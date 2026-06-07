@@ -225,7 +225,13 @@ trait HasOrderProgress
                 Order::STATUS_COMPLETED,  // → کمیسیون در کیف‌پول مشاور به‌صورت Hold؛ باید Doc Q ثبت کند
             ])) {
                 $currentIndex = 1; // مرحله ۲: حق مشاوره منظور شد
-            } elseif (in_array($status, [Order::STATUS_PROCESSING, Order::STATUS_PREPARING])) {
+            } elseif (in_array($status, [
+                Order::STATUS_PROCESSING,
+                Order::STATUS_PREPARING,
+                Order::STATUS_PENDING,           // سفارش ثبت‌شده ولی هنوز پرداخت نشده
+                Order::STATUS_RESERVED,          // رزرو پرداخت‌شده ولی قبل از تأیید
+                Order::STATUS_RESERVED_EXTENDED, // رزرو تمدیدشده
+            ])) {
                 $currentIndex = 0; // مرحله ۱: کارفرما خرید کرد
             }
         }

@@ -15,16 +15,16 @@ class InviteConsultantRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'mobile' => ['nullable', 'required_without:national_code', 'string', 'regex:/^(\+?98|0098|0)?9\d{9}$/'],
-            'national_code' => ['nullable', 'required_without:mobile', 'string', 'regex:/^\d{10}$/'],
+            // فقط موبایل — national_code حذف شد (مورد ۲، بند ۵)
+            User::MOBILE => ['required', 'string', 'regex:/^(\+?98|0098|0)?9\d{9}$/'],
         ];
     }
 
     public function messages(): array
     {
         return [
-            User::MOBILE.'.required_without' => __('auth.mobile_or_national_code_required'),
-            User::NATIONAL_CODE.'.required_without' => __('auth.mobile_or_national_code_required'),
+            User::MOBILE.'.required' => __('consultant.mobile_required'),
+            User::MOBILE.'.regex'    => __('auth.mobile_format_invalid'),
         ];
     }
 }

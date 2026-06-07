@@ -78,7 +78,7 @@ return [
     'payment_success_wallet' => 'پرداخت با موفقیت از کیف پول انجام شد.',
 
     // StoreOrderRequest validation messages
-    'store_address_required' => 'انتخاب آدرس گیرنده برای ثبت سفارش الزامی است.',
+    'store_address_required'  => 'انتخاب آدرس گیرنده برای ثبت سفارش الزامی است.',
     'store_address_integer' => 'فرمت آدرس گیرنده نامعتبر است.',
     'store_address_exists' => 'آدرس انتخاب شده در سیستم یافت نشد یا متعلق به شما نیست.',
     'store_shipping_required' => 'انتخاب روش ارسال برای ثبت سفارش الزامی است.',
@@ -86,7 +86,20 @@ return [
     'store_shipping_exists' => 'روش ارسال انتخاب شده در سیستم معتبر نیست.',
     'store_beneficiary_integer' => 'فرمت کاربر ذینفع نامعتبر است.',
     'store_beneficiary_exists' => 'کاربر ذینفع در سیستم یافت نشد.',
-    'store_beneficiary_not_approved_consultant' => 'کاربر انتخاب‌شده مشاور فنی تأییدشدهٔ شما نیست.',
+    // beneficiary validation (مسیر مشاور)
+    'store_beneficiary_not_approved_consultant'  => 'کاربر انتخاب‌شده مشاور فنی تأییدشدهٔ شما نیست.',
+    'store_beneficiary_prohibited_for_employer'  => 'کارفرما نمی‌تواند فیلد گیرنده سفارش را مستقیم ارسال کند.',
+    'store_beneficiary_required_for_consultant'  => 'مشاور فنی باید کارفرمای گیرنده سفارش را مشخص کند.',
+    'store_beneficiary_not_approved_employer'    => 'کاربر انتخاب‌شده کارفرمای تأییدشدهٔ شما نیست.',
+
+    // consultant_user_id validation (مسیر کارفرما)
+    'store_consultant_integer'              => 'فرمت مشاور فنی نامعتبر است.',
+    'store_consultant_exists'              => 'مشاور فنی در سیستم یافت نشد.',
+    'store_consultant_not_approved'        => 'مشاور فنی انتخاب‌شده در لیست مشاوران تأییدشده شما نیست.',
+    'store_consultant_not_found'           => 'مشاور فنی انتخاب‌شده در سیستم یافت نشد.',
+    'store_consultant_not_verified'        => 'مشاور فنی انتخاب‌شده هنوز مدارک تأییدشده ندارد.',
+    'store_consultant_prohibited_for_consultant' => 'مشاور فنی نمی‌تواند در هنگام ثبت سفارش مشاور دیگری انتخاب کند.',
+
     'store_description_max' => 'توضیحات سفارش نمی‌تواند بیشتر از 1000 کاراکتر باشد.',
 
     // ----------------------------------------------------
