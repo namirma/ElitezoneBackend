@@ -40,7 +40,7 @@ class RecordSupplierMoadianInvoiceAction
     {
         // ── Idempotency guard ─────────────────────────────────────────────────
         if ($order->{Order::SUPPLIER_MOADIAN_REF} !== null) {
-            Log::info("RecordSupplierMoadianInvoiceAction skipped: order {$order->id} already has supplier_moadian_ref.");
+            Log::channel('financial')->info("RecordSupplierMoadianInvoiceAction skipped: order {$order->id} already has supplier_moadian_ref.");
 
             return;
         }
@@ -104,7 +104,7 @@ class RecordSupplierMoadianInvoiceAction
             // Doc O — فاکتور مودیان سوپلایر (سوپلایر → سازه)
             $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_TAX_INVOICE_SUPPLIER);
 
-            Log::info("Supplier VAT hold released for order {$locked->id}. Ref: {$moadianRef}. VAT: {$supplierVat}");
+            Log::channel('financial')->info("Supplier VAT hold released for order {$locked->id}. Ref: {$moadianRef}. VAT: {$supplierVat}");
         }, 3);
     }
 

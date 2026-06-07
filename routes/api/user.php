@@ -50,7 +50,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // درگاه پرداخت کیف پول
     Route::post('payment/wallet', [WalletPaymentController::class, 'pay'])
-        ->middleware('throttle:10,1')
+        ->middleware('throttle:financial')
         ->name('payment.wallet');
 
     // جستجوی نویگیشن پروفایل
@@ -219,8 +219,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::controller(WalletController::class)->prefix('wallet')->group(function () {
                 Route::get('/',            'getWallet');
                 Route::get('/transactions','getTransactions');
-                Route::post('/deposit',    'requestDeposit');
-                Route::post('/withdraw',   'requestWithdrawal')->middleware('idempotency');
+                Route::post('/deposit',    'requestDeposit')->middleware('throttle:financial');
+                Route::post('/withdraw',   'requestWithdrawal')->middleware(['idempotency', 'throttle:financial']);
             });
 
             // Receipts (deposit slips)

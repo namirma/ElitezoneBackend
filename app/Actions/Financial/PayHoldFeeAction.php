@@ -51,7 +51,7 @@ class PayHoldFeeAction
                 && $lockedOrder->{Order::RESERVATION_EXPIRES_AT}
                 && $lockedOrder->{Order::RESERVATION_EXPIRES_AT}->isFuture()
             ) {
-                Log::info("PayHoldFeeAction: سفارش {$lockedOrder->id} قبلاً تمدید شده، عملیات تکراری نادیده گرفته شد.");
+                Log::channel('financial')->info("PayHoldFeeAction: سفارش {$lockedOrder->id} قبلاً تمدید شده، عملیات تکراری نادیده گرفته شد.");
 
                 return;
             }
@@ -97,7 +97,7 @@ class PayHoldFeeAction
                 Order::RESERVATION_EXPIRES_AT => now()->addHours(self::extensionHours()),
             ]);
 
-            Log::info("PayHoldFeeAction: سفارش {$lockedOrder->id} با موفقیت تمدید شد.");
+            Log::channel('financial')->info("PayHoldFeeAction: سفارش {$lockedOrder->id} با موفقیت تمدید شد.");
         });
     }
 }

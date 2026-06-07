@@ -79,7 +79,7 @@ class CancelOrderAction
                 $this->invoiceGenerator->generate($order, FinancialCodes::DOC_CANCEL_REPORT);
             }
 
-            Log::info("سفارش شماره {$order->order_number} با موفقیت لغو شد.", [
+            Log::channel('orders')->info("سفارش شماره {$order->order_number} با موفقیت لغو شد.", [
                 'reason' => $reason,
                 'refunded' => $refundWallet,
                 'is_system_cron' => $isSystemCron,

@@ -53,7 +53,7 @@ class CheckSupplierBalancesJob implements ShouldQueue
             try {
                 $this->processOrder($order, $smsService, $walletEngine);
             } catch (\Exception $e) {
-                Log::error("CheckSupplierBalancesJob error for order {$order->id}: ".$e->getMessage());
+                Log::channel('financial')->error("CheckSupplierBalancesJob error for order {$order->id}: ".$e->getMessage());
             }
         }
     }
@@ -153,7 +153,7 @@ class CheckSupplierBalancesJob implements ShouldQueue
                 Order::SUPPLIER_DEBT_AMOUNT => 0,
             ]);
 
-            Log::info("Supplier debt cleared for order {$lockedOrder->id}. Debt: {$debtAmount}");
+            Log::channel('financial')->info("Supplier debt cleared for order {$lockedOrder->id}. Debt: {$debtAmount}");
         });
     }
 }

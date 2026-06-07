@@ -30,7 +30,7 @@ class ProcessWeighbridgeResultAction
     public function execute(Order $order, float $actualWeight): array
     {
         if ($this->isAlreadyProcessed($order)) {
-            Log::warning("ProcessWeighbridgeResultAction skipped: order {$order->id} already weighed.");
+            Log::channel('financial')->warning("ProcessWeighbridgeResultAction skipped: order {$order->id} already weighed.");
 
             return $this->buildAlreadyProcessedResponse($order);
         }
@@ -48,14 +48,14 @@ class ProcessWeighbridgeResultAction
             }
 
             if ($this->isAlreadyProcessed($locked)) {
-                Log::warning("Race detected: order {$locked->id} already weighed.");
+                Log::channel('financial')->warning("Race detected: order {$locked->id} already weighed.");
 
                 return $this->buildAlreadyProcessedResponse($locked);
             }
 
             $locked->load('items', 'beneficiary.badge');
 
-            Log::info("شروع پردازش باسکول سفارش {$locked->id}.");
+            Log::channel('financial')->info("شروع پردازش باسکول سفارش {$locked->id}.");
 
             $oldPOO = (float) $locked->payment_of_owner;
             $oldPTS = (float) $locked->payment_to_supplier;
@@ -183,7 +183,7 @@ class ProcessWeighbridgeResultAction
                         );
                     }
 
-                    Log::warning("Supplier {$realSupplierId} insufficient balance for deficit reclaim on order {$locked->id}. Debt: {$reclaimAmount}");
+                    Log::channel('financial')->warning("Supplier {$realSupplierId} insufficient balance for deficit reclaim on order {$locked->id}. Debt: {$reclaimAmount}");
                     $status = 'deficit_pending_supplier';
                 }
 
@@ -255,7 +255,7 @@ class ProcessWeighbridgeResultAction
                 'final_amount' => $newPOO,
             ]);
 
-            Log::info("باسکول نهایی شد. وضعیت: {$status}");
+            Log::channel('financial')->info("باسکول نهایی شد. وضعیت: {$status}");
 
             return [
                 'status' => $status,

@@ -26,12 +26,12 @@ class ProcessReservationCompletionAction
     public function execute(Order $order): void
     {
         if ($this->isAlreadyProcessed($order)) {
-            Log::warning("ProcessReservationCompletionAction skipped: order {$order->id} already completed.");
+            Log::channel('financial')->warning("ProcessReservationCompletionAction skipped: order {$order->id} already completed.");
 
             return;
         }
 
-        Log::info("شروع فرآیند تکمیل وجه برای سفارش رزرو شده {$order->id}");
+        Log::channel('financial')->info("شروع فرآیند تکمیل وجه برای سفارش رزرو شده {$order->id}");
 
         DB::transaction(function () use ($order) {
 
@@ -42,7 +42,7 @@ class ProcessReservationCompletionAction
             }
 
             if ($this->isAlreadyProcessed($locked)) {
-                Log::warning("Race detected: order {$locked->id} already completed.");
+                Log::channel('financial')->warning("Race detected: order {$locked->id} already completed.");
 
                 return;
             }
@@ -52,7 +52,7 @@ class ProcessReservationCompletionAction
             $firstItem = $locked->items->first();
 
             if (! $firstItem) {
-                Log::error("Order {$locked->id} has no items.");
+                Log::channel('financial')->error("Order {$locked->id} has no items.");
                 throw new \RuntimeException('Order items missing for reservation completion.');
             }
 
@@ -82,7 +82,7 @@ class ProcessReservationCompletionAction
             $PTS = $this->calculator->calculatePTS($trans, $op, $wbs, $ow, $ssg, $co, $vat, $transCommission, $transVat);
 
             if ($POO <= 0 || $PTS <= 0) {
-                Log::critical("Invalid financial calculation for order {$locked->id}", compact('POO', 'PTS'));
+                Log::channel('financial')->critical("Invalid financial calculation for order {$locked->id}", compact('POO', 'PTS'));
                 throw new \RuntimeException('محاسبه مالی سفارش معتبر نیست.');
             }
 
@@ -104,7 +104,7 @@ class ProcessReservationCompletionAction
                 }
             }
 
-            Log::info("Order {$locked->id}: POO={$POO}, PTR={$PTR}, Remaining={$remainingAmount}");
+            Log::channel('financial')->info("Order {$locked->id}: POO={$POO}, PTR={$PTR}, Remaining={$remainingAmount}");
 
             if ($remainingAmount > 0) {
                 $this->walletEngine->process('-', $remainingAmount, FinancialCodes::WALLET_OWNER, FinancialCodes::STATUS_AVAILABLE, $locked, "تکمیل وجه سفارش {$locked->order_number}", $buyerId);
@@ -135,7 +135,7 @@ class ProcessReservationCompletionAction
             $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_FINAL_REPORT_SUPPLIER);
             $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_LOADING_ORDER);
 
-            Log::info("تکمیل وجه سفارش {$locked->id} انجام شد.");
+            Log::channel('financial')->info("تکمیل وجه سفارش {$locked->id} انجام شد.");
         }, 3);
     }
 

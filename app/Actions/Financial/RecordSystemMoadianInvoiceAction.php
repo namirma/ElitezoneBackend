@@ -47,7 +47,7 @@ class RecordSystemMoadianInvoiceAction
     {
         // ── Idempotency guard ─────────────────────────────────────────────────
         if ($order->{Order::SYSTEM_MOADIAN_REF} !== null) {
-            Log::info("RecordSystemMoadianInvoiceAction skipped: order {$order->id} already has system_moadian_ref.");
+            Log::channel('financial')->info("RecordSystemMoadianInvoiceAction skipped: order {$order->id} already has system_moadian_ref.");
 
             return;
         }
@@ -119,7 +119,7 @@ class RecordSystemMoadianInvoiceAction
             // ── Doc P: فاکتور مودیان سیستم (سازه → خریدار) ───────────────
             $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_TAX_INVOICE_BUYER);
 
-            Log::info("System (Saze) VAT hold released for order {$locked->id}. Ref: {$moadianRef}. sazeVat: {$sazeVat}");
+            Log::channel('financial')->info("System (Saze) VAT hold released for order {$locked->id}. Ref: {$moadianRef}. sazeVat: {$sazeVat}");
         }, 3);
     }
 }

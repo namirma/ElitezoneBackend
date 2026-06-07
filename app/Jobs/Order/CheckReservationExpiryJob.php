@@ -45,9 +45,9 @@ class CheckReservationExpiryJob implements ShouldQueue
                     refundWallet: true,
                     isSystemCron: true
                 );
-                Log::info("سفارش {$order->id} (وضعیت: {$order->status}) به دلیل انقضا لغو شد.");
+                Log::channel('orders')->info("سفارش {$order->id} (وضعیت: {$order->status}) به دلیل انقضا لغو شد.");
             } catch (\Throwable $e) {
-                Log::error("خطا در لغو خودکار سفارش {$order->id}: {$e->getMessage()}");
+                Log::channel('orders')->error("خطا در لغو خودکار سفارش {$order->id}: {$e->getMessage()}");
             }
         }
     }

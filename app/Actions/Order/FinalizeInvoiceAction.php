@@ -34,7 +34,7 @@ class FinalizeInvoiceAction
                 $consultant = User::find($consultantUserId);
 
                 if (! $consultant) {
-                    Log::error("User not found for consultant fee hold. Order: {$order->id}");
+                    Log::channel('orders')->error("User not found for consultant fee hold. Order: {$order->id}");
                     throw new Exception('Consultant user not found.');
                 }
 

@@ -116,7 +116,7 @@ class InvoiceGenerator
             'status' => 'issued',
         ]);
 
-        Log::info("سند مالی جدید: {$invoiceNumber} (کد: {$docType}) صادر و فایل آن ذخیره شد.");
+        Log::channel('orders')->info("سند مالی جدید: {$invoiceNumber} (کد: {$docType}) صادر و فایل آن ذخیره شد.");
 
         return $invoice;
     }

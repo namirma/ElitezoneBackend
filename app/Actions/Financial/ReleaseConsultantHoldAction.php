@@ -42,7 +42,7 @@ class ReleaseConsultantHoldAction
     {
         // ── Idempotency guard ─────────────────────────────────────────────────
         if ($order->{Order::CONSULTANT_MOADIAN_REF} !== null) {
-            Log::info("ReleaseConsultantHoldAction skipped: order {$order->id} already has consultant_moadian_ref.");
+            Log::channel('financial')->info("ReleaseConsultantHoldAction skipped: order {$order->id} already has consultant_moadian_ref.");
 
             return;
         }
@@ -55,7 +55,7 @@ class ReleaseConsultantHoldAction
         $consultantGross = (float) $order->{Order::PAYMENT_TO_CONSULTANT};
         if ($consultantGross <= 0) {
             // No consultant commission was held for this order (no consultant)
-            Log::info("ReleaseConsultantHoldAction: order {$order->id} has no consultant commission — only recording ref.");
+            Log::channel('financial')->info("ReleaseConsultantHoldAction: order {$order->id} has no consultant commission — only recording ref.");
             $order->update([
                 Order::CONSULTANT_MOADIAN_REF => $moadianRef,
                 Order::CONSULTANT_HOLD_RELEASED_AT => now(),
@@ -138,7 +138,7 @@ class ReleaseConsultantHoldAction
             // Doc Q — فاکتور مودیان مشاور فنی (مشاور → سازه)
             $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_TAX_INVOICE_CONSULTANT);
 
-            Log::info("Consultant hold released for order {$locked->id}. Ref: {$moadianRef}. Net: {$consultantNet}, VAT: {$consultantVat}");
+            Log::channel('financial')->info("Consultant hold released for order {$locked->id}. Ref: {$moadianRef}. Net: {$consultantNet}, VAT: {$consultantVat}");
         }, 3);
     }
 }
