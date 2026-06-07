@@ -131,10 +131,10 @@ trait HasOrderProgress
                 }
 
                 if ($blueprint['title'] === 'مقدار(وزن) تایید شد') {
-                    // مجوز خروج (exit_permit = DOC_EXIT_PERMIT) — فاکتور نهایی پس از وزن‌کشی
+                    // بارنامه / مجوز خروج (K = DOC_BILL_OF_LADING) — فاکتور نهایی پس از وزن‌کشی
                     $actions[] = [
                         'label' => 'فاکتور نهایی',
-                        'link' => "/api/profile/orders/{$id}/invoices/exit_permit",
+                        'link' => "/api/profile/orders/{$id}/invoices/bill_of_lading",
                         'type' => 'secondary',
                         'downloadable' => true,
                     ];

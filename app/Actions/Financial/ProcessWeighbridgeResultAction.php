@@ -189,10 +189,10 @@ class ProcessWeighbridgeResultAction
 
                 $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_MODIFIED_INVOICE_OWNER);
                 $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_MODIFIED_INVOICE_SUPPLIER);
-                $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_REFUND_REPORT_WEIGH);
-                $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_EXIT_PERMIT);
+                // DOC_REFUND_REPORT_WEIGH (M) حذف شد — در سند طراحی وجود ندارد
+                $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_BILL_OF_LADING);
             } else {
-                $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_EXIT_PERMIT);
+                $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_BILL_OF_LADING);
             }
 
             $vatMultiplier = ($vat / 100) / (1 + ($vat / 100));
