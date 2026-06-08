@@ -51,10 +51,10 @@ class Kernel extends ConsoleKernel
             ->onOneServer();
 
         // polling صورت‌حساب سپرده پادیوم — شارژ خودکار کیف‌پول با شناسه واریز
+        // (runInBackground حذف شد — job خودش ShouldQueue دارد و async اجرا می‌شود)
         $schedule->job(new PollPodiumDepositsJob)
             ->everyFiveMinutes()
             ->withoutOverlapping()
-            ->runInBackground()
             ->onOneServer();
     }
 
