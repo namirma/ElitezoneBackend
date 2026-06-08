@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\Admin\AdminDashboardController;
 use App\Http\Controllers\Api\Admin\AdminFinancialController;
 use App\Http\Controllers\Api\Admin\AdminOrderController;
 use App\Http\Controllers\Api\Admin\AdminSearchController;
+use App\Http\Controllers\Api\Admin\AdminShippingRateController;
 use App\Http\Controllers\Api\Admin\AdminSupplierController;
 use App\Http\Controllers\Api\Admin\AdminTicketController;
 use App\Http\Controllers\Api\Admin\AdminUserController;
@@ -118,6 +119,15 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
     Route::controller(AdminWalletController::class)->prefix('wallet')->group(function () {
         Route::get('/transactions', 'index');
         Route::post('/transactions/{transaction}/status', 'changeStatus');
+    });
+
+    // Shipping Rates — CRUD نرخ‌های حمل‌ونقل
+    Route::controller(AdminShippingRateController::class)->prefix('shipping-rates')->group(function () {
+        Route::get('/',                     'index');
+        Route::post('/',                    'store');
+        Route::put('/{shippingRate}',       'update');
+        Route::delete('/{shippingRate}',    'destroy');
+        Route::post('/{shippingRate}/toggle', 'toggle');
     });
 
     // Weighbridge (note: at /admin root, not nested under /orders)

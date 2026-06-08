@@ -33,6 +33,23 @@ class RouteServiceProvider extends ServiceProvider
         });
 
         /**
+         * محدودیت برای تأیید کد OTP — جلوگیری از brute-force روی کد ۶ رقمی.
+         *
+         * کلید throttle: IP + شماره موبایل (username)
+         *   - هر ترکیب IP+موبایل حداکثر ۵ تلاش در دقیقه
+         *   - مهاجم حتی با چرخش IP نمی‌تواند به یک حساب حمله کند
+         *   - کاربر عادی کد را یک بار و درست وارد می‌کند؛ ۵ بار فرصت برای اشتباه تایپی کافی است
+         */
+        RateLimiter::for('otp-verify', function (Request $request) {
+            $mobile   = (string) $request->input('username', '');
+            $throttleKey = 'otp:' . $request->ip() . ':' . $mobile;
+
+            return Limit::perMinute(5)->by($throttleKey)->response(function () {
+                return error(__('auth.too_many_otp_attempts'), [], 429);
+            });
+        });
+
+        /**
          * نرخ‌محدودکننده هوشمند برای عملیات مالی (پرداخت، کیف پول)
          *
          * نقش‌بندی:

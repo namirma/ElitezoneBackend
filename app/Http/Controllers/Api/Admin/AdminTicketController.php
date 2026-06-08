@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\AdminTicketReplyRequest;
 use App\Http\Requests\Admin\AdminTicketStatusRequest;
 use App\Http\Resources\Ticket\TicketResource;
+use App\Jobs\Notification\SendSmsJob;
 use App\Models\Ticket;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -77,6 +79,7 @@ class AdminTicketController extends Controller
      * - یک TicketReply با admin_id ایجاد می‌کند
      * - وضعیت تیکت به 'answered' تغییر می‌کند
      * - تیکت به این ادمین اختصاص (assign) می‌شود
+     * - SMS اطلاع‌رسانی به کاربر ارسال می‌شود
      */
     public function reply(AdminTicketReplyRequest $request, Ticket $ticket): JsonResponse
     {
@@ -86,11 +89,14 @@ class AdminTicketController extends Controller
         ]);
 
         $ticket->update([
-            'status'   => 'answered',
-            'admin_id' => Auth::id(),
+            Ticket::STATUS   => Ticket::STATUS_ANSWERED,
+            Ticket::ADMIN_ID => Auth::id(),
         ]);
 
         $ticket->load(['user.profile', 'department', 'replies.user.profile']);
+
+        // SMS اطلاع‌رسانی به کاربر تیکت
+        $this->notifyTicketUser($ticket, 'ticket_admin_replied');
 
         return success(new TicketResource($ticket), __('admin.tickets.reply_sent'));
     }
@@ -99,20 +105,50 @@ class AdminTicketController extends Controller
      * تغییر وضعیت تیکت توسط ادمین
      *
      * وضعیت‌های مجاز: open | answered | pending | closed
+     * SMS فقط برای بستن تیکت ارسال می‌شود (رویداد مهم برای کاربر).
      */
     public function changeStatus(AdminTicketStatusRequest $request, Ticket $ticket): JsonResponse
     {
         $newStatus = $request->validated('status');
-        $ticket->update(['status' => $newStatus]);
+        $ticket->update([Ticket::STATUS => $newStatus]);
 
         $message = match ($newStatus) {
-            'closed'   => __('admin.tickets.closed'),
-            'open'     => __('admin.tickets.reopened'),
-            'pending'  => __('admin.tickets.set_pending'),
-            'answered' => __('admin.tickets.marked_answered'),
-            default    => __('global.updated_successfully'),
+            Ticket::STATUS_CLOSED   => __('admin.tickets.closed'),
+            Ticket::STATUS_OPEN     => __('admin.tickets.reopened'),
+            Ticket::STATUS_PENDING  => __('admin.tickets.set_pending'),
+            Ticket::STATUS_ANSWERED => __('admin.tickets.marked_answered'),
+            default                 => __('global.updated_successfully'),
         };
 
+        // SMS فقط وقتی تیکت بسته می‌شود — رویداد پایانی برای کاربر
+        if ($newStatus === Ticket::STATUS_CLOSED) {
+            $ticket->loadMissing('user');
+            $this->notifyTicketUser($ticket, 'ticket_closed');
+        }
+
         return success(null, $message);
+    }
+
+    /**
+     * ارسال SMS اطلاع‌رسانی به صاحب تیکت.
+     *
+     * @param  string  $smsKey  — کلید lang/fa/sms.php
+     */
+    private function notifyTicketUser(Ticket $ticket, string $smsKey): void
+    {
+        $user = $ticket->user;
+        if (! $user instanceof User) {
+            return;
+        }
+
+        $mobile = $user->{User::MOBILE};
+        if (! $mobile) {
+            return;
+        }
+
+        SendSmsJob::dispatch(
+            $mobile,
+            __("sms.{$smsKey}", ['code' => $ticket->{Ticket::CODE}])
+        );
     }
 }
