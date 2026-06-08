@@ -32,7 +32,7 @@ use Illuminate\Support\Facades\Route;
 
 // ── Podium services (admin-only proxy) ────────────────────────────────────
 Route::prefix('v1/podium')
-    ->middleware(['auth:sanctum', 'role:admin'])
+    ->middleware(['auth:sanctum', 'role.admin'])
     ->group(function () {
         Route::post('/settlements/single', [PodiumSettlementController::class, 'single']);
         Route::get('/balances', [PodiumBalanceController::class, 'index']);
@@ -43,7 +43,7 @@ Route::prefix('v1/podium')
     });
 
 // ── Admin panel (auth + role:admin) ───────────────────────────────────────
-Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(function () {
+Route::middleware(['auth:sanctum', 'role.admin'])->prefix('admin')->group(function () {
 
     // Dashboard — KPI اجرایی
     Route::get('/dashboard', [AdminDashboardController::class, 'index']);
