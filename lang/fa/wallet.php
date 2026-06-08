@@ -19,6 +19,7 @@ return [
     'deposit_description' => 'شارژ کیف پول (درگاه آنلاین)',
     'manual_deposit_description' => 'شارژ کیف پول (کارت به کارت/فیش)',
     'podium_direct_deposit' => 'واریز مستقیم بانکی — شناسه واریز: :shenaseh',
+    'podium_iban_deposit'   => 'واریز مستقیم بانکی از شبا: :iban',
     'deposit_account_received' => 'اطلاعات حساب واریز مستقیم دریافت شد',
     'deposit_account_no_national_code' => 'برای استفاده از واریز مستقیم ابتدا باید کد ملی خود را تکمیل کنید',
     'withdrawal_description' => 'درخواست برداشت وجه به شبا: :shaba',
