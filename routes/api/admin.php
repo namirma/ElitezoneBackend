@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\Admin\AdminActivityLogController;
+use App\Http\Controllers\Api\Admin\AdminPodiumDepositController;
 use App\Http\Controllers\Api\Admin\AdminDashboardController;
 use App\Http\Controllers\Api\Admin\AdminFinancialController;
 use App\Http\Controllers\Api\Admin\AdminOrderController;
@@ -77,6 +78,12 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
         Route::get('/health', 'financialHealth');
         Route::get('/pending-debts', 'pendingDebts');
         Route::get('/pending-moadian', 'pendingMoadianInvoices');
+    });
+
+    // واریز مستقیم بانکی — سوابق شناسه واریز + polling دستی
+    Route::controller(AdminPodiumDepositController::class)->prefix('financial/podium-deposits')->group(function () {
+        Route::get('/',      'index'); // لیست سوابق + آمار
+        Route::post('/poll', 'poll');  // اجرای دستی polling (بدون cron)
     });
 
     // Users — CRUD (group 2)
