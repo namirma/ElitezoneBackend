@@ -76,12 +76,22 @@ class DepositStatementService
             );
         }
 
-        // مسیر نتایج: result.result.ResultData.Statements
-        $normalized = PodiumClient::normalize($res);
-        $statements = data_get($normalized, 'result.result.ResultData.Statements', []);
+        // ساختار واقعی پاسخ پادیوم:
+        // normalized.result.ResultData = آرایه‌ای از گروه‌های سپرده
+        // هر گروه: { DepositInfo: {...}, Statements: [...] }
+        $normalized    = PodiumClient::normalize($res);
+        $resultData    = data_get($normalized, 'result.ResultData', []);
 
-        if (! is_array($statements)) {
+        if (! is_array($resultData)) {
             return [];
+        }
+
+        // جمع‌آوری Statements از همه گروه‌های سپرده
+        $statements = [];
+        foreach ($resultData as $depositGroup) {
+            foreach ($depositGroup['Statements'] ?? [] as $stmt) {
+                $statements[] = $stmt;
+            }
         }
 
         return $statements;

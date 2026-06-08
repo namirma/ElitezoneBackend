@@ -40,10 +40,15 @@ class ProcessPodiumDepositAction
      */
     public function execute(array $statement): void
     {
-        $docNumber       = (string) ($statement['DocNumber'] ?? '');
-        $shenasehVariz   = trim((string) ($statement['TransferMoneyBillNumber'] ?? ''));
-        $creditorAmount  = (int) ($statement['CreditorAmount'] ?? 0);
-        $depositedAt     = trim(($statement['Date'] ?? '').' '.($statement['Time'] ?? ''));
+        $docNumber      = (string) ($statement['DocNumber'] ?? '');
+        $creditorAmount = (int) ($statement['CreditorAmount'] ?? 0);
+        $depositedAt    = trim(($statement['Date'] ?? '').' '.($statement['Time'] ?? ''));
+
+        // TransferMoneyBillNumber برای پل/شتاب کد بانکی است (مثل C64945308503)؛
+        // شناسه واریز واقعی کاربر فقط در انتقال‌های پایا استاندارد پر می‌شود.
+        // پس اگر رشته فقط عددی و ۱۱ رقم باشد → شناسه واریز کاربر؛ وگرنه خالی.
+        $rawBillNumber = trim((string) ($statement['TransferMoneyBillNumber'] ?? ''));
+        $shenasehVariz = (preg_match('/^\d{11}$/', $rawBillNumber)) ? $rawBillNumber : '';
 
         // ── ① Idempotency guard ──────────────────────────────────────────────
         if (empty($docNumber)) {
