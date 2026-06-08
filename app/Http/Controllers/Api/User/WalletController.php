@@ -7,6 +7,8 @@ use App\Actions\Financial\DeleteReceiptAction;
 use App\Actions\Financial\FundWalletAction;
 use App\Actions\Financial\RequestWithdrawalAction;
 use App\Http\Controllers\Controller;
+use App\Models\User;
+use App\Services\Financial\ShenasehVarizService;
 use App\Http\Requests\Financial\StoreDepositReceiptRequest;
 use App\Http\Requests\Financial\WalletDepositRequest;
 use App\Http\Requests\Financial\WalletWithdrawalRequest;
@@ -29,6 +31,43 @@ class WalletController extends Controller
         protected AttachReceiptToDepositAction  $attachReceiptAction,
         protected DeleteReceiptAction           $deleteReceiptAction,
     ) {}
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Direct bank deposit (شناسه واریز)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * GET /profile/wallet/deposit-account
+     *
+     * اطلاعات حساب شناسه‌دار برای واریز مستقیم بانکی (PAYA/SATNA):
+     *  - شماره شبا الیت‌زون
+     *  - شناسه واریز مختص این کاربر (کد ملی + رقم کنترل — الگوریتم ۱-۱)
+     *
+     * کاربر باید انتقال بانکی را با این شناسه واریز انجام دهد تا
+     * سیستم به صورت خودکار کیف‌پول او را شارژ کند.
+     */
+    public function getDepositAccount(ShenasehVarizService $shenasehService): JsonResponse
+    {
+        /** @var User $user */
+        $user = Auth::user();
+
+        $nationalCode = $user->{User::NATIONAL_CODE};
+
+        if (empty($nationalCode)) {
+            return error(__('wallet.deposit_account_no_national_code'), [], 422);
+        }
+
+        $shenasehVariz = $shenasehService->generate($nationalCode);
+
+        return success([
+            'iban'           => 'IR' . config('podium.deposit.iban'),
+            'bank_name'      => config('podium.deposit.bank_name'),
+            'account_holder' => config('podium.deposit.account_holder'),
+            'shenaseh_variz' => $shenasehVariz,
+            'national_code'  => $nationalCode,
+            'note'           => 'این شناسه واریز مختص شماست. هنگام انتقال PAYA/SATNA حتماً در فیلد شناسه واریز وارد کنید.',
+        ], __('wallet.deposit_account_received'));
+    }
 
     // ─────────────────────────────────────────────────────────────────────────
     // Balance & transactions
