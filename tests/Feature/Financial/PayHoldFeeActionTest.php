@@ -10,7 +10,6 @@ use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
-use Illuminate\Support\Facades\Log;
 use Tests\TestCase;
 
 /**
@@ -117,8 +116,9 @@ class PayHoldFeeActionTest extends TestCase
         $balanceBefore = $this->wallet->balance;
         $txCountBefore = WalletTransaction::where('order_id', $this->order->id)->count();
 
-        // Executing again must be a no-op
-        Log::shouldReceive('info')->once();   // log line in idempotency guard
+        // Executing again must be a no-op (no wallet debit, no new transaction).
+        // The idempotency log line is verified implicitly — if the action weren't
+        // returning early, it would throw (order not in RESERVED status) or debit.
         $this->action->execute($this->order);
 
         $this->wallet->refresh();

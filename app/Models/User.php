@@ -36,6 +36,8 @@ class User extends Authenticatable
 
     public const MOBILE = 'mobile';
 
+    public const IS_ACTIVE = 'is_active';
+
     public const NATIONAL_CODE = 'national_code';
 
     public const BIRTH_DATE = 'birth_date';
@@ -78,6 +80,7 @@ class User extends Authenticatable
     // =========================================================================
     protected $fillable = [
         self::MOBILE,
+        self::IS_ACTIVE,
         self::NATIONAL_CODE,
         self::BIRTH_DATE,
         self::SECRET,
@@ -96,6 +99,7 @@ class User extends Authenticatable
 
     protected $casts = [
         self::PASSWORD => 'hashed',
+        self::IS_ACTIVE => 'boolean',
     ];
 
     protected $appends = ['created_at_p', 'created_at_diff', 'updated_at_p', 'updated_at_diff'];
@@ -200,6 +204,12 @@ class User extends Authenticatable
     public function stockSubscriptions(): HasMany
     {
         return $this->hasMany(StockSubscription::class, StockSubscription::USER_ID);
+    }
+
+    /** Admin back-office notes written about this user. */
+    public function notes(): HasMany
+    {
+        return $this->hasMany(UserNote::class, UserNote::USER_ID);
     }
 
     public function technicalConsultants(): BelongsToMany

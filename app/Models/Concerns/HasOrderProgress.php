@@ -131,10 +131,10 @@ trait HasOrderProgress
                 }
 
                 if ($blueprint['title'] === 'مقدار(وزن) تایید شد') {
-                    // مجوز خروج (exit_permit = DOC_EXIT_PERMIT) — فاکتور نهایی پس از وزن‌کشی
+                    // بارنامه / مجوز خروج (K = DOC_BILL_OF_LADING) — فاکتور نهایی پس از وزن‌کشی
                     $actions[] = [
                         'label' => 'فاکتور نهایی',
-                        'link' => "/api/profile/orders/{$id}/invoices/exit_permit",
+                        'link' => "/api/profile/orders/{$id}/invoices/bill_of_lading",
                         'type' => 'secondary',
                         'downloadable' => true,
                     ];
@@ -208,23 +208,30 @@ trait HasOrderProgress
         $currentIndex = -1;
 
         if (! $isCancelled) {
-            // سفارشِ تحویل‌شده/تکمیل‌شده = پورسانت مشاور واریز شده → مرحله ۴.
-            // هم‌راستا با getDashboardProgressAttribute که delivered/completed را کاملاً تمام‌شده می‌داند.
-            if (in_array($status, [Order::STATUS_DELIVERED, Order::STATUS_COMPLETED])
-                || $this->{Order::CONSULTANT_HOLD_RELEASED_AT} !== null) {
+            // مرحله ۴ فقط وقتی Doc Q ثبت و hold واقعاً آزاد شده — نه صرف تحویل کالا.
+            // طبق پروسه خرید (بخش «الگوریتم وابستگی واریزها»):
+            // «تا زمان صدور فاکتور سامانه مودیان توسط مشاور فنی در کیف پول وی هولد می‌شود».
+            // پس delivered/completed به‌تنهایی hold را آزاد نمی‌کند؛ ReleaseConsultantHoldAction لازم است.
+            if ($this->{Order::CONSULTANT_HOLD_RELEASED_AT} !== null) {
                 $currentIndex = 3; // مرحله ۴: حق مشاوره در دسترس
             } elseif ($this->{Order::CONSULTANT_MOADIAN_REF} !== null) {
-                $currentIndex = 2; // مرحله ۳: فاکتور خدمات ثبت شد
+                $currentIndex = 2; // مرحله ۳: فاکتور خدمات ثبت شد (حالت گذرا — atomically به ۴ می‌رسد)
             } elseif (in_array($status, [
                 Order::STATUS_WEIGHBRIDGE_DONE,
                 Order::STATUS_PENDING_SURPLUS_PAYMENT,
                 Order::STATUS_WAYBILL_ISSUED,
                 Order::STATUS_SHIPPED,
+                Order::STATUS_DELIVERED,  // کالا تحویل شده ولی مشاور هنوز Doc Q ثبت نکرده
+                Order::STATUS_COMPLETED,  // → کمیسیون در کیف‌پول مشاور به‌صورت Hold؛ باید Doc Q ثبت کند
             ])) {
-                // از باسکول به بعد تا پیش از تحویل، «حق مشاوره منظور شده» باقی می‌ماند
-                // (تا وقتی فاکتور مودیان ثبت یا hold آزاد شود) — وگرنه با حمل، تایم‌لاین به مرحله ۱ پس‌رفت می‌کرد.
                 $currentIndex = 1; // مرحله ۲: حق مشاوره منظور شد
-            } elseif (in_array($status, [Order::STATUS_PROCESSING, Order::STATUS_PREPARING])) {
+            } elseif (in_array($status, [
+                Order::STATUS_PROCESSING,
+                Order::STATUS_PREPARING,
+                Order::STATUS_PENDING,           // سفارش ثبت‌شده ولی هنوز پرداخت نشده
+                Order::STATUS_RESERVED,          // رزرو پرداخت‌شده ولی قبل از تأیید
+                Order::STATUS_RESERVED_EXTENDED, // رزرو تمدیدشده
+            ])) {
                 $currentIndex = 0; // مرحله ۱: کارفرما خرید کرد
             }
         }
@@ -298,10 +305,9 @@ trait HasOrderProgress
             ];
         }
 
-        // وقتی hold آزاد شده یا سفارش تحویل/تکمیل شده، آخرین مرحله کاملاً تکمیل‌شده است —
-        // مشابه باگ‌فیکس مرحله آخر در getDashboardProgressAttribute
-        if (in_array($status, [Order::STATUS_DELIVERED, Order::STATUS_COMPLETED])
-            || $this->{Order::CONSULTANT_HOLD_RELEASED_AT} !== null) {
+        // آخرین مرحله («حق مشاوره در دسترس است») فقط وقتی Doc Q ثبت و hold آزاد شده «completed» می‌شود.
+        // delivered/completed بدون Doc Q → مرحله ۲ current باقی می‌ماند (hold هنوز فعال است).
+        if ($this->{Order::CONSULTANT_HOLD_RELEASED_AT} !== null) {
             $steps[count($steps) - 1]['state'] = 'completed';
         }
 

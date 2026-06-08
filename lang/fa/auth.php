@@ -84,4 +84,7 @@ return [
     ],
 
     'identity_verification_unavailable' => 'سرویس احراز هویت در حال حاضر در دسترس نیست. لطفاً چند دقیقه دیگر دوباره امتحان کنید.',
+
+    // OTP verify brute-force protection
+    'too_many_otp_attempts' => 'تعداد تلاش‌های تأیید کد بیش از حد مجاز است. لطفاً یک دقیقه صبر کنید و دوباره امتحان کنید.',
 ];

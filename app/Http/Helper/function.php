@@ -41,7 +41,9 @@ function error(string $message, array $errors, int $status)
 
 function generateVerifyCode(): int
 {
-    return mt_rand(123456, 987654);
+    // Use a cryptographically-secure PRNG for OTP / password-reset codes.
+    // random_int() (CSPRNG) is unpredictable, unlike mt_rand(). Full 6-digit range.
+    return random_int(100000, 999999);
 }
 
 function getProvince(): Collection

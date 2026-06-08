@@ -135,6 +135,30 @@ return [
         'emergency' => [
             'path' => storage_path('logs/laravel.log'),
         ],
+
+        // ──────────────────────────────────────────────────────────────────
+        // کانال‌های تخصصی EliteZone
+        // هر حوزه تجاری لاگ خودش را دارد تا در production جستجو و audit
+        // آسان باشد و لاگ‌های مالی حساس از لاگ‌های عمومی جدا بمانند.
+        // ──────────────────────────────────────────────────────────────────
+
+        // تراکنش‌های مالی — ۹۰ روز نگه‌داری (برای audit مالیاتی)
+        'financial' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/financial.log'),
+            'level' => 'info',
+            'days' => 90,
+            'replace_placeholders' => true,
+        ],
+
+        // چرخه‌ی سفارش — لغو، باسکول، فاکتور، انقضا
+        'orders' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/orders.log'),
+            'level' => 'info',
+            'days' => 30,
+            'replace_placeholders' => true,
+        ],
     ],
 
 ];

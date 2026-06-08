@@ -21,7 +21,7 @@ class ProcessReservationPaymentAction
     public function execute(Order $order, float $reserveAmount, int $validityHours = 2): void
     {
         if ($this->isAlreadyProcessed($order)) {
-            Log::warning("ProcessReservationPaymentAction skipped: order {$order->id} already reserved.");
+            Log::channel('financial')->warning("ProcessReservationPaymentAction skipped: order {$order->id} already reserved.");
 
             return;
         }
@@ -39,7 +39,7 @@ class ProcessReservationPaymentAction
             }
 
             if ($this->isAlreadyProcessed($locked)) {
-                Log::warning("Race detected: order {$locked->id} already reserved.");
+                Log::channel('financial')->warning("Race detected: order {$locked->id} already reserved.");
 
                 return;
             }
@@ -64,7 +64,7 @@ class ProcessReservationPaymentAction
             // F — گزارش رزرو برای سوپلایر
             $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_RESERVE_REPORT);
 
-            Log::info("سفارش {$locked->order_number} رزرو شد.");
+            Log::channel('financial')->info("سفارش {$locked->order_number} رزرو شد.");
         }, 3);
     }
 

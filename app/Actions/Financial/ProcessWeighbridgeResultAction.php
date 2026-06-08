@@ -30,7 +30,7 @@ class ProcessWeighbridgeResultAction
     public function execute(Order $order, float $actualWeight): array
     {
         if ($this->isAlreadyProcessed($order)) {
-            Log::warning("ProcessWeighbridgeResultAction skipped: order {$order->id} already weighed.");
+            Log::channel('financial')->warning("ProcessWeighbridgeResultAction skipped: order {$order->id} already weighed.");
 
             return $this->buildAlreadyProcessedResponse($order);
         }
@@ -48,14 +48,14 @@ class ProcessWeighbridgeResultAction
             }
 
             if ($this->isAlreadyProcessed($locked)) {
-                Log::warning("Race detected: order {$locked->id} already weighed.");
+                Log::channel('financial')->warning("Race detected: order {$locked->id} already weighed.");
 
                 return $this->buildAlreadyProcessedResponse($locked);
             }
 
-            $locked->load('items', 'beneficiary.badge');
+            $locked->load('items', 'consultant.badge');
 
-            Log::info("شروع پردازش باسکول سفارش {$locked->id}.");
+            Log::channel('financial')->info("شروع پردازش باسکول سفارش {$locked->id}.");
 
             $oldPOO = (float) $locked->payment_of_owner;
             $oldPTS = (float) $locked->payment_to_supplier;
@@ -81,7 +81,7 @@ class ProcessWeighbridgeResultAction
             // deliberately no "surplus" payment path.
             $billingWeight = min($actualWeight, $wbs);
 
-            $badgeCode = $locked->beneficiary->badge->code ?? 'pioneer';
+            $badgeCode = $locked->consultant?->badge?->code ?? 'pioneer';
             $rates = $this->calculator->getCommissionRates($badgeCode);
             $trans = (float) $locked->shipping_cost;
             $vat = (float) ($locked->vat_rate ?? 10.0);
@@ -183,16 +183,16 @@ class ProcessWeighbridgeResultAction
                         );
                     }
 
-                    Log::warning("Supplier {$realSupplierId} insufficient balance for deficit reclaim on order {$locked->id}. Debt: {$reclaimAmount}");
+                    Log::channel('financial')->warning("Supplier {$realSupplierId} insufficient balance for deficit reclaim on order {$locked->id}. Debt: {$reclaimAmount}");
                     $status = 'deficit_pending_supplier';
                 }
 
                 $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_MODIFIED_INVOICE_OWNER);
                 $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_MODIFIED_INVOICE_SUPPLIER);
-                $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_REFUND_REPORT_WEIGH);
-                $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_EXIT_PERMIT);
+                // DOC_REFUND_REPORT_WEIGH (M) حذف شد — در سند طراحی وجود ندارد
+                $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_BILL_OF_LADING);
             } else {
-                $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_EXIT_PERMIT);
+                $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_BILL_OF_LADING);
             }
 
             $vatMultiplier = ($vat / 100) / (1 + ($vat / 100));
@@ -210,7 +210,7 @@ class ProcessWeighbridgeResultAction
                 ? $commissionPool * ($coRate / ($coRate + $ssgRate))
                 : 0.0;
 
-            $consultantUserId = $locked->beneficiary_user_id;
+            $consultantUserId = $locked->{Order::CONSULTANT_USER_ID};
             $consultantGross = 0;
 
             if ($consultantUserId && $consultantUserId !== $buyerId && $candidateGross > 0) {
@@ -255,7 +255,7 @@ class ProcessWeighbridgeResultAction
                 'final_amount' => $newPOO,
             ]);
 
-            Log::info("باسکول نهایی شد. وضعیت: {$status}");
+            Log::channel('financial')->info("باسکول نهایی شد. وضعیت: {$status}");
 
             return [
                 'status' => $status,
@@ -284,7 +284,7 @@ class ProcessWeighbridgeResultAction
         }
 
         $alreadyPaid = (float) Order::query()
-            ->where(Order::BENEFICIARY_USER_ID, $consultantUserId)
+            ->where(Order::CONSULTANT_USER_ID, $consultantUserId)
             ->whereNotNull(Order::WEIGHING_COMPLETED_AT)
             ->where(Order::ID, '!=', $currentOrderId)
             ->sum(Order::PAYMENT_TO_CONSULTANT);

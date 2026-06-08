@@ -60,20 +60,19 @@ class FinancialCodes
     public const DOC_CANCEL_REPORT = 'j'; // گزارش لغو رزرو خریدار برای سوپلایر
 
     // --- مرحله ۵: بعد از باسکول و حمل (Post Scale & Shipping) ---
-    // --- مرحله ۵: بعد از باسکول و حمل (Post Scale & Shipping) ---
-    public const DOC_EXIT_PERMIT = 'I'; // مجوز خروج / حواله
+    // طبق سند طراحی «پروسه خرید»، حروف معتبر این مرحله فقط K، LO، LS هستند.
+    // حروف I، J، M، N در نسخه‌های قبلی کد تعریف شده بودند ولی در سند وجود ندارند
+    // و از کد حذف شدند. در صورت نیاز به بازگردانی از git history استفاده شود.
+    // - I (DOC_EXIT_PERMIT)         → حذف: K این نقش را ایفا می‌کند
+    // - J (DOC_SUPPLEMENTARY_RECEIPT) → حذف: در سند وجود ندارد؛ LO معادل آن است
+    // - M (DOC_REFUND_REPORT_WEIGH)   → حذف: در سند وجود ندارد
+    // - N (DOC_BILL_OF_LADING)        → حذف: در سند N وجود ندارد؛ K جایگزین شد
 
-    public const DOC_SUPPLEMENTARY_RECEIPT = 'J'; // رسید مابه‌التفاوت وزن برای خریدار
+    public const DOC_BILL_OF_LADING = 'K'; // بارنامه / مجوز خروج — صادر شده توسط سوپلایر (فولاد کویر)
 
-    public const DOC_SUPPLEMENTARY_REPORT = 'K'; // گزارش مابه‌التفاوت وزن برای سوپلایر
+    public const DOC_MODIFIED_INVOICE_OWNER = 'LO'; // فاکتور اولیه اصلاح شده برای خریدار (براساس وزن بارنامه)
 
-    public const DOC_MODIFIED_INVOICE_OWNER = 'LO'; // فاکتور اولیه اصلاح شده برای خریدار
-
-    public const DOC_MODIFIED_INVOICE_SUPPLIER = 'LS'; // فاکتور اولیه اصلاح شده برای سوپلایر
-
-    public const DOC_REFUND_REPORT_WEIGH = 'M'; // گزارش استرداد وجه برای سوپلایر
-
-    public const DOC_BILL_OF_LADING = 'N'; // بارنامه
+    public const DOC_MODIFIED_INVOICE_SUPPLIER = 'LS'; // فاکتور اولیه اصلاح شده برای سوپلایر (براساس وزن بارنامه)
 
     // --- مرحله ۶: سامانه مودیان (Taxpayer System) ---
     public const DOC_TAX_INVOICE_SUPPLIER = 'O'; // فاکتور نهایی روی سامانه مودیان (برای شرکت نرم‌افزاری سازه توسط سوپلایر)
@@ -82,9 +81,11 @@ class FinancialCodes
 
     public const DOC_TAX_INVOICE_CONSULTANT = 'Q'; // فاکتور نهایی روی سامانه مودیان (برای شرکت نرم‌افزاری سازه توسط مشاور فنی)
 
-    // --- مرحله ۷: الگوریتم‌ها و تسویه نهایی ---
-    // این‌ها بیشتر فرآیند هستند تا سند، اما در لیست دیاگرام کد دارند
-    public const DOC_FREIGHT_SETTLEMENT = 'R'; // فرآیند تسویه حساب هزینه حمل بار و رسید تحویل بار
+    // --- مرحله ۷: تسویه و نظرسنجی ---
+    // R: HOLD — فرآیند تسویه حساب هزینه حمل بار؛ در انتظار تصمیم محصول با فولاد کویر
+    // public const DOC_FREIGHT_SETTLEMENT = 'R';
 
-    public const DOC_SURVEY = 'S'; // نظرسنجی از خریدار (Hold شده)
+    public const DOC_SURVEY = 'S'; // نظرسنجی از خریدار
+
+    public const DOC_SURVEY_CONSULTANT = 'T'; // نظرسنجی از مشاور فنی
 }

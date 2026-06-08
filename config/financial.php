@@ -15,10 +15,14 @@ return [
     | Orders whose final_amount exceeds this value are eligible for the
     | reservation (hold) payment flow instead of direct purchase.
     |
-    | 1,950,000,000 Rials = 195,000,000 Tomans = 195 million Tomans
+    | Per the design spec ("پروسه خرید"): the Passargad gateway per-payment limit
+    | is currently 200 million Tomans, so anything above it must go through the
+    | reserve→complete flow. The threshold therefore tracks the gateway limit.
+    |
+    | 2,000,000,000 Rials = 200,000,000 Tomans = 200 million Tomans
     |
     */
-    'reservation_threshold' => env('RESERVATION_THRESHOLD_RIALS', 1_950_000_000),
+    'reservation_threshold' => env('RESERVATION_THRESHOLD_RIALS', 2_000_000_000),
 
     /*
     |--------------------------------------------------------------------------

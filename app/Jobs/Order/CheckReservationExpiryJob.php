@@ -16,6 +16,15 @@ class CheckReservationExpiryJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    /**
+     * این job از طریق Kernel::schedule() به صورت دوره‌ای اجرا می‌شود.
+     * در صورت شکست، یک بار مجدداً تلاش می‌کند (بعد از ۶۰ ثانیه).
+     * اگر دوباره هم شکست خورد، در failed_jobs ثبت می‌شود تا بررسی شود.
+     */
+    public int $tries = 2;
+
+    public array $backoff = [60];
+
     public function handle(CancelOrderAction $cancelAction): void
     {
         $expiredOrders = Order::query()
@@ -36,9 +45,9 @@ class CheckReservationExpiryJob implements ShouldQueue
                     refundWallet: true,
                     isSystemCron: true
                 );
-                Log::info("سفارش {$order->id} (وضعیت: {$order->status}) به دلیل انقضا لغو شد.");
+                Log::channel('orders')->info("سفارش {$order->id} (وضعیت: {$order->status}) به دلیل انقضا لغو شد.");
             } catch (\Throwable $e) {
-                Log::error("خطا در لغو خودکار سفارش {$order->id}: {$e->getMessage()}");
+                Log::channel('orders')->error("خطا در لغو خودکار سفارش {$order->id}: {$e->getMessage()}");
             }
         }
     }

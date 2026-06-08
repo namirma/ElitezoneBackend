@@ -309,6 +309,17 @@ Request → FormRequest (validation) → Controller
 - `payHoldFee` → `PayHoldFeeAction` (DB::transaction + lockForUpdate + idempotency guard)
 - Gateway callback → `ProcessPaymentCallbackAction` (verify + settle in one transaction)
 
+**Payment gateway contract.** `PaymentGatewayInterface` declares `pay()`, `getName()`,
+**and `verify(float $amount, string $authority): ?PaymentReceipt`**. `verify()` is what the
+callback (`ProcessPaymentCallbackAction`) relies on — never call a gateway method that the
+interface doesn't declare. `PaymentReceipt` (`app/Services/Payment/PaymentReceipt.php`) is a
+readonly value object with `isSuccessful()` / `getReferenceId()` and `PaymentReceipt::success($refId)`
+/ `PaymentReceipt::failed()` factories. A real Passargad/Shaparak gateway is not yet integrated
+(spec: pending license), so `ShaparakGateway::verify()` returns `PaymentReceipt::failed()` (fails
+safely — never crashes, never phantom-credits) until the real driver is implemented.
+`ProcessPaymentCallbackAction::settle()` re-locks the transaction and re-checks its `pending`
+status **inside** the DB::transaction to prevent double-credit on retried bank callbacks.
+
 ### DTO Style — Readonly Constructor (Only Pattern)
 
 All DTOs use PHP 8.1 readonly properties. `BaseDTO` was deleted (commit `26b2c66`) — do not reintroduce it.
@@ -359,8 +370,8 @@ All financial constants live in `config/financial.php` — **never hardcode amou
 
 | Key | Env var | Default | Meaning |
 |-----|---------|---------|---------|
-| `financial.reservation_threshold` | `RESERVATION_THRESHOLD_RIALS` | `1_950_000_000` | Orders above this require reservation flow (195M Tomans) |
-| `financial.hold_fee` | `HOLD_FEE_RIALS` | `50_000_000` | Fee to extend a reservation (5M Tomans) |
+| `financial.reservation_threshold` | `RESERVATION_THRESHOLD_RIALS` | `2_000_000_000` | Orders above this require reservation flow (200M Tomans — matches the Passargad gateway per-payment limit in the spec) |
+| `financial.hold_fee` | `HOLD_FEE_RIALS` | `50_000_000` | Fee to extend a reservation (5M Tomans). `PayHoldFeeAction` debits WO **and** credits WSSG (Saze) so the ledger stays balanced — double-entry, never a bare debit |
 | `financial.system_user_id` | `FINANCIAL_SYSTEM_USER_ID` | `1` | User ID of the platform's central "Saze" (WSSG) wallet |
 | `financial.vat_user_id` | `FINANCIAL_VAT_USER_ID` | *(falls back to system_user_id)* | User ID of the dedicated VAT escrow (WVAT) wallet; set in .env once a separate VAT user is created |
 | `financial.pending_order_ttl_hours` | `PENDING_ORDER_TTL_HOURS` | `2` | Hours before an unpaid PENDING order auto-cancels (`CheckReservationExpiryJob`) |
@@ -378,7 +389,7 @@ config('financial.reservation_threshold')
 PayHoldFeeAction::fee()   // wraps config('financial.hold_fee')
 
 // ❌ wrong — never hardcode
-1_950_000_000
+2_000_000_000
 self::FEE_RIALS   // deprecated constant in PayHoldFeeAction, kept for BC only
 ```
 
@@ -576,7 +587,7 @@ The system has a wallet-based payment model. Five wallet codes are in use:
 Payment entry points:
 
 1. **WalletPaymentController** — generic wallet payment for orders
-2. **OrderPaymentController::payFullOrder** — handles 3 scenarios: direct purchase, reservation (>195M Rials), and completion of reserved orders; protected by `idempotency` middleware
+2. **OrderPaymentController::payFullOrder** — handles 3 scenarios: direct purchase, reservation (above `financial.reservation_threshold`, default 200M Tomans), and completion of reserved orders; protected by `idempotency` middleware
 3. **OrderPaymentController::payHoldFee** — hold fee extension; protected by `idempotency` middleware
 4. **OrderActionController::submitConsultantMoadianInvoice** — Doc Q; releases WCT+WVAT holds
 5. **SupplierOrderController::submitSupplierMoadianInvoice** — Doc O; releases WVAT hold
@@ -823,6 +834,14 @@ Performance-critical indexes added in `2026_05_23_120000_add_performance_indexes
 When adding queries that filter heavily on a column, check this list and
 add an index in a new migration if needed. Always make migrations additive.
 
+### Admin user-management schema (`2026_06_07_*`)
+
+- `users.is_active` (boolean, default `true`) — toggled by `AdminUserController::toggleStatus`
+  and filtered by `index()`. Exposed on the `User` model as `User::IS_ACTIVE` (fillable + `boolean` cast).
+- `user_notes` table (`user_id`, `admin_id` nullable, `note`) + `UserNote` model — back-office
+  per-user notes written via `AdminUserController::addNote` (`User::notes()` relation).
+- **Run `php artisan migrate`** after pulling — both endpoints (and the `is_active` filter) require these.
+
 ## Known Architectural Gotchas
 
 ### Exception Handler — `renderable()` runs before `unauthenticated()`
@@ -927,6 +946,14 @@ user before expiry). `PROCESSING` and later are paid/settled and must go through
 dedicated return/dispute flow (مرجوعی/داوری) — **never** self-cancel, which would
 trigger an incomplete refund.
 
+### Order `beneficiary_user_id` must be an APPROVED consultant of the placer
+
+`beneficiary_user_id` drives consultant-commission routing (`WALLET_CONSULTANT`), so
+`StoreOrderRequest` validates (via a closure rule) that it is either the placer themselves
+or an **approved** technical consultant of the placer:
+`Auth::user()->technicalConsultants()->where('users.id', $value)->wherePivot('status', 'approved')->exists()`.
+A bare `exists:users,id` is not enough — it would let anyone route commission to an arbitrary user.
+
 ### Badge codes are `gold` / `silver` / `bronze` / `pioneer`
 
 The seeder (`database/seeders/ProductSeeder.php`) is the source of truth: the gold tier
@@ -971,7 +998,7 @@ were created precisely to eliminate the cross-controller call that existed betwe
 - **Never hardcode user-facing strings anywhere in PHP** — all strings that could appear in an API response or be stored as a user-visible description must go through `__('domain.key')`. The only exception is internal log messages (passed to `Log::error()` etc.) which may remain in English
 - Persian dates use the `PersianDate` trait (provides `created_at_p`, `created_at_diff` appended attributes via Verta)
 - Phone numbers are normalized to `09xxxxxxxxx` format using `PhoneNumber::to09($mobile)` from `app/Support/PhoneNumber.php` — **never** write a local helper
-- Verification codes are stored in `users.secret` with expiry in `users.secret_expires_at`
+- Verification codes are stored in `users.secret` with expiry in `users.secret_expires_at`; generated by `generateVerifyCode()` using `random_int` (CSPRNG) — never `mt_rand`
 - Financial amounts are in **Rials** (not Tomans)
 - The system admin wallet user ID is `config('financial.system_user_id')` (default 1) — read from `config/financial.php`, **never hardcode**
 - All financial thresholds/fees are in `config/financial.php` — always use `config('financial.*')` or the Action's static helper (e.g. `PayHoldFeeAction::fee()`)

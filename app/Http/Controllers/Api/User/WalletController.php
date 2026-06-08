@@ -46,7 +46,7 @@ class WalletController extends Controller
         $wallet = Auth::user()->wallet()->firstOrCreate([]);
 
         $transactions = $this->applyTransactionFilters($wallet->transactions()->latest(), $request)
-            ->paginate($request->input('per_page', 10));
+            ->paginate($this->perPage(10));
 
         return success(
             WalletTransactionResource::collection($transactions)->response()->getData(true),
@@ -162,7 +162,7 @@ class WalletController extends Controller
             ->where('type', WalletTransaction::TYPE_DEPOSIT)
             ->whereJsonContains('meta->payment_method', WalletTransaction::METHOD_BANK_TRANSFER)
             ->latest()
-            ->paginate(20);
+            ->paginate($this->perPage());
 
         return success(WalletTransactionResource::collection($receipts), __('wallet.receipts_list'));
     }

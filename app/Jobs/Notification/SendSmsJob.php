@@ -19,6 +19,19 @@ class SendSmsJob implements ShouldQueue
      */
     public $tries = 3;
 
+    /**
+     * فاصله‌های زمانی (ثانیه) بین تلاش‌های مجدد: 30 ثانیه، 60 ثانیه، 2 دقیقه.
+     * Exponential back-off: اگر TSMS موقتاً در دسترس نباشد، درخواست‌ها انباشته نمی‌شوند.
+     *
+     * @var array<int, int>
+     */
+    public array $backoff = [30, 60, 120];
+
+    /**
+     * حداکثر یک exception ثبت‌نشده مجاز است (از infinite retry loop جلوگیری می‌کند).
+     */
+    public int $maxExceptions = 1;
+
     public function __construct(protected string $mobile, protected string $message) {}
 
     public function handle(SmsService $smsService): void

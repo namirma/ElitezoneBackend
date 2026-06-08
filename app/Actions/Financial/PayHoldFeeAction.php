@@ -51,7 +51,7 @@ class PayHoldFeeAction
                 && $lockedOrder->{Order::RESERVATION_EXPIRES_AT}
                 && $lockedOrder->{Order::RESERVATION_EXPIRES_AT}->isFuture()
             ) {
-                Log::info("PayHoldFeeAction: سفارش {$lockedOrder->id} قبلاً تمدید شده، عملیات تکراری نادیده گرفته شد.");
+                Log::channel('financial')->info("PayHoldFeeAction: سفارش {$lockedOrder->id} قبلاً تمدید شده، عملیات تکراری نادیده گرفته شد.");
 
                 return;
             }
@@ -67,6 +67,11 @@ class PayHoldFeeAction
                 throw new InsufficientBalanceException(self::fee(), (float) ($buyerWallet?->balance ?? 0));
             }
 
+            // Double-entry: the hold fee leaves the buyer (WO) and is recognised as
+            // platform revenue in the Saze system wallet (WSSG). Crediting WSSG keeps
+            // the ledger balanced — never debit a wallet without a matching credit.
+            $systemUserId = (int) config('financial.system_user_id', 1);
+
             $this->walletEngine->process(
                 '-',
                 self::fee(),
@@ -77,12 +82,22 @@ class PayHoldFeeAction
                 $buyerId
             );
 
+            $this->walletEngine->process(
+                '+',
+                self::fee(),
+                FinancialCodes::WALLET_SAZE,
+                FinancialCodes::STATUS_AVAILABLE,
+                $lockedOrder,
+                "دریافت هزینه تمدید رزرو سفارش {$lockedOrder->order_number}",
+                $systemUserId
+            );
+
             $lockedOrder->update([
                 Order::STATUS => Order::STATUS_RESERVED_EXTENDED,
                 Order::RESERVATION_EXPIRES_AT => now()->addHours(self::extensionHours()),
             ]);
 
-            Log::info("PayHoldFeeAction: سفارش {$lockedOrder->id} با موفقیت تمدید شد.");
+            Log::channel('financial')->info("PayHoldFeeAction: سفارش {$lockedOrder->id} با موفقیت تمدید شد.");
         });
     }
 }

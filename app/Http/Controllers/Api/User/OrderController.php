@@ -27,7 +27,7 @@ class OrderController extends Controller
             userId: Auth::id(),
             roleType: 'myself',
             statusGroup: 'current',
-            perPage: $request->input('per_page', 10)
+            perPage: $this->perPage(10)
         );
 
         return success(OrderResource::collection($orders), __('global.received_successfully'));
@@ -56,7 +56,7 @@ class OrderController extends Controller
             userId: Auth::id(),
             roleType: 'myself',
             statusGroup: $statusGroup,
-            perPage: $request->input('per_page', 10)
+            perPage: $this->perPage(10)
         );
 
         return success(OrderResource::collection($orders));
@@ -77,7 +77,7 @@ class OrderController extends Controller
             ->when($type === 'cancelled', fn ($q) => $q->cancelled())
             ->with(Order::resourceRelations())
             ->latest()
-            ->paginate($request->input('per_page', 10));
+            ->paginate($this->perPage(10));
 
         return success(OrderResource::collection($orders), 'global.received_successfully');
     }

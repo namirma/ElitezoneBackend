@@ -26,9 +26,9 @@ class PaymentController extends Controller
     public function callback(Request $request): RedirectResponse
     {
         // 1. Parse parameters (support different field names across gateways)
-        $status        = $request->input('Status')         ?? $request->input('status');
+        $status = $request->input('Status') ?? $request->input('status');
         $transactionId = $request->input('transaction_id') ?? $request->input('clientrefid');
-        $authority     = $request->input('Authority')      ?? $request->input('token');
+        $authority = $request->input('Authority') ?? $request->input('token');
 
         // 2. Find the pending transaction
         $transaction = WalletTransaction::where('id', $transactionId)
@@ -49,7 +49,7 @@ class PaymentController extends Controller
         try {
             // 4. Verify with the gateway and settle the wallet
             $gatewayName = $transaction->meta['gateway'] ?? 'shaparak';
-            $refId       = $this->callbackAction->execute($transaction, (string) $authority, $gatewayName);
+            $refId = $this->callbackAction->execute($transaction, (string) $authority, $gatewayName);
 
             if ($refId === null) {
                 return $this->redirectClient(false, __('payment.verification_failed'));
@@ -60,7 +60,7 @@ class PaymentController extends Controller
         } catch (Exception $e) {
             Log::error('Payment Callback Error: '.$e->getMessage(), [
                 'transaction_id' => $transactionId,
-                'authority'      => $authority,
+                'authority' => $authority,
             ]);
 
             $transaction->update(['status' => WalletTransaction::STATUS_FAILED]);
@@ -71,13 +71,13 @@ class PaymentController extends Controller
 
     private function redirectClient(bool $success, string $message, ?string $refId = null): RedirectResponse
     {
-        $baseUrl = config('app.frontend_url', 'http://localhost:3000');
-        $url     = $baseUrl.'/payment/result';
+        $baseUrl = config('app.front_url', 'http://localhost:3000');
+        $url = $baseUrl.'/payment/result';
 
         $queryParams = http_build_query([
-            'status'  => $success ? 'success' : 'failed',
+            'status' => $success ? 'success' : 'failed',
             'message' => $message,
-            'ref_id'  => $refId,
+            'ref_id' => $refId,
         ]);
 
         return redirect()->to("{$url}?{$queryParams}");

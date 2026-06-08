@@ -231,44 +231,60 @@ class PlaceOrderAction
         }
 
         $finalAmount = max(0, $subtotal + $totalVat + $shippingCost - $totalDiscount);
-        $commissions = $this->calculateCommissions($user, $data->beneficiaryUserId, $subtotal);
+
+        // تعیین مشاور فنی مؤثر:
+        // — اگر خودِ خریدار مشاور است (engineer/contractor) → مشاور = placer (اجباری)
+        // — اگر کارفرما است → مشاور همانی است که در consultant_user_id فرستاده
+        $isConsultantPlacer = $user->hasRole('engineer') || $user->hasRole('contractor');
+        $effectiveConsultantId = $isConsultantPlacer ? $user->id : $data->consultantUserId;
+
+        $commissions = $this->calculateCommissions($user, $effectiveConsultantId, $subtotal);
 
         return [
-            'subtotal' => $subtotal,
-            'vat_amount' => $totalVat,
-            'total_discount' => $totalDiscount,
-            'shipping_cost' => $shippingCost,
-            'final_amount' => $finalAmount,
-            'total_weight' => $totalWeight,
-            'commissions' => $commissions,
-            'items_data' => $itemsData,
-            'shipments' => $shippingQuote->shipments,
+            'subtotal'              => $subtotal,
+            'vat_amount'            => $totalVat,
+            'total_discount'        => $totalDiscount,
+            'shipping_cost'         => $shippingCost,
+            'final_amount'          => $finalAmount,
+            'total_weight'          => $totalWeight,
+            'commissions'           => $commissions,
+            'effective_consultant_id' => $effectiveConsultantId,
+            'items_data'            => $itemsData,
+            'shipments'             => $shippingQuote->shipments,
         ];
     }
 
-    private function calculateCommissions(User $placer, ?int $beneficiaryId, float $subtotal): array
+    /**
+     * محاسبه کمیسیون بر اساس مشاور فنی مؤثر سفارش.
+     *
+     * @param  User      $placer       خریدار/ثبت‌کننده سفارش
+     * @param  int|null  $consultantId consultant_user_id مؤثر (پس از تعیین نقش)
+     */
+    private function calculateCommissions(User $placer, ?int $consultantId, float $subtotal): array
     {
         $fees = ['engineer' => 0, 'contractor' => 0];
 
-        if (! $beneficiaryId || $beneficiaryId === $placer->id) {
+        if (! $consultantId) {
             return $fees;
         }
 
-        $beneficiary = User::find($beneficiaryId);
-        if (! $beneficiary) {
+        $consultant = User::find($consultantId);
+        if (! $consultant) {
             return $fees;
         }
 
-        $badgeCode = $beneficiary->badge?->code ?? 'pioneer';
+        $badgeCode = $consultant->badge?->code ?? 'pioneer';
         $calculated = $this->settlementCalculator->calculateCommissions($subtotal, $badgeCode);
         $amount = $calculated['CO'] ?? 0;
 
-        $engineerTypeId = Cache::remember('user_type_id_engineer', 86400, fn () => UserType::where('slug', 'engineer')->value('id'));
-        $contractorTypeId = Cache::remember('user_type_id_contractor', 86400, fn () => UserType::where('slug', 'contractor')->value('id'));
+        $engineerTypeId = Cache::remember('user_type_id_engineer', 86400,
+            fn () => UserType::where('slug', 'engineer')->value('id'));
+        $contractorTypeId = Cache::remember('user_type_id_contractor', 86400,
+            fn () => UserType::where('slug', 'contractor')->value('id'));
 
-        if ($beneficiary->hasRole('engineer') || $beneficiary->{User::TYPE_ID} === $engineerTypeId) {
+        if ($consultant->hasRole('engineer') || $consultant->{User::TYPE_ID} === $engineerTypeId) {
             $fees['engineer'] = $amount;
-        } elseif ($beneficiary->hasRole('contractor') || $beneficiary->{User::TYPE_ID} === $contractorTypeId) {
+        } elseif ($consultant->hasRole('contractor') || $consultant->{User::TYPE_ID} === $contractorTypeId) {
             $fees['contractor'] = $amount;
         }
 
@@ -295,7 +311,10 @@ class PlaceOrderAction
         // ۳. ثبت نهایی در دیتابیس
         return Order::create([
             Order::PLACER_USER_ID => $user->id,
-            Order::BENEFICIARY_USER_ID => $data->beneficiaryUserId ?? $user->id,
+            // beneficiary = گیرنده سفارش (فقط در مسیر مشاور که برای کارفرما خریداری می‌کند)
+            Order::BENEFICIARY_USER_ID => $data->beneficiaryUserId,
+            // consultant = مشاور فنی که کمیسیون CO می‌گیرد (مؤثر — computed در calculateOrderFinancials)
+            Order::CONSULTANT_USER_ID => $fins['effective_consultant_id'],
             Order::ADDRESS_ID => $data->addressId,
             'shipping_method_id' => $data->shippingMethodId ?? 1,
             Order::ORDER_NUMBER => $orderNumber, // استفاده از شماره تولید شده

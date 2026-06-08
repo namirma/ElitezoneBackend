@@ -81,6 +81,14 @@ class BeneficiaryController extends Controller
             ]
         );
 
+        // نقش‌های فنی (expert, engineer, contractor) نمی‌توانند گیرنده سفارش باشند —
+        // آن‌ها مشاوران فنی هستند نه کارفرما، پس بخش financial beneficiary نمی‌شوند.
+        $blockedTypeIds = UserType::whereIn(UserType::SLUG, ['expert', 'engineer', 'contractor'])
+            ->pluck(UserType::ID);
+        if ($blockedTypeIds->contains($beneficiaryUser->{User::TYPE_ID})) {
+            return error(__('beneficiary.cannot_be_technical_role'), [], 422);
+        }
+
         $info = data_get($idenRes, 'result.identityInfo', []);
         $fname = (string) data_get($info, 'firstName', '');
         $lname = (string) data_get($info, 'lastName', '');

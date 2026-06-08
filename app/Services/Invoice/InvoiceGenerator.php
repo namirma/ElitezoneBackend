@@ -20,16 +20,16 @@ class InvoiceGenerator
 {
     public function __construct(
         protected DocumentSequenceService $sequenceService,
-        protected InvoiceDataBuilder      $dataBuilder,
-        protected InvoicePdfRenderer      $pdfRenderer,
+        protected InvoiceDataBuilder $dataBuilder,
+        protected InvoicePdfRenderer $pdfRenderer,
     ) {}
 
     /**
      * متد اصلی تولید سند مالی.
      *
-     * @param  string  $docType      نوع سند — یکی از ثابت‌های FinancialCodes
-     * @param  string  $outputMode   'save' (ذخیره روی disk) | 'stream' | 'download' (خروجی PDF خام)
-     * @return string|\Mpdf\Mpdf    در حالت save: مسیر فایل؛ غیر از آن: آبجکت PDF
+     * @param  string  $docType  نوع سند — یکی از ثابت‌های FinancialCodes
+     * @param  string  $outputMode  'save' (ذخیره روی disk) | 'stream' | 'download' (خروجی PDF خام)
+     * @return string|\Mpdf\Mpdf در حالت save: مسیر فایل؛ غیر از آن: آبجکت PDF
      *
      * پیش‌نیاز: $order باید relations زیر را load کرده باشد:
      *   items.productVariant.product, placer.profile, address.city, address.province
@@ -48,7 +48,7 @@ class InvoiceGenerator
         $invoiceNumber = $this->generateDocumentNumber($order, $docType);
 
         // 3. آماده‌سازی داده
-        $data     = $this->dataBuilder->build($order, $docType, $invoiceNumber);
+        $data = $this->dataBuilder->build($order, $docType, $invoiceNumber);
         $viewName = $this->getViewName($docType);
 
         // 4. تولید PDF و (در صورت لزوم) ذخیره
@@ -92,7 +92,6 @@ class InvoiceGenerator
             FinancialCodes::DOC_RESERVE_REPORT,
             FinancialCodes::DOC_FINAL_REPORT_SUPPLIER,
             FinancialCodes::DOC_MODIFIED_INVOICE_SUPPLIER,
-            FinancialCodes::DOC_SUPPLEMENTARY_REPORT,
             FinancialCodes::DOC_CANCEL_REPORT,         // j — گزارش لغو برای سوپلایر
             FinancialCodes::DOC_TAX_INVOICE_SUPPLIER,  // O — فاکتور مودیان سوپلایر
         ];
@@ -104,20 +103,20 @@ class InvoiceGenerator
         $amount = match ($docType) {
             FinancialCodes::DOC_RESERVE_RECEIPT,
             FinancialCodes::DOC_RESERVE_REPORT => $order->payment_to_reserve,
-            default                             => $order->final_amount,
+            default => $order->final_amount,
         };
 
         $invoice = Invoice::create([
-            'order_id'       => $order->id,
-            'user_id'        => $userId,
-            'document_code'  => $docType,
+            'order_id' => $order->id,
+            'user_id' => $userId,
+            'document_code' => $docType,
             'invoice_number' => $invoiceNumber,
-            'amount'         => $amount,
-            'file_path'      => $filePath,
-            'status'         => 'issued',
+            'amount' => $amount,
+            'file_path' => $filePath,
+            'status' => 'issued',
         ]);
 
-        Log::info("سند مالی جدید: {$invoiceNumber} (کد: {$docType}) صادر و فایل آن ذخیره شد.");
+        Log::channel('orders')->info("سند مالی جدید: {$invoiceNumber} (کد: {$docType}) صادر و فایل آن ذخیره شد.");
 
         return $invoice;
     }
@@ -126,33 +125,33 @@ class InvoiceGenerator
     {
         return match ($docType) {
             // ── Stage 0: pre-payment ───────────────────────────────────────
-            FinancialCodes::DOC_PRE_INVOICE                => 'pdf.invoice_initial',
+            FinancialCodes::DOC_PRE_INVOICE => 'pdf.invoice_initial',
             // ── Stage 1: direct purchase ───────────────────────────────────
-            FinancialCodes::DOC_RECEIPT_OWNER              => 'pdf.receipt_owner',
-            FinancialCodes::DOC_REPORT_SUPPLIER            => 'pdf.report_supplier',
-            FinancialCodes::DOC_LOADING_ORDER              => 'pdf.loading_order',
-            FinancialCodes::DOC_CONSULTANT_REPORT          => 'pdf.consultant_report',
+            FinancialCodes::DOC_RECEIPT_OWNER => 'pdf.receipt_owner',
+            FinancialCodes::DOC_REPORT_SUPPLIER => 'pdf.report_supplier',
+            FinancialCodes::DOC_LOADING_ORDER => 'pdf.loading_order',
+            FinancialCodes::DOC_CONSULTANT_REPORT => 'pdf.consultant_report',
             // ── Stage 2: reservation ───────────────────────────────────────
-            FinancialCodes::DOC_RESERVE_RECEIPT            => 'pdf.reserve_receipt',
-            FinancialCodes::DOC_RESERVE_REPORT             => 'pdf.reserve_report',
+            FinancialCodes::DOC_RESERVE_RECEIPT => 'pdf.reserve_receipt',
+            FinancialCodes::DOC_RESERVE_REPORT => 'pdf.reserve_report',
             // ── Stage 3: reservation completion ───────────────────────────
-            FinancialCodes::DOC_FINAL_RECEIPT_OWNER        => 'pdf.final_receipt',
-            FinancialCodes::DOC_FINAL_REPORT_SUPPLIER      => 'pdf.final_report',
+            FinancialCodes::DOC_FINAL_RECEIPT_OWNER => 'pdf.final_receipt',
+            FinancialCodes::DOC_FINAL_REPORT_SUPPLIER => 'pdf.final_report',
             // ── Stage 4: cancellation ──────────────────────────────────────
-            FinancialCodes::DOC_REFUND_RECEIPT             => 'pdf.refund_receipt',
-            FinancialCodes::DOC_CANCEL_REPORT              => 'pdf.cancel_report',
+            FinancialCodes::DOC_REFUND_RECEIPT => 'pdf.refund_receipt',
+            FinancialCodes::DOC_CANCEL_REPORT => 'pdf.cancel_report',
             // ── Stage 5: post-weighbridge ──────────────────────────────────
-            FinancialCodes::DOC_EXIT_PERMIT                => 'pdf.exit_permit',
-            FinancialCodes::DOC_SUPPLEMENTARY_RECEIPT      => 'pdf.supplementary_receipt',
-            FinancialCodes::DOC_SUPPLEMENTARY_REPORT       => 'pdf.supplementary_report',
-            FinancialCodes::DOC_MODIFIED_INVOICE_OWNER     => 'pdf.modified_invoice_owner',
-            FinancialCodes::DOC_MODIFIED_INVOICE_SUPPLIER  => 'pdf.modified_invoice_supplier',
-            FinancialCodes::DOC_REFUND_REPORT_WEIGH        => 'pdf.refund_report',
+            // K — بارنامه / مجوز خروج (طبق سند طراحی: K = صدور بارنامه توسط فولاد کویر)
+            FinancialCodes::DOC_BILL_OF_LADING => 'pdf.exit_permit',
+            FinancialCodes::DOC_MODIFIED_INVOICE_OWNER => 'pdf.modified_invoice_owner',
+            FinancialCodes::DOC_MODIFIED_INVOICE_SUPPLIER => 'pdf.modified_invoice_supplier',
             // ── Stage 6: Moadian taxpayer system ──────────────────────────
-            FinancialCodes::DOC_TAX_INVOICE_SUPPLIER       => 'pdf.tax_invoice_supplier',
-            FinancialCodes::DOC_TAX_INVOICE_BUYER          => 'pdf.tax_invoice_buyer',
-            FinancialCodes::DOC_TAX_INVOICE_CONSULTANT     => 'pdf.tax_invoice_consultant',
-            default                                        => 'pdf.invoice_default',
+            FinancialCodes::DOC_TAX_INVOICE_SUPPLIER => 'pdf.tax_invoice_supplier',
+            FinancialCodes::DOC_TAX_INVOICE_BUYER => 'pdf.tax_invoice_buyer',
+            FinancialCodes::DOC_TAX_INVOICE_CONSULTANT => 'pdf.tax_invoice_consultant',
+            // ── Stage 7: surveys ───────────────────────────────────────────
+            FinancialCodes::DOC_SURVEY_CONSULTANT => 'pdf.survey_consultant',
+            default => 'pdf.invoice_default',
         };
     }
 }

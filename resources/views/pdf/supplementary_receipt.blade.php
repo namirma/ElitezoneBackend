@@ -1,49 +1,58 @@
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-    <title>رسید برگشت از فروش - {{ $order->order_number }}</title>
-    <style>
-        body { font-family: 'tahoma', sans-serif; direction: rtl; padding: 20px; }
-        .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; }
-        .alert { background-color: #dff0d8; border: 1px solid #d6e9c6; color: #3c763d; padding: 10px; text-align: center; margin-bottom: 15px; }
-        .info-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        .info-table th, .info-table td { border: 1px solid #ddd; padding: 8px; text-align: right; }
-        .info-table th { background-color: #f2f2f2; }
-    </style>
+    <meta charset="UTF-8">
+    <title>رسید صورت‌حساب متمم {{ $invoice_number ?? ($order->order_number ?? '') }}</title>
+    @include('pdf.partials.styles')
 </head>
 <body>
 
-    <div class="header">
-    <h2>تیتر: "صورتحساب متمم (سرک باسکول) - سند J"</h2>
-    <p>شماره سفارش: {{ $order->order_number }}</p>
-        <p>تاریخ: {{ verta()->format('Y/m/d') }}</p>
-    </div>
+    @include('pdf.partials.brand')
 
-    <div class="alert">
-        مبلغ مابه‌التفاوت ناشی از کسری بار به کیف پول شما عودت داده شد.
-    </div>
+    {{-- ================= 2. THE MASTER GRID ================= --}}
+    <table class="master-grid">
+        @include('pdf.partials.colgroup')
 
-    <h3>اطلاعات باسکول</h3>
-    <table class="info-table">
+        {{-- ===== HEADER ===== --}}
         <tr>
-            <th>وزن اولیه (کیلوگرم)</th>
-            <td>{{ number_format($order->weight_before_scale) }}</td>
-            <th>وزن باسکول (کیلوگرم)</th>
-            <td>{{ number_format($order->weight_after_scale) }}</td>
+            <td class="lbl text-right">شماره سفارش :</td>
+            <td class="val text-right font-bold">{{ enToFa($invoice_number ?? ($order->order_number ?? '-')) }}</td>
+            <td colspan="9" rowspan="4" class="title-main text-center bg-white">رسید صورت‌حساب متمم</td>
         </tr>
         <tr>
-            <th>مقدار کسری</th>
-            <td colspan="3" style="color: red; font-weight: bold;">
-                {{ number_format($order->weight_before_scale - $order->weight_after_scale) }} کیلوگرم
+            <td class="lbl text-right">تاریخ صدور :</td>
+            <td class="val text-right">{{ enToFa($date_shamsi ?? '-') }}</td>
+        </tr>
+        <tr>
+            <td class="lbl text-right">وزن اولیه :</td>
+            <td class="val text-right">{{ enToFa(number_format($order->weight_before_scale ?? 0)) }} کیلوگرم</td>
+        </tr>
+        <tr>
+            <td class="lbl text-right">وزن باسکول :</td>
+            <td class="val text-right">{{ enToFa(number_format($order->weight_after_scale ?? 0)) }} کیلوگرم</td>
+        </tr>
+
+        {{-- ===== STATUS ===== --}}
+        <tr>
+            <td colspan="2" class="bg-pink text-center font-bold" style="font-size: 11pt; border-left: 0.75pt solid #fff;">وضعیت</td>
+            <td colspan="9" class="bg-pink text-center font-bold" style="font-size: 11pt;">
+                {{ $payment_label ?? 'پرداخت شده' }}
+            </td>
+        </tr>
+
+        @include('pdf.partials.buyer_section')
+        @include('pdf.partials.seller_section')
+        @include('pdf.partials.items_section')
+        @include('pdf.partials.payable_row')
+
+        {{-- ===== NOTES ===== --}}
+        <tr>
+            <td colspan="1" class="bg-gray font-bold text-center" valign="top" style="border-left: none; padding-top: 10px;">توضیحات مهم</td>
+            <td colspan="10" class="notes-text text-right bg-white" valign="top" style="border-right: none;">
+                این رسید صورت‌حساب متمم پس از باسکول صادر گردیده است. مابه‌التفاوت از طریق کیف پول تسویه شده است.
             </td>
         </tr>
     </table>
-
-    <div style="margin-top: 30px; border: 2px solid #000; padding: 15px; text-align: center;">
-        <strong>مبلغ عودت داده شده:</strong><br>
-        <span style="font-size: 20px;">{{ number_format(abs($financial_diff ?? 0)) }} ریال</span>
-    </div>
 
 </body>
 </html>

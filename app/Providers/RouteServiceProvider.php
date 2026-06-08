@@ -27,8 +27,64 @@ class RouteServiceProvider extends ServiceProvider
         RateLimiter::for('api', function (Request $request) {
             return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
         });
+
         RateLimiter::for('sms', function (Request $request) {
             return Limit::perMinute(2)->by($request->ip());
+        });
+
+        /**
+         * محدودیت برای تأیید کد OTP — جلوگیری از brute-force روی کد ۶ رقمی.
+         *
+         * کلید throttle: IP + شماره موبایل (username)
+         *   - هر ترکیب IP+موبایل حداکثر ۵ تلاش در دقیقه
+         *   - مهاجم حتی با چرخش IP نمی‌تواند به یک حساب حمله کند
+         *   - کاربر عادی کد را یک بار و درست وارد می‌کند؛ ۵ بار فرصت برای اشتباه تایپی کافی است
+         */
+        RateLimiter::for('otp-verify', function (Request $request) {
+            $mobile   = (string) $request->input('username', '');
+            $throttleKey = 'otp:' . $request->ip() . ':' . $mobile;
+
+            return Limit::perMinute(5)->by($throttleKey)->response(function () {
+                return error(__('auth.too_many_otp_attempts'), [], 429);
+            });
+        });
+
+        /**
+         * نرخ‌محدودکننده هوشمند برای عملیات مالی (پرداخت، کیف پول)
+         *
+         * نقش‌بندی:
+         *  - ادمین       : بدون محدودیت (ops + testing)
+         *  - تأمین‌کننده تأیید شده : ۳۰ درخواست/دقیقه — در پنجره‌های بارگیری نیاز به burst دارد
+         *  - کاربر عادی  : ۱۰ درخواست/دقیقه
+         *  - ناشناس       : ۵ درخواست/دقیقه (safety net — مسیرهای مالی auth دارند)
+         *
+         * کلید throttle بر اساس user_id است (نه IP) تا کاربر از VPN/Tor
+         * محدودیت را دور نزند و برای حساب‌های مشترک ایمن باشد.
+         */
+        RateLimiter::for('financial', function (Request $request) {
+            $user = $request->user();
+
+            if (! $user) {
+                return Limit::perMinute(5)->by($request->ip())->response(function () {
+                    return error(__('global.too_many_requests'), [], 429);
+                });
+            }
+
+            if ($user->hasRole('admin')) {
+                return Limit::none();
+            }
+
+            // تأمین‌کننده‌ای که پروفایل تأییدشده دارد — burst بالاتر
+            if ($user->hasRole('supplier') && $user->supplier !== null) {
+                return Limit::perMinute(30)->by($user->id)->response(function () {
+                    return error(__('global.too_many_requests'), [], 429);
+                });
+            }
+
+            // سایر کاربران احراز هویت شده
+            return Limit::perMinute(10)->by($user->id)->response(function () {
+                return error(__('global.too_many_requests'), [], 429);
+            });
         });
 
         $this->routes(function () {

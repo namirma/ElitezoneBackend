@@ -8,7 +8,9 @@ use App\Http\Requests\Profile\InviteConsultantRequest;
 use App\Http\Requests\Profile\RejectInvitationRequest;
 use App\Http\Resources\Profile\ConsultantRelationResource;
 use App\Jobs\Notification\SendSmsJob;
+use App\Models\ContractorProfile;
 use App\Models\EmployerConsultant;
+use App\Models\EngineerProfile;
 use App\Models\User;
 use App\Models\UserNotification;
 use App\Models\UserType;
@@ -44,18 +46,37 @@ class ConsultantRelationController extends Controller
         return success(ConsultantRelationResource::collection($employers), __('consultant.employers_list_received'));
     }
 
+    /**
+     * دعوت مشاور فنی توسط کارفرما — فقط از طریق موبایل.
+     *
+     * سه خروجی مشخص (طبق مورد ۲، بند ۵):
+     *
+     *   ① not_registered   — موبایل در سیستم وجود ندارد
+     *                        → فرانت پنجره «دعوت به ثبت‌نام» را نشان می‌دهد
+     *
+     *   ② consultant_not_verified — کاربر ثبت‌نام کرده ولی مدارک تأیید نشده
+     *                        → خطای مناسب با پیشنهاد تماس با پشتیبانی
+     *
+     *   ③ (موفق)           — کاربر ثبت‌نام + تأییدشده → ادامه فرایند دعوت
+     */
     public function inviteConsultant(InviteConsultantRequest $request): JsonResponse
     {
         $employer = Auth::user();
-        $data = $request->validated();
+        $mobile = PhoneNumber::to09($request->validated(User::MOBILE));
 
-        $consultant = $this->findConsultantByCredentials($data);
+        // ── خروجی ① : not_registered ────────────────────────────────────────
+        $consultant = User::where(User::MOBILE, $mobile)->first();
         if (! $consultant) {
-            return error(__('auth.consultant_not_found'), [], 404);
+            return success(
+                ['outcome' => 'not_registered', 'mobile' => $mobile],
+                __('consultant.not_registered_mobile')
+            );
         }
 
+        // بررسی نوع کاربر — باید نقش فنی (engineer/contractor/expert) داشته باشد
         $consultantTypeId = $consultant->{User::TYPE_ID};
-        $expertTypes = UserType::whereIn(UserType::SLUG, ['engineer', 'contractor', 'expert'])->pluck(UserType::ID);
+        $expertTypes = UserType::whereIn(UserType::SLUG, ['engineer', 'contractor', 'expert'])
+            ->pluck(UserType::ID);
 
         if (! $expertTypes->contains($consultantTypeId)) {
             return error(__('auth.consultant_is_not_expert'), [], 422);
@@ -65,6 +86,12 @@ class ConsultantRelationController extends Controller
             return error(__('auth.cannot_invite_self'), [], 422);
         }
 
+        // ── خروجی ② : registered ولی not_verified ──────────────────────────
+        if (! $this->isConsultantVerified($consultant)) {
+            return error(__('consultant.consultant_not_verified'), [], 422);
+        }
+
+        // ── خروجی ③ : registered + verified → ادامه دعوت ───────────────────
         $existingRelation = $employer->technicalConsultants()
             ->where(EmployerConsultant::CONSULTANT_ID, $consultant->id)
             ->first();
@@ -85,9 +112,9 @@ class ConsultantRelationController extends Controller
                 }
 
                 $employer->technicalConsultants()->updateExistingPivot($consultant->id, [
-                    EmployerConsultant::STATUS => EmployerConsultant::STATUS_PENDING,
+                    EmployerConsultant::STATUS       => EmployerConsultant::STATUS_PENDING,
                     EmployerConsultant::REJECT_REASON => null,
-                    'updated_at' => now(),
+                    'updated_at'                     => now(),
                 ]);
             }
         } else {
@@ -101,15 +128,18 @@ class ConsultantRelationController extends Controller
         $smsMessage = __('sms.consultant_invitation', ['employer_name' => $employerName]);
 
         UserNotification::create([
-            UserNotification::USER_ID => $consultant->id,
+            UserNotification::USER_ID  => $consultant->id,
             UserNotification::SENDER_ID => $employer->id,
-            UserNotification::SUBJECT => __('global.consultantInvitationSubject'),
-            UserNotification::BODY => $smsMessage,
+            UserNotification::SUBJECT  => __('global.consultantInvitationSubject'),
+            UserNotification::BODY     => $smsMessage,
         ]);
 
         SendSmsJob::dispatch($consultant->{User::MOBILE}, $smsMessage);
 
-        return success([], __('consultant.invitation_sent'));
+        return success(
+            ['outcome' => 'invited'],
+            __('consultant.invitation_sent')
+        );
     }
 
     public function removeConsultant(User $consultant): JsonResponse
@@ -172,17 +202,21 @@ class ConsultantRelationController extends Controller
         return success(__('consultant.rejection_reasons'), __('consultant.rejection_reasons_received'));
     }
 
-    private function findConsultantByCredentials(array $data): ?User
+    /**
+     * بررسی تأیید مدارک مشاور از روی پروفایل مهندس یا پیمانکار.
+     */
+    private function isConsultantVerified(User $consultant): bool
     {
-        if (! empty($data[User::MOBILE])) {
-            $mobile = PhoneNumber::to09($data[User::MOBILE]);
-
-            return User::where(User::MOBILE, $mobile)->first();
-        }
-        if (! empty($data[User::NATIONAL_CODE])) {
-            return User::where(User::NATIONAL_CODE, $data[User::NATIONAL_CODE])->first();
+        $engineerProfile = EngineerProfile::where(EngineerProfile::USER_ID, $consultant->id)->first();
+        if ($engineerProfile) {
+            return (bool) $engineerProfile->{EngineerProfile::IS_VERIFIED};
         }
 
-        return null;
+        $contractorProfile = ContractorProfile::where(ContractorProfile::USER_ID, $consultant->id)->first();
+        if ($contractorProfile) {
+            return (bool) $contractorProfile->{ContractorProfile::IS_VERIFIED};
+        }
+
+        return false;
     }
 }

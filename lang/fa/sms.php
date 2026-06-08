@@ -26,4 +26,8 @@ return [
 
     // Buyer refund released (CheckSupplierBalancesJob — supplier topped up, parked refund freed)
     'buyer_refund_released' => "کاربر گرامی، مبلغ :amount ریال بابت کسری باسکول سفارش :order_number به کیف پول شما بازگردانده شد.\nالیت زون",
+
+    // Ticket notifications — sent after admin actions
+    'ticket_admin_replied' => "تیکت شما با کد :code پاسخ داده شد. لطفاً جهت مشاهده پاسخ وارد پنل کاربری شوید.\nالیت زون",
+    'ticket_closed'        => "تیکت شما با کد :code توسط تیم پشتیبانی بسته شد.\nالیت زون",
 ];

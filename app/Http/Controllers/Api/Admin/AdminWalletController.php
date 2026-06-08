@@ -35,7 +35,7 @@ class AdminWalletController extends Controller
             $query->whereHas('wallet', fn ($q) => $q->where('user_id', $request->user_id));
         }
 
-        $transactions = $query->paginate($request->input('per_page', 20));
+        $transactions = $query->paginate($this->perPage());
 
         return success(WalletTransactionResource::collection($transactions), __('admin.wallet.list_received'));
     }

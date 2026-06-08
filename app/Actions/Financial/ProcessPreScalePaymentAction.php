@@ -24,7 +24,7 @@ class ProcessPreScalePaymentAction
     public function execute(Order $order): void
     {
         if ($this->isAlreadyProcessed($order)) {
-            Log::warning("ProcessPreScalePaymentAction skipped: order {$order->id} already paid.");
+            Log::channel('financial')->warning("ProcessPreScalePaymentAction skipped: order {$order->id} already paid.");
 
             return;
         }
@@ -38,7 +38,7 @@ class ProcessPreScalePaymentAction
             }
 
             if ($this->isAlreadyProcessed($locked)) {
-                Log::warning("Race detected: order {$locked->id} already paid.");
+                Log::channel('financial')->warning("Race detected: order {$locked->id} already paid.");
 
                 return;
             }
@@ -48,7 +48,7 @@ class ProcessPreScalePaymentAction
             $firstItem = $locked->items->first();
 
             if (! $firstItem) {
-                Log::error("Order {$locked->id} has no items.");
+                Log::channel('financial')->error("Order {$locked->id} has no items.");
                 throw new \RuntimeException('Order items missing for financial processing.');
             }
 
@@ -138,7 +138,7 @@ class ProcessPreScalePaymentAction
                 $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_CONSULTANT_REPORT);
             }
 
-            Log::info("پرداخت سفارش {$locked->id} با موفقیت انجام شد. فرمول: TC={$transCommission} VAT={$transVat}");
+            Log::channel('financial')->info("پرداخت سفارش {$locked->id} با موفقیت انجام شد. فرمول: TC={$transCommission} VAT={$transVat}");
         }, 3);
     }
 

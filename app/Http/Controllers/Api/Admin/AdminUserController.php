@@ -5,16 +5,20 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UserBackOfficeSearchRequest;
 use App\Http\Requests\Admin\UserSearchRequest;
+use App\Http\Resources\Financial\WalletTransactionResource;
 use App\Http\Resources\Order\OrderResource;
 use App\Http\Resources\Profile\UserResource;
-use App\Http\Resources\Financial\WalletTransactionResource;
+use App\Models\ContractorProfile;
+use App\Models\EngineerProfile;
 use App\Models\Order;
 use App\Models\User;
+use App\Models\UserNote;
 use App\Models\UserProfile;
 use App\Models\WalletTransaction;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class AdminUserController extends Controller
 {
@@ -38,7 +42,7 @@ class AdminUserController extends Controller
                 fn (Builder $q) => $q->where('is_active', $request->boolean('is_active'))
             )
             ->latest()
-            ->paginate($request->get('per_page', 20));
+            ->paginate($this->perPage());
 
         return success(UserResource::collection($users));
     }
@@ -52,37 +56,30 @@ class AdminUserController extends Controller
 
     /**
      * فعال/غیرفعال کردن حساب کاربری
-     *
-     * @todo ستون is_active هنوز به جدول users اضافه نشده است.
-     *       migration زیر را اجرا کنید و سپس این متد را فعال کنید:
-     *       php artisan make:migration add_is_active_to_users_table
-     *       $table->boolean('is_active')->default(true)->after('mobile');
      */
     public function toggleStatus(User $user): JsonResponse
     {
-        return response()->json([
-            'status' => false,
-            'message' => 'این قابلیت هنوز پیاده‌سازی نشده است. '
-                .'ابتدا ستون is_active را به جدول users اضافه کنید.',
-        ], 501);
+        $user->update([User::IS_ACTIVE => ! $user->{User::IS_ACTIVE}]);
+
+        return success(
+            new UserResource($user),
+            $user->{User::IS_ACTIVE} ? __('admin.users.activated') : __('admin.users.deactivated')
+        );
     }
 
     /**
-     * افزودن یادداشت ادمین روی کاربر
-     *
-     * @todo جدول user_notes هنوز ساخته نشده است.
-     *       migration زیر را اجرا کنید و سپس این متد را فعال کنید:
-     *       php artisan make:migration create_user_notes_table
+     * افزودن یادداشت ادمین روی کاربر (یادداشت عمومی کاربر)
      */
     public function addNote(Request $request, User $user): JsonResponse
     {
-        $request->validate(['note' => 'required|string|max:1000']);
+        $validated = $request->validate(['note' => 'required|string|max:1000']);
 
-        return response()->json([
-            'status' => false,
-            'message' => 'این قابلیت هنوز پیاده‌سازی نشده است. '
-                .'ابتدا جدول user_notes را بسازید.',
-        ], 501);
+        $user->notes()->create([
+            UserNote::ADMIN_ID => Auth::id(),
+            UserNote::NOTE => $validated['note'],
+        ]);
+
+        return success(null, __('admin.users.note_added'));
     }
 
     public function getUserProfileForBackOffice(UserBackOfficeSearchRequest $request): JsonResponse
@@ -135,7 +132,7 @@ class AdminUserController extends Controller
             ->where(Order::PLACER_USER_ID, $user->id)
             ->with(Order::resourceRelations())
             ->latest()
-            ->paginate($request->get('per_page', 10));
+            ->paginate($this->perPage(10));
 
         return success(
             OrderResource::collection($orders),
@@ -151,18 +148,93 @@ class AdminUserController extends Controller
         $wallet = $user->wallet;
 
         if (! $wallet) {
-            $empty = WalletTransaction::query()->whereNull(WalletTransaction::ID)->paginate($request->get('per_page', 10));
+            $empty = WalletTransaction::query()->whereNull(WalletTransaction::ID)->paginate($this->perPage(10));
 
             return success(WalletTransactionResource::collection($empty));
         }
         $transactions = WalletTransaction::query()
             ->where(WalletTransaction::WALLET_ID, $wallet->id)
             ->latest()
-            ->paginate($request->get('per_page', 10));
+            ->paginate($this->perPage(10));
 
         return success(
             WalletTransactionResource::collection($transactions),
             __('global.received_successfully')
         );
+    }
+
+    /**
+     * تأیید مدارک مشاور فنی توسط ادمین.
+     *
+     * یکی از پروفایل مهندس یا پیمانکار کاربر را پیدا کرده و
+     * is_verified = true + verified_at = now() روی آن ست می‌کند.
+     *
+     * POST /admin/users/{user}/verify-consultant
+     */
+    public function verifyConsultant(User $user): JsonResponse
+    {
+        $profile = $this->resolveConsultantProfile($user);
+
+        if (! $profile) {
+            return error(__('admin.users.no_consultant_profile'), [], 422);
+        }
+
+        $profile->update([
+            EngineerProfile::IS_VERIFIED => true,
+            EngineerProfile::VERIFIED_AT => now(),
+        ]);
+
+        return success(
+            [
+                'user_id'     => $user->id,
+                'profile_type'=> $profile instanceof EngineerProfile ? 'engineer' : 'contractor',
+                'is_verified' => true,
+                'verified_at' => $profile->{EngineerProfile::VERIFIED_AT}->toDateTimeString(),
+            ],
+            __('admin.users.consultant_verified')
+        );
+    }
+
+    /**
+     * لغو تأیید مدارک مشاور فنی توسط ادمین.
+     *
+     * POST /admin/users/{user}/unverify-consultant
+     */
+    public function unverifyConsultant(User $user): JsonResponse
+    {
+        $profile = $this->resolveConsultantProfile($user);
+
+        if (! $profile) {
+            return error(__('admin.users.no_consultant_profile'), [], 422);
+        }
+
+        $profile->update([
+            EngineerProfile::IS_VERIFIED => false,
+            EngineerProfile::VERIFIED_AT => null,
+        ]);
+
+        return success(
+            [
+                'user_id'     => $user->id,
+                'profile_type'=> $profile instanceof EngineerProfile ? 'engineer' : 'contractor',
+                'is_verified' => false,
+                'verified_at' => null,
+            ],
+            __('admin.users.consultant_unverified')
+        );
+    }
+
+    /**
+     * پیدا کردن پروفایل مشاور (مهندس یا پیمانکار) برای یک کاربر.
+     * مهندس اولویت دارد؛ اگر نبود پیمانکار را برمی‌گرداند.
+     */
+    private function resolveConsultantProfile(User $user): EngineerProfile|ContractorProfile|null
+    {
+        $engineer = EngineerProfile::where(EngineerProfile::USER_ID, $user->id)->first();
+        if ($engineer) {
+            return $engineer;
+        }
+
+        return ContractorProfile::where(ContractorProfile::USER_ID, $user->id)->first();
     }
 }

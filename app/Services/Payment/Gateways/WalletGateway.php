@@ -8,6 +8,7 @@ use App\Exceptions\Wallet\WalletNotFoundException;
 use App\Models\Order;
 use App\Models\User;
 use App\Services\Payment\Contracts\PaymentGatewayInterface;
+use App\Services\Payment\PaymentReceipt;
 use Illuminate\Support\Str;
 
 class WalletGateway implements PaymentGatewayInterface
@@ -52,5 +53,15 @@ class WalletGateway implements PaymentGatewayInterface
             'gateway' => $this->getName(),
             'paid_at' => now()->toIso8601String(),
         ];
+    }
+
+    /**
+     * پرداخت با کیف پول به‌صورت همزمان (synchronous) در pay() تسویه می‌شود و
+     * مسیر کال‌بک ناهمزمان بانکی ندارد؛ بنابراین verify() برای این درگاه فراخوانی
+     * نمی‌شود. برای کامل بودن قرارداد، رسید ناموفق برمی‌گردانیم.
+     */
+    public function verify(float $amount, string $authority): ?PaymentReceipt
+    {
+        return PaymentReceipt::failed();
     }
 }

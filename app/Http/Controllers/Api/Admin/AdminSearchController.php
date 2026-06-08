@@ -3,7 +3,8 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Admin\GeneralSearchRequest; // ریکوئست جدید
+use App\Http\Requests\Admin\GeneralSearchRequest;
+use App\Http\Resources\Profile\UserResource;
 use App\Models\User;
 use App\Models\UserProfile;
 use App\Models\WalletTransaction;
@@ -28,10 +29,9 @@ class AdminSearchController extends Controller
                     });
             })
             ->latest(User::CREATED_AT)
-            ->paginate($request->input('per_page', 20));
+            ->paginate($this->perPage());
 
-        // در اینجا می‌توان از UserResource استفاده کرد اما برای سرچ کلی، جیسون مستقیم هم اوکی است
-        return success($users, __('admin.user_search_success'));
+        return success(UserResource::collection($users), __('admin.user_search_success'));
     }
 
     public function searchTransactions(GeneralSearchRequest $request): JsonResponse
@@ -49,7 +49,7 @@ class AdminSearchController extends Controller
                 });
             })
             ->latest(WalletTransaction::CREATED_AT)
-            ->paginate($request->input('per_page', 20));
+            ->paginate($this->perPage());
 
         return success($transactions, __('admin.transaction_search_success'));
     }

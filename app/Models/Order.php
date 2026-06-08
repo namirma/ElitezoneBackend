@@ -30,6 +30,9 @@ class Order extends Model
 
     public const BENEFICIARY_USER_ID = 'beneficiary_user_id';
 
+    /** مشاور فنی که کمیسیون CO را دریافت می‌کند (جدا از گیرنده/beneficiary) */
+    public const CONSULTANT_USER_ID = 'consultant_user_id';
+
     public const ADDRESS_ID = 'address_id';
 
     public const ORDER_NUMBER = 'order_number';
@@ -213,6 +216,7 @@ class Order extends Model
     protected $fillable = [
         self::PLACER_USER_ID,
         self::BENEFICIARY_USER_ID,
+        self::CONSULTANT_USER_ID,
         self::ADDRESS_ID,
         self::ORDER_NUMBER,
         self::STATUS,
@@ -325,6 +329,8 @@ class Order extends Model
             'placer.profile',
             'placer.type',
             'beneficiary.profile',
+            'consultant.profile',
+            'consultant.badge',
             'address.city',
             'address.province',
             'shipments.originFactory',
@@ -345,6 +351,12 @@ class Order extends Model
     public function beneficiary(): BelongsTo
     {
         return $this->belongsTo(User::class, self::BENEFICIARY_USER_ID);
+    }
+
+    /** مشاور فنی که کمیسیون CO را دریافت می‌کند */
+    public function consultant(): BelongsTo
+    {
+        return $this->belongsTo(User::class, self::CONSULTANT_USER_ID);
     }
 
     public function address(): BelongsTo

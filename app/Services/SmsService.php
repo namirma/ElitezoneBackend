@@ -29,8 +29,12 @@ class SmsService
     public function send($to, $message)
     {
         try {
-            // استفاده از آرایه برای ارسال امن پارامترها (جلوگیری از باگ‌های URL Encoding)
-            $response = Http::get($this->link, [
+            // از POST به‌جای GET استفاده می‌کنیم تا اطلاعات احراز هویت در URL دیده نشوند.
+            // با GET، username و password در access log سرور پیامک و در لاگ‌های پروکسی
+            // به‌صورت plain-text ذخیره می‌شدند — یک آسیب‌پذیری امنیتی جدی.
+            // با asForm()->post()، پارامترها در request body قرار می‌گیرند (application/x-www-form-urlencoded)
+            // و از دید لاگ‌های HTTP دور می‌مانند.
+            $response = Http::asForm()->post($this->link, [
                 'from' => $this->from,
                 'to' => $to,
                 'username' => $this->username,
@@ -40,8 +44,11 @@ class SmsService
 
             return $response->body();
         } catch (Exception $e) {
-            // ثبت خطاهای احتمالی (مثل تایم‌اوت شدن سرور پیامک) در لاگ برای دیباگ راحت‌تر
-            Log::error('TSMS Send Error: '.$e->getMessage());
+            // اطلاعات حساس (username/password) هرگز در پیام خطا لاگ نمی‌شوند.
+            Log::error('TSMS Send Error', [
+                'to' => $to,
+                'error' => $e->getMessage(),
+            ]);
 
             return false;
         }
