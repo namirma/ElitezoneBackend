@@ -5,6 +5,7 @@ namespace App\Console;
 use App\Console\Commands\CancelExpiredOrders;
 use App\Jobs\Analytics\CalculateCustomerRfm;
 use App\Jobs\Financial\CheckSupplierBalancesJob;
+use App\Jobs\Financial\PollPodiumDepositsJob;
 use App\Jobs\Analytics\PredictInventoryNeeds;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
@@ -47,6 +48,13 @@ class Kernel extends ConsoleKernel
 
         $schedule->job(new CheckSupplierBalancesJob)
             ->everyMinute()
+            ->onOneServer();
+
+        // polling صورت‌حساب سپرده پادیوم — شارژ خودکار کیف‌پول با شناسه واریز
+        $schedule->job(new PollPodiumDepositsJob)
+            ->everyFiveMinutes()
+            ->withoutOverlapping()
+            ->runInBackground()
             ->onOneServer();
     }
 

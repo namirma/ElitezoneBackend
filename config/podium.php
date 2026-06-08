@@ -32,6 +32,17 @@ return [
     'limits' => [
         'max_amount' => (int) env('PODIUM_MAX_AMOUNT', 2000000000),
     ],
+
+    // ── حساب سپرده شناسه‌دار (واریز مستقیم بانکی با شناسه واریز) ─────────────
+    'deposit' => [
+        'deposit_number'    => env('PODIUM_DEPOSIT_NUMBER'),                   // شماره سپرده بانکی
+        'sc_api_key'        => env('PODIUM_DEPOSIT_SC_API_KEY'),               // کلید سرویس صورت‌حساب
+        'product_entity_id' => env('PODIUM_DEPOSIT_ENTITY_ID', '46645563'),   // شناسه سرویس کلاسور
+        'iban'              => env('PODIUM_DEPOSIT_IBAN'),                     // شماره شبا (IR + ۲۴ رقم)
+        'bank_name'         => env('PODIUM_DEPOSIT_BANK_NAME', 'بانک پاسارگاد'),
+        'account_holder'    => env('PODIUM_DEPOSIT_ACCOUNT_HOLDER', 'شرکت الیت‌زون'),
+    ],
+
     'services' => [
         'identity_inquiry' => [
             'has_sandbox' => false,
