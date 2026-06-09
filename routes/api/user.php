@@ -217,10 +217,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
             // Wallet
             Route::controller(WalletController::class)->prefix('wallet')->group(function () {
-                Route::get('/',            'getWallet');
-                Route::get('/transactions','getTransactions');
-                Route::post('/deposit',    'requestDeposit')->middleware('throttle:financial');
-                Route::post('/withdraw',   'requestWithdrawal')->middleware(['idempotency', 'throttle:financial']);
+                Route::get('/',                'getWallet');
+                Route::get('/transactions',    'getTransactions');
+                Route::get('/deposit-account', 'getDepositAccount'); // شناسه واریز (PAYA/SATNA direct deposit)
+                Route::post('/deposit',        'requestDeposit')->middleware('throttle:financial');
+                Route::post('/withdraw',       'requestWithdrawal')->middleware(['idempotency', 'throttle:financial']);
             });
 
             // Receipts (deposit slips)

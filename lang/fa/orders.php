@@ -128,6 +128,18 @@ return [
         'get_tax_invoice' => 'دریافت فاکتور رسمی',
     ],
 
+    // ── Internal action exceptions (user-visible via exception handler) ────
+    'internal_order_not_found'        => 'خطای داخلی: سفارش در فرآیند پردازش یافت نشد.',
+    'items_missing_for_payment'       => 'اقلام سفارش برای پردازش مالی تعریف نشده‌اند.',
+    'items_missing_for_completion'    => 'اقلام سفارش برای تکمیل رزرو یافت نشد.',
+    'consultant_not_found_internal'   => 'خطای داخلی: مشاور فنی این سفارش یافت نشد.',
+    'reserved_cannot_cancel_before_expiry' => 'سفارشات رزرو شده تا پیش از پایان زمان انقضا قابل لغو نیستند.',
+    'reserved_expired_auto_cancel'    => 'سفارشات رزرو شده منقضی، تنها توسط سیستم به صورت خودکار لغو می‌شوند.',
+    'invalid_financial_calculation'   => 'محاسبه مالی سفارش معتبر نیست.',
+    'invalid_transaction_status'      => 'وضعیت جدید تراکنش نامعتبر است.',
+    'debit_amount_must_be_positive'   => 'مبلغ برداشت باید بیشتر از صفر باشد.',
+    'reserve_only_on_reserved_orders' => 'تنها سفارش‌های رزرو شده قابل تمدید هستند.',
+
     // ── Errors (merged — single block) ─────────────────────────────────────
     'errors' => [
         // Financial / validation

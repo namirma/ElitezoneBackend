@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\Admin\AdminActivityLogController;
+use App\Http\Controllers\Api\Admin\AdminPodiumDepositController;
 use App\Http\Controllers\Api\Admin\AdminDashboardController;
 use App\Http\Controllers\Api\Admin\AdminFinancialController;
 use App\Http\Controllers\Api\Admin\AdminOrderController;
@@ -31,7 +32,7 @@ use Illuminate\Support\Facades\Route;
 
 // ── Podium services (admin-only proxy) ────────────────────────────────────
 Route::prefix('v1/podium')
-    ->middleware(['auth:sanctum', 'role:admin'])
+    ->middleware(['auth:sanctum', 'role.admin'])
     ->group(function () {
         Route::post('/settlements/single', [PodiumSettlementController::class, 'single']);
         Route::get('/balances', [PodiumBalanceController::class, 'index']);
@@ -42,7 +43,7 @@ Route::prefix('v1/podium')
     });
 
 // ── Admin panel (auth + role:admin) ───────────────────────────────────────
-Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(function () {
+Route::middleware(['auth:sanctum', 'role.admin'])->prefix('admin')->group(function () {
 
     // Dashboard — KPI اجرایی
     Route::get('/dashboard', [AdminDashboardController::class, 'index']);
@@ -77,6 +78,13 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
         Route::get('/health', 'financialHealth');
         Route::get('/pending-debts', 'pendingDebts');
         Route::get('/pending-moadian', 'pendingMoadianInvoices');
+    });
+
+    // واریز مستقیم بانکی — سوابق شناسه واریز + polling دستی + شارژ دستی ادمین
+    Route::controller(AdminPodiumDepositController::class)->prefix('financial/podium-deposits')->group(function () {
+        Route::get('/',                  'index');  // لیست سوابق + آمار
+        Route::post('/poll',             'poll');   // اجرای دستی polling (بدون cron)
+        Route::post('/{record}/credit',  'credit'); // شارژ دستی برای واریز unmatched
     });
 
     // Users — CRUD (group 2)

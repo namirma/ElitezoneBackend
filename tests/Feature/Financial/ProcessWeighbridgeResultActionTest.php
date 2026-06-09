@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\Wallet;
 use App\Services\Financial\SettlementCalculatorService;
 use App\Services\Invoice\InvoiceGenerator;
+use App\Services\SmsService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
@@ -45,6 +46,13 @@ class ProcessWeighbridgeResultActionTest extends TestCase
         $this->mock(InvoiceGenerator::class)
             ->shouldReceive('generate')
             ->andReturn('test/invoice-stub.pdf');
+
+        // SMS service has no TSMS credentials in test env — mock it so the constructor
+        // does not throw TypeError (string property ← null config) and no real HTTP call
+        // is made when the supplier-debt notification path is exercised.
+        $this->mock(SmsService::class)
+            ->shouldReceive('send')
+            ->andReturn(true);
 
         $this->action = app(ProcessWeighbridgeResultAction::class);
 

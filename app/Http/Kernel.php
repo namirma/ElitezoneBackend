@@ -105,6 +105,7 @@ class Kernel extends HttpKernel
         'cors' => Cors::class,
         'SecurityHeaders' => SecurityHeaders::class,
         'attach.price.category' => AttachActivePriceCategory::class,
+        'role.admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
         'role.expert' => EnsureUserIsExpert::class,
         'role.employer' => \App\Http\Middleware\EnsureUserIsEmployer::class,
         'track' => TrackDashboardUsage::class,

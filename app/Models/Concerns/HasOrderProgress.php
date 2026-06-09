@@ -108,7 +108,7 @@ trait HasOrderProgress
                     // پیش‌فاکتور (initial = DOC_PRE_INVOICE) همیشه قابل دانلود است
                     $actions[] = [
                         'label' => 'دریافت رسید',
-                        'link' => "/api/profile/orders/{$id}/invoices/initial",
+                        'link' => "/api/profile/orders/{$id}/invoice/initial",
                         'type' => 'secondary',
                         'downloadable' => true,
                     ];
@@ -124,7 +124,7 @@ trait HasOrderProgress
                     // پیش‌فاکتور (initial = DOC_PRE_INVOICE) — نشان داده می‌شود در هر دو حالت current و completed
                     $actions[] = [
                         'label' => 'فاکتور اولیه پرداخت شده',
-                        'link' => "/api/profile/orders/{$id}/invoices/initial",
+                        'link' => "/api/profile/orders/{$id}/invoice/initial",
                         'type' => 'secondary',
                         'downloadable' => true,
                     ];
@@ -134,7 +134,7 @@ trait HasOrderProgress
                     // بارنامه / مجوز خروج (K = DOC_BILL_OF_LADING) — فاکتور نهایی پس از وزن‌کشی
                     $actions[] = [
                         'label' => 'فاکتور نهایی',
-                        'link' => "/api/profile/orders/{$id}/invoices/bill_of_lading",
+                        'link' => "/api/profile/orders/{$id}/invoice/bill_of_lading",
                         'type' => 'secondary',
                         'downloadable' => true,
                     ];
@@ -266,7 +266,7 @@ trait HasOrderProgress
                     case 'کارفرما خرید کرد':
                         $actions[] = [
                             'label' => 'دانلود فاکتور کالای خریداری شده',
-                            'link' => "/api/profile/orders/{$id}/invoices/initial",
+                            'link' => "/api/profile/orders/{$id}/invoice/initial",
                             'type' => 'secondary',
                             'downloadable' => true,
                         ];
@@ -415,7 +415,7 @@ trait HasOrderProgress
                     case 'رزرو سفارش ثبت شد':
                         $actions[] = [
                             'label' => 'دانلود گزارش رزرو',
-                            'link' => "/api/profile/orders/{$id}/invoices/reserve_report",
+                            'link' => "/api/profile/orders/{$id}/invoice/reserve_report",
                             'method' => 'GET',
                             'downloadable' => true,
                         ];
@@ -424,7 +424,7 @@ trait HasOrderProgress
                     case 'سفارش دریافت شد':
                         $actions[] = [
                             'label' => 'دانلود دستور بارگیری',
-                            'link' => "/api/profile/orders/{$id}/invoices/loading_order",
+                            'link' => "/api/profile/orders/{$id}/invoice/loading_order",
                             'method' => 'GET',
                             'downloadable' => true,
                         ];
@@ -433,7 +433,7 @@ trait HasOrderProgress
                     case 'باسکول تأیید شد':
                         $actions[] = [
                             'label' => 'دانلود مجوز خروج',
-                            'link' => "/api/profile/orders/{$id}/invoices/exit_permit",
+                            'link' => "/api/profile/orders/{$id}/invoice/exit_permit",
                             'method' => 'GET',
                             'downloadable' => true,
                         ];
@@ -451,7 +451,7 @@ trait HasOrderProgress
                     case 'کالا ارسال شد':
                         $actions[] = [
                             'label' => 'مشاهده بارنامه',
-                            'link' => "/api/profile/orders/{$id}/invoices/exit_permit",
+                            'link' => "/api/profile/orders/{$id}/invoice/exit_permit",
                             'method' => 'GET',
                             'downloadable' => true,
                         ];
