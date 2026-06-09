@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string      $doc_number
  * @property string|null $shenaseh_variz
  * @property string|null $sender_iban        شبای فرستنده از ItemSystemMetaData پادیوم
+ * @property string|null $sender_name        نام فرستنده از ItemSystemMetaData پادیوم
  * @property string|null $national_code
  * @property int         $creditor_amount
  * @property int|null    $user_id
@@ -26,6 +27,7 @@ class PodiumDepositRecord extends Model
     public const DOC_NUMBER          = 'doc_number';
     public const SHENASEH_VARIZ      = 'shenaseh_variz';
     public const SENDER_IBAN         = 'sender_iban';
+    public const SENDER_NAME         = 'sender_name';
     public const NATIONAL_CODE       = 'national_code';
     public const CREDITOR_AMOUNT     = 'creditor_amount';
     public const USER_ID             = 'user_id';
@@ -44,6 +46,7 @@ class PodiumDepositRecord extends Model
         self::DOC_NUMBER,
         self::SHENASEH_VARIZ,
         self::SENDER_IBAN,
+        self::SENDER_NAME,
         self::NATIONAL_CODE,
         self::CREDITOR_AMOUNT,
         self::USER_ID,
