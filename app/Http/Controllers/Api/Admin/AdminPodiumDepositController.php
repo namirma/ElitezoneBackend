@@ -50,7 +50,8 @@ class AdminPodiumDepositController extends Controller
 
         $records = PodiumDepositRecord::query()
             ->with([
-                'user:id,mobile,name,national_code',
+                'user:id,mobile,national_code',
+                'user.profile:user_id,name',
                 'walletTransaction:id,amount,status,created_at',
             ])
             // فیلتر وضعیت
@@ -65,7 +66,9 @@ class AdminPodiumDepositController extends Controller
                 $q->where(function ($q2) use ($term) {
                     $q2->where(PodiumDepositRecord::NATIONAL_CODE,  'like', "%{$term}%")
                         ->orWhere(PodiumDepositRecord::SHENASEH_VARIZ, 'like', "%{$term}%")
-                        ->orWhere(PodiumDepositRecord::DOC_NUMBER,     'like', "%{$term}%");
+                        ->orWhere(PodiumDepositRecord::DOC_NUMBER,     'like', "%{$term}%")
+                        ->orWhere(PodiumDepositRecord::SENDER_IBAN,    'like', "%{$term}%")
+                        ->orWhere(PodiumDepositRecord::SENDER_NAME,    'like', "%{$term}%");
                 });
             })
             ->latest()
