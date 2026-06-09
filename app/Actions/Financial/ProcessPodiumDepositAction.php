@@ -69,13 +69,46 @@ class ProcessPodiumDepositAction
         $shenasehVariz = preg_match('/^\d{11}$/', $rawBillNumber) ? $rawBillNumber : '';
 
         // ══════════════════════════════════════════════════════════════════════
-        //  PASS 1 — شناسه واریز
+        //  PASS 1 — شناسه واریز (پایا/ستنا)
+        //
+        //  شرط دوگانه: شناسه واریز معتبر + IBAN فرستنده باید در UserBankAccount
+        //  با status=approved ثبت شده باشد.
+        //
+        //  چرا IBAN اجباری است:
+        //    اگر کسی کد ملی شخص دیگری را بداند، می‌تواند شناسه واریز او را حساب
+        //    کرده و از حساب خودش واریز کند. IBAN دومین لایه تأیید هویت است.
+        //
+        //  استثنا: اگر IBAN در metadata موجود نباشد (null)، شناسه واریز به تنهایی
+        //    کافی است — این حالت در انتقال‌های قدیمی یا بدون metadata رخ می‌دهد.
         // ══════════════════════════════════════════════════════════════════════
         if (! empty($shenasehVariz) && $this->shenasehService->validate($shenasehVariz)) {
             $nationalCode = $this->shenasehService->extractNationalCode($shenasehVariz);
             $user         = User::where('national_code', $nationalCode)->first();
 
             if ($user) {
+                // اگر IBAN فرستنده قابل استخراج است، باید با حساب ثبت‌شده تطبیق داشته باشد
+                if (! empty($senderIban) && ! $this->userHasRegisteredIban($user, $senderIban)) {
+                    Log::warning('ProcessPodiumDepositAction: Pass1 — IBAN فرستنده با حساب ثبت‌شده کاربر مطابقت ندارد', [
+                        'user_id'       => $user->id,
+                        'national_code' => $nationalCode,
+                        'sender_iban'   => $senderIban,
+                        'shenaseh'      => $shenasehVariz,
+                        'amount'        => $creditorAmount,
+                    ]);
+
+                    PodiumDepositRecord::create([
+                        PodiumDepositRecord::DOC_NUMBER          => $docNumber,
+                        PodiumDepositRecord::SHENASEH_VARIZ      => $shenasehVariz,
+                        PodiumDepositRecord::SENDER_IBAN         => $senderIban,
+                        PodiumDepositRecord::NATIONAL_CODE       => $nationalCode,
+                        PodiumDepositRecord::CREDITOR_AMOUNT     => $creditorAmount,
+                        PodiumDepositRecord::DEPOSITED_AT_JALALI => $depositedAt ?: null,
+                        PodiumDepositRecord::NOTE                => 'IBAN فرستنده با هیچ حساب تأییدشده‌ای برای این کاربر مطابقت ندارد',
+                    ]);
+                    return;
+                }
+
+                // شناسه واریز معتبر + IBAN تأیید شد (یا IBAN در دسترس نبود)
                 $this->creditWallet(
                     user:          $user,
                     amount:        $creditorAmount,
@@ -281,11 +314,9 @@ class ProcessPodiumDepositAction
      */
     private function findUserBySenderIban(string $senderIban): ?User
     {
-        // نرمال‌سازی برای مقایسه (بدون فاصله، uppercase)
         $normalizedIban = strtoupper(preg_replace('/\s+/', '', $senderIban));
 
         $bankAccount = UserBankAccount::where(function ($q) use ($normalizedIban) {
-            // مقایسه با شبا (با پیشوند IR یا بدون آن)
             $ibanWithoutIR = preg_replace('/^IR/i', '', $normalizedIban);
             $q->whereRaw('UPPER(REPLACE(shaba, " ", "")) = ?', [$normalizedIban])
               ->orWhereRaw('UPPER(REPLACE(shaba, " ", "")) = ?', [$ibanWithoutIR]);
@@ -295,5 +326,26 @@ class ProcessPodiumDepositAction
             ->first();
 
         return $bankAccount?->user;
+    }
+
+    /**
+     * بررسی اینکه آیا یک IBAN در لیست حساب‌های تأییدشده یک کاربر وجود دارد.
+     *
+     * برای Pass 1 استفاده می‌شود تا اطمینان حاصل شود که IBAN فرستنده
+     * با حساب ثبت‌شده همان کاربری که شناسه واریز داد مطابقت دارد.
+     * این لایه دوم تأیید هویت از سوءاستفاده شناسه واریز جلوگیری می‌کند.
+     */
+    private function userHasRegisteredIban(User $user, string $senderIban): bool
+    {
+        $normalizedIban = strtoupper(preg_replace('/\s+/', '', $senderIban));
+        $ibanWithoutIR  = preg_replace('/^IR/i', '', $normalizedIban);
+
+        return $user->bankAccounts()
+            ->where(UserBankAccount::STATUS, UserBankAccount::STATUS_APPROVED)
+            ->where(function ($q) use ($normalizedIban, $ibanWithoutIR) {
+                $q->whereRaw('UPPER(REPLACE(shaba, " ", "")) = ?', [$normalizedIban])
+                  ->orWhereRaw('UPPER(REPLACE(shaba, " ", "")) = ?', [$ibanWithoutIR]);
+            })
+            ->exists();
     }
 }
