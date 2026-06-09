@@ -7,6 +7,9 @@ use App\Actions\Financial\DeleteReceiptAction;
 use App\Actions\Financial\FundWalletAction;
 use App\Actions\Financial\RequestWithdrawalAction;
 use App\Http\Controllers\Controller;
+use App\Models\User;
+use App\Models\UserBankAccount;
+use App\Services\Financial\ShenasehVarizService;
 use App\Http\Requests\Financial\StoreDepositReceiptRequest;
 use App\Http\Requests\Financial\WalletDepositRequest;
 use App\Http\Requests\Financial\WalletWithdrawalRequest;
@@ -29,6 +32,73 @@ class WalletController extends Controller
         protected AttachReceiptToDepositAction  $attachReceiptAction,
         protected DeleteReceiptAction           $deleteReceiptAction,
     ) {}
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Direct bank deposit (شناسه واریز)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * GET /profile/wallet/deposit-account?bank_account_id={id}
+     *
+     * اطلاعات حساب شناسه‌دار برای واریز مستقیم بانکی (PAYA/SATNA):
+     *  - شماره شبا الیت‌زون
+     *  - شناسه واریز مختص این کاربر (کد ملی + رقم کنترل — الگوریتم ۱-۱)
+     *
+     * پیش‌نیاز: کاربر باید حداقل یک حساب بانکی تأییدشده ثبت کرده باشد.
+     * اگر bank_account_id ارسال شود، آن حساب در پاسخ هم برگردانده می‌شود
+     * (فرانت می‌تواند نشان دهد "از این شبا واریز کنید").
+     */
+    public function getDepositAccount(Request $request, ShenasehVarizService $shenasehService): JsonResponse
+    {
+        /** @var User $user */
+        $user = Auth::user();
+
+        // ── پیش‌نیاز ۱: کد ملی ──────────────────────────────────────────────
+        $nationalCode = $user->{User::NATIONAL_CODE};
+        if (empty($nationalCode)) {
+            return error(__('wallet.deposit_account_no_national_code'), [], 422);
+        }
+
+        // ── پیش‌نیاز ۲: حداقل یک حساب بانکی تأییدشده ────────────────────────
+        // شبای شرکت تنها پس از ثبت و تأیید حساب فرستنده نشان داده می‌شود.
+        $approvedAccounts = $user->bankAccounts()
+            ->where(UserBankAccount::STATUS, UserBankAccount::STATUS_APPROVED)
+            ->get();
+
+        if ($approvedAccounts->isEmpty()) {
+            return error(__('wallet.deposit_account_no_bank_account'), [], 422);
+        }
+
+        // ── حساب انتخاب‌شده توسط کاربر (اختیاری) ───────────────────────────
+        $selectedAccount = null;
+        if ($request->filled('bank_account_id')) {
+            $selectedAccount = $approvedAccounts->firstWhere(
+                UserBankAccount::ID,
+                (int) $request->input('bank_account_id')
+            );
+            // اگر ID متعلق به این کاربر نباشد → نادیده گرفته می‌شود
+        }
+
+        $shenasehVariz = $shenasehService->generate($nationalCode);
+
+        return success([
+            'destination' => [
+                'iban'           => 'IR' . config('podium.deposit.iban'),
+                'bank_name'      => config('podium.deposit.bank_name'),
+                'account_holder' => config('podium.deposit.account_holder'),
+                'shenaseh_variz' => $shenasehVariz,
+                'note'           => __('wallet.deposit_account_note'),
+            ],
+            'source_account' => $selectedAccount ? [
+                'id'                  => $selectedAccount->{UserBankAccount::ID},
+                'bank_name'           => $selectedAccount->{UserBankAccount::BANK_NAME},
+                'shaba'               => $selectedAccount->{UserBankAccount::SHABA},
+                'account_holder_name' => $selectedAccount->{UserBankAccount::ACCOUNT_HOLDER_NAME},
+                'card_number'         => $selectedAccount->{UserBankAccount::CARD_NUMBER},
+            ] : null,
+            'approved_accounts_count' => $approvedAccounts->count(),
+        ], __('wallet.deposit_account_received'));
+    }
 
     // ─────────────────────────────────────────────────────────────────────────
     // Balance & transactions

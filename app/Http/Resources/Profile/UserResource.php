@@ -2,6 +2,8 @@
 
 namespace App\Http\Resources\Profile;
 
+use App\Models\ContractorProfile;
+use App\Models\EngineerProfile;
 use App\Models\User;
 use Illuminate\Http\Request;
 use App\Http\Resources\BaseJsonResource;
@@ -41,6 +43,29 @@ class UserResource extends BaseJsonResource
             User::RELATION_JOB_EXPERIENCES => JobExperienceResource::collection($this->whenLoaded(User::RELATION_JOB_EXPERIENCES)),
             'created_at_p' => $this->created_at_p,
             'created_at_diff' => $this->created_at_diff,
+            'is_verified' => $this->getIsVerified(),
         ];
+    }
+
+    /**
+     * وضعیت تأیید مدارک کاربر — فقط برای مهندس یا پیمانکار.
+     *
+     * اگر کاربر نقش engineer یا contractor داشت، مقدار واقعی is_verified
+     * از پروفایل مربوطه برگردانده می‌شود. برای سایر نقش‌ها null برمی‌گردد.
+     *
+     * کنترلر از پیش engineerProfile / contractorProfile را
+     * (بر اساس نقش کاربر) لود کرده، پس N+1 وجود ندارد.
+     */
+    private function getIsVerified(): ?bool
+    {
+        if ($this->relationLoaded(User::RELATION_ENGINEER) && $this->{User::RELATION_ENGINEER}) {
+            return (bool) $this->{User::RELATION_ENGINEER}->{EngineerProfile::IS_VERIFIED};
+        }
+
+        if ($this->relationLoaded(User::RELATION_CONTRACTOR) && $this->{User::RELATION_CONTRACTOR}) {
+            return (bool) $this->{User::RELATION_CONTRACTOR}->{ContractorProfile::IS_VERIFIED};
+        }
+
+        return null;
     }
 }
