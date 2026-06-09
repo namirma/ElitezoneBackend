@@ -19,21 +19,27 @@ use Illuminate\Support\Facades\Log;
  *   - اگر DocNumber قبلاً ثبت شده باشد → بدون هیچ عملیاتی return می‌کند
  *   - تمام عملیات داخل DB::transaction + lockForUpdate انجام می‌شود
  *
- * فلو — دو مرحله تطبیق (Pass 1 → Pass 2 → unmatched):
+ * قانون اصلی: شناسه واریز در همه حالات الزامی است.
+ * هیچ واریزی بدون شناسه واریز معتبر به صورت خودکار شارژ نمی‌شود.
+ *
+ * فلو — Pass 1 → unmatched:
  *
  *   Pass 1 — شناسه واریز (PAYA/SATNA استاندارد)
  *     ① TransferMoneyBillNumber را بررسی می‌کند (باید ۱۱ رقم عددی باشد)
- *     ② شناسه را با Algorithm 1-1 validate می‌کند
+ *     ② شناسه را validate می‌کند (الگوریتم کد ملی + رقم کنترل)
  *     ③ کد ملی را استخراج کرده کاربر را می‌یابد
- *     ④ کیف‌پول را شارژ می‌کند (matched_by='shenaseh')
+ *     ④ شبای فرستنده را بررسی می‌کند (دومین عامل تأیید هویت):
+ *        - اگر شبا موجود باشد باید در UserBankAccount (status=approved) آن کاربر باشد
+ *        - اگر شبا در metadata نباشد، شناسه واریز به تنهایی کافی است
+ *     ⑤ کیف‌پول را شارژ می‌کند (matched_by='shenaseh')
  *
- *   Pass 2 — شبای فرستنده (تراکنش‌های پل یا بدون شناسه)
- *     ① شبای فرستنده را از ItemSystemMetaData.Main_Sys_Meta_Data.TrxSrcProductId استخراج می‌کند
- *     ② در UserBankAccount (status=approved) دنبال تطبیق می‌گردد
- *     ③ کیف‌پول کاربر صاحب آن حساب را شارژ می‌کند (matched_by='iban')
+ *   انتقال‌های پل (Pol/Bridge) — بدون شناسه واریز → unmatched
+ *     انتقال‌های پل TransferMoneyBillNumber را با کد مرجع بانکی (مثل C6494530F774)
+ *     پر می‌کنند، نه شناسه واریز کاربر. چون شناسه واریز الزامی است، این واریزها
+ *     خودکار شارژ نمی‌شوند. شبای فرستنده برای تسهیل بررسی ادمین شناسایی می‌شود.
  *
- *   unmatched — اگر هیچ‌کدام تطبیق نداد:
- *     رکورد با note ذخیره می‌شود (ادمین باید دستی بررسی کند)
+ *   unmatched — هر واریز بدون شناسه واریز معتبر:
+ *     رکورد با note و شبای شناسایی‌شده ذخیره می‌شود (ادمین باید دستی بررسی کند)
  */
 class ProcessPodiumDepositAction
 {
@@ -142,46 +148,51 @@ class ProcessPodiumDepositAction
         }
 
         // ══════════════════════════════════════════════════════════════════════
-        //  PASS 2 — شبای فرستنده ↔ UserBankAccount
+        //  PASS 2 (اطلاعاتی) — شناسایی شبای فرستنده برای تسهیل کار ادمین
+        //
+        //  ⚠ شناسه واریز در همه حالات الزامی است.
+        //  انتقال‌های پل (Pol) در TransferMoneyBillNumber کد مرجع بانکی دارند
+        //  (مثل C6494530F774)، نه شناسه واریز کاربر. بنابراین این انتقال‌ها
+        //  به صورت خودکار شارژ نمی‌شوند — ادمین باید دستی تأیید کند.
+        //
+        //  شبای فرستنده را فقط برای نمایش در پنل ادمین شناسایی می‌کنیم.
         // ══════════════════════════════════════════════════════════════════════
-        if (! empty($senderIban)) {
-            $user = $this->findUserBySenderIban($senderIban);
+        $suggestedUser = ! empty($senderIban) ? $this->findUserBySenderIban($senderIban) : null;
 
-            if ($user) {
-                $this->creditWallet(
-                    user:          $user,
-                    amount:        $creditorAmount,
-                    docNumber:     $docNumber,
-                    shenasehVariz: $shenasehVariz ?: null,
-                    senderIban:    $senderIban,
-                    nationalCode:  null,
-                    depositedAt:   $depositedAt,
-                    matchedBy:     PodiumDepositRecord::MATCHED_BY_IBAN,
-                );
-                return;
-            }
+        // ══════════════════════════════════════════════════════════════════════
+        //  UNMATCHED — شناسه واریز موجود نیست یا معتبر نیست
+        // ══════════════════════════════════════════════════════════════════════
+        if (! empty($senderIban) && $suggestedUser !== null) {
+            // پل + کاربر شناخته‌شده: نیاز به تأیید ادمین دارد ولی حیاتی نیست
+            $note = "انتقال پل — شبا {$senderIban} متعلق به کاربر #{$suggestedUser->id} شناسایی شد اما شناسه واریز ندارد. شارژ فقط با تأیید ادمین انجام می‌شود";
+
+            Log::info('ProcessPodiumDepositAction: پل بدون شناسه واریز → unmatched (ادمین باید تأیید کند)', [
+                'doc_number'     => $docNumber,
+                'sender_iban'    => $senderIban,
+                'suggested_user' => $suggestedUser->id,
+                'amount'         => $creditorAmount,
+            ]);
+        } else {
+            // بدون IBAN یا IBAN ناشناخته: نیاز به بررسی جدی‌تر دارد
+            $note = ! empty($senderIban)
+                ? "انتقال پل — شناسه واریز ندارد و شبا {$senderIban} در سیستم ثبت نشده. بررسی دستی لازم است"
+                : (empty($shenasehVariz)
+                    ? 'شناسه واریز و شبای فرستنده هر دو خالی‌اند — نیاز به بررسی دستی'
+                    : 'شناسه واریز نامعتبر — نیاز به بررسی دستی');
+
+            Log::warning('ProcessPodiumDepositAction: unmatched deposit', [
+                'doc_number'  => $docNumber,
+                'shenaseh'    => $shenasehVariz ?: 'N/A',
+                'sender_iban' => $senderIban ?: 'N/A',
+                'amount'      => $creditorAmount,
+            ]);
         }
-
-        // ══════════════════════════════════════════════════════════════════════
-        //  UNMATCHED — هیچ تطبیقی انجام نشد
-        // ══════════════════════════════════════════════════════════════════════
-        $note = empty($shenasehVariz) && empty($senderIban)
-            ? 'شناسه واریز و شبای فرستنده هر دو خالی‌اند — نیاز به بررسی دستی'
-            : (empty($shenasehVariz)
-                ? 'شبای فرستنده در UserBankAccount ثبت‌شده‌ای یافت نشد'
-                : 'شناسه واریز نامعتبر و شبای فرستنده ثبت نشده');
-
-        Log::warning('ProcessPodiumDepositAction: unmatched deposit', [
-            'doc_number'   => $docNumber,
-            'shenaseh'     => $shenasehVariz ?: 'N/A',
-            'sender_iban'  => $senderIban ?: 'N/A',
-            'amount'       => $creditorAmount,
-        ]);
 
         PodiumDepositRecord::create([
             PodiumDepositRecord::DOC_NUMBER          => $docNumber,
             PodiumDepositRecord::SHENASEH_VARIZ      => $shenasehVariz ?: null,
-            PodiumDepositRecord::SENDER_IBAN         => $senderIban,
+            PodiumDepositRecord::SENDER_IBAN         => $senderIban ?: null,
+            PodiumDepositRecord::NATIONAL_CODE       => $suggestedUser?->national_code,
             PodiumDepositRecord::CREDITOR_AMOUNT     => $creditorAmount,
             PodiumDepositRecord::DEPOSITED_AT_JALALI => $depositedAt ?: null,
             PodiumDepositRecord::NOTE                => $note,
