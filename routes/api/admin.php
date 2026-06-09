@@ -80,10 +80,11 @@ Route::middleware(['auth:sanctum', 'role.admin'])->prefix('admin')->group(functi
         Route::get('/pending-moadian', 'pendingMoadianInvoices');
     });
 
-    // واریز مستقیم بانکی — سوابق شناسه واریز + polling دستی
+    // واریز مستقیم بانکی — سوابق شناسه واریز + polling دستی + شارژ دستی ادمین
     Route::controller(AdminPodiumDepositController::class)->prefix('financial/podium-deposits')->group(function () {
-        Route::get('/',      'index'); // لیست سوابق + آمار
-        Route::post('/poll', 'poll');  // اجرای دستی polling (بدون cron)
+        Route::get('/',                  'index');  // لیست سوابق + آمار
+        Route::post('/poll',             'poll');   // اجرای دستی polling (بدون cron)
+        Route::post('/{record}/credit',  'credit'); // شارژ دستی برای واریز unmatched
     });
 
     // Users — CRUD (group 2)

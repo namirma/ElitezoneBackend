@@ -38,6 +38,7 @@ class PodiumDepositRecord extends Model
     /** روش‌های تطبیق واریز با کاربر */
     public const MATCHED_BY_SHENASEH = 'shenaseh'; // از طریق شناسه واریز (۱۱ رقم عددی)
     public const MATCHED_BY_IBAN     = 'iban';      // از طریق شبای فرستنده ↔ UserBankAccount
+    public const MATCHED_BY_ADMIN    = 'admin';     // شارژ دستی توسط ادمین
 
     protected $fillable = [
         self::DOC_NUMBER,

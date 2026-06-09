@@ -20,6 +20,7 @@ return [
     'manual_deposit_description' => 'شارژ کیف پول (کارت به کارت/فیش)',
     'podium_direct_deposit' => 'واریز مستقیم بانکی — شناسه واریز: :shenaseh',
     'podium_iban_deposit'   => 'واریز مستقیم بانکی از شبا: :iban',
+    'podium_admin_credit'   => 'شارژ دستی توسط ادمین — مبلغ :amount تومان',
     'deposit_account_received' => 'اطلاعات حساب واریز مستقیم دریافت شد',
     'deposit_account_no_national_code' => 'برای استفاده از واریز مستقیم ابتدا باید کد ملی خود را تکمیل کنید',
     'deposit_account_no_bank_account' => 'برای مشاهده اطلاعات واریز، ابتدا باید یک حساب بانکی ثبت و تأیید شده داشته باشید',
