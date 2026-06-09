@@ -736,6 +736,15 @@ catches `AuthorizationException` and returns 403 with the policy's deny message.
 `tests/Feature/` covers two main areas. All tests use the `DatabaseTransactions`
 trait so the live local database is **not** mutated (per user requirement).
 
+**Test isolation setup (critical):** Tests run on a dedicated `laravel_testing` database,
+never on the live `laravel` DB. Two safety layers enforce this:
+1. `phpunit.xml` overrides `DB_DATABASE=laravel_testing` for all test runs.
+2. `tests/CreatesApplication.php` has a hard guard that throws `RuntimeException` before
+   any migration runs if the active DB is in the `FORBIDDEN_TEST_DATABASES` list (`laravel`).
+
+To set up a new environment: `CREATE DATABASE laravel_testing CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`
+then `DB_DATABASE=laravel_testing php artisan migrate --force`.
+
 ```
 tests/
   Feature/
@@ -747,10 +756,11 @@ tests/
     Pricing/     — CreatesPricingFixtures (shared trait),
                    SetBasePriceTest, ApplyPriceFiltersTest,
                    ApplyVariantDiscountTest, ApplyVatTest
+    Profile/     — ProfileVerificationBadgeTest (5 tests: is_verified contract via GET /api/profile)
   Unit/          — (empty placeholder dir — kept so phpunit.xml works)
 ```
 
-**Total: 110 tests, 189 assertions (all green).** (after B1–B5 document-generation gap fixes)
+**Total: 142 tests, 312 assertions — all green. ✅**
 
 Patterns to follow when adding tests:
 - **Use factories**, never `User::create([...])` with raw arrays — `UserFactory`

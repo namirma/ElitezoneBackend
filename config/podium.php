@@ -43,6 +43,12 @@ return [
         'account_holder'    => env('PODIUM_DEPOSIT_ACCOUNT_HOLDER', 'شرکت الیت‌زون'),
     ],
 
+    // ── گزینه غیرفعال‌کردن بررسی Podium در محیط local/dev ──────────────────────
+    // اگر Podium در دسترس نیست (VPN، توکن منقضی، محدودیت شبکه)، در .env بگذار:
+    //   PODIUM_IDENTITY_VERIFICATION_ENABLED=false
+    // ⚠️  در production این مقدار باید حتماً true (یا حذف‌شده = پیش‌فرض true) باشد.
+    'identity_verification_enabled' => (bool) env('PODIUM_IDENTITY_VERIFICATION_ENABLED', true),
+
     'services' => [
         'identity_inquiry' => [
             'has_sandbox' => false,

@@ -29,7 +29,17 @@ class RouteServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('sms', function (Request $request) {
-            return Limit::perMinute(2)->by($request->ip());
+            return Limit::perMinute(2)->by($request->ip())->response(function (Request $request, array $headers) {
+                $retryAfter = (int) ($headers['Retry-After'] ?? 60);
+                $minutes    = (int) ceil($retryAfter / 60);
+                $timeLabel  = $minutes > 1 ? "{$minutes} دقیقه" : '۱ دقیقه';
+
+                return error(
+                    "تلاش بیش از حد مجاز است. لطفاً {$timeLabel} دیگر دوباره امتحان کنید.",
+                    ['retry_after_seconds' => $retryAfter],
+                    429
+                );
+            });
         });
 
         /**

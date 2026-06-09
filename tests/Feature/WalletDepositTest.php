@@ -4,13 +4,13 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use App\Models\WalletTransaction;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class WalletDepositTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     /**
      * تست موفقیت‌آمیز درخواست شارژ کیف پول
@@ -18,11 +18,13 @@ class WalletDepositTest extends TestCase
     public function test_user_can_request_deposit_successfully(): void
     {
         // 1. ایجاد نوع کاربری (با آیکون)
-        $type = \App\Models\UserType::create([
-            'name' => 'customer',
-            'slug' => 'customer',
-            'icon' => 'user', // <--- این خط اضافه شد تا ارور رفع شود
-        ]);
+        $type = \App\Models\UserType::firstOrCreate(
+            ['slug' => 'customer'],
+            [
+                'name' => 'customer',
+                'icon' => 'user',
+            ]
+        );
 
         // 2. ایجاد کاربر
         $user = User::factory()->create(['type_id' => $type->id]);

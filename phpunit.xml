@@ -21,8 +21,13 @@
         <env name="APP_ENV" value="testing"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="CACHE_DRIVER" value="array"/>
-        <!-- <env name="DB_CONNECTION" value="sqlite"/> -->
-        <!-- <env name="DB_DATABASE" value=":memory:"/> -->
+        <!-- ⚠️ ایمنی حیاتی: تست‌ها روی یک دیتابیسِ جداگانه اجرا می‌شوند، نه دیتابیس زنده.
+             برخی تست‌ها از RefreshDatabase استفاده می‌کنند که migrate:fresh می‌زند (drop همه جدول‌ها).
+             این override تضمین می‌کند آن تخریب فقط روی laravel_testing رخ دهد نه laravel.
+             یک محافظ دوم هم در tests/CreatesApplication.php وجود دارد که اگر تست به‌اشتباه
+             به دیتابیس زنده وصل شود، کل اجرا را قبل از هر تخریبی متوقف می‌کند. -->
+        <env name="DB_CONNECTION" value="mysql"/>
+        <env name="DB_DATABASE" value="laravel_testing"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>

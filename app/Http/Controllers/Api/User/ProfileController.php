@@ -12,8 +12,8 @@ use App\Http\Requests\Profile\UpdateUserProfileRequest;
 use App\Http\Resources\Profile\UserResource;
 use App\Models\User;
 use App\Models\UserProfile;
+use App\Models\UserType;
 use App\Services\PodiumServices\CompanyInquiryService;
-use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -38,14 +38,15 @@ class ProfileController extends Controller
         $roleNames = $user->roles->pluck('name')->map(fn ($n) => strtolower($n))->unique()->values();
         $relationsToLoad = [];
 
-        $isExpert = $roleNames->contains('engineer') || $roleNames->contains('contractor');
+        // «مشاور فنی» دو حالت دارد:
+        //   ۱) نقشِ دقیقِ engineer/contractor دارد (بعد از آپلود مدارک تعیین می‌شود)
+        //   ۲) فقط type.slug = expert دارد (نقش را انتخاب کرده ولی هنوز مدرکی آپلود نکرده)
+        // در هر دو حالت کاربر «مشاور فنی» است و باید وضعیت تأیید (is_verified) ارزیابی شود.
+        $typeSlug = strtolower((string) optional($user->{User::RELATION_TYPE})->{UserType::SLUG});
+        $isExpert = $roleNames->contains('engineer')
+            || $roleNames->contains('contractor')
+            || $typeSlug === 'expert';
 
-        if ($roleNames->contains('engineer')) {
-            $relationsToLoad[] = User::RELATION_ENGINEER;
-        }
-        if ($roleNames->contains('contractor')) {
-            $relationsToLoad[] = User::RELATION_CONTRACTOR;
-        }
         if ($roleNames->contains('employer')) {
             $relationsToLoad[] = User::RELATION_EMPLOYER;
         }
@@ -54,12 +55,16 @@ class ProfileController extends Controller
         }
 
         if ($isExpert) {
+            // پروفایل‌های مهندس/پیمانکار برای ارزیابی is_verified در UserResource لود می‌شوند.
+            // اگر کاربر هنوز مدرکی آپلود نکرده باشد این relationها null خواهند بود (بی‌خطر).
+            $relationsToLoad[] = User::RELATION_ENGINEER;
+            $relationsToLoad[] = User::RELATION_CONTRACTOR;
             $relationsToLoad[] = User::RELATION_EDUIX_RECORDS;
             $relationsToLoad[] = User::RELATION_JOB_EXPERIENCES;
         }
 
         if (! empty($relationsToLoad)) {
-            $user->load($relationsToLoad);
+            $user->load(array_unique($relationsToLoad));
         }
 
         return success(new UserResource($user), __('global.received_successfully'));

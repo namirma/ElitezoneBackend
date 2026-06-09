@@ -18,10 +18,17 @@ final class VerifyIdentityWithPodiumAction
     public function __construct(protected PodiumClient $client) {}
 
     /**
-     * @return string|null null = verified OK; string = human-readable error key
+     * @return string|null null = verified OK; string = lang key for error message
      */
     public function execute(string $mobile, string $nationalCode, string $birthDate): ?string
     {
+        // در محیط local/dev می‌توان بررسی Podium را غیرفعال کرد:
+        //   PODIUM_IDENTITY_VERIFICATION_ENABLED=false  ←  در .env
+        // ⚠️  فقط برای تست محلی — در production این گزینه نباید false باشد.
+        if (! config('podium.identity_verification_enabled', true)) {
+            return null;
+        }
+
         // Step 1: NID ↔ Mobile match
         $matchError = $this->checkMobileNidMatch($mobile, $nationalCode);
         if ($matchError) {

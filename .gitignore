@@ -20,3 +20,6 @@ yarn-error.log
 /.claude
 /storage/fonts/YekanBakh-Bold.ttf
 /storage/fonts/YekanBakh-Regular.ttf
+
+# AI context files
+backend-context.txt
