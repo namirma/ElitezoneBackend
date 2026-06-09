@@ -64,11 +64,15 @@ class AuthController extends Controller
                 User::BIRTH_DATE => $birthDate,
             ]);
         } else {
+            $customerType = UserType::firstOrCreate(
+                ['slug' => 'customer'],
+                ['name' => 'مشتری', 'icon' => 'user'],
+            );
             $user = User::create([
-                User::MOBILE => $mobile,
+                User::MOBILE        => $mobile,
                 User::NATIONAL_CODE => $nationalCode,
-                User::BIRTH_DATE => $birthDate,
-                User::TYPE_ID => null,
+                User::BIRTH_DATE    => $birthDate,
+                User::TYPE_ID       => $customerType->id,
             ]);
         }
 
