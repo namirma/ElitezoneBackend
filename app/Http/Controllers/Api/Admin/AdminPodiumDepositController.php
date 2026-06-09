@@ -5,18 +5,24 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Actions\Financial\ProcessPodiumDepositAction;
 use App\Http\Controllers\Controller;
 use App\Models\PodiumDepositRecord;
+use App\Models\User;
+use App\Models\Wallet;
+use App\Models\WalletTransaction;
 use App\Services\PodiumServices\DepositStatementService;
 use Hekmatinasser\Verta\Verta;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 /**
  * پنل ادمین — مدیریت واریزهای مستقیم بانکی (شناسه واریز / پادیوم)
  *
- * دو endpoint:
- *   GET  /admin/financial/podium-deposits        → لیست کامل سوابق + فیلتر
- *   POST /admin/financial/podium-deposits/poll   → اجرای دستی polling (بدون انتظار cron)
+ * سه endpoint:
+ *   GET  /admin/financial/podium-deposits              → لیست کامل سوابق + فیلتر
+ *   POST /admin/financial/podium-deposits/poll         → اجرای دستی polling (بدون انتظار cron)
+ *   POST /admin/financial/podium-deposits/{record}/credit → شارژ دستی ادمین برای واریز unmatched
  */
 class AdminPodiumDepositController extends Controller
 {
@@ -135,8 +141,6 @@ class AdminPodiumDepositController extends Controller
                 continue;
             }
 
-            $countBefore = PodiumDepositRecord::whereNotNull(PodiumDepositRecord::PROCESSED_AT)->count();
-
             try {
                 $this->processAction->execute($statement);
 
@@ -161,13 +165,97 @@ class AdminPodiumDepositController extends Controller
                 'minutes' => $minutes,
             ],
             'summary' => [
-                'total_incoming' => $totalIncoming,     // کل واریزهای ورودی از پادیوم
-                'new_matched'    => $newMatched,         // واریزهای جدید + کیف‌پول شارژ شد
-                'new_unmatched'  => $newUnmatched,       // واریز بدون شناسه معتبر / کاربر
-                'skipped'        => $skipped,            // قبلاً پردازش شده بود
+                'total_incoming' => $totalIncoming,
+                'new_matched'    => $newMatched,
+                'new_unmatched'  => $newUnmatched,
+                'skipped'        => $skipped,
                 'errors'         => count($errors),
             ],
             'errors' => $errors,
         ], "polling اجرا شد — {$newMatched} تراکنش جدید شارژ کیف‌پول شد");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // POST /admin/financial/podium-deposits/{record}/credit
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * شارژ دستی کیف‌پول برای یک واریز unmatched
+     *
+     * زمانی استفاده می‌شود که واریز در سیستم ثبت شده ولی هیچ کاربری
+     * به صورت خودکار تطبیق داده نشده — ادمین پس از بررسی دستی، کاربر
+     * درست را مشخص می‌کند و این endpoint کیف‌پول را شارژ می‌کند.
+     *
+     * Body:
+     *   user_id  (int, required) — کاربری که باید کیف‌پولش شارژ شود
+     *   note     (string, optional) — توضیح برای ادمین‌های بعدی
+     *
+     * ایمنی:
+     *   - اگر واریز قبلاً matched شده باشد → 422 (idempotency)
+     *   - کل عملیات داخل DB::transaction + lockForUpdate
+     *   - matched_by = 'admin' برای قابلیت پیگیری
+     */
+    public function credit(Request $request, PodiumDepositRecord $record): JsonResponse
+    {
+        // ── Guard: واریز قبلاً پردازش شده ──────────────────────────────────
+        if ($record->{PodiumDepositRecord::PROCESSED_AT} !== null) {
+            return error(__('admin.podium_already_credited'), [], 422);
+        }
+
+        // ── اعتبارسنجی ورودی ────────────────────────────────────────────────
+        $validated = $request->validate([
+            'user_id' => ['required', 'integer', 'exists:users,id'],
+            'note'    => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $user = User::findOrFail($validated['user_id']);
+        $adminNote = $validated['note'] ?? null;
+        $amount    = (int) $record->{PodiumDepositRecord::CREDITOR_AMOUNT};
+
+        // ── شارژ کیف‌پول (transaction + lock) ──────────────────────────────
+        DB::transaction(function () use ($record, $user, $amount, $adminNote) {
+            $wallet = Wallet::where(Wallet::USER_ID, $user->id)
+                ->lockForUpdate()
+                ->firstOrCreate(
+                    [Wallet::USER_ID => $user->id],
+                    [Wallet::BALANCE => 0, Wallet::BALANCE_HOLD => 0],
+                );
+
+            $description = __('wallet.podium_admin_credit', [
+                'amount' => number_format((int) ($amount / 10)),
+            ]);
+
+            $txn = $wallet->transactions()->create([
+                WalletTransaction::AMOUNT      => $amount,
+                WalletTransaction::TYPE        => WalletTransaction::TYPE_DEPOSIT,
+                WalletTransaction::STATUS      => WalletTransaction::STATUS_CONFIRMED,
+                WalletTransaction::DESCRIPTION => $description,
+                WalletTransaction::META        => [
+                    'payment_method' => WalletTransaction::METHOD_BANK_TRANSFER,
+                    'source'         => 'podium_admin_credit',
+                    'doc_number'     => $record->{PodiumDepositRecord::DOC_NUMBER},
+                    'matched_by'     => PodiumDepositRecord::MATCHED_BY_ADMIN,
+                    'credited_by_admin_id' => Auth::id(),
+                    'admin_note'     => $adminNote,
+                ],
+            ]);
+
+            $wallet->increment(Wallet::BALANCE, $amount);
+
+            $record->update([
+                PodiumDepositRecord::USER_ID       => $user->id,
+                PodiumDepositRecord::WALLET_TXN_ID => $txn->id,
+                PodiumDepositRecord::MATCHED_BY    => PodiumDepositRecord::MATCHED_BY_ADMIN,
+                PodiumDepositRecord::PROCESSED_AT  => now(),
+                PodiumDepositRecord::NOTE          => $adminNote ?? 'شارژ دستی توسط ادمین',
+            ]);
+        });
+
+        return success([
+            'user_id'        => $user->id,
+            'amount_rials'   => $amount,
+            'amount_tomans'  => (int) ($amount / 10),
+            'doc_number'     => $record->{PodiumDepositRecord::DOC_NUMBER},
+        ], __('admin.podium_credit_success'));
     }
 }

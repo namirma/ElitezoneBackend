@@ -35,7 +35,7 @@ class FinalizeInvoiceAction
 
                 if (! $consultant) {
                     Log::channel('orders')->error("User not found for consultant fee hold. Order: {$order->id}");
-                    throw new Exception('Consultant user not found.');
+                    throw new Exception(__('orders.consultant_not_found_internal'));
                 }
 
                 $wallet = $consultant->wallet ?: $consultant->wallet()->create([]);

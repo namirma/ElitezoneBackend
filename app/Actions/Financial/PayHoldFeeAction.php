@@ -42,7 +42,7 @@ class PayHoldFeeAction
             $lockedOrder = Order::where('id', $order->id)->lockForUpdate()->first();
 
             if (! $lockedOrder) {
-                throw new \RuntimeException("Order {$order->id} not found.");
+                throw new \RuntimeException(__('orders.internal_order_not_found'));
             }
 
             // Idempotency: if already extended with a live expiry, treat as success.
@@ -57,7 +57,7 @@ class PayHoldFeeAction
             }
 
             if (! \in_array($lockedOrder->status, [Order::STATUS_RESERVED, Order::STATUS_RESERVED_EXTENDED])) {
-                throw new \RuntimeException('تنها سفارش‌های رزرو شده قابل تمدید هستند.');
+                throw new \RuntimeException(__('orders.reserve_only_on_reserved_orders'));
             }
 
             $buyerId = $lockedOrder->placer_user_id;

@@ -38,7 +38,7 @@ class ProcessReservationCompletionAction
             $locked = Order::where('id', $order->id)->lockForUpdate()->first();
 
             if (! $locked) {
-                throw new \RuntimeException("Order {$order->id} not found.");
+                throw new \RuntimeException(__('orders.internal_order_not_found'));
             }
 
             if ($this->isAlreadyProcessed($locked)) {
@@ -53,7 +53,7 @@ class ProcessReservationCompletionAction
 
             if (! $firstItem) {
                 Log::channel('financial')->error("Order {$locked->id} has no items.");
-                throw new \RuntimeException('Order items missing for reservation completion.');
+                throw new \RuntimeException(__('orders.items_missing_for_completion'));
             }
 
             $op    = (float) ($locked->official_price ?: ($firstItem->unit_price ?? 0));
@@ -83,7 +83,7 @@ class ProcessReservationCompletionAction
 
             if ($POO <= 0 || $PTS <= 0) {
                 Log::channel('financial')->critical("Invalid financial calculation for order {$locked->id}", compact('POO', 'PTS'));
-                throw new \RuntimeException('محاسبه مالی سفارش معتبر نیست.');
+                throw new \RuntimeException(__('orders.invalid_financial_calculation'));
             }
 
             $PTR = (float) $locked->payment_to_reserve;

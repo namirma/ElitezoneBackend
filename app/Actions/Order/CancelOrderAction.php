@@ -30,11 +30,11 @@ class CancelOrderAction
         // === گارد امنیتی طبق فلوچارت ===
         if (in_array($order->status, [Order::STATUS_RESERVED, Order::STATUS_RESERVED_EXTENDED])) {
             if ($order->reservation_expires_at && $order->reservation_expires_at->isFuture()) {
-                throw new Exception('سفارشات رزرو شده تا پیش از پایان زمان انقضا قابل لغو نیستند.');
+                throw new Exception(__('orders.reserved_cannot_cancel_before_expiry'));
             }
 
             if (! $isSystemCron) {
-                throw new Exception('سفارشات رزرو شده منقضی، تنها توسط سیستم (به صورت خودکار) لغو می‌شوند.');
+                throw new Exception(__('orders.reserved_expired_auto_cancel'));
             }
         }
 

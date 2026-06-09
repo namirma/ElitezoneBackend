@@ -44,7 +44,7 @@ class ProcessWeighbridgeResultAction
             $locked = Order::where('id', $order->id)->lockForUpdate()->first();
 
             if (! $locked) {
-                throw new \RuntimeException("Order {$order->id} not found.");
+                throw new \RuntimeException(__('orders.internal_order_not_found'));
             }
 
             if ($this->isAlreadyProcessed($locked)) {
