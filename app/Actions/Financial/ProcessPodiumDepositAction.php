@@ -351,6 +351,16 @@ class ProcessPodiumDepositAction
 
         $name = trim((string) ($name ?? ''));
 
+        // اگر اسم پیدا نشد، کل کلیدهای موجود را log می‌کنیم تا بفهمیم Podium چه ساختاری فرستاده
+        if (empty($name)) {
+            $mainMeta = data_get($meta, 'Main_Sys_Meta_Data');
+            if (is_array($mainMeta)) {
+                Log::debug('ProcessPodiumDepositAction: sender name not found — available keys', [
+                    'available_keys' => array_keys($mainMeta),
+                ]);
+            }
+        }
+
         return ! empty($name) ? $name : null;
     }
 
