@@ -90,7 +90,7 @@ class ReleaseConsultantHoldAction
             $locked = Order::where('id', $order->id)->lockForUpdate()->first();
 
             if (! $locked) {
-                throw new \RuntimeException("Order {$order->id} not found.");
+                throw new \RuntimeException(__('orders.internal_order_not_found'));
             }
 
             // Double-check idempotency inside the transaction

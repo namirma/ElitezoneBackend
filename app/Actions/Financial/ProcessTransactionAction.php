@@ -27,7 +27,7 @@ class ProcessTransactionAction
 
         // ۲. اعتبارسنجی وضعیت ورودی
         if (! in_array($newStatus, [WalletTransaction::STATUS_CONFIRMED, WalletTransaction::STATUS_REJECTED])) {
-            throw new Exception('وضعیت جدید نامعتبر است.');
+            throw new Exception(__('orders.invalid_transaction_status'));
         }
 
         // ۳. اجرای عملیات در یک تراکنش دیتابیس (اتمیک)

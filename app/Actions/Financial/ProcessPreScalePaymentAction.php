@@ -34,7 +34,7 @@ class ProcessPreScalePaymentAction
             $locked = Order::where('id', $order->id)->lockForUpdate()->first();
 
             if (! $locked) {
-                throw new \RuntimeException("Order {$order->id} not found.");
+                throw new \RuntimeException(__('orders.internal_order_not_found'));
             }
 
             if ($this->isAlreadyProcessed($locked)) {
@@ -49,7 +49,7 @@ class ProcessPreScalePaymentAction
 
             if (! $firstItem) {
                 Log::channel('financial')->error("Order {$locked->id} has no items.");
-                throw new \RuntimeException('Order items missing for financial processing.');
+                throw new \RuntimeException(__('orders.items_missing_for_payment'));
             }
 
             $officialPrice = (float) $locked->getAttribute(Order::OFFICIAL_PRICE);

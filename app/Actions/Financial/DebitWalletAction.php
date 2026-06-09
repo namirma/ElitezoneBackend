@@ -23,7 +23,7 @@ class DebitWalletAction
     ): WalletTransaction {
         // ۱. گارد امنیتی: جلوگیری از مبالغ منفی یا صفر
         if ($amount <= 0) {
-            throw new InvalidArgumentException('مبلغ برداشت باید بیشتر از صفر باشد.');
+            throw new InvalidArgumentException(__('orders.debit_amount_must_be_positive'));
         }
 
         return DB::transaction(function () use ($user, $amount, $description, $meta, $type) {
