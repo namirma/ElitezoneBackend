@@ -68,6 +68,7 @@ class ProcessPodiumDepositAction
 
         // ── استخراج فیلدهای مشترک ─────────────────────────────────────────
         $senderIban = $this->extractSenderIban($statement);
+        $senderName = $this->extractSenderName($statement);
 
         // TransferMoneyBillNumber برای پل/شتاب کد بانکی است (مثل C64945308503)؛
         // شناسه واریز واقعی کاربر فقط در انتقال‌های پایا استاندارد پر می‌شود.
@@ -106,6 +107,7 @@ class ProcessPodiumDepositAction
                         PodiumDepositRecord::DOC_NUMBER          => $docNumber,
                         PodiumDepositRecord::SHENASEH_VARIZ      => $shenasehVariz,
                         PodiumDepositRecord::SENDER_IBAN         => $senderIban,
+                        PodiumDepositRecord::SENDER_NAME         => $senderName,
                         PodiumDepositRecord::NATIONAL_CODE       => $nationalCode,
                         PodiumDepositRecord::CREDITOR_AMOUNT     => $creditorAmount,
                         PodiumDepositRecord::DEPOSITED_AT_JALALI => $depositedAt ?: null,
@@ -121,6 +123,7 @@ class ProcessPodiumDepositAction
                     docNumber:     $docNumber,
                     shenasehVariz: $shenasehVariz,
                     senderIban:    $senderIban,
+                    senderName:    $senderName,
                     nationalCode:  $nationalCode,
                     depositedAt:   $depositedAt,
                     matchedBy:     PodiumDepositRecord::MATCHED_BY_SHENASEH,
@@ -139,6 +142,7 @@ class ProcessPodiumDepositAction
                 PodiumDepositRecord::DOC_NUMBER          => $docNumber,
                 PodiumDepositRecord::SHENASEH_VARIZ      => $shenasehVariz,
                 PodiumDepositRecord::SENDER_IBAN         => $senderIban,
+                PodiumDepositRecord::SENDER_NAME         => $senderName,
                 PodiumDepositRecord::NATIONAL_CODE       => $nationalCode,
                 PodiumDepositRecord::CREDITOR_AMOUNT     => $creditorAmount,
                 PodiumDepositRecord::DEPOSITED_AT_JALALI => $depositedAt ?: null,
@@ -192,6 +196,7 @@ class ProcessPodiumDepositAction
             PodiumDepositRecord::DOC_NUMBER          => $docNumber,
             PodiumDepositRecord::SHENASEH_VARIZ      => $shenasehVariz ?: null,
             PodiumDepositRecord::SENDER_IBAN         => $senderIban ?: null,
+            PodiumDepositRecord::SENDER_NAME         => $senderName,
             PodiumDepositRecord::NATIONAL_CODE       => $suggestedUser?->national_code,
             PodiumDepositRecord::CREDITOR_AMOUNT     => $creditorAmount,
             PodiumDepositRecord::DEPOSITED_AT_JALALI => $depositedAt ?: null,
@@ -213,13 +218,14 @@ class ProcessPodiumDepositAction
         string  $docNumber,
         ?string $shenasehVariz,
         ?string $senderIban,
+        ?string $senderName,
         ?string $nationalCode,
         ?string $depositedAt,
         string  $matchedBy,
     ): void {
         DB::transaction(function () use (
             $user, $amount, $docNumber, $shenasehVariz, $senderIban,
-            $nationalCode, $depositedAt, $matchedBy
+            $senderName, $nationalCode, $depositedAt, $matchedBy
         ) {
             $wallet = Wallet::where(Wallet::USER_ID, $user->id)->lockForUpdate()->firstOrCreate(
                 [Wallet::USER_ID => $user->id],
@@ -256,6 +262,7 @@ class ProcessPodiumDepositAction
                 PodiumDepositRecord::DOC_NUMBER          => $docNumber,
                 PodiumDepositRecord::SHENASEH_VARIZ      => $shenasehVariz,
                 PodiumDepositRecord::SENDER_IBAN         => $senderIban,
+                PodiumDepositRecord::SENDER_NAME         => $senderName,
                 PodiumDepositRecord::NATIONAL_CODE       => $nationalCode,
                 PodiumDepositRecord::CREDITOR_AMOUNT     => $amount,
                 PodiumDepositRecord::USER_ID             => $user->id,
@@ -315,6 +322,36 @@ class ProcessPodiumDepositAction
         }
 
         return $iban;
+    }
+
+    /**
+     * استخراج نام فرستنده از متادیتای statement پادیوم.
+     *
+     * مسیر اول: ItemSystemMetaData → Main_Sys_Meta_Data.TrxSrcProductOwnerName
+     * مسیر دوم: ItemSystemMetaData → Main_Sys_Meta_Data.OwnerName  (فرمت جایگزین)
+     *
+     * اگر هیچ‌کدام موجود نبود → null برمی‌گردد.
+     * ادمین می‌تواند نام را از توضیحات تراکنش ببیند.
+     */
+    private function extractSenderName(array $statement): ?string
+    {
+        $raw = $statement['ItemSystemMetaData'] ?? null;
+        if (empty($raw)) {
+            return null;
+        }
+
+        $meta = is_string($raw) ? json_decode($raw, true) : $raw;
+        if (! is_array($meta)) {
+            return null;
+        }
+
+        // پادیوم می‌تواند فیلد را با نام‌های مختلف ارسال کند — هر دو را بررسی می‌کنیم
+        $name = data_get($meta, 'Main_Sys_Meta_Data.TrxSrcProductOwnerName')
+             ?? data_get($meta, 'Main_Sys_Meta_Data.OwnerName');
+
+        $name = trim((string) ($name ?? ''));
+
+        return ! empty($name) ? $name : null;
     }
 
     /**
