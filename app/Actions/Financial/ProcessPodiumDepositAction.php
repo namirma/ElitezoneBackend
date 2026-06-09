@@ -335,33 +335,52 @@ class ProcessPodiumDepositAction
      */
     private function extractSenderName(array $statement): ?string
     {
+        // ── مسیر ۱: ItemSystemMetaData → Main_Sys_Meta_Data ─────────────────
         $raw = $statement['ItemSystemMetaData'] ?? null;
-        if (empty($raw)) {
-            return null;
-        }
+        if (! empty($raw)) {
+            $meta = is_string($raw) ? json_decode($raw, true) : $raw;
+            if (is_array($meta)) {
+                $name = data_get($meta, 'Main_Sys_Meta_Data.TrxSrcProductOwnerName')
+                     ?? data_get($meta, 'Main_Sys_Meta_Data.OwnerName');
 
-        $meta = is_string($raw) ? json_decode($raw, true) : $raw;
-        if (! is_array($meta)) {
-            return null;
-        }
+                $name = trim((string) ($name ?? ''));
 
-        // پادیوم می‌تواند فیلد را با نام‌های مختلف ارسال کند — هر دو را بررسی می‌کنیم
-        $name = data_get($meta, 'Main_Sys_Meta_Data.TrxSrcProductOwnerName')
-             ?? data_get($meta, 'Main_Sys_Meta_Data.OwnerName');
-
-        $name = trim((string) ($name ?? ''));
-
-        // اگر اسم پیدا نشد، کل کلیدهای موجود را log می‌کنیم تا بفهمیم Podium چه ساختاری فرستاده
-        if (empty($name)) {
-            $mainMeta = data_get($meta, 'Main_Sys_Meta_Data');
-            if (is_array($mainMeta)) {
-                Log::debug('ProcessPodiumDepositAction: sender name not found — available keys', [
-                    'available_keys' => array_keys($mainMeta),
-                ]);
+                // null literal که بانک می‌فرستد (مثلاً "توسط null") را نادیده بگیر
+                if (! empty($name) && strtolower($name) !== 'null') {
+                    return $name;
+                }
             }
         }
 
-        return ! empty($name) ? $name : null;
+        // ── مسیر ۲: فیلد Description سطح اول statement ──────────────────────
+        // در رسیدهای بانک پاسارگاد، اسم فرستنده در توضیحات ظاهر می‌شود:
+        //   پایا → "توسط نوید میرترابی مهابادی"
+        //   پل   → "به درخواست نوید میرترابی مهابادی"
+        $description = trim((string) ($statement['Description'] ?? ''));
+        if (! empty($description)) {
+            // الگوی پایا: "توسط NAME"
+            if (preg_match('/توسط\s+(.+?)(?:\s+با\s+|\s+از\s+|$)/u', $description, $m)) {
+                $candidate = trim($m[1]);
+                if (! empty($candidate) && strtolower($candidate) !== 'null') {
+                    return $candidate;
+                }
+            }
+            // الگوی پل: "به درخواست NAME"
+            if (preg_match('/به\s+درخواست\s+(.+?)(?:\s+با\s+|\s+از\s+|$)/u', $description, $m)) {
+                $candidate = trim($m[1]);
+                if (! empty($candidate)) {
+                    return $candidate;
+                }
+            }
+
+            // اگر هیچ الگویی نخورد، کل statement را log کن تا بعداً بررسی شود
+            Log::debug('ProcessPodiumDepositAction: sender name not found — full statement keys', [
+                'statement_keys' => array_keys($statement),
+                'description'    => mb_substr($description, 0, 200),
+            ]);
+        }
+
+        return null;
     }
 
     /**
