@@ -20,14 +20,23 @@ class SmsService
     public function __construct()
     {
         // فراخوانی امن مقادیر از کش کانفیگ به جای کلاس Constant
-        $this->link = config('services.tsms.link');
-        $this->from = config('services.tsms.number');
-        $this->username = config('services.tsms.username');
-        $this->password = config('services.tsms.password');
+        // مقدار پیش‌فرض '' تضمین می‌کند که در محیط تست (که env نیست)
+        // PHP 8.1 TypeError برای property string نگیرد.
+        $this->link     = config('services.tsms.link', '');
+        $this->from     = config('services.tsms.number', '');
+        $this->username = config('services.tsms.username', '');
+        $this->password = config('services.tsms.password', '');
     }
 
     public function send($to, $message)
     {
+        // اگر سرویس تنظیم نشده باشد (محیط تست یا config خالی) بدون crash برمی‌گردیم.
+        if (empty($this->link) || empty($this->from)) {
+            Log::warning('SmsService: TSMS پیکربندی نشده، ارسال پیامک نادیده گرفته شد.', ['to' => $to]);
+
+            return false;
+        }
+
         try {
             // از POST به‌جای GET استفاده می‌کنیم تا اطلاعات احراز هویت در URL دیده نشوند.
             // با GET، username و password در access log سرور پیامک و در لاگ‌های پروکسی
