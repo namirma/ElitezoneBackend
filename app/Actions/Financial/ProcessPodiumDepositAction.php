@@ -294,16 +294,30 @@ class ProcessPodiumDepositAction
     }
 
     /**
-     * استخراج شبای فرستنده از متادیتای statement پادیوم.
+     * استخراج شبای فرستنده از statement پادیوم.
      *
-     * مسیر: ItemSystemMetaData (JSON string)
-     *         → Main_Sys_Meta_Data.TrxSrcProductId
+     * اولویت‌بندی مسیرها (مستندات رسمی پادیوم):
+     *   ۱. PayaResult.SourceIban    ← پایا (مستند رسمی)
+     *   ۲. SatnaResult.SourceIban   ← ساتنا (مستند رسمی)
+     *   ۳. ItemSystemMetaData.Main_Sys_Meta_Data.TrxSrcProductId  ← پل/Bridge (غیررسمی)
      *
-     * برای هر دو نوع پایا و پل موجود است.
-     * فرمت: IR + 24 رقم (مجموعاً 26 کاراکتر)
+     * فرمت IBAN ایران: IR + 24 رقم (مجموعاً 26 کاراکتر)
      */
     private function extractSenderIban(array $statement): ?string
     {
+        // ── مسیر ۱: PayaResult.SourceIban (مستند رسمی پادیوم — پایا) ─────────
+        $payaIban = strtoupper(trim((string) data_get($statement, 'PayaResult.SourceIban', '')));
+        if (preg_match('/^IR\d{24}$/', $payaIban)) {
+            return $payaIban;
+        }
+
+        // ── مسیر ۲: SatnaResult.SourceIban (مستند رسمی پادیوم — ساتنا) ───────
+        $satnaIban = strtoupper(trim((string) data_get($statement, 'SatnaResult.SourceIban', '')));
+        if (preg_match('/^IR\d{24}$/', $satnaIban)) {
+            return $satnaIban;
+        }
+
+        // ── مسیر ۳: ItemSystemMetaData (فیلد غیررسمی — پل/Bridge) ──────────
         $raw = $statement['ItemSystemMetaData'] ?? null;
         if (empty($raw)) {
             return null;
@@ -316,7 +330,6 @@ class ProcessPodiumDepositAction
 
         $iban = strtoupper(trim((string) data_get($meta, 'Main_Sys_Meta_Data.TrxSrcProductId', '')));
 
-        // اعتبارسنجی فرمت IBAN ایران: IR + 24 رقم
         if (! preg_match('/^IR\d{24}$/', $iban)) {
             return null;
         }
@@ -325,17 +338,28 @@ class ProcessPodiumDepositAction
     }
 
     /**
-     * استخراج نام فرستنده از متادیتای statement پادیوم.
+     * استخراج نام فرستنده از statement پادیوم.
      *
-     * مسیر اول: ItemSystemMetaData → Main_Sys_Meta_Data.TrxSrcProductOwnerName
-     * مسیر دوم: ItemSystemMetaData → Main_Sys_Meta_Data.OwnerName  (فرمت جایگزین)
+     * اولویت‌بندی مسیرها (مستندات رسمی پادیوم):
+     *   ۱. SatnaResult.SourceName + SourceLastName  ← ساتنا (مستند رسمی)
+     *   ۲. ItemSystemMetaData.Main_Sys_Meta_Data.TrxSrcProductOwnerName / OwnerName  ← پل (غیررسمی)
+     *   ۳. Description regex (فال‌بک متنی)
      *
-     * اگر هیچ‌کدام موجود نبود → null برمی‌گردد.
-     * ادمین می‌تواند نام را از توضیحات تراکنش ببیند.
+     * توجه: PayaResult نام فرستنده ندارد — فقط SourceIban.
      */
     private function extractSenderName(array $statement): ?string
     {
-        // ── مسیر ۱: ItemSystemMetaData → Main_Sys_Meta_Data ─────────────────
+        // ── مسیر ۱: SatnaResult.SourceName + SourceLastName (مستند رسمی — ساتنا) ─
+        $satnaFirst = trim((string) data_get($statement, 'SatnaResult.SourceName', ''));
+        $satnaLast  = trim((string) data_get($statement, 'SatnaResult.SourceLastName', ''));
+        if ($satnaFirst !== '' || $satnaLast !== '') {
+            $name = trim("{$satnaFirst} {$satnaLast}");
+            if (! empty($name) && strtolower($name) !== 'null') {
+                return $name;
+            }
+        }
+
+        // ── مسیر ۲: ItemSystemMetaData (فیلد غیررسمی — پل/Bridge) ──────────
         $raw = $statement['ItemSystemMetaData'] ?? null;
         if (! empty($raw)) {
             $meta = is_string($raw) ? json_decode($raw, true) : $raw;
@@ -345,27 +369,24 @@ class ProcessPodiumDepositAction
 
                 $name = trim((string) ($name ?? ''));
 
-                // null literal که بانک می‌فرستد (مثلاً "توسط null") را نادیده بگیر
                 if (! empty($name) && strtolower($name) !== 'null') {
                     return $name;
                 }
             }
         }
 
-        // ── مسیر ۲: فیلد Description سطح اول statement ──────────────────────
-        // در رسیدهای بانک پاسارگاد، اسم فرستنده در توضیحات ظاهر می‌شود:
+        // ── مسیر ۳: فیلد Description (فال‌بک متنی) ─────────────────────────
+        // بانک پاسارگاد در Description اسم فرستنده را می‌نویسد:
         //   پایا → "توسط نوید میرترابی مهابادی"
         //   پل   → "به درخواست نوید میرترابی مهابادی"
         $description = trim((string) ($statement['Description'] ?? ''));
         if (! empty($description)) {
-            // الگوی پایا: "توسط NAME"
             if (preg_match('/توسط\s+(.+?)(?:\s+با\s+|\s+از\s+|$)/u', $description, $m)) {
                 $candidate = trim($m[1]);
                 if (! empty($candidate) && strtolower($candidate) !== 'null') {
                     return $candidate;
                 }
             }
-            // الگوی پل: "به درخواست NAME"
             if (preg_match('/به\s+درخواست\s+(.+?)(?:\s+با\s+|\s+از\s+|$)/u', $description, $m)) {
                 $candidate = trim($m[1]);
                 if (! empty($candidate)) {
@@ -373,7 +394,6 @@ class ProcessPodiumDepositAction
                 }
             }
 
-            // اگر هیچ الگویی نخورد، کل statement را log کن تا بعداً بررسی شود
             Log::debug('ProcessPodiumDepositAction: sender name not found — full statement keys', [
                 'statement_keys' => array_keys($statement),
                 'description'    => mb_substr($description, 0, 200),

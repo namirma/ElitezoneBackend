@@ -689,7 +689,8 @@ Users can have roles: `admin`, `engineer`, `contractor`, `employer`, `supplier`.
 
 ### External Service Integrations
 
-- **Podium** — identity verification, bank settlement, NID-mobile matching (via `PodiumClient`)
+- **Podium** — identity verification, bank settlement, NID-mobile matching (via `PodiumClient`);
+  deposit statement polling every 5 min (via `DepositStatementService` + `ProcessPodiumDepositAction`)
 - **TSMS** — SMS OTP delivery (via `SmsService`, dispatched as `SendSmsJob`)
 - **Espadana** — loading order commands for suppliers
 
@@ -979,6 +980,23 @@ order-financial escrow values `FinancialCodes::STATUS_HOLD = 'hold'` /
 `STATUS_AVAILABLE = 'confirmed'`. Any new status must have a label + color in
 `WalletTransaction::getStatusLabel/Color` **and** a case in the
 `WalletTransactionStatus` enum — `hold` is now covered in both.
+
+### Podium Deposit — IBAN and Sender Name Extraction Priority
+
+`ProcessPodiumDepositAction::extractSenderIban()` reads from three sources **in order**:
+
+1. `PayaResult.SourceIban` — documented Podium field for PAYA transfers
+2. `SatnaResult.SourceIban` — documented Podium field for SATNA transfers
+3. `ItemSystemMetaData.Main_Sys_Meta_Data.TrxSrcProductId` — undocumented, only present for Pol/Bridge transfers
+
+`extractSenderName()` reads in order:
+1. `SatnaResult.SourceName` + `SatnaResult.SourceLastName` — documented for SATNA
+2. `ItemSystemMetaData.Main_Sys_Meta_Data.TrxSrcProductOwnerName` — undocumented, Pol only
+3. `Description` regex fallback — Pasargad bank includes sender name in Description text for PAYA ("توسط NAME") and sometimes Pol ("به درخواست NAME")
+
+**Auto-charge requires شناسه واریز:** `TransferMoneyBillNumber` must be a valid 11-digit numeric string. Pol/Bridge transfers put a bank reference code there (e.g. `C6494530F774`), so they are always unmatched and require admin approval. PAYA transfers also fail to auto-charge if the sender doesn't enter the شناسه واریز in their banking app.
+
+**Do not reorder or merge these extraction paths** — the priority was established empirically from live Podium statement data (commit that introduced it was a bug-fix for missing PAYA IBANs).
 
 ### Cross-Controller Calls are Forbidden
 

@@ -19,6 +19,10 @@ use RuntimeException;
  *   - DocNumber: شماره سند یکتای بانک (کلید idempotency)
  *   - TransferMoneyBillNumber: شناسه قبض/واریز → شناسه واریز کاربر اینجاست
  *   - Date / Time: تاریخ و زمان شمسی
+ *   - PayaResult.SourceIban: شبای فرستنده برای تراکنش‌های پایا (مستند رسمی)
+ *   - SatnaResult.SourceIban: شبای فرستنده برای ساتنا (مستند رسمی)
+ *   - SatnaResult.SourceName / SourceLastName: نام فرستنده برای ساتنا (مستند رسمی)
+ *   - ItemSystemMetaData: فیلد غیررسمی — فقط در تراکنش‌های پل/Bridge موجود است
  */
 class DepositStatementService
 {
@@ -77,10 +81,19 @@ class DepositStatementService
         }
 
         // ساختار واقعی پاسخ پادیوم:
-        // normalized.result.ResultData = آرایه‌ای از گروه‌های سپرده
-        // هر گروه: { DepositInfo: {...}, Statements: [...] }
-        $normalized    = PodiumClient::normalize($res);
-        $resultData    = data_get($normalized, 'result.ResultData', []);
+        // normalized.result → { IsSuccess, ResultData: [{DepositInfo, Statements:[]}] }
+        $normalized = PodiumClient::normalize($res);
+
+        // IsSuccess=false یعنی پادیوم سرویس را اجرا کرد ولی نتیجه‌ای نداشت
+        if (data_get($normalized, 'result.IsSuccess') === false) {
+            Log::warning('DepositStatementService: Podium returned IsSuccess=false', [
+                'referenceNumber' => $res['referenceNumber'] ?? null,
+            ]);
+
+            return [];
+        }
+
+        $resultData = data_get($normalized, 'result.ResultData', []);
 
         if (! is_array($resultData)) {
             return [];
