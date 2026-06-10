@@ -105,7 +105,7 @@ class AdminPodiumDepositController extends Controller
     public function poll(Request $request): JsonResponse
     {
         $minutes = (int) $request->input('minutes', 60);
-        $minutes = max(1, min($minutes, 1440)); // بین ۱ دقیقه تا ۲۴ ساعت
+        $minutes = max(1, min($minutes, 10080)); // بین ۱ دقیقه تا ۷ روز
 
         $to   = Carbon::now();
         $from = $to->copy()->subMinutes($minutes);
