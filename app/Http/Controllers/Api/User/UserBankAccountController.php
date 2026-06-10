@@ -3,12 +3,12 @@
 namespace App\Http\Controllers\Api\User;
 
 use App\Http\Controllers\Controller;
-
 use App\Http\Requests\Financial\StoreUserBankAccountRequest;
 use App\Http\Resources\Financial\UserBankAccountResource;
 use App\Models\User;
 use App\Models\UserBankAccount;
 use App\Services\PodiumServices\CardInquiryService;
+use App\Services\PodiumServices\CardToIbanService;
 use App\Services\PodiumServices\ShebaInquiryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -33,7 +33,8 @@ class UserBankAccountController extends Controller
     public function store(
         StoreUserBankAccountRequest $request,
         ShebaInquiryService $shebaService,
-        CardInquiryService $cardService
+        CardInquiryService $cardService,
+        CardToIbanService $cardToIbanService
     ): JsonResponse {
         $user = Auth::user();
         $user->load('profile');
@@ -61,6 +62,13 @@ class UserBankAccountController extends Controller
                 }
 
                 $bankName = $this->getBankNameFromCard($cardNumber);
+
+                // تکمیل خودکار شبا از روی کارت (رفتار استاندارد بانکی) — شکست این
+                // استعلام ثبت حساب را متوقف نمی‌کند، فقط شبا خالی می‌ماند.
+                // عکس این عملیات (شبا → کارت) در شبکه بانکی سرویس استعلام ندارد.
+                if (! $shaba) {
+                    $shaba = $cardToIbanService->convert($cardNumber);
+                }
 
             } elseif ($shaba) {
                 // ب) استعلام شبا

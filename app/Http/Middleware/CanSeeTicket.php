@@ -16,10 +16,15 @@ class CanSeeTicket
     public function handle(Request $request, Closure $next): Response
     {
         $ticket = $request->route('ticket');
+        $user = $request->user();
 
-        //TODO should implement admin access too
-        if ($ticket->user_id != $request->user()->id) {
-            return response()->json(['message' => 'Forbidden'], 403);
+        if (! $ticket instanceof \App\Models\Ticket || ! $user) {
+            return error(__('auth.forbidden'), [], 403);
+        }
+
+        // صاحب تیکت یا ادمین (برای پشتیبانی) مجازند
+        if ((int) $ticket->user_id !== (int) $user->id && ! $user->hasRole('admin')) {
+            return error(__('auth.forbidden'), [], 403);
         }
 
         return $next($request);

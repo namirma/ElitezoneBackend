@@ -51,11 +51,15 @@ class SearchController extends Controller
      */
     private function performCategorySearch(string $query): Collection
     {
+        // % و _ در LIKE معنای wildcard دارند — بدون escape، ورودی «%» همه ردیف‌ها
+        // را برمی‌گرداند (full scan / enumeration).
+        $escaped = addcslashes($query, '%_\\');
+
         return SupplierActivityCategory::query()
-            ->where(function (Builder $q) use ($query) {
-                $q->where('name', 'LIKE', "%{$query}%")
-                    ->orWhereHas('children', function (Builder $subQ) use ($query) {
-                        $subQ->where('name', 'LIKE', "%{$query}%");
+            ->where(function (Builder $q) use ($escaped) {
+                $q->where('name', 'LIKE', "%{$escaped}%")
+                    ->orWhereHas('children', function (Builder $subQ) use ($escaped) {
+                        $subQ->where('name', 'LIKE', "%{$escaped}%");
                     });
             })
             ->with('children')

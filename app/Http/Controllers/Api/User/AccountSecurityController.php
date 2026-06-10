@@ -59,14 +59,44 @@ class AccountSecurityController extends Controller
     }
 
     /**
-     * Step 2 of password change: set the new password.
+     * Step 2 of password change: verify the OTP from step 1, then set the new password.
      */
     public function setPassword(StorePasswordRequest $request): JsonResponse
     {
         $user = User::findOrFail(Auth::id());
-        $user->update([User::PASSWORD => Hash::make($request->validated()[User::PASSWORD])]);
+
+        if (
+            $user->{User::SECRET} === null ||
+            $user->{User::SECRET_EXPIRES_AT} === null ||
+            ! hash_equals((string) $user->{User::SECRET}, (string) $request->validated()['code']) ||
+            Carbon::parse($user->{User::SECRET_EXPIRES_AT})->isPast()
+        ) {
+            return error(__('auth.verification_code_not_match'), [], 400);
+        }
+
+        $user->update([
+            User::PASSWORD => Hash::make($request->validated()[User::PASSWORD]),
+            User::SECRET => null,
+            User::SECRET_EXPIRES_AT => null,
+        ]);
+
+        $this->revokeOtherTokens();
 
         return success(new UserResource($user), __('auth.password_changed_successfully'));
+    }
+
+    /**
+     * بعد از تغییر رمز/موبایل، همه توکن‌های دیگر باطل می‌شوند تا یک توکن
+     * دزدیده‌شده بعد از این تغییرات معتبر نماند. توکن جلسه فعلی حفظ می‌شود.
+     */
+    private function revokeOtherTokens(): void
+    {
+        $user = Auth::user();
+        $currentTokenId = $user->currentAccessToken()?->id;
+
+        $user->tokens()
+            ->when($currentTokenId, fn ($q) => $q->where('id', '!=', $currentTokenId))
+            ->delete();
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -110,15 +140,15 @@ class AccountSecurityController extends Controller
             $newMobile09 = PhoneNumber::to09($validated['new_mobile']);
 
             $matchPayload = [
-                'apiKey'            => (string) config('podium.services.nid_mobile_match.sc_api_key'),
-                'productEntityId'   => (int) config('podium.services.nid_mobile_match.sc_product_id'),
+                'apiKey' => (string) config('podium.services.nid_mobile_match.sc_api_key'),
+                'productEntityId' => (int) config('podium.services.nid_mobile_match.sc_product_id'),
                 'providerParameters' => ['body' => ['nationalCode' => $validated['national_code'], 'mobileNumber' => $newMobile09]],
-                'asyncCall'         => false,
-                'wrapper'           => true,
+                'asyncCall' => false,
+                'wrapper' => true,
             ];
 
             $matchRes = PodiumClient::normalize($client->callSc2($matchPayload));
-            $matched  = data_get($matchRes, 'result.matched');
+            $matched = data_get($matchRes, 'result.matched');
             $matchCode = (string) data_get($matchRes, 'result.resultCode', '');
 
             if (! ($matched === true || $matched === 'true' || $matchCode === '1')) {
@@ -134,7 +164,7 @@ class AccountSecurityController extends Controller
 
         $code = generateVerifyCode();
         $user->update([
-            User::SECRET            => $code,
+            User::SECRET => $code,
             User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2),
         ]);
 
@@ -160,21 +190,25 @@ class AccountSecurityController extends Controller
         }
 
         if (
-            $user->{User::SECRET} != $request->input('code') ||
+            $user->{User::SECRET} === null ||
+            $user->{User::SECRET_EXPIRES_AT} === null ||
+            ! hash_equals((string) $user->{User::SECRET}, (string) $request->input('code')) ||
             Carbon::parse($user->{User::SECRET_EXPIRES_AT})->isPast()
         ) {
             return error(__('auth.verification_code_not_match'), [], 400);
         }
 
         $user->update([
-            User::MOBILE            => $cachedMobile,
-            User::SECRET            => null,
+            User::MOBILE => $cachedMobile,
+            User::SECRET => null,
             User::SECRET_EXPIRES_AT => null,
         ]);
 
         $user->profile()->update([UserProfile::PHONE => $cachedMobile]);
 
         Cache::forget('pending_mobile_change_'.$user->id);
+
+        $this->revokeOtherTokens();
 
         return success([], __('profile.mobile_updated_successfully'));
     }
@@ -196,15 +230,15 @@ class AccountSecurityController extends Controller
             [UserProfile::USER_ID => $user->id],
             [
                 UserProfile::NATIONAL_CODE => $user->{User::NATIONAL_CODE},
-                UserProfile::BIRTHDAY      => $user->{User::BIRTH_DATE}
+                UserProfile::BIRTHDAY => $user->{User::BIRTH_DATE}
                     ? Carbon::parse($user->{User::BIRTH_DATE})->format('Y-m-d')
                     : null,
             ]
         );
 
         $profile->update([
-            UserProfile::EMAIL                    => $email,
-            UserProfile::EMAIL_VERIFIED_AT        => null,
+            UserProfile::EMAIL => $email,
+            UserProfile::EMAIL_VERIFIED_AT => null,
             UserProfile::EMAIL_VERIFICATION_TOKEN => $token,
         ]);
 
@@ -235,7 +269,7 @@ class AccountSecurityController extends Controller
 
         if ($profile) {
             $profile->update([
-                UserProfile::EMAIL_VERIFIED_AT        => Carbon::now(),
+                UserProfile::EMAIL_VERIFIED_AT => Carbon::now(),
                 UserProfile::EMAIL_VERIFICATION_TOKEN => null,
             ]);
 

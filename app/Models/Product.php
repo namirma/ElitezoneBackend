@@ -68,8 +68,8 @@ class Product extends Model
         self::IS_FEATURED => 'boolean',
         self::VIEW_COUNT => 'integer',
         self::ITEMS_PER_PAGE => 'integer',
-        self::AGGREGATE_MIN_ORDER_VALUE => 'float',
-        self::AGGREGATE_MAX_ORDER_VALUE => 'float',
+        self::AGGREGATE_MIN_ORDER_VALUE => 'decimal:2',
+        self::AGGREGATE_MAX_ORDER_VALUE => 'decimal:2',
     ];
 
     protected static function booted(): void

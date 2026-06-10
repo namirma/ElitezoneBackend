@@ -74,7 +74,8 @@ class WalletTransaction extends Model
 
     protected $casts = [
         self::META => 'array',
-        self::AMOUNT => 'decimal:2',
+        // ستون decimal(20,0) است — ریال بدون اعشار
+        self::AMOUNT => 'decimal:0',
     ];
 
     // --- Accessors ---

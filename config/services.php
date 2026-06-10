@@ -63,6 +63,12 @@ return [
         'sc_product_id' => env('PODIUM_SC_PRODUCT_ID_CARD', 16530454),
     ],
 
+    // تبدیل کارت به شبا — تکمیل خودکار شبا هنگام ثبت حساب با شماره کارت
+    'card_to_iban' => [
+        'sc_api_key' => env('PODIUM_SC_API_KEY_CARD_TO_IBAN'),
+        'sc_product_id' => env('PODIUM_SC_PRODUCT_ID_CARD_TO_IBAN'),
+    ],
+
     'tsms' => [
         'link' => env('TSMS_LINK', 'https://tsms.ir/url/tsmshttp.php'),
         'number' => env('TSMS_NUMBER'),

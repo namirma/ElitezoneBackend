@@ -23,6 +23,19 @@ class StorePasswordRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [User::PASSWORD => 'required|confirmed'];
+        return [
+            User::PASSWORD => 'required|confirmed',
+            // کد OTP مرحله اول (changePasswordFirstAttempt) — بدون آن، یک توکن
+            // دزدیده‌شده برای تصاحب کامل حساب (تغییر رمز) کافی بود.
+            'code' => 'required|digits:6',
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'code.required' => __('auth.code_exists'),
+            'code.digits' => __('auth.code_digits'),
+        ];
     }
 }

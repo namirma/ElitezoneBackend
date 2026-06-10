@@ -26,6 +26,12 @@ class Wallet extends Model
         self::BALANCE_HOLD,
     ];
 
+    // ستون‌ها decimal(20,0) هستند — ریال بدون اعشار
+    protected $casts = [
+        self::BALANCE => 'decimal:0',
+        self::BALANCE_HOLD => 'decimal:0',
+    ];
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, self::USER_ID);

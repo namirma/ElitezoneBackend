@@ -25,6 +25,7 @@ return [
     'deposit_account_no_national_code' => 'برای استفاده از واریز مستقیم ابتدا باید کد ملی خود را تکمیل کنید',
     'deposit_account_no_bank_account' => 'برای مشاهده اطلاعات واریز، ابتدا باید یک حساب بانکی ثبت و تأیید شده داشته باشید',
     'deposit_account_note' => 'این شناسه واریز مختص شماست. هنگام انتقال PAYA/SATNA حتماً در فیلد شناسه واریز وارد کنید.',
+    'deposit_account_unavailable' => 'حساب مقصد واریز موقتاً در دسترس نیست. لطفاً بعداً تلاش کنید یا با پشتیبانی تماس بگیرید.',
     'withdrawal_description' => 'درخواست برداشت وجه به شبا: :shaba',
     'receipt_description' => 'ثبت فیش بانکی | شماره: :number | بانک: :bank',
     'insufficient_balance' => 'موجودی کیف پول برای انجام این عملیات کافی نیست',

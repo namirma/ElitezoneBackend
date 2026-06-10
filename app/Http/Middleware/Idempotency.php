@@ -31,7 +31,9 @@ class Idempotency
             return $next($request);
         }
 
-        $userId = optional($request->user())->id ?? 'guest';
+        // مهمان‌ها با IP از هم جدا می‌شوند — کلید مشترک 'guest' باعث می‌شد دو
+        // کاربر ناشناس با Idempotency-Key یکسان، پاسخ کش‌شده‌ی یکدیگر را بگیرند.
+        $userId = optional($request->user())->id ?? 'guest:'.$request->ip();
         $cacheKey = "idempotency_response:{$userId}:{$key}";
         $lockKey = "idempotency_lock:{$userId}:{$key}";
 
@@ -67,10 +69,17 @@ class Idempotency
 
                     // اگر JSON نامعتبر بود، کش نکن
                     if (json_last_error() === JSON_ERROR_NONE) {
+                        // فقط هدرهای امن کش می‌شوند — کش کردن همه هدرها می‌توانست
+                        // Set-Cookie/توکن یک پاسخ را برای درخواست بعدی replay کند.
+                        $safeHeaders = array_intersect_key(
+                            $response->headers->all(),
+                            array_flip(['content-type', 'content-language'])
+                        );
+
                         $responseData = [
                             'content' => $decoded,
                             'status' => $response->getStatusCode(),
-                            'headers' => $response->headers->all(),
+                            'headers' => $safeHeaders,
                         ];
 
                         Cache::put($cacheKey, $responseData, now()->addHours(self::CACHE_TTL_HOURS));

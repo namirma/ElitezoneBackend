@@ -24,10 +24,17 @@ class UserResource extends BaseJsonResource
             $selectedBadge = $this->badges->last();
         }
 
+        // موبایل فقط برای خود شخص و ادمین کامل برمی‌گردد — در نمایش به دیگران
+        // (مثل تأمین‌کننده در آیتم سفارش) mask می‌شود.
+        $viewer = $request->user();
+        $canSeeMobile = $viewer && ((int) $viewer->id === (int) $this->{User::ID} || $viewer->hasRole('admin'));
+
         return [
             User::ID => $this->{User::ID},
             User::TYPE_ID => $this->{User::TYPE_ID},
-            User::MOBILE => $this->{User::MOBILE},
+            User::MOBILE => $canSeeMobile
+                ? $this->{User::MOBILE}
+                : $this->maskMobile($this->{User::MOBILE}),
             User::CREATED_AT => $this->{User::CREATED_AT},
             User::PASSWORD => (bool) $this->{User::PASSWORD},
             User::RELATION_PROFILE => new UserProfileResource($this->whenLoaded(User::RELATION_PROFILE)),
@@ -46,6 +53,15 @@ class UserResource extends BaseJsonResource
             'created_at_diff' => $this->created_at_diff,
             'is_verified' => $this->getIsVerified(),
         ];
+    }
+
+    private function maskMobile(?string $mobile): ?string
+    {
+        if ($mobile === null || strlen($mobile) < 7) {
+            return $mobile;
+        }
+
+        return substr($mobile, 0, 4).str_repeat('*', strlen($mobile) - 7).substr($mobile, -3);
     }
 
     /**

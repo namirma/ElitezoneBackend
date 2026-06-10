@@ -7,19 +7,20 @@ use App\Actions\Financial\DeleteReceiptAction;
 use App\Actions\Financial\FundWalletAction;
 use App\Actions\Financial\RequestWithdrawalAction;
 use App\Http\Controllers\Controller;
-use App\Models\User;
-use App\Models\UserBankAccount;
-use App\Services\Financial\ShenasehVarizService;
 use App\Http\Requests\Financial\StoreDepositReceiptRequest;
 use App\Http\Requests\Financial\WalletDepositRequest;
 use App\Http\Requests\Financial\WalletWithdrawalRequest;
 use App\Http\Resources\Financial\WalletResource;
 use App\Http\Resources\Financial\WalletTransactionResource;
+use App\Models\User;
+use App\Models\UserBankAccount;
 use App\Models\WalletTransaction;
+use App\Services\Financial\ShenasehVarizService;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -27,10 +28,10 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class WalletController extends Controller
 {
     public function __construct(
-        protected FundWalletAction              $fundAction,
-        protected RequestWithdrawalAction       $withdrawalAction,
-        protected AttachReceiptToDepositAction  $attachReceiptAction,
-        protected DeleteReceiptAction           $deleteReceiptAction,
+        protected FundWalletAction $fundAction,
+        protected RequestWithdrawalAction $withdrawalAction,
+        protected AttachReceiptToDepositAction $attachReceiptAction,
+        protected DeleteReceiptAction $deleteReceiptAction,
     ) {}
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -79,22 +80,31 @@ class WalletController extends Controller
             // اگر ID متعلق به این کاربر نباشد → نادیده گرفته می‌شود
         }
 
+        // ── شبای مقصد — اگر PODIUM_DEPOSIT_IBAN ست نشده باشد نباید «IR» خالی
+        // برگردد؛ کاربر در صفحه ساتنا مقصدی برای واریز نمی‌بیند.
+        $ibanDigits = preg_replace('/\D/', '', (string) config('podium.deposit.iban'));
+        if (strlen($ibanDigits) !== 24) {
+            Log::error('PODIUM_DEPOSIT_IBAN is missing or malformed; deposit destination unavailable.');
+
+            return error(__('wallet.deposit_account_unavailable'), [], 503);
+        }
+
         $shenasehVariz = $shenasehService->generate($nationalCode);
 
         return success([
             'destination' => [
-                'iban'           => 'IR' . config('podium.deposit.iban'),
-                'bank_name'      => config('podium.deposit.bank_name'),
+                'iban' => 'IR'.$ibanDigits,
+                'bank_name' => config('podium.deposit.bank_name'),
                 'account_holder' => config('podium.deposit.account_holder'),
                 'shenaseh_variz' => $shenasehVariz,
-                'note'           => __('wallet.deposit_account_note'),
+                'note' => __('wallet.deposit_account_note'),
             ],
             'source_account' => $selectedAccount ? [
-                'id'                  => $selectedAccount->{UserBankAccount::ID},
-                'bank_name'           => $selectedAccount->{UserBankAccount::BANK_NAME},
-                'shaba'               => $selectedAccount->{UserBankAccount::SHABA},
+                'id' => $selectedAccount->{UserBankAccount::ID},
+                'bank_name' => $selectedAccount->{UserBankAccount::BANK_NAME},
+                'shaba' => $selectedAccount->{UserBankAccount::SHABA},
                 'account_holder_name' => $selectedAccount->{UserBankAccount::ACCOUNT_HOLDER_NAME},
-                'card_number'         => $selectedAccount->{UserBankAccount::CARD_NUMBER},
+                'card_number' => $selectedAccount->{UserBankAccount::CARD_NUMBER},
             ] : null,
             'approved_accounts_count' => $approvedAccounts->count(),
         ], __('wallet.deposit_account_received'));
@@ -133,26 +143,26 @@ class WalletController extends Controller
         $data = $request->validated();
 
         $transaction = $this->fundAction->execute(
-            user:          Auth::user(),
-            amount:        $data['amount'],
+            user: Auth::user(),
+            amount: $data['amount'],
             paymentMethod: $data['payment_method'],
-            description:   __('wallet.deposit_description'),
+            description: __('wallet.deposit_description'),
         );
 
         // Bank transfer — user will upload receipt later
         if ($data['payment_method'] === WalletTransaction::METHOD_BANK_TRANSFER) {
             return success([
                 'transaction_id' => $transaction->id,
-                'type'           => 'manual_payment',
-                'message'        => __('wallet.deposit_manual_info', ['amount' => number_format($data['amount'])]),
+                'type' => 'manual_payment',
+                'message' => __('wallet.deposit_manual_info', ['amount' => number_format($data['amount'])]),
             ], __('wallet.deposit_created'));
         }
 
         // Online gateway redirect
         return success([
             'transaction_id' => $transaction->id,
-            'type'           => 'gateway_redirect',
-            'redirect_url'   => "https://dummy-gateway.com/pay/{$transaction->id}",
+            'type' => 'gateway_redirect',
+            'redirect_url' => "https://dummy-gateway.com/pay/{$transaction->id}",
         ], __('wallet.redirect_to_gateway'));
     }
 
@@ -162,19 +172,19 @@ class WalletController extends Controller
 
         $description = __('wallet.receipt_description', [
             'number' => $data['receipt_number'],
-            'bank'   => $data['bank_name'],
+            'bank' => $data['bank_name'],
         ]).(! empty($data['description']) ? ' - '.$data['description'] : '');
 
         $transaction = $this->fundAction->execute(
-            user:          Auth::user(),
-            amount:        $data['amount'],
+            user: Auth::user(),
+            amount: $data['amount'],
             paymentMethod: WalletTransaction::METHOD_BANK_TRANSFER,
-            description:   $description,
-            receiptFile:   $request->file('receipt_image'),
-            extraMeta:     ['receipt_info' => [
+            description: $description,
+            receiptFile: $request->file('receipt_image'),
+            extraMeta: ['receipt_info' => [
                 'receipt_number' => $data['receipt_number'],
-                'bank_name'      => $data['bank_name'],
-                'payment_date'   => $data['payment_date'],
+                'bank_name' => $data['bank_name'],
+                'payment_date' => $data['payment_date'],
             ]],
         );
 
@@ -204,7 +214,7 @@ class WalletController extends Controller
             $transaction = $this->withdrawalAction->execute(
                 Auth::user(),
                 (float) $request->validated('amount'),
-                (int)   $request->validated('user_bank_account_id'),
+                (int) $request->validated('user_bank_account_id'),
             );
 
             return success(new WalletTransactionResource($transaction), __('wallet.withdrawal_created'));
@@ -280,19 +290,19 @@ class WalletController extends Controller
         return $query
             ->when($request->filled('type'), function ($q) use ($request) {
                 match ($request->input('type')) {
-                    'deposit'  => $q->where('type', WalletTransaction::TYPE_DEPOSIT),
+                    'deposit' => $q->where('type', WalletTransaction::TYPE_DEPOSIT),
                     'withdraw' => $q->where('type', WalletTransaction::TYPE_WITHDRAW),
-                    default    => null,
+                    default => null,
                 };
             })
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->input('status')))
             ->when($request->filled('range'), function ($q) use ($request) {
                 $now = now();
                 match ($request->input('range')) {
-                    '1_month'  => $q->where('created_at', '>=', $now->subMonth()),
+                    '1_month' => $q->where('created_at', '>=', $now->subMonth()),
                     '3_months' => $q->where('created_at', '>=', $now->subMonths(3)),
-                    '1_year'   => $q->where('created_at', '>=', $now->subYear()),
-                    default    => null,
+                    '1_year' => $q->where('created_at', '>=', $now->subYear()),
+                    default => null,
                 };
             });
     }

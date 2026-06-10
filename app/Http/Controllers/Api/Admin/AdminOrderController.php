@@ -88,6 +88,27 @@ class AdminOrderController extends Controller
             return success(null, __('orders.cancelled_successfully'));
         }
 
+        // ماشین وضعیت — فقط ترنزیشن‌های رو به جلوی مجاز؛ پرش (مثلاً pending → delivered)
+        // مراحل پرداخت/باسکول را دور می‌زند و وضعیت‌های نهایی قابل برگشت نیستند.
+        $allowedTransitions = [
+            Order::STATUS_PENDING => [Order::STATUS_PROCESSING],
+            Order::STATUS_PROCESSING => [Order::STATUS_SHIPPED],
+            Order::STATUS_PREPARING => [Order::STATUS_SHIPPED],
+            Order::STATUS_WEIGHBRIDGE_DONE => [Order::STATUS_SHIPPED],
+            Order::STATUS_WAYBILL_ISSUED => [Order::STATUS_SHIPPED],
+            Order::STATUS_SHIPPED => [Order::STATUS_DELIVERED],
+        ];
+
+        $currentStatus = $order->{Order::STATUS};
+
+        if (! in_array($newStatus, $allowedTransitions[$currentStatus] ?? [], true)) {
+            return error(
+                __('admin.orders.invalid_status_transition'),
+                ['current' => $currentStatus, 'requested' => $newStatus],
+                422
+            );
+        }
+
         $order->update([Order::STATUS => $newStatus]);
 
         return success(null, __('admin.orders.status_updated'));

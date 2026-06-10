@@ -46,11 +46,19 @@ class CartResolver
             return (string) app('active_price_filter_category_code');
         }
 
-        if (Auth::check()) {
-            return $this->roleResolver->resolve(Auth::user());
+        // memoize در طول یک request — PricingRoleResolver هر بار fresh(['roles','employer'])
+        // می‌زند و activeCode در یک درخواست سبد چند بار صدا زده می‌شود.
+        if (app()->bound('pricing.resolved_active_code')) {
+            return (string) app('pricing.resolved_active_code');
         }
 
-        return 'employer_without_consultant';
+        $code = Auth::check()
+            ? $this->roleResolver->resolve(Auth::user())
+            : 'employer_without_consultant';
+
+        app()->instance('pricing.resolved_active_code', $code);
+
+        return $code;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -62,15 +70,58 @@ class CartResolver
         $userId = Auth::id();
 
         if ($userId) {
-            return Cart::firstOrCreate([Cart::USER_ID => $userId]);
+            $cart = Cart::firstOrCreate([Cart::USER_ID => $userId]);
+            $this->mergeGuestCart($request, $cart);
+
+            return $cart;
         }
 
         $sessionId = $request->cookie('cart_session_id', (string) Str::uuid());
 
         return Cart::firstOrCreate(
             [Cart::SESSION_ID => $sessionId],
-            [Cart::USER_ID    => null],
+            [Cart::USER_ID => null],
         );
+    }
+
+    /**
+     * آیتم‌های سبد مهمان (کوکی cart_session_id) بعد از لاگین به سبد کاربر منتقل
+     * می‌شوند — قبلاً سبد مهمان orphan می‌شد و انتخاب‌های کاربر از بین می‌رفت.
+     * اگر همان (واریانت، کارخانه، مبدأ) در سبد کاربر باشد، آیتم کاربر حفظ می‌شود.
+     */
+    private function mergeGuestCart(Request $request, Cart $userCart): void
+    {
+        $sessionId = $request->cookie('cart_session_id');
+        if (! $sessionId) {
+            return;
+        }
+
+        $guestCart = Cart::where(Cart::SESSION_ID, $sessionId)
+            ->whereNull(Cart::USER_ID)
+            ->where('id', '!=', $userCart->id)
+            ->first();
+
+        if (! $guestCart) {
+            return;
+        }
+
+        foreach ($guestCart->items as $guestItem) {
+            $alreadyInUserCart = $userCart->items()
+                ->where('product_variant_id', $guestItem->product_variant_id)
+                ->where('factory_id', $guestItem->factory_id)
+                ->where('factory_location_id', $guestItem->factory_location_id)
+                ->exists();
+
+            if ($alreadyInUserCart) {
+                $guestItem->delete();
+
+                continue;
+            }
+
+            $guestItem->update(['cart_id' => $userCart->id]);
+        }
+
+        $guestCart->delete();
     }
 
     private function syncContext(Cart $cart): void

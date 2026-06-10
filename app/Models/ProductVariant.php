@@ -72,9 +72,9 @@ class ProductVariant extends Model
         self::VIEW_COUNT => 'integer',
         self::IMAGES => 'array',
         self::VIDEOS => 'array',
-        self::MIN_ORDER_VALUE => 'float',
-        self::MAX_ORDER_VALUE => 'float',
-        self::DISCOUNT_VALUE => 'float',
+        self::MIN_ORDER_VALUE => 'decimal:2',
+        self::MAX_ORDER_VALUE => 'decimal:2',
+        self::DISCOUNT_VALUE => 'decimal:2',
         self::DISCOUNT_START_DATE => 'datetime',
         self::DISCOUNT_END_DATE => 'datetime',
     ];
