@@ -48,9 +48,11 @@ Route::middleware(['auth:sanctum', 'role.admin'])->prefix('admin')->group(functi
     // Dashboard — KPI اجرایی
     Route::get('/dashboard', [AdminDashboardController::class, 'index']);
 
-    // Debug helpers
-    Route::get('/debug/test-cache', [DebugController::class, 'testCache']);
-    Route::get('/debug/kavir-products', [DebugController::class, 'kavirProducts']);
+    // Debug helpers — هرگز در پروداکشن در دسترس نباشند
+    if (! app()->environment('production')) {
+        Route::get('/debug/test-cache', [DebugController::class, 'testCache']);
+        Route::get('/debug/kavir-products', [DebugController::class, 'kavirProducts']);
+    }
 
     // Activity log
     Route::get('/activities', [AdminActivityLogController::class, 'index']);

@@ -6,9 +6,12 @@ use App\Events\Financial\TransactionProcessed;
 use App\Jobs\Notification\SendSmsJob;
 use App\Models\WalletTransaction;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\InteractsWithQueue;
 
 class SendTransactionNotification implements ShouldQueue
 {
+    use InteractsWithQueue;
+
     public function handle(TransactionProcessed $event)
     {
         $trx = $event->transaction;

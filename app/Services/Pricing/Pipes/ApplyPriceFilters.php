@@ -52,22 +52,25 @@ class ApplyPriceFilters implements PricingPipe
      */
     private function applyFilters(float $currentPrice, Collection $filters): float
     {
+        // مانند بقیه pipe ها از bcmath استفاده می‌شود — جمع شدن خطای float
+        // روی مبالغ میلیاردی (ریال) و فیلترهای زنجیره‌ای قابل قبول نیست.
+        $priceStr = (string) $currentPrice;
+
         // مرتب‌سازی بر اساس اولویت (sort_order)
         foreach ($filters->sortBy('sort_order') as $filter) {
-            $amount = (float) $filter->amount;
+            $amountStr = (string) (float) $filter->amount;
             $isPercent = (bool) $filter->is_percentage;
 
             if ($isPercent) {
-
-                $change = $currentPrice * ($amount / 100);
-                $currentPrice += $change;
+                $rateStr = bcdiv($amountStr, '100', 8);
+                $changeStr = bcmul($priceStr, $rateStr, 4);
+                $priceStr = bcadd($priceStr, $changeStr, 4);
             } else {
-
-                $currentPrice += $amount;
+                $priceStr = bcadd($priceStr, $amountStr, 4);
             }
         }
 
-        return $currentPrice;
+        return (float) $priceStr;
     }
 
     /**

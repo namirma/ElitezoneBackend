@@ -8,13 +8,22 @@ use Illuminate\Support\Facades\Cache;
 
 class SetBasePrice implements PricingPipe
 {
+    /**
+     * تنها نقطه ساخت کلید کش قیمت پایه — ProductPrice::flushVariantCache هم
+     * برای invalidation روی درایورهای بدون tag از همین متد استفاده می‌کند.
+     */
+    public static function cacheKey(int $variantId, int $factoryId, int $locationId): string
+    {
+        return "pricing:base:v{$variantId}:f{$factoryId}:l{$locationId}";
+    }
+
     public function handle(PricingContext $context, Closure $next)
     {
         $variantId = $context->variant->id;
         $factoryId = $context->factory->id;
         $locationId = $context->location->id;
 
-        $cacheKey = "price_v{$variantId}_f{$factoryId}_l{$locationId}";
+        $cacheKey = self::cacheKey((int) $variantId, (int) $factoryId, (int) $locationId);
         $ttl = now()->addMinutes(60);
 
         $fetchPriceLogic = function () use ($context) {

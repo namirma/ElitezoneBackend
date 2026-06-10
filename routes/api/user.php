@@ -62,7 +62,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
 });
 
 // ── Analytics & inventory ─────────────────────────────────────────────────
-Route::prefix('data')->middleware(['auth:sanctum'])->group(function () {
+// داده‌های درآمد، سگمنت‌های RFM و پیش‌بینی موجودی، اطلاعات تجاری حساس‌اند — فقط ادمین
+Route::prefix('data')->middleware(['auth:sanctum', 'role.admin'])->group(function () {
     Route::get('analytics/dashboard', [AnalyticsController::class, 'dashboard']);
     Route::get('inventory/predictions', [InventoryController::class, 'predictions']);
 });

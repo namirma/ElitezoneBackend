@@ -38,7 +38,7 @@ class CancelOrderAction
             }
         }
 
-        return DB::transaction(function () use ($order, $reason, $refundWallet, $isSystemCron) {
+        $cancelled = DB::transaction(function () use ($order, $reason, $refundWallet, $isSystemCron) {
 
             // ── وضعیت مالی قبل از تغییر — برای تصمیم‌گیری درباره اسناد ────
             // باید قبل از update ذخیره شود، چون update مقادیر مدل را تغییر می‌دهد.
@@ -66,10 +66,7 @@ class CancelOrderAction
                 Order::CANCEL_REASON => $reason,
             ]);
 
-            // ۵. ارسال ایونت
-            OrderCancelled::dispatch($order);
-
-            // ۶. صدور اسناد لغو (فقط اگر تراکنش مالی وجود داشته) ──────────
+            // ۵. صدور اسناد لغو (فقط اگر تراکنش مالی وجود داشته) ──────────
             // i — رسید استرداد وجه برای خریدار (فقط اگر واقعاً استرداد شد)
             if ($refundWallet && ($wasReserved || $wasPaid)) {
                 $this->invoiceGenerator->generate($order, FinancialCodes::DOC_REFUND_RECEIPT);
@@ -87,6 +84,12 @@ class CancelOrderAction
 
             return $order;
         });
+
+        // ایونت بعد از commit ارسال می‌شود؛ صف با after_commit=false ممکن است
+        // listener را قبل از commit اجرا کند و وضعیت لغو را نبیند.
+        OrderCancelled::dispatch($cancelled);
+
+        return $cancelled;
     }
 
     /**

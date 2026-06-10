@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api\User;
 
 use App\Http\Controllers\Controller;
-
 use App\Jobs\Notification\SendSmsJob;
 use App\Models\User;
 use App\Models\UserProfile;
@@ -14,10 +13,20 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Throwable;
 
 class BeneficiaryController extends Controller
 {
+    /**
+     * تأیید ذی‌نفع باید توسط همان خریداری انجام شود که فرایند را شروع کرده —
+     * این کلید کش، جلسه‌ی تأیید را به جفت (خریدار، ذی‌نفع) گره می‌زند.
+     */
+    private function verificationSessionKey(int $buyerId, int $beneficiaryUserId): string
+    {
+        return "beneficiary_verification:{$buyerId}:{$beneficiaryUserId}";
+    }
+
     public function startVerification(Request $request, PodiumClient $client): JsonResponse
     {
         $data = $request->validate([
@@ -31,7 +40,7 @@ class BeneficiaryController extends Controller
         $nationalCode = (string) $data['national_code'];
         $birthDate = str_replace('-', '', (string) $data['birth_date']);
 
-        if ($buyer->{User::MOBILE} == $mobile || $buyer->{User::NATIONAL_CODE} == $nationalCode) {
+        if ((string) $buyer->{User::MOBILE} === $mobile || (string) $buyer->{User::NATIONAL_CODE} === $nationalCode) {
             return error(__('beneficiary.cannot_be_self'), [], 422);
         }
 
@@ -109,6 +118,12 @@ class BeneficiaryController extends Controller
             User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(3),
         ]);
 
+        Cache::put(
+            $this->verificationSessionKey((int) $buyer->id, (int) $beneficiaryUser->id),
+            true,
+            now()->addMinutes(3)
+        );
+
         $buyerName = $buyer->profile->{UserProfile::NAME} ?? $buyer->{User::MOBILE};
         $smsMessage = __('beneficiary.sms_verification_body', ['name' => $buyerName, 'code' => $verifyCode]);
         SendSmsJob::dispatch($mobile, $smsMessage);
@@ -129,13 +144,22 @@ class BeneficiaryController extends Controller
 
         $beneficiaryUser = User::find($data['beneficiary_user_id']);
 
+        $sessionKey = $this->verificationSessionKey((int) Auth::id(), (int) $data['beneficiary_user_id']);
+        if (! Cache::has($sessionKey)) {
+            return error(__('beneficiary.verification_not_initiated'), [], 403);
+        }
+
         if (
             ! $beneficiaryUser ||
-            $beneficiaryUser->{User::SECRET} != $data['code'] ||
+            $beneficiaryUser->{User::SECRET} === null ||
+            $beneficiaryUser->{User::SECRET_EXPIRES_AT} === null ||
+            ! hash_equals((string) $beneficiaryUser->{User::SECRET}, (string) $data['code']) ||
             Carbon::parse($beneficiaryUser->{User::SECRET_EXPIRES_AT})->isPast()
         ) {
             return error(__('auth.verification_code_not_match'), [], 400);
         }
+
+        Cache::forget($sessionKey);
 
         $beneficiaryUser->update([
             User::SECRET => null,

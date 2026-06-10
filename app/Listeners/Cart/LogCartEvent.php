@@ -5,9 +5,12 @@ namespace App\Listeners\Cart;
 use App\Events\Cart\CartItemChanged;
 use App\Models\CartEvent;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\InteractsWithQueue;
 
 class LogCartEvent implements ShouldQueue
 {
+    use InteractsWithQueue;
+
     public function handle(CartItemChanged $event): void
     {
         CartEvent::create([

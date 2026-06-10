@@ -42,11 +42,12 @@ class ProductPrice extends Model
         self::LAST_UPDATED_AT,
     ];
 
+    // ستون‌های پولی decimal هستند — cast float خطای نمایش IEEE-754 وارد می‌کرد
     protected $casts = [
         self::LAST_UPDATED_AT => 'datetime',
-        self::GENERAL_PRICE => 'float',
-        self::SPECIAL_PRICE => 'float',
-        self::GOLDEN_FIGURE => 'float',
+        self::GENERAL_PRICE => 'decimal:2',
+        self::SPECIAL_PRICE => 'decimal:2',
+        self::GOLDEN_FIGURE => 'decimal:2',
     ];
 
     protected static function booted(): void
@@ -71,9 +72,21 @@ class ProductPrice extends Model
         if (in_array($driver, ['redis', 'memcached'])) {
             try {
                 Cache::tags(["variant:{$price->product_variant_id}"])->flush();
+
+                return;
             } catch (\Exception $e) {
                 Log::error('Failed to flush cache tags: '.$e->getMessage());
             }
+        }
+
+        // درایورهای بدون tag (file, database, ...) — حذف مستقیم کلید قیمت پایه؛
+        // بدون این، قیمت کش‌شده تا یک ساعت بعد از تغییر قیمت کهنه می‌ماند.
+        if (isset($price->factory_id, $price->factory_location_id)) {
+            Cache::forget(\App\Services\Pricing\Pipes\SetBasePrice::cacheKey(
+                (int) $price->product_variant_id,
+                (int) $price->factory_id,
+                (int) $price->factory_location_id,
+            ));
         }
     }
 

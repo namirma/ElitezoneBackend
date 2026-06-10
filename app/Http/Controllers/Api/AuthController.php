@@ -17,11 +17,41 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\PersonalAccessToken;
 
 class AuthController extends Controller
 {
+    /**
+     * قفل تجمعی تأیید کد — مکمل throttle دقیقه‌ای روت، چون کد ۶ رقمی
+     * با IPهای متعدد قابل brute-force است.
+     */
+    private function isOtpLocked(string $mobile): bool
+    {
+        return Cache::has("otp_lock:{$mobile}");
+    }
+
+    private function recordOtpFailure(string $mobile): void
+    {
+        $failKey = "otp_fails:{$mobile}";
+        $lockMinutes = (int) config('auth.otp_lockout_minutes', 10);
+
+        $fails = Cache::get($failKey, 0) + 1;
+        Cache::put($failKey, $fails, now()->addMinutes($lockMinutes));
+
+        if ($fails >= (int) config('auth.otp_max_attempts', 5)) {
+            Cache::put("otp_lock:{$mobile}", true, now()->addMinutes($lockMinutes));
+            Cache::forget($failKey);
+        }
+    }
+
+    private function clearOtpFailures(string $mobile): void
+    {
+        Cache::forget("otp_fails:{$mobile}");
+        Cache::forget("otp_lock:{$mobile}");
+    }
+
     public function me(Request $request)
     {
         return success(new UserResource($request->user()));
@@ -69,10 +99,10 @@ class AuthController extends Controller
                 ['name' => 'مشتری', 'icon' => 'user'],
             );
             $user = User::create([
-                User::MOBILE        => $mobile,
+                User::MOBILE => $mobile,
                 User::NATIONAL_CODE => $nationalCode,
-                User::BIRTH_DATE    => $birthDate,
-                User::TYPE_ID       => $customerType->id,
+                User::BIRTH_DATE => $birthDate,
+                User::TYPE_ID => $customerType->id,
             ]);
         }
 
@@ -125,14 +155,22 @@ class AuthController extends Controller
     {
         $mobile = PhoneNumber::to09($request->validated('username'));
 
+        if ($this->isOtpLocked($mobile)) {
+            return error(__('auth.too_many_otp_attempts'), [], 429);
+        }
+
         $user = User::where([
             User::MOBILE => $mobile,
             User::SECRET => $request->validated('code'),
         ])->first();
 
         if (! $user || Carbon::parse(@$user->secret_expires_at)->isPast()) {
+            $this->recordOtpFailure($mobile);
+
             return error(__('auth.verification_code_not_match'), [], 404);
         }
+
+        $this->clearOtpFailures($mobile);
 
         $createdAt = $user->created_at instanceof Carbon ? $user->created_at : Carbon::parse($user->created_at);
         $isNewUser = $user->wasRecentlyCreated || $createdAt->diffInMinutes(now()) < 2;
@@ -144,6 +182,12 @@ class AuthController extends Controller
                 'reset_token' => $user->{User::SECRET},
             ], __('auth.code_verified_proceed_to_password'));
         }
+
+        // کد یکبارمصرف است — بلافاصله پس از مصرف باطل می‌شود تا در پنجره‌ی انقضا قابل replay نباشد
+        $user->update([
+            User::SECRET => null,
+            User::SECRET_EXPIRES_AT => null,
+        ]);
 
         Auth::login($user);
         $roles = (array) $request->input('roles', []);
@@ -232,6 +276,12 @@ class AuthController extends Controller
             'code' => 'required',
             User::PASSWORD => 'required|confirmed',
         ]);
+
+        $mobile = PhoneNumber::to09($request->input('username'));
+        if ($this->isOtpLocked($mobile)) {
+            return error(__('auth.too_many_otp_attempts'), [], 429);
+        }
+
         $user = User::where([
             User::MOBILE => $request->input('username'),
             User::SECRET => $request->input('code'),
@@ -239,8 +289,11 @@ class AuthController extends Controller
             ->where(User::PASSWORD, '!=', null)
             ->first();
         if ($user === null) {
+            $this->recordOtpFailure($mobile);
+
             return error(__('auth.invalid_reset_token'), [], 400);
         }
+        $this->clearOtpFailures($mobile);
         if ($user->{User::SECRET_EXPIRES_AT} !== null) {
             return error(__('auth.code_not_verified_yet'), [], 400);
         }

@@ -7,7 +7,7 @@ use App\Models\ProductVariant;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class CartItemChanged
+class CartItemChanged implements ShouldDispatchAfterCommit
 {
     use Dispatchable, SerializesModels;
 

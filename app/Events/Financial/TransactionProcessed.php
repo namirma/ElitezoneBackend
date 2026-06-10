@@ -6,7 +6,7 @@ use App\Models\WalletTransaction;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class TransactionProcessed
+class TransactionProcessed implements ShouldDispatchAfterCommit
 {
     use Dispatchable, SerializesModels;
 

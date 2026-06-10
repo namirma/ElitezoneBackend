@@ -38,7 +38,7 @@ class PlaceOrderAction
 
     public function execute(User $user, PlaceOrderData $data): Order
     {
-        return DB::transaction(function () use ($user, $data) {
+        $order = DB::transaction(function () use ($user, $data) {
 
             // ۱. خواندن و قفل کردن سبد خرید دقیقاً داخل تراکنش
             $cart = $this->getCartOrFail($user);
@@ -57,10 +57,14 @@ class PlaceOrderAction
             // ۵. پاکسازی سبد خرید
             $this->clearCart($cart);
 
-            OrderPlaced::dispatch($order);
-
             return $order;
         });
+
+        // ایونت بعد از commit ارسال می‌شود؛ صف با after_commit=false ممکن است
+        // listener را قبل از commit اجرا کند و سفارش را پیدا نکند.
+        OrderPlaced::dispatch($order);
+
+        return $order;
     }
 
     private function getCartOrFail(User $user): Cart
@@ -241,24 +245,24 @@ class PlaceOrderAction
         $commissions = $this->calculateCommissions($user, $effectiveConsultantId, $subtotal);
 
         return [
-            'subtotal'              => $subtotal,
-            'vat_amount'            => $totalVat,
-            'total_discount'        => $totalDiscount,
-            'shipping_cost'         => $shippingCost,
-            'final_amount'          => $finalAmount,
-            'total_weight'          => $totalWeight,
-            'commissions'           => $commissions,
+            'subtotal' => $subtotal,
+            'vat_amount' => $totalVat,
+            'total_discount' => $totalDiscount,
+            'shipping_cost' => $shippingCost,
+            'final_amount' => $finalAmount,
+            'total_weight' => $totalWeight,
+            'commissions' => $commissions,
             'effective_consultant_id' => $effectiveConsultantId,
-            'items_data'            => $itemsData,
-            'shipments'             => $shippingQuote->shipments,
+            'items_data' => $itemsData,
+            'shipments' => $shippingQuote->shipments,
         ];
     }
 
     /**
      * محاسبه کمیسیون بر اساس مشاور فنی مؤثر سفارش.
      *
-     * @param  User      $placer       خریدار/ثبت‌کننده سفارش
-     * @param  int|null  $consultantId consultant_user_id مؤثر (پس از تعیین نقش)
+     * @param  User  $placer  خریدار/ثبت‌کننده سفارش
+     * @param  int|null  $consultantId  consultant_user_id مؤثر (پس از تعیین نقش)
      */
     private function calculateCommissions(User $placer, ?int $consultantId, float $subtotal): array
     {
