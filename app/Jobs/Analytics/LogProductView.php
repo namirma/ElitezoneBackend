@@ -73,10 +73,6 @@ class LogProductView implements ShouldQueue
         }
 
         // کلیدِ dedup: کاربر لاگین‌شده با user_id، مهمان با session_id، در نبود هر دو با IP.
-        $identifier = $this->userId
-            ? 'u'.$this->userId
-            : ($this->sessionId ?: ($this->ipAddress ?: 'anon'));
-
         $query = ProductView::where(ProductView::PRODUCT_ID, $this->productId)
             ->where(ProductView::VIEWED_AT, '>=', now()->subSeconds($window));
 
@@ -87,8 +83,6 @@ class LogProductView implements ShouldQueue
         } else {
             $query->where(ProductView::IP_ADDRESS, $this->anonymizeIp($this->ipAddress));
         }
-
-        unset($identifier);
 
         return $query->exists();
     }

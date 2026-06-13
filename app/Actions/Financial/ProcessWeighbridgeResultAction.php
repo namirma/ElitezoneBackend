@@ -17,7 +17,13 @@ use Illuminate\Support\Facades\Log;
 
 class ProcessWeighbridgeResultAction
 {
+    /** Fallback تنها زمانی که config مقداردهی نشده باشد — منبع اصلی config است. */
     private const FINANCIAL_TOLERANCE = 1000;
+
+    private function tolerance(): int
+    {
+        return (int) config('financial.weighbridge_tolerance', self::FINANCIAL_TOLERANCE);
+    }
 
     public function __construct(
         protected WalletTransactionEngine $walletEngine,
@@ -121,7 +127,7 @@ class ProcessWeighbridgeResultAction
             // Because billingWeight is capped at WBS, newPOO ≤ oldPOO always: the only
             // non-equal outcome is a deficit (under-delivery). Charging the buyer more than
             // the initial invoice would violate the spec, so there is no surplus branch.
-            if ($diffPOO < -self::FINANCIAL_TOLERANCE) {
+            if ($diffPOO < -$this->tolerance()) {
                 $status = 'deficit';
                 $refundAmount = abs($diffPOO); // POO − POOM (buyer refund)
                 $reclaimAmount = abs($diffPTS); // PTS − PTSM (amount owed by supplier)

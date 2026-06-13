@@ -279,8 +279,13 @@ class AddToCartAction
 
         foreach ($totalQuantities as $unitId => $qty) {
             $unit = $unitMap->get((int) $unitId);
+            // واحدِ ناشناخته (متعلق به این محصول نیست) — کلیدهای quantities در
+            // AddToCartRequest ولیدیت نمی‌شوند، پس به‌جای skip بی‌صدا (که سبد را با
+            // واحد نامعتبر می‌پذیرفت) خطای ولیدیشن صریح می‌دهیم.
             if (! $unit) {
-                continue;
+                throw ValidationException::withMessages(['quantities.'.$unitId => [
+                    __('cart.limits.invalid_unit'),
+                ]]);
             }
 
             $maxCount = $unit->pivot->max_quantity ?? PHP_INT_MAX;

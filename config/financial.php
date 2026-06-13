@@ -98,4 +98,32 @@ return [
     */
     'consultant_lifetime_cap_multiplier' => (float) env('CONSULTANT_LIFETIME_CAP_MULTIPLIER', 2.0),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Wallet deposit limits (Rials)
+    |--------------------------------------------------------------------------
+    |
+    | Per-deposit min and per-method max. The Shaparak online-gateway cap is set
+    | by the bank (currently 20M Tomans = 200M Rials per transaction); the Podium
+    | direct-deposit cap is higher (200M Tomans = 2B Rials). Read by
+    | WalletDepositRequest — never hardcode these limits in the FormRequest.
+    |
+    */
+    'deposit_min' => (int) env('DEPOSIT_MIN_RIALS', 10_000),
+
+    'deposit_max_shaparak' => (int) env('DEPOSIT_MAX_SHAPARAK_RIALS', 200_000_000),
+
+    'deposit_max_podium' => (int) env('DEPOSIT_MAX_PODIUM_RIALS', 2_000_000_000),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Weighbridge financial tolerance (Rials)
+    |--------------------------------------------------------------------------
+    |
+    | Below this absolute difference, a post-weighbridge POO/PTS delta is treated
+    | as rounding noise (no deficit branch). Read by ProcessWeighbridgeResultAction.
+    |
+    */
+    'weighbridge_tolerance' => (int) env('WEIGHBRIDGE_TOLERANCE_RIALS', 1_000),
+
 ];

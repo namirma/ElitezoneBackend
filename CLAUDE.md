@@ -377,6 +377,10 @@ All financial constants live in `config/financial.php` — **never hardcode amou
 | `financial.pending_order_ttl_hours` | `PENDING_ORDER_TTL_HOURS` | `2` | Hours before an unpaid PENDING order auto-cancels (`CheckReservationExpiryJob`) |
 | `financial.reservation_validity_hours` | `RESERVATION_VALIDITY_HOURS` | `2` | Hours a paid reservation stays valid before it must be completed/extended |
 | `financial.hold_fee_extension_hours` | `HOLD_FEE_EXTENSION_HOURS` | `24` | Hours that paying the hold fee extends a reservation (`PayHoldFeeAction::extensionHours()`) |
+| `financial.deposit_min` | `DEPOSIT_MIN_RIALS` | `10_000` | Min per wallet deposit (read by `WalletDepositRequest`) |
+| `financial.deposit_max_shaparak` | `DEPOSIT_MAX_SHAPARAK_RIALS` | `200_000_000` | Max per Shaparak-gateway deposit (bank-set) |
+| `financial.deposit_max_podium` | `DEPOSIT_MAX_PODIUM_RIALS` | `2_000_000_000` | Max per Podium direct deposit |
+| `financial.weighbridge_tolerance` | `WEIGHBRIDGE_TOLERANCE_RIALS` | `1_000` | Below this abs POO/PTS delta, post-weighbridge difference is rounding noise (`ProcessWeighbridgeResultAction`) |
 
 > **Never hardcode time windows in Actions.** Read them via `config('financial.*')`
 > — e.g. `now()->addHours((int) config('financial.reservation_validity_hours', 2))`,
@@ -700,17 +704,60 @@ Users can have roles: `admin`, `engineer`, `contractor`, `employer`, `supplier`.
 
 ```
 Jobs/
-  Analytics/    — CalculateCustomerRfm, LogProductView, PredictInventoryNeeds
+  Analytics/    — CalculateCustomerRfm, LogProductView, PredictInventoryNeeds,
+                  RollupProductViewsJob
   Financial/    — CheckSupplierBalancesJob
   Notification/ — SendSmsJob
   Order/        — CheckReservationExpiryJob
 ```
 
-Scheduled jobs (crons, wired in `Console/Kernel.php`):
+Scheduled jobs (crons, wired in `Console/Kernel.php`) — **all** use
+`withoutOverlapping()->onOneServer()`:
 - `Order/CheckReservationExpiryJob` — cancels expired reservations
 - `Financial/CheckSupplierBalancesJob` — polls `supplier_debt_pending = true` orders;
   when supplier balance ≥ debt, reclaims it and releases buyer's HOLD refund to AVAILABLE
-- `Analytics/CalculateCustomerRfm` — customer segmentation analytics
+- `Analytics/CalculateCustomerRfm` — customer segmentation analytics (03:00)
+- `Analytics/PredictInventoryNeeds` — inventory restock prediction (04:00)
+- `Analytics/RollupProductViewsJob` — daily product-view aggregation + raw retention (02:30)
+
+### Data Science / Analytics
+
+All analytics config lives in `config/intelligence.php` — **never hardcode** RFM
+thresholds, conversion rates, retention windows, or seasonal multipliers.
+
+**RFM (`Jobs/Analytics/CalculateCustomerRfm`)** — streams customers with `cursor()`
+(never `get()` — memory). Scores R/F/M from `config('intelligence.rfm.*')` in two modes:
+`fixed` (default; threshold tables) or `quintile` (`RFM_SCORING_MODE=quintile` —
+boundaries derived from the live distribution). Segment is an **explicit 5×5 R×F
+matrix** (`determineSegment()`) covering all 25 combinations with no overlap/gap,
+including `lost`; recency past `rfm.churn_days` forces `lost`. Segment changes fire
+`CustomerSegmentChanged` (wrapped in try/catch). Use `CustomerStat::SEGMENT_*`
+constants everywhere — never hardcode segment strings (`SendWinBackOffer` compares
+against the constants).
+
+**Inventory (`Services/InventoryIntelligenceService`)** — `chunkById` over variants
+(never `get()`). **Never `truncate()`** the predictions table (it destroys backtesting
+history); instead each run inserts a fresh snapshot stamped `calculated_at` and old
+snapshots beyond `inventory.prediction_retention_days` are pruned.
+`InventoryController::predictions()` returns only the latest run (max `calculated_at`).
+Demand = `(velocity × prediction_days + searchVolume × perProductConversion) ×
+seasonalMultiplier`. Conversion rate is per-product (sold/searched, clamped); the
+seasonal multiplier is keyed by **Jalali month** (`intelligence.inventory.seasonal_multipliers`).
+`InventoryPredictionResource` gates `sales_velocity`/`search_hits` to admins only
+(competitive intelligence).
+
+**Product views (`Jobs/Analytics/LogProductView`)** — bot-filters by User-Agent,
+dedups within `product_views.dedup_seconds`, and **anonymizes the IP** (last
+octet/hextet zeroed) before storing. `RollupProductViewsJob` aggregates raw rows into
+`product_view_daily` (one query, group-by-date, idempotent upsert) then prunes raw rows
+beyond `product_views.retention_days`. Analytics should read the rollup, not raw.
+**Gotcha:** the view-logging dispatch is `\App\Jobs\Analytics\LogProductView` — the
+class is namespaced under `Analytics/`, not flat `App\Jobs`.
+
+**Customer-value metrics** — `AnalyticsService::getCustomerValueMetrics()` derives
+CLV (avg monetary), churn rate (segment `lost` or recency > `churn_days`), and
+active/churned counts from `CustomerStat`; surfaced in the admin dashboard as
+`customer_value`.
 
 ### Authorization (Policies)
 
@@ -997,6 +1044,34 @@ order-financial escrow values `FinancialCodes::STATUS_HOLD = 'hold'` /
 **Auto-charge requires شناسه واریز:** `TransferMoneyBillNumber` must be a valid 11-digit numeric string. Pol/Bridge transfers put a bank reference code there (e.g. `C6494530F774`), so they are always unmatched and require admin approval. PAYA transfers also fail to auto-charge if the sender doesn't enter the شناسه واریز in their banking app.
 
 **Do not reorder or merge these extraction paths** — the priority was established empirically from live Podium statement data (commit that introduced it was a bug-fix for missing PAYA IBANs).
+
+### Security & OTP Hardening (recent)
+
+- **OTP is single-use + lockout-protected.** `verifyCode`, `setPassword`, and
+  `confirmChangeMobile` invalidate `users.secret`/`secret_expires_at` the moment a code
+  is consumed (no replay inside the expiry window) and compare with `hash_equals`. A
+  cumulative lockout (`config('auth.otp_max_attempts')` / `otp_lockout_minutes`, cache-keyed
+  by mobile) backs the per-minute route throttle against distributed brute-force. **Never**
+  loosen these back to a bare `==` compare or remove the secret-clear.
+- **`POST /profile/password` requires the OTP `code`** (step-1 of the two-step change). Without
+  it a stolen token could take over the account. `StorePasswordRequest` validates `code`;
+  `AccountSecurityController::setPassword` re-verifies it before writing the new hash.
+- **Sensitive credentials are masked in Resources.** `UserBankAccountResource` masks
+  `shaba`/`card_number` and `UserResource` masks `mobile` for everyone except the owner or an
+  admin (`$request->user()?->hasRole('admin')`). Bank card↔IBAN auto-completion runs on the
+  backend via `CardToIbanService` (card→IBAN only; IBAN→card has no inquiry service in Iran).
+- **Password/mobile change revokes other tokens.** `AccountSecurityController::revokeOtherTokens()`
+  deletes every Sanctum token except the current session's after a credential change.
+- **Domain events implement `ShouldDispatchAfterCommit`.** All 7 events under `app/Events/*`
+  defer delivery until the surrounding transaction commits, so queued listeners never see a
+  not-yet-committed row. Keep the interface when adding events.
+- **Admin order status is a state machine.** `AdminOrderController::changeStatus` only allows
+  whitelisted forward transitions (no `pending → delivered` jumps); cancellation still routes
+  through `CancelOrderAction`.
+- **Idempotency middleware** keys guests by IP (`guest:<ip>`, not a shared `guest`) and caches
+  only safe response headers (never `Set-Cookie`/auth headers).
+- **`DebugController` routes are non-production only** (wrapped in `! app()->environment('production')`);
+  the analytics/inventory `data/*` routes sit behind `auth:sanctum + role.admin`.
 
 ### Cross-Controller Calls are Forbidden
 

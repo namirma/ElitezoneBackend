@@ -18,7 +18,7 @@ class WalletDepositRequest extends FormRequest
             'amount' => [
                 'required',
                 'integer',
-                'min:10000',
+                'min:'.(int) config('financial.deposit_min', 10_000),
             ],
             'payment_method' => [
                 'required',
@@ -29,9 +29,9 @@ class WalletDepositRequest extends FormRequest
         $method = $this->input('payment_method');
 
         if ($method === 'shaparak') {
-            $rules['amount'][] = 'max:200000000';
+            $rules['amount'][] = 'max:'.(int) config('financial.deposit_max_shaparak', 200_000_000);
         } elseif ($method === 'podium') {
-            $rules['amount'][] = 'max:2000000000';
+            $rules['amount'][] = 'max:'.(int) config('financial.deposit_max_podium', 2_000_000_000);
         }
 
         return $rules;
@@ -48,7 +48,7 @@ class WalletDepositRequest extends FormRequest
         }
 
         return [
-            'amount.min' => __('auth.deposit_amount_min', ['min' => number_format(10000)]),
+            'amount.min' => __('auth.deposit_amount_min', ['min' => number_format((int) config('financial.deposit_min', 10_000))]),
             'amount.max' => $maxMessage,
             'payment_method.in' => __('auth.payment_method_invalid'),
         ];
