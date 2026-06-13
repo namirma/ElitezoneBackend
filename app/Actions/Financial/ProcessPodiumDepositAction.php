@@ -54,7 +54,11 @@ class ProcessPodiumDepositAction
     {
         $docNumber      = (string) ($statement['DocNumber'] ?? '');
         $creditorAmount = (int) ($statement['CreditorAmount'] ?? 0);
-        $depositedAt    = trim(($statement['Date'] ?? '').' '.($statement['Time'] ?? ''));
+
+        // فرمت زمان پادیوم: "HH:MM.SS.microseconds" — نرمال‌سازی به "HH:MM:SS"
+        $rawTime = trim((string) ($statement['Time'] ?? ''));
+        $rawTime = preg_replace('/^(\d{1,2}:\d{2})\.(\d{2})\.\d+$/', '$1:$2', $rawTime);
+        $depositedAt = trim(($statement['Date'] ?? '').' '.$rawTime);
 
         // ── Idempotency guard ─────────────────────────────────────────────────
         if (empty($docNumber)) {
@@ -223,8 +227,11 @@ class ProcessPodiumDepositAction
         ?string $depositedAt,
         string  $matchedBy,
     ): void {
+        // بارگذاری پروفایل تأییدشده کاربر (ثبت‌شده از پاسارگاد)
+        $profile = $user->profile;
+
         DB::transaction(function () use (
-            $user, $amount, $docNumber, $shenasehVariz, $senderIban,
+            $user, $profile, $amount, $docNumber, $shenasehVariz, $senderIban,
             $senderName, $nationalCode, $depositedAt, $matchedBy
         ) {
             $wallet = Wallet::where(Wallet::USER_ID, $user->id)->lockForUpdate()->firstOrCreate(
@@ -253,6 +260,15 @@ class ProcessPodiumDepositAction
                     'shenaseh_variz' => $shenasehVariz,
                     'sender_iban'    => $senderIban,
                     'national_code'  => $nationalCode,
+                    // اطلاعات تأییدشده فرستنده از پروفایل (برای فاکتور/رسید)
+                    'depositor' => [
+                        'name'          => $profile?->name,
+                        'family'        => $profile?->family,
+                        'full_name'     => $user->full_name,
+                        'national_code' => $profile?->national_code ?? $nationalCode,
+                        'national_id'   => $profile?->national_id,
+                        'mobile'        => $user->{User::MOBILE},
+                    ],
                 ],
             ]);
 
