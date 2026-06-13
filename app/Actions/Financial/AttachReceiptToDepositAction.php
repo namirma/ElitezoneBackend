@@ -4,7 +4,6 @@ namespace App\Actions\Financial;
 
 use App\Models\WalletTransaction;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 
 /**
@@ -21,17 +20,17 @@ class AttachReceiptToDepositAction
     {
         $this->guard($transaction, $userId);
 
-        $path         = $file->store(WalletTransaction::PATH_RECEIPTS, 'public');
+        $path = $file->store(WalletTransaction::PATH_RECEIPTS, 'public');
         $originalName = $file->getClientOriginalName();
 
         $meta = $transaction->meta ?? [];
-        $meta['receipt_path']                 = $path;
-        $meta['receipt_info']['image_path']   = $path;
+        $meta['receipt_path'] = $path;
+        $meta['receipt_info']['image_path'] = $path;
         $meta['receipt_info']['original_name'] = $originalName;
 
         $transaction->update([
             'description' => $transaction->description.' | رسید آپلود شد',
-            'meta'        => $meta,
+            'meta' => $meta,
         ]);
 
         return $transaction->fresh();
@@ -46,7 +45,7 @@ class AttachReceiptToDepositAction
         $isBankTransfer = ($transaction->meta['payment_method'] ?? '') === WalletTransaction::METHOD_BANK_TRANSFER;
 
         if (
-            $transaction->type   !== WalletTransaction::TYPE_DEPOSIT ||
+            $transaction->type !== WalletTransaction::TYPE_DEPOSIT ||
             $transaction->status !== WalletTransaction::STATUS_PENDING ||
             ! $isBankTransfer
         ) {

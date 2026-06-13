@@ -58,21 +58,21 @@ class ProcessPreScalePaymentAction
             }
 
             $weightBeforeScale = (float) ($locked->getAttribute(Order::WEIGHT_BEFORE_SCALE) ?? 0);
-            $shippingCost      = (float) ($locked->shipping_cost ?? 0);
-            $vatRate           = (float) ($locked->vat_rate ?? 10.0);
+            $shippingCost = (float) ($locked->shipping_cost ?? 0);
+            $vatRate = (float) ($locked->vat_rate ?? 10.0);
 
             $badgeCode = $locked->beneficiary?->badge?->code ?? 'pioneer';
-            $rates     = $this->calculator->getCommissionRates($badgeCode);
+            $rates = $this->calculator->getCommissionRates($badgeCode);
 
             $ownerDiscountRate = $rates['ow_final_rate'];
-            $sazeShareRate     = $rates['ssg_final_rate'];
-            $consultantRate    = $rates['co_final_rate'];
+            $sazeShareRate = $rates['ssg_final_rate'];
+            $consultantRate = $rates['co_final_rate'];
 
             // ── Snapshot formula-variant flags from supplier contract ──────────
-            $realSupplierId  = $firstItem->supplier_user_id;
+            $realSupplierId = $firstItem->supplier_user_id;
             $supplierProfile = SupplierProfile::where(SupplierProfile::USER_ID, $realSupplierId)->first();
             $transCommission = (bool) ($supplierProfile?->{SupplierProfile::TRANS_COMMISSION} ?? true);
-            $transVat        = (bool) ($supplierProfile?->{SupplierProfile::TRANS_VAT} ?? true);
+            $transVat = (bool) ($supplierProfile?->{SupplierProfile::TRANS_VAT} ?? true);
 
             // ── Calculate POO and PTS using the correct formula variant ────────
             $POO = $this->calculator->calculatePOO(
@@ -88,16 +88,16 @@ class ProcessPreScalePaymentAction
 
             // ── Snapshot all financial parameters onto the order ───────────────
             $locked->update([
-                Order::PAYMENT_OF_OWNER     => $POO,
-                Order::PAYMENT_TO_SUPPLIER  => $PTS,
-                Order::COMMISSION_RATE      => 1.0,
-                Order::VAT_RATE             => $vatRate,
-                Order::OWNER_DISCOUNT_RATE  => $ownerDiscountRate,
-                Order::TRANS_COMMISSION     => $transCommission,
-                Order::TRANS_VAT            => $transVat,
+                Order::PAYMENT_OF_OWNER => $POO,
+                Order::PAYMENT_TO_SUPPLIER => $PTS,
+                Order::COMMISSION_RATE => 1.0,
+                Order::VAT_RATE => $vatRate,
+                Order::OWNER_DISCOUNT_RATE => $ownerDiscountRate,
+                Order::TRANS_COMMISSION => $transCommission,
+                Order::TRANS_VAT => $transVat,
             ]);
 
-            $buyerId      = $locked->placer_user_id;
+            $buyerId = $locked->placer_user_id;
             $systemUserId = (int) config('financial.system_user_id', 1);
 
             // A — buyer pays POO: WO(-) → WSSG(+)
@@ -121,9 +121,9 @@ class ProcessPreScalePaymentAction
             );
 
             $locked->update([
-                'status'         => Order::STATUS_PROCESSING,
+                'status' => Order::STATUS_PROCESSING,
                 'payment_status' => Order::PAYMENT_PAID,
-                'paid_at'        => now(),
+                'paid_at' => now(),
             ]);
 
             // ── صدور اسناد مالی خرید مستقیم ─────────────────────────────

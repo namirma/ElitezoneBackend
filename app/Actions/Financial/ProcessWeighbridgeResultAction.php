@@ -201,8 +201,6 @@ class ProcessWeighbridgeResultAction
                 $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_BILL_OF_LADING);
             }
 
-            $vatMultiplier = ($vat / 100) / (1 + ($vat / 100));
-
             // Consultant gross (PTC) is the %CO slice of the platform commission pool.
             // Deriving it from (POOM − PTSM) inherits the correct ±TC/±VAT handling that
             // calculatePOO()/calculatePTS() already applied, instead of re-deriving an
@@ -227,8 +225,8 @@ class ProcessWeighbridgeResultAction
                 );
 
                 if ($candidateGross > 0) {
-                    $consultantVat = $candidateGross * $vatMultiplier;
-                    $consultantNet = $candidateGross - $consultantVat;
+                    // bcmath VAT split — exact, no float accumulation across legs.
+                    ['net' => $consultantNet, 'vat' => $consultantVat] = $this->calculator->extractVat($candidateGross, $vat);
 
                     $this->walletEngine->process('-', $candidateGross, FinancialCodes::WALLET_SAZE, FinancialCodes::STATUS_AVAILABLE, $locked, "تخصیص سهم مشاور فنی سفارش {$locked->order_number}", $systemUserId);
                     $this->walletEngine->process('+', $consultantNet, FinancialCodes::WALLET_CONSULTANT, FinancialCodes::STATUS_HOLD, $locked, 'کمیسیون امانی مشاور فنی', $consultantUserId);
@@ -238,14 +236,14 @@ class ProcessWeighbridgeResultAction
                 }
             }
 
-            $supplierVat = $newPTS * $vatMultiplier;
+            $supplierVat = $this->calculator->extractVat($newPTS, $vat)['vat'];
             if ($supplierVat > 0) {
                 $this->walletEngine->process('-', $supplierVat, FinancialCodes::WALLET_SUPPLIER, FinancialCodes::STATUS_AVAILABLE, $locked, "کسر مالیات امانی سفارش {$locked->order_number}", $realSupplierId);
                 $this->walletEngine->process('+', $supplierVat, FinancialCodes::WALLET_VAT, FinancialCodes::STATUS_HOLD, $locked, 'مالیات تامین‌کننده امانی', $vatUserId);
             }
 
             $sazeGross = ($newPOO - $newPTS) - $consultantGross;
-            $sazeVat = $sazeGross * $vatMultiplier;
+            $sazeVat = $this->calculator->extractVat($sazeGross, $vat)['vat'];
             if ($sazeVat > 0) {
                 $this->walletEngine->process('-', $sazeVat, FinancialCodes::WALLET_SAZE, FinancialCodes::STATUS_AVAILABLE, $locked, 'کسر مالیات بر ارزش افزوده پلتفرم', $systemUserId);
                 $this->walletEngine->process('+', $sazeVat, FinancialCodes::WALLET_VAT, FinancialCodes::STATUS_HOLD, $locked, 'مالیات گروه سازه امانی', $vatUserId);

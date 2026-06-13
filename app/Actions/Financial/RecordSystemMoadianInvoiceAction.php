@@ -35,11 +35,12 @@ class RecordSystemMoadianInvoiceAction
     public function __construct(
         private readonly WalletTransactionEngine $walletEngine,
         private readonly InvoiceGenerator $invoiceGenerator,
+        private readonly \App\Services\Financial\SettlementCalculatorService $calculator,
     ) {}
 
     /**
-     * @param  Order  $order      The order whose platform VAT hold should be released.
-     * @param  string $moadianRef Doc-P reference from the Moadian system.
+     * @param  Order  $order  The order whose platform VAT hold should be released.
+     * @param  string  $moadianRef  Doc-P reference from the Moadian system.
      *
      * @throws \RuntimeException when pre-conditions are not met.
      */
@@ -66,21 +67,21 @@ class RecordSystemMoadianInvoiceAction
         //
         // sazeGross = (POOM − PTSM) − consultantGross
         // sazeVat   = sazeGross × vatMultiplier
-        $poom           = (float) $order->payment_of_owner;
-        $ptsm           = (float) $order->payment_to_supplier;
+        $poom = (float) $order->payment_of_owner;
+        $ptsm = (float) $order->payment_to_supplier;
         $consultantGross = (float) ($order->payment_to_consultant ?? 0);
-        $vatRate        = (float) ($order->{Order::VAT_RATE} ?? 10.0);
-        $vatMultiplier  = ($vatRate / 100.0) / (1.0 + ($vatRate / 100.0));
+        $vatRate = (float) ($order->{Order::VAT_RATE} ?? 10.0);
 
+        // Same bcmath split used at weighbridge time — releases exactly what was held.
         $sazeGross = ($poom - $ptsm) - $consultantGross;
-        $sazeVat   = $sazeGross * $vatMultiplier;
+        $sazeVat = $this->calculator->extractVat($sazeGross, $vatRate)['vat'];
 
         $systemUserId = (int) config('financial.system_user_id', 1);
-        $vatUserId    = (int) config('financial.vat_user_id', $systemUserId);
+        $vatUserId = (int) config('financial.vat_user_id', $systemUserId);
 
         DB::transaction(function () use (
             $order, $moadianRef,
-            $sazeVat, $systemUserId, $vatUserId
+            $sazeVat, $vatUserId
         ) {
             $locked = Order::where('id', $order->id)->lockForUpdate()->first();
 
@@ -112,7 +113,7 @@ class RecordSystemMoadianInvoiceAction
             }
 
             $locked->update([
-                Order::SYSTEM_MOADIAN_REF      => $moadianRef,
+                Order::SYSTEM_MOADIAN_REF => $moadianRef,
                 Order::SYSTEM_HOLD_RELEASED_AT => now(),
             ]);
 

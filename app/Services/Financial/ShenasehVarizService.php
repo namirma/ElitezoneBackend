@@ -31,20 +31,19 @@ class ShenasehVarizService
      * تولید شناسه واریز از کد ملی کاربر (الگوریتم ۱-۱)
      *
      * @param  string  $nationalCode  کد ملی ۱۰ رقمی (بدون صفر پیشرو اختیاری)
-     * @return string  شناسه واریز ۱۱ کاراکتری
+     * @return string شناسه واریز ۱۱ کاراکتری
      */
     public function generate(string $nationalCode): string
     {
         $controlDigit = $this->calculateControlDigit($nationalCode);
 
-        return $nationalCode . $controlDigit;
+        return $nationalCode.$controlDigit;
     }
 
     /**
      * اعتبارسنجی یک شناسه واریز
      *
      * @param  string  $shenaseh  شناسه واریز (سریال + رقم کنترل)
-     * @return bool
      */
     public function validate(string $shenaseh): bool
     {
@@ -55,9 +54,9 @@ class ShenasehVarizService
             return false;
         }
 
-        $serial       = substr($shenaseh, 0, -1);
+        $serial = substr($shenaseh, 0, -1);
         $controlGiven = (int) substr($shenaseh, -1);
-        $controlCalc  = $this->calculateControlDigit($serial);
+        $controlCalc = $this->calculateControlDigit($serial);
 
         return $controlGiven === $controlCalc;
     }
@@ -66,8 +65,7 @@ class ShenasehVarizService
      * استخراج کد ملی (سریال) از شناسه واریز
      * آخرین کاراکتر = رقم کنترلی است
      *
-     * @param  string  $shenaseh
-     * @return string  کد ملی (بدون رقم کنترل)
+     * @return string کد ملی (بدون رقم کنترل)
      */
     public function extractNationalCode(string $shenaseh): string
     {

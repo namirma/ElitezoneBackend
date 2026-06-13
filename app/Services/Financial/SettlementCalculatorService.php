@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Financial;
 
+use App\Support\Money;
+
 /**
  * Financial settlement calculator.
  *
@@ -50,16 +52,18 @@ class SettlementCalculatorService
     {
         $rates = $this->getCommissionRates($badgeCode);
 
-        $TC = $subtotal * (self::TC_PERCENTAGE / 100);
-        $OW = $TC * ($rates['ow_percent_of_tc'] / 100);
-        $CO = $TC * ($rates['co_percent_of_tc'] / 100);
-        $SSG = $TC * ($rates['ssg_percent_of_tc'] / 100);
+        // bcmath throughout — no intermediate float accumulation. Commissions are
+        // whole Rials, so the boundary rounds to 0 decimals (preserves prior round()).
+        $TC = Money::mul($subtotal, Money::div(self::TC_PERCENTAGE, '100'));
+        $OW = Money::mul($TC, Money::div($rates['ow_percent_of_tc'], '100'));
+        $CO = Money::mul($TC, Money::div($rates['co_percent_of_tc'], '100'));
+        $SSG = Money::mul($TC, Money::div($rates['ssg_percent_of_tc'], '100'));
 
         return [
-            'TC' => round($TC),
-            'OW' => round($OW),
-            'CO' => round($CO),
-            'SSG' => round($SSG),
+            'TC' => Money::toFloat($TC, 0),
+            'OW' => Money::toFloat($OW, 0),
+            'CO' => Money::toFloat($CO, 0),
+            'SSG' => Money::toFloat($SSG, 0),
         ];
     }
 
@@ -93,27 +97,30 @@ class SettlementCalculatorService
         bool $transCommission = true,
         bool $transVat = true,
     ): float {
-        $owFactor = 1.0 - ($owPercent / 100.0);
-        $vatFactor = 1.0 + ($vatPercent / 100.0);
-        $productBase = $op * $weight;
+        $owFactor = Money::percentSub($owPercent);   // 1 − %OW/100
+        $vatFactor = Money::percentAdd($vatPercent);  // 1 + VAT/100
+        $productBase = Money::mul($op, $weight);
 
         if ($transCommission && $transVat) {
             // +TC +VAT: [Trans + OP×W] × (1−%OW) × (1+VAT)
-            return ($trans + $productBase) * $owFactor * $vatFactor;
+            return Money::toFloat(Money::mul(Money::mul(Money::add($trans, $productBase), $owFactor), $vatFactor));
         }
 
         if ($transCommission) {
             // +TC −VAT: [OP×W × (1−%OW) × (1+VAT)] + [Trans × (1−%OW)]
-            return ($productBase * $owFactor * $vatFactor) + ($trans * $owFactor);
+            return Money::toFloat(Money::add(
+                Money::mul(Money::mul($productBase, $owFactor), $vatFactor),
+                Money::mul($trans, $owFactor)
+            ));
         }
 
         if ($transVat) {
             // −TC +VAT: [Trans + OP×W × (1−%OW)] × (1+VAT)
-            return ($trans + ($productBase * $owFactor)) * $vatFactor;
+            return Money::toFloat(Money::mul(Money::add($trans, Money::mul($productBase, $owFactor)), $vatFactor));
         }
 
         // −TC −VAT: [OP×W × (1−%OW) × (1+VAT)] + Trans
-        return ($productBase * $owFactor * $vatFactor) + $trans;
+        return Money::toFloat(Money::add(Money::mul(Money::mul($productBase, $owFactor), $vatFactor), $trans));
     }
 
     /**
@@ -149,28 +156,31 @@ class SettlementCalculatorService
         bool $transCommission = true,
         bool $transVat = true,
     ): float {
-        $totalDeduction = ($owPercent + $ssgPercent + $coPercent) / 100.0;
-        $deductFactor = 1.0 - $totalDeduction;
-        $vatFactor = 1.0 + ($vatPercent / 100.0);
-        $productBase = $op * $weight;
+        $totalDeductionPercent = $owPercent + $ssgPercent + $coPercent;
+        $deductFactor = Money::percentSub($totalDeductionPercent); // 1 − (OW+SSG+CO)/100
+        $vatFactor = Money::percentAdd($vatPercent);               // 1 + VAT/100
+        $productBase = Money::mul($op, $weight);
 
         if ($transCommission && $transVat) {
             // +TC +VAT: [Trans + OP×W] × (1−TC) × (1+VAT)
-            return ($trans + $productBase) * $deductFactor * $vatFactor;
+            return Money::toFloat(Money::mul(Money::mul(Money::add($trans, $productBase), $deductFactor), $vatFactor));
         }
 
         if ($transCommission) {
             // +TC −VAT: [OP×W × (1−TC) × (1+VAT)] + [Trans × (1−TC)]
-            return ($productBase * $deductFactor * $vatFactor) + ($trans * $deductFactor);
+            return Money::toFloat(Money::add(
+                Money::mul(Money::mul($productBase, $deductFactor), $vatFactor),
+                Money::mul($trans, $deductFactor)
+            ));
         }
 
         if ($transVat) {
             // −TC +VAT: [Trans + OP×W × (1−TC)] × (1+VAT)
-            return ($trans + ($productBase * $deductFactor)) * $vatFactor;
+            return Money::toFloat(Money::mul(Money::add($trans, Money::mul($productBase, $deductFactor)), $vatFactor));
         }
 
         // −TC −VAT: [OP×W × (1−TC) × (1+VAT)] + Trans
-        return ($productBase * $deductFactor * $vatFactor) + $trans;
+        return Money::toFloat(Money::add(Money::mul(Money::mul($productBase, $deductFactor), $vatFactor), $trans));
     }
 
     /**
@@ -213,9 +223,44 @@ class SettlementCalculatorService
 
             // Absolute percentages of invoice total (for POO / PTS formula inputs)
             // Example: TC=1 %, OW=40 % of TC → ow_final_rate = 0.4 %
-            'ow_final_rate' => self::TC_PERCENTAGE * ($shares['ow'] / 100.0),
-            'co_final_rate' => self::TC_PERCENTAGE * ($shares['co'] / 100.0),
-            'ssg_final_rate' => self::TC_PERCENTAGE * ($shares['ssg'] / 100.0),
+            'ow_final_rate' => (float) Money::mul(self::TC_PERCENTAGE, Money::div($shares['ow'], '100')),
+            'co_final_rate' => (float) Money::mul(self::TC_PERCENTAGE, Money::div($shares['co'], '100')),
+            'ssg_final_rate' => (float) Money::mul(self::TC_PERCENTAGE, Money::div($shares['ssg'], '100')),
+        ];
+    }
+
+    /**
+     * VAT-extraction multiplier for a VAT-inclusive amount:
+     *   vatMultiplier = (VAT/100) / (1 + VAT/100)
+     *
+     * For a gross (VAT-inclusive) amount G, the embedded VAT is G × vatMultiplier
+     * and the net is G − VAT. Computed with bcmath so repeating decimals
+     * (e.g. 10% → 1/11) don't accumulate float error across the settlement legs.
+     */
+    public function vatMultiplier(float $vatPercent): float
+    {
+        // Algebraically (VAT/100)/(1+VAT/100) == VAT/(100+VAT) — the latter avoids a
+        // tiny truncated intermediate, staying numerically stable.
+        return (float) Money::div($vatPercent, Money::add('100', $vatPercent));
+    }
+
+    /**
+     * Split a VAT-inclusive gross amount into its net and VAT parts.
+     *
+     * Uses vat = gross × VAT / (100 + VAT) — the division acts on large operands,
+     * so no precision is lost to a sub-unit multiplier (e.g. 1,100,000,000 with
+     * 10% VAT → vat = 100,000,000 exactly).
+     *
+     * @return array{net: float, vat: float}
+     */
+    public function extractVat(float $gross, float $vatPercent): array
+    {
+        $vat = Money::div(Money::mul($gross, $vatPercent), Money::add('100', $vatPercent));
+        $net = Money::sub($gross, $vat);
+
+        return [
+            'net' => Money::toFloat($net),
+            'vat' => Money::toFloat($vat),
         ];
     }
 }

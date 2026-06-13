@@ -41,6 +41,14 @@ class WalletTransaction extends Model
 
     public const TYPE_FEE_RELEASE = 'fee_release';
 
+    /**
+     * Append-only ledger entry recording an escrow hold being released back to
+     * available balance (balance_hold → balance). Emitted by
+     * WalletTransactionEngine::releaseHold() so every hold release leaves a
+     * distinct, timestamped audit row instead of mutating the original hold.
+     */
+    public const TYPE_HOLD_RELEASE = 'hold_release';
+
     public const STATUS_PENDING = 'pending';
 
     public const STATUS_CONFIRMED = 'confirmed';

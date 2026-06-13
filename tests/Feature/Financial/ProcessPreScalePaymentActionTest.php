@@ -23,10 +23,15 @@ class ProcessPreScalePaymentActionTest extends TestCase
     use DatabaseTransactions;
 
     private ProcessPreScalePaymentAction $action;
+
     private User $buyer;
+
     private User $supplier;
+
     private Wallet $buyerWallet;
+
     private Wallet $supplierWallet;
+
     private Order $order;
 
     /** Below-threshold order amount (eligible for direct purchase) */
@@ -43,7 +48,7 @@ class ProcessPreScalePaymentActionTest extends TestCase
             ->shouldReceive('generate')
             ->andReturn('test/invoice-stub.pdf');
 
-        $this->action      = app(ProcessPreScalePaymentAction::class);
+        $this->action = app(ProcessPreScalePaymentAction::class);
         $this->orderAmount = (float) config('financial.reservation_threshold', 1_950_000_000) - 1;
 
         // System (Saze) user — Action expects a user at config('financial.system_user_id').
@@ -51,24 +56,24 @@ class ProcessPreScalePaymentActionTest extends TestCase
         $systemUser = User::factory()->create();
         config(['financial.system_user_id' => $systemUser->id]);
         Wallet::create([
-            Wallet::USER_ID      => $systemUser->id,
-            Wallet::BALANCE      => 0,
+            Wallet::USER_ID => $systemUser->id,
+            Wallet::BALANCE => 0,
             Wallet::BALANCE_HOLD => 0,
         ]);
 
         // Buyer
-        $this->buyer       = User::factory()->create();
+        $this->buyer = User::factory()->create();
         $this->buyerWallet = Wallet::create([
-            Wallet::USER_ID      => $this->buyer->id,
-            Wallet::BALANCE      => $this->orderAmount * 2,
+            Wallet::USER_ID => $this->buyer->id,
+            Wallet::BALANCE => $this->orderAmount * 2,
             Wallet::BALANCE_HOLD => 0,
         ]);
 
         // Supplier
-        $this->supplier       = User::factory()->create();
+        $this->supplier = User::factory()->create();
         $this->supplierWallet = Wallet::create([
-            Wallet::USER_ID      => $this->supplier->id,
-            Wallet::BALANCE      => 0,
+            Wallet::USER_ID => $this->supplier->id,
+            Wallet::BALANCE => 0,
             Wallet::BALANCE_HOLD => 0,
         ]);
 
@@ -76,23 +81,23 @@ class ProcessPreScalePaymentActionTest extends TestCase
         // OFFICIAL_PRICE + WEIGHT_BEFORE_SCALE drive the POO/PTS calculation
         // inside the Action (see SettlementCalculatorService::calculatePOO).
         $this->order = Order::create([
-            Order::PLACER_USER_ID       => $this->buyer->id,
-            Order::ORDER_NUMBER         => 'TEST-PRE-' . now()->format('YmdHis') . rand(100, 999),
-            Order::STATUS               => Order::STATUS_PENDING,
-            Order::FINAL_AMOUNT         => $this->orderAmount,
-            Order::PAYMENT_STATUS       => 'unpaid',
-            Order::OFFICIAL_PRICE       => $this->orderAmount,
-            Order::WEIGHT_BEFORE_SCALE  => 1,
-            Order::SHIPPING_COST        => 0,
-            Order::VAT_RATE             => 0,
+            Order::PLACER_USER_ID => $this->buyer->id,
+            Order::ORDER_NUMBER => 'TEST-PRE-'.now()->format('YmdHis').rand(100, 999),
+            Order::STATUS => Order::STATUS_PENDING,
+            Order::FINAL_AMOUNT => $this->orderAmount,
+            Order::PAYMENT_STATUS => 'unpaid',
+            Order::OFFICIAL_PRICE => $this->orderAmount,
+            Order::WEIGHT_BEFORE_SCALE => 1,
+            Order::SHIPPING_COST => 0,
+            Order::VAT_RATE => 0,
         ]);
 
         OrderItem::factory()->create([
-            OrderItem::ORDER_ID         => $this->order->id,
+            OrderItem::ORDER_ID => $this->order->id,
             OrderItem::SUPPLIER_USER_ID => $this->supplier->id,
-            OrderItem::UNIT_PRICE       => $this->orderAmount,
-            OrderItem::TOTAL_PRICE      => $this->orderAmount,
-            OrderItem::QUANTITY         => 1,
+            OrderItem::UNIT_PRICE => $this->orderAmount,
+            OrderItem::TOTAL_PRICE => $this->orderAmount,
+            OrderItem::QUANTITY => 1,
         ]);
     }
 

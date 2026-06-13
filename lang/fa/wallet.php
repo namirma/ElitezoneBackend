@@ -35,6 +35,7 @@ return [
         'refund_reclaim_system' => 'بازگشت سهم تامین‌کننده به حساب سیستم بابت لغو سفارش #:order_number',
         'refund_release_system' => 'آزادسازی وجه خریدار از حساب سیستم بابت لغو سفارش #:order_number',
         'supplier_debt_reclaim' => 'بازپس‌گیری بدهی کسری باسکول از تامین‌کننده بابت سفارش #:order_number',
+        'buyer_refund_released' => 'آزادسازی وجه بازگشتی خریدار از حالت هولد بابت سفارش #:order_number',
         'deposit' => 'شارژ کیف پول',
         'withdraw' => 'برداشت از کیف پول',
     ],

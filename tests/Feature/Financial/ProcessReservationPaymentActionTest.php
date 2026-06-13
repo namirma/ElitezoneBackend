@@ -22,8 +22,11 @@ class ProcessReservationPaymentActionTest extends TestCase
     use DatabaseTransactions;
 
     private ProcessReservationPaymentAction $action;
+
     private User $buyer;
+
     private Wallet $wallet;
+
     private Order $order;
 
     /** Reservation threshold from config (1,950,000,000 Rials by default) */
@@ -40,15 +43,15 @@ class ProcessReservationPaymentActionTest extends TestCase
             ->shouldReceive('generate')
             ->andReturn('test/invoice-stub.pdf');
 
-        $this->action    = app(ProcessReservationPaymentAction::class);
+        $this->action = app(ProcessReservationPaymentAction::class);
         $this->threshold = (float) config('financial.reservation_threshold', 1_950_000_000);
 
         // System (Saze) user/wallet — Action expects user at financial.system_user_id
         $systemUser = User::factory()->create();
         config(['financial.system_user_id' => $systemUser->id]);
         Wallet::create([
-            Wallet::USER_ID      => $systemUser->id,
-            Wallet::BALANCE      => 0,
+            Wallet::USER_ID => $systemUser->id,
+            Wallet::BALANCE => 0,
             Wallet::BALANCE_HOLD => 0,
         ]);
 
@@ -56,16 +59,16 @@ class ProcessReservationPaymentActionTest extends TestCase
 
         // Wallet funded exactly at the threshold (just enough)
         $this->wallet = Wallet::create([
-            Wallet::USER_ID      => $this->buyer->id,
-            Wallet::BALANCE      => $this->threshold,
+            Wallet::USER_ID => $this->buyer->id,
+            Wallet::BALANCE => $this->threshold,
             Wallet::BALANCE_HOLD => 0,
         ]);
 
         $this->order = Order::create([
             Order::PLACER_USER_ID => $this->buyer->id,
-            Order::ORDER_NUMBER   => 'TEST-RES-' . now()->format('YmdHis') . rand(100, 999),
-            Order::STATUS         => Order::STATUS_PENDING,
-            Order::FINAL_AMOUNT   => $this->threshold * 2, // above threshold
+            Order::ORDER_NUMBER => 'TEST-RES-'.now()->format('YmdHis').rand(100, 999),
+            Order::STATUS => Order::STATUS_PENDING,
+            Order::FINAL_AMOUNT => $this->threshold * 2, // above threshold
             Order::PAYMENT_STATUS => 'unpaid',
         ]);
     }

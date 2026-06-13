@@ -30,6 +30,7 @@ class RecordSupplierMoadianInvoiceAction
     public function __construct(
         private readonly WalletTransactionEngine $walletEngine,
         private readonly InvoiceGenerator $invoiceGenerator,
+        private readonly \App\Services\Financial\SettlementCalculatorService $calculator,
     ) {}
 
     /**
@@ -54,10 +55,10 @@ class RecordSupplierMoadianInvoiceAction
         // PTSM is stored as payment_to_supplier after the weighbridge action
         // updates it. The VAT portion embedded in PTSM is:
         //   supplierVat = PTSM × (vat% / 100) / (1 + vat% / 100)
+        // Same bcmath split used at weighbridge time — releases exactly what was held.
         $ptsm = (float) $order->{Order::PAYMENT_TO_SUPPLIER};
         $vatRate = (float) ($order->{Order::VAT_RATE} ?? 10.0);
-        $vatMultiplier = ($vatRate / 100.0) / (1.0 + ($vatRate / 100.0));
-        $supplierVat = $ptsm * $vatMultiplier;
+        $supplierVat = $this->calculator->extractVat($ptsm, $vatRate)['vat'];
 
         $realSupplierId = $this->resolveSupplierUserId($order);
         $systemUserId = (int) config('financial.system_user_id', 1);

@@ -3,7 +3,6 @@
 namespace Tests\Feature\Financial;
 
 use App\Actions\Financial\PayHoldFeeAction;
-use App\Constants\FinancialCodes;
 use App\Exceptions\InsufficientBalanceException;
 use App\Models\Order;
 use App\Models\User;
@@ -23,8 +22,11 @@ class PayHoldFeeActionTest extends TestCase
     use DatabaseTransactions;
 
     private PayHoldFeeAction $action;
+
     private User $buyer;
+
     private Wallet $wallet;
+
     private Order $order;
 
     protected function setUp(): void
@@ -36,8 +38,8 @@ class PayHoldFeeActionTest extends TestCase
         $systemUser = User::factory()->create();
         config(['financial.system_user_id' => $systemUser->id]);
         Wallet::create([
-            Wallet::USER_ID      => $systemUser->id,
-            Wallet::BALANCE      => 0,
+            Wallet::USER_ID => $systemUser->id,
+            Wallet::BALANCE => 0,
             Wallet::BALANCE_HOLD => 0,
         ]);
 
@@ -46,17 +48,17 @@ class PayHoldFeeActionTest extends TestCase
 
         // Fund the wallet above the hold fee
         $this->wallet = Wallet::create([
-            Wallet::USER_ID      => $this->buyer->id,
-            Wallet::BALANCE      => PayHoldFeeAction::fee() * 3,
+            Wallet::USER_ID => $this->buyer->id,
+            Wallet::BALANCE => PayHoldFeeAction::fee() * 3,
             Wallet::BALANCE_HOLD => 0,
         ]);
 
         // Create a reserved order for this buyer
         $this->order = Order::create([
             Order::PLACER_USER_ID => $this->buyer->id,
-            Order::ORDER_NUMBER   => 'TEST-' . now()->format('YmdHis') . rand(100, 999),
-            Order::STATUS         => Order::STATUS_RESERVED,
-            Order::FINAL_AMOUNT   => 5_000_000_000,
+            Order::ORDER_NUMBER => 'TEST-'.now()->format('YmdHis').rand(100, 999),
+            Order::STATUS => Order::STATUS_RESERVED,
+            Order::FINAL_AMOUNT => 5_000_000_000,
             Order::PAYMENT_STATUS => 'unpaid',
         ]);
     }
@@ -109,8 +111,8 @@ class PayHoldFeeActionTest extends TestCase
     {
         // Pre-condition: order already extended with a future expiry
         $this->order->update([
-            Order::STATUS                  => Order::STATUS_RESERVED_EXTENDED,
-            Order::RESERVATION_EXPIRES_AT  => now()->addHours(12),
+            Order::STATUS => Order::STATUS_RESERVED_EXTENDED,
+            Order::RESERVATION_EXPIRES_AT => now()->addHours(12),
         ]);
 
         $balanceBefore = $this->wallet->balance;

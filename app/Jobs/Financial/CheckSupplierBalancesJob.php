@@ -129,9 +129,22 @@ class CheckSupplierBalancesJob implements ShouldQueue
                     ->first();
 
                 if ($holdTx) {
+                    // Move balance_hold → balance AND record an append-only
+                    // TYPE_HOLD_RELEASE ledger row (the previous code mutated the hold
+                    // row + bare increment/decrement, leaving no distinct release event).
+                    $walletEngine->releaseHold(
+                        (int) $lockedOrder->placer_user_id,
+                        (float) $holdTx->amount,
+                        $lockedOrder,
+                        __('wallet.descriptions.buyer_refund_released', [
+                            'order_number' => $lockedOrder->order_number,
+                        ]),
+                        $holdTx,
+                    );
+
+                    // Mark the original hold row settled so it is no longer found as an
+                    // outstanding hold (the release row above is the audit event).
                     $holdTx->update(['status' => FinancialCodes::STATUS_AVAILABLE]);
-                    $buyerWallet->decrement('balance_hold', $holdTx->amount);
-                    $buyerWallet->increment('balance', $holdTx->amount);
 
                     // Notify buyer
                     $buyer = $buyerWallet->user;

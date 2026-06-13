@@ -798,7 +798,9 @@ tests/
   Feature/
     Checkout/    — PlaceOrderTest (9 tests: auth, validation, cart-empty, security)
     Financial/   — PayHoldFeeActionTest, ProcessPreScalePaymentActionTest,
-                   ProcessReservationPaymentActionTest, WalletDepositTest
+                   ProcessReservationPaymentActionTest, WalletDepositTest,
+                   SettlementCalculatorServiceTest (bcmath POO/PTS/VAT — no DB),
+                   HoldReleaseAuditTest (append-only hold-release ledger)
     Policies/    — OrderPolicyTest, UserBankAccountPolicyTest,
                    CartPolicyTest, AddressPolicyTest, WishlistPolicyTest
     Pricing/     — CreatesPricingFixtures (shared trait),
@@ -808,7 +810,7 @@ tests/
   Unit/          — (empty placeholder dir — kept so phpunit.xml works)
 ```
 
-**Total: 142 tests, 312 assertions — all green. ✅**
+**Total: 156 tests, 342 assertions — all green. ✅**
 
 Patterns to follow when adding tests:
 - **Use factories**, never `User::create([...])` with raw arrays — `UserFactory`
@@ -1018,6 +1020,40 @@ The seeder (`database/seeders/ProductSeeder.php`) is the source of truth: the go
 code is **`gold`** (not `golden`). `SettlementCalculatorService::getCommissionRates()`
 matches `'gold', 'golden'` (alias) so a legacy value never silently falls through to the
 default rate and underpays a gold-tier consultant.
+
+### Money math is bcmath — never chain raw floats
+
+All settlement arithmetic (POO/PTS, commissions, VAT splits) goes through
+`App\Support\Money` (bcmath, `SCALE = 10`) — **never** chain native `float` ops for
+money. Raw floats accumulate IEEE-754 error on repeating decimals (e.g. the VAT
+multiplier `1/11`); at billion-Rial magnitudes a 6-place intermediate already lost
+~100 Rials, which is why `SCALE` is 10.
+
+- `SettlementCalculatorService::calculatePOO/PTS/calculateCommissions` are bcmath; they
+  compute at high precision and return a `float` only at the boundary (storage rounds to
+  the column's `decimal:2`). Behaviour is pinned by `SettlementCalculatorServiceTest`
+  (exact expected values for all 4 POO + 4 PTS variants + commissions) — keep it green.
+- **VAT split is centralised:** `SettlementCalculatorService::extractVat($gross, $vat%)`
+  returns `['net' => , 'vat' => ]` using `vat = gross × VAT / (100 + VAT)` (stable form,
+  no sub-unit multiplier). **Every** action that splits VAT must call `extractVat()` —
+  `ProcessWeighbridgeResultAction` (which *holds* the VAT) and the three Moadian-invoice
+  actions (`ReleaseConsultantHoldAction`, `RecordSupplierMoadianInvoiceAction`,
+  `RecordSystemMoadianInvoiceAction`, which *release* it) **must** use the identical split
+  so the released amount equals what was held — otherwise a sub-Rial residue is stranded
+  in `balance_hold`. Never reintroduce the inline `($vat/100)/(1+$vat/100)` float formula.
+
+### Hold release is append-only — `WalletTransactionEngine::releaseHold()`
+
+Moving `balance_hold → balance` must go through `WalletTransactionEngine::releaseHold(
+$userId, $amount, $order, $description, $sourceHold)`. It locks the wallet, moves the
+funds, and writes a distinct **`WalletTransaction::TYPE_HOLD_RELEASE`** row (status
+`AVAILABLE`, `meta.source_hold_id` linking the original hold) — so the hold *placement*
+and *release* are two immutable, timestamped ledger events that net to zero and can be
+reconstructed for audit. **Never** release a hold with a bare
+`decrement('balance_hold')` / `increment('balance')` (that left no release event).
+`CheckSupplierBalancesJob` uses `releaseHold()` and additionally flips the original hold
+row to `AVAILABLE` as a settled-marker so it is no longer found as outstanding.
+`HoldReleaseAuditTest` pins this contract.
 
 ### Wallet status vocabulary — cover `hold` everywhere
 

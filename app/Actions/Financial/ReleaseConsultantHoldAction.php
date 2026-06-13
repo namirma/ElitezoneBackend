@@ -6,6 +6,7 @@ namespace App\Actions\Financial;
 
 use App\Constants\FinancialCodes;
 use App\Models\Order;
+use App\Services\Financial\SettlementCalculatorService;
 use App\Services\Financial\WalletTransactionEngine;
 use App\Services\Invoice\InvoiceGenerator;
 use Illuminate\Support\Facades\DB;
@@ -32,6 +33,7 @@ class ReleaseConsultantHoldAction
     public function __construct(
         private readonly WalletTransactionEngine $walletEngine,
         private readonly InvoiceGenerator $invoiceGenerator,
+        private readonly SettlementCalculatorService $calculator,
     ) {}
 
     /**
@@ -70,14 +72,10 @@ class ReleaseConsultantHoldAction
         }
 
         // ── Recalculate the net / VAT split ───────────────────────────────────
-        // At weighbridge time the split was:
-        //   vatMultiplier = (vat% / 100) / (1 + vat% / 100)
-        //   consultantVat = gross × vatMultiplier
-        //   consultantNet = gross − consultantVat
+        // Must use the SAME bcmath split as ProcessWeighbridgeResultAction held, so
+        // the released net+VAT exactly equals what was parked (no balance_hold dust).
         $vatRate = (float) ($order->{Order::VAT_RATE} ?? 10.0);
-        $vatMultiplier = ($vatRate / 100.0) / (1.0 + ($vatRate / 100.0));
-        $consultantVat = $consultantGross * $vatMultiplier;
-        $consultantNet = $consultantGross - $consultantVat;
+        ['net' => $consultantNet, 'vat' => $consultantVat] = $this->calculator->extractVat($consultantGross, $vatRate);
 
         $systemUserId = (int) config('financial.system_user_id', 1);
         $vatUserId = (int) config('financial.vat_user_id', $systemUserId);

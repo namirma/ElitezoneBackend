@@ -52,7 +52,7 @@ class ProcessPodiumDepositAction
      */
     public function execute(array $statement): void
     {
-        $docNumber      = (string) ($statement['DocNumber'] ?? '');
+        $docNumber = (string) ($statement['DocNumber'] ?? '');
         $creditorAmount = (int) ($statement['CreditorAmount'] ?? 0);
 
         // فرمت زمان پادیوم: "HH:MM.SS.microseconds" — نرمال‌سازی به "HH:MM:SS"
@@ -63,6 +63,7 @@ class ProcessPodiumDepositAction
         // ── Idempotency guard ─────────────────────────────────────────────────
         if (empty($docNumber)) {
             Log::warning('ProcessPodiumDepositAction: empty DocNumber — skipped', ['statement' => $statement]);
+
             return;
         }
 
@@ -94,64 +95,67 @@ class ProcessPodiumDepositAction
         // ══════════════════════════════════════════════════════════════════════
         if (! empty($shenasehVariz) && $this->shenasehService->validate($shenasehVariz)) {
             $nationalCode = $this->shenasehService->extractNationalCode($shenasehVariz);
-            $user         = User::where('national_code', $nationalCode)->first();
+            $user = User::where('national_code', $nationalCode)->first();
 
             if ($user) {
                 // اگر IBAN فرستنده قابل استخراج است، باید با حساب ثبت‌شده تطبیق داشته باشد
                 if (! empty($senderIban) && ! $this->userHasRegisteredIban($user, $senderIban)) {
                     Log::warning('ProcessPodiumDepositAction: Pass1 — IBAN فرستنده با حساب ثبت‌شده کاربر مطابقت ندارد', [
-                        'user_id'       => $user->id,
+                        'user_id' => $user->id,
                         'national_code' => $nationalCode,
-                        'sender_iban'   => $senderIban,
-                        'shenaseh'      => $shenasehVariz,
-                        'amount'        => $creditorAmount,
+                        'sender_iban' => $senderIban,
+                        'shenaseh' => $shenasehVariz,
+                        'amount' => $creditorAmount,
                     ]);
 
                     PodiumDepositRecord::create([
-                        PodiumDepositRecord::DOC_NUMBER          => $docNumber,
-                        PodiumDepositRecord::SHENASEH_VARIZ      => $shenasehVariz,
-                        PodiumDepositRecord::SENDER_IBAN         => $senderIban,
-                        PodiumDepositRecord::SENDER_NAME         => $senderName,
-                        PodiumDepositRecord::NATIONAL_CODE       => $nationalCode,
-                        PodiumDepositRecord::CREDITOR_AMOUNT     => $creditorAmount,
+                        PodiumDepositRecord::DOC_NUMBER => $docNumber,
+                        PodiumDepositRecord::SHENASEH_VARIZ => $shenasehVariz,
+                        PodiumDepositRecord::SENDER_IBAN => $senderIban,
+                        PodiumDepositRecord::SENDER_NAME => $senderName,
+                        PodiumDepositRecord::NATIONAL_CODE => $nationalCode,
+                        PodiumDepositRecord::CREDITOR_AMOUNT => $creditorAmount,
                         PodiumDepositRecord::DEPOSITED_AT_JALALI => $depositedAt ?: null,
-                        PodiumDepositRecord::NOTE                => 'IBAN فرستنده با هیچ حساب تأییدشده‌ای برای این کاربر مطابقت ندارد',
+                        PodiumDepositRecord::NOTE => 'IBAN فرستنده با هیچ حساب تأییدشده‌ای برای این کاربر مطابقت ندارد',
                     ]);
+
                     return;
                 }
 
                 // شناسه واریز معتبر + IBAN تأیید شد (یا IBAN در دسترس نبود)
                 $this->creditWallet(
-                    user:          $user,
-                    amount:        $creditorAmount,
-                    docNumber:     $docNumber,
+                    user: $user,
+                    amount: $creditorAmount,
+                    docNumber: $docNumber,
                     shenasehVariz: $shenasehVariz,
-                    senderIban:    $senderIban,
-                    senderName:    $senderName,
-                    nationalCode:  $nationalCode,
-                    depositedAt:   $depositedAt,
-                    matchedBy:     PodiumDepositRecord::MATCHED_BY_SHENASEH,
+                    senderIban: $senderIban,
+                    senderName: $senderName,
+                    nationalCode: $nationalCode,
+                    depositedAt: $depositedAt,
+                    matchedBy: PodiumDepositRecord::MATCHED_BY_SHENASEH,
                 );
+
                 return;
             }
 
             // شناسه واریز معتبر ولی کاربری با این کد ملی وجود ندارد
             Log::warning('ProcessPodiumDepositAction: Pass1 — کاربری با این کد ملی یافت نشد', [
                 'national_code' => $nationalCode,
-                'shenaseh'      => $shenasehVariz,
-                'amount'        => $creditorAmount,
+                'shenaseh' => $shenasehVariz,
+                'amount' => $creditorAmount,
             ]);
 
             PodiumDepositRecord::create([
-                PodiumDepositRecord::DOC_NUMBER          => $docNumber,
-                PodiumDepositRecord::SHENASEH_VARIZ      => $shenasehVariz,
-                PodiumDepositRecord::SENDER_IBAN         => $senderIban,
-                PodiumDepositRecord::SENDER_NAME         => $senderName,
-                PodiumDepositRecord::NATIONAL_CODE       => $nationalCode,
-                PodiumDepositRecord::CREDITOR_AMOUNT     => $creditorAmount,
+                PodiumDepositRecord::DOC_NUMBER => $docNumber,
+                PodiumDepositRecord::SHENASEH_VARIZ => $shenasehVariz,
+                PodiumDepositRecord::SENDER_IBAN => $senderIban,
+                PodiumDepositRecord::SENDER_NAME => $senderName,
+                PodiumDepositRecord::NATIONAL_CODE => $nationalCode,
+                PodiumDepositRecord::CREDITOR_AMOUNT => $creditorAmount,
                 PodiumDepositRecord::DEPOSITED_AT_JALALI => $depositedAt ?: null,
-                PodiumDepositRecord::NOTE                => 'کاربری با این کد ملی در سیستم یافت نشد',
+                PodiumDepositRecord::NOTE => 'کاربری با این کد ملی در سیستم یافت نشد',
             ]);
+
             return;
         }
 
@@ -175,10 +179,10 @@ class ProcessPodiumDepositAction
             $note = "انتقال پل — شبا {$senderIban} متعلق به کاربر #{$suggestedUser->id} شناسایی شد اما شناسه واریز ندارد. شارژ فقط با تأیید ادمین انجام می‌شود";
 
             Log::info('ProcessPodiumDepositAction: پل بدون شناسه واریز → unmatched (ادمین باید تأیید کند)', [
-                'doc_number'     => $docNumber,
-                'sender_iban'    => $senderIban,
+                'doc_number' => $docNumber,
+                'sender_iban' => $senderIban,
                 'suggested_user' => $suggestedUser->id,
-                'amount'         => $creditorAmount,
+                'amount' => $creditorAmount,
             ]);
         } else {
             // بدون IBAN یا IBAN ناشناخته: نیاز به بررسی جدی‌تر دارد
@@ -189,22 +193,22 @@ class ProcessPodiumDepositAction
                     : 'شناسه واریز نامعتبر — نیاز به بررسی دستی');
 
             Log::warning('ProcessPodiumDepositAction: unmatched deposit', [
-                'doc_number'  => $docNumber,
-                'shenaseh'    => $shenasehVariz ?: 'N/A',
+                'doc_number' => $docNumber,
+                'shenaseh' => $shenasehVariz ?: 'N/A',
                 'sender_iban' => $senderIban ?: 'N/A',
-                'amount'      => $creditorAmount,
+                'amount' => $creditorAmount,
             ]);
         }
 
         PodiumDepositRecord::create([
-            PodiumDepositRecord::DOC_NUMBER          => $docNumber,
-            PodiumDepositRecord::SHENASEH_VARIZ      => $shenasehVariz ?: null,
-            PodiumDepositRecord::SENDER_IBAN         => $senderIban ?: null,
-            PodiumDepositRecord::SENDER_NAME         => $senderName,
-            PodiumDepositRecord::NATIONAL_CODE       => $suggestedUser?->national_code,
-            PodiumDepositRecord::CREDITOR_AMOUNT     => $creditorAmount,
+            PodiumDepositRecord::DOC_NUMBER => $docNumber,
+            PodiumDepositRecord::SHENASEH_VARIZ => $shenasehVariz ?: null,
+            PodiumDepositRecord::SENDER_IBAN => $senderIban ?: null,
+            PodiumDepositRecord::SENDER_NAME => $senderName,
+            PodiumDepositRecord::NATIONAL_CODE => $suggestedUser?->national_code,
+            PodiumDepositRecord::CREDITOR_AMOUNT => $creditorAmount,
             PodiumDepositRecord::DEPOSITED_AT_JALALI => $depositedAt ?: null,
-            PodiumDepositRecord::NOTE                => $note,
+            PodiumDepositRecord::NOTE => $note,
         ]);
     }
 
@@ -217,15 +221,15 @@ class ProcessPodiumDepositAction
      * همه‌چیز داخل یک DB::transaction با lockForUpdate اجرا می‌شود.
      */
     private function creditWallet(
-        User    $user,
-        int     $amount,
-        string  $docNumber,
+        User $user,
+        int $amount,
+        string $docNumber,
         ?string $shenasehVariz,
         ?string $senderIban,
         ?string $senderName,
         ?string $nationalCode,
         ?string $depositedAt,
-        string  $matchedBy,
+        string $matchedBy,
     ): void {
         // بارگذاری پروفایل تأییدشده کاربر (ثبت‌شده از پاسارگاد)
         $profile = $user->profile;
@@ -248,26 +252,26 @@ class ProcessPodiumDepositAction
                 : ['shenaseh' => $shenasehVariz];
 
             $txn = $wallet->transactions()->create([
-                WalletTransaction::AMOUNT      => $amount,
-                WalletTransaction::TYPE        => WalletTransaction::TYPE_DEPOSIT,
-                WalletTransaction::STATUS      => WalletTransaction::STATUS_CONFIRMED,
+                WalletTransaction::AMOUNT => $amount,
+                WalletTransaction::TYPE => WalletTransaction::TYPE_DEPOSIT,
+                WalletTransaction::STATUS => WalletTransaction::STATUS_CONFIRMED,
                 WalletTransaction::DESCRIPTION => __($descKey, $descParam),
-                WalletTransaction::META        => [
+                WalletTransaction::META => [
                     'payment_method' => WalletTransaction::METHOD_BANK_TRANSFER,
-                    'source'         => 'podium_deposit',
-                    'doc_number'     => $docNumber,
-                    'matched_by'     => $matchedBy,
+                    'source' => 'podium_deposit',
+                    'doc_number' => $docNumber,
+                    'matched_by' => $matchedBy,
                     'shenaseh_variz' => $shenasehVariz,
-                    'sender_iban'    => $senderIban,
-                    'national_code'  => $nationalCode,
+                    'sender_iban' => $senderIban,
+                    'national_code' => $nationalCode,
                     // اطلاعات تأییدشده فرستنده از پروفایل (برای فاکتور/رسید)
                     'depositor' => [
-                        'name'          => $profile?->name,
-                        'family'        => $profile?->family,
-                        'full_name'     => $user->full_name,
+                        'name' => $profile?->name,
+                        'family' => $profile?->family,
+                        'full_name' => $user->full_name,
                         'national_code' => $profile?->national_code ?? $nationalCode,
-                        'national_id'   => $profile?->national_id,
-                        'mobile'        => $user->{User::MOBILE},
+                        'national_id' => $profile?->national_id,
+                        'mobile' => $user->{User::MOBILE},
                     ],
                 ],
             ]);
@@ -275,17 +279,17 @@ class ProcessPodiumDepositAction
             $wallet->increment(Wallet::BALANCE, $amount);
 
             PodiumDepositRecord::create([
-                PodiumDepositRecord::DOC_NUMBER          => $docNumber,
-                PodiumDepositRecord::SHENASEH_VARIZ      => $shenasehVariz,
-                PodiumDepositRecord::SENDER_IBAN         => $senderIban,
-                PodiumDepositRecord::SENDER_NAME         => $senderName,
-                PodiumDepositRecord::NATIONAL_CODE       => $nationalCode,
-                PodiumDepositRecord::CREDITOR_AMOUNT     => $amount,
-                PodiumDepositRecord::USER_ID             => $user->id,
-                PodiumDepositRecord::WALLET_TXN_ID       => $txn->id,
-                PodiumDepositRecord::MATCHED_BY          => $matchedBy,
+                PodiumDepositRecord::DOC_NUMBER => $docNumber,
+                PodiumDepositRecord::SHENASEH_VARIZ => $shenasehVariz,
+                PodiumDepositRecord::SENDER_IBAN => $senderIban,
+                PodiumDepositRecord::SENDER_NAME => $senderName,
+                PodiumDepositRecord::NATIONAL_CODE => $nationalCode,
+                PodiumDepositRecord::CREDITOR_AMOUNT => $amount,
+                PodiumDepositRecord::USER_ID => $user->id,
+                PodiumDepositRecord::WALLET_TXN_ID => $txn->id,
+                PodiumDepositRecord::MATCHED_BY => $matchedBy,
                 PodiumDepositRecord::DEPOSITED_AT_JALALI => $depositedAt ?: null,
-                PodiumDepositRecord::PROCESSED_AT        => now(),
+                PodiumDepositRecord::PROCESSED_AT => now(),
             ]);
         });
 
@@ -301,11 +305,11 @@ class ProcessPodiumDepositAction
         }
 
         Log::info('ProcessPodiumDepositAction: واریز با موفقیت پردازش شد', [
-            'user_id'      => $user->id,
+            'user_id' => $user->id,
             'amount_rials' => $amount,
-            'doc_number'   => $docNumber,
-            'matched_by'   => $matchedBy,
-            'sender_iban'  => $senderIban,
+            'doc_number' => $docNumber,
+            'matched_by' => $matchedBy,
+            'sender_iban' => $senderIban,
         ]);
     }
 
@@ -367,7 +371,7 @@ class ProcessPodiumDepositAction
     {
         // ── مسیر ۱: SatnaResult.SourceName + SourceLastName (مستند رسمی — ساتنا) ─
         $satnaFirst = trim((string) data_get($statement, 'SatnaResult.SourceName', ''));
-        $satnaLast  = trim((string) data_get($statement, 'SatnaResult.SourceLastName', ''));
+        $satnaLast = trim((string) data_get($statement, 'SatnaResult.SourceLastName', ''));
         if ($satnaFirst !== '' || $satnaLast !== '') {
             $name = trim("{$satnaFirst} {$satnaLast}");
             if (! empty($name) && strtolower($name) !== 'null') {
@@ -412,7 +416,7 @@ class ProcessPodiumDepositAction
 
             Log::debug('ProcessPodiumDepositAction: sender name not found — full statement keys', [
                 'statement_keys' => array_keys($statement),
-                'description'    => mb_substr($description, 0, 200),
+                'description' => mb_substr($description, 0, 200),
             ]);
         }
 
@@ -432,7 +436,7 @@ class ProcessPodiumDepositAction
         $bankAccount = UserBankAccount::where(function ($q) use ($normalizedIban) {
             $ibanWithoutIR = preg_replace('/^IR/i', '', $normalizedIban);
             $q->whereRaw('UPPER(REPLACE(shaba, " ", "")) = ?', [$normalizedIban])
-              ->orWhereRaw('UPPER(REPLACE(shaba, " ", "")) = ?', [$ibanWithoutIR]);
+                ->orWhereRaw('UPPER(REPLACE(shaba, " ", "")) = ?', [$ibanWithoutIR]);
         })
             ->where(UserBankAccount::STATUS, UserBankAccount::STATUS_APPROVED)
             ->with('user')
@@ -451,13 +455,13 @@ class ProcessPodiumDepositAction
     private function userHasRegisteredIban(User $user, string $senderIban): bool
     {
         $normalizedIban = strtoupper(preg_replace('/\s+/', '', $senderIban));
-        $ibanWithoutIR  = preg_replace('/^IR/i', '', $normalizedIban);
+        $ibanWithoutIR = preg_replace('/^IR/i', '', $normalizedIban);
 
         return $user->bankAccounts()
             ->where(UserBankAccount::STATUS, UserBankAccount::STATUS_APPROVED)
             ->where(function ($q) use ($normalizedIban, $ibanWithoutIR) {
                 $q->whereRaw('UPPER(REPLACE(shaba, " ", "")) = ?', [$normalizedIban])
-                  ->orWhereRaw('UPPER(REPLACE(shaba, " ", "")) = ?', [$ibanWithoutIR]);
+                    ->orWhereRaw('UPPER(REPLACE(shaba, " ", "")) = ?', [$ibanWithoutIR]);
             })
             ->exists();
     }

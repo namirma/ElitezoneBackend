@@ -77,6 +77,51 @@ class WalletTransactionEngine
     }
 
     /**
+     * Release an escrow hold back to available balance, append-only.
+     *
+     * Atomically moves `balance_hold → balance` AND records a distinct
+     * `TYPE_HOLD_RELEASE` WalletTransaction. Unlike mutating the original hold
+     * row's status, this keeps the ledger immutable: the hold (placement) and the
+     * release are two timestamped events that net to zero, so the hold history is
+     * always reconstructable for audit.
+     *
+     * @param  WalletTransaction|null  $sourceHold  the original hold row, linked in meta for traceability.
+     */
+    public function releaseHold(
+        int $userId,
+        float $amount,
+        Order $order,
+        ?string $description = null,
+        ?WalletTransaction $sourceHold = null,
+    ): WalletTransaction {
+        return DB::transaction(function () use ($userId, $amount, $order, $description, $sourceHold) {
+            $wallet = Wallet::firstOrCreate(['user_id' => $userId]);
+            $wallet = Wallet::where('id', $wallet->id)->lockForUpdate()->first();
+
+            if ((float) $wallet->balance_hold < $amount) {
+                throw new InsufficientBalanceException($amount, (float) $wallet->balance_hold);
+            }
+
+            $wallet->balance_hold -= $amount;
+            $wallet->balance += $amount;
+            $wallet->save();
+
+            return WalletTransaction::create([
+                'wallet_id' => $wallet->id,
+                'order_id' => $order->id,
+                'amount' => $amount,
+                'type' => WalletTransaction::TYPE_HOLD_RELEASE,
+                'status' => FinancialCodes::STATUS_AVAILABLE,
+                'description' => $description,
+                'meta' => [
+                    'op' => 'hold_release',
+                    'source_hold_id' => $sourceHold?->id,
+                ],
+            ]);
+        });
+    }
+
+    /**
      * تشخیص آیدی کاربر بر اساس کد کیف پول
      *
      * Note: callers that know the target user ID up-front should always pass
