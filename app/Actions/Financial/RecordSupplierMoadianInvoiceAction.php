@@ -102,8 +102,8 @@ class RecordSupplierMoadianInvoiceAction
                 Order::SUPPLIER_HOLD_RELEASED_AT => now(),
             ]);
 
-            // Doc O — فاکتور مودیان سوپلایر (سوپلایر → سازه)
-            $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_TAX_INVOICE_SUPPLIER);
+            // Doc O — فاکتور مودیان سوپلایر
+            $this->invoiceGenerator->generateSupplierMoadianInvoice($locked);
 
             Log::channel('financial')->info("Supplier VAT hold released for order {$locked->id}. Ref: {$moadianRef}. VAT: {$supplierVat}");
         }, 3);

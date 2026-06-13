@@ -58,11 +58,8 @@ class ProcessReservationPaymentAction
                 'reservation_expires_at' => now()->addHours($validityHours),
             ]);
 
-            // ── صدور اسناد مالی رزرو ─────────────────────────────────────
-            // E — رسید پرداخت رزرو برای خریدار
-            $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_RESERVE_RECEIPT);
-            // F — گزارش رزرو برای سوپلایر
-            $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_RESERVE_REPORT);
+            // ── صدور اسناد مالی رزرو (E + F) ────────────────────────────
+            $this->invoiceGenerator->generateReservationDocs($locked);
 
             Log::channel('financial')->info("سفارش {$locked->order_number} رزرو شد.");
         }, 3);

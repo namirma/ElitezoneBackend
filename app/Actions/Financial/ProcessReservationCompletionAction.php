@@ -131,9 +131,8 @@ class ProcessReservationCompletionAction
                 Order::PAID_AT => now(),
             ]);
 
-            $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_FINAL_RECEIPT_OWNER);
-            $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_FINAL_REPORT_SUPPLIER);
-            $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_LOADING_ORDER);
+            // ── صدور اسناد تکمیل وجه (G + H + C) ────────────────────────
+            $this->invoiceGenerator->generateReservationCompletionDocs($locked);
 
             Log::channel('financial')->info("تکمیل وجه سفارش {$locked->id} انجام شد.");
         }, 3);

@@ -44,8 +44,8 @@ class ProcessWeighbridgeResultActionTest extends TestCase
         // PDF generation is irrelevant to the financial assertions — mock it so the
         // missing test-environment Blade views don't break the run.
         $this->mock(InvoiceGenerator::class)
-            ->shouldReceive('generate')
-            ->andReturn('test/invoice-stub.pdf');
+            ->shouldReceive('generateWeighbridgeDocs')
+            ->andReturnNull();
 
         // SMS service has no TSMS credentials in test env — mock it so the constructor
         // does not throw TypeError (string property ← null config) and no real HTTP call

@@ -66,14 +66,12 @@ class CancelOrderAction
                 Order::CANCEL_REASON => $reason,
             ]);
 
-            // ۵. صدور اسناد لغو (فقط اگر تراکنش مالی وجود داشته) ──────────
-            // i — رسید استرداد وجه برای خریدار (فقط اگر واقعاً استرداد شد)
-            if ($refundWallet && ($wasReserved || $wasPaid)) {
-                $this->invoiceGenerator->generate($order, FinancialCodes::DOC_REFUND_RECEIPT);
-            }
-            // j — گزارش لغو برای سوپلایر (هر بار که سفارش پولی داشت)
+            // ۵. صدور اسناد لغو (Doc j همیشه، Doc i فقط اگر استرداد شد) ─────
             if ($wasReserved || $wasPaid) {
-                $this->invoiceGenerator->generate($order, FinancialCodes::DOC_CANCEL_REPORT);
+                $this->invoiceGenerator->generateCancellationDocs(
+                    $order,
+                    withRefundReceipt: (bool) $refundWallet
+                );
             }
 
             Log::channel('orders')->info("سفارش شماره {$order->order_number} با موفقیت لغو شد.", [

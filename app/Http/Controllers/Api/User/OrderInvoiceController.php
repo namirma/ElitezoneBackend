@@ -50,7 +50,7 @@ class OrderInvoiceController extends Controller
             return error(__('orders.invalid_invoice_type'), [], 422);
         }
 
-        $pdf = $generator->generate($order, $typeMap[$type], 'download');
+        $pdf = $generator->download($order, $typeMap[$type]);
 
         return $pdf->download("invoice-{$order->order_number}-{$type}.pdf");
     }

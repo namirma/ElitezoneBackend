@@ -117,8 +117,8 @@ class RecordSystemMoadianInvoiceAction
                 Order::SYSTEM_HOLD_RELEASED_AT => now(),
             ]);
 
-            // ── Doc P: فاکتور مودیان سیستم (سازه → خریدار) ───────────────
-            $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_TAX_INVOICE_BUYER);
+            // Doc P — فاکتور مودیان سیستم (سازه → خریدار)
+            $this->invoiceGenerator->generateSystemMoadianInvoice($locked);
 
             Log::channel('financial')->info("System (Saze) VAT hold released for order {$locked->id}. Ref: {$moadianRef}. sazeVat: {$sazeVat}");
         }, 3);

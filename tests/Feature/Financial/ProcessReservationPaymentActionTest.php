@@ -40,8 +40,8 @@ class ProcessReservationPaymentActionTest extends TestCase
         // These tests verify financial side-effects only; PDF generation is mocked
         // so that missing test-environment Blade views don't break unrelated assertions.
         $this->mock(InvoiceGenerator::class)
-            ->shouldReceive('generate')
-            ->andReturn('test/invoice-stub.pdf');
+            ->shouldReceive('generateReservationDocs')
+            ->andReturnNull();
 
         $this->action = app(ProcessReservationPaymentAction::class);
         $this->threshold = (float) config('financial.reservation_threshold', 1_950_000_000);

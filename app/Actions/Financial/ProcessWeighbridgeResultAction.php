@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Actions\Financial;
 
-use App\Constants\FinancialCodes;
 use App\Models\Order;
 use App\Services\Financial\SupplierDebtHandler;
 use App\Services\Financial\WeighbridgeReconciler;
@@ -69,13 +68,13 @@ class ProcessWeighbridgeResultAction
 
             $result = $this->reconciler->reconcile($locked, $actualWeight);
 
+            $isDeficit = $result->diffPOO < -$this->tolerance();
             $status = 'equal';
-            if ($result->diffPOO < -$this->tolerance()) {
+            if ($isDeficit) {
                 $status = $this->debtHandler->handle($locked, abs($result->diffPOO), abs($result->diffPTS));
-                $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_MODIFIED_INVOICE_OWNER);
-                $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_MODIFIED_INVOICE_SUPPLIER);
             }
-            $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_BILL_OF_LADING);
+            // Doc I (always) + LO/LS (only when deficit)
+            $this->invoiceGenerator->generateWeighbridgeDocs($locked, $isDeficit);
 
             $consultantGross = $this->vatRouter->route($locked, $result);
 

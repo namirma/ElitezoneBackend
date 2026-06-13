@@ -15,6 +15,17 @@ use Illuminate\Support\Facades\Log;
  *  - DocumentSequenceService : شماره‌گذاری یکتای سند
  *  - InvoiceDataBuilder      : آماده‌سازی داده برای Blade view
  *  - InvoicePdfRenderer      : رندر PDF و ذخیره روی disk
+ *
+ * Public API — scenario methods (save mode, void):
+ *   generateDirectPurchaseDocs()        — Docs A, B, C (+ D if consultant)
+ *   generateReservationDocs()           — Docs E, F
+ *   generateReservationCompletionDocs() — Docs G, H, C
+ *   generateWeighbridgeDocs()           — Doc I (+ LO/LS if deficit)
+ *   generateCancellationDocs()          — Doc j (+ i if refund happened)
+ *   generateSupplierMoadianInvoice()    — Doc O
+ *   generateSystemMoadianInvoice()      — Doc P
+ *   generateConsultantMoadianInvoice()  — Doc Q
+ *   download()                          — any single doc as a streamed PDF
  */
 class InvoiceGenerator
 {
@@ -24,17 +35,91 @@ class InvoiceGenerator
         protected InvoicePdfRenderer $pdfRenderer,
     ) {}
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Scenario entry-points (callers express intent; routing logic stays here)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /** Docs A + B + C (direct purchase). Adds Doc D when $withConsultant. */
+    public function generateDirectPurchaseDocs(Order $order, bool $withConsultant = false): void
+    {
+        $this->generate($order, FinancialCodes::DOC_RECEIPT_OWNER);
+        $this->generate($order, FinancialCodes::DOC_REPORT_SUPPLIER);
+        $this->generate($order, FinancialCodes::DOC_LOADING_ORDER);
+        if ($withConsultant) {
+            $this->generate($order, FinancialCodes::DOC_CONSULTANT_REPORT);
+        }
+    }
+
+    /** Docs E + F (reservation start). */
+    public function generateReservationDocs(Order $order): void
+    {
+        $this->generate($order, FinancialCodes::DOC_RESERVE_RECEIPT);
+        $this->generate($order, FinancialCodes::DOC_RESERVE_REPORT);
+    }
+
+    /** Docs G + H + C (reservation completion). */
+    public function generateReservationCompletionDocs(Order $order): void
+    {
+        $this->generate($order, FinancialCodes::DOC_FINAL_RECEIPT_OWNER);
+        $this->generate($order, FinancialCodes::DOC_FINAL_REPORT_SUPPLIER);
+        $this->generate($order, FinancialCodes::DOC_LOADING_ORDER);
+    }
+
+    /** Doc I (bill of lading). Prepends Docs LO + LS when $isDeficit. */
+    public function generateWeighbridgeDocs(Order $order, bool $isDeficit): void
+    {
+        if ($isDeficit) {
+            $this->generate($order, FinancialCodes::DOC_MODIFIED_INVOICE_OWNER);
+            $this->generate($order, FinancialCodes::DOC_MODIFIED_INVOICE_SUPPLIER);
+        }
+        $this->generate($order, FinancialCodes::DOC_BILL_OF_LADING);
+    }
+
+    /** Doc j (cancellation report). Prepends Doc i when $withRefundReceipt. */
+    public function generateCancellationDocs(Order $order, bool $withRefundReceipt): void
+    {
+        if ($withRefundReceipt) {
+            $this->generate($order, FinancialCodes::DOC_REFUND_RECEIPT);
+        }
+        $this->generate($order, FinancialCodes::DOC_CANCEL_REPORT);
+    }
+
+    /** Doc O — supplier Moadian (tax) invoice. */
+    public function generateSupplierMoadianInvoice(Order $order): void
+    {
+        $this->generate($order, FinancialCodes::DOC_TAX_INVOICE_SUPPLIER);
+    }
+
+    /** Doc P — system (Saze) Moadian invoice. */
+    public function generateSystemMoadianInvoice(Order $order): void
+    {
+        $this->generate($order, FinancialCodes::DOC_TAX_INVOICE_BUYER);
+    }
+
+    /** Doc Q — consultant Moadian invoice. */
+    public function generateConsultantMoadianInvoice(Order $order): void
+    {
+        $this->generate($order, FinancialCodes::DOC_TAX_INVOICE_CONSULTANT);
+    }
+
+    /** Returns the raw PDF object for streaming/download to the client. */
+    public function download(Order $order, string $docType): mixed
+    {
+        return $this->generate($order, $docType, 'download');
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Internal implementation (routing + PDF pipeline)
+    // ─────────────────────────────────────────────────────────────────────────
+
     /**
-     * متد اصلی تولید سند مالی.
-     *
-     * @param  string  $docType  نوع سند — یکی از ثابت‌های FinancialCodes
      * @param  string  $outputMode  'save' (ذخیره روی disk) | 'stream' | 'download' (خروجی PDF خام)
      * @return string|\Mpdf\Mpdf در حالت save: مسیر فایل؛ غیر از آن: آبجکت PDF
      *
      * پیش‌نیاز: $order باید relations زیر را load کرده باشد:
      *   items.productVariant.product, placer.profile, address.city, address.province
      */
-    public function generate(Order $order, string $docType, string $outputMode = 'save'): mixed
+    private function generate(Order $order, string $docType, string $outputMode = 'save'): mixed
     {
         // 1. بارگذاری داده‌های ضروری که caller ممکن است فراموش کرده باشد
         $order->loadMissing([
@@ -68,7 +153,7 @@ class InvoiceGenerator
 
     private function generateDocumentNumber(Order $order, string $docType): string
     {
-        $firstItemCategory = $order->items->first()->productVariant->product->category_code ?? '';
+        $firstItemCategory = $order->items->first()?->productVariant?->product?->category_code ?? '';
         $context = (strtoupper($firstItemCategory) === 'BRICK')
             ? DocumentSequenceService::CTX_BRICK
             : DocumentSequenceService::CTX_REBAR;

@@ -126,17 +126,11 @@ class ProcessPreScalePaymentAction
                 'paid_at' => now(),
             ]);
 
-            // ── صدور اسناد مالی خرید مستقیم ─────────────────────────────
-            // A — رسید پرداخت برای خریدار
-            $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_RECEIPT_OWNER);
-            // B — گزارش پرداخت برای سوپلایر
-            $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_REPORT_SUPPLIER);
-            // C — دستور بارگیری (مشترک)
-            $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_LOADING_ORDER);
-            // D — گزارش مشاور فنی (فقط اگر سفارش مشاور دارد)
-            if ($locked->{Order::BENEFICIARY_USER_ID} !== null) {
-                $this->invoiceGenerator->generate($locked, FinancialCodes::DOC_CONSULTANT_REPORT);
-            }
+            // ── صدور اسناد مالی خرید مستقیم (A + B + C، با D در صورت داشتن مشاور) ──
+            $this->invoiceGenerator->generateDirectPurchaseDocs(
+                $locked,
+                withConsultant: $locked->{Order::BENEFICIARY_USER_ID} !== null
+            );
 
             Log::channel('financial')->info("پرداخت سفارش {$locked->id} با موفقیت انجام شد. فرمول: TC={$transCommission} VAT={$transVat}");
         }, 3);
