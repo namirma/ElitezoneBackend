@@ -5,6 +5,7 @@ namespace App\Console;
 use App\Console\Commands\CancelExpiredOrders;
 use App\Jobs\Analytics\CalculateCustomerRfm;
 use App\Jobs\Analytics\PredictInventoryNeeds;
+use App\Jobs\Analytics\RollupProductViewsJob;
 use App\Jobs\Financial\CheckSupplierBalancesJob;
 use App\Jobs\Financial\PollPodiumDepositsJob;
 use Illuminate\Console\Scheduling\Schedule;
@@ -44,6 +45,13 @@ class Kernel extends ConsoleKernel
 
         $schedule->job(new PredictInventoryNeeds)
             ->dailyAt('04:00')
+            ->withoutOverlapping()
+            ->onOneServer();
+
+        // تجمیع روزانه‌ی بازدید محصول در product_view_daily + حذف داده‌ی خامِ منقضی
+        // (retention/حریم خصوصی). آنالیتیکس از جدول تجمیعی می‌خواند نه raw.
+        $schedule->job(new RollupProductViewsJob)
+            ->dailyAt('02:30')
             ->withoutOverlapping()
             ->onOneServer();
 

@@ -25,6 +25,7 @@ class AnalyticsController extends Controller
             'revenue_chart' => $this->analyticsService->getRevenueChartData(30),
             'sales_funnel' => $this->analyticsService->getSalesFunnel(),
             'rfm_segments' => $this->analyticsService->getCustomerSegmentsChart(),
+            'customer_value' => $this->analyticsService->getCustomerValueMetrics(),
             'top_products' => $this->analyticsService->getTopProducts(),
         ]);
     }

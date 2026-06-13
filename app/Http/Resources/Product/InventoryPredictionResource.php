@@ -2,8 +2,8 @@
 
 namespace App\Http\Resources\Product;
 
-use Illuminate\Http\Request;
 use App\Http\Resources\BaseJsonResource;
+use Illuminate\Http\Request;
 
 /**
  * @mixin \App\Models\InventoryPrediction
@@ -15,6 +15,10 @@ class InventoryPredictionResource extends BaseJsonResource
      */
     public function toArray(Request $request): array
     {
+        // sales_velocity و search_volume هوش رقابتی‌اند (نشان می‌دهند چه چیزی خوب
+        // می‌فروشد و چه چیزی پرجستجوست) — فقط برای ادمین برگردانده می‌شوند.
+        $isAdmin = $request->user()?->hasRole('admin') ?? false;
+
         return [
             'id' => $this->id,
 
@@ -25,12 +29,12 @@ class InventoryPredictionResource extends BaseJsonResource
                 'sku' => $this->variant->sku,
             ],
 
-            // ۲. متریک‌های آماری (Facts)
-            'metrics' => [
+            // ۲. متریک‌های آماری (Facts) — متریک‌های حساس فقط برای ادمین
+            'metrics' => array_filter([
                 'current_stock' => (int) $this->current_stock,
-                'sales_velocity' => (float) $this->sales_velocity_30d,
-                'search_hits' => (int) $this->search_volume_7d,
-            ],
+                'sales_velocity' => $isAdmin ? (float) $this->sales_velocity_30d : null,
+                'search_hits' => $isAdmin ? (int) $this->search_volume_7d : null,
+            ], fn ($v) => $v !== null),
 
             // ۳. خروجی هوش مصنوعی (Predictions)
             'analysis' => [

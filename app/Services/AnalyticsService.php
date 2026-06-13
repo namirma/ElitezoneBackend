@@ -130,6 +130,54 @@ class AnalyticsService
     }
 
     /**
+     * 5. متریک‌های ارزش و ریزش مشتری (CLV / Churn).
+     *
+     * بر پایه‌ی CustomerStat که job RFM پر می‌کند:
+     *  - CLV (تخمینی، تاریخی): میانگین monetary_total مشتریان فعال.
+     *  - Churn rate: نسبت مشتریانِ «از دست رفته» (recency > آستانه‌ی churn یا سگمنت lost).
+     *  - میانگین عمر سفارش‌دهی و میانگین تعداد سفارش.
+     */
+    public function getCustomerValueMetrics(): array
+    {
+        return Cache::remember('analytics_customer_value', 60 * 60, function () {
+            $churnDays = (int) config('intelligence.rfm.churn_days', 180);
+
+            $total = (int) CustomerStat::query()->count();
+
+            if ($total === 0) {
+                return [
+                    'total_customers' => 0,
+                    'avg_clv' => 0,
+                    'avg_orders_per_customer' => 0,
+                    'churned_customers' => 0,
+                    'churn_rate' => 0.0,
+                    'active_customers' => 0,
+                ];
+            }
+
+            $avgClv = (float) CustomerStat::query()->avg(CustomerStat::MONETARY_TOTAL);
+            $avgOrders = (float) CustomerStat::query()->avg(CustomerStat::FREQUENCY_COUNT);
+
+            // ریزش: یا سگمنت lost است یا recency از آستانه گذشته.
+            $churned = (int) CustomerStat::query()
+                ->where(function ($q) use ($churnDays) {
+                    $q->where(CustomerStat::SEGMENT, CustomerStat::SEGMENT_LOST)
+                        ->orWhere(CustomerStat::RECENCY_DAYS, '>', $churnDays);
+                })
+                ->count();
+
+            return [
+                'total_customers' => $total,
+                'avg_clv' => round($avgClv),
+                'avg_orders_per_customer' => round($avgOrders, 2),
+                'churned_customers' => $churned,
+                'churn_rate' => round(($churned / $total) * 100, 2), // درصد
+                'active_customers' => $total - $churned,
+            ];
+        });
+    }
+
+    /**
      * 4. محصولات برتر (Top Products)
      */
     public function getTopProducts(): array

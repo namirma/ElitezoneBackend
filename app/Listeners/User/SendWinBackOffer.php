@@ -29,15 +29,14 @@ class SendWinBackOffer implements ShouldQueue
      */
     public function handle(CustomerSegmentChanged $event): void
     {
-        // فقط وقتی واکنش نشان بده که مشتری "در خطر" (At Risk) شده
-        // نکته: بهتره این رشته‌ها رو هم از ثابت‌های مدل CustomerStat بخونی
-        if ($event->newSegment === 'at_risk' && $event->oldSegment === 'loyal') {
+        // وقتی مشتریِ وفادار/قهرمان به وضعیت‌های افتِ تعامل می‌افتد، پیشنهاد بازگشت بفرست.
+        // مقایسه با ثابت‌های مدل انجام می‌شود تا با تغییر نام سگمنت، لیسنر بی‌صدا خاموش نشود.
+        $decliningFrom = [CustomerStat::SEGMENT_LOYAL, CustomerStat::SEGMENT_CHAMPION];
+        $decliningTo = [CustomerStat::SEGMENT_AT_RISK, CustomerStat::SEGMENT_HIBERNATING, CustomerStat::SEGMENT_LOST];
 
+        if (in_array($event->oldSegment, $decliningFrom, true) && in_array($event->newSegment, $decliningTo, true)) {
             $this->sendWinBackSms($event->user);
-        }
-        // سناریوی دوم: مشتری قهرمان شده (جایزه بده)
-        elseif ($event->newSegment === 'champion') {
-
+        } elseif ($event->newSegment === CustomerStat::SEGMENT_CHAMPION) {
             $this->sendChampionReward($event->user);
         }
     }
@@ -60,12 +59,21 @@ class SendWinBackOffer implements ShouldQueue
         // اگر اسم و فامیل خالی بود، بنویس "کاربر"
         $fullName = trim("$firstName $lastName") ?: 'کاربر';
 
-        // ۳. ارسال پیامک با نام درست
-        Log::info("📨 [SMS SENT] To: {$user->mobile} | Msg: مهندس {$fullName} عزیز، دلمون تنگ شده! با کد {$coupon->code} برگرد و ۱۰٪ تخفیف بگیر.");
+        // ۳. ارسال پیامک با نام درست — موبایل در لاگ ماسک می‌شود (PII).
+        Log::info('[WIN-BACK SMS] to '.$this->maskMobile($user->mobile)." | coupon {$coupon->code}");
     }
 
     private function sendChampionReward($user)
     {
-        Log::info("🏆 [CHAMPION] User {$user->name} is now a Champion! Sending VIP gift.");
+        Log::info('[CHAMPION] user #'.$user->id.' reached Champion segment; sending VIP gift.');
+    }
+
+    private function maskMobile(?string $mobile): string
+    {
+        if (empty($mobile) || strlen($mobile) < 7) {
+            return '***';
+        }
+
+        return substr($mobile, 0, 4).str_repeat('*', strlen($mobile) - 7).substr($mobile, -3);
     }
 }

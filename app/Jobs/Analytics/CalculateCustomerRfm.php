@@ -27,38 +27,47 @@ class CalculateCustomerRfm implements ShouldQueue
 
     public array $backoff = [300];
 
+    /** آستانه‌های امتیازدهی (در fixed از config، در quintile از توزیع داده). */
+    private array $recencyBreaks = [];
+
+    private array $frequencyBreaks = [];
+
+    private array $monetaryBreaks = [];
+
     public function handle(): void
     {
-        // دریافت آمار خرید کاربران
-        $stats = Order::query()
-            ->whereIn(Order::STATUS, [Order::STATUS_COMPLETED, Order::STATUS_DELIVERED, Order::STATUS_SHIPPED])
-            ->select(Order::PLACER_USER_ID)
-            ->selectRaw('MAX(created_at) as last_purchase_date')
-            ->selectRaw('COUNT(id) as total_orders')
-            ->selectRaw('SUM(final_amount) as total_spent')
-            ->groupBy(Order::PLACER_USER_ID)
-            ->get();
+        $statsQuery = $this->statsQuery();
 
-        foreach ($stats as $stat) {
+        $mode = (string) config('intelligence.rfm.scoring_mode', 'fixed');
+        if ($mode === 'quintile') {
+            $this->computeQuintileBreaks();
+        }
+
+        $churnDays = (int) config('intelligence.rfm.churn_days', 180);
+
+        // cursor() داده را به‌صورت استریم از دیتابیس می‌خواند؛ کل مجموعه هرگز یک‌جا
+        // در حافظه بارگذاری نمی‌شود (برخلاف get() که با رشد دیتا منفجر می‌شد).
+        foreach ($statsQuery->cursor() as $stat) {
             $userId = $stat->{Order::PLACER_USER_ID};
 
-            // محاسبه امتیازات
             $lastPurchase = Carbon::parse($stat->last_purchase_date);
-            $recency = (int) now()->diffInDays($lastPurchase);
+            $recency = (int) abs(now()->diffInDays($lastPurchase));
             $frequency = (int) $stat->total_orders;
             $monetary = (float) $stat->total_spent;
 
-            $rScore = $this->calculateRScore($recency);
-            $fScore = $this->calculateFScore($frequency);
-            $mScore = $this->calculateMScore($monetary);
+            $rScore = $this->scoreRecency($recency);
+            $fScore = $this->scoreFrequency($frequency);
+            $mScore = $this->scoreMonetary($monetary);
 
-            $newSegment = $this->determineSegment($rScore, $fScore);
+            // churn صریح: اگر مدت‌هاست خریدی نکرده، صرف‌نظر از ماتریس «از دست رفته» است.
+            $newSegment = $recency >= $churnDays
+                ? CustomerStat::SEGMENT_LOST
+                : $this->determineSegment($rScore, $fScore);
 
             $existingStat = CustomerStat::where(CustomerStat::USER_ID, $userId)->first();
+            $oldSegment = $existingStat?->segment;
 
-            $oldSegment = $existingStat ? $existingStat->segment : null;
-
-            $customerStat = CustomerStat::updateOrCreate(
+            CustomerStat::updateOrCreate(
                 [CustomerStat::USER_ID => $userId],
                 [
                     CustomerStat::RECENCY_DAYS => $recency,
@@ -73,69 +82,163 @@ class CalculateCustomerRfm implements ShouldQueue
             );
 
             if ($oldSegment && $oldSegment !== $newSegment) {
-
                 $user = User::find($userId);
-
                 if ($user) {
-                    CustomerSegmentChanged::dispatch($user, $oldSegment, $newSegment);
-
-                    Log::info("🔄 RFM Change Detected: User #{$userId} moved from [{$oldSegment}] to [{$newSegment}]");
+                    try {
+                        CustomerSegmentChanged::dispatch($user, $oldSegment, $newSegment);
+                    } catch (\Throwable $e) {
+                        Log::error("RFM segment event dispatch failed for user #{$userId}: ".$e->getMessage());
+                    }
+                    Log::info("RFM change: user #{$userId} [{$oldSegment}] -> [{$newSegment}]");
                 }
             }
         }
     }
 
-    private function calculateRScore(int $days): int
+    /**
+     * کوئری تجمیعِ آمار خرید هر کاربر (یک ردیف به‌ازای هر خریدار).
+     */
+    private function statsQuery()
     {
-        return match (true) {
-            $days <= 30 => 5,
-            $days <= 60 => 4,
-            $days <= 90 => 3,
-            $days <= 180 => 2,
-            default => 1,
-        };
+        return Order::query()
+            ->whereIn(Order::STATUS, [Order::STATUS_COMPLETED, Order::STATUS_DELIVERED, Order::STATUS_SHIPPED])
+            ->select(Order::PLACER_USER_ID)
+            ->selectRaw('MAX(created_at) as last_purchase_date')
+            ->selectRaw('COUNT(id) as total_orders')
+            ->selectRaw('SUM(final_amount) as total_spent')
+            ->groupBy(Order::PLACER_USER_ID);
     }
 
-    private function calculateFScore(int $count): int
+    // ─────────────────────────────────────────────────────────────────────────
+    // Scoring
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private function scoreRecency(int $days): int
     {
-        return match (true) {
-            $count >= 20 => 5,
-            $count >= 10 => 4,
-            $count >= 5 => 3,
-            $count >= 2 => 2,
-            default => 1,
-        };
+        // quintile: مرزهای صعودیِ روز [q20..q80]؛ روزِ کمتر → امتیاز بالاتر (معکوس).
+        if (! empty($this->recencyBreaks)) {
+            foreach ([5, 4, 3, 2] as $i => $score) {
+                if ($days <= ($this->recencyBreaks[$i] ?? PHP_INT_MAX)) {
+                    return $score;
+                }
+            }
+
+            return 1;
+        }
+
+        // fixed: کلید = امتیاز، مقدار = سقفِ روز.
+        $breaks = (array) config('intelligence.rfm.recency');
+        foreach ([5, 4, 3, 2] as $score) {
+            if (isset($breaks[$score]) && $days <= $breaks[$score]) {
+                return $score;
+            }
+        }
+
+        return 1;
     }
 
-    private function calculateMScore(float $amount): int
+    private function scoreFrequency(float $value): int
     {
-        return match (true) {
-            $amount >= 5_000_000_000 => 5,
-            $amount >= 1_000_000_000 => 4,
-            $amount >= 500_000_000 => 3,
-            $amount >= 100_000_000 => 2,
-            default => 1,
-        };
+        return $this->scoreAscending($value, $this->frequencyBreaks, (array) config('intelligence.rfm.frequency'));
     }
 
+    private function scoreMonetary(float $value): int
+    {
+        return $this->scoreAscending($value, $this->monetaryBreaks, (array) config('intelligence.rfm.monetary'));
+    }
+
+    /**
+     * امتیازدهی صعودی (frequency / monetary): مقدار بیشتر → امتیاز بالاتر.
+     *
+     * @param  array<int,float>  $quintileBreaks  مرزهای صعودی [q20,q40,q60,q80] (حالت quintile)
+     * @param  array<int,float>  $fixedBreaks  کلید=امتیاز، مقدار=کف بازه (حالت fixed)
+     */
+    private function scoreAscending(float $value, array $quintileBreaks, array $fixedBreaks): int
+    {
+        if (! empty($quintileBreaks)) {
+            foreach ([1, 2, 3, 4] as $idx) {
+                if ($value < ($quintileBreaks[$idx - 1] ?? PHP_INT_MAX)) {
+                    return $idx;
+                }
+            }
+
+            return 5;
+        }
+
+        foreach ([5, 4, 3, 2] as $score) {
+            if (isset($fixedBreaks[$score]) && $value >= $fixedBreaks[$score]) {
+                return $score;
+            }
+        }
+
+        return 1;
+    }
+
+    /**
+     * مرزهای پنجک را از توزیع واقعیِ داده محاسبه می‌کند (فقط در حالت quintile).
+     * فقط سه ستون عددی pluck می‌شود، نه مدل کامل.
+     */
+    private function computeQuintileBreaks(): void
+    {
+        $rows = $this->statsQuery()->get(['last_purchase_date', 'total_orders', 'total_spent']);
+
+        if ($rows->isEmpty()) {
+            return;
+        }
+
+        $recencies = [];
+        $freqs = [];
+        $monies = [];
+        foreach ($rows as $r) {
+            $recencies[] = (int) abs(now()->diffInDays(Carbon::parse($r->last_purchase_date)));
+            $freqs[] = (int) $r->total_orders;
+            $monies[] = (float) $r->total_spent;
+        }
+
+        $this->recencyBreaks = $this->quantiles($recencies);   // صعودی روز
+        $this->frequencyBreaks = $this->quantiles($freqs);
+        $this->monetaryBreaks = $this->quantiles($monies);
+    }
+
+    /**
+     * مرزهای ۲۰/۴۰/۶۰/۸۰ درصدِ یک آرایه (۴ مرز → ۵ پنجک).
+     *
+     * @return array<int,float> چهار مرز صعودی
+     */
+    private function quantiles(array $values): array
+    {
+        sort($values);
+        $n = count($values);
+        $breaks = [];
+        foreach ([0.2, 0.4, 0.6, 0.8] as $p) {
+            $idx = (int) floor($p * ($n - 1));
+            $breaks[] = $values[$idx];
+        }
+
+        return $breaks;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Segmentation — ماتریس صریح ۵×۵ (R × F): بدون همپوشانی، بدون حفره، شامل lost
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * @return string یکی از ثابت‌های CustomerStat::SEGMENT_*
+     */
     private function determineSegment(int $r, int $f): string
     {
-        if ($r >= 4 && $f >= 4) {
-            return CustomerStat::SEGMENT_CHAMPION;
-        }
-        if ($f >= 3 && $r >= 3) {
-            return CustomerStat::SEGMENT_LOYAL;
-        }
-        if ($r >= 4 && $f == 1) {
-            return CustomerStat::SEGMENT_NEW;
-        }
-        if ($r <= 2 && $f >= 4) {
-            return CustomerStat::SEGMENT_AT_RISK;
-        }
-        if ($r <= 2 && $f <= 2) {
-            return CustomerStat::SEGMENT_HIBERNATING;
-        }
+        $matrix = [
+            // R=5 (تازه‌ترین)
+            5 => [1 => CustomerStat::SEGMENT_NEW,         2 => CustomerStat::SEGMENT_POTENTIAL_LOYAL, 3 => CustomerStat::SEGMENT_POTENTIAL_LOYAL, 4 => CustomerStat::SEGMENT_CHAMPION,    5 => CustomerStat::SEGMENT_CHAMPION],
+            4 => [1 => CustomerStat::SEGMENT_NEW,         2 => CustomerStat::SEGMENT_POTENTIAL_LOYAL, 3 => CustomerStat::SEGMENT_LOYAL,           4 => CustomerStat::SEGMENT_CHAMPION,    5 => CustomerStat::SEGMENT_CHAMPION],
+            3 => [1 => CustomerStat::SEGMENT_POTENTIAL_LOYAL, 2 => CustomerStat::SEGMENT_POTENTIAL_LOYAL, 3 => CustomerStat::SEGMENT_LOYAL,       4 => CustomerStat::SEGMENT_LOYAL,       5 => CustomerStat::SEGMENT_LOYAL],
+            2 => [1 => CustomerStat::SEGMENT_HIBERNATING, 2 => CustomerStat::SEGMENT_HIBERNATING,     3 => CustomerStat::SEGMENT_AT_RISK,         4 => CustomerStat::SEGMENT_AT_RISK,     5 => CustomerStat::SEGMENT_AT_RISK],
+            1 => [1 => CustomerStat::SEGMENT_LOST,        2 => CustomerStat::SEGMENT_LOST,            3 => CustomerStat::SEGMENT_AT_RISK,         4 => CustomerStat::SEGMENT_AT_RISK,     5 => CustomerStat::SEGMENT_AT_RISK],
+        ];
 
-        return CustomerStat::SEGMENT_POTENTIAL_LOYAL;
+        $r = max(1, min(5, $r));
+        $f = max(1, min(5, $f));
+
+        return $matrix[$r][$f];
     }
 }

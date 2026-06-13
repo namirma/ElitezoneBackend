@@ -10,11 +10,11 @@ use App\Http\Requests\Product\ProductIndexRequest;
 use App\Http\Requests\Product\ProductVariantFilterRequest;
 use App\Http\Requests\Product\ProductVariantPriceRequest;
 use App\Http\Resources\Product\AttributeTypeResource;
-use App\Http\Resources\Supplier\FactoryResource;
 use App\Http\Resources\Product\OfferResource;
 use App\Http\Resources\Product\ProductDetailResource;
 use App\Http\Resources\Product\ProductResource;
 use App\Http\Resources\Product\ProductVariantResource;
+use App\Http\Resources\Supplier\FactoryResource;
 use App\Models\AttributeType;
 use App\Models\Badge;
 use App\Models\CustomerType;
@@ -66,7 +66,7 @@ class ProductController extends Controller
         ]);
 
         // ۲. ثبت بازدید و داده‌های تحلیلی (Async)
-        \App\Jobs\LogProductView::dispatch(
+        \App\Jobs\Analytics\LogProductView::dispatch(
             productId: $product->id,
             userId: Auth::id(),
             ipAddress: request()->ip(),
@@ -186,5 +186,4 @@ class ProductController extends Controller
             ...$result['financials'],
         ], 'global.received_successfully');
     }
-
 }
