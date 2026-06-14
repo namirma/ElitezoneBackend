@@ -92,8 +92,6 @@ class ProcessReservationCompletionAction
 
             $buyerId = $locked->placer_user_id;
             $realSupplierId = $firstItem->supplier_user_id;
-            $systemUserId = (int) config('financial.system_user_id', 1);
-            $systemWalletCode = FinancialCodes::WALLET_SAZE;
 
             // Guard: check buyer balance against the actual debit amount (POO - PTR),
             // not final_amount - PTR which the controller used as an approximation.
@@ -107,19 +105,19 @@ class ProcessReservationCompletionAction
             Log::channel('financial')->info("Order {$locked->id}: POO={$POO}, PTR={$PTR}, Remaining={$remainingAmount}");
 
             if ($remainingAmount > 0) {
-                $this->walletEngine->process('-', $remainingAmount, FinancialCodes::WALLET_OWNER, FinancialCodes::STATUS_AVAILABLE, $locked, "تکمیل وجه سفارش {$locked->order_number}", $buyerId);
-                $this->walletEngine->process('+', $remainingAmount, $systemWalletCode, FinancialCodes::STATUS_AVAILABLE, $locked, "دریافت وجه تکمیلی سفارش {$locked->order_number}", $systemUserId);
+                $this->walletEngine->debitBuyer($locked, $remainingAmount, FinancialCodes::STATUS_AVAILABLE, "تکمیل وجه سفارش {$locked->order_number}");
+                $this->walletEngine->creditSystem($locked, $remainingAmount, FinancialCodes::STATUS_AVAILABLE, "دریافت وجه تکمیلی سفارش {$locked->order_number}");
             } elseif ($remainingAmount < 0) {
                 $refundAmount = abs($remainingAmount);
-                $this->walletEngine->process('-', $refundAmount, $systemWalletCode, FinancialCodes::STATUS_AVAILABLE, $locked, "بازگشت مابه‌التفاوت افت قیمت سفارش {$locked->order_number}", $systemUserId);
-                $this->walletEngine->process('+', $refundAmount, FinancialCodes::WALLET_OWNER, FinancialCodes::STATUS_AVAILABLE, $locked, 'دریافت مابه‌التفاوت افت قیمت رزرو', $buyerId);
+                $this->walletEngine->debitSystem($locked, $refundAmount, FinancialCodes::STATUS_AVAILABLE, "بازگشت مابه‌التفاوت افت قیمت سفارش {$locked->order_number}");
+                $this->walletEngine->creditBuyer($locked, $refundAmount, FinancialCodes::STATUS_AVAILABLE, 'دریافت مابه‌التفاوت افت قیمت رزرو');
             }
 
-            $this->walletEngine->process('-', $PTR, $systemWalletCode, FinancialCodes::STATUS_HOLD, $locked, "خروج از حالت هولد مبلغ رزرو سفارش {$locked->order_number}", $systemUserId);
-            $this->walletEngine->process('+', $PTR, $systemWalletCode, FinancialCodes::STATUS_AVAILABLE, $locked, 'تبدیل موجودی هولد رزرو به قطعی', $systemUserId);
+            $this->walletEngine->debitSystem($locked, $PTR, FinancialCodes::STATUS_HOLD, "خروج از حالت هولد مبلغ رزرو سفارش {$locked->order_number}");
+            $this->walletEngine->creditSystem($locked, $PTR, FinancialCodes::STATUS_AVAILABLE, 'تبدیل موجودی هولد رزرو به قطعی');
 
-            $this->walletEngine->process('-', $PTS, $systemWalletCode, FinancialCodes::STATUS_AVAILABLE, $locked, "تخصیص سهم تامین‌کننده سفارش {$locked->order_number}", $systemUserId);
-            $this->walletEngine->process('+', $PTS, FinancialCodes::WALLET_SUPPLIER, FinancialCodes::STATUS_AVAILABLE, $locked, "واریز سهم فروش سفارش {$locked->order_number}", $realSupplierId);
+            $this->walletEngine->debitSystem($locked, $PTS, FinancialCodes::STATUS_AVAILABLE, "تخصیص سهم تامین‌کننده سفارش {$locked->order_number}");
+            $this->walletEngine->creditSupplier($locked, $PTS, FinancialCodes::STATUS_AVAILABLE, $realSupplierId, "واریز سهم فروش سفارش {$locked->order_number}");
 
             $locked->update([
                 Order::STATUS => Order::STATUS_PROCESSING,

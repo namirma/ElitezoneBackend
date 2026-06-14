@@ -60,13 +60,9 @@ class RecordSupplierMoadianInvoiceAction
         $vatRate = (float) ($order->{Order::VAT_RATE} ?? 10.0);
         $supplierVat = $this->calculator->extractVat($ptsm, $vatRate)['vat'];
 
-        $realSupplierId = $this->resolveSupplierUserId($order);
-        $systemUserId = (int) config('financial.system_user_id', 1);
-        $vatUserId = (int) config('financial.vat_user_id', $systemUserId);
-
         DB::transaction(function () use (
             $order, $moadianRef,
-            $supplierVat, $vatUserId
+            $supplierVat
         ) {
             $locked = Order::where('id', $order->id)->lockForUpdate()->first();
 
@@ -81,19 +77,13 @@ class RecordSupplierMoadianInvoiceAction
 
             if ($supplierVat > 0) {
                 // Release supplier VAT from WVAT hold → WVAT available
-                $this->walletEngine->process(
-                    '-', $supplierVat,
-                    FinancialCodes::WALLET_VAT, FinancialCodes::STATUS_HOLD,
-                    $locked,
-                    "آزادسازی مالیات سوپلایر (هولد) بابت سفارش {$locked->order_number}",
-                    $vatUserId
+                $this->walletEngine->debitVat(
+                    $locked, $supplierVat, FinancialCodes::STATUS_HOLD,
+                    "آزادسازی مالیات سوپلایر (هولد) بابت سفارش {$locked->order_number}"
                 );
-                $this->walletEngine->process(
-                    '+', $supplierVat,
-                    FinancialCodes::WALLET_VAT, FinancialCodes::STATUS_AVAILABLE,
-                    $locked,
-                    "مالیات سوپلایر شناسایی شد — فاکتور مودیان: {$moadianRef}",
-                    $vatUserId
+                $this->walletEngine->creditVat(
+                    $locked, $supplierVat, FinancialCodes::STATUS_AVAILABLE,
+                    "مالیات سوپلایر شناسایی شد — فاکتور مودیان: {$moadianRef}"
                 );
             }
 
@@ -109,8 +99,5 @@ class RecordSupplierMoadianInvoiceAction
         }, 3);
     }
 
-    private function resolveSupplierUserId(Order $order): ?int
-    {
-        return $order->items()->value('supplier_user_id');
-    }
+
 }

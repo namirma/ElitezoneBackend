@@ -76,12 +76,9 @@ class RecordSystemMoadianInvoiceAction
         $sazeGross = ($poom - $ptsm) - $consultantGross;
         $sazeVat = $this->calculator->extractVat($sazeGross, $vatRate)['vat'];
 
-        $systemUserId = (int) config('financial.system_user_id', 1);
-        $vatUserId = (int) config('financial.vat_user_id', $systemUserId);
-
         DB::transaction(function () use (
             $order, $moadianRef,
-            $sazeVat, $vatUserId
+            $sazeVat
         ) {
             $locked = Order::where('id', $order->id)->lockForUpdate()->first();
 
@@ -96,19 +93,13 @@ class RecordSystemMoadianInvoiceAction
 
             if ($sazeVat > 0) {
                 // Release platform VAT from WVAT hold → WVAT available
-                $this->walletEngine->process(
-                    '-', $sazeVat,
-                    FinancialCodes::WALLET_VAT, FinancialCodes::STATUS_HOLD,
-                    $locked,
-                    "آزادسازی مالیات پلتفرم (هولد) بابت سفارش {$locked->order_number}",
-                    $vatUserId
+                $this->walletEngine->debitVat(
+                    $locked, $sazeVat, FinancialCodes::STATUS_HOLD,
+                    "آزادسازی مالیات پلتفرم (هولد) بابت سفارش {$locked->order_number}"
                 );
-                $this->walletEngine->process(
-                    '+', $sazeVat,
-                    FinancialCodes::WALLET_VAT, FinancialCodes::STATUS_AVAILABLE,
-                    $locked,
-                    "مالیات پلتفرم شناسایی شد — فاکتور مودیان: {$moadianRef}",
-                    $vatUserId
+                $this->walletEngine->creditVat(
+                    $locked, $sazeVat, FinancialCodes::STATUS_AVAILABLE,
+                    "مالیات پلتفرم شناسایی شد — فاکتور مودیان: {$moadianRef}"
                 );
             }
 

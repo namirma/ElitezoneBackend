@@ -13,10 +13,77 @@ use Illuminate\Support\Facades\DB;
 
 class WalletTransactionEngine
 {
+    // ─────────────────────────────────────────────────────────────────────────
+    // Typed public entry points — wallet code is expressed in the method name.
+    //
+    // userId resolution:
+    //   WO (buyer)   → order->placer_user_id
+    //   WS (supplier)→ $supplierId (required; lives on items, not the order row)
+    //   WSSG (saze)  → config('financial.system_user_id')
+    //   WCT (consult)→ $consultantId (required; two possible order columns)
+    //   WVAT (vat)   → config('financial.vat_user_id', system_user_id)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public function debitBuyer(Order $order, float $amount, string $status, ?string $description = null): void
+    {
+        $this->process('-', $amount, FinancialCodes::WALLET_OWNER, $status, $order, $description, (int) $order->placer_user_id);
+    }
+
+    public function creditBuyer(Order $order, float $amount, string $status, ?string $description = null): void
+    {
+        $this->process('+', $amount, FinancialCodes::WALLET_OWNER, $status, $order, $description, (int) $order->placer_user_id);
+    }
+
+    public function debitSupplier(Order $order, float $amount, string $status, int $supplierId, ?string $description = null): void
+    {
+        $this->process('-', $amount, FinancialCodes::WALLET_SUPPLIER, $status, $order, $description, $supplierId);
+    }
+
+    public function creditSupplier(Order $order, float $amount, string $status, int $supplierId, ?string $description = null): void
+    {
+        $this->process('+', $amount, FinancialCodes::WALLET_SUPPLIER, $status, $order, $description, $supplierId);
+    }
+
+    public function debitSystem(Order $order, float $amount, string $status, ?string $description = null): void
+    {
+        $this->process('-', $amount, FinancialCodes::WALLET_SAZE, $status, $order, $description, (int) config('financial.system_user_id', 1));
+    }
+
+    public function creditSystem(Order $order, float $amount, string $status, ?string $description = null): void
+    {
+        $this->process('+', $amount, FinancialCodes::WALLET_SAZE, $status, $order, $description, (int) config('financial.system_user_id', 1));
+    }
+
+    public function debitConsultant(Order $order, float $amount, string $status, int $consultantId, ?string $description = null): void
+    {
+        $this->process('-', $amount, FinancialCodes::WALLET_CONSULTANT, $status, $order, $description, $consultantId);
+    }
+
+    public function creditConsultant(Order $order, float $amount, string $status, int $consultantId, ?string $description = null): void
+    {
+        $this->process('+', $amount, FinancialCodes::WALLET_CONSULTANT, $status, $order, $description, $consultantId);
+    }
+
+    public function debitVat(Order $order, float $amount, string $status, ?string $description = null): void
+    {
+        $vatUserId = (int) config('financial.vat_user_id', config('financial.system_user_id', 1));
+        $this->process('-', $amount, FinancialCodes::WALLET_VAT, $status, $order, $description, $vatUserId);
+    }
+
+    public function creditVat(Order $order, float $amount, string $status, ?string $description = null): void
+    {
+        $vatUserId = (int) config('financial.vat_user_id', config('financial.system_user_id', 1));
+        $this->process('+', $amount, FinancialCodes::WALLET_VAT, $status, $order, $description, $vatUserId);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Internal implementation
+    // ─────────────────────────────────────────────────────────────────────────
+
     /**
      * پردازش تراکنش کیف پول با مکانیزم قفل (Pessimistic Locking)
      */
-    public function process(
+    private function process(
         string $operation,
         float $amount,
         string $walletCode,

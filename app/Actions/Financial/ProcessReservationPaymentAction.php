@@ -44,13 +44,9 @@ class ProcessReservationPaymentAction
                 return;
             }
 
-            $buyerId = $locked->placer_user_id;
-            $systemUserId = (int) config('financial.system_user_id', 1);
-            $systemWalletCode = FinancialCodes::WALLET_SAZE;
+            $this->walletEngine->debitBuyer($locked, $reserveAmount, FinancialCodes::STATUS_AVAILABLE, "پرداخت مبلغ بیعانه برای رزرو سفارش {$locked->order_number}");
 
-            $this->walletEngine->process('-', $reserveAmount, FinancialCodes::WALLET_OWNER, FinancialCodes::STATUS_AVAILABLE, $locked, "پرداخت مبلغ بیعانه برای رزرو سفارش {$locked->order_number}", $buyerId);
-
-            $this->walletEngine->process('+', $reserveAmount, $systemWalletCode, FinancialCodes::STATUS_HOLD, $locked, "امانت مبلغ رزرو سفارش {$locked->order_number}", $systemUserId);
+            $this->walletEngine->creditSystem($locked, $reserveAmount, FinancialCodes::STATUS_HOLD, "امانت مبلغ رزرو سفارش {$locked->order_number}");
 
             $locked->update([
                 'status' => Order::STATUS_RESERVED,

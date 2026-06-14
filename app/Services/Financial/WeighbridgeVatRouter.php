@@ -27,13 +27,11 @@ class WeighbridgeVatRouter
 
     public function route(Order $order, WeighbridgeReconcileResult $result): float
     {
-        $systemUserId = (int) config('financial.system_user_id', 1);
-        $vatUserId = (int) config('financial.vat_user_id', $systemUserId);
         $supplierId = (int) $order->items->first()->supplier_user_id;
 
-        $consultantGross = $this->routeConsultant($order, $result, $systemUserId, $vatUserId);
-        $this->routeSupplierVat($order, $result, $supplierId, $vatUserId);
-        $this->routeSazeVat($order, $result, $consultantGross, $systemUserId, $vatUserId);
+        $consultantGross = $this->routeConsultant($order, $result);
+        $this->routeSupplierVat($order, $result, $supplierId);
+        $this->routeSazeVat($order, $result, $consultantGross);
 
         return $consultantGross;
     }
@@ -45,8 +43,6 @@ class WeighbridgeVatRouter
     private function routeConsultant(
         Order $order,
         WeighbridgeReconcileResult $result,
-        int $systemUserId,
-        int $vatUserId,
     ): float {
         $consultantUserId = (int) ($order->{Order::CONSULTANT_USER_ID} ?? 0);
         $buyerId = (int) $order->placer_user_id;
@@ -82,18 +78,9 @@ class WeighbridgeVatRouter
 
         ['net' => $net, 'vat' => $vat] = $this->calculator->extractVat($candidateGross, $result->vat);
 
-        $this->walletEngine->process(
-            '-', $candidateGross, FinancialCodes::WALLET_SAZE, FinancialCodes::STATUS_AVAILABLE,
-            $order, "تخصیص سهم مشاور فنی سفارش {$order->order_number}", $systemUserId
-        );
-        $this->walletEngine->process(
-            '+', $net, FinancialCodes::WALLET_CONSULTANT, FinancialCodes::STATUS_HOLD,
-            $order, 'کمیسیون امانی مشاور فنی', $consultantUserId
-        );
-        $this->walletEngine->process(
-            '+', $vat, FinancialCodes::WALLET_VAT, FinancialCodes::STATUS_HOLD,
-            $order, 'مالیات کمیسیون مشاور فنی امانی', $vatUserId
-        );
+        $this->walletEngine->debitSystem($order, $candidateGross, FinancialCodes::STATUS_AVAILABLE, "تخصیص سهم مشاور فنی سفارش {$order->order_number}");
+        $this->walletEngine->creditConsultant($order, $net, FinancialCodes::STATUS_HOLD, $consultantUserId, 'کمیسیون امانی مشاور فنی');
+        $this->walletEngine->creditVat($order, $vat, FinancialCodes::STATUS_HOLD, 'مالیات کمیسیون مشاور فنی امانی');
 
         return $candidateGross;
     }
@@ -106,21 +93,14 @@ class WeighbridgeVatRouter
         Order $order,
         WeighbridgeReconcileResult $result,
         int $supplierId,
-        int $vatUserId,
     ): void {
         $supplierVat = $this->calculator->extractVat($result->newPTS, $result->vat)['vat'];
         if ($supplierVat <= 0.0) {
             return;
         }
 
-        $this->walletEngine->process(
-            '-', $supplierVat, FinancialCodes::WALLET_SUPPLIER, FinancialCodes::STATUS_AVAILABLE,
-            $order, "کسر مالیات امانی سفارش {$order->order_number}", $supplierId
-        );
-        $this->walletEngine->process(
-            '+', $supplierVat, FinancialCodes::WALLET_VAT, FinancialCodes::STATUS_HOLD,
-            $order, 'مالیات تامین‌کننده امانی', $vatUserId
-        );
+        $this->walletEngine->debitSupplier($order, $supplierVat, FinancialCodes::STATUS_AVAILABLE, $supplierId, "کسر مالیات امانی سفارش {$order->order_number}");
+        $this->walletEngine->creditVat($order, $supplierVat, FinancialCodes::STATUS_HOLD, 'مالیات تامین‌کننده امانی');
     }
 
     /**
@@ -132,8 +112,6 @@ class WeighbridgeVatRouter
         Order $order,
         WeighbridgeReconcileResult $result,
         float $consultantGross,
-        int $systemUserId,
-        int $vatUserId,
     ): void {
         $sazeGross = ($result->newPOO - $result->newPTS) - $consultantGross;
         $sazeVat = $this->calculator->extractVat($sazeGross, $result->vat)['vat'];
@@ -141,14 +119,8 @@ class WeighbridgeVatRouter
             return;
         }
 
-        $this->walletEngine->process(
-            '-', $sazeVat, FinancialCodes::WALLET_SAZE, FinancialCodes::STATUS_AVAILABLE,
-            $order, 'کسر مالیات بر ارزش افزوده پلتفرم', $systemUserId
-        );
-        $this->walletEngine->process(
-            '+', $sazeVat, FinancialCodes::WALLET_VAT, FinancialCodes::STATUS_HOLD,
-            $order, 'مالیات گروه سازه امانی', $vatUserId
-        );
+        $this->walletEngine->debitSystem($order, $sazeVat, FinancialCodes::STATUS_AVAILABLE, 'کسر مالیات بر ارزش افزوده پلتفرم');
+        $this->walletEngine->creditVat($order, $sazeVat, FinancialCodes::STATUS_HOLD, 'مالیات گروه سازه امانی');
     }
 
     /**

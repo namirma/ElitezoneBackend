@@ -99,8 +99,6 @@ class CheckSupplierBalancesJob implements ShouldQueue
                 return; // Balance dropped below threshold since the check — skip
             }
 
-            $systemUserId = (int) config('financial.system_user_id', 1);
-
             // 1. Reclaim the debt from the supplier into the system wallet: WS(−) → WSSG(+).
             //    Routed through WalletTransactionEngine so BOTH legs leave an auditable
             //    WalletTransaction (the previous raw increment/decrement left no trail).
@@ -108,13 +106,11 @@ class CheckSupplierBalancesJob implements ShouldQueue
                 'order_number' => $lockedOrder->order_number,
             ]);
 
-            $walletEngine->process(
-                '-', $debtAmount, FinancialCodes::WALLET_SUPPLIER, FinancialCodes::STATUS_AVAILABLE,
-                $lockedOrder, $reclaimDescription, $supplierUser->id,
+            $walletEngine->debitSupplier(
+                $lockedOrder, $debtAmount, FinancialCodes::STATUS_AVAILABLE, $supplierUser->id, $reclaimDescription
             );
-            $walletEngine->process(
-                '+', $debtAmount, FinancialCodes::WALLET_SAZE, FinancialCodes::STATUS_AVAILABLE,
-                $lockedOrder, $reclaimDescription, $systemUserId,
+            $walletEngine->creditSystem(
+                $lockedOrder, $debtAmount, FinancialCodes::STATUS_AVAILABLE, $reclaimDescription
             );
 
             // 2. Release the buyer's parked refund: WO balance_hold(−) → WO balance(+)

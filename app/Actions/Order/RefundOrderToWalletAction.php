@@ -57,8 +57,6 @@ final class RefundOrderToWalletAction
 
             $locked->loadMissing('items');
 
-            $buyerId = (int) $locked->placer_user_id;
-            $systemUserId = (int) config('financial.system_user_id', 1);
             $supplierId = $locked->items->first()?->supplier_user_id;
 
             $poo = (float) $locked->{Order::PAYMENT_OF_OWNER};
@@ -68,29 +66,25 @@ final class RefundOrderToWalletAction
             //    Done before the buyer refund so the system wallet holds the full POO
             //    again before paying the buyer back.
             if ($pts > 0 && $supplierId) {
-                $this->walletEngine->process(
-                    '-', $pts, FinancialCodes::WALLET_SUPPLIER, FinancialCodes::STATUS_AVAILABLE,
-                    $locked, __('wallet.descriptions.refund_reverse_supplier', ['order_number' => $locked->order_number]),
-                    (int) $supplierId,
+                $this->walletEngine->debitSupplier(
+                    $locked, $pts, FinancialCodes::STATUS_AVAILABLE, (int) $supplierId,
+                    __('wallet.descriptions.refund_reverse_supplier', ['order_number' => $locked->order_number])
                 );
-                $this->walletEngine->process(
-                    '+', $pts, FinancialCodes::WALLET_SAZE, FinancialCodes::STATUS_AVAILABLE,
-                    $locked, __('wallet.descriptions.refund_reclaim_system', ['order_number' => $locked->order_number]),
-                    $systemUserId,
+                $this->walletEngine->creditSystem(
+                    $locked, $pts, FinancialCodes::STATUS_AVAILABLE,
+                    __('wallet.descriptions.refund_reclaim_system', ['order_number' => $locked->order_number])
                 );
             }
 
             // 2. Reverse the buyer leg: WSSG(−POO) → WO(+POO).
             if ($poo > 0) {
-                $this->walletEngine->process(
-                    '-', $poo, FinancialCodes::WALLET_SAZE, FinancialCodes::STATUS_AVAILABLE,
-                    $locked, __('wallet.descriptions.refund_release_system', ['order_number' => $locked->order_number]),
-                    $systemUserId,
+                $this->walletEngine->debitSystem(
+                    $locked, $poo, FinancialCodes::STATUS_AVAILABLE,
+                    __('wallet.descriptions.refund_release_system', ['order_number' => $locked->order_number])
                 );
-                $this->walletEngine->process(
-                    '+', $poo, FinancialCodes::WALLET_OWNER, FinancialCodes::STATUS_AVAILABLE,
-                    $locked, __('wallet.descriptions.refund_order', ['order_number' => $locked->order_number]),
-                    $buyerId,
+                $this->walletEngine->creditBuyer(
+                    $locked, $poo, FinancialCodes::STATUS_AVAILABLE,
+                    __('wallet.descriptions.refund_order', ['order_number' => $locked->order_number])
                 );
             }
 

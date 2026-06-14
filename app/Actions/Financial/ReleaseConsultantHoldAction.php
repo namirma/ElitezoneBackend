@@ -77,13 +77,10 @@ class ReleaseConsultantHoldAction
         $vatRate = (float) ($order->{Order::VAT_RATE} ?? 10.0);
         ['net' => $consultantNet, 'vat' => $consultantVat] = $this->calculator->extractVat($consultantGross, $vatRate);
 
-        $systemUserId = (int) config('financial.system_user_id', 1);
-        $vatUserId = (int) config('financial.vat_user_id', $systemUserId);
-
         DB::transaction(function () use (
             $order, $moadianRef,
             $consultantNet, $consultantVat,
-            $consultantUserId, $vatUserId
+            $consultantUserId
         ) {
             $locked = Order::where('id', $order->id)->lockForUpdate()->first();
 
@@ -97,35 +94,23 @@ class ReleaseConsultantHoldAction
             }
 
             // WCT: release net from hold → available
-            $this->walletEngine->process(
-                '-', $consultantNet,
-                FinancialCodes::WALLET_CONSULTANT, FinancialCodes::STATUS_HOLD,
-                $locked,
-                "آزادسازی کمیسیون مشاور (هولد) بابت سفارش {$locked->order_number}",
-                $consultantUserId
+            $this->walletEngine->debitConsultant(
+                $locked, $consultantNet, FinancialCodes::STATUS_HOLD, $consultantUserId,
+                "آزادسازی کمیسیون مشاور (هولد) بابت سفارش {$locked->order_number}"
             );
-            $this->walletEngine->process(
-                '+', $consultantNet,
-                FinancialCodes::WALLET_CONSULTANT, FinancialCodes::STATUS_AVAILABLE,
-                $locked,
-                "کمیسیون مشاور آزاد شد — فاکتور مودیان: {$moadianRef}",
-                $consultantUserId
+            $this->walletEngine->creditConsultant(
+                $locked, $consultantNet, FinancialCodes::STATUS_AVAILABLE, $consultantUserId,
+                "کمیسیون مشاور آزاد شد — فاکتور مودیان: {$moadianRef}"
             );
 
             // WVAT: release consultant VAT from hold → available
-            $this->walletEngine->process(
-                '-', $consultantVat,
-                FinancialCodes::WALLET_VAT, FinancialCodes::STATUS_HOLD,
-                $locked,
-                "آزادسازی مالیات مشاور (هولد) بابت سفارش {$locked->order_number}",
-                $vatUserId
+            $this->walletEngine->debitVat(
+                $locked, $consultantVat, FinancialCodes::STATUS_HOLD,
+                "آزادسازی مالیات مشاور (هولد) بابت سفارش {$locked->order_number}"
             );
-            $this->walletEngine->process(
-                '+', $consultantVat,
-                FinancialCodes::WALLET_VAT, FinancialCodes::STATUS_AVAILABLE,
-                $locked,
-                "مالیات مشاور شناسایی شد — فاکتور مودیان: {$moadianRef}",
-                $vatUserId
+            $this->walletEngine->creditVat(
+                $locked, $consultantVat, FinancialCodes::STATUS_AVAILABLE,
+                "مالیات مشاور شناسایی شد — فاکتور مودیان: {$moadianRef}"
             );
 
             $locked->update([

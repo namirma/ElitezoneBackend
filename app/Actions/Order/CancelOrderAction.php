@@ -95,18 +95,15 @@ class CancelOrderAction
      */
     private function processRefund(Order $order): void
     {
-        $buyerId = $order->placer_user_id;
-        $systemUserId = (int) config('financial.system_user_id', 1);
-
         // الف) اگر سفارش رزرو بوده: باید پول هولد شده در سازه به خریدار برگردد
         if (in_array($order->status, [Order::STATUS_RESERVED, Order::STATUS_RESERVED_EXTENDED])) {
             $reserveAmount = (float) $order->{Order::PAYMENT_TO_RESERVE};
 
             if ($reserveAmount > 0) {
                 // خروج از هولد کیف پول سازه
-                $this->walletEngine->process('-', $reserveAmount, FinancialCodes::WALLET_SAZE, FinancialCodes::STATUS_HOLD, $order, "خروج از هولد به دلیل لغو رزرو سفارش {$order->order_number}", $systemUserId);
+                $this->walletEngine->debitSystem($order, $reserveAmount, FinancialCodes::STATUS_HOLD, "خروج از هولد به دلیل لغو رزرو سفارش {$order->order_number}");
                 // بازگشت به کیف پول آزاد خریدار
-                $this->walletEngine->process('+', $reserveAmount, FinancialCodes::WALLET_OWNER, FinancialCodes::STATUS_AVAILABLE, $order, 'بازگشت وجه بیعانه به دلیل لغو سفارش', $buyerId);
+                $this->walletEngine->creditBuyer($order, $reserveAmount, FinancialCodes::STATUS_AVAILABLE, 'بازگشت وجه بیعانه به دلیل لغو سفارش');
             }
         }
         // ب) اگر سفارش خرید مستقیم بوده (بدون رزرو و هولد)

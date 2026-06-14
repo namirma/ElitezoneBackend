@@ -97,27 +97,24 @@ class ProcessPreScalePaymentAction
                 Order::TRANS_VAT => $transVat,
             ]);
 
-            $buyerId = $locked->placer_user_id;
-            $systemUserId = (int) config('financial.system_user_id', 1);
-
             // A — buyer pays POO: WO(-) → WSSG(+)
-            $this->walletEngine->process(
-                '-', $POO, FinancialCodes::WALLET_OWNER, FinancialCodes::STATUS_AVAILABLE,
-                $locked, "پرداخت وجه سفارش {$locked->order_number}", $buyerId
+            $this->walletEngine->debitBuyer(
+                $locked, $POO, FinancialCodes::STATUS_AVAILABLE,
+                "پرداخت وجه سفارش {$locked->order_number}"
             );
-            $this->walletEngine->process(
-                '+', $POO, FinancialCodes::WALLET_SAZE, FinancialCodes::STATUS_AVAILABLE,
-                $locked, "دریافت وجه از خریدار برای سفارش {$locked->order_number}", $systemUserId
+            $this->walletEngine->creditSystem(
+                $locked, $POO, FinancialCodes::STATUS_AVAILABLE,
+                "دریافت وجه از خریدار برای سفارش {$locked->order_number}"
             );
 
             // B — Saze pays supplier PTS: WSSG(-) → WS(+)
-            $this->walletEngine->process(
-                '-', $PTS, FinancialCodes::WALLET_SAZE, FinancialCodes::STATUS_AVAILABLE,
-                $locked, "تخصیص سهم تامین‌کننده سفارش {$locked->order_number}", $systemUserId
+            $this->walletEngine->debitSystem(
+                $locked, $PTS, FinancialCodes::STATUS_AVAILABLE,
+                "تخصیص سهم تامین‌کننده سفارش {$locked->order_number}"
             );
-            $this->walletEngine->process(
-                '+', $PTS, FinancialCodes::WALLET_SUPPLIER, FinancialCodes::STATUS_AVAILABLE,
-                $locked, "واریز سهم فروش سفارش {$locked->order_number}", $realSupplierId
+            $this->walletEngine->creditSupplier(
+                $locked, $PTS, FinancialCodes::STATUS_AVAILABLE, $realSupplierId,
+                "واریز سهم فروش سفارش {$locked->order_number}"
             );
 
             $locked->update([
