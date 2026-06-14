@@ -74,8 +74,8 @@ Route::prefix('products')->middleware(['auth:sanctum', 'attach.price.category'])
     Route::post('/calculate-price', [ProductController::class, 'calculateOrderPrice']);
 });
 
-// ── Cart & Checkout ───────────────────────────────────────────────────────
-Route::middleware(['auth:sanctum', 'attach.price.category'])->group(function () {
+// ── Cart — مهمان هم می‌تواند سبد داشته باشد ─────────────────────────────
+Route::middleware(['optional.sanctum', 'attach.price.category'])->group(function () {
     Route::prefix('cart')->controller(CartController::class)->group(function () {
         Route::get('/', 'getCart');
         Route::post('/items', 'addToCart');
@@ -84,7 +84,10 @@ Route::middleware(['auth:sanctum', 'attach.price.category'])->group(function () 
         Route::patch('/filters', 'updateCartFilters');
         Route::patch('/customer', 'updateCustomerType');
     });
+});
 
+// ── Checkout — نیاز به احراز هویت دارد ───────────────────────────────────
+Route::middleware(['auth:sanctum', 'attach.price.category'])->group(function () {
     Route::controller(CheckoutController::class)->prefix('checkout')->group(function () {
         Route::post('/', 'placeOrder')->middleware(EnsureRoleIsSelected::class);
         Route::get('/payment/{order}', 'paymentInfo');

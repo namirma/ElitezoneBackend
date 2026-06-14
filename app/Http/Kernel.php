@@ -112,5 +112,6 @@ class Kernel extends HttpKernel
         'idempotency' => Idempotency::class,
         'role.selected' => EnsureRoleIsSelected::class,
         'can-see-ticket' => CanSeeTicket::class,
+        'optional.sanctum' => \App\Http\Middleware\OptionalSanctum::class,
     ];
 }
