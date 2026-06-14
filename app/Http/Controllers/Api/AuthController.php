@@ -247,7 +247,14 @@ class AuthController extends Controller
             $user->tokens()->delete();
             $token = $user->createToken('auth')->plainTextToken;
 
-            return success(['user' => new UserResource($user), 'token' => $token], __('auth.login_success'));
+            $userWithRelations = $user->fresh([
+                User::RELATION_PROFILE,
+                User::RELATION_TYPE,
+                User::RELATION_ROLES,
+                User::RELATION_BADGE,
+            ]);
+
+            return success(['user' => new UserResource($userWithRelations), 'token' => $token], __('auth.login_success'));
         }
 
         return error(__('auth.password_error'), [], 404);
