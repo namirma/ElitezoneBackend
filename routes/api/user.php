@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\User\ContractorController;
 use App\Http\Controllers\Api\User\DashboardController;
 use App\Http\Controllers\Api\User\EduixController;
 use App\Http\Controllers\Api\User\EmployerController;
+use App\Http\Controllers\Api\User\EmployerInviteController;
 use App\Http\Controllers\Api\User\EngineerController;
 use App\Http\Controllers\Api\User\JobExperienceController;
 use App\Http\Controllers\Api\User\MyItemsController;
@@ -150,6 +151,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::get('/', 'index')->middleware('track:job');
             Route::post('/', 'store');
             Route::delete('/{jobExperience}', 'destroy');
+        });
+
+        // Employer SMS invites (expert/advisor only)
+        Route::prefix('employer-invites')->middleware('role.expert')->controller(EmployerInviteController::class)->group(function () {
+            Route::get('/remaining', 'remaining');
+            Route::post('/sms', 'send')->middleware('throttle:3,1');
         });
 
         // ─────────────────────── Orders ────────────────────────────────────

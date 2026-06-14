@@ -16,4 +16,13 @@ return [
     'search_saved_successfully' => 'جستجو با موفقیت ثبت شد.',
     'search_history_cleared' => 'تاریخچه جستجو پاک شد.',
     'search_results' => 'نتیجه جستجو.',
+
+    // Employer SMS invite (expert/advisor only)
+    'invite_sent_successfully' => 'دعوت‌نامه با موفقیت ارسال شد.',
+    'invite_cap_reached' => 'حداکثر تعداد دعوت‌های مجاز شما به پایان رسیده است.',
+    'invite_already_sent' => 'قبلاً به این شماره موبایل دعوت‌نامه ارسال شده است.',
+    'remaining_invites' => 'تعداد دعوت‌های باقی‌مانده.',
+    'invite_mobile_required' => 'شماره موبایل الزامی است.',
+    'invite_mobile_invalid' => 'فرمت شماره موبایل صحیح نیست. باید ۱۱ رقمی و با ۰۹ شروع شود.',
+    'invite_mobile_self' => 'امکان دعوت از شماره موبایل خودتان وجود ندارد.',
 ];
