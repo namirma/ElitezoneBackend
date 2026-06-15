@@ -11,6 +11,7 @@ use App\Http\Controllers\ProductCategoryController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\PurchaseParameterController;
 use App\Http\Controllers\SearchController;
+use App\Http\Controllers\ShippingMethodController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -56,6 +57,9 @@ Route::prefix('factories')->group(function () {
     Route::get('/', [FactoryController::class, 'listFactories']);
     Route::get('/{id}/locations', [FactoryController::class, 'listLocations']);
 });
+
+// روش‌های ارسال (lookup عمومی)
+Route::get('/shipping-methods', [ShippingMethodController::class, 'index']);
 
 Route::prefix('customer-types')->group(function () {
     Route::get('/', [CustomerTypeController::class, 'index']);

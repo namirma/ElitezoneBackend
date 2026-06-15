@@ -2,9 +2,9 @@
 
 namespace App\Http\Resources\Product;
 
+use App\Http\Resources\BaseJsonResource;
 use App\Models\ProductVariant;
 use Illuminate\Http\Request;
-use App\Http\Resources\BaseJsonResource;
 
 /**
  * @mixin \App\Models\ProductVariant
@@ -20,6 +20,17 @@ class ProductVariantResource extends BaseJsonResource
             ProductVariant::SKU => $this->{ProductVariant::SKU},
             ProductVariant::STOCK_QUANTITY => (string) $this->{ProductVariant::STOCK_QUANTITY},
             ProductVariant::VIEW_COUNT => (string) $this->{ProductVariant::VIEW_COUNT},
+
+            // Purchase limits — so the frontend can validate min/max before submit
+            // instead of only discovering them via a 422 at add-to-cart time.
+            ProductVariant::MIN_ORDER_VALUE => $this->whenNotNull($this->{ProductVariant::MIN_ORDER_VALUE}),
+            ProductVariant::MAX_ORDER_VALUE => $this->whenNotNull($this->{ProductVariant::MAX_ORDER_VALUE}),
+            ProductVariant::LIMIT_ORDER_UNIT_ID => $this->{ProductVariant::LIMIT_ORDER_UNIT_ID},
+            'limit_order_unit' => $this->whenLoaded('limitOrderUnit', fn () => $this->limitOrderUnit ? [
+                'id' => $this->limitOrderUnit->id,
+                'name' => $this->limitOrderUnit->name,
+                'amount' => (string) $this->limitOrderUnit->amount,
+            ] : null),
             ProductVariant::DISCOUNT_VALUE => $this->whenNotNull($this->{ProductVariant::DISCOUNT_VALUE}),
             ProductVariant::DISCOUNT_TYPE => $this->whenNotNull($this->{ProductVariant::DISCOUNT_TYPE}),
             ProductVariant::DISCOUNT_START_DATE => optional($this->{ProductVariant::DISCOUNT_START_DATE})->format('Y-m-d H:i:s'),

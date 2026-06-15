@@ -14,8 +14,10 @@ use App\Http\Requests\Cart\UpdateCustomerTypeRequest;
 use App\Models\CartItem;
 use App\Services\Cart\CartResolver;
 use App\Services\Cart\CartResponseBuilder;
+use App\Services\Shipping\CartShippingQuoteService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 /**
  * Thin orchestrator over the Cart Actions:
@@ -27,7 +29,7 @@ use Illuminate\Http\Request;
 class CartController extends Controller
 {
     public function __construct(
-        private readonly CartResolver        $resolver,
+        private readonly CartResolver $resolver,
         private readonly CartResponseBuilder $responder,
     ) {}
 
@@ -49,8 +51,8 @@ class CartController extends Controller
     /** PATCH — update quantity / attributes of an existing item */
     public function updateCartItem(
         UpdateCartItemRequest $request,
-        CartItem              $item,
-        UpdateCartItemAction  $action,
+        CartItem $item,
+        UpdateCartItemAction $action,
     ): JsonResponse {
         $cart = $this->resolver->resolve($request);
 
@@ -65,8 +67,8 @@ class CartController extends Controller
 
     /** DELETE — remove an item */
     public function removeCartItem(
-        Request              $request,
-        CartItem             $item,
+        Request $request,
+        CartItem $item,
         RemoveCartItemAction $action,
     ): JsonResponse {
         $cart = $this->resolver->resolve($request);
@@ -83,7 +85,7 @@ class CartController extends Controller
     /** PATCH — change selected price-filter categories (e.g. cash/installment) */
     public function updateCartFilters(
         UpdateCartFiltersRequest $request,
-        SyncCartFiltersAction    $action,
+        SyncCartFiltersAction $action,
     ): JsonResponse {
         $cart = $this->resolver->resolve($request);
         $action->execute($cart, $request->validated('filter_categories', []));
@@ -98,5 +100,43 @@ class CartController extends Controller
         $cart->update(['customer_type_id' => $request->validated('customer_type_id')]);
 
         return $this->responder->build($cart);
+    }
+
+    /**
+     * POST — estimate freight for the current cart to a chosen address BEFORE checkout,
+     * so the frontend can show the shipping cost up front. Uses the same logistics math
+     * as order placement, so the estimate equals the amount charged at checkout.
+     */
+    public function shippingQuote(Request $request, CartShippingQuoteService $quoteService): JsonResponse
+    {
+        $validated = $request->validate([
+            'address_id' => ['required', 'integer', 'exists:addresses,id'],
+        ]);
+
+        $addressId = (int) $validated['address_id'];
+
+        // The address must belong to the authenticated user.
+        if (! Auth::user()->addresses()->whereKey($addressId)->exists()) {
+            return error(__('global.forbidden'), [], 403);
+        }
+
+        $cart = $this->resolver->resolve($request);
+        $quote = $quoteService->quoteForCart($cart, $addressId);
+
+        return success([
+            'total' => (string) $quote->total,
+            'per_line' => collect($quote->perLine)->map(fn ($v) => (string) $v),
+            'shipments' => collect($quote->shipments)->map(fn ($g) => [
+                'factory_id' => $g->factoryId,
+                'factory_location_id' => $g->factoryLocationId,
+                'address_id' => $g->addressId,
+                'destination_province_id' => $g->destinationProvinceId,
+                'destination_city_id' => $g->destinationCityId,
+                'weight' => (string) $g->weight,
+                'count' => (string) $g->count,
+                'cost_basis' => $g->costBasis->value,
+                'cost' => (string) $g->cost,
+            ])->values(),
+        ]);
     }
 }

@@ -21,6 +21,7 @@ use App\Services\Financial\SettlementCalculatorService;
 use App\Services\InventoryService;
 use App\Services\PriceCalculationService;
 use App\Services\PricingRoleResolver;
+use App\Services\Shipping\CartShippingQuoteService;
 use App\Services\Shipping\ShippingCostCalculator;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -34,6 +35,7 @@ class PlaceOrderAction
         private readonly SettlementCalculatorService $settlementCalculator,
         private readonly DocumentSequenceService $sequenceService,
         private readonly ShippingCostCalculator $shippingCalculator,
+        private readonly CartShippingQuoteService $shippingQuoteService,
     ) {}
 
     public function execute(User $user, PlaceOrderData $data): Order
@@ -133,49 +135,12 @@ class PlaceOrderAction
                 filterCategoryCode: $roleCode
             );
 
-            $itemLogisticsWeight = 0.0;
-            $itemSalesQuantity = 0.0;
-            $primaryUnitName = null;
-
-            $quantities = is_string($item->quantities) ? json_decode($item->quantities, true) : $item->quantities;
-            if (! is_array($quantities)) {
-                $quantities = [];
-            }
-
-            if (! empty($quantities)) {
-                foreach ($quantities as $unitId => $qty) {
-                    $qty = (float) $qty;
-                    $itemSalesQuantity += $qty;
-
-                    $unitModel = $orderUnits->where('id', $unitId)->first();
-                    if (! $primaryUnitName && $unitModel) {
-                        $primaryUnitName = $unitModel->name;
-                    }
-
-                    if ($unitModel) {
-                        $itemLogisticsWeight += $qty * (float) $unitModel->amount;
-                    } else {
-                        $variantWeight = (float) ($item->productVariant->weight ?? 1.0);
-                        if ($variantWeight <= 0) {
-                            $variantWeight = 1.0;
-                        }
-                        $itemLogisticsWeight += $qty * $variantWeight;
-                    }
-                }
-            } else {
-                $simpleQty = (float) ($item->quantity ?? 1);
-                $itemSalesQuantity = $simpleQty;
-                $primaryUnitName = 'عدد';
-                $variantWeight = (float) ($item->productVariant->weight ?? 1.0);
-                if ($variantWeight <= 0) {
-                    $variantWeight = 1.0;
-                }
-                $itemLogisticsWeight = $simpleQty * $variantWeight;
-            }
-
-            if ($itemLogisticsWeight <= 0) {
-                $itemLogisticsWeight = 0.001;
-            }
+            // Logistics weight + sales count — shared with the pre-checkout shipping
+            // quote (CartShippingQuoteService) so the quoted freight equals the charge.
+            $logistics = $this->shippingQuoteService->lineLogistics($item, $orderUnits);
+            $itemLogisticsWeight = $logistics['weight'];
+            $itemSalesQuantity = $logistics['count'];
+            $primaryUnitName = $logistics['unit_name'];
 
             $totalWeight += $itemLogisticsWeight;
 
