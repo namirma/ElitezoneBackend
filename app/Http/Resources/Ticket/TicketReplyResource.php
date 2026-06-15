@@ -22,7 +22,7 @@ class TicketReplyResource extends BaseJsonResource
             'message' => $this->message,
             'user' => $this->user,
             'admin' => $this->admin,
-            //            'attachments' => TicketFileResource::collection($this->files),
+            'attachments' => TicketFileResource::collection($this->whenLoaded('files')),
             'created_at' => $this->created_at?->toDateTimeString(),
         ];
     }

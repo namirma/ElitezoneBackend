@@ -5,11 +5,6 @@ namespace App\DataTransferObjects\Ticket;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 
-/**
- * Data transfer object for creating a ticket reply.
- *
- * Uses the readonly constructor pattern (PHP 8.1) for consistency with newer DTOs.
- */
 final class TicketReplyDTO
 {
     public function __construct(
@@ -18,24 +13,23 @@ final class TicketReplyDTO
         public readonly ?int $admin_id = null,
         public readonly ?int $ticket_id = null,
         /** @var UploadedFile[]|null */
-        public readonly ?array $file = null,
+        public readonly ?array $files = null,
     ) {}
 
     public static function fromRequest(Request $request): self
     {
         $request->validate([
-            'message' => ['required', 'string'],
-            'file' => ['nullable', 'array'],
-            'file.*' => ['nullable'],
+            'message'  => ['required', 'string'],
+            'files'    => ['nullable', 'array'],
+            'files.*'  => ['file', 'mimes:jpeg,jpg,png,gif,webp,pdf,doc,docx,xls,xlsx,txt,zip', 'max:10240'],
         ]);
 
         return new self(
             message: (string) $request->input('message'),
-            file: $request->file('file'),
+            files:   $request->file('files'),
         );
     }
 
-    /** Converts to array for repository::create() */
     public function toArray(): array
     {
         $data = ['message' => $this->message];

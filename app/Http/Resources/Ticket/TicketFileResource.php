@@ -2,18 +2,23 @@
 
 namespace App\Http\Resources\Ticket;
 
-use Illuminate\Http\Request;
 use App\Http\Resources\BaseJsonResource;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
+/**
+ * @mixin \App\Models\TicketFile
+ */
 class TicketFileResource extends BaseJsonResource
 {
-    /**
-     * Transform the resource into an array.
-     *
-     * @return array<string, mixed>
-     */
     public function toArray(Request $request): array
     {
-        return parent::toArray($request);
+        return [
+            'id'        => $this->id,
+            'name'      => $this->original_name,
+            'url'       => Storage::disk('public')->url($this->path),
+            'size'      => $this->size,
+            'mime_type' => $this->mime_type,
+        ];
     }
 }
