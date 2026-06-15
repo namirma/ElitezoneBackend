@@ -31,14 +31,9 @@ class OrderRepository implements OrderRepositoryInterface
     public function getUserOrders(int $userId, string $roleType, string $statusGroup, int $perPage = 10): LengthAwarePaginator
     {
         return Order::query()
-            ->with([
-                'items.productVariant',
-                'placer.profile',
-                'placer.type',
-                'beneficiary.profile',
-                'address.city',
-                'address.province',
-            ])
+            // Single source of truth for eager-loads — same set OrderResource renders.
+            // (Previously omitted `consultant`, causing an N+1 when the resource read it.)
+            ->with(Order::resourceRelations())
             ->where(function (Builder $query) use ($userId, $roleType) {
                 if ($roleType === 'beneficiary') {
                     $query->where(Order::BENEFICIARY_USER_ID, $userId);
