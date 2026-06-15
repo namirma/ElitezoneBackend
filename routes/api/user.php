@@ -83,6 +83,8 @@ Route::middleware(['optional.sanctum', 'attach.price.category'])->group(function
         Route::delete('/items/{item}', 'removeCartItem');
         Route::patch('/filters', 'updateCartFilters');
         Route::patch('/customer', 'updateCustomerType');
+        // استعلام هزینه حمل پیش از checkout — نیازمند آدرس کاربر (auth الزامی)
+        Route::post('/shipping-quote', 'shippingQuote')->middleware('auth:sanctum');
     });
 });
 
@@ -170,14 +172,14 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
                 // خرید برای خودم
                 Route::prefix('buy-myself')->group(function () {
-                    Route::get('/current',   fn (Request $request) => app(OrderController::class)->myOrders($request, 'current'));
+                    Route::get('/current', fn (Request $request) => app(OrderController::class)->myOrders($request, 'current'));
                     Route::get('/delivered', fn (Request $request) => app(OrderController::class)->myOrders($request, 'delivered'));
                     Route::get('/cancelled', fn (Request $request) => app(OrderController::class)->myOrders($request, 'cancelled'));
                 });
 
                 // خرید برای دیگران
                 Route::prefix('buy-others')->group(function () {
-                    Route::get('/current',   fn (Request $request) => app(OrderController::class)->otherOrders($request, 'current'));
+                    Route::get('/current', fn (Request $request) => app(OrderController::class)->otherOrders($request, 'current'));
                     Route::get('/delivered', fn (Request $request) => app(OrderController::class)->otherOrders($request, 'delivered'));
                     Route::get('/cancelled', fn (Request $request) => app(OrderController::class)->otherOrders($request, 'cancelled'));
                 });
@@ -188,16 +190,16 @@ Route::middleware(['auth:sanctum'])->group(function () {
             // Financial operations on an order
             Route::controller(OrderPaymentController::class)->group(function () {
                 Route::post('/{order}/pay-hold-fee', 'payHoldFee')->whereNumber('order')->middleware(['idempotency', 'throttle:10,1']);
-                Route::post('/{order}/pay-full',     'payFullOrder')->whereNumber('order')->middleware(['idempotency', 'throttle:10,1'])->name('api.user.orders.pay_full');
+                Route::post('/{order}/pay-full', 'payFullOrder')->whereNumber('order')->middleware(['idempotency', 'throttle:10,1'])->name('api.user.orders.pay_full');
                 Route::post('/{order}/upload-receipt', 'uploadReceipt')->whereNumber('order');
             });
 
             // Order status actions
             Route::controller(OrderActionController::class)->group(function () {
-                Route::post('/{order}/cancel',                      'cancel')->whereNumber('order');
-                Route::post('/{order}/finalize-invoice',            'finalizeInvoice')->whereNumber('order');
+                Route::post('/{order}/cancel', 'cancel')->whereNumber('order');
+                Route::post('/{order}/finalize-invoice', 'finalizeInvoice')->whereNumber('order');
                 // Doc Q: consultant submits Moadian invoice → releases commission hold
-                Route::post('/{order}/consultant-moadian-invoice',  'submitConsultantMoadianInvoice')->whereNumber('order');
+                Route::post('/{order}/consultant-moadian-invoice', 'submitConsultantMoadianInvoice')->whereNumber('order');
             });
 
             // Invoice downloads
@@ -211,12 +213,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
             // Supplier operations
             Route::controller(SupplierOrderController::class)->group(function () {
-                Route::post('/{order}/prepare',                   'markAsPrepared')->whereNumber('order');
-                Route::post('/{order}/waybill',                   'addWaybill')->whereNumber('order');
-                Route::post('/{order}/espadana',                  'issueEspadanaCommand')->whereNumber('order');
-                Route::post('/{order}/receipt',                   'attachPaymentReceipt')->whereNumber('order');
+                Route::post('/{order}/prepare', 'markAsPrepared')->whereNumber('order');
+                Route::post('/{order}/waybill', 'addWaybill')->whereNumber('order');
+                Route::post('/{order}/espadana', 'issueEspadanaCommand')->whereNumber('order');
+                Route::post('/{order}/receipt', 'attachPaymentReceipt')->whereNumber('order');
                 // Doc O: supplier submits Moadian invoice → releases supplier VAT hold
-                Route::post('/{order}/supplier-moadian-invoice',  'submitSupplierMoadianInvoice')->whereNumber('order');
+                Route::post('/{order}/supplier-moadian-invoice', 'submitSupplierMoadianInvoice')->whereNumber('order');
             });
 
             // Detail view (MUST be the last route in the orders group — wildcard)
@@ -228,17 +230,17 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
             // Wallet
             Route::controller(WalletController::class)->prefix('wallet')->group(function () {
-                Route::get('/',                'getWallet');
-                Route::get('/transactions',    'getTransactions');
+                Route::get('/', 'getWallet');
+                Route::get('/transactions', 'getTransactions');
                 Route::get('/deposit-account', 'getDepositAccount'); // شناسه واریز (PAYA/SATNA direct deposit)
-                Route::post('/deposit',        'requestDeposit')->middleware('throttle:financial');
-                Route::post('/withdraw',       'requestWithdrawal')->middleware(['idempotency', 'throttle:financial']);
+                Route::post('/deposit', 'requestDeposit')->middleware('throttle:financial');
+                Route::post('/withdraw', 'requestWithdrawal')->middleware(['idempotency', 'throttle:financial']);
             });
 
             // Receipts (deposit slips)
             Route::controller(WalletController::class)->prefix('receipts')->group(function () {
-                Route::get('/',           'getReceipts');
-                Route::post('/',          'storeReceipt')->middleware('idempotency');
+                Route::get('/', 'getReceipts');
+                Route::post('/', 'storeReceipt')->middleware('idempotency');
                 Route::delete('/{transaction}', 'deleteReceipt');
                 Route::get('/transactions/{transaction}/download', 'downloadReceipt')
                     ->whereNumber('transaction')
@@ -251,59 +253,59 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
         // Addresses
         Route::prefix('addresses')->controller(AddressController::class)->group(function () {
-            Route::get('/',               'index')->middleware('track:addresses');
-            Route::post('/',              'store');
-            Route::put('/{address}',      'update');
-            Route::delete('/{address}',   'destroy');
+            Route::get('/', 'index')->middleware('track:addresses');
+            Route::post('/', 'store');
+            Route::put('/{address}', 'update');
+            Route::delete('/{address}', 'destroy');
             Route::post('/{address}/default', 'setDefault');
         });
 
         // Wishlists
         Route::prefix('wishlists')->controller(WishlistController::class)->group(function () {
-            Route::get('/',  'index')->middleware('track:my_items');
+            Route::get('/', 'index')->middleware('track:my_items');
             Route::post('/', 'store');
-            Route::get('/{wishlist}',    'show');
-            Route::put('/{wishlist}',    'update');
+            Route::get('/{wishlist}', 'show');
+            Route::put('/{wishlist}', 'update');
             Route::delete('/{wishlist}', 'destroy');
             Route::post('/toggle-variant', 'toggleVariant');
-            Route::post('/{wishlist}/variants/{variant}',  'addVariant');
+            Route::post('/{wishlist}/variants/{variant}', 'addVariant');
             Route::delete('/{wishlist}/variants/{variant}', 'removeVariant');
         });
 
         // Stock subscriptions
         Route::prefix('stock-subscriptions')->controller(StockSubscriptionController::class)->group(function () {
-            Route::get('/',       'index');
-            Route::post('/toggle','toggle');
+            Route::get('/', 'index');
+            Route::post('/toggle', 'toggle');
         });
 
         Route::prefix('my-items')->controller(MyItemsController::class)->group(function () {
-            Route::get('/badges',  'badges');
+            Route::get('/badges', 'badges');
             Route::get('/surveys', 'surveys');
         });
 
         // Consultants ↔ Employers
         Route::prefix('consultants')->controller(ConsultantRelationController::class)->group(function () {
             Route::middleware('role.employer')->group(function () {
-                Route::get('/',              'listMyConsultants')->middleware('track:relations');
-                Route::post('/invite',       'inviteConsultant');
-                Route::delete('/{consultant}','removeConsultant');
+                Route::get('/', 'listMyConsultants')->middleware('track:relations');
+                Route::post('/invite', 'inviteConsultant');
+                Route::delete('/{consultant}', 'removeConsultant');
             });
             Route::middleware('role.expert')->group(function () {
-                Route::get('/employers',                       'listMyEmployers');
-                Route::get('/invitations',                     'listMyInvitations');
-                Route::get('/invitations/rejection-reasons',   'getRejectionReasons');
-                Route::post('/invitations/{employer}/accept',  'acceptInvitation');
-                Route::post('/invitations/{employer}/reject',  'rejectInvitation');
+                Route::get('/employers', 'listMyEmployers');
+                Route::get('/invitations', 'listMyInvitations');
+                Route::get('/invitations/rejection-reasons', 'getRejectionReasons');
+                Route::post('/invitations/{employer}/accept', 'acceptInvitation');
+                Route::post('/invitations/{employer}/reject', 'rejectInvitation');
             });
         });
 
         // Role-specific profile completion
-        Route::post('/engineer',   [EngineerController::class, 'store']);
+        Route::post('/engineer', [EngineerController::class, 'store']);
         Route::post('/contractor', [ContractorController::class, 'store']);
-        Route::post('/employer',   [EmployerController::class, 'store']);
+        Route::post('/employer', [EmployerController::class, 'store']);
         Route::prefix('supplier')->group(function () {
-            Route::post('/',                  [SupplierController::class, 'store']);
-            Route::get('/activity-categories',[SupplierController::class, 'getCategories']);
+            Route::post('/', [SupplierController::class, 'store']);
+            Route::get('/activity-categories', [SupplierController::class, 'getCategories']);
             Route::get('/activityCategory-getId', [SupplierController::class, 'getActivityCategoryId']);
         });
     });
@@ -313,7 +315,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Beneficiaries
     Route::prefix('beneficiaries')->group(function () {
-        Route::post('/start-verification',   [BeneficiaryController::class, 'startVerification']);
+        Route::post('/start-verification', [BeneficiaryController::class, 'startVerification']);
         Route::post('/confirm-verification', [BeneficiaryController::class, 'confirmVerification']);
     });
 
