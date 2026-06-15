@@ -34,6 +34,13 @@ class User extends Authenticatable
 
     public const BADGE_ID = 'badge_id';
 
+    /**
+     * Invoice amount (Rials) the consultant paid when purchasing their badge.
+     * Basis for the lifetime commission cap (cap_multiplier × this amount).
+     * NULL = no paid badge on record → the consultant is uncapped.
+     */
+    public const BADGE_PURCHASE_AMOUNT = 'badge_purchase_amount';
+
     public const MOBILE = 'mobile';
 
     public const IS_ACTIVE = 'is_active';
@@ -88,6 +95,7 @@ class User extends Authenticatable
         self::TYPE_ID,
         self::PASSWORD,
         self::BADGE_ID,
+        self::BADGE_PURCHASE_AMOUNT,
     ];
 
     protected $hidden = [
@@ -100,6 +108,7 @@ class User extends Authenticatable
     protected $casts = [
         self::PASSWORD => 'hashed',
         self::IS_ACTIVE => 'boolean',
+        self::BADGE_PURCHASE_AMOUNT => 'decimal:2',
     ];
 
     protected $appends = ['created_at_p', 'created_at_diff', 'updated_at_p', 'updated_at_diff'];

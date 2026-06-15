@@ -9,6 +9,7 @@ use App\Http\Resources\Ticket\TicketResource;
 use App\Jobs\Notification\SendSmsJob;
 use App\Models\Ticket;
 use App\Models\User;
+use App\Services\TicketService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,10 +18,13 @@ use Illuminate\Support\Facades\Auth;
 /**
  * پنل مدیریت — مدیریت تیکت‌های پشتیبانی
  *
- * وضعیت‌های تیکت: open | answered | pending | closed
+ * وضعیت‌های تیکت: open | in_progress | waiting_customer | waiting_supplier |
+ *                 answered | resolved | closed  (+ pending legacy)
  */
 class AdminTicketController extends Controller
 {
+    public function __construct(protected TicketService $service) {}
+
     /**
      * لیست تیکت‌ها با فیلتر وضعیت، دپارتمان و جستجوی متنی
      *
@@ -32,10 +36,10 @@ class AdminTicketController extends Controller
     public function index(Request $request): JsonResponse
     {
         $request->validate([
-            'status'        => ['nullable', 'string', 'in:open,answered,pending,closed'],
+            'status' => ['nullable', 'string', 'in:'.implode(',', Ticket::STATUSES)],
             'department_id' => ['nullable', 'integer'],
-            'search'        => ['nullable', 'string', 'min:2'],
-            'per_page'      => ['nullable', 'integer', 'min:1', 'max:100'],
+            'search' => ['nullable', 'string', 'min:2'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
         $tickets = Ticket::query()
@@ -68,7 +72,7 @@ class AdminTicketController extends Controller
      */
     public function show(Ticket $ticket): JsonResponse
     {
-        $ticket->load(['user.profile', 'department', 'replies.user.profile']);
+        $ticket->load(['user.profile', 'department', 'files', 'replies.user.profile', 'replies.files']);
 
         return success(new TicketResource($ticket), __('global.received_successfully'));
     }
@@ -84,16 +88,16 @@ class AdminTicketController extends Controller
     public function reply(AdminTicketReplyRequest $request, Ticket $ticket): JsonResponse
     {
         $ticket->replies()->create([
-            'message'  => $request->validated('message'),
+            'message' => $request->validated('message'),
             'admin_id' => Auth::id(),
         ]);
 
-        $ticket->update([
-            Ticket::STATUS   => Ticket::STATUS_ANSWERED,
-            Ticket::ADMIN_ID => Auth::id(),
-        ]);
+        // Assign to the responding admin (stamps assigned_at once) and move the
+        // status to "answered" — which stamps first_responded_at for the SLA KPI.
+        $this->service->assignTo($ticket, (int) Auth::id());
+        $this->service->changeStatus($ticket, Ticket::STATUS_ANSWERED);
 
-        $ticket->load(['user.profile', 'department', 'replies.user.profile']);
+        $ticket->load(['user.profile', 'department', 'files', 'replies.user.profile', 'replies.files']);
 
         // SMS اطلاع‌رسانی به کاربر تیکت
         $this->notifyTicketUser($ticket, 'ticket_admin_replied');
@@ -110,14 +114,17 @@ class AdminTicketController extends Controller
     public function changeStatus(AdminTicketStatusRequest $request, Ticket $ticket): JsonResponse
     {
         $newStatus = $request->validated('status');
-        $ticket->update([Ticket::STATUS => $newStatus]);
+
+        // Delegate to the service so lifecycle timestamps (resolved_at / closed_at /
+        // first_responded_at) and the reopen counter are stamped consistently.
+        $this->service->changeStatus($ticket, $newStatus);
 
         $message = match ($newStatus) {
-            Ticket::STATUS_CLOSED   => __('admin.tickets.closed'),
-            Ticket::STATUS_OPEN     => __('admin.tickets.reopened'),
-            Ticket::STATUS_PENDING  => __('admin.tickets.set_pending'),
+            Ticket::STATUS_CLOSED => __('admin.tickets.closed'),
+            Ticket::STATUS_OPEN => __('admin.tickets.reopened'),
+            Ticket::STATUS_PENDING => __('admin.tickets.set_pending'),
             Ticket::STATUS_ANSWERED => __('admin.tickets.marked_answered'),
-            default                 => __('global.updated_successfully'),
+            default => __('global.updated_successfully'),
         };
 
         // SMS فقط وقتی تیکت بسته می‌شود — رویداد پایانی برای کاربر
@@ -127,6 +134,27 @@ class AdminTicketController extends Controller
         }
 
         return success(null, $message);
+    }
+
+    /**
+     * افزودن یادداشت داخلی به تیکت (یادداشت‌های تیکت — فقط برای تیم پشتیبانی).
+     */
+    public function addNote(Request $request, Ticket $ticket): JsonResponse
+    {
+        $request->validate(['note' => ['required', 'string', 'max:2000']]);
+
+        $this->service->addNote($ticket, (int) Auth::id(), $request->string('note')->toString());
+
+        return success(null, __('ticket.note_added'));
+    }
+
+    /**
+     * KPIهای تیکتینگ: حجم به تفکیک دسته/وضعیت، تعداد باز و نقض SLA،
+     * میانگین زمان اولین پاسخ و حل، و نرخ بازگشایی.
+     */
+    public function kpis(): JsonResponse
+    {
+        return success($this->service->kpis(), __('global.received_successfully'));
     }
 
     /**

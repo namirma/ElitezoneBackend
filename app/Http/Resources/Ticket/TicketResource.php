@@ -21,34 +21,67 @@ class TicketResource extends BaseJsonResource
         $statusKey = $this->status;
 
         $statusLabel = match ($statusKey) {
-            'open'     => 'باز',
+            'open' => 'باز',
+            'in_progress' => 'در حال بررسی',
+            'waiting_customer' => 'در انتظار مشتری',
+            'waiting_supplier' => 'در انتظار تأمین‌کننده',
             'answered' => 'پاسخ داده شده',
-            'pending'  => 'در انتظار پاسخ',
-            'closed'   => 'بسته شده',
-            default    => $statusKey,
+            'resolved' => 'حل‌شده',
+            'pending' => 'در انتظار پاسخ',
+            'closed' => 'بسته شده',
+            default => $statusKey,
+        };
+
+        $priorityKey = $this->priority;
+        $priorityLabel = match ($priorityKey) {
+            'urgent' => 'فوری',
+            'high' => 'بالا',
+            'normal' => 'عادی',
+            'low' => 'پایین',
+            default => $priorityKey,
         };
 
         return [
-            'id'      => $this->id,
-            'code'    => $this->code,
+            'id' => $this->id,
+            'code' => $this->code,
             'subject' => $this->subject,
             'message' => $this->message,
 
             // status_info — ساختار یکپارچه با بقیه Resourceها
             'status_info' => [
-                'key'   => $statusKey,
+                'key' => $statusKey,
                 'label' => $statusLabel,
-                'tone'  => StatusTone::fromStatus($statusKey)->value,
+                'tone' => StatusTone::fromStatus($statusKey)->value,
             ],
             // حفظ فیلد قدیمی برای سازگاری عقبگرد
             'status' => $statusKey,
 
-            'created_at' => $this->created_at?->toDateTimeString(),
-            'user'       => $this->user,
+            'priority' => [
+                'key' => $priorityKey,
+                'label' => $priorityLabel,
+            ],
 
-            'department'  => new DepartmentResource($this->whenLoaded('department')),
+            'order_id' => $this->order_id,
+            'province_id' => $this->province_id,
+            'city_id' => $this->city_id,
+
+            // SLA & lifecycle
+            'sla_due_at' => $this->sla_due_at?->toDateTimeString(),
+            'sla_breached' => $this->sla_due_at !== null
+                && in_array($statusKey, (array) config('ticketing.open_statuses', []), true)
+                && $this->sla_due_at->isPast(),
+            'assigned_at' => $this->assigned_at?->toDateTimeString(),
+            'first_responded_at' => $this->first_responded_at?->toDateTimeString(),
+            'resolved_at' => $this->resolved_at?->toDateTimeString(),
+            'closed_at' => $this->closed_at?->toDateTimeString(),
+            'reopened_count' => (int) $this->reopened_count,
+
+            'created_at' => $this->created_at?->toDateTimeString(),
+            'user' => $this->user,
+
+            'department' => new DepartmentResource($this->whenLoaded('department')),
             'attachments' => TicketFileResource::collection($this->whenLoaded('files')),
-            'replies'     => TicketReplyResource::collection($this->whenLoaded('replies')),
+            'replies' => TicketReplyResource::collection($this->whenLoaded('replies')),
         ];
     }
 }

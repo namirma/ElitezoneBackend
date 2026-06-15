@@ -34,6 +34,6 @@ class TicketRepository implements TicketRepositoryInterface
 
     public function show(Ticket $ticket): Ticket
     {
-        return $ticket->load(['user', 'replies.user', 'replies.files']);
+        return $ticket->load(['user', 'files', 'replies.user', 'replies.files']);
     }
 }

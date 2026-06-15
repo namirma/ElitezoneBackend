@@ -7,13 +7,20 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class TicketFile extends Model
 {
+    public const TICKET_ID = 'ticket_id';
+
     public const TICKET_REPLY_ID = 'ticket_reply_id';
+
     public const PATH = 'path';
+
     public const ORIGINAL_NAME = 'original_name';
+
     public const MIME_TYPE = 'mime_type';
+
     public const SIZE = 'size';
 
     protected $fillable = [
+        self::TICKET_ID,
         self::TICKET_REPLY_ID,
         self::PATH,
         self::ORIGINAL_NAME,
@@ -21,6 +28,13 @@ class TicketFile extends Model
         self::SIZE,
     ];
 
+    /** Set when the file is attached to a ticket's opening message. */
+    public function ticket(): BelongsTo
+    {
+        return $this->belongsTo(Ticket::class, self::TICKET_ID);
+    }
+
+    /** Set when the file is attached to a reply in the conversation thread. */
     public function ticketReply(): BelongsTo
     {
         return $this->belongsTo(TicketReply::class);
