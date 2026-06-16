@@ -64,8 +64,18 @@ class UpdateCartItemAction
                 $cartItem->shipping_method_id = $data['shipping_method_id'];
             }
 
-            if (isset($data['factory_location_id'])) {
-                $cartItem->factory_location_id = $data['factory_location_id'];
+            // The request field is `location_id` (UpdateCartItemRequest). Apply it and
+            // keep `factory_id` consistent by deriving it from the chosen location —
+            // a location belongs to exactly one factory, so this also handles switching
+            // origin factory. (Previously the action read a non-existent
+            // `factory_location_id` key, so the required location change was silently
+            // dropped and the line re-priced against the old origin.)
+            if (isset($data['location_id'])) {
+                $location = FactoryLocation::find($data['location_id']);
+                if ($location) {
+                    $cartItem->factory_location_id = $location->{FactoryLocation::ID};
+                    $cartItem->factory_id = $location->{FactoryLocation::FACTORY_ID};
+                }
             }
 
             if (array_key_exists('address_id', $data)) {
