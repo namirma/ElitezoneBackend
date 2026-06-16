@@ -27,8 +27,8 @@ class DeleteReceiptAction
         }
 
         $path = $transaction->meta['receipt_path'] ?? null;
-        if ($path && Storage::disk('public')->exists($path)) {
-            Storage::disk('public')->delete($path);
+        if ($path && Storage::disk('financial')->exists($path)) {
+            Storage::disk('financial')->delete($path);
         }
 
         $transaction->delete();

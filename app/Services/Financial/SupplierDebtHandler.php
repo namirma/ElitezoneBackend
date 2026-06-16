@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Services\Financial;
 
 use App\Constants\FinancialCodes;
+use App\Jobs\Notification\SendSmsJob;
 use App\Models\Order;
 use App\Models\Wallet;
-use App\Services\SmsService;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -25,7 +25,6 @@ class SupplierDebtHandler
 {
     public function __construct(
         protected WalletTransactionEngine $walletEngine,
-        protected SmsService $smsService,
     ) {}
 
     /**
@@ -88,15 +87,20 @@ class SupplierDebtHandler
             Order::SUPPLIER_DEBT_AMOUNT => $reclaimAmount,
         ]);
 
+        // Queue the SMS and defer it until AFTER the surrounding weighbridge transaction
+        // commits. The previous synchronous SmsService::send() was a blocking HTTP POST
+        // executed while the order + wallet rows were lockForUpdate-held — a slow TSMS
+        // endpoint would hold those locks for the whole network round-trip, and a later
+        // rollback would have already told the supplier about a debt that never landed.
         $supplierUser = $order->items->first()?->supplier;
         if ($supplierUser?->mobile) {
-            $this->smsService->send(
+            SendSmsJob::dispatch(
                 $supplierUser->mobile,
                 __('sms.supplier_debt_notification', [
                     'order_number' => $order->order_number,
                     'amount' => number_format((int) $reclaimAmount),
                 ])
-            );
+            )->afterCommit();
         }
 
         Log::channel('financial')->warning(

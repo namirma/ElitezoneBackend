@@ -40,27 +40,42 @@ class CancelOrderAction
 
         $cancelled = DB::transaction(function () use ($order, $reason, $refundWallet, $isSystemCron) {
 
+            // Re-fetch + lock the order row. Admin routes have no idempotency middleware
+            // and the system cron can race a manual cancel, so without this a concurrent
+            // or retried cancel would restoreStock() and processRefund() twice — a
+            // double inventory-restore and a double refund.
+            $locked = Order::where('id', $order->id)->lockForUpdate()->first();
+
+            if (! $locked) {
+                throw new Exception(__('orders.internal_order_not_found'));
+            }
+
+            // Idempotency guard: already cancelled → nothing to do.
+            if ($locked->status === Order::STATUS_CANCELLED) {
+                return $locked;
+            }
+
             // ── وضعیت مالی قبل از تغییر — برای تصمیم‌گیری درباره اسناد ────
             // باید قبل از update ذخیره شود، چون update مقادیر مدل را تغییر می‌دهد.
-            $wasReserved = in_array($order->status, [
+            $wasReserved = in_array($locked->status, [
                 Order::STATUS_RESERVED,
                 Order::STATUS_RESERVED_EXTENDED,
             ]);
-            $wasPaid = ($order->payment_status === Order::PAYMENT_PAID);
+            $wasPaid = ($locked->payment_status === Order::PAYMENT_PAID);
 
             // ۱. بازگرداندن موجودی کالا به انبار
-            $this->inventoryService->restoreStock($order);
+            $this->inventoryService->restoreStock($locked);
 
             // ۲. بازگرداندن وجه به کیف پول (با هندل کردن حساب امانی)
             if ($refundWallet) {
-                $this->processRefund($order);
+                $this->processRefund($locked);
             }
 
             // ۳. تعیین وضعیت جدید پرداخت
-            $newPaymentStatus = $this->resolvePaymentStatus($order);
+            $newPaymentStatus = $this->resolvePaymentStatus($locked);
 
             // ۴. آپدیت نهایی سفارش
-            $order->update([
+            $locked->update([
                 Order::STATUS => Order::STATUS_CANCELLED,
                 Order::PAYMENT_STATUS => $newPaymentStatus,
                 Order::CANCEL_REASON => $reason,
@@ -69,18 +84,18 @@ class CancelOrderAction
             // ۵. صدور اسناد لغو (Doc j همیشه، Doc i فقط اگر استرداد شد) ─────
             if ($wasReserved || $wasPaid) {
                 $this->invoiceGenerator->generateCancellationDocs(
-                    $order,
+                    $locked,
                     withRefundReceipt: (bool) $refundWallet
                 );
             }
 
-            Log::channel('orders')->info("سفارش شماره {$order->order_number} با موفقیت لغو شد.", [
+            Log::channel('orders')->info("سفارش شماره {$locked->order_number} با موفقیت لغو شد.", [
                 'reason' => $reason,
                 'refunded' => $refundWallet,
                 'is_system_cron' => $isSystemCron,
             ]);
 
-            return $order;
+            return $locked;
         });
 
         // ایونت بعد از commit ارسال می‌شود؛ صف با after_commit=false ممکن است

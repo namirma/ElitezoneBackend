@@ -35,7 +35,8 @@ class FundWalletAction
             if ($receiptFile) {
                 $originalName = $receiptFile->getClientOriginalName();
 
-                $path = $receiptFile->store(WalletTransaction::PATH_RECEIPTS, 'public');
+                // Private disk — financial receipts must not be reachable via a public URL.
+                $path = $receiptFile->store(WalletTransaction::PATH_RECEIPTS, 'financial');
 
                 $meta['receipt_path'] = $path;
                 $meta['receipt_info']['image_path'] = $path;
