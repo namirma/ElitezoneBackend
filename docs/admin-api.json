@@ -1,0 +1,102 @@
+{
+  "info": {
+    "title": "EliteZone Admin / Back-Office API",
+    "branch": "feature/spec-gaps-consultant-cap-ticketing",
+    "currency": "Rials",
+    "auth": "Bearer token, role=admin (auth:sanctum + role.admin)",
+    "base_path": "/api/admin",
+    "envelope_success": { "status": true, "message": "string", "data": "payload" },
+    "envelope_error": { "status": false, "message": "string", "errors": "object|array" },
+    "pagination": "data = { data: [...], links: {...}, meta: {...} }",
+    "raw_note": "endpoints flagged raw=true paginate the Eloquent model directly (raw DB column names)"
+  },
+  "endpoints": [
+    { "group": "dashboard", "method": "GET", "path": "/api/admin/dashboard",
+      "data": { "today": { "new_users": "int", "new_orders": "int", "revenue": "float" },
+        "pipeline": [ { "status": "string", "count": "int", "total_amount": "float" } ],
+        "financial_alerts": { "has_alerts": "bool", "total_alerts": "int", "pending_deposits": "int", "pending_deposits_amount": "float", "supplier_debts": "int", "supplier_debts_amount": "float", "pending_moadian_invoices": "int", "expired_reservations": "int" },
+        "weekly_trend": [ { "date": "Y-m-d", "count": "int", "revenue": "float" } ],
+        "month_summary": { "paid_revenue": "float", "orders_count": "int", "total_users": "int", "new_users_this_month": "int" } } },
+
+    { "group": "activity_log", "method": "GET", "path": "/api/admin/activities",
+      "query": { "subject_type": "string?", "subject_id": "int?", "causer_id": "int?" },
+      "paginated": true, "resource": "ActivityLogResource",
+      "resource_shape": { "id": "int", "description": "string", "subject_type": "string", "subject_id": "int", "causer": "string", "ip_address": "string|null", "changes": "object", "old": "object", "custom_props": "object", "created_at": "jalali", "created_at_diff": "string" } },
+
+    { "group": "search", "method": "GET", "path": "/api/admin/search/users", "query": { "query": "string min:2" }, "paginated": true, "resource": "UserResource" },
+    { "group": "search", "method": "GET", "path": "/api/admin/search/transactions", "query": { "query": "string?", "search": "string?", "type": "string?", "status": "string?", "has_receipt": "bool?" }, "paginated": true, "raw": true, "model": "WalletTransaction" },
+
+    { "group": "users", "method": "GET", "path": "/api/admin/users", "query": { "role": "expert|employer|supplier", "search": "string min:2", "is_active": "bool", "per_page": "1..100" }, "paginated": true, "resource": "UserResource" },
+    { "group": "users", "method": "GET", "path": "/api/admin/users/{user}", "resource": "UserResource" },
+    { "group": "users", "method": "POST", "path": "/api/admin/users/fetch-profile", "body": { "keyword": "string required min:3" }, "resource": "UserResource", "errors": { "404": "not found" } },
+    { "group": "users", "method": "GET", "path": "/api/admin/users/{user}/orders", "paginated": true, "resource": "OrderResource" },
+    { "group": "users", "method": "GET", "path": "/api/admin/users/{user}/transactions", "paginated": true, "resource": "WalletTransactionResource" },
+    { "group": "users", "method": "POST", "path": "/api/admin/users/{user}/toggle-status", "resource": "UserResource" },
+    { "group": "users", "method": "POST", "path": "/api/admin/users/{user}/note", "body": { "note": "string required max:1000" }, "data": null },
+    { "group": "users", "method": "POST", "path": "/api/admin/users/{user}/verify-consultant", "data": { "user_id": "int", "profile_type": "engineer|contractor", "is_verified": true, "verified_at": "datetime" }, "errors": { "422": "no consultant profile" } },
+    { "group": "users", "method": "POST", "path": "/api/admin/users/{user}/unverify-consultant", "data": { "user_id": "int", "profile_type": "engineer|contractor", "is_verified": false, "verified_at": null } },
+
+    { "group": "suppliers", "method": "GET", "path": "/api/admin/suppliers", "query": { "search": "string min:2", "is_active": "bool", "per_page": "1..100" }, "paginated": true, "resource": "UserResource" },
+    { "group": "suppliers", "method": "GET", "path": "/api/admin/suppliers/{user}", "data": { "user": "UserResource", "formula_flags": { "trans_commission": "bool", "trans_vat": "bool" }, "order_stats": [ { "status": "string", "count": "int", "total_amount": "float" } ], "wallet": { "balance": "float", "balance_hold": "float" } }, "errors": { "404": "not a supplier" } },
+    { "group": "suppliers", "method": "PUT", "path": "/api/admin/suppliers/{user}/formula", "body": { "trans_commission": "bool required", "trans_vat": "bool required" }, "data": { "trans_commission": "bool", "trans_vat": "bool" } },
+    { "group": "suppliers", "method": "GET", "path": "/api/admin/suppliers/{user}/orders", "query": { "status": "string?", "per_page": "1..100" }, "paginated": true, "resource": "OrderResource" },
+
+    { "group": "orders", "method": "GET", "path": "/api/admin/orders", "query": { "order_number": "string?", "date_from": "date?", "date_to": "date? >=date_from", "status": "string?" }, "paginated": true, "resource": "OrderResource" },
+    { "group": "orders", "method": "GET", "path": "/api/admin/orders/{order}", "resource": "OrderResource" },
+    { "group": "orders", "method": "GET", "path": "/api/admin/orders/{order}/history", "data": [ { "event": "string", "causer_name": "string", "created_at": "jalali", "changes": "object", "old": "object" } ] },
+    { "group": "orders", "method": "POST", "path": "/api/admin/orders/{order}/status", "body": { "status": "required in: pending,processing,shipped,delivered,cancelled" }, "note": "forward-only state machine; cancelled via CancelOrderAction; illegal jump => 422" },
+    { "group": "orders", "method": "POST", "path": "/api/admin/orders/{order}/system-moadian-invoice", "body": { "moadian_ref": "string required 3..100" }, "note": "Doc P, releases Saze VAT hold", "errors": { "409": "already submitted" } },
+
+    { "group": "weighbridge", "method": "POST", "path": "/api/admin/{order}/weighbridge", "body": { "weight_after_scale": "numeric required min:1" }, "data": { "order": "OrderResource", "weight_details": { "status": "equal|deficit|already_processed", "old_weight": "string", "new_weight": "string", "financial_diff": "string", "final_amount": "string" }, "message": "string" } },
+
+    { "group": "wallet", "method": "GET", "path": "/api/admin/wallet/transactions", "query": { "status": "string?", "type": "deposit|withdraw", "user_id": "int?" }, "paginated": true, "resource": "WalletTransactionResource" },
+    { "group": "wallet", "method": "POST", "path": "/api/admin/wallet/transactions/{transaction}/status", "body": { "status": "required in: confirmed,rejected", "note": "string? max:255" }, "resource": "WalletTransactionResource", "note": "confirm deposit credits wallet; reject withdrawal refunds; double-credit safe" },
+
+    { "group": "financial_documents", "method": "GET", "path": "/api/admin/financial/company/invoices", "query": { "type": "initial|final|command|tax (default initial)", "payment_status": "string? (with type=initial)" }, "paginated": true, "raw": true, "model": "Order" },
+    { "group": "financial_documents", "method": "GET", "path": "/api/admin/financial/company/expert-shares", "query": { "mode": "allocation|payment (default allocation)" }, "paginated": true, "raw": true, "model": "WalletTransaction" },
+    { "group": "financial_documents", "method": "GET", "path": "/api/admin/financial/supplier/documents", "query": { "doc_type": "waybill|tax (default waybill)" }, "paginated": true, "raw": true, "model": "Order" },
+    { "group": "financial_documents", "method": "GET", "path": "/api/admin/financial/expert/documents", "paginated": true, "raw": true, "model": "WalletTransaction" },
+
+    { "group": "financial_health", "method": "GET", "path": "/api/admin/financial/health", "data": { "system_wallet": { "balance": "float", "balance_hold": "float" }, "vat_wallet": "object|null", "platform_totals": { "total_balance": "float", "total_hold": "float", "pending_deposit_amount": "float", "pending_withdrawal_amount": "float" }, "supplier_debts": { "count": "int", "amount": "float" } } },
+    { "group": "financial_health", "method": "GET", "path": "/api/admin/financial/pending-debts", "paginated": true, "resource": "OrderResource" },
+    { "group": "financial_health", "method": "GET", "path": "/api/admin/financial/pending-moadian", "paginated": true, "data_item": { "id": "int", "order_number": "string", "status": "string", "placer": "string", "final_amount": "float", "weighing_completed_at": "datetime", "consultant_moadian_done": "bool", "supplier_moadian_done": "bool", "system_moadian_done": "bool", "has_beneficiary": "bool" } },
+
+    { "group": "podium_deposits", "method": "GET", "path": "/api/admin/financial/podium-deposits", "query": { "status": "matched|unmatched|all", "from": "Y-m-d", "to": "Y-m-d", "search": "string?" }, "data": { "stats": { "total": "int", "matched": "int", "unmatched": "int" }, "records": "paginated PodiumDepositRecord" } },
+    { "group": "podium_deposits", "method": "POST", "path": "/api/admin/financial/podium-deposits/poll", "body": { "minutes": "int? default 60 (1..10080)" }, "data": { "window": "object", "summary": { "total_incoming": "int", "new_matched": "int", "new_unmatched": "int", "skipped": "int", "errors": "int" }, "errors": "array" } },
+    { "group": "podium_deposits", "method": "POST", "path": "/api/admin/financial/podium-deposits/{record}/credit", "body": { "user_id": "int required exists", "note": "string? max:255" }, "data": { "user_id": "int", "amount_rials": "int", "amount_tomans": "int", "doc_number": "string" }, "errors": { "422": "already credited" } },
+
+    { "group": "tickets", "method": "GET", "path": "/api/admin/tickets", "query": { "status": "one of statuses", "department_id": "int?", "search": "string min:2", "per_page": "int?" }, "paginated": true, "resource": "TicketResource" },
+    { "group": "tickets", "method": "GET", "path": "/api/admin/tickets/kpis", "data": { "total": "int", "open": "int", "sla_breaches": "int", "by_department": "object", "by_status": "object", "avg_first_response_minutes": "float", "avg_resolution_minutes": "float", "reopen_rate": "float" } },
+    { "group": "tickets", "method": "GET", "path": "/api/admin/tickets/{ticket}", "resource": "TicketResource" },
+    { "group": "tickets", "method": "POST", "path": "/api/admin/tickets/{ticket}/reply", "body": { "message": "string required 2..5000" }, "resource": "TicketResource", "note": "status->answered, assigns to admin, SMS to user" },
+    { "group": "tickets", "method": "POST", "path": "/api/admin/tickets/{ticket}/status", "body": { "status": "required one of statuses" }, "data": null, "note": "closed sends SMS; stamps timestamps + reopen counter" },
+    { "group": "tickets", "method": "POST", "path": "/api/admin/tickets/{ticket}/note", "body": { "note": "string required max:2000" }, "data": null },
+
+    { "group": "shipping_rates", "method": "GET", "path": "/api/admin/shipping-rates", "query": { "factory_location_id": "int?", "province_id": "int?", "is_active": "bool?", "per_page": "1..200" }, "paginated": true, "resource": "ShippingRateResource" },
+    { "group": "shipping_rates", "method": "POST", "path": "/api/admin/shipping-rates", "body": { "factory_location_id": "int required exists", "destination_province_id": "int required min:1", "destination_city_id": "int? nullable", "flat_cost": "numeric required min:0", "per_kg_cost": "numeric required min:0", "cost_basis": "required weight|count", "per_count_cost": "numeric required_if cost_basis=count", "is_active": "bool?" }, "resource": "ShippingRateResource", "errors": { "422": "duplicate route" } },
+    { "group": "shipping_rates", "method": "PUT", "path": "/api/admin/shipping-rates/{shippingRate}", "body": "same as POST", "resource": "ShippingRateResource" },
+    { "group": "shipping_rates", "method": "DELETE", "path": "/api/admin/shipping-rates/{shippingRate}", "data": null },
+    { "group": "shipping_rates", "method": "POST", "path": "/api/admin/shipping-rates/{shippingRate}/toggle", "resource": "ShippingRateResource" },
+
+    { "group": "podium_services", "method": "POST", "path": "/api/v1/podium/settlements/single", "desc": "single settlement" },
+    { "group": "podium_services", "method": "GET", "path": "/api/v1/podium/balances", "desc": "account balances" },
+    { "group": "podium_services", "method": "POST", "path": "/api/v1/podium/settlements/batch", "desc": "batch settlement" },
+    { "group": "podium_services", "method": "GET", "path": "/api/v1/podium/settlements/inquiry", "desc": "settlement inquiry" },
+    { "group": "podium_services", "method": "POST", "path": "/api/v1/podium/identity-inquiry-sc2", "desc": "identity inquiry (national code + birth date)" },
+    { "group": "podium_services", "method": "POST", "path": "/api/v1/podium/mobile-nid-match", "desc": "national-code/mobile match" },
+
+    { "group": "debug_non_production", "method": "GET", "path": "/api/admin/debug/test-cache" },
+    { "group": "debug_non_production", "method": "GET", "path": "/api/admin/debug/kavir-products" }
+  ],
+  "resource_shapes": {
+    "ShippingRateResource": { "id": "int", "factory_location_id": "int", "factory_location_name": "string|null", "destination_province_id": "int", "destination_city_id": "int|null", "flat_cost": "float", "per_kg_cost": "float", "cost_basis": "weight|count", "cost_basis_label": "string", "per_count_cost": "float", "is_active": "bool", "created_at": "datetime" },
+    "TicketResource": { "id": "int", "code": "string", "subject": "string", "message": "string", "status_info": { "key": "string", "label": "string", "tone": "string" }, "status": "string", "priority": { "key": "string", "label": "string" }, "order_id": "int|null", "province_id": "int|null", "city_id": "int|null", "sla_due_at": "datetime|null", "sla_breached": "bool", "assigned_at": "datetime|null", "first_responded_at": "datetime|null", "resolved_at": "datetime|null", "closed_at": "datetime|null", "reopened_count": "int", "created_at": "datetime", "user": "object", "department": "object", "attachments": "array", "replies": "array" }
+  },
+  "enums": {
+    "ticket_status": [ "open", "in_progress", "waiting_customer", "waiting_supplier", "answered", "resolved", "closed", "pending" ],
+    "ticket_priority": [ "low", "normal", "high", "urgent" ],
+    "order_status_filter": [ "pending", "processing", "shipped", "delivered", "cancelled" ],
+    "shipping_cost_basis": [ "weight", "count" ],
+    "transaction_status_change": [ "confirmed", "rejected" ]
+  }
+}

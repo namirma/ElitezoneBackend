@@ -20,7 +20,7 @@ class SupplierOrderController extends Controller
 
         if ($order->status === Order::STATUS_PROCESSING) {
             $order->update([
-                Order::STATUS     => Order::STATUS_PREPARING,
+                Order::STATUS => Order::STATUS_PREPARING,
                 Order::PREPARED_AT => now(),
             ]);
 
@@ -38,9 +38,9 @@ class SupplierOrderController extends Controller
 
         if (in_array($order->status, [Order::STATUS_PREPARING, Order::STATUS_WEIGHBRIDGE_DONE])) {
             $order->update([
-                Order::STATUS      => Order::STATUS_WAYBILL_ISSUED,
+                Order::STATUS => Order::STATUS_WAYBILL_ISSUED,
                 Order::WAYBILL_REF => $request->validated('waybill_ref'),
-                Order::SHIPPED_AT  => now(),
+                Order::SHIPPED_AT => now(),
             ]);
 
             $order->loadMissing(Order::resourceRelations());
@@ -66,7 +66,8 @@ class SupplierOrderController extends Controller
     {
         $this->authorize('manageAsSupplier', $order);
 
-        $path = $request->file('receipt')->store('supplier_receipts', 'public');
+        // Private disk — supplier payment receipts must not be reachable via a public URL.
+        $path = $request->file('receipt')->store('supplier_receipts', 'financial');
         $order->update([Order::PAYMENT_RECEIPT_REF => $path]);
 
         $order->loadMissing(Order::resourceRelations());

@@ -2,8 +2,10 @@
 
 namespace App\DataTransferObjects\Ticket;
 
+use App\Models\Ticket;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Validation\Rule;
 
 /**
  * Data transfer object for creating a new ticket.
@@ -17,6 +19,10 @@ final class TicketDTO
         public readonly int $department_id,
         public readonly string $subject,
         public readonly string $message,
+        public readonly string $priority = Ticket::PRIORITY_NORMAL,
+        public readonly ?int $order_id = null,
+        public readonly ?int $province_id = null,
+        public readonly ?int $city_id = null,
         public readonly ?int $user_id = null,
         /** @var UploadedFile[]|null */
         public readonly ?array $file = null,
@@ -28,6 +34,10 @@ final class TicketDTO
             'department_id' => ['required', 'exists:departments,id'],
             'subject' => ['required', 'string'],
             'message' => ['required', 'string'],
+            'priority' => ['nullable', Rule::in(Ticket::PRIORITIES)],
+            'order_id' => ['nullable', 'integer', 'exists:orders,id'],
+            'province_id' => ['nullable', 'integer'],
+            'city_id' => ['nullable', 'integer'],
             'file.*' => ['nullable', 'file', 'max:5000'],
         ]);
 
@@ -35,6 +45,10 @@ final class TicketDTO
             department_id: (int) $request->input('department_id'),
             subject: (string) $request->input('subject'),
             message: (string) $request->input('message'),
+            priority: (string) $request->input('priority', Ticket::PRIORITY_NORMAL),
+            order_id: $request->filled('order_id') ? (int) $request->input('order_id') : null,
+            province_id: $request->filled('province_id') ? (int) $request->input('province_id') : null,
+            city_id: $request->filled('city_id') ? (int) $request->input('city_id') : null,
             file: $request->file('file'),
         );
     }
@@ -46,6 +60,10 @@ final class TicketDTO
             'department_id' => $this->department_id,
             'subject' => $this->subject,
             'message' => $this->message,
+            'priority' => $this->priority,
+            'order_id' => $this->order_id,
+            'province_id' => $this->province_id,
+            'city_id' => $this->city_id,
         ];
 
         if ($this->user_id !== null) {

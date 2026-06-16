@@ -97,6 +97,6 @@ class ProcessFullOrderPaymentAction
 
     private function threshold(): float
     {
-        return (float) config('financial.reservation_threshold', 1_950_000_000);
+        return (float) config('financial.reservation_threshold', 2_000_000_000);
     }
 }

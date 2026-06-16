@@ -50,9 +50,9 @@ class OrderResource extends BaseJsonResource
 
             // --- Status Info ---
             'status_info' => [
-                'key'   => $statusKey,
+                'key' => $statusKey,
                 'label' => $statusLabel,
-                'tone'  => StatusTone::fromStatus($statusKey)->value,
+                'tone' => StatusTone::fromStatus($statusKey)->value,
                 // 'color' نگه‌داشته شده برای سازگاری عقبگرد با نسخه‌های قدیمی فرانت
                 'color' => match ($statusKey) {
                     Order::STATUS_DELIVERED => 'success',
@@ -60,11 +60,11 @@ class OrderResource extends BaseJsonResource
                     Order::STATUS_PENDING, Order::STATUS_RESERVED_EXTENDED => 'warning',
                     default => 'primary',
                 },
-                'progress_data'           => $progress,
+                'progress_data' => $progress,
                 'consultant_progress_data' => $consultantUser
                     ? $this->consultant_progress
                     : null,
-                'supplier_progress_data'  => $isSupplier
+                'supplier_progress_data' => $isSupplier
                     ? $this->supplier_progress
                     : null,
             ],
@@ -90,66 +90,67 @@ class OrderResource extends BaseJsonResource
                 }
 
                 return [
-                    'name'     => $item->product_variant->name ?? $item->product_name ?? 'محصول',
+                    // relation is productVariant() — snake_case access never resolved (always null)
+                    'name' => $item->productVariant?->name ?? $item->product_name ?? 'محصول',
                     'quantity' => (string) $val,
-                    'unit'     => $unit,
+                    'unit' => $unit,
                 ];
             }),
 
             // --- Buyer Info ---
             'buyer' => $this->when(! $isSupplier, function () {
                 return [
-                    'id'        => $this->{Order::PLACER_USER_ID},
+                    'id' => $this->{Order::PLACER_USER_ID},
                     'full_name' => $this->placer->full_name ?? 'کاربر ناشناس',
-                    'mobile'    => $this->placer->mobile ?? null,
+                    'mobile' => $this->placer->mobile ?? null,
                 ];
             }),
 
             // --- Beneficiary Info (گیرنده سفارش — فقط وقتی مشاور برای کارفرما خریداری می‌کند) ---
             'beneficiary' => $this->when($this->{Order::BENEFICIARY_USER_ID}, function () use ($viewerId) {
                 return [
-                    'id'          => $this->{Order::BENEFICIARY_USER_ID},
-                    'full_name'   => $this->beneficiary->full_name ?? 'نامشخص',
+                    'id' => $this->{Order::BENEFICIARY_USER_ID},
+                    'full_name' => $this->beneficiary->full_name ?? 'نامشخص',
                     'national_id' => $this->beneficiary->profile->national_code ?? null,
-                    'mobile'      => $this->beneficiary->mobile ?? null,
-                    'is_self'     => $this->{Order::BENEFICIARY_USER_ID} === $viewerId,
+                    'mobile' => $this->beneficiary->mobile ?? null,
+                    'is_self' => $this->{Order::BENEFICIARY_USER_ID} === $viewerId,
                 ];
             }, null),
 
             // --- Consultant Info (مشاور فنی سفارش — مستقیم از consultant_user_id) ---
             'consultant' => $consultantUser ? [
-                'id'        => $consultantUser->id,
+                'id' => $consultantUser->id,
                 'full_name' => $consultantUser->full_name,
-                'is_self'   => $consultantUser->id === $viewerId,
+                'is_self' => $consultantUser->id === $viewerId,
             ] : null,
 
             // --- Financial Info ---
             'financial' => [
-                Order::FINAL_AMOUNT    => (string) $this->{Order::FINAL_AMOUNT},
-                Order::PAYMENT_STATUS  => $paymentStatusKey,
-                'payment_status_text'  => $paymentStatusLabel,
-                'is_paid'              => $paymentStatusKey === Order::PAYMENT_PAID,
-                'paid_at_p'            => $this->{Order::PAID_AT}
+                Order::FINAL_AMOUNT => (string) $this->{Order::FINAL_AMOUNT},
+                Order::PAYMENT_STATUS => $paymentStatusKey,
+                'payment_status_text' => $paymentStatusLabel,
+                'is_paid' => $paymentStatusKey === Order::PAYMENT_PAID,
+                'paid_at_p' => $this->{Order::PAID_AT}
                     ? verta($this->{Order::PAID_AT})->format('Y/m/d H:i')
                     : null,
 
                 $this->mergeWhen(! $isSupplier, [
-                    Order::SUBTOTAL         => (string) $this->{Order::SUBTOTAL},
-                    Order::DISCOUNT_AMOUNT  => (string) $this->{Order::DISCOUNT_AMOUNT},
-                    Order::VAT_AMOUNT       => (string) $this->{Order::VAT_AMOUNT},
-                    Order::SHIPPING_COST    => (string) $this->{Order::SHIPPING_COST},
+                    Order::SUBTOTAL => (string) $this->{Order::SUBTOTAL},
+                    Order::DISCOUNT_AMOUNT => (string) $this->{Order::DISCOUNT_AMOUNT},
+                    Order::VAT_AMOUNT => (string) $this->{Order::VAT_AMOUNT},
+                    Order::SHIPPING_COST => (string) $this->{Order::SHIPPING_COST},
                 ]),
             ],
 
             // --- Address ---
             'delivery_address' => $this->when($this->address, function () {
                 return [
-                    'province'    => $this->address->province->name ?? '',
-                    'city'        => $this->address->city->name ?? '',
-                    'full_address'=> $this->address->address,
+                    'province' => $this->address->province->name ?? '',
+                    'city' => $this->address->city->name ?? '',
+                    'full_address' => $this->address->address,
                     'postal_code' => $this->address->postal_code,
-                    'receiver'    => $this->address->receiver_name,
-                    'phone'       => $this->address->receiver_mobile,
+                    'receiver' => $this->address->receiver_name,
+                    'phone' => $this->address->receiver_mobile,
                 ];
             }),
 
@@ -159,14 +160,14 @@ class OrderResource extends BaseJsonResource
             // --- Actions ---
             'actions' => [
                 'download_invoice' => [
-                    'label'        => __('orders.actions.download_initial_invoice'),
-                    'url'          => $invoiceUrl,
-                    'method'       => 'GET',
-                    'active'       => true,
+                    'label' => __('orders.actions.download_initial_invoice'),
+                    'url' => $invoiceUrl,
+                    'method' => 'GET',
+                    'active' => true,
                 ],
                 'payment' => [
-                    'label'  => __('orders.actions.final_invoice_settlement'),
-                    'url'    => $paymentUrl,
+                    'label' => __('orders.actions.final_invoice_settlement'),
+                    'url' => $paymentUrl,
                     'method' => 'POST',
                     'active' => ! is_null($paymentUrl),
                 ],
@@ -174,7 +175,7 @@ class OrderResource extends BaseJsonResource
 
             // --- Dates ---
             'dates' => [
-                'created_at_p'    => $this->created_at_p,
+                'created_at_p' => $this->created_at_p,
                 'created_at_diff' => $this->created_at_diff,
             ],
         ];

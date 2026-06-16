@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Models\Ticket;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class AdminTicketStatusRequest extends FormRequest
 {
@@ -14,7 +16,7 @@ class AdminTicketStatusRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'status' => ['required', 'string', 'in:open,answered,pending,closed'],
+            'status' => ['required', 'string', Rule::in(Ticket::STATUSES)],
         ];
     }
 
@@ -22,7 +24,7 @@ class AdminTicketStatusRequest extends FormRequest
     {
         return [
             'status.required' => __('admin.tickets.status_required'),
-            'status.in'       => __('admin.tickets.status_invalid'),
+            'status.in' => __('admin.tickets.status_invalid'),
         ];
     }
 }

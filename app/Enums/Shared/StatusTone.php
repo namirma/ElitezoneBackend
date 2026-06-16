@@ -22,7 +22,7 @@ enum StatusTone: string
     case Success = 'success';
     case Failure = 'failure';
     case Neutral = 'neutral';
-    case Closed  = 'closed';
+    case Closed = 'closed';
 
     /**
      * Map any status key to its canonical tone.
@@ -49,8 +49,10 @@ enum StatusTone: string
             'weighbridge_done',
             'waybill_issued',
             'shipped',
-            'open',            // ticket: not yet answered
-            'hold'             // wallet transaction: escrow hold
+            'open',               // ticket: not yet answered
+            'waiting_customer',   // ticket: awaiting customer reply
+            'waiting_supplier',   // ticket: awaiting supplier reply
+            'hold'                // wallet transaction: escrow hold
                 => self::Ongoing,
 
             // ── success (green) — completed / approved / confirmed ─────────────
@@ -60,23 +62,21 @@ enum StatusTone: string
             'completed',
             'delivered',
             'answered',        // ticket: admin replied
+            'resolved',        // ticket: resolved
             'verified',
             'active',
-            'released'
-                => self::Success,
+            'released' => self::Success,
 
             // ── failure (red) — cancelled / rejected / failed ─────────────────
             'rejected',
             'cancelled',
             'failed',
             'expired',
-            'blocked'
-                => self::Failure,
+            'blocked' => self::Failure,
 
             // ── closed (grey) — terminal, no further action ───────────────────
             'closed',
-            'archived'
-                => self::Closed,
+            'archived' => self::Closed,
 
             // ── neutral (blue) — default for unknown / informational ──────────
             default => self::Neutral,

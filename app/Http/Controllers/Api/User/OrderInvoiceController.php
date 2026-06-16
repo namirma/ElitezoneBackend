@@ -6,9 +6,39 @@ use App\Constants\FinancialCodes;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Services\Invoice\InvoiceGenerator;
+use Illuminate\Support\Facades\Auth;
 
 class OrderInvoiceController extends Controller
 {
+    /**
+     * Which party each document belongs to. A document is only downloadable by the
+     * party (or parties) it concerns — plus admins. Without this, any order party who
+     * passes the generic `view` check could pull another party's invoices/receipts
+     * (e.g. a supplier downloading the buyer's tax invoice).
+     *
+     * Audiences: 'buyer' (placer) | 'supplier' (item supplier) | 'consultant' (beneficiary).
+     */
+    private const DOCUMENT_AUDIENCES = [
+        'initial' => ['buyer'],
+        'receipt' => ['buyer'],
+        'reserve_receipt' => ['buyer'],
+        'final' => ['buyer'],
+        'refund' => ['buyer'],
+        'modified_owner' => ['buyer'],
+        'tax' => ['buyer'],
+        'bill_of_lading' => ['buyer', 'supplier'],
+        'loading' => ['buyer', 'supplier'],
+        'supplier_report' => ['supplier'],
+        'reserve_report' => ['supplier'],
+        'final_supplier' => ['supplier'],
+        'cancel_report' => ['supplier'],
+        'modified_supplier' => ['supplier'],
+        'tax_supplier' => ['supplier'],
+        'consultant_report' => ['consultant'],
+        'tax_consultant' => ['consultant'],
+        'survey_consultant' => ['consultant'],
+    ];
+
     public function download(Order $order, string $type, InvoiceGenerator $generator)
     {
         $this->authorize('view', $order);
@@ -50,8 +80,51 @@ class OrderInvoiceController extends Controller
             return error(__('orders.invalid_invoice_type'), [], 422);
         }
 
+        // Per-document authorization: only the party the document concerns (or an admin)
+        // may download it — not every order party.
+        if (! $this->mayAccessDocument($order, $type)) {
+            return error(__('global.forbidden'), [], 403);
+        }
+
         $pdf = $generator->download($order, $typeMap[$type]);
 
         return $pdf->download("invoice-{$order->order_number}-{$type}.pdf");
+    }
+
+    /**
+     * Whether the authenticated user is in the document's allowed-audience for this order.
+     * Admins may access any document; unmapped types default to deny.
+     */
+    private function mayAccessDocument(Order $order, string $type): bool
+    {
+        $user = Auth::user();
+        if ($user === null) {
+            return false;
+        }
+
+        if ($user->hasRole('admin')) {
+            return true;
+        }
+
+        $allowed = self::DOCUMENT_AUDIENCES[$type] ?? [];
+        $userId = (int) $user->id;
+
+        foreach ($allowed as $audience) {
+            $matches = match ($audience) {
+                'buyer' => (int) $order->{Order::PLACER_USER_ID} === $userId,
+                'consultant' => in_array($userId, array_filter([
+                    (int) $order->{Order::BENEFICIARY_USER_ID},
+                    (int) $order->{Order::CONSULTANT_USER_ID},
+                ]), true),
+                'supplier' => $order->items()->where(\App\Models\OrderItem::SUPPLIER_USER_ID, $userId)->exists(),
+                default => false,
+            };
+
+            if ($matches) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

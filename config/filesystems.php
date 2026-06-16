@@ -44,6 +44,17 @@ return [
             'throw' => false,
         ],
 
+        // Private disk for sensitive financial documents (deposit/supplier/order
+        // receipts). Deliberately NOT in the `links` array below, so it is never
+        // symlinked into public/ and never reachable via a /storage/... URL — these
+        // files are served only through authenticated download endpoints.
+        'financial' => [
+            'driver' => 'local',
+            'root' => storage_path('app/financial'),
+            'visibility' => 'private',
+            'throw' => false,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

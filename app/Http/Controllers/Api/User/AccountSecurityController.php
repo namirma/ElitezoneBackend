@@ -168,9 +168,12 @@ class AccountSecurityController extends Controller
             User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2),
         ]);
 
-        Cache::put('pending_mobile_change_'.$user->id, $validated['new_mobile'], 120);
+        // Cache + SMS the NORMALIZED 09 form (same value the Podium match verified), so
+        // confirmChangeMobile persists users.mobile in the canonical 09xxxxxxxxx format
+        // like the rest of the system — not the raw user input.
+        Cache::put('pending_mobile_change_'.$user->id, $newMobile09, 120);
 
-        SendSmsJob::dispatch($validated['new_mobile'], $code);
+        SendSmsJob::dispatch($newMobile09, $code);
 
         return success([], __('auth.verification_code_sent_to_new_mobile'));
     }
@@ -263,7 +266,11 @@ class AccountSecurityController extends Controller
             return error(__('validation.required'), ['token'], 422);
         }
 
-        $profile = UserProfile::where([UserProfile::EMAIL_VERIFICATION_TOKEN], $token)
+        // NOTE: must be where(column, value) — the previous where([column], $token)
+        // passed an array that made Eloquent ignore $token entirely (effectively
+        // "WHERE 0 = 'email_verification_token'", always true), so ANY token verified
+        // the first unverified profile.
+        $profile = UserProfile::where(UserProfile::EMAIL_VERIFICATION_TOKEN, $token)
             ->whereNull(UserProfile::EMAIL_VERIFIED_AT)
             ->first();
 

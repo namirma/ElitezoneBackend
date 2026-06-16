@@ -1,10 +1,10 @@
 <?php
 
 use App\Http\Controllers\Api\Admin\AdminActivityLogController;
-use App\Http\Controllers\Api\Admin\AdminPodiumDepositController;
 use App\Http\Controllers\Api\Admin\AdminDashboardController;
 use App\Http\Controllers\Api\Admin\AdminFinancialController;
 use App\Http\Controllers\Api\Admin\AdminOrderController;
+use App\Http\Controllers\Api\Admin\AdminPodiumDepositController;
 use App\Http\Controllers\Api\Admin\AdminSearchController;
 use App\Http\Controllers\Api\Admin\AdminShippingRateController;
 use App\Http\Controllers\Api\Admin\AdminSupplierController;
@@ -84,9 +84,9 @@ Route::middleware(['auth:sanctum', 'role.admin'])->prefix('admin')->group(functi
 
     // واریز مستقیم بانکی — سوابق شناسه واریز + polling دستی + شارژ دستی ادمین
     Route::controller(AdminPodiumDepositController::class)->prefix('financial/podium-deposits')->group(function () {
-        Route::get('/',                  'index');  // لیست سوابق + آمار
-        Route::post('/poll',             'poll');   // اجرای دستی polling (بدون cron)
-        Route::post('/{record}/credit',  'credit'); // شارژ دستی برای واریز unmatched
+        Route::get('/', 'index');  // لیست سوابق + آمار
+        Route::post('/poll', 'poll');   // اجرای دستی polling (بدون cron)
+        Route::post('/{record}/credit', 'credit'); // شارژ دستی برای واریز unmatched
     });
 
     // Users — CRUD (group 2)
@@ -95,7 +95,7 @@ Route::middleware(['auth:sanctum', 'role.admin'])->prefix('admin')->group(functi
         Route::get('/{user}', 'show');
         Route::post('/{user}/toggle-status', 'toggleStatus');
         Route::post('/{user}/note', 'addNote');
-        Route::post('/{user}/verify-consultant',   'verifyConsultant');
+        Route::post('/{user}/verify-consultant', 'verifyConsultant');
         Route::post('/{user}/unverify-consultant', 'unverifyConsultant');
     });
 
@@ -120,9 +120,11 @@ Route::middleware(['auth:sanctum', 'role.admin'])->prefix('admin')->group(functi
     // Tickets — مدیریت تیکت‌های پشتیبانی
     Route::controller(AdminTicketController::class)->prefix('tickets')->group(function () {
         Route::get('/', 'index');
+        Route::get('/kpis', 'kpis'); // باید پیش از wildcard /{ticket} باشد
         Route::get('/{ticket}', 'show');
         Route::post('/{ticket}/reply', 'reply');
         Route::post('/{ticket}/status', 'changeStatus');
+        Route::post('/{ticket}/note', 'addNote');
     });
 
     // Wallet
@@ -133,10 +135,10 @@ Route::middleware(['auth:sanctum', 'role.admin'])->prefix('admin')->group(functi
 
     // Shipping Rates — CRUD نرخ‌های حمل‌ونقل
     Route::controller(AdminShippingRateController::class)->prefix('shipping-rates')->group(function () {
-        Route::get('/',                     'index');
-        Route::post('/',                    'store');
-        Route::put('/{shippingRate}',       'update');
-        Route::delete('/{shippingRate}',    'destroy');
+        Route::get('/', 'index');
+        Route::post('/', 'store');
+        Route::put('/{shippingRate}', 'update');
+        Route::delete('/{shippingRate}', 'destroy');
         Route::post('/{shippingRate}/toggle', 'toggle');
     });
 

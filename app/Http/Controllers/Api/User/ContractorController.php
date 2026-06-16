@@ -15,7 +15,9 @@ class ContractorController extends Controller
     public function store(StoreContractorProfileRequest $request)
     {
         $user = Auth::user();
-        $expertTypeId = UserType::where('slug', 'consultant')->value('id');
+        // Seeded slug is 'expert' (UserTypeSeeder), not 'consultant' — the old value made
+        // $expertTypeId null and never attached the contractor role.
+        $expertTypeId = UserType::where('slug', 'expert')->value('id');
         if ($user->type_id == $expertTypeId && ! $user->hasRole('contractor')) {
             $user->addRole('contractor');
         }

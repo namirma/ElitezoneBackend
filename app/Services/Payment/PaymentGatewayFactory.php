@@ -3,6 +3,7 @@
 namespace App\Services\Payment;
 
 use App\Services\Payment\Contracts\PaymentGatewayInterface;
+use App\Services\Payment\Gateways\PasargadGateway;
 use App\Services\Payment\Gateways\ShaparakGateway;
 use App\Services\Payment\Gateways\WalletGateway;
 use Exception;
@@ -13,6 +14,7 @@ class PaymentGatewayFactory
     {
         return match ($gatewayName) {
             'wallet' => app(WalletGateway::class),
+            'pasargad' => app(PasargadGateway::class),
             'shaparak' => app(ShaparakGateway::class),
             // اضافه کردن درگاه‌های جدید فقط همین‌جا انجام می‌شود
             default => throw new Exception(__('orders.errors.gateway_not_implemented')),

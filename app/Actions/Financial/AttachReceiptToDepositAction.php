@@ -20,7 +20,8 @@ class AttachReceiptToDepositAction
     {
         $this->guard($transaction, $userId);
 
-        $path = $file->store(WalletTransaction::PATH_RECEIPTS, 'public');
+        // Private disk — financial receipts must not be reachable via a public URL.
+        $path = $file->store(WalletTransaction::PATH_RECEIPTS, 'financial');
         $originalName = $file->getClientOriginalName();
 
         $meta = $transaction->meta ?? [];

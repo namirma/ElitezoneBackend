@@ -19,7 +19,7 @@ class OrderPaymentController extends Controller
 {
     public function __construct(
         protected ProcessFullOrderPaymentAction $payFullOrderAction,
-        protected PayHoldFeeAction              $holdFeeAction,
+        protected PayHoldFeeAction $holdFeeAction,
     ) {}
 
     public function payFullOrder(PayFullOrderRequest $request, Order $order): JsonResponse
@@ -44,9 +44,9 @@ class OrderPaymentController extends Controller
             );
 
             return success([
-                'order'     => new OrderResource($order->fresh(Order::resourceRelations())),
+                'order' => new OrderResource($order->fresh(Order::resourceRelations())),
                 'documents' => $result->documents,
-                'message'   => __($result->messageKey),
+                'message' => __($result->messageKey),
             ]);
         } catch (InsufficientBalanceException $e) {
             return $this->balanceError($e->available, $e->required);
@@ -63,7 +63,7 @@ class OrderPaymentController extends Controller
             $this->holdFeeAction->execute($order);
 
             return success([
-                'order'      => new OrderResource($order->fresh(Order::resourceRelations())),
+                'order' => new OrderResource($order->fresh(Order::resourceRelations())),
                 'fee_amount' => PayHoldFeeAction::fee(),
             ], __('orders.hold_fee_successful'));
         } catch (Exception $e) {
@@ -75,7 +75,8 @@ class OrderPaymentController extends Controller
     {
         $this->authorize('pay', $order);
 
-        $path = $request->file('receipt')->store('order_receipts', 'public');
+        // Private disk — buyer order receipts must not be reachable via a public URL.
+        $path = $request->file('receipt')->store('order_receipts', 'financial');
 
         $order->update([Order::PAYMENT_RECEIPT_REF => $path]);
 
@@ -92,13 +93,13 @@ class OrderPaymentController extends Controller
         return error(
             __('wallet.insufficient_balance_with_shortage', ['shortage' => number_format($shortage)]),
             [
-                'error_code'      => 'insufficient_balance',
+                'error_code' => 'insufficient_balance',
                 'current_balance' => $currentBalance,
                 'required_amount' => $requiredAmount,
-                'shortage'        => $shortage,
-                'action'          => [
-                    'type'                    => 'navigate_to_deposit',
-                    'api_route'               => '/api/profile/financial/wallet/deposit',
+                'shortage' => $shortage,
+                'action' => [
+                    'type' => 'navigate_to_deposit',
+                    'api_route' => '/api/profile/financial/wallet/deposit',
                     'required_deposit_amount' => $shortage,
                 ],
             ],

@@ -7,6 +7,7 @@ namespace App\Services\Financial;
 use App\Constants\FinancialCodes;
 use App\DataTransferObjects\Order\WeighbridgeReconcileResult;
 use App\Models\Order;
+use App\Models\User;
 
 /**
  * Executes all three VAT-routing legs that follow every weighbridge result.
@@ -125,8 +126,14 @@ class WeighbridgeVatRouter
 
     /**
      * Cap the consultant payout to their remaining lifetime headroom.
-     * Spec: total lifetime commission ≤ cap_multiplier × badge-purchase invoice.
-     * Returns unchanged candidateGross when no ceiling is modelled yet (current state).
+     *
+     * Spec ("پروسه خرید"): the total lifetime commission paid to a gold/silver/bronze
+     * consultant may not exceed `cap_multiplier × badge-purchase invoice`. We sum the
+     * gross already routed to this consultant on prior settled orders and clamp the
+     * current allocation to whatever ceiling headroom remains (never below zero).
+     *
+     * A consultant with no recorded badge-purchase amount (NULL) is uncapped — see
+     * consultantLifetimeCeiling().
      */
     private function applyConsultantLifetimeCap(
         int $consultantUserId,
@@ -148,13 +155,26 @@ class WeighbridgeVatRouter
     }
 
     /**
-     * Returns the lifetime ceiling for a consultant, or null when uncapped.
+     * Returns the lifetime commission ceiling for a consultant, or null when uncapped.
      *
-     * TODO(product): ceiling = cap_multiplier × the consultant's badge-purchase invoice.
-     * The per-consultant badge-purchase amount is not modelled yet → returns null (inert).
+     * ceiling = config('financial.consultant_lifetime_cap_multiplier') × the invoice the
+     * consultant paid when purchasing their badge (users.badge_purchase_amount). When that
+     * amount is NULL or non-positive (e.g. pioneer/normal consultants who never bought a
+     * paid badge) there is no cap and we return null so applyConsultantLifetimeCap() leaves
+     * the allocation untouched.
      */
     private function consultantLifetimeCeiling(int $consultantUserId): ?float
     {
-        return null;
+        $badgePurchaseAmount = User::query()
+            ->whereKey($consultantUserId)
+            ->value(User::BADGE_PURCHASE_AMOUNT);
+
+        if ($badgePurchaseAmount === null || (float) $badgePurchaseAmount <= 0.0) {
+            return null;
+        }
+
+        $multiplier = (float) config('financial.consultant_lifetime_cap_multiplier', 2.0);
+
+        return (float) $badgePurchaseAmount * $multiplier;
     }
 }

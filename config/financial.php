@@ -91,9 +91,10 @@ return [
     |
     | Spec ("پروسه خرید"): the total lifetime commission paid to a gold/silver/bronze
     | consultant may not exceed this multiple of the invoice they paid when purchasing
-    | their badge. The per-consultant badge-purchase amount is not modelled yet, so the
-    | cap is currently inert — wire it up in
-    | ProcessWeighbridgeResultAction::consultantLifetimeCeiling() once that data exists.
+    | their badge. The per-consultant badge-purchase amount is stored in
+    | users.badge_purchase_amount; WeighbridgeVatRouter::consultantLifetimeCeiling()
+    | multiplies it by this value to derive the cap. A NULL badge_purchase_amount
+    | (e.g. pioneer/normal consultants) means uncapped.
     |
     */
     'consultant_lifetime_cap_multiplier' => (float) env('CONSULTANT_LIFETIME_CAP_MULTIPLIER', 2.0),

@@ -15,7 +15,9 @@ class EngineerController extends Controller
     public function store(StoreEngineerProfileRequest $request)
     {
         $user = Auth::user();
-        $expertTypeId = UserType::where('slug', 'consultant')->value('id');
+        // The seeded slug for the technical-consultant type is 'expert' (UserTypeSeeder),
+        // not 'consultant' — the old value made $expertTypeId null and never attached the role.
+        $expertTypeId = UserType::where('slug', 'expert')->value('id');
         if ($user->type_id == $expertTypeId && ! $user->hasRole('engineer')) {
             $user->addRole('engineer');
         }
