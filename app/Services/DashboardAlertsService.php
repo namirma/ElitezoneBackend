@@ -40,6 +40,10 @@ class DashboardAlertsService
         $alerts = [];
         $profile = $user->profile;
 
+        // NOTE: the two cta_links below ('/profile/legal', '/profile/security') do NOT match
+        // any route in the frontend router and currently 404. The correct targets must be
+        // confirmed with the frontend team (likely under '/profile/account_information/...' or
+        // '/profile/account_settings') before changing them — do not guess a path here.
         if ($profile && $profile->entity === 'legal' && empty($profile->economic_code)) {
             $alerts[] = $this->makeAlert('profile_incomplete_economic', 'warning', 'user-edit', '/profile/legal');
         }
@@ -49,7 +53,7 @@ class DashboardAlertsService
         }
 
         if (! $user->bankAccounts()->where('status', 'approved')->exists()) {
-            $alerts[] = $this->makeAlert('no_bank_account', 'info', 'credit-card', '/profile/financial');
+            $alerts[] = $this->makeAlert('no_bank_account', 'info', 'credit-card', '/profile/finance/accounts_number');
         }
 
         return $alerts;
@@ -84,16 +88,16 @@ class DashboardAlertsService
     {
         $alerts = [];
         foreach ($user->jobExperiences()->where('status', 'rejected')->get() as $job) {
-            $alerts[] = $this->makeAlert('job_rejected', 'error', 'briefcase', '/profile/job-experiences', ['reason' => $job->rejection_reason ?? '-'], $job->id);
+            $alerts[] = $this->makeAlert('job_rejected', 'error', 'briefcase', '/profile/professional/job', ['reason' => $job->rejection_reason ?? '-'], $job->id);
         }
 
         $rejectedEdu = $user->eduixRecords()->where('admin_status', 'rejected')->first();
         if ($rejectedEdu) {
-            $alerts[] = $this->makeAlert('edu_rejected', 'error', 'academic-cap', '/profile/education', ['reason' => $rejectedEdu->rejection_reason ?? '-'], $rejectedEdu->id);
+            $alerts[] = $this->makeAlert('edu_rejected', 'error', 'academic-cap', '/profile/professional/education', ['reason' => $rejectedEdu->rejection_reason ?? '-'], $rejectedEdu->id);
         }
 
         if ($user->hasRole(['engineer', 'contractor']) && $user->jobExperiences()->count() === 0) {
-            $alerts[] = $this->makeAlert('job_empty', 'info', 'briefcase-add', '/profile/job-experiences');
+            $alerts[] = $this->makeAlert('job_empty', 'info', 'briefcase-add', '/profile/professional/job');
         }
 
         return $alerts;
