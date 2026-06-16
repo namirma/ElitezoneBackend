@@ -199,7 +199,15 @@ class PlaceOrderAction
             $itemsData[$itemId]['shipping_cost'] = (float) ($shippingQuote->perLine[$itemId] ?? 0.0);
         }
 
-        $finalAmount = max(0, $subtotal + $totalVat + $shippingCost - $totalDiscount);
+        // `$subtotal` is already the post-variant-discount, ex-VAT goods value (it is
+        // Σ weight × finalPrice, and finalPrice from the pricing pipeline already has the
+        // variant discount subtracted — see ApplyVariantDiscount). `$totalVat` is VAT on
+        // that same post-discount base. So the order total is simply subtotal + VAT +
+        // freight. The variant discount is recorded in `discount_amount` for display only
+        // and must NOT be subtracted here — doing so double-counted it and understated
+        // the order total (it no longer matched the cart total the buyer saw). This mirrors
+        // CartPricingCalculator, which likewise never re-subtracts the variant discount.
+        $finalAmount = max(0, $subtotal + $totalVat + $shippingCost);
 
         // تعیین مشاور فنی مؤثر:
         // — اگر خودِ خریدار مشاور است (engineer/contractor) → مشاور = placer (اجباری)
