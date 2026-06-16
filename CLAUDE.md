@@ -484,8 +484,15 @@ deficit (under-delivery → buyer refunded POO − POOM).
 (the invoice the consultant paid for their badge). A NULL `badge_purchase_amount`
 (e.g. pioneer/normal consultants with no paid badge) means **uncapped**. The cap clamps
 each payout to the remaining headroom = `ceiling − Σ payment_to_consultant on prior
-settled orders`. Populating `users.badge_purchase_amount` (a fillable decimal column)
-is the remaining product work — it needs a badge-purchase flow or admin entry.
+settled orders`.
+
+**Where `badge_purchase_amount` will come from (interim: dormant).** Badges live on the
+company's legacy site «سازه نود» (Saze Nod), not in EliteZone. The plan is a future
+supervisor-provided API that matches Saze-Nod users to their EliteZone account and imports
+`badge_id` + the amount they paid for the badge. That API does not exist yet, so the column
+stays NULL and the cap is **dormant (uncapped)** — intended interim behaviour. When it lands,
+add a sync job/command that fills `users.badge_id` + `users.badge_purchase_amount`; the cap
+activates automatically (no further cap logic needed).
 
 Badge-based commission splits (`getCommissionRates()`) — canonical codes are
 `gold` / `silver` / `bronze` / `pioneer` (`golden` accepted as an alias):
