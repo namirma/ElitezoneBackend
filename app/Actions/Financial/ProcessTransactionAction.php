@@ -33,44 +33,55 @@ class ProcessTransactionAction
         // ۳. اجرای عملیات در یک تراکنش دیتابیس (اتمیک)
         return DB::transaction(function () use ($transaction, $newStatus, $note, $admin) {
 
+            // Re-fetch + re-check the transaction status UNDER a row lock. The pre-check
+            // above runs on a possibly-stale model outside any lock, so two concurrent or
+            // retried admin confirmations could both pass it and credit the wallet twice.
+            // Admin routes have no idempotency middleware, so this guard is the only thing
+            // preventing a double-credit (mirrors ProcessPaymentCallbackAction::settle).
+            $locked = WalletTransaction::where('id', $transaction->id)->lockForUpdate()->first();
+
+            if (! $locked || $locked->status !== WalletTransaction::STATUS_PENDING) {
+                throw new Exception(__('admin.wallet.already_processed'));
+            }
+
             // قفل کردن کیف پول کاربر برای جلوگیری از تداخل (Race Condition)
-            $wallet = Wallet::where('id', $transaction->wallet_id)->lockForUpdate()->first();
+            $wallet = Wallet::where('id', $locked->wallet_id)->lockForUpdate()->first();
 
             // الف) سناریوی تایید واریز: پول به حساب کاربر اضافه می‌شود
-            if ($transaction->type === WalletTransaction::TYPE_DEPOSIT && $newStatus === WalletTransaction::STATUS_CONFIRMED) {
-                $wallet->increment(Wallet::BALANCE, $transaction->amount);
+            if ($locked->type === WalletTransaction::TYPE_DEPOSIT && $newStatus === WalletTransaction::STATUS_CONFIRMED) {
+                $wallet->increment(Wallet::BALANCE, $locked->amount);
             }
 
             // ب) سناریوی رد برداشت: پول مسدود شده باید به حساب کاربر برگردد
             // (چون وقتی کاربر درخواست برداشت می‌دهد، پول همان لحظه کسر می‌شود)
-            elseif ($transaction->type === WalletTransaction::TYPE_WITHDRAW && $newStatus === WalletTransaction::STATUS_REJECTED) {
-                $wallet->increment(Wallet::BALANCE, $transaction->amount);
+            elseif ($locked->type === WalletTransaction::TYPE_WITHDRAW && $newStatus === WalletTransaction::STATUS_REJECTED) {
+                $wallet->increment(Wallet::BALANCE, $locked->amount);
             }
 
             // ج) سایر حالات: نیاز به تغییر موجودی نیست (فقط تغییر وضعیت)
 
             // ۴. بروزرسانی تراکنش
-            $transaction->update([
+            $locked->update([
                 WalletTransaction::STATUS => $newStatus,
-                WalletTransaction::DESCRIPTION => $transaction->description.($note ? " | یادداشت ادمین: {$note}" : ''),
+                WalletTransaction::DESCRIPTION => $locked->description.($note ? " | یادداشت ادمین: {$note}" : ''),
             ]);
 
             // ۵. ثبت لاگ مدیریتی (برای پیگیری اینکه کدام ادمین این کار را کرد)
             activity()
-                ->performedOn($transaction)
+                ->performedOn($locked)
                 ->causedBy($admin)
                 ->withProperties([
                     'old_status' => WalletTransaction::STATUS_PENDING,
                     'new_status' => $newStatus,
-                    'amount' => $transaction->amount,
+                    'amount' => $locked->amount,
                     'note' => $note,
                 ])
                 ->log('وضعیت تراکنش توسط ادمین تغییر یافت.');
 
             // ۶. خبر دادن به سیستم (ارسال پیامک و...)
-            TransactionProcessed::dispatch($transaction);
+            TransactionProcessed::dispatch($locked);
 
-            return $transaction;
+            return $locked;
         });
     }
 }
