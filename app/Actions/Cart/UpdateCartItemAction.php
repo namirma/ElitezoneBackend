@@ -255,11 +255,11 @@ class UpdateCartItemAction
 
             $unit = $unitMap->get($unitId);
             if (! $unit) {
-                throw ValidationException::withMessages(['quantities.'.$unitId => ["واحد سفارش با شناسه {$unitId} نامعتبر است."]]);
+                throw ValidationException::withMessages(['quantities.'.$unitId => [__('cart.limits.invalid_unit')]]);
             }
 
             if ($qty < 0) {
-                throw ValidationException::withMessages(['quantities.'.$unitId => ['تعداد درخواستی نمی‌تواند منفی باشد.']]);
+                throw ValidationException::withMessages(['quantities.'.$unitId => [__('cart.limits.negative_quantity')]]);
             }
 
             $maxCount = $unit->pivot->max_quantity ?? PHP_INT_MAX;

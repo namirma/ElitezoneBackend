@@ -113,8 +113,18 @@ class ProcessReservationCompletionAction
                 $this->walletEngine->creditBuyer($locked, $refundAmount, FinancialCodes::STATUS_AVAILABLE, 'دریافت مابه‌التفاوت افت قیمت رزرو');
             }
 
-            $this->walletEngine->debitSystem($locked, $PTR, FinancialCodes::STATUS_HOLD, "خروج از حالت هولد مبلغ رزرو سفارش {$locked->order_number}");
-            $this->walletEngine->creditSystem($locked, $PTR, FinancialCodes::STATUS_AVAILABLE, 'تبدیل موجودی هولد رزرو به قطعی');
+            // Release the reservation hold on the Saze (WSSG) wallet (balance_hold → balance)
+            // via the append-only releaseHold() so a distinct TYPE_HOLD_RELEASE ledger row is
+            // written and the placement (ProcessReservationPaymentAction) and this release can
+            // be reconciled as a netting pair — per the codebase audit contract. Never move a
+            // hold with a bare debit-HOLD/credit-AVAILABLE pair.
+            $systemUserId = (int) config('financial.system_user_id', 1);
+            $this->walletEngine->releaseHold(
+                $systemUserId,
+                $PTR,
+                $locked,
+                "تبدیل موجودی هولد رزرو به قطعی — سفارش {$locked->order_number}",
+            );
 
             $this->walletEngine->debitSystem($locked, $PTS, FinancialCodes::STATUS_AVAILABLE, "تخصیص سهم تامین‌کننده سفارش {$locked->order_number}");
             $this->walletEngine->creditSupplier($locked, $PTS, FinancialCodes::STATUS_AVAILABLE, $realSupplierId, "واریز سهم فروش سفارش {$locked->order_number}");
