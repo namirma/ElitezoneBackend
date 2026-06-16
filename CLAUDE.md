@@ -256,7 +256,7 @@ Services/
                                  (+/-TC controls commission on Trans, +/-VAT controls
                                  VAT on Trans). Flags are read from supplier_profiles
                                  and snapshotted to the order at payment time.
-  Pricing/                       — pipeline (SetBasePrice → ApplyPriceFilters → ApplyVariantDiscount → ApplyVat)
+  Pricing/                       — pipeline (SetBasePrice → ApplyVariantDiscount → ApplyPriceFilters → ApplyVat)
 ```
 
 When a controller method grows past ~30 lines of business logic, extract it
@@ -637,10 +637,20 @@ row and `resolveUserId()` will throw if omitted. `DebitWalletAction` and
 
 ### Pricing Pipeline
 
-Pricing uses a Pipeline pattern in `app/Services/Pricing/Pipes/`:
+Pricing uses a Pipeline pattern in `app/Services/Pricing/Pipes/`. The **actual
+runtime order** (`PriceCalculationService::calculatePrice`) is:
 ```
-SetBasePrice → ApplyPriceFilters → ApplyVariantDiscount → ApplyVat
+SetBasePrice → ApplyVariantDiscount → ApplyPriceFilters → ApplyVat
 ```
+i.e. the **variant discount is applied before the role price filters** (the code is
+the source of truth here; the spec is a business-process doc and does not dictate the
+pipe order). The order is immaterial when every adjustment is a `percentage`
+(multiplication commutes), but it changes the result when a `fixed_amount` discount and
+a percentage filter are mixed. **If you ever reorder these pipes, re-pin the pricing
+tests and verify against a mixed fixed/percentage case** — and keep
+`CartPricingCalculator` / `CalculateOrderEstimateAction` consuming the same DTO so cart,
+estimate and placement stay in agreement.
+
 Orchestrated by `CartPricingCalculator` and `PriceCalculationService`. The active pricing role is resolved by `PricingRoleResolver` based on the user's role (employer, engineer, contractor, supplier) and bound into the container via `AttachActivePriceCategory` middleware.
 
 ### Route Structure
