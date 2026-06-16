@@ -102,13 +102,23 @@ class CartPricingCalculator
             $afterOfferStr = '0.0000';
         }
 
-        $totalStr = bcadd($afterOfferStr, $vatAmountStr, 4);
+        // Spec ("پروسه خرید"): VAT applies to the POST-discount base — every settlement
+        // formula is "…×(1−%OW)×(1+VAT)", i.e. VAT on the already-discounted amount. So a
+        // cart offer that reduces the subtotal reduces the VAT proportionally; otherwise
+        // the buyer is charged VAT on the pre-offer amount and over-pays.
+        $effectiveVatStr = $vatAmountStr;
+        if ($offerDiscountFloat > 0 && $subtotalFloat > 0) {
+            $vatRatioStr = bcdiv($afterOfferStr, $subtotalStr, 8);   // afterOffer / subtotal
+            $effectiveVatStr = bcmul($vatAmountStr, $vatRatioStr, 4);
+        }
+
+        $totalStr = bcadd($afterOfferStr, $effectiveVatStr, 4);
         $totalStr = bcadd($totalStr, $shippingCostStr, 4);
 
         return new CartPricingResult(
             lines: $lines,
             subtotal: $subtotalFloat,
-            vatAmount: (float) $vatAmountStr,
+            vatAmount: (float) $effectiveVatStr,
             totalVariantDiscount: (float) $totalVariantDiscountStr,
             offerDiscount: $offerDiscountFloat,
             shippingCost: (float) $shippingCostStr,

@@ -44,14 +44,28 @@ class CalculateOrderEstimateAction
         $unitPrice = (float) $unitDto->finalPrice;
         $unitVat = (float) ($unitDto->vatAmount ?? 0.0);
 
-        $lineSubtotal = $totalWeight * ($unitPrice - $unitVat);
+        // finalPrice is already the EX-VAT payable price (priceWithVat = finalPrice +
+        // vatAmount). The subtotal is therefore weight × finalPrice; VAT is added on top.
+        // The previous `weight × (finalPrice − vat)` subtracted VAT from an ex-VAT price,
+        // which cancelled the VAT and made final_price omit it when with_vat = true.
+        $lineSubtotal = $totalWeight * $unitPrice;
         $totalVat = $totalWeight * $unitVat;
 
         $offers = $this->getEligibleOffers($variant->product, $totalWeight);
         $offerDiscount = $this->calculateOfferDiscount($lineSubtotal, $offers);
 
+        // Spec ("پروسه خرید"): VAT applies to the POST-discount base, so an offer that
+        // reduces the subtotal reduces VAT proportionally — mirroring CartPricingCalculator
+        // so the estimate equals the cart total. Otherwise the buyer is shown VAT on the
+        // pre-offer amount and the pre-invoice over-states the tax.
+        $afterOffer = max(0.0, $lineSubtotal - $offerDiscount);
+        $effectiveVat = $totalVat;
+        if ($offerDiscount > 0 && $lineSubtotal > 0) {
+            $effectiveVat = $totalVat * ($afterOffer / $lineSubtotal);
+        }
+
         // ۵. محاسبه نهایی
-        $finalPrice = max(0, $lineSubtotal - $offerDiscount) + $totalVat;
+        $finalPrice = $afterOffer + $effectiveVat;
 
         return [
             'unit_dto' => $unitDto,
@@ -64,7 +78,7 @@ class CalculateOrderEstimateAction
             'financials' => [
                 'subtotal' => (string) $lineSubtotal,
                 'discount_amount' => (string) $offerDiscount,
-                'vat_amount' => (string) $totalVat,
+                'vat_amount' => (string) $effectiveVat,
                 'final_price' => (string) $finalPrice,
                 'with_vat' => $withVat,
             ],
