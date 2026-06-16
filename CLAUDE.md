@@ -244,7 +244,7 @@ Services/
                            Blade views; createInvoiceRecord() stores Invoice model;
                            generate(order, docType, 'save'|'download'|'stream')
     InvoiceDataBuilder   — Blade-view data prep (line items, totals, buyer info)
-    InvoicePdfRenderer   — PDF rendering + Storage::disk('public') write
+    InvoicePdfRenderer   — PDF rendering + Storage::disk('financial') write (private archive)
   Financial/
     WalletTransactionEngine    — multi-wallet operations for all 5 wallet codes:
                                  WO (buyer), WS (supplier), WSSG (Saze/system),
@@ -1202,7 +1202,9 @@ URL-reachable). They were previously on the `public` disk and fetchable at `/sto
 without auth. Served only through authenticated download endpoints (e.g.
 `WalletController::downloadReceipt`, which keeps its ownership check). When adding a new
 financial document, store it with `->store($dir, 'financial')`, never `'public'`.
-**Still on `public` (tracked separately):** invoice PDFs (`InvoicePdfRenderer`).
+Invoice PDFs (`InvoicePdfRenderer::renderAndSave`) are also on the `financial` disk now —
+they are an archive only; the download endpoint regenerates the PDF on the fly and never
+reads the stored file, and `invoices.file_path` is never served as a URL.
 
 ### Payment gateway — Pasargad scaffold
 
