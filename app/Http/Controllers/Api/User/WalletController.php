@@ -256,13 +256,13 @@ class WalletController extends Controller
         $meta = $transaction->meta ?? [];
         $path = $meta['receipt_path'] ?? ($meta['receipt_info']['image_path'] ?? null);
 
-        if (! $path || ! Storage::disk('public')->exists($path)) {
+        if (! $path || ! Storage::disk('financial')->exists($path)) {
             return error(__('wallet.receipt_file_not_found'), [], 404);
         }
 
         $downloadName = $meta['receipt_info']['original_name'] ?? basename($path);
 
-        return Storage::disk('public')->download($path, $downloadName);
+        return Storage::disk('financial')->download($path, $downloadName);
     }
 
     public function deleteReceipt(WalletTransaction $transaction): JsonResponse
