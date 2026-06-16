@@ -479,8 +479,13 @@ deficit (under-delivery → buyer refunded POO − POOM).
 `(POOM − PTSM) × %CO / (%CO + %SSG)`. Deriving it from POOM−PTSM inherits the same
 ±TC/±VAT handling as POO/PTS instead of an ad-hoc formula. The lifetime cap
 (`consultant_lifetime_cap_multiplier`, default 2) is enforced in
-`applyConsultantLifetimeCap()` but is currently inert until the per-consultant
-badge-purchase amount is modelled (`consultantLifetimeCeiling()` returns null).
+`WeighbridgeVatRouter::applyConsultantLifetimeCap()` and is now **wired**:
+`consultantLifetimeCeiling()` returns `cap_multiplier × users.badge_purchase_amount`
+(the invoice the consultant paid for their badge). A NULL `badge_purchase_amount`
+(e.g. pioneer/normal consultants with no paid badge) means **uncapped**. The cap clamps
+each payout to the remaining headroom = `ceiling − Σ payment_to_consultant on prior
+settled orders`. Populating `users.badge_purchase_amount` (a fillable decimal column)
+is the remaining product work — it needs a badge-purchase flow or admin entry.
 
 Badge-based commission splits (`getCommissionRates()`) — canonical codes are
 `gold` / `silver` / `bronze` / `pioneer` (`golden` accepted as an alias):
@@ -575,6 +580,15 @@ mode (file stored on disk, `Invoice` DB record created).
 `GET /profile/orders/{order}/invoices/receipt` → `DOC_RECEIPT_OWNER`). The slug→code
 map is an explicit `$typeMap` array; unknown slugs return 422. Never add a
 `default` fallback that silently returns a different document.
+
+**Per-document authorization (do not weaken).** After the generic `authorize('view',
+$order)`, `download()` also enforces `mayAccessDocument($order, $type)` against a
+`DOCUMENT_AUDIENCES` map: buyer-docs (initial/receipt/final/refund/tax/…) → placer only;
+supplier-docs (supplier_report/final_supplier/tax_supplier/…) → the order's item supplier;
+consultant-docs (consultant_report/tax_consultant/…) → beneficiary/consultant; admins
+bypass. This closed a real leak where any order party that passed `view` could pull
+another party's tax invoice. The user-facing route currently whitelists only
+`['initial','final','tax']`; keep the audience map complete anyway in case the route widens.
 
 ### Financial Flow (Critical Path)
 
@@ -690,6 +704,11 @@ Dispatch flow:
 ### User Roles (Laratrust)
 
 Users can have roles: `admin`, `engineer`, `contractor`, `employer`, `supplier`. Each role has a corresponding profile model (EngineerProfile, ContractorProfile, etc.) linked to the User. Role selection happens in `ProfileController::setUserType`.
+
+**UserType slug gotcha:** the technical-consultant `user_types` row is seeded with slug
+**`expert`** (`UserTypeSeeder`), not `consultant`. `EngineerController`/`ContractorController`
+auto-attach the engineer/contractor role only when `user.type_id` matches the `expert` type —
+querying `slug = 'consultant'` (the old bug) returned null and never attached the role.
 
 ### External Service Integrations
 
@@ -810,7 +829,11 @@ tests/
   Unit/          — (empty placeholder dir — kept so phpunit.xml works)
 ```
 
-**Total: 156 tests, 342 assertions — all green. ✅**
+**Total: 201 tests, 443 assertions — all green. ✅**
+
+Newer test files: `Financial/ConsultantLifetimeCapTest`, `Financial/ReceiptPrivateDiskTest`,
+`Financial/ProcessTransactionRaceTest`, `Ticketing/TicketLifecycleTest`,
+`Order/InvoiceAccessTest`, `Cart/ShippingQuoteTest`, `Profile/EmailTokenVerificationTest`.
 
 Patterns to follow when adding tests:
 - **Use factories**, never `User::create([...])` with raw arrays — `UserFactory`
@@ -1108,6 +1131,17 @@ order-financial escrow values `FinancialCodes::STATUS_HOLD = 'hold'` /
   only safe response headers (never `Set-Cookie`/auth headers).
 - **`DebugController` routes are non-production only** (wrapped in `! app()->environment('production')`);
   the analytics/inventory `data/*` routes sit behind `auth:sanctum + role.admin`.
+- **Admin deposit-confirm is double-credit safe.** `ProcessTransactionAction` re-fetches the
+  transaction with `lockForUpdate` and re-checks `pending` **inside** the `DB::transaction`
+  before crediting — admin routes have no idempotency middleware, so a retried/concurrent
+  confirm would otherwise credit the wallet twice. Never drop this in-transaction re-check.
+- **Email-token verification matches the exact token.** `AccountSecurityController::checkToken`
+  uses `where(EMAIL_VERIFICATION_TOKEN, $token)` — a previous `where([column], $token)` passed
+  an array that made Eloquent ignore the token (always-true `WHERE 0 = '…'`), verifying the
+  first unverified profile for any token. Never reintroduce the array form.
+- **Mobile changes persist the normalized 09 form.** `AccountSecurityController` caches/SMSes
+  and stores `PhoneNumber::to09($newMobile)` (the same value Podium verified), not the raw
+  input — `users.mobile` must stay canonical `09xxxxxxxxx` for login/uniqueness.
 
 ### Cross-Controller Calls are Forbidden
 
@@ -1128,6 +1162,57 @@ were created precisely to eliminate the cross-controller call that existed betwe
 
 ---
 
+## Recently Added Subsystems
+
+### Ticketing — helpdesk model
+
+`tickets` was widened from a basic table to a helpdesk model:
+- **Statuses (full state machine):** `open` (new), `in_progress`, `waiting_customer`,
+  `waiting_supplier`, `answered`, `resolved`, `closed` (+ legacy `pending`). The `status`
+  column is now `VARCHAR` (was an enum that lacked `open` — a latent MySQL-strict bug).
+  Use `Ticket::STATUSES` / `Ticket::STATUS_*`.
+- **New columns:** `priority` (`Ticket::PRIORITIES`: low/normal/high/urgent), `order_id`,
+  `province_id`, `city_id`, `assigned_at`, `first_responded_at`, `resolved_at`, `closed_at`,
+  `sla_due_at`, `reopened_count`.
+- **`ticket_notes`** table/model — internal staff notes (`Ticket::notes()`), distinct from
+  user-general `user_notes`.
+- **`ticket_files.ticket_id`** added — opening-message attachments now persist against the
+  ticket (`Ticket::files()`); previously the upload was validated then silently dropped and
+  `TicketResource` referenced a non-existent relation.
+- **`TicketService`** owns: SLA stamping on create (per-priority `config/ticketing.php`),
+  order-ownership guard, status-transition timestamping + reopen counting, `assignTo`,
+  `moveToDepartment`, `addNote`, and `kpis()` (volume by dept/status, SLA breaches, avg
+  first-response/resolution minutes, reopen rate).
+- **Admin endpoints:** `GET /admin/tickets/kpis`, `POST /admin/tickets/{ticket}/note`.
+- Still out of scope: escalation automation and a working-hours calendar (SLA is currently
+  a simple wall-clock window).
+
+### Storage — private `financial` disk for receipts
+
+Financial receipts (wallet deposit, supplier-payment, buyer order) are stored on a private
+**`financial`** disk (`storage/app/financial`, NOT in the `storage:link` set, never
+URL-reachable). They were previously on the `public` disk and fetchable at `/storage/...`
+without auth. Served only through authenticated download endpoints (e.g.
+`WalletController::downloadReceipt`, which keeps its ownership check). When adding a new
+financial document, store it with `->store($dir, 'financial')`, never `'public'`.
+**Still on `public` (tracked separately):** invoice PDFs (`InvoicePdfRenderer`).
+
+### Payment gateway — Pasargad scaffold
+
+`PasargadGateway` (registered in `PaymentGatewayFactory` as `'pasargad'`) is config-driven
+(`config/payment.php` → `gateways.pasargad`) and **fail-safe**: until credentials are present
+its `verify()` returns `PaymentReceipt::failed()` (never phantom-credits) and `pay()` reports
+unavailable. Real bank HTTP calls go into the two marked INTEGRATION POINTs once the licence
+lands. The interface contract (verify/settle via `ProcessPaymentCallbackAction`) is unchanged.
+
+### Pre-checkout shipping quote
+
+`POST /cart/shipping-quote` (auth) → `{ total, per_line, shipments[] }` for a chosen
+`address_id` (validated to belong to the user). `GET /shipping-methods` (public) lists
+methods. `CartShippingQuoteService::lineLogistics()` is the **single source of truth** for
+per-line weight/count, shared with `PlaceOrderAction`, so the quote equals the freight
+charged at placement.
+
 ## Key Conventions
 
 - All API responses use the `success()`/`error()` helpers — never return raw `response()->json()` from authenticated endpoints
@@ -1136,6 +1221,7 @@ were created precisely to eliminate the cross-controller call that existed betwe
 - **FormRequest `messages()` must use `__()` calls** — never return hardcoded Persian strings. Each validation message must have a matching key in the relevant `lang/fa/*.php` file (e.g. `orders.store_address_required`). The same rule applies to controller response messages passed to `success()`/`error()`
 - **Never hardcode user-facing strings anywhere in PHP** — all strings that could appear in an API response or be stored as a user-visible description must go through `__('domain.key')`. The only exception is internal log messages (passed to `Log::error()` etc.) which may remain in English
 - Persian dates use the `PersianDate` trait (provides `created_at_p`, `created_at_diff` appended attributes via Verta)
+- **Validate Jalali date inputs with `regex:/^\d{4}-\d{2}-\d{2}$/`, never `date_format:Y-m-d`** — the Gregorian rule rejects valid Jalali dates (e.g. `1402-06-31`, Shahrivar has 31 days). For an `end >= start` check on two Jalali strings, compare lexically (a closure rule), not `after_or_equal`. `birth_date` and `StoreJobExperienceRequest` follow this.
 - Phone numbers are normalized to `09xxxxxxxxx` format using `PhoneNumber::to09($mobile)` from `app/Support/PhoneNumber.php` — **never** write a local helper
 - Verification codes are stored in `users.secret` with expiry in `users.secret_expires_at`; generated by `generateVerifyCode()` using `random_int` (CSPRNG) — never `mt_rand`
 - Financial amounts are in **Rials** (not Tomans)
