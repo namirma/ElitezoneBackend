@@ -25,6 +25,8 @@ class Product extends Model
 
     const DESCRIPTION = 'description';
 
+    const SHIPPING_PROMO = 'shipping_promo';
+
     const SKU = 'sku';
 
     const IS_ACTIVE = 'is_active';
@@ -52,6 +54,7 @@ class Product extends Model
         self::NAME,
         self::SLUG,
         self::DESCRIPTION,
+        self::SHIPPING_PROMO,
         self::SKU,
         self::IS_ACTIVE,
         self::IS_FEATURED,

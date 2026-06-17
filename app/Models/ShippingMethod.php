@@ -13,6 +13,8 @@ class ShippingMethod extends Model
 
     const CODE = 'code';
 
+    const DELIVERY_NOTICE = 'delivery_notice';
+
     const CREATED_AT = 'created_at';
 
     const UPDATED_AT = 'updated_at';
@@ -20,6 +22,7 @@ class ShippingMethod extends Model
     protected $fillable = [
         self::NAME,
         self::CODE,
+        self::DELIVERY_NOTICE,
     ];
 
     public function cartItems(): HasMany

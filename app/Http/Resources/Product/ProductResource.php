@@ -20,6 +20,7 @@ class ProductResource extends BaseJsonResource
             Product::NAME => $this->name,
             Product::SLUG => $this->slug,
             Product::DESCRIPTION => $this->description,
+            Product::SHIPPING_PROMO => $this->shipping_promo,
             Product::SKU => $this->sku,
             Product::IS_FEATURED => (bool) $this->is_featured,
             Product::VIEW_COUNT => $this->view_count,
