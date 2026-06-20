@@ -25,7 +25,11 @@ class JobExperienceResource extends BaseJsonResource
             JobExperience::TITLE => $this->{JobExperience::TITLE},
             JobExperience::ORGANIZATION_NAME => $this->{JobExperience::ORGANIZATION_NAME},
             JobExperience::PROJECT_ADDRESS => $this->{JobExperience::PROJECT_ADDRESS},
-            JobExperience::FILE_PATH => $this->{JobExperience::FILE_PATH},
+            JobExperience::FILE_PATH => $this->{JobExperience::FILE_PATH}
+                ? (str_starts_with($this->{JobExperience::FILE_PATH}, 'http')
+                    ? $this->{JobExperience::FILE_PATH}
+                    : route('job-experience.file', $this->id))
+                : null,
             JobExperience::START_DATE => $this->{JobExperience::START_DATE}?->format('Y/m/d'),
             JobExperience::END_DATE => $this->{JobExperience::END_DATE}?->format('Y/m/d'),
             'status' => $statusText,

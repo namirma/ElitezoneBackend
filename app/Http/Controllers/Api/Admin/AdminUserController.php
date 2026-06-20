@@ -114,7 +114,7 @@ class AdminUserController extends Controller
 
         if (! $user) {
             return error(
-                'کاربری با این مشخصات یافت نشد.',
+                __('admin.users.not_found'),
                 ['keyword' => $keyword],
                 404
             );

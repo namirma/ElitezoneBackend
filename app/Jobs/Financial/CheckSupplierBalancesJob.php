@@ -44,18 +44,19 @@ class CheckSupplierBalancesJob implements ShouldQueue
 
     public function handle(SmsService $smsService, WalletTransactionEngine $walletEngine): void
     {
-        // Only look at orders with a pending supplier debt
-        $pendingOrders = Order::where(Order::SUPPLIER_DEBT_PENDING, true)
+        // chunkById() processes one batch at a time (memory-safe at scale) while
+        // still supporting eager loading — unlike cursor() which can't eager-load.
+        Order::where(Order::SUPPLIER_DEBT_PENDING, true)
             ->with(['items.supplier.wallet'])
-            ->get();
-
-        foreach ($pendingOrders as $order) {
-            try {
-                $this->processOrder($order, $smsService, $walletEngine);
-            } catch (\Exception $e) {
-                Log::channel('financial')->error("CheckSupplierBalancesJob error for order {$order->id}: ".$e->getMessage());
-            }
-        }
+            ->chunkById(100, function ($pendingOrders) use ($smsService, $walletEngine) {
+                foreach ($pendingOrders as $order) {
+                    try {
+                        $this->processOrder($order, $smsService, $walletEngine);
+                    } catch (\Exception $e) {
+                        Log::channel('financial')->error("CheckSupplierBalancesJob error for order {$order->id}: ".$e->getMessage());
+                    }
+                }
+            });
     }
 
     private function processOrder(Order $order, SmsService $smsService, WalletTransactionEngine $walletEngine): void
@@ -73,10 +74,10 @@ class CheckSupplierBalancesJob implements ShouldQueue
         $debtAmount = (float) $order->{Order::SUPPLIER_DEBT_AMOUNT};
         if ($debtAmount <= 0) {
             // Debt already cleared or zero — just unflag
-            $order->update([
+            $order->forceFill([
                 Order::SUPPLIER_DEBT_PENDING => false,
-                Order::SUPPLIER_DEBT_AMOUNT => 0,
-            ]);
+                Order::SUPPLIER_DEBT_AMOUNT  => 0,
+            ])->save();
 
             return;
         }
@@ -157,10 +158,10 @@ class CheckSupplierBalancesJob implements ShouldQueue
             }
 
             // 3. Clear the pending debt flag on the order
-            $lockedOrder->update([
+            $lockedOrder->forceFill([
                 Order::SUPPLIER_DEBT_PENDING => false,
-                Order::SUPPLIER_DEBT_AMOUNT => 0,
-            ]);
+                Order::SUPPLIER_DEBT_AMOUNT  => 0,
+            ])->save();
 
             Log::channel('financial')->info("Supplier debt cleared for order {$lockedOrder->id}. Debt: {$debtAmount}");
         });

@@ -846,11 +846,12 @@ tests/
   Unit/          — (empty placeholder dir — kept so phpunit.xml works)
 ```
 
-**Total: 201 tests, 443 assertions — all green. ✅**
+**Total: 209 tests, 469 assertions — all green. ✅**
 
 Newer test files: `Financial/ConsultantLifetimeCapTest`, `Financial/ReceiptPrivateDiskTest`,
 `Financial/ProcessTransactionRaceTest`, `Ticketing/TicketLifecycleTest`,
-`Order/InvoiceAccessTest`, `Cart/ShippingQuoteTest`, `Profile/EmailTokenVerificationTest`.
+`Order/InvoiceAccessTest`, `Cart/ShippingQuoteTest`, `Profile/EmailTokenVerificationTest`,
+`Order/HasOrderProgressTest`.
 
 Patterns to follow when adding tests:
 - **Use factories**, never `User::create([...])` with raw arrays — `UserFactory`
@@ -942,6 +943,13 @@ add an index in a new migration if needed. Always make migrations additive.
   per-user notes written via `AdminUserController::addNote` (`User::notes()` relation).
 - **Run `php artisan migrate`** after pulling — both endpoints (and the `is_active` filter) require these.
 
+### Employer profile — `status` column (`2026_06_20_*`)
+
+`employer_profiles.status` (string, nullable) tracks profile-completion state. Migration
+`2026_06_20_100000_add_status_to_employer_profiles_table` adds the column and backfills
+existing rows. `EmployerProfile::STATUS` constant + `EmployerController::store()` writes it.
+`EmployerProfileResource` exposes it. **Run `php artisan migrate`** after pulling this migration.
+
 ## Known Architectural Gotchas
 
 ### Exception Handler — `renderable()` runs before `unauthenticated()`
@@ -982,17 +990,30 @@ $category->filters()->attach($filter->id);
 PriceFilter::create(['price_filter_category_id' => $cat->id, ...]);
 ```
 
-### `CheckSupplierBalancesJob` — scope to `supplier_debt_pending` only
+### `CheckSupplierBalancesJob` — scope to `supplier_debt_pending` only; use `chunkById`
 
 This job must query **only** orders where `supplier_debt_pending = true`. Querying
 all hold transactions would accidentally release consultant-commission holds (WCT)
-that are waiting for Doc Q. The scoping pattern:
+that are waiting for Doc Q. The job uses `chunkById(100, ...)` (not `->get()`) so
+it never loads all debt orders into memory at once — important when many debts accumulate:
 
 ```php
 Order::where(Order::SUPPLIER_DEBT_PENDING, true)
     ->with(['items.supplier.wallet'])
-    ->get();
+    ->chunkById(100, function ($pendingOrders) use ($smsService, $walletEngine) {
+        foreach ($pendingOrders as $order) {
+            try {
+                $this->processOrder($order, $smsService, $walletEngine);
+            } catch (\Exception $e) {
+                Log::channel('financial')->error("CheckSupplierBalancesJob error for order {$order->id}: ".$e->getMessage());
+            }
+        }
+    });
 ```
+
+> **Why `chunkById` and not `cursor()`?** `cursor()` streams lazily but cannot eager-load
+> (`->with([...])`). `chunkById` fetches 100 rows at a time, supports eager loading per
+> chunk, and does not load the full result set into memory — best of both worlds here.
 
 Inside the transaction, it finds the specific buyer hold via:
 ```php
@@ -1002,6 +1023,46 @@ $buyerWallet->transactions()
     ->where('status', FinancialCodes::STATUS_HOLD)
     ->latest()->first();
 ```
+
+### Order financial snapshot fields — not in `$fillable`; use `forceFill()->save()`
+
+23 financial snapshot columns on `Order` are intentionally **absent from `$fillable`**.
+Mass-assignment via `Order::create([...])` or `$order->fill([...])` will **silently drop** them:
+
+```
+OFFICIAL_PRICE, COMMISSION_RATE, OWNER_DISCOUNT_RATE, SAZE_SHARE_RATE,
+CONSULTANT_SHARE_RATE, VAT_RATE, PAYMENT_OF_OWNER, PAYMENT_TO_SUPPLIER,
+PAYMENT_TO_CONSULTANT, PAYMENT_TO_RESERVE, VALIDATION_OF_RESERVE,
+WEIGHT_AFTER_SCALE, WEIGHING_COMPLETED_AT, TRANS_COMMISSION, TRANS_VAT,
+CONSULTANT_MOADIAN_REF, CONSULTANT_HOLD_RELEASED_AT, SUPPLIER_MOADIAN_REF,
+SUPPLIER_HOLD_RELEASED_AT, SUPPLIER_DEBT_PENDING, SUPPLIER_DEBT_AMOUNT,
+SYSTEM_MOADIAN_REF, SYSTEM_HOLD_RELEASED_AT
+```
+
+These fields are written **only** by Financial Actions and Services that use
+`forceFill()->save()` — this documents intent ("this code is explicitly permitted
+to bypass fillable"). Never add them back to `$fillable`.
+
+In **tests** that need to seed these fields, split into two statements — `save()`
+returns `bool`, not the model, so chaining from it doesn't work:
+
+```php
+// ✅ correct — two separate statements
+$order = Order::create([/* only fillable fields */]);
+$order->forceFill([
+    Order::PAYMENT_OF_OWNER    => $poo,
+    Order::PAYMENT_TO_SUPPLIER => $pts,
+    // ... other snapshot fields
+])->save();
+
+// ❌ wrong — forceFill chained from create() result is fine, but:
+$this->order = Order::create([...])->forceFill([...])->save() ?? null;
+//  ↑ save() returns bool, not the model; $this->order would be null/bool
+```
+
+Test helpers that accept `array $overrides` (like `makeOrder()` in `HasOrderProgressTest`)
+must call `$order->forceFill($overrides)->save()` after `Order::create()` so that any
+non-fillable override (e.g. `CONSULTANT_MOADIAN_REF`) is actually persisted.
 
 ### `WalletTransactionEngine` — always pass `$targetUserId` for `WALLET_SUPPLIER`
 
@@ -1045,6 +1106,10 @@ Rules:
 user before expiry). `PROCESSING` and later are paid/settled and must go through the
 dedicated return/dispute flow (مرجوعی/داوری) — **never** self-cancel, which would
 trigger an incomplete refund.
+
+`OrderPolicy::cancel()` enforces the **same** `STATUS_PENDING` restriction — never widen
+the policy to allow broader states than the controller accepts, or the defense-in-depth
+is broken (another caller of the policy would allow cancellation the controller forbids).
 
 ### Order `beneficiary_user_id` must be an APPROVED consultant of the placer
 
@@ -1159,6 +1224,12 @@ order-financial escrow values `FinancialCodes::STATUS_HOLD = 'hold'` /
 - **Mobile changes persist the normalized 09 form.** `AccountSecurityController` caches/SMSes
   and stores `PhoneNumber::to09($newMobile)` (the same value Podium verified), not the raw
   input — `users.mobile` must stay canonical `09xxxxxxxxx` for login/uniqueness.
+- **Never expose raw exception messages from external services in API responses.** When an
+  integration (Podium, bank inquiry, etc.) throws, log it server-side and return a generic
+  error to the client. Pattern: `Log::warning('Bank inquiry failed', ['user_id' => Auth::id(),
+  'message' => $e->getMessage()]); return error(__('bank.service_unavailable'), [], 503);`
+  Returning `['debug' => $e->getMessage()]` leaks internal service details (URLs, error
+  codes, stack state) and is a security violation.
 
 ### Cross-Controller Calls are Forbidden
 
@@ -1204,17 +1275,26 @@ were created precisely to eliminate the cross-controller call that existed betwe
 - Still out of scope: escalation automation and a working-hours calendar (SLA is currently
   a simple wall-clock window).
 
-### Storage — private `financial` disk for receipts
+### Storage — private disks for sensitive files
 
-Financial receipts (wallet deposit, supplier-payment, buyer order) are stored on a private
-**`financial`** disk (`storage/app/financial`, NOT in the `storage:link` set, never
-URL-reachable). They were previously on the `public` disk and fetchable at `/storage/...`
-without auth. Served only through authenticated download endpoints (e.g.
-`WalletController::downloadReceipt`, which keeps its ownership check). When adding a new
-financial document, store it with `->store($dir, 'financial')`, never `'public'`.
-Invoice PDFs (`InvoicePdfRenderer::renderAndSave`) are also on the `financial` disk now —
-they are an archive only; the download endpoint regenerates the PDF on the fly and never
-reads the stored file, and `invoices.file_path` is never served as a URL.
+**Financial disk (`financial`)** — financial receipts (wallet deposit, supplier-payment,
+buyer order) and invoice PDFs are stored on a private **`financial`** disk
+(`storage/app/financial`, NOT in the `storage:link` set, never URL-reachable). They were
+previously on the `public` disk and fetchable at `/storage/...` without auth. Served only
+through authenticated download endpoints (e.g. `WalletController::downloadReceipt`, which
+keeps its ownership check). When adding a new financial document, store it with
+`->store($dir, 'financial')`, never `'public'`. Invoice PDFs (`InvoicePdfRenderer::renderAndSave`)
+are also on the `financial` disk — they are an archive only; the download endpoint
+regenerates the PDF on the fly, and `invoices.file_path` is never served as a URL.
+
+**Local disk (`local`) — job experience documents** — `JobExperienceController::store()`
+saves uploaded credential files with `->store('job_experiences', 'local')` (private
+`storage/app` path, no public URL). The resource returns a named download URL
+(`route('job-experience.file', $id)`) instead of a raw path. `JobExperienceController::download()`
+verifies ownership (`job_experience.user_id === Auth::id()`) before streaming the file.
+`destroy()` deletes the stored file before removing the DB row; it guards legacy records
+where `file_path` starts with `http` (old public-disk full URLs) and skips the `Storage`
+call for those. Never store job experience files on the `public` disk.
 
 ### Payment gateway — Pasargad scaffold
 

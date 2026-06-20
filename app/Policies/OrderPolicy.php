@@ -61,9 +61,11 @@ class OrderPolicy
      */
     public function cancel(User $user, Order $order): Response
     {
-        // سفارشات تکمیل شده یا ارسال شده قابل لغو نیستند (بسته به بیزنس شما)
-        if (in_array($order->status, [Order::STATUS_COMPLETED, Order::STATUS_SHIPPED])) {
-            return Response::deny(__('orders.cannot_cancel_shipped_order'));
+        // فقط سفارشات در وضعیت PENDING قابل لغو توسط کاربر هستند.
+        // وضعیت‌های بعد از پرداخت (RESERVED, PROCESSING و بالاتر) از طریق
+        // جریان مرجوعی/داوری پردازش می‌شوند، نه لغو مستقیم.
+        if ($order->status !== Order::STATUS_PENDING) {
+            return Response::deny(__('orders.cannot_cancel'));
         }
 
         return ($order->placer_user_id === $user->id || $order->beneficiary_user_id === $user->id)

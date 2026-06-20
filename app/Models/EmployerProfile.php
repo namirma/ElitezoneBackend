@@ -27,12 +27,25 @@ class EmployerProfile extends Model
 
     const HAS_CONSULTANT = 'has_consultant';
 
+    const STATUS = 'status';
+
+    const STATUS_NEUTRAL = 'neutral';
+
+    const STATUS_SUCCESS = 'success';
+
+    const STATUS_ONGOING = 'ongoing';
+
+    const STATUS_FAILURE = 'failure';
+
+    const STATUS_CLOSED = 'closed';
+
     protected $fillable = [
         self::USER_ID,
         self::PROJECT_DONE,
         self::PROJECT_IN_PROGRESS,
         self::ACTIVITY_PROVINCES,
         self::HAS_CONSULTANT,
+        self::STATUS,
     ];
 
     // public function getCreatedAtAttribute()

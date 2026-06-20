@@ -155,6 +155,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::prefix('job-experiences')->middleware('role.expert')->controller(JobExperienceController::class)->group(function () {
             Route::get('/', 'index')->middleware('track:job');
             Route::post('/', 'store');
+            Route::get('/{jobExperience}/file', 'download')->name('job-experience.file');
             Route::delete('/{jobExperience}', 'destroy');
         });
 
@@ -303,6 +304,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/engineer', [EngineerController::class, 'store']);
         Route::post('/contractor', [ContractorController::class, 'store']);
         Route::post('/employer', [EmployerController::class, 'store']);
+        Route::delete('/employer', [EmployerController::class, 'destroy']);
         Route::prefix('supplier')->group(function () {
             Route::post('/', [SupplierController::class, 'store']);
             Route::get('/activity-categories', [SupplierController::class, 'getCategories']);

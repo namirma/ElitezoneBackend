@@ -42,8 +42,6 @@ class UserBankAccount extends Model
         self::ACCOUNT_HOLDER_NAME,
         self::SHABA,
         self::CARD_NUMBER,
-        self::STATUS,
-        self::REJECTION_REASON,
         self::IS_DEFAULT,
     ];
 

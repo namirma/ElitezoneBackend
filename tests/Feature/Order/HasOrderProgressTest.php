@@ -32,13 +32,21 @@ class HasOrderProgressTest extends TestCase
     {
         $user = User::factory()->create();
 
-        return Order::create(array_merge([
+        $order = Order::create(array_merge([
             Order::PLACER_USER_ID => $user->id,
             Order::ORDER_NUMBER => 'TEST-PROGRESS-'.uniqid(),
             Order::STATUS => Order::STATUS_PROCESSING,
             Order::PAYMENT_STATUS => Order::PAYMENT_PAID,
             Order::FINAL_AMOUNT => 100_000, // < threshold → full-payment (no reserve step)
         ], $overrides));
+
+        // Financial snapshot fields are not in $fillable — apply them via forceFill
+        // so tests that seed these columns work without loosening mass-assignment.
+        if ($overrides) {
+            $order->forceFill($overrides)->save();
+        }
+
+        return $order;
     }
 
     // =========================================================================

@@ -127,14 +127,15 @@ class ConsultantLifetimeCapTest extends TestCase
         $this->consultant->update([User::BADGE_PURCHASE_AMOUNT => 10_000_000]);
 
         Order::create([
-            Order::PLACER_USER_ID => $this->order->placer_user_id,
+            Order::PLACER_USER_ID     => $this->order->placer_user_id,
             Order::CONSULTANT_USER_ID => $this->consultant->id,
-            Order::ORDER_NUMBER => 'PRIOR-'.now()->format('YmdHis').rand(100, 999),
-            Order::STATUS => Order::STATUS_SHIPPED,
-            Order::PAYMENT_STATUS => 'paid',
+            Order::ORDER_NUMBER       => 'PRIOR-'.now()->format('YmdHis').rand(100, 999),
+            Order::STATUS             => Order::STATUS_SHIPPED,
+            Order::PAYMENT_STATUS     => 'paid',
+        ])->forceFill([
             Order::WEIGHING_COMPLETED_AT => now()->subDay(),
             Order::PAYMENT_TO_CONSULTANT => 15_000_000,
-        ]);
+        ])->save();
 
         $gross = $this->router->route($this->order->fresh(), $this->resultWithPool());
 

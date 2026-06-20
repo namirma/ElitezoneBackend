@@ -79,20 +79,22 @@ class ProcessWeighbridgeResultActionTest extends TestCase
         $oldPTS = $calc->calculatePTS(0, 1000, 10, $rates['ow_final_rate'], $rates['ssg_final_rate'], $rates['co_final_rate'], 0, true, true);
 
         $this->order = Order::create([
-            Order::PLACER_USER_ID => $this->buyer->id,
+            Order::PLACER_USER_ID      => $this->buyer->id,
             Order::BENEFICIARY_USER_ID => $this->buyer->id, // self → no consultant payout
-            Order::ORDER_NUMBER => 'TEST-WB-'.now()->format('YmdHis').rand(100, 999),
-            Order::STATUS => Order::STATUS_PROCESSING,
-            Order::PAYMENT_STATUS => Order::PAYMENT_PAID,
-            Order::OFFICIAL_PRICE => 1000,
+            Order::ORDER_NUMBER        => 'TEST-WB-'.now()->format('YmdHis').rand(100, 999),
+            Order::STATUS              => Order::STATUS_PROCESSING,
+            Order::PAYMENT_STATUS      => Order::PAYMENT_PAID,
             Order::WEIGHT_BEFORE_SCALE => 10,
-            Order::SHIPPING_COST => 0,
-            Order::VAT_RATE => 0,
-            Order::PAYMENT_OF_OWNER => $this->oldPOO,
-            Order::PAYMENT_TO_SUPPLIER => $oldPTS,
-            Order::TRANS_COMMISSION => true,
-            Order::TRANS_VAT => true,
+            Order::SHIPPING_COST       => 0,
         ]);
+        $this->order->forceFill([
+            Order::OFFICIAL_PRICE      => 1000,
+            Order::VAT_RATE            => 0,
+            Order::PAYMENT_OF_OWNER    => $this->oldPOO,
+            Order::PAYMENT_TO_SUPPLIER => $oldPTS,
+            Order::TRANS_COMMISSION    => true,
+            Order::TRANS_VAT           => true,
+        ])->save();
 
         OrderItem::factory()->create([
             OrderItem::ORDER_ID => $this->order->id,

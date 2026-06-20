@@ -17,6 +17,9 @@ return [
     'search_history_cleared' => 'تاریخچه جستجو پاک شد.',
     'search_results' => 'نتیجه جستجو.',
 
+    'employer_deleted' => '.اطلاعات کارفرما با موفقیت حذف شد',
+    'employer_not_found' => '.پروفایل کارفرما یافت نشد',
+
     // Employer SMS invite (expert/advisor only)
     'invite_sent_successfully' => 'دعوت‌نامه با موفقیت ارسال شد.',
     'invite_cap_reached' => 'حداکثر تعداد دعوت‌های مجاز شما به پایان رسیده است.',

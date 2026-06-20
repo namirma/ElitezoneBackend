@@ -37,20 +37,19 @@ class JobExperienceController extends Controller
         }
         $data = $request->validated();
 
-        $path = $data['file']->store('job_experiences', 'public');
+        $path = $data['file']->store('job_experiences', 'local');
         if (! $path) {
             return error(__('credential.file_upload_error'), [], 500);
         }
-        $url = Storage::disk('public')->url($path);
 
         $job = $user->jobExperiences()->create([
-            JobExperience::TITLE => $data[JobExperience::TITLE],
+            JobExperience::TITLE             => $data[JobExperience::TITLE],
             JobExperience::ORGANIZATION_NAME => $data[JobExperience::ORGANIZATION_NAME] ?? null,
-            JobExperience::PROJECT_ADDRESS => $data[JobExperience::PROJECT_ADDRESS] ?? null,
-            JobExperience::START_DATE => $data[JobExperience::START_DATE] ?? null,
-            JobExperience::END_DATE => $data[JobExperience::END_DATE] ?? null,
-            JobExperience::FILE_PATH => $url,
-            JobExperience::STATUS => JobExperience::STATUS_PENDING,
+            JobExperience::PROJECT_ADDRESS   => $data[JobExperience::PROJECT_ADDRESS] ?? null,
+            JobExperience::START_DATE        => $data[JobExperience::START_DATE] ?? null,
+            JobExperience::END_DATE          => $data[JobExperience::END_DATE] ?? null,
+            JobExperience::FILE_PATH         => $path,
+            JobExperience::STATUS            => JobExperience::STATUS_PENDING,
         ]);
 
         return success(
@@ -58,6 +57,21 @@ class JobExperienceController extends Controller
             __('job.store_success'),
             201
         );
+    }
+
+    public function download(JobExperience $jobExperience)
+    {
+        if ($jobExperience->{JobExperience::USER_ID} !== Auth::id()) {
+            return error(__('auth.forbidden'), [], 403);
+        }
+
+        $path = $jobExperience->{JobExperience::FILE_PATH};
+
+        if (! $path || ! Storage::disk('local')->exists($path)) {
+            return error(__('job.file_not_found'), [], 404);
+        }
+
+        return Storage::disk('local')->download($path);
     }
 
     public function destroy(JobExperience $jobExperience): JsonResponse
@@ -70,8 +84,10 @@ class JobExperienceController extends Controller
             return error(__('job.delete_denied'), [], 400);
         }
 
-        // TODO: حذف فایل از Storage
-        // Storage::disk('public')->delete(...);
+        $path = $jobExperience->{JobExperience::FILE_PATH};
+        if ($path && ! str_starts_with($path, 'http')) {
+            Storage::disk('local')->delete($path);
+        }
 
         $jobExperience->delete();
 
