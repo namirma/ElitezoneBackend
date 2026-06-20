@@ -40,16 +40,12 @@ class DashboardAlertsService
         $alerts = [];
         $profile = $user->profile;
 
-        // NOTE: the two cta_links below ('/profile/legal', '/profile/security') do NOT match
-        // any route in the frontend router and currently 404. The correct targets must be
-        // confirmed with the frontend team (likely under '/profile/account_information/...' or
-        // '/profile/account_settings') before changing them — do not guess a path here.
         if ($profile && $profile->entity === 'legal' && empty($profile->economic_code)) {
-            $alerts[] = $this->makeAlert('profile_incomplete_economic', 'warning', 'user-edit', '/profile/legal');
+            $alerts[] = $this->makeAlert('profile_incomplete_economic', 'warning', 'user-edit', '/profile/account_information/legal');
         }
 
         if ($profile && empty($profile->email_verified_at) && ! empty($profile->email)) {
-            $alerts[] = $this->makeAlert('email_verify', 'warning', 'mail', '/profile/security');
+            $alerts[] = $this->makeAlert('email_verify', 'warning', 'mail', '/profile/account_settings');
         }
 
         if (! $user->bankAccounts()->where('status', 'approved')->exists()) {
