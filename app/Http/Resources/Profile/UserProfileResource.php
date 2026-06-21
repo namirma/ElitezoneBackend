@@ -2,9 +2,10 @@
 
 namespace App\Http\Resources\Profile;
 
+use App\Http\Resources\BaseJsonResource;
 use App\Models\UserProfile;
 use Illuminate\Http\Request;
-use App\Http\Resources\BaseJsonResource;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * @mixin \App\Models\UserProfile
@@ -21,6 +22,10 @@ class UserProfileResource extends BaseJsonResource
         return [
             UserProfile::NAME => $this->name,
             UserProfile::FAMILY => $this->family,
+            // Full public URL (or null) so the frontend can render <img src> directly.
+            UserProfile::AVATAR => $this->avatar
+                ? (str_starts_with($this->avatar, 'http') ? $this->avatar : Storage::disk('public')->url($this->avatar))
+                : null,
             UserProfile::EMAIL => $this->email,
             UserProfile::EMAIL_VERIFIED_AT => $this->email_verified_at,
             UserProfile::NATIONAL_CODE => $this->national_code,
@@ -36,7 +41,7 @@ class UserProfileResource extends BaseJsonResource
             UserProfile::CREATED_AT => $this->created_at,
             'created_at_p' => $this->created_at_p,
             'created_at_diff' => $this->created_at_diff,
-            //'user' => UserResource::collection($this->whenLoaded('profile')),
+            // 'user' => UserResource::collection($this->whenLoaded('profile')),
         ];
     }
 }
