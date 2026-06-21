@@ -110,6 +110,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
         Route::get('/dashboard', [DashboardController::class, 'index']);
 
+        // Collaboration badge (proxied server-side from saze90.com — fixes the CORS that
+        // broke the old direct frontend call). Returns { badge, is_pioneer, badges }.
+        Route::get('/badge', [\App\Http\Controllers\Api\User\BadgeController::class, 'show']);
+
         // Basic profile data
         Route::get('/', [ProfileController::class, 'getProfile'])->middleware('track:account_info');
         Route::post('/', [ProfileController::class, 'setProfile']);
