@@ -59,7 +59,39 @@ class AccountSecurityController extends Controller
     }
 
     /**
-     * Step 2 of password change: verify the OTP from step 1, then set the new password.
+     * Step 2 of the 3-step password change: verify the OTP WITHOUT consuming it.
+     *
+     * This is a read-only "is the code correct?" check so the UI can advance from the
+     * code-entry screen to the new-password screen. The secret is intentionally NOT
+     * cleared here — the final step (setPassword) re-verifies with hash_equals and then
+     * consumes it. Using a constant-time compare keeps the OTP hardening intact.
+     */
+    public function verifyPasswordOtp(Request $request): JsonResponse
+    {
+        $request->validate(
+            ['code' => 'required|digits:6'],
+            [
+                'code.required' => __('auth.code_exists'),
+                'code.digits' => __('auth.code_digits'),
+            ]
+        );
+
+        $user = User::findOrFail(Auth::id());
+
+        if (
+            $user->{User::SECRET} === null ||
+            $user->{User::SECRET_EXPIRES_AT} === null ||
+            ! hash_equals((string) $user->{User::SECRET}, (string) $request->input('code')) ||
+            Carbon::parse($user->{User::SECRET_EXPIRES_AT})->isPast()
+        ) {
+            return error(__('auth.verification_code_not_match'), [], 400);
+        }
+
+        return success([], __('auth.code_verified_proceed_to_password'));
+    }
+
+    /**
+     * Step 3 of password change: verify the OTP from step 1, then set the new password.
      */
     public function setPassword(StorePasswordRequest $request): JsonResponse
     {

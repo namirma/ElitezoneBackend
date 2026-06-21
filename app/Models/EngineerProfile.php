@@ -27,6 +27,9 @@ class EngineerProfile extends Model
 
     const ENGINEER_MEMBER = 'engineer_member';
 
+    /** خوداظهاریِ کاربر مبنی بر عضویت در «سازه نود» (سازه ۹۰) */
+    const IS_SAZE90_USER = 'is_saze90_user';
+
     const LICENSE_MEMBER = 'license_number';
 
     const SUPERVISION_BASE = 'supervision_base';
@@ -63,6 +66,7 @@ class EngineerProfile extends Model
         self::IS_VERIFIED,
         self::VERIFIED_AT,
         self::ENGINEER_MEMBER,
+        self::IS_SAZE90_USER,
         self::LICENSE_MEMBER,
         self::SUPERVISION_BASE,
         self::DESIGN_BASE,
@@ -76,6 +80,10 @@ class EngineerProfile extends Model
         self::ACTIVITY_CITY_ID,
         self::CREATED_AT,
         self::UPDATED_AT,
+    ];
+
+    protected $casts = [
+        self::IS_SAZE90_USER => 'boolean',
     ];
 
     public function getCreatedAtAttribute()

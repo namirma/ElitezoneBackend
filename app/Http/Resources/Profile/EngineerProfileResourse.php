@@ -2,9 +2,9 @@
 
 namespace App\Http\Resources\Profile;
 
+use App\Http\Resources\BaseJsonResource;
 use App\Models\EngineerProfile;
 use Illuminate\Http\Request;
-use App\Http\Resources\BaseJsonResource;
 
 /**
  * @mixin \App\Models\EngineerProfile
@@ -20,6 +20,7 @@ class EngineerProfileResourse extends BaseJsonResource
     {
         return [
             EngineerProfile::ENGINEER_MEMBER => $this->engineer_member,
+            EngineerProfile::IS_SAZE90_USER => $this->is_saze90_user,
             EngineerProfile::LICENSE_MEMBER => $this->license_number,
             EngineerProfile::SUPERVISION_BASE => $this->supervision_base,
             EngineerProfile::DESIGN_BASE => $this->design_base,

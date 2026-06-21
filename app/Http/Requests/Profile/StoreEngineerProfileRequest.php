@@ -25,6 +25,7 @@ class StoreEngineerProfileRequest extends FormRequest
     {
         return [
             EngineerProfile::ENGINEER_MEMBER => 'boolean',
+            EngineerProfile::IS_SAZE90_USER => 'boolean',
             EngineerProfile::LICENSE_MEMBER => 'nullable',
             EngineerProfile::SUPERVISION_BASE => 'nullable',
             EngineerProfile::DESIGN_BASE => 'nullable',

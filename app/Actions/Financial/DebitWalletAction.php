@@ -19,14 +19,15 @@ class DebitWalletAction
         float $amount,
         ?string $description = null,
         array $meta = [],
-        string $type = WalletTransaction::TYPE_WITHDRAW
+        string $type = WalletTransaction::TYPE_WITHDRAW,
+        string $status = WalletTransaction::STATUS_CONFIRMED
     ): WalletTransaction {
         // ۱. گارد امنیتی: جلوگیری از مبالغ منفی یا صفر
         if ($amount <= 0) {
             throw new InvalidArgumentException(__('orders.debit_amount_must_be_positive'));
         }
 
-        return DB::transaction(function () use ($user, $amount, $description, $meta, $type) {
+        return DB::transaction(function () use ($user, $amount, $description, $meta, $type, $status) {
 
             $wallet = Wallet::where('user_id', $user->id)->lockForUpdate()->first();
 
@@ -44,7 +45,7 @@ class DebitWalletAction
             $transaction = $wallet->transactions()->create([
                 'amount' => $amount,
                 'type' => $type,
-                'status' => WalletTransaction::STATUS_CONFIRMED, // اصلاح وضعیت
+                'status' => $status,
                 'description' => $description,
                 'meta' => $meta,
             ]);

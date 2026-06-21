@@ -18,14 +18,27 @@ class StoreJobExperienceRequest extends FormRequest
         // `date_format:Y-m-d` rule rejects valid Jalali dates, so we validate the shape
         // with a regex (same approach as birth_date). end >= start is checked lexically
         // below, which is correct for zero-padded YYYY-MM-DD strings.
+        //
+        // Range: 1300-01-01 .. today (Jalali). Lexical compare is valid for zero-padded
+        // YYYY-MM-DD. `verta()` (no arg) is "now" in Jalali. An ongoing project sends
+        // end_date = null (nullable), so the range rule only fires on a present value.
+        $inJalaliRange = function ($attribute, $value, $fail) {
+            $min = '1300-01-01';
+            $today = verta()->format('Y-m-d');
+            if ($value < $min || $value > $today) {
+                $fail(__('job.date_out_of_range'));
+            }
+        };
+
         return [
             JobExperience::TITLE => ['required', 'string', 'max:255'],
             JobExperience::ORGANIZATION_NAME => ['nullable', 'string', 'max:255'],
             JobExperience::PROJECT_ADDRESS => ['nullable', 'string', 'max:500'],
-            JobExperience::START_DATE => ['nullable', 'regex:/^\d{4}-\d{2}-\d{2}$/'],
+            JobExperience::START_DATE => ['nullable', 'regex:/^\d{4}-\d{2}-\d{2}$/', $inJalaliRange],
             JobExperience::END_DATE => [
                 'nullable',
                 'regex:/^\d{4}-\d{2}-\d{2}$/',
+                $inJalaliRange,
                 function ($attribute, $value, $fail) {
                     $start = $this->input(JobExperience::START_DATE);
                     if ($start && $value && $value < $start) {
