@@ -1368,17 +1368,36 @@ Podium PAYA/SATNA settlement. Flow:
   `$this->field` controller properties (the silent-null data-loss bug). **`ContractorController`
   and `SupplierController` still carry this bug** — fix them the same way when touched.
 
-### saze90.com badge sync — does NOT exist (history)
+### saze90.com badge sync — server-side proxy (`GET /api/profile/badge`)
 
-Consultant badges/«نشان» were meant to sync from the company's legacy site **`saze90.com`**
-into `users.badge_id` / `users.badge_purchase_amount` (the consultant lifetime cap reads
-these). **No such sync exists in `main`** — nothing writes those columns. Git history shows
-the original supervisor (Sajad) only ever scaffolded debug stubs: a `Route::get('check-certificate')`
-calling `https://www.saze90.com/api/?wsdl` (SOAP, full of `dd()`) and a one-line
-`Http::get('https://saze90.com/check-certificate?username=IsaM')` in `ProfileController::getProfile`
-(hardcoded username, returned the raw body) — both removed in later refactors (commits
-`ff780e6`, `ea94207`). If rebuilt, follow the `EduixScraperService` pattern (external fetch →
-profile), move credentials to `.env`, and key the lookup off the user's saze90 username.
+Consultant badges/«نشان» come from the company's legacy site **`saze90.com`**. The working
+integration was always **frontend-only** (`axios.get('https://www.saze90.com/get-certificate?
+mobile=…')`), which broke under CORS. It is now proxied server-side:
+
+- `Saze90BadgeService::getCertificate($mobile)` → `GET {base}/get-certificate?mobile=09…`
+  (no auth). Live response shape (verified against the real server): `{"message": "gold"|
+  "silver"|"bronze"|<code>|false, "status": 200}` — `message:false` means "no badge".
+  Fail-safe: any error/`false`/empty → null. Circuit breaker + success-only cache.
+  Config: `config('services.saze90.*')` (`SAZE90_BADGE_ENABLED` default true, no creds needed).
+- `SyncUserBadgeAction` resolves the saze90 tier + **pioneer** (granted internally for the
+  member's **first year**: `created_at > now()-1y`, NOT from saze90), and persists
+  `users.badge_id` **only** for the commission tiers gold/silver/bronze (null already maps to
+  pioneer/default rates in `SettlementCalculator`). It **never clears a tier on a null result**
+  (a transient saze90 outage must not silently downgrade a consultant's commission rate).
+- `BadgeController::show` → `GET /api/profile/badge` returns `{badge, is_pioneer, badges}`.
+  The frontend should call this instead of saze90 directly. Tests: `Profile/BadgeSyncTest`.
+
+**Still dormant — the consultant lifetime cap.** `get-certificate` returns only the tier, NOT
+the badge **purchase amount** (`users.badge_purchase_amount`), so the cap stays dormant. The
+SOAP service is live (`http://spidtech.com/api/`, WSDL at `https://www.saze90.com/api/?wsdl`,
+op `getUser({Auth,UserID,CustomerType})` returning an opaque JSON string that *could* carry the
+amount), but the historical hardcoded creds (`User=SpidtechCRM`) are **stale** (getUser returns
+empty). `artisaninweb/laravel-soap` is kept in composer for when fresh creds / a purchase-amount
+endpoint arrive — then add a SOAP path to fill `badge_purchase_amount` and the cap activates.
+
+The old debug stubs (`check-certificate` SOAP route + a `getProfile` one-liner, both by Sajad,
+both removed in `ff780e6`/`ea94207`) were never functional — do not restore them; the proxy
+above supersedes them.
 
 ## Key Conventions
 

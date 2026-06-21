@@ -75,4 +75,14 @@ return [
         'username' => env('TSMS_USERNAME'),
         'password' => env('TSMS_PASSWORD'),
     ],
+
+    // نشانِ همکاریِ مشاور از سایت legacy «سازه ۹۰» (saze90.com).
+    // قبلاً فرانت مستقیم `get-certificate?mobile=` را صدا می‌زد (مشکل CORS)؛ حالا از
+    // بک‌اند proxy می‌شود. endpoint عمومی است و auth ندارد.
+    'saze90' => [
+        'enabled' => (bool) env('SAZE90_BADGE_ENABLED', true),
+        'base_url' => env('SAZE90_BASE_URL', 'https://www.saze90.com'),
+        'timeout' => (int) env('SAZE90_TIMEOUT', 5),
+        'cache_ttl' => (int) env('SAZE90_CACHE_TTL', 1800), // ثانیه؛ فقط نتیجهٔ موفق کش می‌شود
+    ],
 ];
