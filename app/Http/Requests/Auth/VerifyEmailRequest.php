@@ -27,4 +27,15 @@ class VerifyEmailRequest extends FormRequest
             'email' => 'required|email:rfc|unique:user_profiles,email,'.Auth::id().',user_id',
         ];
     }
+
+    public function messages(): array
+    {
+        // The app has no lang/fa/validation.php, so generic rules fall back to English.
+        // Provide Persian messages explicitly (matches the frontend's expected text).
+        return [
+            'email.required' => __('profile.email_required'),
+            'email.email' => __('profile.email_invalid'),
+            'email.unique' => __('profile.email_taken'),
+        ];
+    }
 }

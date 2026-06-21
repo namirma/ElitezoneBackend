@@ -48,7 +48,14 @@ class SyncUserBadgeAction
                 if ((int) $user->{User::BADGE_ID} !== (int) $badge->id) {
                     $user->forceFill([User::BADGE_ID => $badge->id])->save();
                 }
-                // Keep the display pivot (badge_user) in sync without dropping other rows.
+                // Replace any previously-synced tier (gold↔silver↔bronze) with the current
+                // one so the display pivot never accumulates stale tiers; non-tier badges
+                // (if ever added) are left untouched.
+                $otherTierIds = Badge::whereIn(Badge::CODE, self::TIER_CODES)
+                    ->where(Badge::ID, '!=', $badge->id)
+                    ->pluck(Badge::ID)
+                    ->all();
+                $user->badges()->detach($otherTierIds);
                 $user->badges()->syncWithoutDetaching([$badge->id]);
             }
         }

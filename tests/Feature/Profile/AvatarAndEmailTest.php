@@ -83,6 +83,23 @@ class AvatarAndEmailTest extends TestCase
     }
 
     /** @test */
+    public function a_duplicate_email_returns_a_persian_validation_error(): void
+    {
+        $owner = User::factory()->create();
+        UserProfile::create([
+            UserProfile::USER_ID => $owner->id,
+            UserProfile::NATIONAL_CODE => $owner->national_code,
+            UserProfile::EMAIL => 'taken@example.com',
+        ]);
+
+        Sanctum::actingAs(User::factory()->create());
+
+        $this->postJson('/api/profile/email', ['email' => 'taken@example.com'])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['email' => 'این ایمیل قبلاً ثبت شده است.']);
+    }
+
+    /** @test */
     public function resend_fails_when_there_is_no_pending_email(): void
     {
         Sanctum::actingAs(User::factory()->create());
