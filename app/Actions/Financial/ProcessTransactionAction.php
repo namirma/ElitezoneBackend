@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\DB;
 
 class ProcessTransactionAction
 {
+    public function __construct(private readonly SettleWithdrawalAction $settleWithdrawal) {}
+
     /**
      * پردازش نهایی تراکنش (تایید یا رد) توسط ادمین
      *
@@ -28,6 +30,16 @@ class ProcessTransactionAction
         // ۲. اعتبارسنجی وضعیت ورودی
         if (! in_array($newStatus, [WalletTransaction::STATUS_CONFIRMED, WalletTransaction::STATUS_REJECTED])) {
             throw new Exception(__('orders.invalid_transaction_status'));
+        }
+
+        // ۲.۵ تأیید یک «برداشت» = شلیک تسویه‌ی بانکی پادیوم. این تماس HTTP خارجی است و
+        // باید بیرون از DB::transaction انجام شود (هرگز قفل دیتابیس روی تماس بانکی نگه
+        // داشته نمی‌شود). SettleWithdrawalAction ماشین‌حالت قفل/HTTP/قفل خودش را دارد و در
+        // صورت موفقیت تراکنش را CONFIRMED می‌کند. «رد کردنِ» برداشت همچنان از مسیر اتمیک
+        // پایین (بازگشت وجه به کیف پول) عبور می‌کند.
+        if ($transaction->type === WalletTransaction::TYPE_WITHDRAW
+            && $newStatus === WalletTransaction::STATUS_CONFIRMED) {
+            return $this->settleWithdrawal->execute($transaction, $admin, $note);
         }
 
         // ۳. اجرای عملیات در یک تراکنش دیتابیس (اتمیک)

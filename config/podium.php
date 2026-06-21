@@ -33,14 +33,33 @@ return [
         'max_amount' => (int) env('PODIUM_MAX_AMOUNT', 2000000000),
     ],
 
+    // ── برداشت خودکار کاربر (تسویه از کیف پول دیجیتال به شبای کاربر) ──────────
+    // سرویس «برداشت از حساب دیجیتال با انتخاب روش انتقال» (toolCode = PAYA/SATNA).
+    // شناسه سرویس: نسخه ۱ = 2467367، سندباکس = 158267، نسخه ۲ = 47567604.
+    // تا وقتی enabled=false یا کلیدها خالی باشند، اکشن تسویه fail-safe است و هیچ
+    // تماس بانکی نمی‌گیرد (مثل scaffold درگاه پاسارگاد) تا پولی به‌اشتباه جابجا نشود.
+    'settlement' => [
+        'enabled' => (bool) env('PODIUM_SETTLEMENT_ENABLED', false),
+        'sc_product_id' => env('PODIUM_SETTLEMENT_SC_PRODUCT_ID'),     // 2467367 prod / 158267 sandbox
+        'sc_api_key' => env('PODIUM_SETTLEMENT_SC_API_KEY'),
+        // مبلغ ≥ این آستانه با SATNA (آنی)، کمتر از آن با PAYA (ارزان، چرخه‌ای) تسویه می‌شود.
+        'satna_threshold' => (int) env('PODIUM_SETTLEMENT_SATNA_THRESHOLD', 1000000000),
+        // کارمزد PAYA که پادیوم از کیف پول دیجیتال «ما» (نه کاربر) کسر می‌کند — صرفاً اطلاعاتی.
+        'paya_fee' => (int) env('PODIUM_SETTLEMENT_PAYA_FEE', 12000),
+        'detail_type' => env('PODIUM_SETTLEMENT_DETAIL_TYPE', 'DETAIL_TYPE_GENERAL_COST'),
+        // اگر true شود، تسویه بلافاصله روی درخواست کاربر و بدون تأیید ادمین شلیک می‌شود.
+        // پیش‌فرض false: مدل امن «تأیید ادمین → واریز خودکار».
+        'auto_on_request' => (bool) env('PODIUM_SETTLEMENT_AUTO_ON_REQUEST', false),
+    ],
+
     // ── حساب سپرده شناسه‌دار (واریز مستقیم بانکی با شناسه واریز) ─────────────
     'deposit' => [
-        'deposit_number'    => env('PODIUM_DEPOSIT_NUMBER'),                   // شماره سپرده بانکی
-        'sc_api_key'        => env('PODIUM_DEPOSIT_SC_API_KEY'),               // کلید سرویس صورت‌حساب
+        'deposit_number' => env('PODIUM_DEPOSIT_NUMBER'),                   // شماره سپرده بانکی
+        'sc_api_key' => env('PODIUM_DEPOSIT_SC_API_KEY'),               // کلید سرویس صورت‌حساب
         'product_entity_id' => env('PODIUM_DEPOSIT_ENTITY_ID', '46645563'),   // شناسه سرویس کلاسور
-        'iban'              => env('PODIUM_DEPOSIT_IBAN'),                     // شماره شبا (IR + ۲۴ رقم)
-        'bank_name'         => env('PODIUM_DEPOSIT_BANK_NAME', 'بانک پاسارگاد'),
-        'account_holder'    => env('PODIUM_DEPOSIT_ACCOUNT_HOLDER', 'شرکت الیت‌زون'),
+        'iban' => env('PODIUM_DEPOSIT_IBAN'),                     // شماره شبا (IR + ۲۴ رقم)
+        'bank_name' => env('PODIUM_DEPOSIT_BANK_NAME', 'بانک پاسارگاد'),
+        'account_holder' => env('PODIUM_DEPOSIT_ACCOUNT_HOLDER', 'شرکت الیت‌زون'),
     ],
 
     'services' => [
