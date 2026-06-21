@@ -126,8 +126,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
         // Account security (password / mobile / email)
         Route::post('/verify-email', [AccountSecurityController::class, 'setEmail']);
         Route::post('/check-email-token', [AccountSecurityController::class, 'checkToken']);
-        Route::post('/password/otp', [AccountSecurityController::class, 'changePasswordFirstAttempt']);
-        Route::post('/password', [AccountSecurityController::class, 'setPassword']);
+        Route::post('/password/otp', [AccountSecurityController::class, 'changePasswordFirstAttempt']);          // step 1: send code
+        Route::post('/password/verify', [AccountSecurityController::class, 'verifyPasswordOtp'])->middleware('throttle:otp-verify'); // step 2: verify code (non-consuming)
+        Route::post('/password', [AccountSecurityController::class, 'setPassword']);                            // step 3: set new password
 
         Route::prefix('change-mobile')->controller(AccountSecurityController::class)->group(function () {
             Route::get('/', 'updateMobile');
@@ -155,6 +156,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::prefix('job-experiences')->middleware('role.expert')->controller(JobExperienceController::class)->group(function () {
             Route::get('/', 'index')->middleware('track:job');
             Route::post('/', 'store');
+            // PUT for text-only edits (JSON); POST (multipart) when replacing the attachment,
+            // since PHP does not populate uploaded files on a raw PUT body.
+            Route::match(['put', 'post'], '/{jobExperience}', 'update');
             Route::get('/{jobExperience}/file', 'download')->name('job-experience.file');
             Route::delete('/{jobExperience}', 'destroy');
         });

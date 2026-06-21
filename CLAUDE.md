@@ -846,12 +846,12 @@ tests/
   Unit/          — (empty placeholder dir — kept so phpunit.xml works)
 ```
 
-**Total: 209 tests, 469 assertions — all green. ✅**
+**Total: 225 tests, 512 assertions — all green. ✅**
 
 Newer test files: `Financial/ConsultantLifetimeCapTest`, `Financial/ReceiptPrivateDiskTest`,
 `Financial/ProcessTransactionRaceTest`, `Ticketing/TicketLifecycleTest`,
 `Order/InvoiceAccessTest`, `Cart/ShippingQuoteTest`, `Profile/EmailTokenVerificationTest`,
-`Order/HasOrderProgressTest`.
+`Order/HasOrderProgressTest`, `Financial/WithdrawalSettlementTest`, `Profile/ProfileFixesTest`.
 
 Patterns to follow when adding tests:
 - **Use factories**, never `User::create([...])` with raw arrays — `UserFactory`
@@ -1194,9 +1194,14 @@ order-financial escrow values `FinancialCodes::STATUS_HOLD = 'hold'` /
   cumulative lockout (`config('auth.otp_max_attempts')` / `otp_lockout_minutes`, cache-keyed
   by mobile) backs the per-minute route throttle against distributed brute-force. **Never**
   loosen these back to a bare `==` compare or remove the secret-clear.
-- **`POST /profile/password` requires the OTP `code`** (step-1 of the two-step change). Without
+- **`POST /profile/password` requires the OTP `code`** (final step of the change). Without
   it a stolen token could take over the account. `StorePasswordRequest` validates `code`;
   `AccountSecurityController::setPassword` re-verifies it before writing the new hash.
+- **Password change is 3 steps.** `POST /profile/password/otp` (send code) →
+  `POST /profile/password/verify` (`verifyPasswordOtp` — checks the code with `hash_equals`
+  but **does NOT consume** the secret, so the UI can advance to the new-password screen) →
+  `POST /profile/password` (re-verifies + consumes the secret + sets the hash). The verify
+  step is read-only and intentionally non-consuming; never make it clear the secret.
 - **Sensitive credentials are masked in Resources.** `UserBankAccountResource` masks
   `shaba`/`card_number` and `UserResource` masks `mobile` for everyone except the owner or an
   admin (`$request->user()?->hasRole('admin')`). Bank card↔IBAN auto-completion runs on the
@@ -1311,6 +1316,69 @@ lands. The interface contract (verify/settle via `ProcessPaymentCallbackAction`)
 methods. `CartShippingQuoteService::lineLogistics()` is the **single source of truth** for
 per-line weight/count, shared with `PlaceOrderAction`, so the quote equals the freight
 charged at placement.
+
+### Wallet withdrawal — automatic Podium settlement (PAYA/SATNA)
+
+A user-requested withdrawal pays out to the user's **approved** bank account (shaba) via a
+Podium PAYA/SATNA settlement. Flow:
+
+1. `WalletController::requestWithdrawal` → `RequestWithdrawalAction`: cache-lock + DB tx,
+   debits the wallet immediately and creates a `WalletTransaction(type=withdraw,
+   **status=PENDING**, meta.settlement.state='awaiting_approval')`. (`DebitWalletAction` now
+   takes an optional `$status` — default CONFIRMED for other callers; withdrawal passes PENDING.)
+2. Admin approves via the existing `POST /admin/wallet/transactions/{transaction}/status`
+   (`ProcessTransactionAction`). When the transaction is a withdraw + confirm, it delegates to
+   `SettleWithdrawalAction` (the Podium call must NOT run inside the deposit-confirm DB tx).
+   Rejecting a withdraw still refunds the wallet via the existing path.
+3. `SettleWithdrawalAction` is a **3-phase state machine** so a DB row lock is never held
+   across the HTTP call: (A) lock + claim `settlement.state='sending'`, (B) call Podium with
+   `uniqueId='wd-{id}'` (Podium dedups → retry-safe), (C) lock + on success CONFIRMED + store
+   `reference_number`, on failure back to PENDING (`state='failed'`) and rethrow so an admin
+   can retry. The wallet was debited at request time, so a failure never loses or mints money.
+
+- `PodiumWithdrawalService` (service 2467367 / sandbox 158267, "withdrawal with tool
+  selection") is **fail-safe** like the Pasargad scaffold: `isConfigured()` is false until
+  `config('podium.settlement.enabled')` is true AND `sc_product_id`+`sc_api_key` are set, and
+  `SettleWithdrawalAction` guards on it — a half-configured env can never move money.
+- Tool is chosen by amount: `>= config('podium.settlement.satna_threshold')` → SATNA, else PAYA.
+- Money leaves the **Podium digital wallet** (`PODLAND_WALLET`, scoped by `PODIUM_BUSINESS_TOKEN`),
+  fed from the company's Pasargad deposit account in `config('podium.deposit')` — NOT a live
+  per-payout debit of the bank account. PAYA costs a 12,000-Rial fee from our Pod wallet.
+- `config('podium.settlement.auto_on_request')` (default false) flips to fully-automatic
+  payout on user request (no admin gate). Tests: `Financial/WithdrawalSettlementTest`
+  (Http::fake + Queue::fake).
+
+### Profile — job experiences & engineer Saze-90 flag
+
+- **Job experiences are multi-record and editable.** `JobExperienceController` has
+  `store` (no "one active request" guard — a user may register many), `update`
+  (`PUT|POST /profile/job-experiences/{id}`; POST multipart when replacing the file —
+  PHP can't parse uploads on a raw PUT), `destroy`, and `download`. Update/delete are
+  owner-only and **blocked on APPROVED** records; any edit re-opens the record to PENDING.
+- **Jalali date range.** `start_date`/`end_date` validate to `1300-01-01 .. today` (lexical
+  compare on zero-padded `YYYY-MM-DD`; today = `verta()->format('Y-m-d')`). `end_date` is
+  `nullable` — an ongoing project sends `null`/omits it. Never use `date_format:Y-m-d`
+  (rejects valid Jalali dates) — see the global Jalali-date convention below.
+- **Engineer profile `is_saze90_user`** (self-declared «کاربر سازه ۹۰») — boolean column on
+  `engineer_profiles` (migration `2026_06_21_*`), wired through request/controller/resource.
+  It is currently **inert** (stored only); the actual badge sync from `saze90.com` does not
+  exist in this codebase (see below).
+- **`EngineerController::store` partial-update fix.** Like `EmployerController`, it now loads
+  the existing profile and falls back to `$existing?->field` instead of the non-existent
+  `$this->field` controller properties (the silent-null data-loss bug). **`ContractorController`
+  and `SupplierController` still carry this bug** — fix them the same way when touched.
+
+### saze90.com badge sync — does NOT exist (history)
+
+Consultant badges/«نشان» were meant to sync from the company's legacy site **`saze90.com`**
+into `users.badge_id` / `users.badge_purchase_amount` (the consultant lifetime cap reads
+these). **No such sync exists in `main`** — nothing writes those columns. Git history shows
+the original supervisor (Sajad) only ever scaffolded debug stubs: a `Route::get('check-certificate')`
+calling `https://www.saze90.com/api/?wsdl` (SOAP, full of `dd()`) and a one-line
+`Http::get('https://saze90.com/check-certificate?username=IsaM')` in `ProfileController::getProfile`
+(hardcoded username, returned the raw body) — both removed in later refactors (commits
+`ff780e6`, `ea94207`). If rebuilt, follow the `EduixScraperService` pattern (external fetch →
+profile), move credentials to `.env`, and key the lookup off the user's saze90 username.
 
 ## Key Conventions
 
