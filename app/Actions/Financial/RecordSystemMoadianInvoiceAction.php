@@ -103,10 +103,10 @@ class RecordSystemMoadianInvoiceAction
                 );
             }
 
-            $locked->update([
-                Order::SYSTEM_MOADIAN_REF => $moadianRef,
+            $locked->forceFill([
+                Order::SYSTEM_MOADIAN_REF      => $moadianRef,
                 Order::SYSTEM_HOLD_RELEASED_AT => now(),
-            ]);
+            ])->save();
 
             // Doc P — فاکتور مودیان سیستم (سازه → خریدار)
             $this->invoiceGenerator->generateSystemMoadianInvoice($locked);

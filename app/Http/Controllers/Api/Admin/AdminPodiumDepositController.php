@@ -125,7 +125,7 @@ class AdminPodiumDepositController extends Controller
                 toTime:   $toTime,
             );
         } catch (\Throwable $e) {
-            return error('خطا در اتصال به پادیوم: '.$e->getMessage(), [], 503);
+            return error(__('admin.podium.connection_error'), [], 503);
         }
 
         $totalIncoming = count($deposits);

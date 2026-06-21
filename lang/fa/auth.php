@@ -87,4 +87,5 @@ return [
 
     // OTP verify brute-force protection
     'too_many_otp_attempts' => 'تعداد تلاش‌های تأیید کد بیش از حد مجاز است. لطفاً دقایقی دیگر دوباره امتحان کنید.',
+    'profile_incomplete' => '.اطلاعات کاربری شما ناقص است. لطفاً جهت تکمیل ثبت‌نام اقدام کنید',
 ];

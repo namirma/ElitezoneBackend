@@ -140,15 +140,17 @@ class WeighbridgeReconcilerTest extends TestCase
             Order::STATUS              => Order::STATUS_PROCESSING,
             Order::FINAL_AMOUNT        => $oldPOO,
             Order::PAYMENT_STATUS      => 'paid',
-            Order::OFFICIAL_PRICE      => 0,
             Order::WEIGHT_BEFORE_SCALE => $wbs,
             Order::SHIPPING_COST       => self::SHIPPING,
-            'vat_rate'                 => $vatRate,
-            'payment_of_owner'         => $oldPOO,
-            'payment_to_supplier'      => $oldPTS,
-            'trans_commission'         => true,
-            'trans_vat'                => true,
         ]);
+        $order->forceFill([
+            Order::OFFICIAL_PRICE      => 0,
+            Order::VAT_RATE            => $vatRate,
+            Order::PAYMENT_OF_OWNER    => $oldPOO,
+            Order::PAYMENT_TO_SUPPLIER => $oldPTS,
+            Order::TRANS_COMMISSION    => true,
+            Order::TRANS_VAT           => true,
+        ])->save();
 
         OrderItem::factory()->create([
             OrderItem::ORDER_ID         => $order->id,

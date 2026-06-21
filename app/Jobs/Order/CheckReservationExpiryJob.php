@@ -27,6 +27,8 @@ class CheckReservationExpiryJob implements ShouldQueue
 
     public function handle(CancelOrderAction $cancelAction): void
     {
+        // cursor() streams one row at a time — avoids loading all expired orders
+        // into memory at once, which matters when many reservations expire together.
         $expiredOrders = Order::query()
             ->whereIn('status', [
                 Order::STATUS_PENDING,
@@ -35,7 +37,7 @@ class CheckReservationExpiryJob implements ShouldQueue
             ])
             ->whereNotNull(Order::RESERVATION_EXPIRES_AT)
             ->where(Order::RESERVATION_EXPIRES_AT, '<', Carbon::now())
-            ->get();
+            ->cursor();
 
         foreach ($expiredOrders as $order) {
             try {

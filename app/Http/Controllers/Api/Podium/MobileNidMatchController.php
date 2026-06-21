@@ -19,7 +19,7 @@ class MobileNidMatchController extends Controller
         );
 
         if ($normalized['has_error']) {
-            return error($normalized['message'] ?? 'خطا در تطابق هویتی', [], 422);
+            return error($normalized['message'] ?? __('podium.identity_match_error'), [], 422);
         }
 
         $mapped = $this->service->mapMatchResponse(

@@ -51,14 +51,16 @@ class InvoiceGeneratorRoutingTest extends TestCase
         $supplier = User::factory()->create();
 
         $this->order = Order::create([
-            Order::PLACER_USER_ID   => $buyer->id,
-            Order::ORDER_NUMBER     => 'TEST-GEN-' . uniqid(),
-            Order::STATUS           => Order::STATUS_PROCESSING,
-            Order::PAYMENT_STATUS   => Order::PAYMENT_PAID,
-            Order::FINAL_AMOUNT     => 10_000_000,
-            Order::OFFICIAL_PRICE   => 0,
-            Order::PAYMENT_TO_RESERVE => 2_000_000,
+            Order::PLACER_USER_ID => $buyer->id,
+            Order::ORDER_NUMBER   => 'TEST-GEN-' . uniqid(),
+            Order::STATUS         => Order::STATUS_PROCESSING,
+            Order::PAYMENT_STATUS => Order::PAYMENT_PAID,
+            Order::FINAL_AMOUNT   => 10_000_000,
         ]);
+        $this->order->forceFill([
+            Order::OFFICIAL_PRICE     => 0,
+            Order::PAYMENT_TO_RESERVE => 2_000_000,
+        ])->save();
 
         OrderItem::factory()->create([
             OrderItem::ORDER_ID         => $this->order->id,

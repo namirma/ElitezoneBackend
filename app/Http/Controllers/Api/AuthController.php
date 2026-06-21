@@ -124,7 +124,7 @@ class AuthController extends Controller
         if ($user) {
             if (empty($user->{User::NATIONAL_CODE}) || empty($user->{User::BIRTH_DATE})) {
                 return error(
-                    '.لطفاً جهت تکمیل اطلاعات کاربری و احراز هویت، مجددا ثبت‌نام کنید',
+                    __('auth.profile_incomplete'),
                     ['action' => 'register', 'mobile' => $mobile],
                     404
                 );
@@ -159,12 +159,19 @@ class AuthController extends Controller
             return error(__('auth.too_many_otp_attempts'), [], 429);
         }
 
-        $user = User::where([
-            User::MOBILE => $mobile,
-            User::SECRET => $request->validated('code'),
-        ])->first();
+        // Load user by mobile only — comparing the OTP inside a SQL WHERE clause leaks
+        // timing information via DB query latency. hash_equals() runs in constant time.
+        $user = User::where(User::MOBILE, $mobile)->first();
 
-        if (! $user || Carbon::parse(@$user->secret_expires_at)->isPast()) {
+        $storedSecret  = (string) ($user?->{User::SECRET} ?? '');
+        $submittedCode = (string) ($request->validated('code') ?? '');
+
+        if (
+            ! $user
+            || ! $user->{User::SECRET}
+            || ! hash_equals($storedSecret, $submittedCode)
+            || Carbon::parse($user->{User::SECRET_EXPIRES_AT})->isPast()
+        ) {
             $this->recordOtpFailure($mobile);
 
             return error(__('auth.verification_code_not_match'), [], 404);
@@ -237,7 +244,7 @@ class AuthController extends Controller
         }
         if (empty($user->{User::NATIONAL_CODE}) || empty($user->{User::BIRTH_DATE})) {
             return error(
-                '.اطلاعات کاربری شما ناقص است. لطفاً جهت تکمیل ثبت‌نام اقدام کنید',
+                __('auth.profile_incomplete'),
                 ['action' => 'register', 'mobile' => $user->{User::MOBILE}],
                 404
             );

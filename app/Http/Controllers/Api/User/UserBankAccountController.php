@@ -85,7 +85,12 @@ class UserBankAccountController extends Controller
         } catch (ValidationException $e) {
             throw $e;
         } catch (\Exception $e) {
-            return error(__('bank.service_unavailable'), ['debug' => $e->getMessage()], 503);
+            \Illuminate\Support\Facades\Log::warning('Bank inquiry service error', [
+                'user_id' => Auth::id(),
+                'message' => $e->getMessage(),
+            ]);
+
+            return error(__('bank.service_unavailable'), [], 503);
         }
 
         // ۳. دریافت نام صاحب حساب
@@ -98,14 +103,17 @@ class UserBankAccountController extends Controller
                 $user->bankAccounts()->update(['is_default' => false]);
             }
 
-            return $user->bankAccounts()->create([
+            $account = $user->bankAccounts()->create([
                 UserBankAccount::BANK_NAME => $bankName,
                 UserBankAccount::ACCOUNT_HOLDER_NAME => $holderName,
                 UserBankAccount::SHABA => $shaba,
                 UserBankAccount::CARD_NUMBER => $cardNumber,
                 UserBankAccount::IS_DEFAULT => $data['is_default'] ?? false,
-                UserBankAccount::STATUS => UserBankAccount::STATUS_APPROVED,
             ]);
+            $account->{UserBankAccount::STATUS} = UserBankAccount::STATUS_APPROVED;
+            $account->save();
+
+            return $account;
         });
 
         return success(new UserBankAccountResource($bankAccount), __('bank.store_success'));

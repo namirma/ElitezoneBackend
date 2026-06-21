@@ -250,30 +250,10 @@ class Order extends Model
         self::RESERVATION_EXPIRES_AT,
         self::PARTIAL_PAYMENT_AMOUNT,
 
-        self::OFFICIAL_PRICE,
+        // WEIGHT_BEFORE_SCALE is set at order-creation time by PlaceOrderAction::create()
+        // and must remain fillable. All other financial snapshot columns below are written
+        // exclusively by Financial Actions via forceFill() to prevent mass-assignment.
         self::WEIGHT_BEFORE_SCALE,
-        self::COMMISSION_RATE,
-        self::OWNER_DISCOUNT_RATE,
-        self::SAZE_SHARE_RATE,
-        self::CONSULTANT_SHARE_RATE,
-        self::VAT_RATE,
-        self::PAYMENT_OF_OWNER,
-        self::PAYMENT_TO_SUPPLIER,
-        self::PAYMENT_TO_CONSULTANT,
-        self::PAYMENT_TO_RESERVE,
-        self::VALIDATION_OF_RESERVE,
-        self::WEIGHT_AFTER_SCALE,
-        self::WEIGHING_COMPLETED_AT,
-        self::TRANS_COMMISSION,
-        self::TRANS_VAT,
-        self::CONSULTANT_MOADIAN_REF,
-        self::CONSULTANT_HOLD_RELEASED_AT,
-        self::SUPPLIER_MOADIAN_REF,
-        self::SUPPLIER_HOLD_RELEASED_AT,
-        self::SUPPLIER_DEBT_PENDING,
-        self::SUPPLIER_DEBT_AMOUNT,
-        self::SYSTEM_MOADIAN_REF,
-        self::SYSTEM_HOLD_RELEASED_AT,
     ];
 
     protected $casts = [

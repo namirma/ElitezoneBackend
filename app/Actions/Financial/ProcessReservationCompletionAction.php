@@ -129,15 +129,15 @@ class ProcessReservationCompletionAction
             $this->walletEngine->debitSystem($locked, $PTS, FinancialCodes::STATUS_AVAILABLE, "تخصیص سهم تامین‌کننده سفارش {$locked->order_number}");
             $this->walletEngine->creditSupplier($locked, $PTS, FinancialCodes::STATUS_AVAILABLE, $realSupplierId, "واریز سهم فروش سفارش {$locked->order_number}");
 
-            $locked->update([
-                Order::STATUS => Order::STATUS_PROCESSING,
-                Order::PAYMENT_STATUS => Order::PAYMENT_PAID,
-                Order::PAYMENT_OF_OWNER => $POO,
+            $locked->forceFill([
+                Order::STATUS              => Order::STATUS_PROCESSING,
+                Order::PAYMENT_STATUS      => Order::PAYMENT_PAID,
+                Order::PAYMENT_OF_OWNER    => $POO,
                 Order::PAYMENT_TO_SUPPLIER => $PTS,
-                Order::TRANS_COMMISSION => $transCommission,
-                Order::TRANS_VAT => $transVat,
-                Order::PAID_AT => now(),
-            ]);
+                Order::TRANS_COMMISSION    => $transCommission,
+                Order::TRANS_VAT           => $transVat,
+                Order::PAID_AT             => now(),
+            ])->save();
 
             // ── صدور اسناد تکمیل وجه (G + H + C) ────────────────────────
             $this->invoiceGenerator->generateReservationCompletionDocs($locked);

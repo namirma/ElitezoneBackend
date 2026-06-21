@@ -73,11 +73,11 @@ class StoreUserBankAccountRequest extends FormRequest
         return [
             UserBankAccount::SHABA.'.regex' => __('auth.shaba_regex'),
             UserBankAccount::SHABA.'.unique' => __('auth.shaba_unique'),
-            UserBankAccount::SHABA.'.required_without' => 'وارد کردن شماره شبا یا شماره کارت الزامی است.',
+            UserBankAccount::SHABA.'.required_without' => __('bank.validation.shaba_or_card_required'),
 
-            UserBankAccount::CARD_NUMBER.'.digits' => 'شماره کارت باید ۱۶ رقم باشد.',
-            UserBankAccount::CARD_NUMBER.'.unique' => 'این شماره کارت قبلاً ثبت شده است.',
-            UserBankAccount::CARD_NUMBER.'.required_without' => 'وارد کردن شماره کارت یا شماره شبا الزامی است.',
+            UserBankAccount::CARD_NUMBER.'.digits' => __('bank.validation.card_digits'),
+            UserBankAccount::CARD_NUMBER.'.unique' => __('bank.validation.card_unique'),
+            UserBankAccount::CARD_NUMBER.'.required_without' => __('bank.validation.card_or_shaba_required'),
         ];
     }
 }

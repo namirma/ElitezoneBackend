@@ -58,10 +58,10 @@ class ReleaseConsultantHoldAction
         if ($consultantGross <= 0) {
             // No consultant commission was held for this order (no consultant)
             Log::channel('financial')->info("ReleaseConsultantHoldAction: order {$order->id} has no consultant commission — only recording ref.");
-            $order->update([
-                Order::CONSULTANT_MOADIAN_REF => $moadianRef,
+            $order->forceFill([
+                Order::CONSULTANT_MOADIAN_REF      => $moadianRef,
                 Order::CONSULTANT_HOLD_RELEASED_AT => now(),
-            ]);
+            ])->save();
 
             return;
         }
@@ -113,10 +113,10 @@ class ReleaseConsultantHoldAction
                 "مالیات مشاور شناسایی شد — فاکتور مودیان: {$moadianRef}"
             );
 
-            $locked->update([
-                Order::CONSULTANT_MOADIAN_REF => $moadianRef,
+            $locked->forceFill([
+                Order::CONSULTANT_MOADIAN_REF      => $moadianRef,
                 Order::CONSULTANT_HOLD_RELEASED_AT => now(),
-            ]);
+            ])->save();
 
             // Doc Q — فاکتور مودیان مشاور فنی
             $this->invoiceGenerator->generateConsultantMoadianInvoice($locked);

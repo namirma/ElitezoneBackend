@@ -87,10 +87,10 @@ class RecordSupplierMoadianInvoiceAction
                 );
             }
 
-            $locked->update([
-                Order::SUPPLIER_MOADIAN_REF => $moadianRef,
+            $locked->forceFill([
+                Order::SUPPLIER_MOADIAN_REF      => $moadianRef,
                 Order::SUPPLIER_HOLD_RELEASED_AT => now(),
-            ]);
+            ])->save();
 
             // Doc O — فاکتور مودیان سوپلایر
             $this->invoiceGenerator->generateSupplierMoadianInvoice($locked);

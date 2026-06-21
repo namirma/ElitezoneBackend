@@ -82,10 +82,10 @@ class SupplierDebtHandler
             'بازگشت وجه ناشی از کسری باسکول (در انتظار تسویه سوپلایر)'
         );
 
-        $order->update([
+        $order->forceFill([
             Order::SUPPLIER_DEBT_PENDING => true,
-            Order::SUPPLIER_DEBT_AMOUNT => $reclaimAmount,
-        ]);
+            Order::SUPPLIER_DEBT_AMOUNT  => $reclaimAmount,
+        ])->save();
 
         // Queue the SMS and defer it until AFTER the surrounding weighbridge transaction
         // commits. The previous synchronous SmsService::send() was a blocking HTTP POST
