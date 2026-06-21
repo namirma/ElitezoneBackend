@@ -30,4 +30,17 @@ return [
     'invite_mobile_self' => 'امکان دعوت از شماره موبایل خودتان وجود ندارد.',
 
     'badge_loaded' => 'نشان‌های کاربر دریافت شد.',
+
+    // Avatar
+    'avatar_uploaded' => 'تصویر پروفایل با موفقیت بارگذاری شد.',
+    'avatar_upload_failed' => 'بارگذاری تصویر پروفایل با خطا مواجه شد.',
+    'avatar_required' => 'انتخاب تصویر الزامی است.',
+    'avatar_mimes' => 'فرمت فایل قابل قبول نیست. (jpeg، png یا webp)',
+    'avatar_max' => 'حداکثر حجم تصویر ۵ مگابایت است.',
+
+    // Email management
+    'email_resent' => 'لینک تأیید مجدداً به ایمیل شما ارسال شد.',
+    'email_deleted' => 'ایمیل با موفقیت حذف شد.',
+    'email_none_to_resend' => 'ایمیلی برای ارسال مجدد لینک وجود ندارد.',
+    'email_already_verified' => 'ایمیل شما قبلاً تأیید شده است.',
 ];

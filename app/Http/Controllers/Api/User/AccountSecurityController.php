@@ -317,4 +317,55 @@ class AccountSecurityController extends Controller
 
         return error(__('global.invalid_verification_token'), [], 400);
     }
+
+    /**
+     * POST /profile/email/resend — re-send the verification link for a pending email.
+     * 422 when there is no email, or it is already verified.
+     */
+    public function resendEmailVerification(): JsonResponse
+    {
+        $profile = Auth::user()->profile;
+
+        if (! $profile || ! $profile->{UserProfile::EMAIL}) {
+            return error(__('profile.email_none_to_resend'), [], 422);
+        }
+        if ($profile->{UserProfile::EMAIL_VERIFIED_AT} !== null) {
+            return error(__('profile.email_already_verified'), [], 422);
+        }
+
+        // Re-issue a fresh token so an old link can't also be used.
+        $token = Str::uuid()->toString();
+        $profile->update([UserProfile::EMAIL_VERIFICATION_TOKEN => $token]);
+        $email = $profile->{UserProfile::EMAIL};
+
+        try {
+            Mail::to($email)->queue(new VerifyEmail($token));
+
+            return success(['email' => $email], __('profile.email_resent'));
+        } catch (\Throwable $e) {
+            Log::error("Failed to resend verification email to {$email}: ".$e->getMessage());
+
+            return error(__('profile.email_send_failed'), [], 500);
+        }
+    }
+
+    /**
+     * DELETE /profile/email — remove the user's email and its verification state.
+     */
+    public function deleteEmail(): JsonResponse
+    {
+        $profile = Auth::user()->profile;
+
+        if (! $profile || ! $profile->{UserProfile::EMAIL}) {
+            return error(__('profile.email_none_to_resend'), [], 422);
+        }
+
+        $profile->update([
+            UserProfile::EMAIL => null,
+            UserProfile::EMAIL_VERIFIED_AT => null,
+            UserProfile::EMAIL_VERIFICATION_TOKEN => null,
+        ]);
+
+        return success([], __('profile.email_deleted'));
+    }
 }

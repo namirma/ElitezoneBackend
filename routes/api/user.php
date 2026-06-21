@@ -127,9 +127,16 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/role-options', [ProfileController::class, 'getRoleOptions']);
         Route::get('/user-types', [AuthController::class, 'types']);
 
+        // Avatar (profile picture)
+        Route::post('/avatar', [\App\Http\Controllers\Api\User\AvatarController::class, 'store']);
+
         // Account security (password / mobile / email)
         Route::post('/verify-email', [AccountSecurityController::class, 'setEmail']);
         Route::post('/check-email-token', [AccountSecurityController::class, 'checkToken']);
+        // Email management (frontend contract)
+        Route::post('/email', [AccountSecurityController::class, 'setEmail']);              // add/change email + send verify link
+        Route::post('/email/resend', [AccountSecurityController::class, 'resendEmailVerification']);
+        Route::delete('/email', [AccountSecurityController::class, 'deleteEmail']);
         Route::post('/password/otp', [AccountSecurityController::class, 'changePasswordFirstAttempt']);          // step 1: send code
         Route::post('/password/verify', [AccountSecurityController::class, 'verifyPasswordOtp'])->middleware('throttle:otp-verify'); // step 2: verify code (non-consuming)
         Route::post('/password', [AccountSecurityController::class, 'setPassword']);                            // step 3: set new password

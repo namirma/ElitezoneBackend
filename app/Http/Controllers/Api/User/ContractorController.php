@@ -21,8 +21,10 @@ class ContractorController extends Controller
         if ($user->type_id == $expertTypeId && ! $user->hasRole('contractor')) {
             $user->addRole('contractor');
         }
-        // if (!ContractorProfile::where([ContractorProfile::USER_ID => Auth::id()])->exists())
-        //     ProfileController::removeProfile();
+        // Load the existing profile so partial updates don't overwrite unsubmitted fields
+        // with null. $this->company_name etc. were non-existent controller properties that
+        // always evaluated to null (same data-loss bug fixed in Employer/EngineerController).
+        $existing = ContractorProfile::where(ContractorProfile::USER_ID, Auth::id())->first();
 
         ContractorProfile::updateOrCreate(
             [
@@ -30,17 +32,17 @@ class ContractorController extends Controller
             ],
             [
                 ContractorProfile::USER_ID => Auth::id(),
-                ContractorProfile::COMPANY_NAME => $request->validated('company_name') ?? $this->company_name ?? null,
-                ContractorProfile::NOT_RELATED => $request->validated('not_related') ?? $this->not_related ?? null,
-                ContractorProfile::LICENSE_NUMBER => $request->validated('license_number') ?? $this->license_number ?? null,
-                ContractorProfile::SUPERVISION_BASE => $request->validated('supervision_base') ?? $this->supervision_base ?? null,
-                ContractorProfile::DESIGN_BASE => $request->validated('design_base') ?? $this->design_base ?? null,
-                ContractorProfile::ENGINEER_MEMBER => $request->validated('engineer_member') ?? $this->engineer_member ?? false,
-                ContractorProfile::ACTIVITY_HISTORY => $request->validated('activity_history') ?? $this->activity_history ?? null,
-                ContractorProfile::ACTIVITY_PROVINCES => $request->validated('activity_provinces') ?? $this->activity_provinces ?? null,
-                ContractorProfile::PROJECT_DONE => $request->validated('project_done') ?? $this->project_done ?? null,
-                ContractorProfile::PROJECT_IN_PROGRESS => $request->validated('project_in_progress') ?? $this->project_in_progress ?? null,
-                ContractorProfile::TRUSTED_CONTRACTOR => $request->validated('trusted_contractor') ?? $this->trusted_contractor ?? null,
+                ContractorProfile::COMPANY_NAME => $request->validated('company_name') ?? $existing?->company_name,
+                ContractorProfile::NOT_RELATED => $request->validated('not_related') ?? $existing?->not_related,
+                ContractorProfile::LICENSE_NUMBER => $request->validated('license_number') ?? $existing?->license_number,
+                ContractorProfile::SUPERVISION_BASE => $request->validated('supervision_base') ?? $existing?->supervision_base,
+                ContractorProfile::DESIGN_BASE => $request->validated('design_base') ?? $existing?->design_base,
+                ContractorProfile::ENGINEER_MEMBER => $request->validated('engineer_member') ?? $existing?->engineer_member ?? false,
+                ContractorProfile::ACTIVITY_HISTORY => $request->validated('activity_history') ?? $existing?->activity_history,
+                ContractorProfile::ACTIVITY_PROVINCES => $request->validated('activity_provinces') ?? $existing?->activity_provinces,
+                ContractorProfile::PROJECT_DONE => $request->validated('project_done') ?? $existing?->project_done,
+                ContractorProfile::PROJECT_IN_PROGRESS => $request->validated('project_in_progress') ?? $existing?->project_in_progress,
+                ContractorProfile::TRUSTED_CONTRACTOR => $request->validated('trusted_contractor') ?? $existing?->trusted_contractor,
             ]
         );
 

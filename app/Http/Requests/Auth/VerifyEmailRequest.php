@@ -21,7 +21,10 @@ class VerifyEmailRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => 'required|email:rfc,dns|unique:user_profiles,email,'.Auth::id().',user_id',
+            // `rfc` only (no `dns`): the dns rule does a synchronous DNS lookup on every
+            // request — adds latency and rejects valid brand-new / MX-less domains. The
+            // frontend contract asks for format validation + uniqueness, which this covers.
+            'email' => 'required|email:rfc|unique:user_profiles,email,'.Auth::id().',user_id',
         ];
     }
 }

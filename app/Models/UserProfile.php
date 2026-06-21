@@ -27,6 +27,8 @@ class UserProfile extends Model
 
     const FAMILY = 'family';
 
+    const AVATAR = 'avatar';
+
     const EMAIL = 'email';
 
     const EMAIL_VERIFICATION_TOKEN = 'email_verification_token';
@@ -66,6 +68,7 @@ class UserProfile extends Model
         self::USER_ID,
         self::NAME,
         self::FAMILY,
+        self::AVATAR,
         self::EMAIL,
         self::EMAIL_VERIFICATION_TOKEN,
         self::EMAIL_VERIFIED_AT,
