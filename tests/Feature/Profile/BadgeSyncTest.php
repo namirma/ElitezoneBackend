@@ -69,6 +69,25 @@ class BadgeSyncTest extends TestCase
     }
 
     /** @test */
+    public function changing_tier_replaces_the_previous_tier_and_does_not_accumulate(): void
+    {
+        $gold = Badge::create([Badge::NAME => 'طلایی', Badge::CODE => 'gold']);
+        $silver = Badge::create([Badge::NAME => 'نقره‌ای', Badge::CODE => 'silver']);
+
+        // Start as gold (badge_id + pivot), then saze90 reports silver.
+        $user = User::factory()->create([User::BADGE_ID => $gold->id]);
+        $user->badges()->attach($gold->id);
+        Sanctum::actingAs($user);
+
+        $this->fakeSaze90('silver');
+        $this->getJson('/api/profile/badge')->assertOk()->assertJsonPath('data.badge', 'silver');
+
+        $this->assertSame($silver->id, (int) $user->fresh()->badge_id, 'commission tier updated');
+        $this->assertFalse($user->badges()->where('badges.id', $gold->id)->exists(), 'stale tier removed from pivot');
+        $this->assertTrue($user->badges()->where('badges.id', $silver->id)->exists(), 'new tier in pivot');
+    }
+
+    /** @test */
     public function it_passes_the_normalized_mobile_to_saze90(): void
     {
         $this->fakeSaze90('silver');
