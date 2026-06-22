@@ -26,8 +26,7 @@ class StoreUserRequest extends FormRequest
             'username' => ['required', 'regex:/^(\+?98|0098|0)?9\d{9}$/'],
             'national_code' => [$isRegister ? 'required' : 'nullable', 'regex:/^\d{10}$/'],
             'birth_date' => [$isRegister ? 'required' : 'nullable', 'regex:/^(\d{8}|\d{4}-\d{2}-\d{2})$/'],
-            'code' => ['sometimes', 'digits:6', 'exists:users,secret'],
-            //'code'           => ['required', 'digits:6'],
+            'code' => ['sometimes', 'digits:6'],
             'forget_password' => ['nullable', 'boolean'],
             'roles' => ['nullable', 'array'],
             'roles.*' => ['in:employer,supplier,expert'],
@@ -38,7 +37,6 @@ class StoreUserRequest extends FormRequest
     {
         return [
             'code.digits' => __('auth.code_digits'),
-            'code.exists' => __('auth.code_exists'),
             'username.required' => __('auth.username_required'),
             'username.regex' => __('auth.username_regex'),
             'national_code.required' => __('auth.national_code_required'),

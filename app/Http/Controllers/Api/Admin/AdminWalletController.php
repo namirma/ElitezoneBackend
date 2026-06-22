@@ -62,9 +62,13 @@ class AdminWalletController extends Controller
                 __('admin.wallet.status_updated')
             );
         } catch (\Exception $e) {
-            Log::error('Admin Wallet Process Error: '.$e->getMessage());
+            Log::error('Admin wallet process failed', [
+                'transaction_id' => $transaction->id,
+                'admin_id'       => Auth::id(),
+                'error'          => $e->getMessage(),
+            ]);
 
-            return error($e->getMessage(), [], 400);
+            return error(__('admin.wallet.processing_failed'), [], 500);
         }
     }
 }

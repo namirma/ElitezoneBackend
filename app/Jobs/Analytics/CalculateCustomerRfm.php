@@ -45,6 +45,9 @@ class CalculateCustomerRfm implements ShouldQueue
 
         $churnDays = (int) config('intelligence.rfm.churn_days', 180);
 
+        // یک‌بار همه سگمنت‌های فعلی را load می‌کنیم تا در حلقه N+1 نداشته باشیم.
+        $existingSegments = CustomerStat::pluck(CustomerStat::SEGMENT, CustomerStat::USER_ID)->all();
+
         // cursor() داده را به‌صورت استریم از دیتابیس می‌خواند؛ کل مجموعه هرگز یک‌جا
         // در حافظه بارگذاری نمی‌شود (برخلاف get() که با رشد دیتا منفجر می‌شد).
         foreach ($statsQuery->cursor() as $stat) {
@@ -64,22 +67,24 @@ class CalculateCustomerRfm implements ShouldQueue
                 ? CustomerStat::SEGMENT_LOST
                 : $this->determineSegment($rScore, $fScore);
 
-            $existingStat = CustomerStat::where(CustomerStat::USER_ID, $userId)->first();
-            $oldSegment = $existingStat?->segment;
+            $oldSegment = $existingSegments[$userId] ?? null;
 
             CustomerStat::updateOrCreate(
                 [CustomerStat::USER_ID => $userId],
                 [
-                    CustomerStat::RECENCY_DAYS => $recency,
-                    CustomerStat::FREQUENCY_COUNT => $frequency,
-                    CustomerStat::MONETARY_TOTAL => $monetary,
-                    CustomerStat::R_SCORE => $rScore,
-                    CustomerStat::F_SCORE => $fScore,
-                    CustomerStat::M_SCORE => $mScore,
-                    CustomerStat::SEGMENT => $newSegment,
-                    CustomerStat::LAST_CALCULATED_AT => now(),
+                    CustomerStat::RECENCY_DAYS       => $recency,
+                    CustomerStat::FREQUENCY_COUNT     => $frequency,
+                    CustomerStat::MONETARY_TOTAL      => $monetary,
+                    CustomerStat::R_SCORE             => $rScore,
+                    CustomerStat::F_SCORE             => $fScore,
+                    CustomerStat::M_SCORE             => $mScore,
+                    CustomerStat::SEGMENT             => $newSegment,
+                    CustomerStat::LAST_CALCULATED_AT  => now(),
                 ]
             );
+
+            // آرایه local رو sync نگه می‌داریم تا iteration بعدی سگمنت درست ببینه
+            $existingSegments[$userId] = $newSegment;
 
             if ($oldSegment && $oldSegment !== $newSegment) {
                 $user = User::find($userId);

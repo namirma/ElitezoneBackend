@@ -18,6 +18,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class ProfileController extends Controller
 {
@@ -169,7 +170,12 @@ class ProfileController extends Controller
 
             return success($response, __('profile.company_info_received'));
         } catch (\Exception $e) {
-            return error($e->getMessage(), [], 422);
+            Log::warning('Company inquiry failed', [
+                'user_id' => Auth::id(),
+                'error'   => $e->getMessage(),
+            ]);
+
+            return error(__('profile.company_inquiry_failed'), [], 503);
         }
     }
 

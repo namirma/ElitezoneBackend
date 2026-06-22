@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Actions\Financial\ProcessPodiumDepositAction;
+use App\Events\Financial\WalletFunded;
 use App\Http\Controllers\Controller;
 use App\Models\PodiumDepositRecord;
 use App\Models\User;
@@ -216,7 +217,8 @@ class AdminPodiumDepositController extends Controller
         $amount    = (int) $record->{PodiumDepositRecord::CREDITOR_AMOUNT};
 
         // ── شارژ کیف‌پول (transaction + lock) ──────────────────────────────
-        DB::transaction(function () use ($record, $user, $amount, $adminNote) {
+        // WalletFunded باید بعد از commit dispatch شود، پس $txn را از transaction بیرون می‌آوریم.
+        $txn = DB::transaction(function () use ($record, $user, $amount, $adminNote) {
             $wallet = Wallet::where(Wallet::USER_ID, $user->id)
                 ->lockForUpdate()
                 ->firstOrCreate(
@@ -228,18 +230,18 @@ class AdminPodiumDepositController extends Controller
                 'amount' => number_format((int) ($amount / 10)),
             ]);
 
-            $txn = $wallet->transactions()->create([
+            $walletTxn = $wallet->transactions()->create([
                 WalletTransaction::AMOUNT      => $amount,
                 WalletTransaction::TYPE        => WalletTransaction::TYPE_DEPOSIT,
                 WalletTransaction::STATUS      => WalletTransaction::STATUS_CONFIRMED,
                 WalletTransaction::DESCRIPTION => $description,
                 WalletTransaction::META        => [
-                    'payment_method' => WalletTransaction::METHOD_BANK_TRANSFER,
-                    'source'         => 'podium_admin_credit',
-                    'doc_number'     => $record->{PodiumDepositRecord::DOC_NUMBER},
-                    'matched_by'     => PodiumDepositRecord::MATCHED_BY_ADMIN,
+                    'payment_method'       => WalletTransaction::METHOD_BANK_TRANSFER,
+                    'source'               => 'podium_admin_credit',
+                    'doc_number'           => $record->{PodiumDepositRecord::DOC_NUMBER},
+                    'matched_by'           => PodiumDepositRecord::MATCHED_BY_ADMIN,
                     'credited_by_admin_id' => Auth::id(),
-                    'admin_note'     => $adminNote,
+                    'admin_note'           => $adminNote,
                 ],
             ]);
 
@@ -247,12 +249,16 @@ class AdminPodiumDepositController extends Controller
 
             $record->update([
                 PodiumDepositRecord::USER_ID       => $user->id,
-                PodiumDepositRecord::WALLET_TXN_ID => $txn->id,
+                PodiumDepositRecord::WALLET_TXN_ID => $walletTxn->id,
                 PodiumDepositRecord::MATCHED_BY    => PodiumDepositRecord::MATCHED_BY_ADMIN,
                 PodiumDepositRecord::PROCESSED_AT  => now(),
                 PodiumDepositRecord::NOTE          => $adminNote ?? 'شارژ دستی توسط ادمین',
             ]);
+
+            return $walletTxn;
         });
+
+        WalletFunded::dispatch($txn);
 
         return success([
             'user_id'        => $user->id,

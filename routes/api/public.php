@@ -35,9 +35,9 @@ Route::controller(AuthController::class)->prefix('authenticate')->group(function
     Route::post('/', 'register')->middleware('throttle:sms');
     Route::post('/check-user', 'checkUserAndSendCode');
     Route::post('/verify-code', 'verifyCode')->middleware('throttle:otp-verify');
-    Route::post('/password/check', 'checkPassword');
+    Route::post('/password/check', 'checkPassword')->middleware('throttle:otp-verify');
     Route::post('/forget-password', 'forgetPassword')->middleware('throttle:sms');
-    Route::post('/change-password', 'changePassword');
+    Route::post('/change-password', 'changePassword')->middleware('throttle:otp-verify');
     Route::post('/send-code', 'sendVerificationCode')->middleware('throttle:sms');
     Route::middleware('auth:sanctum')->post('/logout', 'logout');
 });
