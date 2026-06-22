@@ -14,6 +14,7 @@ use App\Models\Order;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class OrderPaymentController extends Controller
 {
@@ -39,7 +40,7 @@ class OrderPaymentController extends Controller
         try {
             $result = $this->payFullOrderAction->execute(
                 $order,
-                $request->input('payment_type') === 'reserve',
+                $request->validated('payment_type') === 'reserve',
                 $wallet,
             );
 
@@ -51,7 +52,13 @@ class OrderPaymentController extends Controller
         } catch (InsufficientBalanceException $e) {
             return $this->balanceError($e->available, $e->required);
         } catch (Exception $e) {
-            return error($e->getMessage(), [], 400);
+            Log::error('Order full payment failed', [
+                'order_id' => $order->id,
+                'user_id'  => Auth::id(),
+                'error'    => $e->getMessage(),
+            ]);
+
+            return error(__('orders.payment_processing_error'), [], 500);
         }
     }
 
@@ -67,7 +74,13 @@ class OrderPaymentController extends Controller
                 'fee_amount' => PayHoldFeeAction::fee(),
             ], __('orders.hold_fee_successful'));
         } catch (Exception $e) {
-            return error($e->getMessage(), [], 400);
+            Log::error('Hold fee payment failed', [
+                'order_id' => $order->id,
+                'user_id'  => Auth::id(),
+                'error'    => $e->getMessage(),
+            ]);
+
+            return error(__('orders.payment_processing_error'), [], 500);
         }
     }
 
@@ -99,7 +112,7 @@ class OrderPaymentController extends Controller
                 'shortage' => $shortage,
                 'action' => [
                     'type' => 'navigate_to_deposit',
-                    'api_route' => '/api/profile/financial/wallet/deposit',
+                    'api_route' => route('wallet.deposit', [], false),
                     'required_deposit_amount' => $shortage,
                 ],
             ],

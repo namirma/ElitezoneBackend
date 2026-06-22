@@ -256,7 +256,15 @@ Services/
                                  (+/-TC controls commission on Trans, +/-VAT controls
                                  VAT on Trans). Flags are read from supplier_profiles
                                  and snapshotted to the order at payment time.
+    FinancialHealthService      — 6 aggregate queries for the admin financial-health
+                                 panel (system/VAT wallet balances, platform totals,
+                                 pending deposit/withdrawal sums, supplier debts).
+                                 Injected into AdminFinancialController::financialHealth().
   Pricing/                       — pipeline (SetBasePrice → ApplyVariantDiscount → ApplyPriceFilters → ApplyVat)
+                                   ApplyPriceFilters caches ALL active categories+filters
+                                   under key 'pricing:categories_with_filters' (TTL 3600s);
+                                   PriceFilterCategory + PriceFilter booted() flush the key
+                                   on every save/delete.
 ```
 
 When a controller method grows past ~30 lines of business logic, extract it
@@ -701,7 +709,7 @@ Events/
 
 Listeners/
   Cart/      — LogCartEvent
-  Order/     — HandleSuccessfulPayment, SendOrderCancellationNotification,
+  Order/     — SendOrderCancellationNotification,
                SendOrderPaymentNotification, SendOrderPlacedNotification
   Financial/ — SendTransactionNotification, SendWalletFundingNotification
   User/      — SendWinBackOffer
@@ -713,7 +721,7 @@ Event → Listener wiring is registered in `app/Providers/EventServiceProvider.p
 
 Dispatch flow:
 - `OrderPlaced` → inventory deduction, notifications
-- `OrderPaid` → status transitions (HandleSuccessfulPayment)
+- `OrderPaid` → payment notifications (SendOrderPaymentNotification)
 - `OrderCancelled` → stock restoration, wallet refund
 - `CartItemChanged` → analytics tracking (LogCartEvent)
 - `WalletFunded` / `TransactionProcessed` → financial notifications
@@ -832,6 +840,8 @@ then `DB_DATABASE=laravel_testing php artisan migrate --force`.
 ```
 tests/
   Feature/
+    Auth/        — AuthControllerTest (7 tests: OTP check-user, verifyCode, replay prevention,
+                   lockout, expired code — no Podium dependency)
     Checkout/    — PlaceOrderTest (9 tests: auth, validation, cart-empty, security)
     Financial/   — PayHoldFeeActionTest, ProcessPreScalePaymentActionTest,
                    ProcessReservationPaymentActionTest, WalletDepositTest,
@@ -846,12 +856,13 @@ tests/
   Unit/          — (empty placeholder dir — kept so phpunit.xml works)
 ```
 
-**Total: 225 tests, 512 assertions — all green. ✅**
+**Total: 232 tests, ~525 assertions — all green. ✅**
 
-Newer test files: `Financial/ConsultantLifetimeCapTest`, `Financial/ReceiptPrivateDiskTest`,
-`Financial/ProcessTransactionRaceTest`, `Ticketing/TicketLifecycleTest`,
-`Order/InvoiceAccessTest`, `Cart/ShippingQuoteTest`, `Profile/EmailTokenVerificationTest`,
-`Order/HasOrderProgressTest`, `Financial/WithdrawalSettlementTest`, `Profile/ProfileFixesTest`.
+Newer test files: `Auth/AuthControllerTest`, `Financial/ConsultantLifetimeCapTest`,
+`Financial/ReceiptPrivateDiskTest`, `Financial/ProcessTransactionRaceTest`,
+`Ticketing/TicketLifecycleTest`, `Order/InvoiceAccessTest`, `Cart/ShippingQuoteTest`,
+`Profile/EmailTokenVerificationTest`, `Order/HasOrderProgressTest`,
+`Financial/WithdrawalSettlementTest`, `Profile/ProfileFixesTest`.
 
 Patterns to follow when adding tests:
 - **Use factories**, never `User::create([...])` with raw arrays — `UserFactory`
@@ -922,15 +933,18 @@ Patterns to follow when adding tests:
 
 ### Database Indexes
 
-Performance-critical indexes added in `2026_05_23_120000_add_performance_indexes`:
+Performance-critical indexes added across multiple migrations:
 
-| Table | Index | Reason |
-|---|---|---|
-| `orders` | `orders_status_idx` | scope queries (`current`/`delivered`/`cancelled`) |
-| `orders` | `orders_payment_status_idx` | admin filtering |
-| `orders` | `orders_reservation_expires_at_idx` | `CheckReservationExpiryJob` cron |
-| `orders` | `orders_placer_status_idx` (composite) | "my orders" lists |
-| `users` | `users_national_code_idx` | admin back-office search |
+| Table | Index | Migration | Reason |
+|---|---|---|---|
+| `orders` | `orders_status_idx` | `2026_05_23_*` | scope queries (`current`/`delivered`/`cancelled`) |
+| `orders` | `orders_payment_status_idx` | `2026_05_23_*` | admin filtering |
+| `orders` | `orders_reservation_expires_at_idx` | `2026_05_23_*` | `CheckReservationExpiryJob` cron |
+| `orders` | `orders_placer_status_idx` (composite) | `2026_05_23_*` | "my orders" lists |
+| `users` | `users_national_code_idx` | `2026_05_23_*` | admin back-office search |
+| `wallet_transactions` | `wt_order_type_status_idx` (composite) | `2026_06_22_000000_*` | financial report filters |
+| `order_items` | `order_items_supplier_user_id_idx` | `2026_06_22_000000_*` | supplier order listing |
+| `tickets` | `tickets_status_sla_due_at_idx` (composite) | `2026_06_22_010000_*` | SLA breach queries + KPI reports |
 
 When adding queries that filter heavily on a column, check this list and
 add an index in a new migration if needed. Always make migrations additive.
@@ -949,6 +963,36 @@ add an index in a new migration if needed. Always make migrations additive.
 `2026_06_20_100000_add_status_to_employer_profiles_table` adds the column and backfills
 existing rows. `EmployerProfile::STATUS` constant + `EmployerController::store()` writes it.
 `EmployerProfileResource` exposes it. **Run `php artisan migrate`** after pulling this migration.
+
+### OrderUnit cache — use `OrderUnit::allCached()` everywhere
+
+`OrderUnit::all()` is called in 8 places for pricing, cart, shipping, and order placement.
+All 8 now share a single canonical method:
+
+```php
+OrderUnit::allCached()  // → Collection keyed by ID, TTL 86400s, key 'catalog:order_units'
+```
+
+**Never** introduce a new `Cache::remember(...)` call for OrderUnit — use `allCached()` instead.
+`OrderUnit::booted()` flushes all 5 historical keys + the canonical key on every save/delete.
+Callers that need a plain (un-keyed) collection use `OrderUnit::allCached()->values()`;
+callers that need `->get($id)` (O(1)) already get a keyed collection.
+
+### `pricing:categories_with_filters` — single cache key for all PriceFilter data
+
+`ApplyPriceFilters::getFilters()` no longer runs per-request DB queries. It loads
+ALL active `PriceFilterCategory` rows with their `filters.filterType` relations into
+`'pricing:categories_with_filters'` (TTL 3600s) and filters in PHP.
+
+`PriceFilterCategory::booted()` and `PriceFilter::booted()` both call
+`Cache::forget('pricing:categories_with_filters')` on saved/deleted.
+**Never** cache filter data under a different key — add lookups to `allCategoriesWithFilters()`.
+
+### Named route for wallet deposit
+
+`POST /profile/financial/wallet/deposit` is now named `wallet.deposit`.
+Use `route('wallet.deposit', [], false)` wherever you need the path in a response body
+(the third argument `false` returns a path without domain).
 
 ## Known Architectural Gotchas
 

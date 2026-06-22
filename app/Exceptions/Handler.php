@@ -70,7 +70,9 @@ class Handler extends ExceptionHandler
 
         // 4. عدم دسترسی (AuthorizationException - معمولاً توسط Policyهای لاراول)
         if ($e instanceof AuthorizationException) {
-            return $this->jsonResponse('شما نقش یا مجوز لازم برای دسترسی به این بخش را ندارید.', 403);
+            $message = $e->getMessage() ?: 'شما نقش یا مجوز لازم برای دسترسی به این بخش را ندارید.';
+
+            return $this->jsonResponse($message, 403);
         }
 
         // 5. یافت نشد (404)

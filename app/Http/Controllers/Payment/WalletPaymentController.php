@@ -9,6 +9,7 @@ use App\Http\Resources\Order\OrderResource;
 use App\Models\Order;
 use Exception;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
 class WalletPaymentController extends Controller
@@ -43,16 +44,12 @@ class WalletPaymentController extends Controller
         if ($wallet->balance < $payableAmount) {
             $shortage = $payableAmount - $wallet->balance;
 
-            return response()->json([
-                'status' => false,
-                'code' => 'INSUFFICIENT_BALANCE',
-                'message' => __('payment.error.insufficient_balance'),
-                'data' => [
-                    'required_amount' => $payableAmount,
-                    'current_balance' => (float) $wallet->balance,
-                    'shortage_amount' => $shortage,
-                    'action' => 'deposit_required',
-                ],
+            return error(__('payment.error.insufficient_balance'), [
+                'error_code'      => 'INSUFFICIENT_BALANCE',
+                'required_amount' => $payableAmount,
+                'current_balance' => (float) $wallet->balance,
+                'shortage_amount' => $shortage,
+                'action'          => 'deposit_required',
             ], Response::HTTP_PAYMENT_REQUIRED);
         }
 
@@ -60,12 +57,18 @@ class WalletPaymentController extends Controller
             $this->purchaseAction->execute($order);
 
             return success([
-                'order' => new OrderResource($order->fresh(Order::resourceRelations())),
-                'new_balance' => (float) $user->wallet->fresh()->balance,
+                'order'         => new OrderResource($order->fresh(Order::resourceRelations())),
+                'new_balance'   => (float) $user->wallet->fresh()->balance,
                 'tracking_code' => $order->id,
             ], __('payment.success.payment_completed'));
         } catch (Exception $e) {
-            return error($e->getMessage(), [], Response::HTTP_INTERNAL_SERVER_ERROR);
+            Log::error('Wallet payment failed', [
+                'order_id' => $order->id,
+                'user_id'  => $user->id,
+                'error'    => $e->getMessage(),
+            ]);
+
+            return error(__('orders.payment_processing_error'), [], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 }

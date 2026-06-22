@@ -29,11 +29,15 @@ class TicketRepository implements TicketRepositoryInterface
 
     public function list(): Collection
     {
-        return $this->query()->where('user_id', Auth::id())->latest()->get();
+        return $this->query()
+            ->where('user_id', Auth::id())
+            ->with(['department'])
+            ->latest()
+            ->get();
     }
 
     public function show(Ticket $ticket): Ticket
     {
-        return $ticket->load(['user', 'files', 'replies.user', 'replies.files']);
+        return $ticket->load(['department', 'user', 'files', 'replies.user', 'replies.files']);
     }
 }

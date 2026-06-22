@@ -21,13 +21,13 @@ class AnalyticsController extends Controller
      */
     public function dashboard(): JsonResponse
     {
-        return response()->json([
-            'revenue_chart' => $this->analyticsService->getRevenueChartData(30),
-            'sales_funnel' => $this->analyticsService->getSalesFunnel(),
-            'rfm_segments' => $this->analyticsService->getCustomerSegmentsChart(),
+        return success([
+            'revenue_chart'  => $this->analyticsService->getRevenueChartData(30),
+            'sales_funnel'   => $this->analyticsService->getSalesFunnel(),
+            'rfm_segments'   => $this->analyticsService->getCustomerSegmentsChart(),
             'customer_value' => $this->analyticsService->getCustomerValueMetrics(),
-            'top_products' => $this->analyticsService->getTopProducts(),
-        ]);
+            'top_products'   => $this->analyticsService->getTopProducts(),
+        ], __('admin.analytics_received'));
     }
 
     /**
@@ -37,8 +37,9 @@ class AnalyticsController extends Controller
     {
         $days = (int) $request->get('days', 30);
 
-        return response()->json(
-            $this->analyticsService->getRevenueChartData($days)
+        return success(
+            $this->analyticsService->getRevenueChartData($days),
+            __('admin.revenue_received')
         );
     }
 }

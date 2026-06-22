@@ -129,7 +129,7 @@ class CartPricingCalculator
 
     private function unitsMap(): Collection
     {
-        return Cache::remember('order_units_map', 86400, fn () => OrderUnit::all()->keyBy('id'));
+        return OrderUnit::allCached();
     }
 
     private function calculateBaseQuantity(array $quantities, Collection $unitsMap): float

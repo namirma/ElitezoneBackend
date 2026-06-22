@@ -194,7 +194,7 @@ class UpdateCartItemAction
 
     protected function getOrderUnitsMap(): Collection
     {
-        return Cache::remember('order_units_map', 86400, fn () => OrderUnit::all()->keyBy(OrderUnit::ID));
+        return OrderUnit::allCached();
     }
 
     protected function calculateTotalVariantQuantities(Cart $cart, int $variantId, CartItem $currentItem, array $newQuantities): array

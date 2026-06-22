@@ -133,9 +133,7 @@ class InventoryService
             return 0.0;
         }
 
-        $unitsMap = Cache::remember('all_order_units', 86400, function () {
-            return OrderUnit::all()->keyBy('id');
-        });
+        $unitsMap = OrderUnit::allCached();
 
         $totalBaseQty = 0.0;
 

@@ -26,6 +26,7 @@ return [
     'full_payment_successful' => 'پرداخت کامل با موفقیت انجام شد.',
     'reservation_successful' => 'سفارش با موفقیت رزرو شد.',
     'unknown_processing_error' => 'خطای ناشناخته در پردازش سفارش.',
+    'payment_processing_error' => 'خطا در پردازش پرداخت. لطفاً دوباره تلاش کنید.',
     'hold_fee_successful' => 'هزینه تمدید با موفقیت پرداخت شد.',
     'cannot_finalize_invoice' => 'سفارش در وضعیت مناسب برای ثبت فاکتور نهایی نیست.',
     'finalize_invoice_success' => 'فاکتور نهایی با موفقیت ثبت شد.',
@@ -42,6 +43,15 @@ return [
     // ── Doc P: System (Saze) Moadian invoice ───────────────────────────────
     'system_moadian_submitted' => 'فاکتور مودیان سیستم ثبت شد و مالیات پلتفرم آزاد شد.',
     'system_moadian_already_done' => 'فاکتور مودیان سیستم این سفارش قبلاً ثبت شده است.',
+
+    // ── Weighbridge (SubmitWeighbridgeRequest) ─────────────────────────────
+    'weighbridge_weight_required' => 'وارد کردن وزن نهایی باسکول الزامی است.',
+    'weighbridge_weight_numeric'  => 'وزن باسکول باید یک عدد معتبر باشد.',
+    'weighbridge_weight_min'      => 'وزن باسکول نمی‌تواند کمتر از ۱ کیلوگرم باشد.',
+
+    // ── PayFullOrder (PayFullOrderRequest) ─────────────────────────────────
+    'payment_type_required' => 'نوع پرداخت الزامی است.',
+    'payment_type_invalid'  => 'نوع پرداخت انتخاب‌شده معتبر نیست.',
 
     // ── Survey ─────────────────────────────────────────────────────────────
     'survey_not_allowed_for_status' => 'ثبت نظرسنجی فقط برای سفارش‌های تحویل‌داده‌شده امکان‌پذیر است.',
@@ -73,6 +83,8 @@ return [
     'waybill_required' => 'وارد کردن شماره بارنامه الزامی است.',
     'gateway_required' => 'انتخاب درگاه پرداخت الزامی است.',
     'gateway_invalid' => 'درگاه انتخاب شده معتبر نیست.',
+    'payment_type_required' => 'نوع پرداخت الزامی است.',
+    'payment_type_invalid' => 'نوع پرداخت انتخاب‌شده معتبر نیست. مقادیر مجاز: pay یا reserve.',
     'wallet_balance_low' => 'موجودی کیف پول کافی نیست.',
     'payment_redirect' => 'در حال انتقال به درگاه پرداخت...',
     'payment_success_wallet' => 'پرداخت با موفقیت از کیف پول انجام شد.',

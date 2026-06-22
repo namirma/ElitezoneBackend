@@ -94,7 +94,7 @@ class CalculateOrderEstimateAction
         $totalWeight = 0.0;
         $breakdown = [];
 
-        $orderUnits = Cache::remember('pricing:order_units_collection', 86400, fn () => OrderUnit::all()->keyBy('id'));
+        $orderUnits = OrderUnit::allCached();
 
         foreach ($quantities as $unitIdToString => $qty) {
             $unitId = (int) $unitIdToString;

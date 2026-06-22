@@ -12,6 +12,7 @@ return [
     'email_send_failed' => 'خطا در ارسال ایمیل تایید. لطفا دوباره تلاش کنید یا با پشتیبانی تماس بگیرید.',
     'cannot_delete_last_address' => 'امکان حذف آخرین آدرس وجود ندارد.',
     'company_info_received' => 'اطلاعات شرکت با موفقیت دریافت شد.',
+    'company_inquiry_failed' => 'سرویس استعلام اطلاعات شرکت در حال حاضر در دسترس نیست. لطفاً مجدداً تلاش کنید.',
     'search_initial_data' => 'اطلاعات اولیه جستجوی پروفایل.',
     'search_saved_successfully' => 'جستجو با موفقیت ثبت شد.',
     'search_history_cleared' => 'تاریخچه جستجو پاک شد.',
@@ -37,6 +38,12 @@ return [
     'avatar_required' => 'انتخاب تصویر الزامی است.',
     'avatar_mimes' => 'فرمت فایل قابل قبول نیست. (jpeg، png یا webp)',
     'avatar_max' => 'حداکثر حجم تصویر ۵ مگابایت است.',
+
+    // Roles (StoreUserTypeRequest)
+    'roles_required'          => 'انتخاب حداقل یک نقش الزامی است.',
+    'roles_invalid'           => 'نقش نامعتبر است. نقش‌های مجاز: employer, supplier, expert.',
+    'roles_array'             => 'فیلد roles باید آرایه باشد.',
+    'roles_supplier_conflict' => 'نقش سوپلایر نمی‌تواند همزمان با کارفرما یا مشاور فنی انتخاب شود.',
 
     // Email management
     'email_required' => 'وارد کردن ایمیل الزامی است.',

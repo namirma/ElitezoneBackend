@@ -142,6 +142,11 @@ class WalletController extends Controller
     {
         $data = $request->validated();
 
+        // درگاه آنلاین هنوز پیاده‌سازی نشده — فقط کارت‌به‌کارت پشتیبانی می‌شود.
+        if ($data['payment_method'] !== WalletTransaction::METHOD_BANK_TRANSFER) {
+            return error(__('wallet.gateway_not_available'), [], 503);
+        }
+
         $transaction = $this->fundAction->execute(
             user: Auth::user(),
             amount: $data['amount'],
@@ -149,21 +154,11 @@ class WalletController extends Controller
             description: __('wallet.deposit_description'),
         );
 
-        // Bank transfer — user will upload receipt later
-        if ($data['payment_method'] === WalletTransaction::METHOD_BANK_TRANSFER) {
-            return success([
-                'transaction_id' => $transaction->id,
-                'type' => 'manual_payment',
-                'message' => __('wallet.deposit_manual_info', ['amount' => number_format($data['amount'])]),
-            ], __('wallet.deposit_created'));
-        }
-
-        // Online gateway redirect
         return success([
             'transaction_id' => $transaction->id,
-            'type' => 'gateway_redirect',
-            'redirect_url' => "https://dummy-gateway.com/pay/{$transaction->id}",
-        ], __('wallet.redirect_to_gateway'));
+            'type'           => 'manual_payment',
+            'message'        => __('wallet.deposit_manual_info', ['amount' => number_format($data['amount'])]),
+        ], __('wallet.deposit_created'));
     }
 
     public function storeReceipt(StoreDepositReceiptRequest $request): JsonResponse
@@ -223,7 +218,12 @@ class WalletController extends Controller
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
             return error(__('wallet.bank_account_not_found'), [], 404);
         } catch (\Exception $e) {
-            return error($e->getMessage(), [], 400);
+            Log::error('Wallet withdrawal request failed', [
+                'user_id' => Auth::id(),
+                'error'   => $e->getMessage(),
+            ]);
+
+            return error(__('wallet.withdrawal_processing_error'), [], 500);
         }
     }
 
