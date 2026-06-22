@@ -32,7 +32,8 @@ class EngineerController extends Controller
             ],
             [
                 EngineerProfile::ENGINEER_MEMBER => $request->validated('engineer_member') ?? $existing?->engineer_member ?? false,
-                EngineerProfile::IS_SAZE90_USER => $request->validated('is_saze90_user') ?? $existing?->is_saze90_user ?? false,
+                // is_saze90_user is NOT written here — it is backend-determined by
+                // SyncUserBadgeAction from the saze90 lookup (read-only for the frontend).
                 EngineerProfile::LICENSE_MEMBER => $request->validated('license_number') ?? $existing?->license_number,
                 EngineerProfile::SUPERVISION_BASE => $request->validated('supervision_base') ?? $existing?->supervision_base,
                 EngineerProfile::DESIGN_BASE => $request->validated('design_base') ?? $existing?->design_base,

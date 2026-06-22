@@ -83,7 +83,10 @@ class UserResource extends BaseJsonResource
     private function getIsVerified(): ?bool
     {
         if ($this->relationLoaded(User::RELATION_ENGINEER) && $this->{User::RELATION_ENGINEER}) {
-            return (bool) $this->{User::RELATION_ENGINEER}->{EngineerProfile::IS_VERIFIED};
+            $eng = $this->{User::RELATION_ENGINEER};
+
+            // saze90 membership auto-verifies, alongside the admin-reviewed docs flag.
+            return (bool) ($eng->{EngineerProfile::IS_VERIFIED} || $eng->{EngineerProfile::IS_SAZE90_USER});
         }
 
         if ($this->relationLoaded(User::RELATION_CONTRACTOR) && $this->{User::RELATION_CONTRACTOR}) {

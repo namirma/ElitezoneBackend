@@ -38,17 +38,18 @@ class ProfileFixesTest extends TestCase
         return UploadedFile::fake()->create('doc.pdf', 100, 'application/pdf');
     }
 
-    // ─── #2 Saze-90 flag ─────────────────────────────────────────────────────────
+    // ─── #2 Saze-90 flag is backend-determined (NOT user-settable) ───────────────
 
     /** @test */
-    public function engineer_profile_persists_the_saze90_flag(): void
+    public function is_saze90_user_cannot_be_set_through_the_engineer_endpoint(): void
     {
         $user = $this->expertUser();
         Sanctum::actingAs($user);
 
+        // Even if the client sends it, the backend ignores it (set only by the saze90 sync).
         $this->postJson('/api/profile/engineer', ['is_saze90_user' => true])->assertOk();
 
-        $this->assertTrue(
+        $this->assertFalse(
             (bool) EngineerProfile::where(EngineerProfile::USER_ID, $user->id)->value('is_saze90_user')
         );
     }
