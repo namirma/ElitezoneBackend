@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\User;
 
 use App\Actions\Profile\SyncUserBadgeAction;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\Profile\BadgeResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 
@@ -21,6 +22,11 @@ class BadgeController extends Controller
     {
         $result = $action->execute(Auth::user());
 
-        return success($result, __('profile.badge_loaded'));
+        return success([
+            'badge' => $result['badge'],                 // primary code (tier|saze90|null)
+            'is_pioneer' => $result['is_pioneer'],
+            'is_saze90_user' => $result['is_saze90_user'],
+            'badges' => BadgeResource::collection($result['badges']),
+        ], __('profile.badge_loaded'));
     }
 }

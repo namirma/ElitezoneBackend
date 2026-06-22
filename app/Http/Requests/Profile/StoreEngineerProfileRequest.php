@@ -25,7 +25,8 @@ class StoreEngineerProfileRequest extends FormRequest
     {
         return [
             EngineerProfile::ENGINEER_MEMBER => 'boolean',
-            EngineerProfile::IS_SAZE90_USER => 'boolean',
+            // is_saze90_user is backend-determined (set from the saze90 lookup in
+            // SyncUserBadgeAction) — NOT a user-submitted field.
             EngineerProfile::LICENSE_MEMBER => 'nullable',
             EngineerProfile::SUPERVISION_BASE => 'nullable',
             EngineerProfile::DESIGN_BASE => 'nullable',

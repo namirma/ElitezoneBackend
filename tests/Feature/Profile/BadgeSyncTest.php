@@ -3,7 +3,9 @@
 namespace Tests\Feature\Profile;
 
 use App\Models\Badge;
+use App\Models\EngineerProfile;
 use App\Models\User;
+use App\Models\UserType;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -103,9 +105,10 @@ class BadgeSyncTest extends TestCase
     }
 
     /** @test */
-    public function a_non_tier_code_is_returned_but_does_not_change_the_commission_badge(): void
+    public function a_non_tier_code_maps_to_saze90_membership_without_a_commission_tier(): void
     {
-        // e.g. the «کاربر سازه ۹۰» display code — returned for display, never a commission tier.
+        // Any non-false, non-tier code means the person is a saze90 member → badge "saze90",
+        // is_saze90_user true, but NO commission tier on the user.
         $this->fakeSaze90('serial');
 
         $user = User::factory()->create();
@@ -113,9 +116,11 @@ class BadgeSyncTest extends TestCase
 
         $this->getJson('/api/profile/badge')
             ->assertOk()
-            ->assertJsonPath('data.badge', 'serial');
+            ->assertJsonPath('data.badge', 'saze90')
+            ->assertJsonPath('data.is_saze90_user', true);
 
         $this->assertNull($user->fresh()->badge_id, 'non-tier code must not set the commission badge');
+        $this->assertTrue($user->badges()->where('badges.code', 'saze90')->exists(), 'saze90 badge in pivot');
     }
 
     /** @test */
@@ -144,7 +149,10 @@ class BadgeSyncTest extends TestCase
         $this->getJson('/api/profile/badge')
             ->assertOk()
             ->assertJsonPath('data.is_pioneer', true)
-            ->assertJsonPath('data.badges', ['pioneer']);
+            ->assertJsonPath('data.is_saze90_user', false)
+            ->assertJsonPath('data.badges.0.code', 'pioneer');
+
+        $this->assertTrue($user->badges()->where('badges.code', 'pioneer')->exists(), 'pioneer badge in pivot');
     }
 
     /** @test */
@@ -158,5 +166,32 @@ class BadgeSyncTest extends TestCase
         $this->getJson('/api/profile/badge')
             ->assertOk()
             ->assertJsonPath('data.is_pioneer', false);
+    }
+
+    /** @test */
+    public function a_saze90_member_engineer_is_persisted_and_auto_verified(): void
+    {
+        $this->fakeSaze90('gold');
+        Badge::firstOrCreate(['code' => 'gold'], ['name' => 'طلایی']);
+
+        $type = UserType::firstOrCreate(['slug' => 'expert'], ['name' => 'expert', 'icon' => 'u']);
+        $user = User::factory()->create(['type_id' => $type->id]);
+        EngineerProfile::create([
+            EngineerProfile::USER_ID => $user->id,
+            EngineerProfile::ENGINEER_MEMBER => false,
+            EngineerProfile::STUDENT => false,
+            EngineerProfile::IS_VERIFIED => false, // admin has NOT verified the docs
+        ]);
+        Sanctum::actingAs($user);
+
+        // The badge sync persists is_saze90_user on the engineer profile…
+        $this->getJson('/api/profile/badge')->assertOk()->assertJsonPath('data.is_saze90_user', true);
+
+        // …and GET /api/profile then reflects it + auto-verifies the engineer.
+        $this->getJson('/api/profile')
+            ->assertOk()
+            ->assertJsonPath('data.engineer.is_saze90_user', true)
+            ->assertJsonPath('data.engineer.is_verified', true)
+            ->assertJsonPath('data.is_verified', true);
     }
 }

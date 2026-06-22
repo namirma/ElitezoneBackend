@@ -63,7 +63,8 @@ class ProcessWeighbridgeResultActionTest extends TestCase
         Wallet::create([Wallet::USER_ID => $systemUser->id, Wallet::BALANCE => 1_000_000, Wallet::BALANCE_HOLD => 0]);
 
         // Pioneer badge on the buyer so beneficiary.badge->code resolves without a null read.
-        $badge = Badge::create([Badge::NAME => 'Pioneer', Badge::CODE => 'pioneer']);
+        // firstOrCreate: the 'pioneer' badge is now also seeded by a migration.
+        $badge = Badge::firstOrCreate([Badge::CODE => 'pioneer'], [Badge::NAME => 'Pioneer']);
 
         $this->buyer = User::factory()->create([User::BADGE_ID => $badge->id]);
         $this->buyerWallet = Wallet::create([Wallet::USER_ID => $this->buyer->id, Wallet::BALANCE => 1000, Wallet::BALANCE_HOLD => 0]);
@@ -79,21 +80,21 @@ class ProcessWeighbridgeResultActionTest extends TestCase
         $oldPTS = $calc->calculatePTS(0, 1000, 10, $rates['ow_final_rate'], $rates['ssg_final_rate'], $rates['co_final_rate'], 0, true, true);
 
         $this->order = Order::create([
-            Order::PLACER_USER_ID      => $this->buyer->id,
+            Order::PLACER_USER_ID => $this->buyer->id,
             Order::BENEFICIARY_USER_ID => $this->buyer->id, // self → no consultant payout
-            Order::ORDER_NUMBER        => 'TEST-WB-'.now()->format('YmdHis').rand(100, 999),
-            Order::STATUS              => Order::STATUS_PROCESSING,
-            Order::PAYMENT_STATUS      => Order::PAYMENT_PAID,
+            Order::ORDER_NUMBER => 'TEST-WB-'.now()->format('YmdHis').rand(100, 999),
+            Order::STATUS => Order::STATUS_PROCESSING,
+            Order::PAYMENT_STATUS => Order::PAYMENT_PAID,
             Order::WEIGHT_BEFORE_SCALE => 10,
-            Order::SHIPPING_COST       => 0,
+            Order::SHIPPING_COST => 0,
         ]);
         $this->order->forceFill([
-            Order::OFFICIAL_PRICE      => 1000,
-            Order::VAT_RATE            => 0,
-            Order::PAYMENT_OF_OWNER    => $this->oldPOO,
+            Order::OFFICIAL_PRICE => 1000,
+            Order::VAT_RATE => 0,
+            Order::PAYMENT_OF_OWNER => $this->oldPOO,
             Order::PAYMENT_TO_SUPPLIER => $oldPTS,
-            Order::TRANS_COMMISSION    => true,
-            Order::TRANS_VAT           => true,
+            Order::TRANS_COMMISSION => true,
+            Order::TRANS_VAT => true,
         ])->save();
 
         OrderItem::factory()->create([

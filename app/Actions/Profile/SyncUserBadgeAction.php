@@ -3,76 +3,100 @@
 namespace App\Actions\Profile;
 
 use App\Models\Badge;
+use App\Models\EngineerProfile;
 use App\Models\User;
 use App\Services\Saze90BadgeService;
 use App\Support\PhoneNumber;
+use Illuminate\Support\Collection;
 
 /**
- * Resolves a user's badges and persists the commission-relevant one.
+ * Resolves a user's badges (saze90 tier / membership + pioneer) and persists the parts
+ * other features rely on.
  *
  * Sources:
- *  - saze90.com `get-certificate?mobile=` → the collaboration tier (gold/silver/bronze)
- *    or the «کاربر سازه ۹۰» display code. Read via Saze90BadgeService (fail-safe).
+ *  - saze90.com `get-certificate?mobile=` → a collaboration tier (gold/silver/bronze) for
+ *    users who bought a package, or any other non-false code → generic «کاربر سازه ۹۰»
+ *    membership. Read via Saze90BadgeService (fail-safe). Any non-null result means the
+ *    person IS a saze90 member (`is_saze90_user = true`).
  *  - Pioneer (پیشگام) → granted internally to members for their **first year** after
  *    registration. Time-based, NOT from saze90.
+ *    NOTE: the frontend brief says "first N registrants" instead — kept as first-year per
+ *    the owner's earlier instruction; flagged for confirmation.
  *
- * Persistence is deliberately conservative:
- *  - `users.badge_id` is written ONLY for the recognised commission tiers
- *    (gold/silver/bronze). A null badge_id already maps to pioneer/default rates in
- *    SettlementCalculator, so there is nothing to write for pioneer.
- *  - We never clear an existing tier on a null result (a transient saze90 outage must not
- *    silently downgrade a consultant's commission rate).
+ * Persistence (deliberately conservative):
+ *  - `users.badge_id` ← ONLY the commission tiers (gold/silver/bronze). A null badge_id
+ *    already maps to pioneer/default rates in SettlementCalculator. Never cleared on a null
+ *    result (a transient saze90 outage must not silently downgrade a consultant).
+ *  - `engineer_profiles.is_saze90_user` ← backend-determined (read-only for the frontend).
+ *  - `badge_user` pivot ← the managed badge set (tier|saze90 + pioneer) for "my badges".
  */
 class SyncUserBadgeAction
 {
     /** Codes SettlementCalculator treats as commission tiers (everything else = default/pioneer). */
     private const TIER_CODES = ['gold', 'silver', 'bronze'];
 
+    /** All codes this action owns in the badge_user pivot (so it can replace, not accumulate). */
+    private const MANAGED_CODES = ['gold', 'silver', 'bronze', 'saze90', 'pioneer'];
+
     public function __construct(private readonly Saze90BadgeService $saze90) {}
 
     /**
-     * @return array{badge: ?string, is_pioneer: bool, badges: array<int,string>}
+     * @return array{badge: ?string, is_pioneer: bool, is_saze90_user: bool, badges: Collection<int,Badge>}
      */
     public function execute(User $user): array
     {
         $mobile = $user->{User::MOBILE} ? PhoneNumber::to09((string) $user->{User::MOBILE}) : '';
         $sazeCode = $mobile ? $this->saze90->getCertificate($mobile) : null;
 
-        // Pioneer: first year after registration.
+        $isSaze90User = $sazeCode !== null;                                  // any saze90 record
+        $isTier = $sazeCode !== null && in_array($sazeCode, self::TIER_CODES, true);
         $isPioneer = $user->created_at !== null && $user->created_at->gt(now()->subYear());
 
-        if ($sazeCode && in_array($sazeCode, self::TIER_CODES, true)) {
-            $badge = Badge::where(Badge::CODE, $sazeCode)->first();
+        // The user's badge codes: the tier (if a package buyer) OR the generic saze90 badge,
+        // plus pioneer when applicable.
+        $codes = [];
+        if ($isTier) {
+            $codes[] = $sazeCode;
+        } elseif ($isSaze90User) {
+            $codes[] = 'saze90';
+        }
+        if ($isPioneer) {
+            $codes[] = 'pioneer';
+        }
 
-            if ($badge) {
-                if ((int) $user->{User::BADGE_ID} !== (int) $badge->id) {
-                    $user->forceFill([User::BADGE_ID => $badge->id])->save();
-                }
-                // Replace any previously-synced tier (gold↔silver↔bronze) with the current
-                // one so the display pivot never accumulates stale tiers; non-tier badges
-                // (if ever added) are left untouched.
-                $otherTierIds = Badge::whereIn(Badge::CODE, self::TIER_CODES)
-                    ->where(Badge::ID, '!=', $badge->id)
-                    ->pluck(Badge::ID)
-                    ->all();
-                $user->badges()->detach($otherTierIds);
-                $user->badges()->syncWithoutDetaching([$badge->id]);
+        /** @var Collection<int,Badge> $badges */
+        $badges = empty($codes)
+            ? new Collection
+            : Badge::whereIn(Badge::CODE, $codes)->get();
+
+        // 1) Commission tier → users.badge_id (never cleared on a null/non-tier result).
+        if ($isTier) {
+            $tierBadge = $badges->firstWhere(Badge::CODE, $sazeCode);
+            if ($tierBadge && (int) $user->{User::BADGE_ID} !== (int) $tierBadge->id) {
+                $user->forceFill([User::BADGE_ID => $tierBadge->id])->save();
             }
         }
 
-        // Display list the frontend renders (pioneer is shown alongside the saze90 tier).
-        $badges = [];
-        if ($isPioneer) {
-            $badges[] = 'pioneer';
+        // 2) is_saze90_user → persist on the engineer profile when one exists (read-only field).
+        $engineer = $user->engineer;
+        if ($engineer && (bool) $engineer->{EngineerProfile::IS_SAZE90_USER} !== $isSaze90User) {
+            $engineer->forceFill([EngineerProfile::IS_SAZE90_USER => $isSaze90User])->save();
         }
-        if ($sazeCode) {
-            $badges[] = $sazeCode;
+
+        // 3) badge_user pivot → replace this action's managed badges with the current set,
+        //    leaving any externally-managed badges untouched.
+        $managedIds = Badge::whereIn(Badge::CODE, self::MANAGED_CODES)->pluck(Badge::ID);
+        $currentIds = $badges->pluck(Badge::ID)->all();
+        $user->badges()->detach($managedIds->diff($currentIds)->all());
+        if ($currentIds) {
+            $user->badges()->syncWithoutDetaching($currentIds);
         }
 
         return [
-            'badge' => $sazeCode,                       // saze90 tier/code, or null
+            'badge' => $isTier ? $sazeCode : ($isSaze90User ? 'saze90' : null),
             'is_pioneer' => $isPioneer,
-            'badges' => array_values(array_unique($badges)),
+            'is_saze90_user' => $isSaze90User,
+            'badges' => $badges,
         ];
     }
 }
