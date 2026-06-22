@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
 class OrderUnit extends Model
@@ -39,14 +40,30 @@ class OrderUnit extends Model
             ->withTimestamps();
     }
 
-    protected static function booted()
+    /**
+     * تمام OrderUnit‌ها کی‌شده با ID — یک کش مرکزی برای همه callerها.
+     * TTL 24h؛ booted() آن را پس از هر save/delete invalidate می‌کند.
+     */
+    public static function allCached(): Collection
     {
-        static::saved(function () {
-            Cache::forget('pricing:order_units_collection');
-        });
+        return Cache::remember('catalog:order_units', 86400, fn () => static::all()->keyBy(static::ID));
+    }
 
-        static::deleted(function () {
-            Cache::forget('pricing:order_units_collection');
-        });
+    protected static function booted(): void
+    {
+        $flush = function () {
+            foreach ([
+                'catalog:order_units',
+                'order_units_all',
+                'order_units_map',
+                'pricing:order_units_collection',
+                'all_order_units',
+            ] as $key) {
+                Cache::forget($key);
+            }
+        };
+
+        static::saved($flush);
+        static::deleted($flush);
     }
 }

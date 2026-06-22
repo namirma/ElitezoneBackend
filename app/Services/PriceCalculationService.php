@@ -63,7 +63,7 @@ class PriceCalculationService
         $totalWeight = 0.0;
         $breakdown = [];
 
-        $orderUnits = Cache::remember('pricing:order_units_collection', 86400, fn () => OrderUnit::all()->keyBy(OrderUnit::ID));
+        $orderUnits = OrderUnit::allCached();
 
         foreach ($quantities as $unitIdToString => $qty) {
             $unitId = (int) $unitIdToString;

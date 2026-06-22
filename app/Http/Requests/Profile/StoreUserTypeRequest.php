@@ -24,10 +24,10 @@ class StoreUserTypeRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'roles.required' => '.انتخاب حداقل یک نقش الزامی است',
-            'roles.min' => '.انتخاب حداقل یک نقش الزامی است',
-            'roles.*.in' => 'نقش نامعتبر است. نقش‌های مجاز: employer, supplier, expert',
-            'roles.array' => '.باید آرایه باشد roles فیلد ',
+            'roles.required' => __('profile.roles_required'),
+            'roles.min'      => __('profile.roles_required'),
+            'roles.*.in'     => __('profile.roles_invalid'),
+            'roles.array'    => __('profile.roles_array'),
         ];
     }
 
@@ -64,11 +64,11 @@ class StoreUserTypeRequest extends FormRequest
                 in_array('supplier', $roles, true) &&
                 count(array_intersect($roles, ['employer', 'expert'])) > 0
             ) {
-                $v->errors()->add('roles', '.نقش سوپلایر نمیتواند همزمان با کارفرما یا مشاورفنی انتخاب شود');
+                $v->errors()->add('roles', __('profile.roles_supplier_conflict'));
             }
 
             if (empty($roles)) {
-                $v->errors()->add('roles', '.انتخاب حداقل یک نقش معتبر الزامی است');
+                $v->errors()->add('roles', __('profile.roles_required'));
             }
         });
     }

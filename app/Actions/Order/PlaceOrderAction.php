@@ -118,7 +118,7 @@ class PlaceOrderAction
         $roleCode = $this->roleResolver->resolve($user);
         $customerType = $cart->customerType ?? CustomerType::where('code', $roleCode)->first();
 
-        $orderUnits = Cache::remember('order_units_all', 3600, fn () => OrderUnit::all());
+        $orderUnits = OrderUnit::allCached();
 
         $activeFilter = PriceFilterCategory::where('code', $roleCode)->first();
         $filterIds = $activeFilter ? [$activeFilter->id] : $cart->priceFilterCategories->pluck('id')->toArray();

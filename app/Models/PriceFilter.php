@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Facades\Cache;
 
 class PriceFilter extends Model
 {
@@ -30,6 +31,12 @@ class PriceFilter extends Model
     public const CREATED_AT = 'created_at';
 
     public const UPDATED_AT = 'updated_at';
+
+    protected static function booted(): void
+    {
+        static::saved(fn () => Cache::forget('pricing:categories_with_filters'));
+        static::deleted(fn () => Cache::forget('pricing:categories_with_filters'));
+    }
 
     protected $fillable = [
         self::PRICE_FILTER_TYPE_ID,

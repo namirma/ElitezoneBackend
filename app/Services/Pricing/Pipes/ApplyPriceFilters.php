@@ -6,6 +6,7 @@ use App\Models\PriceFilterCategory;
 use App\Services\Pricing\PricingContext;
 use Closure;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 
 class ApplyPriceFilters implements PricingPipe
 {
@@ -74,16 +75,28 @@ class ApplyPriceFilters implements PricingPipe
     }
 
     /**
-     * دریافت لیست فیلترها از دیتابیس
+     * تمام دسته‌بندی‌های فعال + فیلترهایشان را از کش یا دیتابیس برمی‌گرداند.
+     * یک کلید واحد → invalidation ساده در model observer.
+     */
+    private function allCategoriesWithFilters(): Collection
+    {
+        return Cache::remember('pricing:categories_with_filters', 3600, fn () =>
+            PriceFilterCategory::where('is_active', true)
+                ->with(['filters.filterType'])
+                ->get()
+        );
+    }
+
+    /**
+     * دریافت لیست فیلترها برای context جاری (از کش)
      */
     private function getFilters(PricingContext $context): Collection
     {
         $ids = $context->filterCategoryIds;
 
         if (empty($ids) && $context->filterCategoryCode) {
-            $category = PriceFilterCategory::where('code', $context->filterCategoryCode)
-                ->where('is_active', true)
-                ->first();
+            $category = $this->allCategoriesWithFilters()
+                ->firstWhere('code', $context->filterCategoryCode);
 
             if ($category) {
                 $ids = [$category->id];
@@ -94,14 +107,9 @@ class ApplyPriceFilters implements PricingPipe
             return collect();
         }
 
-        return PriceFilterCategory::whereIn('id', $ids)
-            ->where('is_active', true)
-            ->with(['filters.filterType'])
-            ->get()
-            ->flatMap(function ($category) {
-                return $category->filters;
-            })
-            // حذف فیلترهای غیرفعال یا ناقص
+        return $this->allCategoriesWithFilters()
+            ->whereIn('id', $ids)
+            ->flatMap(fn ($cat) => $cat->filters)
             ->filter(fn ($f) => $f && $f->is_active && $f->filterType)
             ->unique('id')
             ->values();

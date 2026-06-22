@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Order;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class PayFullOrderRequest extends FormRequest
 {
@@ -14,15 +15,15 @@ class PayFullOrderRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'gateway' => 'required|in:wallet,shaparak,podium',
+            'payment_type' => ['required', Rule::in(['pay', 'reserve'])],
         ];
     }
 
     public function messages(): array
     {
         return [
-            'gateway.required' => __('orders.gateway_required'),
-            'gateway.in' => __('orders.gateway_invalid'),
+            'payment_type.required' => __('orders.payment_type_required'),
+            'payment_type.in'       => __('orders.payment_type_invalid'),
         ];
     }
 }

@@ -198,7 +198,7 @@ class AddToCartAction
 
     protected function getOrderUnitsMap(): Collection
     {
-        return Cache::remember('order_units_map', 86400, fn () => OrderUnit::all()->keyBy(OrderUnit::ID));
+        return OrderUnit::allCached();
     }
 
     protected function mergeQuantities(array $current, array $new): array

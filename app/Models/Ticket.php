@@ -99,8 +99,6 @@ class Ticket extends Model
     // ── TCK code prefix ───────────────────────────────────────────────────
     public const CODE_PREFIX = 'TCK-';
 
-    protected $with = ['department'];
-
     protected $fillable = [
         self::CODE,
         self::USER_ID,

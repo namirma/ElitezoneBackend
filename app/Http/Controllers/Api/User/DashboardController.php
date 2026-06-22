@@ -41,6 +41,7 @@ class DashboardController extends Controller
             ])
             ->with(['placer', 'beneficiary']) // eager-load برای buyer/beneficiary در DashboardResource
             ->latest()
+            ->limit(10)
             ->get();
 
         $data = [

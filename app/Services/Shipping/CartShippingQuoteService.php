@@ -97,7 +97,7 @@ class CartShippingQuoteService
             return new ShippingQuote(total: 0.0, perLine: [], shipments: []);
         }
 
-        $orderUnits = Cache::remember('order_units_all', 3600, fn () => OrderUnit::all());
+        $orderUnits = OrderUnit::allCached();
 
         // Resolve every destination address referenced by the lines (per-line or primary).
         $neededAddressIds = [];

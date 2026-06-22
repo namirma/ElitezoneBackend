@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Facades\Cache;
 
 class PriceFilterCategory extends Model
 {
@@ -26,6 +27,12 @@ class PriceFilterCategory extends Model
     protected $fillable = [
         self::NAME, self::CODE, self::DESCRIPTION, self::IS_ACTIVE, self::SORT_ORDER,
     ];
+
+    protected static function booted(): void
+    {
+        static::saved(fn () => Cache::forget('pricing:categories_with_filters'));
+        static::deleted(fn () => Cache::forget('pricing:categories_with_filters'));
+    }
 
     public function filters(): BelongsToMany
     {

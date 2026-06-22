@@ -249,7 +249,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
                 Route::get('/', 'getWallet');
                 Route::get('/transactions', 'getTransactions');
                 Route::get('/deposit-account', 'getDepositAccount'); // شناسه واریز (PAYA/SATNA direct deposit)
-                Route::post('/deposit', 'requestDeposit')->middleware('throttle:financial');
+                Route::post('/deposit', 'requestDeposit')->middleware('throttle:financial')->name('wallet.deposit');
                 Route::post('/withdraw', 'requestWithdrawal')->middleware(['idempotency', 'throttle:financial']);
             });
 
