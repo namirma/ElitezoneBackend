@@ -10,6 +10,7 @@ use App\Observers\OrderObserver;
 use App\Observers\ProductPriceObserver;
 use App\Observers\TicketObserver;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
@@ -52,5 +53,12 @@ class AppServiceProvider extends ServiceProvider
         ProductPrice::observe(ProductPriceObserver::class);
         Order::observe(OrderObserver::class);
         Ticket::observe(TicketObserver::class);
+
+        if (app()->isProduction() && config('queue.default') === 'sync') {
+            Log::critical('QUEUE_CONNECTION=sync in production — queued listeners run inside the HTTP request and block responses.');
+        }
+        if (app()->isProduction() && config('cache.default') === 'file') {
+            Log::critical('CACHE_DRIVER=file in production — OTP lockout and idempotency keys are not shared across servers.');
+        }
     }
 }

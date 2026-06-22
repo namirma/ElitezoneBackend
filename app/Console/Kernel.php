@@ -68,6 +68,11 @@ class Kernel extends ConsoleKernel
             ->everyFiveMinutes()
             ->withoutOverlapping()
             ->onOneServer();
+
+        // حذف توکن‌های منقضی‌شده — با 168 ساعت تطابق با SANCTUM_TOKEN_EXPIRY_MINUTES=10080
+        $schedule->command('sanctum:prune-expired --hours=168')
+            ->daily()
+            ->onOneServer();
     }
 
     /**

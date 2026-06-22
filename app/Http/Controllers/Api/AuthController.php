@@ -237,9 +237,17 @@ class AuthController extends Controller
 
     public function checkPassword(Request $request)
     {
-        $user = User::where([User::MOBILE => $request->input('username')])->first();
+        $mobile = PhoneNumber::to09($request->input('username'));
+
+        if ($this->isOtpLocked($mobile)) {
+            return error(__('auth.too_many_otp_attempts'), [], 429);
+        }
+
+        $user = User::where(User::MOBILE, $mobile)->first();
 
         if (! $user) {
+            $this->recordOtpFailure($mobile);
+
             return error(__('auth.no_user_found'), [], 404);
         }
         if (empty($user->{User::NATIONAL_CODE}) || empty($user->{User::BIRTH_DATE})) {
@@ -249,22 +257,25 @@ class AuthController extends Controller
                 404
             );
         }
-        if (Hash::check($request->input('password'), $user->password)) {
-            Auth::login($user);
-            $user->tokens()->delete();
-            $token = $user->createToken('auth')->plainTextToken;
+        if (! Hash::check($request->input('password'), $user->password)) {
+            $this->recordOtpFailure($mobile);
 
-            $userWithRelations = $user->fresh([
-                User::RELATION_PROFILE,
-                User::RELATION_TYPE,
-                User::RELATION_ROLES,
-                User::RELATION_BADGE,
-            ]);
-
-            return success(['user' => new UserResource($userWithRelations), 'token' => $token], __('auth.login_success'));
+            return error(__('auth.password_error'), [], 404);
         }
 
-        return error(__('auth.password_error'), [], 404);
+        $this->clearOtpFailures($mobile);
+        Auth::login($user);
+        $user->tokens()->delete();
+        $token = $user->createToken('auth')->plainTextToken;
+
+        $userWithRelations = $user->fresh([
+            User::RELATION_PROFILE,
+            User::RELATION_TYPE,
+            User::RELATION_ROLES,
+            User::RELATION_BADGE,
+        ]);
+
+        return success(['user' => new UserResource($userWithRelations), 'token' => $token], __('auth.login_success'));
     }
 
     public function forgetPassword(Request $request)
@@ -296,13 +307,13 @@ class AuthController extends Controller
             return error(__('auth.too_many_otp_attempts'), [], 429);
         }
 
-        $user = User::where([
-            User::MOBILE => $request->input('username'),
-            User::SECRET => $request->input('code'),
-        ])
+        // Load user by mobile only — comparing the code inside a SQL WHERE clause leaks
+        // timing information via DB query latency; hash_equals() runs in constant time.
+        $user = User::where(User::MOBILE, $mobile)
             ->where(User::PASSWORD, '!=', null)
             ->first();
-        if ($user === null) {
+
+        if (! $user || ! hash_equals((string) ($user->{User::SECRET} ?? ''), (string) $request->input('code'))) {
             $this->recordOtpFailure($mobile);
 
             return error(__('auth.invalid_reset_token'), [], 400);

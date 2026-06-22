@@ -312,6 +312,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
                 Route::get('/invitations/rejection-reasons', 'getRejectionReasons');
                 Route::post('/invitations/{employer}/accept', 'acceptInvitation');
                 Route::post('/invitations/{employer}/reject', 'rejectInvitation');
+                Route::get('/registered-clients', 'listRegisteredClients');
             });
         });
 
@@ -322,6 +323,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::delete('/employer', [EmployerController::class, 'destroy']);
         Route::prefix('supplier')->group(function () {
             Route::post('/', [SupplierController::class, 'store']);
+            Route::delete('/', [SupplierController::class, 'destroy']);
             Route::get('/activity-categories', [SupplierController::class, 'getCategories']);
             Route::get('/activityCategory-getId', [SupplierController::class, 'getActivityCategoryId']);
         });

@@ -166,6 +166,9 @@ class BeneficiaryController extends Controller
             User::SECRET_EXPIRES_AT => null,
         ]);
 
+        // ثبت رابطه مشاور–مشتری برای تب «ثبت‌شدگان من»
+        Auth::user()->registeredClients()->syncWithoutDetaching([$beneficiaryUser->id]);
+
         $beneficiaryUser->load('profile');
 
         return success([

@@ -13,6 +13,7 @@ use App\Models\EmployerConsultant;
 use App\Models\EngineerProfile;
 use App\Models\User;
 use App\Models\UserNotification;
+use App\Models\UserProfile;
 use App\Models\UserType;
 use App\Support\PhoneNumber;
 use Illuminate\Http\JsonResponse;
@@ -200,6 +201,43 @@ class ConsultantRelationController extends Controller
     public function getRejectionReasons(): JsonResponse
     {
         return success(__('consultant.rejection_reasons'), __('consultant.rejection_reasons_received'));
+    }
+
+    /**
+     * لیست مشتریانی که این مشاور فنی از طریق جریان «خرید برای دیگری» احراز هویت کرده.
+     */
+    public function listRegisteredClients(): JsonResponse
+    {
+        $consultant = Auth::user();
+
+        $clients = $consultant->registeredClients()
+            ->with('profile')
+            ->orderByPivot('created_at', 'desc')
+            ->get()
+            ->map(function (User $client) {
+                $mobile = (string) $client->{User::MOBILE};
+
+                return [
+                    'user_id'       => $client->id,
+                    'name'          => $client->profile?->{UserProfile::NAME},
+                    'family'        => $client->profile?->{UserProfile::FAMILY},
+                    'national_code' => $client->{User::NATIONAL_CODE},
+                    'mobile'        => $this->maskMobile($mobile),
+                    'email'         => $client->profile?->email ?? null,
+                    'created_at'    => $client->pivot->created_at?->toDateTimeString(),
+                ];
+            });
+
+        return success($clients, __('consultant.registered_clients_received'));
+    }
+
+    private function maskMobile(?string $mobile): ?string
+    {
+        if ($mobile === null || strlen($mobile) < 7) {
+            return $mobile;
+        }
+
+        return substr($mobile, 0, 4).str_repeat('*', strlen($mobile) - 7).substr($mobile, -3);
     }
 
     /**
