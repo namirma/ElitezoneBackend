@@ -21,6 +21,9 @@ return [
     'employer_deleted' => '.اطلاعات کارفرما با موفقیت حذف شد',
     'employer_not_found' => '.پروفایل کارفرما یافت نشد',
 
+    'supplier_deleted'   => 'اطلاعات تأمین‌کننده با موفقیت حذف شد.',
+    'supplier_not_found' => 'پروفایل تأمین‌کننده یافت نشد.',
+
     // Employer SMS invite (expert/advisor only)
     'invite_sent_successfully' => 'دعوت‌نامه با موفقیت ارسال شد.',
     'invite_cap_reached' => 'حداکثر تعداد دعوت‌های مجاز شما به پایان رسیده است.',

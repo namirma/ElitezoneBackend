@@ -10,6 +10,7 @@ use App\Http\Resources\Supplier\SupplierProfileResource;
 use App\Models\SupplierActivityCategory;
 use App\Models\SupplierProfile;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 
 class SupplierController extends Controller
@@ -71,5 +72,19 @@ class SupplierController extends Controller
         }
 
         return success(new UserResource(User::with('supplier')->find(Auth::id())));
+    }
+
+    public function destroy(): JsonResponse
+    {
+        $profile = SupplierProfile::where(SupplierProfile::USER_ID, Auth::id())->first();
+
+        if (! $profile) {
+            return error(__('profile.supplier_not_found'), [], 404);
+        }
+
+        $profile->activities()->detach();
+        $profile->delete();
+
+        return success([], __('profile.supplier_deleted'));
     }
 }

@@ -237,6 +237,13 @@ class User extends Authenticatable
             ->withTimestamps();
     }
 
+    /** مشتریانی که این مشاور فنی از طریق جریان «خرید برای دیگری» احراز هویت کرده */
+    public function registeredClients(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'consultant_registered_clients', 'consultant_user_id', 'client_user_id')
+            ->withTimestamps();
+    }
+
     public function agreements(): BelongsToMany
     {
         return $this->belongsToMany(Agreement::class, 'user_agreements')
