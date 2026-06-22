@@ -945,6 +945,7 @@ Performance-critical indexes added across multiple migrations:
 | `wallet_transactions` | `wt_order_type_status_idx` (composite) | `2026_06_22_000000_*` | financial report filters |
 | `order_items` | `order_items_supplier_user_id_idx` | `2026_06_22_000000_*` | supplier order listing |
 | `tickets` | `tickets_status_sla_due_at_idx` (composite) | `2026_06_22_010000_*` | SLA breach queries + KPI reports |
+| `consultant_registered_clients` | `consultant_client_unique` (composite, unique) | `2026_06_22_020000_*` | one-to-one per consultant/client pair |
 
 When adding queries that filter heavily on a column, check this list and
 add an index in a new migration if needed. Always make migrations additive.
@@ -993,6 +994,31 @@ ALL active `PriceFilterCategory` rows with their `filters.filterType` relations 
 `POST /profile/financial/wallet/deposit` is now named `wallet.deposit`.
 Use `route('wallet.deposit', [], false)` wherever you need the path in a response body
 (the third argument `false` returns a path without domain).
+
+### Beneficiary flow — consultant-client relationship is saved on confirm
+
+`BeneficiaryController::confirmVerification()` calls:
+```php
+Auth::user()->registeredClients()->syncWithoutDetaching([$beneficiaryUser->id]);
+```
+after a successful OTP check. This records the consultant→client relationship in
+`consultant_registered_clients` (unique per pair). The link is used by:
+- `GET /api/profile/consultants/registered-clients` — lists all clients this consultant
+  has verified, via `ConsultantRelationController::listRegisteredClients()` (role.expert only)
+- `User::registeredClients()` — BelongsToMany via `consultant_registered_clients`
+
+Mobile is masked as `0910****567` (same `maskMobile()` logic as `UserResource`).
+**Do not** add a second registration hook in `startVerification` — the relationship is
+only established after successful OTP confirmation, not before.
+
+### `HandleSuccessfulPayment` listener — DELETED (refactored)
+
+`app/Listeners/Order/HandleSuccessfulPayment.php` has been deleted. It previously called
+`ProcessPreScalePaymentAction::execute($order)` when `OrderPaid` fired, coupling financial
+processing to the event bus (hard to test, hard to ensure atomicity). Financial processing
+now happens directly inside the payment Actions. `OrderPaid` is now notifications-only →
+`SendOrderPaymentNotification`. `EventServiceProvider` has been updated accordingly.
+**Do not re-add** any financial Action call inside an event listener.
 
 ## Known Architectural Gotchas
 
