@@ -13,6 +13,30 @@ use Illuminate\Support\Facades\Storage;
 class AvatarController extends Controller
 {
     /**
+     * DELETE /api/profile/avatar — remove the current user's profile picture.
+     *
+     * Deletes the file from the `public` disk and nulls the column.
+     * Returns 422 when no avatar is set (frontend handles both gracefully).
+     */
+    public function destroy(): JsonResponse
+    {
+        $profile = UserProfile::where(UserProfile::USER_ID, Auth::id())->first();
+
+        if (! $profile || ! $profile->{UserProfile::AVATAR}) {
+            return error(__('profile.avatar_not_found'), [], 422);
+        }
+
+        $path = $profile->{UserProfile::AVATAR};
+        if (! str_starts_with($path, 'http')) {
+            Storage::disk('public')->delete($path);
+        }
+
+        $profile->update([UserProfile::AVATAR => null]);
+
+        return success([], __('profile.avatar_deleted'));
+    }
+
+    /**
      * POST /api/profile/avatar — upload (or replace) the user's profile picture.
      *
      * Avatars are public images (rendered via <img src>), so they live on the `public`

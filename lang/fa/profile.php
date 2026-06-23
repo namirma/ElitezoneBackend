@@ -37,6 +37,8 @@ return [
 
     // Avatar
     'avatar_uploaded' => 'تصویر پروفایل با موفقیت بارگذاری شد.',
+    'avatar_deleted' => 'تصویر پروفایل با موفقیت حذف شد.',
+    'avatar_not_found' => 'تصویری برای حذف وجود ندارد.',
     'avatar_upload_failed' => 'بارگذاری تصویر پروفایل با خطا مواجه شد.',
     'avatar_required' => 'انتخاب تصویر الزامی است.',
     'avatar_mimes' => 'فرمت فایل قابل قبول نیست. (jpeg، png یا webp)',
