@@ -26,6 +26,9 @@ class Saze90BadgeService
 {
     use HasCircuitBreaker;
 
+    /** Cache sentinel for a confirmed "this mobile has no badge" (distinct from an outage). */
+    private const NONE = '__none__';
+
     /**
      * @return string|null lowercased badge code (e.g. "gold"), or null when none/unavailable.
      */
@@ -36,11 +39,15 @@ class Saze90BadgeService
         }
 
         $cacheKey = "saze90_badge:{$mobile}";
-        if (($cached = Cache::get($cacheKey)) !== null) {
-            return $cached ?: null;
+        $cached = Cache::get($cacheKey);
+        if ($cached !== null) {
+            // '__none__' is the sentinel for a confirmed "no badge" (vs an outage we don't cache).
+            return $cached === self::NONE ? null : $cached;
         }
 
         try {
+            // Closure returns the lowercased code, or self::NONE for a confirmed no-badge.
+            // A real HTTP/connection failure THROWS, so an outage is never memoised as "no badge".
             $code = $this->executeProtected('saze90_badge', function () use ($mobile) {
                 $base = rtrim((string) config('services.saze90.base_url'), '/');
 
@@ -49,26 +56,29 @@ class Saze90BadgeService
                     ->get($base.'/get-certificate', ['mobile' => $mobile]);
 
                 if (! $resp->successful()) {
-                    return null;
+                    throw new \RuntimeException('saze90 HTTP '.$resp->status());
                 }
 
                 $message = $resp->json('message');
-                if (! is_string($message) || trim($message) === '') {
-                    return null;
-                }
 
-                return strtolower(trim($message));
+                return (is_string($message) && trim($message) !== '') ? strtolower(trim($message)) : self::NONE;
             });
         } catch (\Throwable $e) {
+            // Outage / circuit open → return null WITHOUT caching, so the next call retries.
             Log::warning('Saze90 badge fetch failed', ['mobile' => $mobile, 'error' => $e->getMessage()]);
 
             return null;
         }
 
-        // Cache successful lookups only; never memoise a null (outage/no-badge) result.
-        if ($code) {
-            Cache::put($cacheKey, $code, (int) config('services.saze90.cache_ttl', 1800));
+        if ($code === self::NONE) {
+            // Cache a confirmed "no badge" for a SHORT window so non-members don't hit saze90 on
+            // every profile load, while a newly-upgraded member is still picked up quickly.
+            Cache::put($cacheKey, self::NONE, (int) config('services.saze90.cache_ttl_none', 300));
+
+            return null;
         }
+
+        Cache::put($cacheKey, $code, (int) config('services.saze90.cache_ttl', 1800));
 
         return $code;
     }

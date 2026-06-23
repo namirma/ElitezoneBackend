@@ -83,13 +83,20 @@ class SyncUserBadgeAction
             $engineer->forceFill([EngineerProfile::IS_SAZE90_USER => $isSaze90User])->save();
         }
 
-        // 3) badge_user pivot → replace this action's managed badges with the current set,
-        //    leaving any externally-managed badges untouched.
+        // 3) badge_user pivot → make this action's managed badges equal the current set,
+        //    leaving any externally-managed badges untouched. This runs on every getProfile,
+        //    so only WRITE when something actually changed (otherwise just two cheap reads).
         $managedIds = Badge::whereIn(Badge::CODE, self::MANAGED_CODES)->pluck(Badge::ID);
-        $currentIds = $badges->pluck(Badge::ID)->all();
-        $user->badges()->detach($managedIds->diff($currentIds)->all());
-        if ($currentIds) {
-            $user->badges()->syncWithoutDetaching($currentIds);
+        $desiredIds = $badges->pluck(Badge::ID);
+        $currentManaged = $user->badges()->whereIn('badges.id', $managedIds)->pluck('badges.id');
+
+        $toDetach = $currentManaged->diff($desiredIds)->all();
+        $toAttach = $desiredIds->diff($currentManaged)->all();
+        if ($toDetach) {
+            $user->badges()->detach($toDetach);
+        }
+        if ($toAttach) {
+            $user->badges()->attach($toAttach);
         }
 
         return [

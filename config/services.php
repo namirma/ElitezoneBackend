@@ -83,6 +83,7 @@ return [
         'enabled' => (bool) env('SAZE90_BADGE_ENABLED', true),
         'base_url' => env('SAZE90_BASE_URL', 'https://www.saze90.com'),
         'timeout' => (int) env('SAZE90_TIMEOUT', 5),
-        'cache_ttl' => (int) env('SAZE90_CACHE_TTL', 1800), // ثانیه؛ فقط نتیجهٔ موفق کش می‌شود
+        'cache_ttl' => (int) env('SAZE90_CACHE_TTL', 1800),        // ثانیه؛ نتیجهٔ «دارای نشان»
+        'cache_ttl_none' => (int) env('SAZE90_CACHE_TTL_NONE', 300), // ثانیه؛ نتیجهٔ «بدون نشان» (کوتاه‌تر)
     ],
 ];
