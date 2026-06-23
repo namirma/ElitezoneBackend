@@ -3,12 +3,14 @@
 namespace App\Http\Controllers\Api\User;
 
 use App\Actions\Profile\SetUserTypeAction;
+use App\Actions\Profile\SyncUserBadgeAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Profile\StoreUserProfileRequest;
 use App\Http\Requests\Profile\StoreUserTypeRequest;
 use App\Http\Requests\Profile\UpdateLegalProfileRequest;
 use App\Http\Requests\Profile\UpdateRealProfileRequest;
 use App\Http\Requests\Profile\UpdateUserProfileRequest;
+use App\Http\Resources\Profile\BadgeResource;
 use App\Http\Resources\Profile\UserResource;
 use App\Models\User;
 use App\Models\UserProfile;
@@ -22,12 +24,19 @@ use Illuminate\Support\Facades\Log;
 
 class ProfileController extends Controller
 {
-    public function getProfile(): JsonResponse
+    public function getProfile(Request $request, SyncUserBadgeAction $badgeSync): JsonResponse
     {
         $user = Auth::user();
         if (! $user) {
             return error(__('auth.no_user_found'), [], 404);
         }
+
+        // On-read badge sync so is_saze90_user / is_verified / the badge pivot are correct on
+        // the FIRST request after login — no separate /badge call, no refresh, no sync race.
+        // The saze90 lookup is cached (members 30 min, non-members 5 min), so this is a cache
+        // read on the vast majority of profile loads. This response is now the single source
+        // of truth for the badge state (badge, is_pioneer, is_saze90_user, badges).
+        $badge = $badgeSync->execute($user);
 
         $user->load([
             User::RELATION_PROFILE,
@@ -68,7 +77,15 @@ class ProfileController extends Controller
             $user->load(array_unique($relationsToLoad));
         }
 
-        return success(new UserResource($user), __('global.received_successfully'));
+        // Merge the badge summary into the profile payload so the frontend has one source of
+        // truth at session load (no separate /api/profile/badge round-trip needed).
+        $payload = (new UserResource($user))->resolve($request);
+        $payload['badge'] = $badge['badge'];
+        $payload['is_pioneer'] = $badge['is_pioneer'];
+        $payload['is_saze90_user'] = $badge['is_saze90_user'];
+        $payload['badges'] = BadgeResource::collection($badge['badges'])->resolve($request);
+
+        return success($payload, __('global.received_successfully'));
     }
 
     public function getRoleOptions(): JsonResponse
@@ -172,7 +189,7 @@ class ProfileController extends Controller
         } catch (\Exception $e) {
             Log::warning('Company inquiry failed', [
                 'user_id' => Auth::id(),
-                'error'   => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
 
             return error(__('profile.company_inquiry_failed'), [], 503);

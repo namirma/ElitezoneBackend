@@ -169,6 +169,27 @@ class BadgeSyncTest extends TestCase
     }
 
     /** @test */
+    public function get_profile_alone_returns_fresh_badge_data_on_the_first_call(): void
+    {
+        // No prior /badge call — GET /api/profile must already carry the badge state
+        // (single source of truth, no sync race / refresh needed).
+        $this->fakeSaze90('gold');
+        Badge::firstOrCreate([Badge::CODE => 'gold'], [Badge::NAME => 'طلایی']);
+
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $res = $this->getJson('/api/profile')
+            ->assertOk()
+            ->assertJsonPath('data.is_saze90_user', true)
+            ->assertJsonPath('data.badge', 'gold');
+
+        // badges contains gold (order not guaranteed; the user is also pioneer).
+        $codes = collect($res->json('data.badges'))->pluck('code')->all();
+        $this->assertContains('gold', $codes);
+    }
+
+    /** @test */
     public function a_saze90_member_engineer_is_persisted_and_auto_verified(): void
     {
         $this->fakeSaze90('gold');

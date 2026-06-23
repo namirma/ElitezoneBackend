@@ -2,20 +2,24 @@
 
 namespace App\Http\Controllers\Api\User;
 
+use App\Actions\Profile\SyncUserBadgeAction;
 use App\Http\Controllers\Controller;
-
-use App\Http\Resources\Profile\BadgeResource;
 use App\Http\Resources\Order\OrderSurveyResource;
+use App\Http\Resources\Profile\BadgeResource;
 use App\Models\OrderSurvey;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 
 class MyItemsController extends Controller
 {
-    public function badges(): JsonResponse
+    public function badges(SyncUserBadgeAction $badgeSync): JsonResponse
     {
         $user = Auth::user();
-        // Assuming the relation in User model is named 'badges'
+
+        // Sync the saze90/pioneer badges into the pivot first, so this list is correct on
+        // the first call (no lag, no refresh). The saze90 lookup is cached.
+        $badgeSync->execute($user);
+
         $badges = $user->badges()->latest()->get();
 
         return success(
