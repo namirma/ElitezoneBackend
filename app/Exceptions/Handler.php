@@ -17,36 +17,21 @@ use Throwable;
 
 class Handler extends ExceptionHandler
 {
+    /**
+     * فیلدهایی که نباید در session flash شوند.
+     * همچنین در bootstrap/app.php تعریف شده‌اند (منبع اصلی لاراول ۱۳).
+     */
     protected $dontFlash = [
         'current_password',
         'password',
         'password_confirmation',
     ];
 
-    public function register(): void
-    {
-        $this->renderable(function (Throwable $e, $request) {
-            if ($request->expectsJson() || $request->is('api/*')) {
-                return $this->handleApiException($e);
-            }
-        });
-    }
-
-    // متد unauthenticated برای زمانی که توکن کاربر معتبر نیست
-    protected function unauthenticated($request, AuthenticationException $exception)
-    {
-        if ($request->expectsJson() || $request->is('api/*')) {
-            return response()->json([
-                'status' => false,
-                'message' => 'احراز هویت نشده‌اید. لطفاً وارد حساب کاربری شوید.',
-                'errors' => [],
-            ], 401);
-        }
-
-        return redirect()->guest(route('login'));
-    }
-
-    private function handleApiException(Throwable $e)
+    /**
+     * مدیریت خطاهای API — فراخوانی از bootstrap/app.php withExceptions().
+     * در لاراول ۱۳، register() و unauthenticated() دیگر لازم نیستند.
+     */
+    public function handleApiException(Throwable $e)
     {
         // 1. خطاهای HTTP سفارشی (response آماده)
         if ($e instanceof HttpResponseException) {
