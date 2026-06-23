@@ -49,6 +49,36 @@ class AvatarAndEmailTest extends TestCase
     }
 
     /** @test */
+    public function a_user_can_delete_their_avatar(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        // آپلود اولیه
+        $this->postJson('/api/profile/avatar', ['avatar' => UploadedFile::fake()->image('a.jpg')])->assertOk();
+        $path = $user->fresh()->profile->avatar;
+        Storage::disk('public')->assertExists($path);
+
+        // حذف
+        $this->deleteJson('/api/profile/avatar')
+            ->assertOk()
+            ->assertJsonPath('status', true);
+
+        $this->assertNull($user->fresh()->profile->avatar);
+        Storage::disk('public')->assertMissing($path);
+    }
+
+    /** @test */
+    public function deleting_avatar_when_none_is_set_returns_422(): void
+    {
+        Storage::fake('public');
+        Sanctum::actingAs(User::factory()->create());
+
+        $this->deleteJson('/api/profile/avatar')->assertStatus(422);
+    }
+
+    /** @test */
     public function uploading_a_new_avatar_deletes_the_previous_file(): void
     {
         Storage::fake('public');

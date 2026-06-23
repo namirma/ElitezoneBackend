@@ -129,6 +129,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
         // Avatar (profile picture)
         Route::post('/avatar', [\App\Http\Controllers\Api\User\AvatarController::class, 'store']);
+        Route::delete('/avatar', [\App\Http\Controllers\Api\User\AvatarController::class, 'destroy']);
 
         // Account security (password / mobile / email)
         Route::post('/verify-email', [AccountSecurityController::class, 'setEmail']);
