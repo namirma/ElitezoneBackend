@@ -16,15 +16,15 @@ use Tests\TestCase;
  */
 class SetBasePriceTest extends TestCase
 {
-    use DatabaseTransactions;
     use CreatesPricingFixtures;
+    use DatabaseTransactions;
 
     private SetBasePrice $pipe;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->pipe = new SetBasePrice();
+        $this->pipe = new SetBasePrice;
         // The pipe caches lookups — flush each test to keep them independent
         Cache::flush();
     }
@@ -32,8 +32,8 @@ class SetBasePriceTest extends TestCase
     /** @test */
     public function it_loads_general_and_special_prices_from_database(): void
     {
-        $variant  = $this->makeVariant();
-        $factory  = $this->makeFactory();
+        $variant = $this->makeVariant();
+        $factory = $this->makeFactory();
         $location = $this->makeLocation($factory);
 
         $this->makePrice($variant, $factory, $location, general: 1_500_000, special: 1_200_000);
@@ -49,8 +49,8 @@ class SetBasePriceTest extends TestCase
     /** @test */
     public function it_uses_special_price_for_payable_when_available(): void
     {
-        $variant  = $this->makeVariant();
-        $factory  = $this->makeFactory();
+        $variant = $this->makeVariant();
+        $factory = $this->makeFactory();
         $location = $this->makeLocation($factory);
 
         $this->makePrice($variant, $factory, $location, general: 1_500_000, special: 1_200_000);
@@ -66,8 +66,8 @@ class SetBasePriceTest extends TestCase
     /** @test */
     public function it_falls_back_to_general_price_when_special_is_zero(): void
     {
-        $variant  = $this->makeVariant();
-        $factory  = $this->makeFactory();
+        $variant = $this->makeVariant();
+        $factory = $this->makeFactory();
         $location = $this->makeLocation($factory);
 
         $this->makePrice($variant, $factory, $location, general: 1_500_000, special: 0);
@@ -82,8 +82,8 @@ class SetBasePriceTest extends TestCase
     /** @test */
     public function it_returns_zero_when_no_price_row_exists(): void
     {
-        $variant  = $this->makeVariant();
-        $factory  = $this->makeFactory();
+        $variant = $this->makeVariant();
+        $factory = $this->makeFactory();
         $location = $this->makeLocation($factory);
 
         // intentionally NO ProductPrice row
@@ -103,8 +103,8 @@ class SetBasePriceTest extends TestCase
         // A single (variant, factory, location) triple is uniquely indexed,
         // so the "latest('updated_at')" branch is exercised by mutating an
         // existing row and re-running the pipe (with cache flushed between).
-        $variant  = $this->makeVariant();
-        $factory  = $this->makeFactory();
+        $variant = $this->makeVariant();
+        $factory = $this->makeFactory();
         $location = $this->makeLocation($factory);
 
         $price = $this->makePrice($variant, $factory, $location, general: 800_000, special: 700_000);
@@ -115,7 +115,7 @@ class SetBasePriceTest extends TestCase
 
         // Update the row and re-run
         $price->update(['general_price' => 1_500_000, 'special_price' => 1_200_000]);
-        \Illuminate\Support\Facades\Cache::flush();
+        Cache::flush();
 
         $ctx2 = new PricingContext(variant: $variant, factory: $factory, location: $location);
         $this->pipe->handle($ctx2, fn ($c) => $c);

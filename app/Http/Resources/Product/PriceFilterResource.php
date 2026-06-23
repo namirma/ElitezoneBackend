@@ -2,12 +2,12 @@
 
 namespace App\Http\Resources\Product;
 
+use App\Http\Resources\BaseJsonResource;
 use App\Models\PriceFilter;
 use Illuminate\Http\Request;
-use App\Http\Resources\BaseJsonResource;
 
 /**
- * @mixin \App\Models\PriceFilter
+ * @mixin PriceFilter
  */
 class PriceFilterResource extends BaseJsonResource
 {

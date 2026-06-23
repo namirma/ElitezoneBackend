@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api\User;
 
 use App\Http\Controllers\Controller;
-
 use App\Http\Resources\Order\OrderResource;
 use App\Models\Order;
 use App\Repositories\Contracts\OrderRepositoryInterface;
@@ -72,7 +71,7 @@ class OrderController extends Controller
         $orders = Order::query()
             ->where(Order::PLACER_USER_ID, $userId)
             ->whereNotNull(Order::BENEFICIARY_USER_ID)
-            ->when($type === 'current',   fn ($q) => $q->current())
+            ->when($type === 'current', fn ($q) => $q->current())
             ->when($type === 'delivered', fn ($q) => $q->delivered())
             ->when($type === 'cancelled', fn ($q) => $q->cancelled())
             ->with(Order::resourceRelations())

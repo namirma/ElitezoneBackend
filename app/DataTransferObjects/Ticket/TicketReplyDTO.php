@@ -19,14 +19,14 @@ final class TicketReplyDTO
     public static function fromRequest(Request $request): self
     {
         $request->validate([
-            'message'  => ['required', 'string'],
-            'files'    => ['nullable', 'array'],
-            'files.*'  => ['file', 'mimes:jpeg,jpg,png,gif,webp,pdf,doc,docx,xls,xlsx,txt,zip', 'max:10240'],
+            'message' => ['required', 'string'],
+            'files' => ['nullable', 'array'],
+            'files.*' => ['file', 'mimes:jpeg,jpg,png,gif,webp,pdf,doc,docx,xls,xlsx,txt,zip', 'max:10240'],
         ]);
 
         return new self(
             message: (string) $request->input('message'),
-            files:   $request->file('files'),
+            files: $request->file('files'),
         );
     }
 

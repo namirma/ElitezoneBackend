@@ -23,27 +23,30 @@ class UserBankAccountPolicyTest extends TestCase
     use DatabaseTransactions;
 
     private User $owner;
+
     private User $stranger;
+
     private User $admin;
+
     private UserBankAccount $account;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->owner    = User::factory()->create();
+        $this->owner = User::factory()->create();
         $this->stranger = User::factory()->create();
-        $this->admin    = User::factory()->create();
+        $this->admin = User::factory()->create();
 
         $adminRole = Role::firstOrCreate(['name' => 'admin'], ['display_name' => 'Admin']);
         $this->admin->addRole($adminRole);
 
         $this->account = UserBankAccount::create([
-            UserBankAccount::USER_ID             => $this->owner->id,
-            UserBankAccount::BANK_NAME           => 'بانک ملت',
+            UserBankAccount::USER_ID => $this->owner->id,
+            UserBankAccount::BANK_NAME => 'بانک ملت',
             UserBankAccount::ACCOUNT_HOLDER_NAME => 'محمد محمدی',
-            UserBankAccount::SHABA               => 'IR012345678901234567890123',
-            UserBankAccount::STATUS              => UserBankAccount::STATUS_APPROVED,
+            UserBankAccount::SHABA => 'IR012345678901234567890123',
+            UserBankAccount::STATUS => UserBankAccount::STATUS_APPROVED,
         ]);
     }
 
@@ -117,7 +120,7 @@ class UserBankAccountPolicyTest extends TestCase
     public function multiple_strangers_cannot_access_account(): void
     {
         $alice = User::factory()->create();
-        $bob   = User::factory()->create();
+        $bob = User::factory()->create();
         $carol = User::factory()->create();
 
         foreach ([$alice, $bob, $carol] as $user) {
@@ -134,13 +137,13 @@ class UserBankAccountPolicyTest extends TestCase
     /** @test */
     public function user_a_cannot_see_user_b_account(): void
     {
-        $userB    = User::factory()->create();
+        $userB = User::factory()->create();
         $accountB = UserBankAccount::create([
-            UserBankAccount::USER_ID             => $userB->id,
-            UserBankAccount::BANK_NAME           => 'بانک ملی',
+            UserBankAccount::USER_ID => $userB->id,
+            UserBankAccount::BANK_NAME => 'بانک ملی',
             UserBankAccount::ACCOUNT_HOLDER_NAME => 'علی علوی',
-            UserBankAccount::SHABA               => 'IR099999999999999999999999',
-            UserBankAccount::STATUS              => UserBankAccount::STATUS_APPROVED,
+            UserBankAccount::SHABA => 'IR099999999999999999999999',
+            UserBankAccount::STATUS => UserBankAccount::STATUS_APPROVED,
         ]);
 
         // Each owner can only see their own account

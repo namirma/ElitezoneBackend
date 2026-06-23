@@ -28,7 +28,7 @@ class StoreQuestionRequest extends FormRequest
             Question::NAME => 'required|string|max:255',
             Question::MOBILE => 'required|string|max:11',
             Question::EMAIL => 'required|email:rfc,dns',
-            Question::SUBJECT => 'required|string|', //. Rule::in(Question::$qTypes),
+            Question::SUBJECT => 'required|string|', // . Rule::in(Question::$qTypes),
             Question::MESSAGE => 'required|string|max:1000',
         ];
     }

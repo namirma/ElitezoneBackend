@@ -20,22 +20,22 @@ use Tests\TestCase;
  */
 class ApplyPriceFiltersTest extends TestCase
 {
-    use DatabaseTransactions;
     use CreatesPricingFixtures;
+    use DatabaseTransactions;
 
     private ApplyPriceFilters $pipe;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->pipe = new ApplyPriceFilters();
+        $this->pipe = new ApplyPriceFilters;
     }
 
     private function makeFilterType(string $applyOn): PriceFilterType
     {
         return PriceFilterType::create([
-            'name'     => "Type-{$applyOn}",
-            'code'     => 'TYPE_'.strtoupper($applyOn).'_'.Str::random(4),
+            'name' => "Type-{$applyOn}",
+            'code' => 'TYPE_'.strtoupper($applyOn).'_'.Str::random(4),
             'apply_on' => $applyOn,
         ]);
     }
@@ -43,8 +43,8 @@ class ApplyPriceFiltersTest extends TestCase
     private function makeFilterCategory(string $code = 'cat'): PriceFilterCategory
     {
         return PriceFilterCategory::create([
-            'name'      => 'دسته فیلتر تست',
-            'code'      => $code.'_'.Str::random(6),
+            'name' => 'دسته فیلتر تست',
+            'code' => $code.'_'.Str::random(6),
             'is_active' => true,
         ]);
     }
@@ -60,12 +60,12 @@ class ApplyPriceFiltersTest extends TestCase
         // price_filter_category_items pivot, NOT a direct FK column.
         $filter = PriceFilter::create([
             'price_filter_type_id' => $type->id,
-            'name'                 => 'فیلتر تست',
-            'code'                 => 'FILT_'.Str::random(6),
-            'amount'               => $amount,
-            'is_percentage'        => $isPercent,
-            'is_active'            => true,
-            'sort_order'           => $sortOrder,
+            'name' => 'فیلتر تست',
+            'code' => 'FILT_'.Str::random(6),
+            'amount' => $amount,
+            'is_percentage' => $isPercent,
+            'is_active' => true,
+            'sort_order' => $sortOrder,
         ]);
 
         $category->filters()->attach($filter->id);
@@ -78,7 +78,7 @@ class ApplyPriceFiltersTest extends TestCase
     {
         $ctx = $this->makeContext();
         $ctx->payablePrice = 1_000_000;
-        $ctx->listPrice    = 1_200_000;
+        $ctx->listPrice = 1_200_000;
         $ctx->filterCategoryIds = [];
 
         $this->pipe->handle($ctx, fn ($c) => $c);
@@ -90,50 +90,50 @@ class ApplyPriceFiltersTest extends TestCase
     /** @test */
     public function general_percentage_filter_adjusts_both_list_and_payable(): void
     {
-        $cat  = $this->makeFilterCategory();
+        $cat = $this->makeFilterCategory();
         $type = $this->makeFilterType('general');
         $this->makeFilter($cat, $type, amount: 10, isPercent: true);
 
         $ctx = $this->makeContext();
         $ctx->payablePrice = 1_000_000;
-        $ctx->listPrice    = 1_200_000;
+        $ctx->listPrice = 1_200_000;
         $ctx->filterCategoryIds = [$cat->id];
 
         $this->pipe->handle($ctx, fn ($c) => $c);
 
         // +10% → both prices increase by 10%
         $this->assertSame(1_100_000.0, $ctx->payablePrice, '1,000,000 + 10% = 1,100,000');
-        $this->assertSame(1_320_000.0, $ctx->listPrice,    '1,200,000 + 10% = 1,320,000');
+        $this->assertSame(1_320_000.0, $ctx->listPrice, '1,200,000 + 10% = 1,320,000');
     }
 
     /** @test */
     public function special_filter_adjusts_only_payable_price(): void
     {
-        $cat  = $this->makeFilterCategory();
+        $cat = $this->makeFilterCategory();
         $type = $this->makeFilterType('special');
         $this->makeFilter($cat, $type, amount: -50_000, isPercent: false);
 
         $ctx = $this->makeContext();
         $ctx->payablePrice = 1_000_000;
-        $ctx->listPrice    = 1_200_000;
+        $ctx->listPrice = 1_200_000;
         $ctx->filterCategoryIds = [$cat->id];
 
         $this->pipe->handle($ctx, fn ($c) => $c);
 
-        $this->assertSame(950_000.0, $ctx->payablePrice,  'Special filter discounted payable by 50k');
+        $this->assertSame(950_000.0, $ctx->payablePrice, 'Special filter discounted payable by 50k');
         $this->assertSame(1_200_000.0, $ctx->listPrice, 'List price untouched by special filter');
     }
 
     /** @test */
     public function both_filter_applies_net_delta_to_payable(): void
     {
-        $cat  = $this->makeFilterCategory();
+        $cat = $this->makeFilterCategory();
         $type = $this->makeFilterType('both');
         $this->makeFilter($cat, $type, amount: 30_000, isPercent: false);
 
         $ctx = $this->makeContext();
         $ctx->payablePrice = 1_000_000;
-        $ctx->listPrice    = 1_200_000;
+        $ctx->listPrice = 1_200_000;
         $ctx->filterCategoryIds = [$cat->id];
 
         $this->pipe->handle($ctx, fn ($c) => $c);
@@ -144,13 +144,13 @@ class ApplyPriceFiltersTest extends TestCase
     /** @test */
     public function payable_price_is_clamped_to_zero(): void
     {
-        $cat  = $this->makeFilterCategory();
+        $cat = $this->makeFilterCategory();
         $type = $this->makeFilterType('special');
         $this->makeFilter($cat, $type, amount: -50_000_000, isPercent: false);
 
         $ctx = $this->makeContext();
         $ctx->payablePrice = 1_000_000;
-        $ctx->listPrice    = 1_200_000;
+        $ctx->listPrice = 1_200_000;
         $ctx->filterCategoryIds = [$cat->id];
 
         $this->pipe->handle($ctx, fn ($c) => $c);
@@ -161,16 +161,16 @@ class ApplyPriceFiltersTest extends TestCase
     /** @test */
     public function filters_are_applied_in_sort_order(): void
     {
-        $cat  = $this->makeFilterCategory();
+        $cat = $this->makeFilterCategory();
         $type = $this->makeFilterType('special');
 
         // Apply +20% first (sort_order=1), then -100k (sort_order=2)
-        $this->makeFilter($cat, $type, amount: 20,      isPercent: true,  sortOrder: 1);
+        $this->makeFilter($cat, $type, amount: 20, isPercent: true, sortOrder: 1);
         $this->makeFilter($cat, $type, amount: -100_000, isPercent: false, sortOrder: 2);
 
         $ctx = $this->makeContext();
         $ctx->payablePrice = 1_000_000;
-        $ctx->listPrice    = 1_200_000;
+        $ctx->listPrice = 1_200_000;
         $ctx->filterCategoryIds = [$cat->id];
 
         $this->pipe->handle($ctx, fn ($c) => $c);
@@ -182,7 +182,7 @@ class ApplyPriceFiltersTest extends TestCase
     /** @test */
     public function inactive_filters_are_skipped(): void
     {
-        $cat  = $this->makeFilterCategory();
+        $cat = $this->makeFilterCategory();
         $type = $this->makeFilterType('special');
 
         $filter = $this->makeFilter($cat, $type, amount: -200_000, isPercent: false);

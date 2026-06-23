@@ -8,7 +8,6 @@ use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\OrderUnit;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Cache;
 
 /**
  * Computes a freight quote for a cart BEFORE checkout, so the frontend can show the

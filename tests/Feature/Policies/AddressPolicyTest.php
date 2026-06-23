@@ -16,25 +16,28 @@ class AddressPolicyTest extends TestCase
     use DatabaseTransactions;
 
     private User $owner;
+
     private User $stranger;
+
     private User $admin;
+
     private Address $address;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->owner    = User::factory()->create();
+        $this->owner = User::factory()->create();
         $this->stranger = User::factory()->create();
-        $this->admin    = User::factory()->create();
+        $this->admin = User::factory()->create();
 
         $adminRole = Role::firstOrCreate(['name' => 'admin'], ['display_name' => 'Admin']);
         $this->admin->addRole($adminRole);
 
         $this->address = Address::create([
-            Address::USER_ID         => $this->owner->id,
-            Address::POSTAL_ADDRESS  => 'تهران، خیابان آزادی، پلاک ۱۲',
-            Address::RECEIVER_NAME   => 'حسن حسینی',
+            Address::USER_ID => $this->owner->id,
+            Address::POSTAL_ADDRESS => 'تهران، خیابان آزادی، پلاک ۱۲',
+            Address::RECEIVER_NAME => 'حسن حسینی',
             Address::RECEIVER_MOBILE => '09121234567',
         ]);
     }
@@ -114,9 +117,9 @@ class AddressPolicyTest extends TestCase
     {
         $userB = User::factory()->create();
         $addressB = Address::create([
-            Address::USER_ID         => $userB->id,
-            Address::POSTAL_ADDRESS  => 'اصفهان، چهارباغ',
-            Address::RECEIVER_NAME   => 'مریم احمدی',
+            Address::USER_ID => $userB->id,
+            Address::POSTAL_ADDRESS => 'اصفهان، چهارباغ',
+            Address::RECEIVER_NAME => 'مریم احمدی',
             Address::RECEIVER_MOBILE => '09357654321',
         ]);
 

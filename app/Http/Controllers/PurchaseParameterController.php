@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Cart\SavePurchaseParametersRequest;
 use App\Http\Resources\Cart\PurchaseParameterGroupResource;
 use App\Http\Resources\Cart\PurchaseParameterValueResource;
-use App\Models\Cart;
 use App\Models\PurchaseParameterGroup;
 use App\Models\PurchaseParameterValue;
 use App\Services\Cart\CartParameterSyncService;
@@ -43,9 +42,9 @@ class PurchaseParameterController extends Controller
         }
 
         $defaultParameterValueCodesByGroup = [
-            'customer_type'     => 'employer',
+            'customer_type' => 'employer',
             'consultant_status' => 'without_consultant',
-            'purchase_purpose'  => 'for_myself',
+            'purchase_purpose' => 'for_myself',
         ];
 
         $defaultValuesToReturn = collect();

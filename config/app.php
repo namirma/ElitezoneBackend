@@ -3,6 +3,8 @@
 use Artisaninweb\SoapWrapper\SoapWrapper;
 use Illuminate\Support\Facades\Facade;
 use Illuminate\Support\ServiceProvider;
+use Mccarlosen\LaravelMpdf\Facades\LaravelMpdf;
+use Mccarlosen\LaravelMpdf\LaravelMpdfServiceProvider;
 
 return [
 
@@ -199,7 +201,7 @@ return [
     |
     */
     'providers' => ServiceProvider::defaultProviders()->merge([
-        Mccarlosen\LaravelMpdf\LaravelMpdfServiceProvider::class,
+        LaravelMpdfServiceProvider::class,
     ])->toArray(),
 
     /*
@@ -216,7 +218,7 @@ return [
     'aliases' => Facade::defaultAliases()->merge([
         // 'Example' => App\Facades\Example::class,
         'SoapWrapper' => SoapWrapper::class,
-        'PDF' => Mccarlosen\LaravelMpdf\Facades\LaravelMpdf::class,
+        'PDF' => LaravelMpdf::class,
     ])->toArray(),
 
 ];

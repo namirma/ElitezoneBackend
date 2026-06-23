@@ -50,9 +50,9 @@ class EmployerController extends Controller
         EmployerProfile::updateOrCreate(
             [EmployerProfile::USER_ID => Auth::id()],
             [
-                EmployerProfile::USER_ID             => Auth::id(),
-                EmployerProfile::ACTIVITY_PROVINCES  => $request->validated('activity_provinces')  ?? $existing?->activity_provinces,
-                EmployerProfile::PROJECT_DONE        => $request->validated('project_done')        ?? $existing?->project_done,
+                EmployerProfile::USER_ID => Auth::id(),
+                EmployerProfile::ACTIVITY_PROVINCES => $request->validated('activity_provinces') ?? $existing?->activity_provinces,
+                EmployerProfile::PROJECT_DONE => $request->validated('project_done') ?? $existing?->project_done,
                 EmployerProfile::PROJECT_IN_PROGRESS => $request->validated('project_in_progress') ?? $existing?->project_in_progress,
             ]
         );

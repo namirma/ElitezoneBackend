@@ -84,7 +84,7 @@ class SupplierDebtHandler
 
         $order->forceFill([
             Order::SUPPLIER_DEBT_PENDING => true,
-            Order::SUPPLIER_DEBT_AMOUNT  => $reclaimAmount,
+            Order::SUPPLIER_DEBT_AMOUNT => $reclaimAmount,
         ])->save();
 
         // Queue the SMS and defer it until AFTER the surrounding weighbridge transaction

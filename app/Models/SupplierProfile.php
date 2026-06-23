@@ -80,7 +80,7 @@ class SupplierProfile extends Model
     /** @var array<string, string> */
     protected $casts = [
         self::TRANS_COMMISSION => 'boolean',
-        self::TRANS_VAT        => 'boolean',
+        self::TRANS_VAT => 'boolean',
     ];
 
     public function user(): BelongsTo

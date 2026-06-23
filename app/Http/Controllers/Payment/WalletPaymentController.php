@@ -45,11 +45,11 @@ class WalletPaymentController extends Controller
             $shortage = $payableAmount - $wallet->balance;
 
             return error(__('payment.error.insufficient_balance'), [
-                'error_code'      => 'INSUFFICIENT_BALANCE',
+                'error_code' => 'INSUFFICIENT_BALANCE',
                 'required_amount' => $payableAmount,
                 'current_balance' => (float) $wallet->balance,
                 'shortage_amount' => $shortage,
-                'action'          => 'deposit_required',
+                'action' => 'deposit_required',
             ], Response::HTTP_PAYMENT_REQUIRED);
         }
 
@@ -57,15 +57,15 @@ class WalletPaymentController extends Controller
             $this->purchaseAction->execute($order);
 
             return success([
-                'order'         => new OrderResource($order->fresh(Order::resourceRelations())),
-                'new_balance'   => (float) $user->wallet->fresh()->balance,
+                'order' => new OrderResource($order->fresh(Order::resourceRelations())),
+                'new_balance' => (float) $user->wallet->fresh()->balance,
                 'tracking_code' => $order->id,
             ], __('payment.success.payment_completed'));
         } catch (Exception $e) {
             Log::error('Wallet payment failed', [
                 'order_id' => $order->id,
-                'user_id'  => $user->id,
-                'error'    => $e->getMessage(),
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
             ]);
 
             return error(__('orders.payment_processing_error'), [], Response::HTTP_INTERNAL_SERVER_ERROR);

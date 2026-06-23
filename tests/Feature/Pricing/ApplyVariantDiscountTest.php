@@ -14,22 +14,22 @@ use Tests\TestCase;
  */
 class ApplyVariantDiscountTest extends TestCase
 {
-    use DatabaseTransactions;
     use CreatesPricingFixtures;
+    use DatabaseTransactions;
 
     private ApplyVariantDiscount $pipe;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->pipe = new ApplyVariantDiscount();
+        $this->pipe = new ApplyVariantDiscount;
     }
 
     /** @test */
     public function it_does_nothing_when_no_discount_set(): void
     {
         $variant = $this->makeVariant();   // no discount fields
-        $ctx     = $this->makeContext($variant);
+        $ctx = $this->makeContext($variant);
         $ctx->payablePrice = 1_000_000;
 
         $this->pipe->handle($ctx, fn ($c) => $c);
@@ -42,7 +42,7 @@ class ApplyVariantDiscountTest extends TestCase
     public function it_applies_percentage_discount(): void
     {
         $variant = $this->makeVariant(null, [
-            'discount_type'  => 'percentage',
+            'discount_type' => 'percentage',
             'discount_value' => 10,
         ]);
         $ctx = $this->makeContext($variant);
@@ -59,7 +59,7 @@ class ApplyVariantDiscountTest extends TestCase
     public function it_applies_fixed_amount_discount(): void
     {
         $variant = $this->makeVariant(null, [
-            'discount_type'  => 'fixed_amount',
+            'discount_type' => 'fixed_amount',
             'discount_value' => 50_000,
         ]);
         $ctx = $this->makeContext($variant);
@@ -76,7 +76,7 @@ class ApplyVariantDiscountTest extends TestCase
     public function it_clamps_payable_price_to_zero_when_discount_exceeds_price(): void
     {
         $variant = $this->makeVariant(null, [
-            'discount_type'  => 'fixed_amount',
+            'discount_type' => 'fixed_amount',
             'discount_value' => 5_000_000,
         ]);
         $ctx = $this->makeContext($variant);
@@ -91,8 +91,8 @@ class ApplyVariantDiscountTest extends TestCase
     public function it_ignores_discount_before_start_date(): void
     {
         $variant = $this->makeVariant(null, [
-            'discount_type'       => 'percentage',
-            'discount_value'      => 20,
+            'discount_type' => 'percentage',
+            'discount_value' => 20,
             'discount_start_date' => now()->addDay(),
         ]);
         $ctx = $this->makeContext($variant);
@@ -108,8 +108,8 @@ class ApplyVariantDiscountTest extends TestCase
     public function it_ignores_discount_after_end_date(): void
     {
         $variant = $this->makeVariant(null, [
-            'discount_type'     => 'percentage',
-            'discount_value'    => 20,
+            'discount_type' => 'percentage',
+            'discount_value' => 20,
             'discount_end_date' => now()->subDay(),
         ]);
         $ctx = $this->makeContext($variant);

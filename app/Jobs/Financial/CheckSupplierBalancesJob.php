@@ -76,7 +76,7 @@ class CheckSupplierBalancesJob implements ShouldQueue
             // Debt already cleared or zero — just unflag
             $order->forceFill([
                 Order::SUPPLIER_DEBT_PENDING => false,
-                Order::SUPPLIER_DEBT_AMOUNT  => 0,
+                Order::SUPPLIER_DEBT_AMOUNT => 0,
             ])->save();
 
             return;
@@ -160,7 +160,7 @@ class CheckSupplierBalancesJob implements ShouldQueue
             // 3. Clear the pending debt flag on the order
             $lockedOrder->forceFill([
                 Order::SUPPLIER_DEBT_PENDING => false,
-                Order::SUPPLIER_DEBT_AMOUNT  => 0,
+                Order::SUPPLIER_DEBT_AMOUNT => 0,
             ])->save();
 
             Log::channel('financial')->info("Supplier debt cleared for order {$lockedOrder->id}. Debt: {$debtAmount}");

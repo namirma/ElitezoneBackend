@@ -3,10 +3,11 @@
 namespace App\Http\Resources\Product;
 
 use App\Http\Resources\BaseJsonResource;
+use App\Models\InventoryPrediction;
 use Illuminate\Http\Request;
 
 /**
- * @mixin \App\Models\InventoryPrediction
+ * @mixin InventoryPrediction
  */
 class InventoryPredictionResource extends BaseJsonResource
 {

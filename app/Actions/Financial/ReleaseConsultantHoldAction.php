@@ -59,7 +59,7 @@ class ReleaseConsultantHoldAction
             // No consultant commission was held for this order (no consultant)
             Log::channel('financial')->info("ReleaseConsultantHoldAction: order {$order->id} has no consultant commission — only recording ref.");
             $order->forceFill([
-                Order::CONSULTANT_MOADIAN_REF      => $moadianRef,
+                Order::CONSULTANT_MOADIAN_REF => $moadianRef,
                 Order::CONSULTANT_HOLD_RELEASED_AT => now(),
             ])->save();
 
@@ -114,7 +114,7 @@ class ReleaseConsultantHoldAction
             );
 
             $locked->forceFill([
-                Order::CONSULTANT_MOADIAN_REF      => $moadianRef,
+                Order::CONSULTANT_MOADIAN_REF => $moadianRef,
                 Order::CONSULTANT_HOLD_RELEASED_AT => now(),
             ])->save();
 

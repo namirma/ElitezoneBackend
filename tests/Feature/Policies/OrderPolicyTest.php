@@ -20,40 +20,45 @@ class OrderPolicyTest extends TestCase
     use DatabaseTransactions;
 
     private User $owner;
+
     private User $beneficiary;
+
     private User $stranger;
+
     private User $supplier;
+
     private User $admin;
+
     private Order $order;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->owner       = User::factory()->create();
+        $this->owner = User::factory()->create();
         $this->beneficiary = User::factory()->create();
-        $this->stranger    = User::factory()->create();
-        $this->supplier    = User::factory()->create();
-        $this->admin       = User::factory()->create();
+        $this->stranger = User::factory()->create();
+        $this->supplier = User::factory()->create();
+        $this->admin = User::factory()->create();
 
         // Roles (idempotent via firstOrCreate so we don't conflict with seed data)
         $supplierRole = Role::firstOrCreate(['name' => 'supplier'], ['display_name' => 'Supplier']);
-        $adminRole    = Role::firstOrCreate(['name' => 'admin'],    ['display_name' => 'Admin']);
+        $adminRole = Role::firstOrCreate(['name' => 'admin'], ['display_name' => 'Admin']);
 
         $this->supplier->addRole($supplierRole);
         $this->admin->addRole($adminRole);
 
         $this->order = Order::create([
-            Order::PLACER_USER_ID      => $this->owner->id,
+            Order::PLACER_USER_ID => $this->owner->id,
             Order::BENEFICIARY_USER_ID => $this->beneficiary->id,
-            Order::ORDER_NUMBER        => 'POLICY-TEST-'.now()->format('YmdHis').rand(100, 999),
-            Order::STATUS              => Order::STATUS_PENDING,
-            Order::FINAL_AMOUNT        => 1_000_000,
-            Order::PAYMENT_STATUS      => Order::PAYMENT_PENDING,
+            Order::ORDER_NUMBER => 'POLICY-TEST-'.now()->format('YmdHis').rand(100, 999),
+            Order::STATUS => Order::STATUS_PENDING,
+            Order::FINAL_AMOUNT => 1_000_000,
+            Order::PAYMENT_STATUS => Order::PAYMENT_PENDING,
         ]);
 
         OrderItem::factory()->create([
-            OrderItem::ORDER_ID         => $this->order->id,
+            OrderItem::ORDER_ID => $this->order->id,
             OrderItem::SUPPLIER_USER_ID => $this->supplier->id,
         ]);
     }
@@ -183,7 +188,7 @@ class OrderPolicyTest extends TestCase
     public function supplier_without_items_in_order_cannot_manage(): void
     {
         $otherSupplier = User::factory()->create();
-        $supplierRole  = Role::firstOrCreate(['name' => 'supplier'], ['display_name' => 'Supplier']);
+        $supplierRole = Role::firstOrCreate(['name' => 'supplier'], ['display_name' => 'Supplier']);
         $otherSupplier->addRole($supplierRole);
 
         $this->assertFalse($otherSupplier->can('manageAsSupplier', $this->order));

@@ -20,17 +20,20 @@ class CartPolicyTest extends TestCase
     use DatabaseTransactions;
 
     private User $owner;
+
     private User $stranger;
+
     private User $admin;
+
     private Cart $cart;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->owner    = User::factory()->create();
+        $this->owner = User::factory()->create();
         $this->stranger = User::factory()->create();
-        $this->admin    = User::factory()->create();
+        $this->admin = User::factory()->create();
 
         $adminRole = Role::firstOrCreate(['name' => 'admin'], ['display_name' => 'Admin']);
         $this->admin->addRole($adminRole);

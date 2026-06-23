@@ -3,6 +3,16 @@
 namespace App\Providers;
 
 // use Illuminate\Support\Facades\Gate;
+use App\Models\Address;
+use App\Models\Cart;
+use App\Models\Order;
+use App\Models\UserBankAccount;
+use App\Models\Wishlist;
+use App\Policies\AddressPolicy;
+use App\Policies\CartPolicy;
+use App\Policies\OrderPolicy;
+use App\Policies\UserBankAccountPolicy;
+use App\Policies\WishlistPolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 
 class AuthServiceProvider extends ServiceProvider
@@ -13,11 +23,11 @@ class AuthServiceProvider extends ServiceProvider
      * @var array<class-string, class-string>
      */
     protected $policies = [
-        \App\Models\Order::class           => \App\Policies\OrderPolicy::class,
-        \App\Models\Cart::class            => \App\Policies\CartPolicy::class,
-        \App\Models\Address::class         => \App\Policies\AddressPolicy::class,
-        \App\Models\Wishlist::class        => \App\Policies\WishlistPolicy::class,
-        \App\Models\UserBankAccount::class => \App\Policies\UserBankAccountPolicy::class,
+        Order::class => OrderPolicy::class,
+        Cart::class => CartPolicy::class,
+        Address::class => AddressPolicy::class,
+        Wishlist::class => WishlistPolicy::class,
+        UserBankAccount::class => UserBankAccountPolicy::class,
     ];
 
     /**

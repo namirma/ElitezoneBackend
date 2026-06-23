@@ -14,8 +14,8 @@ class MobileNidMatchController extends Controller
     public function store(MobileNidMatchRequest $request): JsonResponse
     {
         $normalized = $this->service->match(
-            nationalCode:  $request->validated('national_code'),
-            mobileNumber:  $request->validated('mobile_number'),
+            nationalCode: $request->validated('national_code'),
+            mobileNumber: $request->validated('mobile_number'),
         );
 
         if ($normalized['has_error']) {

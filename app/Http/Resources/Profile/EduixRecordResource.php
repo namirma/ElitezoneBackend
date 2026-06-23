@@ -2,13 +2,13 @@
 
 namespace App\Http\Resources\Profile;
 
+use App\Http\Resources\BaseJsonResource;
 use App\Models\EduixRecord;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use App\Http\Resources\BaseJsonResource;
 
 /**
- * @mixin \App\Models\EduixRecord
+ * @mixin EduixRecord
  */
 class EduixRecordResource extends BaseJsonResource
 {

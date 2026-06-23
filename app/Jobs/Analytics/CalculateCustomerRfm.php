@@ -72,14 +72,14 @@ class CalculateCustomerRfm implements ShouldQueue
             CustomerStat::updateOrCreate(
                 [CustomerStat::USER_ID => $userId],
                 [
-                    CustomerStat::RECENCY_DAYS       => $recency,
-                    CustomerStat::FREQUENCY_COUNT     => $frequency,
-                    CustomerStat::MONETARY_TOTAL      => $monetary,
-                    CustomerStat::R_SCORE             => $rScore,
-                    CustomerStat::F_SCORE             => $fScore,
-                    CustomerStat::M_SCORE             => $mScore,
-                    CustomerStat::SEGMENT             => $newSegment,
-                    CustomerStat::LAST_CALCULATED_AT  => now(),
+                    CustomerStat::RECENCY_DAYS => $recency,
+                    CustomerStat::FREQUENCY_COUNT => $frequency,
+                    CustomerStat::MONETARY_TOTAL => $monetary,
+                    CustomerStat::R_SCORE => $rScore,
+                    CustomerStat::F_SCORE => $fScore,
+                    CustomerStat::M_SCORE => $mScore,
+                    CustomerStat::SEGMENT => $newSegment,
+                    CustomerStat::LAST_CALCULATED_AT => now(),
                 ]
             );
 

@@ -88,13 +88,13 @@ class ProcessPreScalePaymentAction
 
             // ── Snapshot all financial parameters onto the order ───────────────
             $locked->forceFill([
-                Order::PAYMENT_OF_OWNER    => $POO,
+                Order::PAYMENT_OF_OWNER => $POO,
                 Order::PAYMENT_TO_SUPPLIER => $PTS,
-                Order::COMMISSION_RATE     => 1.0,
-                Order::VAT_RATE            => $vatRate,
+                Order::COMMISSION_RATE => 1.0,
+                Order::VAT_RATE => $vatRate,
                 Order::OWNER_DISCOUNT_RATE => $ownerDiscountRate,
-                Order::TRANS_COMMISSION    => $transCommission,
-                Order::TRANS_VAT           => $transVat,
+                Order::TRANS_COMMISSION => $transCommission,
+                Order::TRANS_VAT => $transVat,
             ])->save();
 
             // A — buyer pays POO: WO(-) → WSSG(+)

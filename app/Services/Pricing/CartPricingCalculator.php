@@ -10,7 +10,6 @@ use App\Models\CartItem;
 use App\Models\OrderUnit;
 use App\Services\PriceCalculationService;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Cache;
 
 class CartPricingCalculator
 {

@@ -26,6 +26,7 @@ class InvoiceGeneratorRoutingTest extends TestCase
     use DatabaseTransactions;
 
     private InvoiceGenerator $generator;
+
     private Order $order;
 
     protected function setUp(): void
@@ -35,7 +36,7 @@ class InvoiceGeneratorRoutingTest extends TestCase
         // Stub infrastructure so no file I/O or DB sequence calls occur.
         $this->mock(DocumentSequenceService::class)
             ->shouldReceive('generate')
-            ->andReturnUsing(fn () => 'TEST-' . uniqid());
+            ->andReturnUsing(fn () => 'TEST-'.uniqid());
 
         $this->mock(InvoiceDataBuilder::class)
             ->shouldReceive('build')
@@ -47,27 +48,27 @@ class InvoiceGeneratorRoutingTest extends TestCase
 
         $this->generator = app(InvoiceGenerator::class);
 
-        $buyer    = User::factory()->create();
+        $buyer = User::factory()->create();
         $supplier = User::factory()->create();
 
         $this->order = Order::create([
             Order::PLACER_USER_ID => $buyer->id,
-            Order::ORDER_NUMBER   => 'TEST-GEN-' . uniqid(),
-            Order::STATUS         => Order::STATUS_PROCESSING,
+            Order::ORDER_NUMBER => 'TEST-GEN-'.uniqid(),
+            Order::STATUS => Order::STATUS_PROCESSING,
             Order::PAYMENT_STATUS => Order::PAYMENT_PAID,
-            Order::FINAL_AMOUNT   => 10_000_000,
+            Order::FINAL_AMOUNT => 10_000_000,
         ]);
         $this->order->forceFill([
-            Order::OFFICIAL_PRICE     => 0,
+            Order::OFFICIAL_PRICE => 0,
             Order::PAYMENT_TO_RESERVE => 2_000_000,
         ])->save();
 
         OrderItem::factory()->create([
-            OrderItem::ORDER_ID         => $this->order->id,
+            OrderItem::ORDER_ID => $this->order->id,
             OrderItem::SUPPLIER_USER_ID => $supplier->id,
-            OrderItem::UNIT_PRICE       => 500.0,
-            OrderItem::TOTAL_PRICE      => 10_000_000,
-            OrderItem::QUANTITY         => 20_000,
+            OrderItem::UNIT_PRICE => 500.0,
+            OrderItem::TOTAL_PRICE => 10_000_000,
+            OrderItem::QUANTITY => 20_000,
         ]);
     }
 

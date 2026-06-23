@@ -2,6 +2,13 @@
 
 namespace Tests\Feature\Events;
 
+use App\Events\Cart\CartItemChanged;
+use App\Events\Financial\TransactionProcessed;
+use App\Events\Financial\WalletFunded;
+use App\Events\Order\OrderCancelled;
+use App\Events\Order\OrderPaid;
+use App\Events\Order\OrderPlaced;
+use App\Events\User\CustomerSegmentChanged;
 use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 use Tests\TestCase;
 
@@ -19,13 +26,13 @@ class EventsDispatchAfterCommitTest extends TestCase
     public static function domainEvents(): array
     {
         return [
-            [\App\Events\Cart\CartItemChanged::class],
-            [\App\Events\Order\OrderPlaced::class],
-            [\App\Events\Order\OrderCancelled::class],
-            [\App\Events\Order\OrderPaid::class],
-            [\App\Events\Financial\TransactionProcessed::class],
-            [\App\Events\Financial\WalletFunded::class],
-            [\App\Events\User\CustomerSegmentChanged::class],
+            [CartItemChanged::class],
+            [OrderPlaced::class],
+            [OrderCancelled::class],
+            [OrderPaid::class],
+            [TransactionProcessed::class],
+            [WalletFunded::class],
+            [CustomerSegmentChanged::class],
         ];
     }
 

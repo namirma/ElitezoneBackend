@@ -27,8 +27,8 @@ class MobileNidMatchService
         $mobile = PhoneNumber::to09($mobileNumber);
 
         $payload = [
-            'apiKey'           => $svc['sc_api_key'],
-            'productEntityId'  => (int) $svc['sc_product_id'],
+            'apiKey' => $svc['sc_api_key'],
+            'productEntityId' => (int) $svc['sc_product_id'],
             'providerParameters' => [
                 'body' => [
                     'nationalCode' => $nationalCode,
@@ -36,7 +36,7 @@ class MobileNidMatchService
                 ],
             ],
             'asyncCall' => false,
-            'wrapper'   => true,
+            'wrapper' => true,
         ];
 
         $res = $this->client->callSc2($payload);
@@ -50,17 +50,17 @@ class MobileNidMatchService
      */
     public function mapMatchResponse(array $normalized, string $nationalCode, string $mobileNumber): array
     {
-        $result     = $normalized['result'] ?? [];
-        $matched    = data_get($result, 'matched');
+        $result = $normalized['result'] ?? [];
+        $matched = data_get($result, 'matched');
         $resultCode = (string) data_get($result, 'resultCode', '');
-        $provMsg    = (string) data_get($result, 'message', '');
+        $provMsg = (string) data_get($result, 'message', '');
 
         $isSuccess = $this->resolveMatchStatus($matched, $resultCode);
 
         $message = $provMsg !== ''
             ? $provMsg
             : match ($isSuccess) {
-                'true'  => 'تطابق تأیید شد',
+                'true' => 'تطابق تأیید شد',
                 'false' => 'مغایرت اطلاعات',
                 default => 'نتیجه نامشخص',
             };
@@ -68,10 +68,10 @@ class MobileNidMatchService
         return [
             'payload' => [
                 'reference_number' => (string) ($normalized['reference_number'] ?? ''),
-                'national_code'    => (string) $nationalCode,
-                'mobile_number'    => PhoneNumber::to09($mobileNumber),
-                'is_success'       => $isSuccess,
-                'result_code'      => $resultCode,
+                'national_code' => (string) $nationalCode,
+                'mobile_number' => PhoneNumber::to09($mobileNumber),
+                'is_success' => $isSuccess,
+                'result_code' => $resultCode,
                 'provider_message' => $provMsg,
             ],
             'message' => $message,
@@ -91,8 +91,8 @@ class MobileNidMatchService
 
         if ($resultCode !== '') {
             return match ($resultCode) {
-                '1'     => 'true',
-                '0'     => 'false',
+                '1' => 'true',
+                '0' => 'false',
                 default => 'null',
             };
         }

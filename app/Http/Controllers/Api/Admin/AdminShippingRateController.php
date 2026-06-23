@@ -29,9 +29,9 @@ class AdminShippingRateController extends Controller
     {
         $request->validate([
             'factory_location_id' => ['nullable', 'integer'],
-            'province_id'         => ['nullable', 'integer'],
-            'is_active'           => ['nullable', 'boolean'],
-            'per_page'            => ['nullable', 'integer', 'min:1', 'max:200'],
+            'province_id' => ['nullable', 'integer'],
+            'is_active' => ['nullable', 'boolean'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:200'],
         ]);
 
         $rates = ShippingRate::query()
@@ -50,7 +50,7 @@ class AdminShippingRateController extends Controller
             )
             ->orderBy(ShippingRate::FACTORY_LOCATION_ID)
             ->orderBy(ShippingRate::DESTINATION_PROVINCE_ID)
-            ->orderByRaw(ShippingRate::DESTINATION_CITY_ID . ' IS NULL')  // province-level rows last
+            ->orderByRaw(ShippingRate::DESTINATION_CITY_ID.' IS NULL')  // province-level rows last
             ->orderBy(ShippingRate::DESTINATION_CITY_ID)
             ->paginate($this->perPage(50));
 
@@ -127,14 +127,14 @@ class AdminShippingRateController extends Controller
     private function rules(?int $ignoreId = null): array
     {
         return [
-            'factory_location_id'     => ['required', 'integer', 'exists:factory_locations,id'],
+            'factory_location_id' => ['required', 'integer', 'exists:factory_locations,id'],
             'destination_province_id' => ['required', 'integer', 'min:1'],
-            'destination_city_id'     => ['nullable', 'integer', 'min:1'],
-            'flat_cost'               => ['required', 'numeric', 'min:0'],
-            'per_kg_cost'             => ['required', 'numeric', 'min:0'],
-            'cost_basis'              => ['required', Rule::enum(ShippingCostBasis::class)],
-            'per_count_cost'          => ['required_if:cost_basis,count', 'numeric', 'min:0'],
-            'is_active'               => ['boolean'],
+            'destination_city_id' => ['nullable', 'integer', 'min:1'],
+            'flat_cost' => ['required', 'numeric', 'min:0'],
+            'per_kg_cost' => ['required', 'numeric', 'min:0'],
+            'cost_basis' => ['required', Rule::enum(ShippingCostBasis::class)],
+            'per_count_cost' => ['required_if:cost_basis,count', 'numeric', 'min:0'],
+            'is_active' => ['boolean'],
         ];
     }
 

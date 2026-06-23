@@ -80,10 +80,9 @@ class ApplyPriceFilters implements PricingPipe
      */
     private function allCategoriesWithFilters(): Collection
     {
-        return Cache::remember('pricing:categories_with_filters', 3600, fn () =>
-            PriceFilterCategory::where('is_active', true)
-                ->with(['filters.filterType'])
-                ->get()
+        return Cache::remember('pricing:categories_with_filters', 3600, fn () => PriceFilterCategory::where('is_active', true)
+            ->with(['filters.filterType'])
+            ->get()
         );
     }
 

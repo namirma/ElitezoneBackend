@@ -23,9 +23,9 @@ class MobileNidMatchRequest extends FormRequest
     {
         return [
             'national_code.required' => 'کد ملی الزامی است.',
-            'national_code.regex'    => 'کد ملی باید ۱۰ رقم باشد.',
+            'national_code.regex' => 'کد ملی باید ۱۰ رقم باشد.',
             'mobile_number.required' => 'شماره موبایل الزامی است.',
-            'mobile_number.regex'    => 'فرمت شماره موبایل معتبر نیست.',
+            'mobile_number.regex' => 'فرمت شماره موبایل معتبر نیست.',
         ];
     }
 }

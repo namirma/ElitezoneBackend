@@ -15,7 +15,6 @@ use App\Services\Pricing\Pipes\ApplyVat;
 use App\Services\Pricing\Pipes\SetBasePrice;
 use App\Services\Pricing\PricingContext;
 use Illuminate\Pipeline\Pipeline;
-use Illuminate\Support\Facades\Cache;
 
 class PriceCalculationService
 {

@@ -6,6 +6,7 @@ namespace App\Actions\Financial;
 
 use App\Constants\FinancialCodes;
 use App\Models\Order;
+use App\Services\Financial\SettlementCalculatorService;
 use App\Services\Financial\WalletTransactionEngine;
 use App\Services\Invoice\InvoiceGenerator;
 use Illuminate\Support\Facades\DB;
@@ -30,7 +31,7 @@ class RecordSupplierMoadianInvoiceAction
     public function __construct(
         private readonly WalletTransactionEngine $walletEngine,
         private readonly InvoiceGenerator $invoiceGenerator,
-        private readonly \App\Services\Financial\SettlementCalculatorService $calculator,
+        private readonly SettlementCalculatorService $calculator,
     ) {}
 
     /**
@@ -88,7 +89,7 @@ class RecordSupplierMoadianInvoiceAction
             }
 
             $locked->forceFill([
-                Order::SUPPLIER_MOADIAN_REF      => $moadianRef,
+                Order::SUPPLIER_MOADIAN_REF => $moadianRef,
                 Order::SUPPLIER_HOLD_RELEASED_AT => now(),
             ])->save();
 
@@ -98,6 +99,4 @@ class RecordSupplierMoadianInvoiceAction
             Log::channel('financial')->info("Supplier VAT hold released for order {$locked->id}. Ref: {$moadianRef}. VAT: {$supplierVat}");
         }, 3);
     }
-
-
 }

@@ -25,9 +25,9 @@ class StoreUserTypeRequest extends FormRequest
     {
         return [
             'roles.required' => __('profile.roles_required'),
-            'roles.min'      => __('profile.roles_required'),
-            'roles.*.in'     => __('profile.roles_invalid'),
-            'roles.array'    => __('profile.roles_array'),
+            'roles.min' => __('profile.roles_required'),
+            'roles.*.in' => __('profile.roles_invalid'),
+            'roles.array' => __('profile.roles_array'),
         ];
     }
 

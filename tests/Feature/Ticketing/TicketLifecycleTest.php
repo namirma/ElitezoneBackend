@@ -4,6 +4,7 @@ namespace Tests\Feature\Ticketing;
 
 use App\DataTransferObjects\Ticket\TicketDTO;
 use App\Models\Department;
+use App\Models\Order;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Services\TicketService;
@@ -118,11 +119,11 @@ class TicketLifecycleTest extends TestCase
     public function attaching_an_order_the_user_does_not_own_is_rejected(): void
     {
         $stranger = User::factory()->create();
-        $foreignOrder = \App\Models\Order::create([
-            \App\Models\Order::PLACER_USER_ID => $stranger->id,
-            \App\Models\Order::ORDER_NUMBER => 'TCK-ORD-'.uniqid(),
-            \App\Models\Order::STATUS => \App\Models\Order::STATUS_PENDING,
-            \App\Models\Order::PAYMENT_STATUS => 'pending',
+        $foreignOrder = Order::create([
+            Order::PLACER_USER_ID => $stranger->id,
+            Order::ORDER_NUMBER => 'TCK-ORD-'.uniqid(),
+            Order::STATUS => Order::STATUS_PENDING,
+            Order::PAYMENT_STATUS => 'pending',
         ]);
 
         Sanctum::actingAs($this->user);

@@ -22,13 +22,13 @@ class PriceFilterCategoryDetectorService
             ->get()
             ->keyBy(fn ($value) => $value->group->code);
 
-        $customerTypeValue    = $parameterValues['customer_type']      ?? null;
+        $customerTypeValue = $parameterValues['customer_type'] ?? null;
         $consultantStatusValue = $parameterValues['consultant_status'] ?? null;
-        $purchasePurposeValue  = $parameterValues['purchase_purpose']  ?? null;
+        $purchasePurposeValue = $parameterValues['purchase_purpose'] ?? null;
 
         if ($customerTypeValue && $consultantStatusValue) {
             if ($consultantStatusValue->code === 'with_consultant') {
-                $prefix   = strstr($customerTypeValue->code, '_', true) ?: $customerTypeValue->code;
+                $prefix = strstr($customerTypeValue->code, '_', true) ?: $customerTypeValue->code;
                 $category = PriceFilterCategory::where(PriceFilterCategory::CODE, "{$prefix}_with_consultant")->first();
                 if ($category) {
                     return $category;
@@ -39,7 +39,7 @@ class PriceFilterCategoryDetectorService
                 }
 
                 $fallbackCode = "{$customerTypeValue->code}_without_consultant";
-                $category     = PriceFilterCategory::where(PriceFilterCategory::CODE, $fallbackCode)->first();
+                $category = PriceFilterCategory::where(PriceFilterCategory::CODE, $fallbackCode)->first();
                 if ($category) {
                     return $category;
                 }

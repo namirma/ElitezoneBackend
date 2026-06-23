@@ -14,7 +14,7 @@ class IdentityInquirySc2Controller extends Controller
     public function __invoke(IdentityInquiryRequest $request): JsonResponse
     {
         $normalized = $this->service->inquire(
-            nationalCode:    $request->validated('national_code'),
+            nationalCode: $request->validated('national_code'),
             birthDateJalali: $request->validated('birth_date'),
         );
 

@@ -2,11 +2,11 @@
 
 namespace App\Http\Resources\Order;
 
-use App\Models\ShippingMethod;
 use App\Http\Resources\BaseJsonResource;
+use App\Models\ShippingMethod;
 
 /**
- * @mixin \App\Models\ShippingMethod
+ * @mixin ShippingMethod
  */
 class ShippingMethodResource extends BaseJsonResource
 {

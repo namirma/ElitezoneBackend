@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api\Podium;
 
 use App\Http\Controllers\Controller;
-
 use App\Http\Requests\Podium\SettlementInquiryRequest;
 use App\Services\PodiumServices\PodiumSettlementInquiryService;
 use Illuminate\Http\JsonResponse;

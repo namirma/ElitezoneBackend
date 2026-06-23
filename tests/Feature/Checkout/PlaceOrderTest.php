@@ -27,9 +27,9 @@ class PlaceOrderTest extends TestCase
     private function makeAddress(User $user): Address
     {
         return Address::create([
-            Address::USER_ID         => $user->id,
-            Address::POSTAL_ADDRESS  => 'تهران، خیابان آزادی، پلاک ۱',
-            Address::RECEIVER_NAME   => 'علی محمدی',
+            Address::USER_ID => $user->id,
+            Address::POSTAL_ADDRESS => 'تهران، خیابان آزادی، پلاک ۱',
+            Address::RECEIVER_NAME => 'علی محمدی',
             Address::RECEIVER_MOBILE => '09121111111',
         ]);
     }
@@ -61,7 +61,7 @@ class PlaceOrderTest extends TestCase
     /** @test */
     public function it_requires_address_id(): void
     {
-        $user     = User::factory()->create();
+        $user = User::factory()->create();
         $shipping = $this->makeShippingMethod();
         Sanctum::actingAs($user);
 
@@ -76,7 +76,7 @@ class PlaceOrderTest extends TestCase
     /** @test */
     public function it_requires_shipping_method_id(): void
     {
-        $user    = User::factory()->create();
+        $user = User::factory()->create();
         $address = $this->makeAddress($user);
         Sanctum::actingAs($user);
 
@@ -91,12 +91,12 @@ class PlaceOrderTest extends TestCase
     /** @test */
     public function it_rejects_unknown_shipping_method(): void
     {
-        $user    = User::factory()->create();
+        $user = User::factory()->create();
         $address = $this->makeAddress($user);
         Sanctum::actingAs($user);
 
         $response = $this->postJson('/api/checkout', [
-            'address_id'         => $address->id,
+            'address_id' => $address->id,
             'shipping_method_id' => 9999999,
         ]);
 
@@ -111,16 +111,16 @@ class PlaceOrderTest extends TestCase
     /** @test */
     public function it_rejects_address_belonging_to_another_user(): void
     {
-        $alice         = User::factory()->create();
-        $bob           = User::factory()->create();
-        $aliceAddress  = $this->makeAddress($alice);
-        $shipping      = $this->makeShippingMethod();
+        $alice = User::factory()->create();
+        $bob = User::factory()->create();
+        $aliceAddress = $this->makeAddress($alice);
+        $shipping = $this->makeShippingMethod();
 
         Sanctum::actingAs($bob);
 
         // Bob tries to place an order using Alice's address
         $response = $this->postJson('/api/checkout', [
-            'address_id'         => $aliceAddress->id,
+            'address_id' => $aliceAddress->id,
             'shipping_method_id' => $shipping->id,
         ]);
 
@@ -131,12 +131,12 @@ class PlaceOrderTest extends TestCase
     /** @test */
     public function it_rejects_unknown_address(): void
     {
-        $user     = User::factory()->create();
+        $user = User::factory()->create();
         $shipping = $this->makeShippingMethod();
         Sanctum::actingAs($user);
 
         $response = $this->postJson('/api/checkout', [
-            'address_id'         => 9999999,
+            'address_id' => 9999999,
             'shipping_method_id' => $shipping->id,
         ]);
 
@@ -151,14 +151,14 @@ class PlaceOrderTest extends TestCase
     /** @test */
     public function it_returns_error_when_cart_is_empty(): void
     {
-        $user     = User::factory()->create();
-        $address  = $this->makeAddress($user);
+        $user = User::factory()->create();
+        $address = $this->makeAddress($user);
         $shipping = $this->makeShippingMethod();
         Sanctum::actingAs($user);
 
         // No cart created for this user, so it should be empty
         $response = $this->postJson('/api/checkout', [
-            'address_id'         => $address->id,
+            'address_id' => $address->id,
             'shipping_method_id' => $shipping->id,
         ]);
 
@@ -173,15 +173,15 @@ class PlaceOrderTest extends TestCase
     /** @test */
     public function it_rejects_description_over_1000_chars(): void
     {
-        $user     = User::factory()->create();
-        $address  = $this->makeAddress($user);
+        $user = User::factory()->create();
+        $address = $this->makeAddress($user);
         $shipping = $this->makeShippingMethod();
         Sanctum::actingAs($user);
 
         $response = $this->postJson('/api/checkout', [
-            'address_id'         => $address->id,
+            'address_id' => $address->id,
             'shipping_method_id' => $shipping->id,
-            'description'        => str_repeat('a', 1001),
+            'description' => str_repeat('a', 1001),
         ]);
 
         $response->assertStatus(422);
@@ -191,14 +191,14 @@ class PlaceOrderTest extends TestCase
     /** @test */
     public function it_rejects_beneficiary_user_id_that_does_not_exist(): void
     {
-        $user     = User::factory()->create();
-        $address  = $this->makeAddress($user);
+        $user = User::factory()->create();
+        $address = $this->makeAddress($user);
         $shipping = $this->makeShippingMethod();
         Sanctum::actingAs($user);
 
         $response = $this->postJson('/api/checkout', [
-            'address_id'          => $address->id,
-            'shipping_method_id'  => $shipping->id,
+            'address_id' => $address->id,
+            'shipping_method_id' => $shipping->id,
             'beneficiary_user_id' => 9999999,
         ]);
 

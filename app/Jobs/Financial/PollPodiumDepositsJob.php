@@ -38,26 +38,26 @@ class PollPodiumDepositsJob implements ShouldQueue
         DepositStatementService $statementService,
         ProcessPodiumDepositAction $processAction,
     ): void {
-        $to   = Carbon::now();
+        $to = Carbon::now();
         $from = $to->copy()->subMinutes(15); // پنجره ۱۵ دقیقه‌ای با overlap
 
         // تبدیل به تاریخ شمسی برای API پادیوم
         $fromJalali = Verta::instance($from)->format('Y/m/d');
-        $fromTime   = $from->format('H:i:s');
-        $toJalali   = Verta::instance($to)->format('Y/m/d');
-        $toTime     = $to->format('H:i:s');
+        $fromTime = $from->format('H:i:s');
+        $toJalali = Verta::instance($to)->format('Y/m/d');
+        $toTime = $to->format('H:i:s');
 
         Log::info('PollPodiumDepositsJob: شروع polling', [
             'from' => "{$fromJalali} {$fromTime}",
-            'to'   => "{$toJalali} {$toTime}",
+            'to' => "{$toJalali} {$toTime}",
         ]);
 
         try {
             $deposits = $statementService->getIncomingDeposits(
                 fromDate: $fromJalali,
-                toDate:   $toJalali,
+                toDate: $toJalali,
                 fromTime: $fromTime,
-                toTime:   $toTime,
+                toTime: $toTime,
             );
         } catch (\Throwable $e) {
             Log::error('PollPodiumDepositsJob: خطا در دریافت صورت‌حساب از پادیوم', [
@@ -69,9 +69,9 @@ class PollPodiumDepositsJob implements ShouldQueue
             return;
         }
 
-        $total     = count($deposits);
+        $total = count($deposits);
         $processed = 0;
-        $errors    = 0;
+        $errors = 0;
 
         foreach ($deposits as $statement) {
             try {
@@ -80,7 +80,7 @@ class PollPodiumDepositsJob implements ShouldQueue
             } catch (\Throwable $e) {
                 $errors++;
                 Log::error('PollPodiumDepositsJob: خطا در پردازش statement', [
-                    'error'      => $e->getMessage(),
+                    'error' => $e->getMessage(),
                     'doc_number' => $statement['DocNumber'] ?? 'N/A',
                 ]);
                 // ادامه می‌دهیم — یک statement خراب، بقیه را مسدود نمی‌کند
@@ -89,8 +89,8 @@ class PollPodiumDepositsJob implements ShouldQueue
 
         Log::info('PollPodiumDepositsJob: پایان polling', [
             'total_incoming' => $total,
-            'processed'      => $processed,
-            'errors'         => $errors,
+            'processed' => $processed,
+            'errors' => $errors,
         ]);
     }
 }

@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * @mixin \App\Models\UserProfile
+ * @mixin UserProfile
  */
 class UserProfileResource extends BaseJsonResource
 {

@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\Handler;
 use App\Http\Middleware\AttachActivePriceCategory;
 use App\Http\Middleware\Authenticate;
 use App\Http\Middleware\CanSeeTicket;
@@ -24,6 +25,8 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Foundation\Http\Middleware\HandlePrecognitiveRequests;
 use Illuminate\Http\Middleware\SetCacheHeaders;
+use Illuminate\Http\Request;
+use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Session\Middleware\AuthenticateSession;
 use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
@@ -55,7 +58,7 @@ return Application::configure(basePath: dirname(__DIR__))
             SecurityHeaders::class,
             EnsureFrontendRequestsAreStateful::class,
             ThrottleRequests::class.':api',
-            \Illuminate\Routing\Middleware\SubstituteBindings::class,
+            SubstituteBindings::class,
             Cors::class,
         ]);
 
@@ -65,28 +68,28 @@ return Application::configure(basePath: dirname(__DIR__))
         |----------------------------------------------------------------------
         */
         $middleware->alias([
-            'auth'                  => Authenticate::class,
-            'auth.basic'            => AuthenticateWithBasicAuth::class,
-            'auth.session'          => AuthenticateSession::class,
-            'cache.headers'         => SetCacheHeaders::class,
-            'can'                   => Authorize::class,
-            'guest'                 => RedirectIfAuthenticated::class,
-            'password.confirm'      => RequirePassword::class,
-            'precognitive'          => HandlePrecognitiveRequests::class,
-            'signed'                => ValidateSignature::class,
-            'throttle'              => ThrottleRequests::class,
-            'verified'              => EnsureEmailIsVerified::class,
-            'cors'                  => Cors::class,
-            'SecurityHeaders'       => SecurityHeaders::class,
+            'auth' => Authenticate::class,
+            'auth.basic' => AuthenticateWithBasicAuth::class,
+            'auth.session' => AuthenticateSession::class,
+            'cache.headers' => SetCacheHeaders::class,
+            'can' => Authorize::class,
+            'guest' => RedirectIfAuthenticated::class,
+            'password.confirm' => RequirePassword::class,
+            'precognitive' => HandlePrecognitiveRequests::class,
+            'signed' => ValidateSignature::class,
+            'throttle' => ThrottleRequests::class,
+            'verified' => EnsureEmailIsVerified::class,
+            'cors' => Cors::class,
+            'SecurityHeaders' => SecurityHeaders::class,
             'attach.price.category' => AttachActivePriceCategory::class,
-            'role.admin'            => EnsureUserIsAdmin::class,
-            'role.expert'           => EnsureUserIsExpert::class,
-            'role.employer'         => EnsureUserIsEmployer::class,
-            'track'                 => TrackDashboardUsage::class,
-            'idempotency'           => Idempotency::class,
-            'role.selected'         => EnsureRoleIsSelected::class,
-            'can-see-ticket'        => CanSeeTicket::class,
-            'optional.sanctum'      => OptionalSanctum::class,
+            'role.admin' => EnsureUserIsAdmin::class,
+            'role.expert' => EnsureUserIsExpert::class,
+            'role.employer' => EnsureUserIsEmployer::class,
+            'track' => TrackDashboardUsage::class,
+            'idempotency' => Idempotency::class,
+            'role.selected' => EnsureRoleIsSelected::class,
+            'can-see-ticket' => CanSeeTicket::class,
+            'optional.sanctum' => OptionalSanctum::class,
         ]);
 
         /*
@@ -114,9 +117,9 @@ return Application::configure(basePath: dirname(__DIR__))
         | تمام خطاهای API با فرمت یکسان JSON برگردانده می‌شوند.
         | این render قبل از render پیش‌فرض لاراول اجرا می‌شود.
         */
-        $exceptions->render(function (Throwable $e, \Illuminate\Http\Request $request) {
+        $exceptions->render(function (Throwable $e, Request $request) {
             if ($request->expectsJson() || $request->is('api/*')) {
-                return (new \App\Exceptions\Handler(app()))->handleApiException($e);
+                return (new Handler(app()))->handleApiException($e);
             }
         });
     })

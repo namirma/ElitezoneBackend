@@ -9,6 +9,7 @@ use App\Models\TicketFile;
 use App\Models\TicketNote;
 use App\Repositories\Contracts\TicketRepositoryInterface;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -204,7 +205,7 @@ class TicketService
     //  Internals
     // =========================================================================
 
-    private function slaDeadlineFor(string $priority): \Illuminate\Support\Carbon
+    private function slaDeadlineFor(string $priority): Carbon
     {
         $hours = (int) config("ticketing.sla_hours.{$priority}", config('ticketing.sla_hours.normal', 24));
 

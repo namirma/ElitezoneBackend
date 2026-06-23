@@ -12,19 +12,19 @@ use Tests\TestCase;
  */
 class ApplyVatTest extends TestCase
 {
-    use DatabaseTransactions;
     use CreatesPricingFixtures;
+    use DatabaseTransactions;
 
     private ApplyVat $pipe;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->pipe = new ApplyVat();
+        $this->pipe = new ApplyVat;
     }
 
     /** @test */
-    public function it_does_nothing_when_withVat_is_false(): void
+    public function it_does_nothing_when_with_vat_is_false(): void
     {
         $ctx = $this->makeContext();
         $ctx->withVat = false;
@@ -92,6 +92,7 @@ class ApplyVatTest extends TestCase
         $called = false;
         $next = function ($c) use (&$called) {
             $called = true;
+
             return $c;
         };
 

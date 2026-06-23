@@ -26,7 +26,7 @@ class UserBackOfficeSearchRequest extends FormRequest
     {
         return [
             'keyword.required' => 'کلیدواژه جستجو الزامی است.',
-            'keyword.min'      => 'کلیدواژه باید حداقل ۳ کاراکتر باشد.',
+            'keyword.min' => 'کلیدواژه باید حداقل ۳ کاراکتر باشد.',
         ];
     }
 }

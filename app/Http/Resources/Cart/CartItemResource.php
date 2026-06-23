@@ -10,7 +10,7 @@ use App\Http\Resources\Supplier\FactoryResource;
 use App\Models\CartItem;
 
 /**
- * @mixin \App\Models\CartItem
+ * @mixin CartItem
  */
 class CartItemResource extends BaseJsonResource
 {

@@ -16,24 +16,27 @@ class WishlistPolicyTest extends TestCase
     use DatabaseTransactions;
 
     private User $owner;
+
     private User $stranger;
+
     private User $admin;
+
     private Wishlist $wishlist;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->owner    = User::factory()->create();
+        $this->owner = User::factory()->create();
         $this->stranger = User::factory()->create();
-        $this->admin    = User::factory()->create();
+        $this->admin = User::factory()->create();
 
         $adminRole = Role::firstOrCreate(['name' => 'admin'], ['display_name' => 'Admin']);
         $this->admin->addRole($adminRole);
 
         $this->wishlist = Wishlist::create([
             Wishlist::USER_ID => $this->owner->id,
-            Wishlist::NAME    => 'لیست خرید من',
+            Wishlist::NAME => 'لیست خرید من',
         ]);
     }
 
@@ -113,7 +116,7 @@ class WishlistPolicyTest extends TestCase
         $userB = User::factory()->create();
         $wishlistB = Wishlist::create([
             Wishlist::USER_ID => $userB->id,
-            Wishlist::NAME    => 'لیست B',
+            Wishlist::NAME => 'لیست B',
         ]);
 
         $this->assertTrue($this->owner->can('view', $this->wishlist));

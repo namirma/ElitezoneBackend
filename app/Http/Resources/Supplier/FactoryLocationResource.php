@@ -2,13 +2,13 @@
 
 namespace App\Http\Resources\Supplier;
 
+use App\Http\Resources\BaseJsonResource;
 use App\Models\FactoryLocation;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use App\Http\Resources\BaseJsonResource;
 
 /**
- * @mixin \App\Models\FactoryLocation
+ * @mixin FactoryLocation
  */
 class FactoryLocationResource extends BaseJsonResource
 {

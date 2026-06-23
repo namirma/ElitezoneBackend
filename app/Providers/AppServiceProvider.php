@@ -81,8 +81,8 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('sms', function (Request $request) {
             $retryAfterFn = function (Request $request, array $headers) {
                 $retryAfter = (int) ($headers['Retry-After'] ?? 60);
-                $minutes    = (int) ceil($retryAfter / 60);
-                $timeLabel  = $minutes > 1 ? "{$minutes} دقیقه" : '۱ دقیقه';
+                $minutes = (int) ceil($retryAfter / 60);
+                $timeLabel = $minutes > 1 ? "{$minutes} دقیقه" : '۱ دقیقه';
 
                 return error(
                     "تلاش بیش از حد مجاز است. لطفاً {$timeLabel} دیگر دوباره امتحان کنید.",
@@ -101,7 +101,7 @@ class AppServiceProvider extends ServiceProvider
          *   - هر ترکیب IP+موبایل حداکثر ۵ تلاش در دقیقه
          */
         RateLimiter::for('otp-verify', function (Request $request) {
-            $mobile      = (string) $request->input('username', '');
+            $mobile = (string) $request->input('username', '');
             $throttleKey = 'otp:'.$request->ip().':'.$mobile;
 
             return Limit::perMinute(5)->by($throttleKey)->response(function () {

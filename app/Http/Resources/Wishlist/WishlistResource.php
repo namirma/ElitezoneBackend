@@ -2,13 +2,13 @@
 
 namespace App\Http\Resources\Wishlist;
 
+use App\Http\Resources\BaseJsonResource;
 use App\Models\Wishlist;
 use Illuminate\Http\Request;
-use App\Http\Resources\BaseJsonResource;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 /**
- * @mixin \App\Models\Wishlist
+ * @mixin Wishlist
  */
 class WishlistResource extends BaseJsonResource
 {

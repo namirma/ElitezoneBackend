@@ -2,13 +2,13 @@
 
 namespace App\Http\Resources\Cart;
 
-use App\Models\Cart;
 use App\Http\Resources\BaseJsonResource;
-use App\Http\Resources\Profile\CustomerTypeResource;
 use App\Http\Resources\Profile\BadgeResource;
+use App\Http\Resources\Profile\CustomerTypeResource;
+use App\Models\Cart;
 
 /**
- * @mixin \App\Models\Cart
+ * @mixin Cart
  */
 class CartResource extends BaseJsonResource
 {

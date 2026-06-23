@@ -2,12 +2,12 @@
 
 namespace App\Http\Resources\Profile;
 
+use App\Http\Resources\BaseJsonResource;
 use App\Models\Address;
 use Illuminate\Http\Request;
-use App\Http\Resources\BaseJsonResource;
 
 /**
- * @mixin \App\Models\Address
+ * @mixin Address
  */
 class AddressResource extends BaseJsonResource
 {
@@ -30,8 +30,8 @@ class AddressResource extends BaseJsonResource
             Address::IS_DEFAULT => $this->is_default,
             Address::CREATED_AT => $this->created_at?->format('Y-m-d H:i:s'),
             Address::UPDATED_AT => $this->updated_at?->format('Y-m-d H:i:s'),
-            //'province' => new ProvinceResource($this->whenLoaded('province')), // Assumes ProvinceResource exists
-            //'city' => new CityResource($this->whenLoaded('city')), // Assumes CityResource exists
+            // 'province' => new ProvinceResource($this->whenLoaded('province')), // Assumes ProvinceResource exists
+            // 'city' => new CityResource($this->whenLoaded('city')), // Assumes CityResource exists
         ];
     }
 }

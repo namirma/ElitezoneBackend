@@ -24,7 +24,7 @@ class InviteConsultantRequest extends FormRequest
     {
         return [
             User::MOBILE.'.required' => __('consultant.mobile_required'),
-            User::MOBILE.'.regex'    => __('auth.mobile_format_invalid'),
+            User::MOBILE.'.regex' => __('auth.mobile_format_invalid'),
         ];
     }
 }

@@ -7,7 +7,7 @@ use App\Models\Shipment;
 use Illuminate\Http\Request;
 
 /**
- * @mixin \App\Models\Shipment
+ * @mixin Shipment
  */
 class ShipmentResource extends BaseJsonResource
 {
