@@ -128,9 +128,16 @@ Controllers/
   Api/
     AuthController.php    — authentication (stays at Api/ root)
     ListopherController.php, QuestionController.php, DebugController.php
-    Admin/  — AdminOrderController, AdminUserController, AdminWalletController,
-              AdminFinancialController, AdminActivityLogController,
-              AdminSearchController, AdminTicketController, OrderWeighbridgeController
+    Admin/  — AdminDashboardController, AdminOrderController, AdminUserController,
+              AdminWalletController, AdminFinancialController, AdminActivityLogController,
+              AdminSearchController, AdminTicketController, AdminSupplierController,
+              AdminShippingRateController, AdminPodiumDepositController, OrderWeighbridgeController,
+              # Catalog management (CRUD — مدیریت کاتالوگ):
+              AdminBadgeController, AdminProductCategoryController, AdminAttributeTypeController,
+              AdminAttributeController, AdminAttributeValueController, AdminFactoryController,
+              AdminFactoryLocationController, AdminProductController, AdminProductVariantController,
+              AdminProductPriceController, AdminPriceFilterTypeController, AdminPriceFilterController,
+              AdminPriceFilterCategoryController, AdminCustomerTypeController, AdminPriceAdjustmentController
     Data/   — AnalyticsController, InventoryController
     Podium/ — PodiumSettlementController, PodiumBalanceController,
               PodiumBatchSettlementController, PodiumSettlementInquiryController,
@@ -1383,6 +1390,36 @@ were created precisely to eliminate the cross-controller call that existed betwe
 ---
 
 ## Recently Added Subsystems
+
+### Admin Catalog Management — full CRUD back-office (`/admin/*`)
+
+Before this, the catalog (products, prices, categories, …) was **read-only and public**;
+products only existed via `ProductSeeder`. The admin panel now has a complete write surface
+under `routes/api/admin.php` (all behind `auth:sanctum + role.admin`). 15 controllers, ~87 routes:
+
+| Entity | Controller | Prefix | Notes |
+|--------|-----------|--------|-------|
+| Badge | `AdminBadgeController` | `/admin/badges` | icon upload (public disk) |
+| Product Category | `AdminProductCategoryController` | `/admin/categories` | image upload; blocks delete if has products |
+| Attribute Type / Attribute / Value | `AdminAttribute{Type,,Value}Controller` | `/admin/attribute-types`, `/attributes`, `/attribute-values` | hierarchy basis for variants |
+| Factory / Location | `AdminFactory{,Location}Controller` | `/admin/factories`, `/factory-locations` | logo upload; blocks delete if has locations/prices |
+| Product | `AdminProductController` | `/admin/products` | core + image/video upload; bound by **cuid** |
+| Variant | `AdminProductVariantController` | `/admin/products/{cuid}/variants`, `/admin/variants/{id}` | + `syncAttributes` (pivot pairs) |
+| Product Price | `AdminProductPriceController` | `/admin/product-prices` | per (variant×factory×location), unique-guarded |
+| Price Filter Type / Filter / Category | `AdminPriceFilter{Type,,Category}Controller` | `/admin/price-filter-types`, `/price-filters`, `/price-filter-categories` | category has `syncFilters` |
+| Customer Type / Price Adjustment | `Admin{CustomerType,PriceAdjustment}Controller` | `/admin/customer-types`, `/price-adjustments` | adjustment unique per (type×badge) |
+
+Conventions (mirror `AdminShippingRateController`): inline `$request->validate()` via a private
+`rules()` helper, `success()/created()/error()` + `__('admin.<group>.*')`, model constants,
+existing domain Resources reused (a few got an additive `is_active` field; `ProductPriceResource`
+and `PriceAdjustmentResource` are new). **File uploads** use `->store('<dir>', 'public')` and a
+`POST {id}` alias route is added next to `PUT {id}` (PHP can't parse multipart on raw PUT — same
+trick as JobExperience). **Cache:** `ProductPrice`/`PriceFilter`/`PriceFilterCategory` flush their
+own caches via `booted()`; `PriceFilterType` and pivot-`sync` do not, so those controllers
+`Cache::forget('pricing:categories_with_filters')` explicitly. **Delete guards** return 422 (not
+500) when a row is referenced (category→products, factory→locations, type→filters, FK→orders).
+Tests: `tests/Feature/Admin/AdminBadgeTest` + `AdminCatalogTest` (walks the full chain). Badge
+artwork ships in `database/seeders/assets/badges/` and is published by `BadgeSeeder`.
 
 ### Ticketing — helpdesk model
 
