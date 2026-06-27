@@ -14,7 +14,9 @@ class AttributeValueResource extends BaseJsonResource
     {
         return [
             'id' => $this->id,
+            'attribute_id' => $this->attribute_id,
             'value' => $this->value,
+            'display_value' => $this->display_value,
         ];
     }
 }

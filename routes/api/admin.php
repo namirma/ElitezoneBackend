@@ -1,10 +1,25 @@
 <?php
 
 use App\Http\Controllers\Api\Admin\AdminActivityLogController;
+use App\Http\Controllers\Api\Admin\AdminAttributeController;
+use App\Http\Controllers\Api\Admin\AdminAttributeTypeController;
+use App\Http\Controllers\Api\Admin\AdminAttributeValueController;
+use App\Http\Controllers\Api\Admin\AdminBadgeController;
+use App\Http\Controllers\Api\Admin\AdminCustomerTypeController;
 use App\Http\Controllers\Api\Admin\AdminDashboardController;
+use App\Http\Controllers\Api\Admin\AdminFactoryController;
+use App\Http\Controllers\Api\Admin\AdminFactoryLocationController;
 use App\Http\Controllers\Api\Admin\AdminFinancialController;
 use App\Http\Controllers\Api\Admin\AdminOrderController;
 use App\Http\Controllers\Api\Admin\AdminPodiumDepositController;
+use App\Http\Controllers\Api\Admin\AdminPriceAdjustmentController;
+use App\Http\Controllers\Api\Admin\AdminPriceFilterCategoryController;
+use App\Http\Controllers\Api\Admin\AdminPriceFilterController;
+use App\Http\Controllers\Api\Admin\AdminPriceFilterTypeController;
+use App\Http\Controllers\Api\Admin\AdminProductCategoryController;
+use App\Http\Controllers\Api\Admin\AdminProductController;
+use App\Http\Controllers\Api\Admin\AdminProductPriceController;
+use App\Http\Controllers\Api\Admin\AdminProductVariantController;
 use App\Http\Controllers\Api\Admin\AdminSearchController;
 use App\Http\Controllers\Api\Admin\AdminShippingRateController;
 use App\Http\Controllers\Api\Admin\AdminSupplierController;
@@ -140,6 +155,158 @@ Route::middleware(['auth:sanctum', 'role.admin'])->prefix('admin')->group(functi
         Route::put('/{shippingRate}', 'update');
         Route::delete('/{shippingRate}', 'destroy');
         Route::post('/{shippingRate}/toggle', 'toggle');
+    });
+
+    // ══════════════════════════════════════════════════════════════════════
+    // Catalog management — مدیریت کاتالوگ (محصول/دسته/ویژگی/قیمت/...)
+    // ══════════════════════════════════════════════════════════════════════
+
+    // Badges — CRUD نشان‌ها (آپلود آیکون با POST/multipart)
+    Route::controller(AdminBadgeController::class)->prefix('badges')->group(function () {
+        Route::get('/', 'index');
+        Route::get('/{badge}', 'show');
+        Route::post('/', 'store');
+        Route::put('/{badge}', 'update');
+        Route::post('/{badge}', 'update'); // multipart file replace (PHP can't parse uploads on raw PUT)
+        Route::delete('/{badge}', 'destroy');
+    });
+
+    // Product Categories — CRUD دسته‌بندی‌ها (آپلود تصویر با POST/multipart)
+    Route::controller(AdminProductCategoryController::class)->prefix('categories')->group(function () {
+        Route::get('/', 'index');
+        Route::get('/{category}', 'show');
+        Route::post('/', 'store');
+        Route::put('/{category}', 'update');
+        Route::post('/{category}', 'update'); // multipart image replace
+        Route::delete('/{category}', 'destroy');
+        Route::post('/{category}/toggle', 'toggle');
+    });
+
+    // Attribute Types — CRUD نوع ویژگی
+    Route::controller(AdminAttributeTypeController::class)->prefix('attribute-types')->group(function () {
+        Route::get('/', 'index');
+        Route::post('/', 'store');
+        Route::put('/{attributeType}', 'update');
+        Route::delete('/{attributeType}', 'destroy');
+    });
+
+    // Attributes — CRUD ویژگی‌ها
+    Route::controller(AdminAttributeController::class)->prefix('attributes')->group(function () {
+        Route::get('/', 'index');
+        Route::post('/', 'store');
+        Route::put('/{attribute}', 'update');
+        Route::delete('/{attribute}', 'destroy');
+    });
+
+    // Attribute Values — CRUD مقادیر ویژگی
+    Route::controller(AdminAttributeValueController::class)->prefix('attribute-values')->group(function () {
+        Route::get('/', 'index');
+        Route::post('/', 'store');
+        Route::put('/{attributeValue}', 'update');
+        Route::delete('/{attributeValue}', 'destroy');
+    });
+
+    // Factories — CRUD کارخانه‌ها (آپلود لوگو با POST/multipart)
+    Route::controller(AdminFactoryController::class)->prefix('factories')->group(function () {
+        Route::get('/', 'index');
+        Route::get('/{factory}', 'show');
+        Route::post('/', 'store');
+        Route::put('/{factory}', 'update');
+        Route::post('/{factory}', 'update'); // multipart logo replace
+        Route::delete('/{factory}', 'destroy');
+        Route::post('/{factory}/toggle', 'toggle');
+    });
+
+    // Factory Locations — CRUD انبارها/مبادی کارخانه
+    Route::controller(AdminFactoryLocationController::class)->prefix('factory-locations')->group(function () {
+        Route::get('/', 'index');
+        Route::post('/', 'store');
+        Route::put('/{factoryLocation}', 'update');
+        Route::delete('/{factoryLocation}', 'destroy');
+        Route::post('/{factoryLocation}/toggle', 'toggle');
+    });
+
+    // Products — CRUD محصولات + رسانه (مسیر با cuid؛ آپلود با POST/multipart)
+    Route::controller(AdminProductController::class)->prefix('products')->group(function () {
+        Route::get('/', 'index');
+        Route::post('/', 'store');
+        Route::get('/{product}', 'show');
+        Route::put('/{product}', 'update');
+        Route::post('/{product}', 'update'); // multipart-friendly update
+        Route::delete('/{product}', 'destroy');
+        Route::post('/{product}/toggle', 'toggle');
+        Route::post('/{product}/toggle-featured', 'toggleFeatured');
+        // Media
+        Route::post('/{product}/images', 'addImage');
+        Route::delete('/{product}/images/{image}', 'deleteImage');
+        Route::post('/{product}/images/{image}/primary', 'setPrimaryImage');
+        Route::post('/{product}/videos', 'addVideo');
+        Route::delete('/{product}/videos/{video}', 'deleteVideo');
+    });
+
+    // Product Variants — واریانت‌ها (لیست/ساخت زیر محصول، بقیه با id واریانت)
+    Route::controller(AdminProductVariantController::class)->group(function () {
+        Route::get('/products/{product}/variants', 'index');
+        Route::post('/products/{product}/variants', 'store');
+        Route::get('/variants/{variant}', 'show');
+        Route::put('/variants/{variant}', 'update');
+        Route::post('/variants/{variant}', 'update'); // multipart-friendly update
+        Route::delete('/variants/{variant}', 'destroy');
+        Route::post('/variants/{variant}/toggle', 'toggle');
+        Route::post('/variants/{variant}/attributes', 'syncAttributes');
+    });
+
+    // Product Prices — قیمت محصول per (واریانت × کارخانه × انبار)
+    Route::controller(AdminProductPriceController::class)->prefix('product-prices')->group(function () {
+        Route::get('/', 'index');
+        Route::post('/', 'store');
+        Route::put('/{price}', 'update');
+        Route::delete('/{price}', 'destroy');
+    });
+
+    // Price Filter Types — نوع فیلتر قیمت
+    Route::controller(AdminPriceFilterTypeController::class)->prefix('price-filter-types')->group(function () {
+        Route::get('/', 'index');
+        Route::post('/', 'store');
+        Route::put('/{filterType}', 'update');
+        Route::delete('/{filterType}', 'destroy');
+        Route::post('/{filterType}/toggle', 'toggle');
+    });
+
+    // Price Filters — فیلترهای قیمت
+    Route::controller(AdminPriceFilterController::class)->prefix('price-filters')->group(function () {
+        Route::get('/', 'index');
+        Route::post('/', 'store');
+        Route::put('/{filter}', 'update');
+        Route::delete('/{filter}', 'destroy');
+        Route::post('/{filter}/toggle', 'toggle');
+    });
+
+    // Price Filter Categories — دسته‌های فیلتر قیمت (+ اتصال فیلترها)
+    Route::controller(AdminPriceFilterCategoryController::class)->prefix('price-filter-categories')->group(function () {
+        Route::get('/', 'index');
+        Route::get('/{filterCategory}', 'show');
+        Route::post('/', 'store');
+        Route::put('/{filterCategory}', 'update');
+        Route::delete('/{filterCategory}', 'destroy');
+        Route::post('/{filterCategory}/toggle', 'toggle');
+        Route::post('/{filterCategory}/filters', 'syncFilters');
+    });
+
+    // Customer Types — انواع مشتری
+    Route::controller(AdminCustomerTypeController::class)->prefix('customer-types')->group(function () {
+        Route::get('/', 'index');
+        Route::post('/', 'store');
+        Route::put('/{customerType}', 'update');
+        Route::delete('/{customerType}', 'destroy');
+    });
+
+    // Price Adjustments — تعدیل قیمت (نوع مشتری × نشان)
+    Route::controller(AdminPriceAdjustmentController::class)->prefix('price-adjustments')->group(function () {
+        Route::get('/', 'index');
+        Route::post('/', 'store');
+        Route::put('/{priceAdjustment}', 'update');
+        Route::delete('/{priceAdjustment}', 'destroy');
     });
 
     // Weighbridge (note: at /admin root, not nested under /orders)
