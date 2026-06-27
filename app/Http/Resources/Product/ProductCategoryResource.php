@@ -19,6 +19,8 @@ class ProductCategoryResource extends BaseJsonResource
             ProductCategory::SLUG => $this->slug,
             ProductCategory::DESCRIPTION => $this->description,
             ProductCategory::IMAGE => $this->image,
+            ProductCategory::IS_ACTIVE => $this->is_active,
+            'products_count' => $this->whenCounted('products'),
         ];
     }
 }
