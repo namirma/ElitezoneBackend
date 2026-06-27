@@ -270,14 +270,8 @@ class ProductSeeder extends Seeder
             CustomerType::updateOrCreate([CustomerType::CODE => $typeDetails[CustomerType::CODE]], $typeDetails);
         }
 
-        $badgesData = [
-            [Badge::NAME => 'برنزی', Badge::CODE => 'bronze', Badge::ICON => 'badges/bronze.svg'],
-            [Badge::NAME => 'نقره‌ای', Badge::CODE => 'silver', Badge::ICON => 'badges/silver.svg'],
-            [Badge::NAME => 'طلایی', Badge::CODE => 'gold', Badge::ICON => 'badges/gold.svg'],
-        ];
-        foreach ($badgesData as $badgeDetails) {
-            Badge::updateOrCreate([Badge::CODE => $badgeDetails[Badge::CODE]], $badgeDetails);
-        }
+        // Badges (incl. their artwork) are seeded by BadgeSeeder, which runs first
+        // in DatabaseSeeder. Do not recreate them here — single source of truth.
 
         $customerTypeInstances = CustomerType::all()->keyBy(CustomerType::CODE);
         $badgeInstances = Badge::all()->keyBy(Badge::CODE);

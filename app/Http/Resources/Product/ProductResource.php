@@ -23,6 +23,8 @@ class ProductResource extends BaseJsonResource
             Product::SHIPPING_PROMO => $this->shipping_promo,
             Product::SKU => $this->sku,
             Product::IS_FEATURED => (bool) $this->is_featured,
+            Product::IS_ACTIVE => (bool) $this->is_active,
+            'variants_count' => $this->whenCounted('variants'),
             Product::VIEW_COUNT => $this->view_count,
             Product::ITEMS_PER_PAGE => $this->items_per_page,
             Product::UPDATED_AT => $this->updated_at ? Carbon::parse($this->updated_at)->format('Y-m-d H:i:s') : null,
