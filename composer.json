@@ -5,7 +5,7 @@
     "keywords": ["laravel", "framework"],
     "license": "MIT",
     "require": {
-        "php": "^8.2",
+        "php": "^8.4",
         "ext-iconv": "*",
         "carlos-meneses/laravel-mpdf": "^2.1",
         "mpdf/mpdf": "^8.2",
