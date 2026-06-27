@@ -6,6 +6,7 @@ use App\Enums\Shipping\ShippingCostBasis;
 use App\Models\ShippingRate;
 use App\Services\Shipping\ShippingCostCalculator;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\Feature\Pricing\CreatesPricingFixtures;
 use Tests\TestCase;
 
@@ -48,7 +49,7 @@ class ShippingCostCalculatorTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function it_prices_each_factory_origin_separately_to_one_destination(): void
     {
         $province = 100;
@@ -72,7 +73,7 @@ class ShippingCostCalculatorTest extends TestCase
         $this->assertEqualsWithDelta(1_000_000, $quote->total, 1);
     }
 
-    /** @test */
+    #[Test]
     public function it_ships_to_multiple_destinations_each_with_its_own_cost(): void
     {
         // Same origin factory, two different destination provinces → two shipments.
@@ -93,7 +94,7 @@ class ShippingCostCalculatorTest extends TestCase
         $this->assertEqualsWithDelta(1_300_000, $quote->total, 1);
     }
 
-    /** @test */
+    #[Test]
     public function a_city_specific_rate_overrides_the_province_fallback(): void
     {
         $province = 100;
@@ -110,7 +111,7 @@ class ShippingCostCalculatorTest extends TestCase
         $this->assertEqualsWithDelta(100_000, $quote->total, 1);
     }
 
-    /** @test */
+    #[Test]
     public function an_origin_with_no_rate_costs_zero(): void
     {
         $loc = $this->makeLocation($this->makeFactory());
@@ -123,7 +124,7 @@ class ShippingCostCalculatorTest extends TestCase
         $this->assertEqualsWithDelta(0, $quote->perLine['x'], 0.01);
     }
 
-    /** @test */
+    #[Test]
     public function it_allocates_a_shipment_cost_across_lines_by_weight(): void
     {
         $province = 100;
@@ -145,7 +146,7 @@ class ShippingCostCalculatorTest extends TestCase
         $this->assertEqualsWithDelta(10_000, $quote->perLine['a'] + $quote->perLine['b'], 0.01);
     }
 
-    /** @test */
+    #[Test]
     public function it_bills_by_count_when_the_rate_basis_is_count(): void
     {
         $province = 100;
@@ -171,7 +172,7 @@ class ShippingCostCalculatorTest extends TestCase
         $this->assertEqualsWithDelta(1000, $quote->shipments[0]->count, 0.001);
     }
 
-    /** @test */
+    #[Test]
     public function it_allocates_a_count_billed_shipment_across_lines_by_count(): void
     {
         $province = 100;
@@ -195,7 +196,7 @@ class ShippingCostCalculatorTest extends TestCase
         $this->assertEqualsWithDelta(10_000, $quote->perLine['a'] + $quote->perLine['b'], 0.01);
     }
 
-    /** @test */
+    #[Test]
     public function it_mixes_weight_billed_and_count_billed_shipments_in_one_order(): void
     {
         // Rebar billed by weight, brick billed by count, shipped to the same destination
@@ -220,7 +221,7 @@ class ShippingCostCalculatorTest extends TestCase
         $this->assertEqualsWithDelta(200_000, $quote->total, 1);
     }
 
-    /** @test */
+    #[Test]
     public function it_defaults_to_weight_basis_for_legacy_rows_without_a_basis(): void
     {
         // A row created with only flat + per_kg (no basis arg) behaves exactly as before.

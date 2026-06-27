@@ -6,6 +6,7 @@ use App\Models\Address;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Laratrust\Models\Role;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -46,19 +47,19 @@ class AddressPolicyTest extends TestCase
     // Admin bypass
     // ─────────────────────────────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function admin_can_view_any_address(): void
     {
         $this->assertTrue($this->admin->can('view', $this->address));
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_update_any_address(): void
     {
         $this->assertTrue($this->admin->can('update', $this->address));
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_delete_any_address(): void
     {
         $this->assertTrue($this->admin->can('delete', $this->address));
@@ -68,19 +69,19 @@ class AddressPolicyTest extends TestCase
     // Owner
     // ─────────────────────────────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function owner_can_view_their_address(): void
     {
         $this->assertTrue($this->owner->can('view', $this->address));
     }
 
-    /** @test */
+    #[Test]
     public function owner_can_update_their_address(): void
     {
         $this->assertTrue($this->owner->can('update', $this->address));
     }
 
-    /** @test */
+    #[Test]
     public function owner_can_delete_their_address(): void
     {
         $this->assertTrue($this->owner->can('delete', $this->address));
@@ -90,19 +91,19 @@ class AddressPolicyTest extends TestCase
     // Strangers blocked
     // ─────────────────────────────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function stranger_cannot_view_anothers_address(): void
     {
         $this->assertFalse($this->stranger->can('view', $this->address));
     }
 
-    /** @test */
+    #[Test]
     public function stranger_cannot_update_anothers_address(): void
     {
         $this->assertFalse($this->stranger->can('update', $this->address));
     }
 
-    /** @test */
+    #[Test]
     public function stranger_cannot_delete_anothers_address(): void
     {
         $this->assertFalse($this->stranger->can('delete', $this->address));
@@ -112,7 +113,7 @@ class AddressPolicyTest extends TestCase
     // Cross-user isolation
     // ─────────────────────────────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function addresses_are_isolated_between_users(): void
     {
         $userB = User::factory()->create();

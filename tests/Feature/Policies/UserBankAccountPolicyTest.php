@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\UserBankAccount;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Laratrust\Models\Role;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -54,19 +55,19 @@ class UserBankAccountPolicyTest extends TestCase
     // before() — admin bypass
     // ─────────────────────────────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function admin_can_view_any_bank_account(): void
     {
         $this->assertTrue($this->admin->can('view', $this->account));
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_update_any_bank_account(): void
     {
         $this->assertTrue($this->admin->can('update', $this->account));
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_delete_any_bank_account(): void
     {
         $this->assertTrue($this->admin->can('delete', $this->account));
@@ -76,19 +77,19 @@ class UserBankAccountPolicyTest extends TestCase
     // Owner permissions
     // ─────────────────────────────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function owner_can_view_their_account(): void
     {
         $this->assertTrue($this->owner->can('view', $this->account));
     }
 
-    /** @test */
+    #[Test]
     public function owner_can_update_their_account(): void
     {
         $this->assertTrue($this->owner->can('update', $this->account));
     }
 
-    /** @test */
+    #[Test]
     public function owner_can_delete_their_account(): void
     {
         $this->assertTrue($this->owner->can('delete', $this->account));
@@ -98,25 +99,25 @@ class UserBankAccountPolicyTest extends TestCase
     // Strangers — strictly denied
     // ─────────────────────────────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function stranger_cannot_view_anothers_bank_account(): void
     {
         $this->assertFalse($this->stranger->can('view', $this->account));
     }
 
-    /** @test */
+    #[Test]
     public function stranger_cannot_update_anothers_bank_account(): void
     {
         $this->assertFalse($this->stranger->can('update', $this->account));
     }
 
-    /** @test */
+    #[Test]
     public function stranger_cannot_delete_anothers_bank_account(): void
     {
         $this->assertFalse($this->stranger->can('delete', $this->account));
     }
 
-    /** @test */
+    #[Test]
     public function multiple_strangers_cannot_access_account(): void
     {
         $alice = User::factory()->create();
@@ -134,7 +135,7 @@ class UserBankAccountPolicyTest extends TestCase
     // Isolation between accounts
     // ─────────────────────────────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function user_a_cannot_see_user_b_account(): void
     {
         $userB = User::factory()->create();

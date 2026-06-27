@@ -7,6 +7,7 @@ use App\Models\OrderItem;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Laratrust\Models\Role;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -67,13 +68,13 @@ class OrderPolicyTest extends TestCase
     // before() — admin bypass
     // ─────────────────────────────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function admin_can_view_any_order(): void
     {
         $this->assertTrue($this->admin->can('view', $this->order));
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_cancel_any_order(): void
     {
         $this->assertTrue($this->admin->can('cancel', $this->order));
@@ -83,25 +84,25 @@ class OrderPolicyTest extends TestCase
     // view
     // ─────────────────────────────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function owner_can_view_their_order(): void
     {
         $this->assertTrue($this->owner->can('view', $this->order));
     }
 
-    /** @test */
+    #[Test]
     public function beneficiary_can_view_their_order(): void
     {
         $this->assertTrue($this->beneficiary->can('view', $this->order));
     }
 
-    /** @test */
+    #[Test]
     public function supplier_can_view_orders_with_their_items(): void
     {
         $this->assertTrue($this->supplier->can('view', $this->order));
     }
 
-    /** @test */
+    #[Test]
     public function stranger_cannot_view_anothers_order(): void
     {
         $this->assertFalse($this->stranger->can('view', $this->order));
@@ -111,25 +112,25 @@ class OrderPolicyTest extends TestCase
     // pay
     // ─────────────────────────────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function owner_can_pay_their_order(): void
     {
         $this->assertTrue($this->owner->can('pay', $this->order));
     }
 
-    /** @test */
+    #[Test]
     public function beneficiary_can_pay_the_order(): void
     {
         $this->assertTrue($this->beneficiary->can('pay', $this->order));
     }
 
-    /** @test */
+    #[Test]
     public function stranger_cannot_pay_anothers_order(): void
     {
         $this->assertFalse($this->stranger->can('pay', $this->order));
     }
 
-    /** @test */
+    #[Test]
     public function nobody_can_pay_an_already_paid_order(): void
     {
         $this->order->update([Order::PAYMENT_STATUS => Order::PAYMENT_PAID]);
@@ -143,13 +144,13 @@ class OrderPolicyTest extends TestCase
     // cancel
     // ─────────────────────────────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function owner_can_cancel_pending_order(): void
     {
         $this->assertTrue($this->owner->can('cancel', $this->order));
     }
 
-    /** @test */
+    #[Test]
     public function nobody_can_cancel_a_shipped_order(): void
     {
         $this->order->update([Order::STATUS => Order::STATUS_SHIPPED]);
@@ -159,7 +160,7 @@ class OrderPolicyTest extends TestCase
         $this->assertTrue($this->admin->can('cancel', $this->order));
     }
 
-    /** @test */
+    #[Test]
     public function nobody_can_cancel_a_completed_order(): void
     {
         $this->order->update([Order::STATUS => Order::STATUS_COMPLETED]);
@@ -171,20 +172,20 @@ class OrderPolicyTest extends TestCase
     // manageAsSupplier
     // ─────────────────────────────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function supplier_with_items_can_manage_order(): void
     {
         $this->assertTrue($this->supplier->can('manageAsSupplier', $this->order));
     }
 
-    /** @test */
+    #[Test]
     public function non_supplier_cannot_manage_as_supplier(): void
     {
         $this->assertFalse($this->owner->can('manageAsSupplier', $this->order));
         $this->assertFalse($this->stranger->can('manageAsSupplier', $this->order));
     }
 
-    /** @test */
+    #[Test]
     public function supplier_without_items_in_order_cannot_manage(): void
     {
         $otherSupplier = User::factory()->create();
@@ -198,19 +199,19 @@ class OrderPolicyTest extends TestCase
     // finalizeInvoice
     // ─────────────────────────────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function owner_can_finalize_invoice(): void
     {
         $this->assertTrue($this->owner->can('finalizeInvoice', $this->order));
     }
 
-    /** @test */
+    #[Test]
     public function beneficiary_can_finalize_invoice(): void
     {
         $this->assertTrue($this->beneficiary->can('finalizeInvoice', $this->order));
     }
 
-    /** @test */
+    #[Test]
     public function stranger_cannot_finalize_invoice(): void
     {
         $this->assertFalse($this->stranger->can('finalizeInvoice', $this->order));

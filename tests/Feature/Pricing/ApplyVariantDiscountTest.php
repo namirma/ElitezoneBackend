@@ -4,6 +4,7 @@ namespace Tests\Feature\Pricing;
 
 use App\Services\Pricing\Pipes\ApplyVariantDiscount;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -25,7 +26,7 @@ class ApplyVariantDiscountTest extends TestCase
         $this->pipe = new ApplyVariantDiscount;
     }
 
-    /** @test */
+    #[Test]
     public function it_does_nothing_when_no_discount_set(): void
     {
         $variant = $this->makeVariant();   // no discount fields
@@ -38,7 +39,7 @@ class ApplyVariantDiscountTest extends TestCase
         $this->assertSame(0.0, $ctx->variantDiscountAmount);
     }
 
-    /** @test */
+    #[Test]
     public function it_applies_percentage_discount(): void
     {
         $variant = $this->makeVariant(null, [
@@ -55,7 +56,7 @@ class ApplyVariantDiscountTest extends TestCase
         $this->assertSame('percentage', $ctx->variantDiscountType);
     }
 
-    /** @test */
+    #[Test]
     public function it_applies_fixed_amount_discount(): void
     {
         $variant = $this->makeVariant(null, [
@@ -72,7 +73,7 @@ class ApplyVariantDiscountTest extends TestCase
         $this->assertSame('fixed_amount', $ctx->variantDiscountType);
     }
 
-    /** @test */
+    #[Test]
     public function it_clamps_payable_price_to_zero_when_discount_exceeds_price(): void
     {
         $variant = $this->makeVariant(null, [
@@ -87,7 +88,7 @@ class ApplyVariantDiscountTest extends TestCase
         $this->assertSame(0.0, $ctx->payablePrice, 'Price never goes negative');
     }
 
-    /** @test */
+    #[Test]
     public function it_ignores_discount_before_start_date(): void
     {
         $variant = $this->makeVariant(null, [
@@ -104,7 +105,7 @@ class ApplyVariantDiscountTest extends TestCase
         $this->assertSame(0.0, $ctx->variantDiscountAmount);
     }
 
-    /** @test */
+    #[Test]
     public function it_ignores_discount_after_end_date(): void
     {
         $variant = $this->makeVariant(null, [

@@ -6,6 +6,7 @@ use App\Models\Cart;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Laratrust\Models\Role;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -47,19 +48,19 @@ class CartPolicyTest extends TestCase
     // before() — admin bypass
     // ─────────────────────────────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function admin_can_view_any_cart(): void
     {
         $this->assertTrue($this->admin->can('view', $this->cart));
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_update_any_cart(): void
     {
         $this->assertTrue($this->admin->can('update', $this->cart));
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_delete_any_cart(): void
     {
         $this->assertTrue($this->admin->can('delete', $this->cart));
@@ -69,19 +70,19 @@ class CartPolicyTest extends TestCase
     // Owner permissions
     // ─────────────────────────────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function owner_can_view_their_cart(): void
     {
         $this->assertTrue($this->owner->can('view', $this->cart));
     }
 
-    /** @test */
+    #[Test]
     public function owner_can_update_their_cart(): void
     {
         $this->assertTrue($this->owner->can('update', $this->cart));
     }
 
-    /** @test */
+    #[Test]
     public function owner_can_delete_their_cart(): void
     {
         $this->assertTrue($this->owner->can('delete', $this->cart));
@@ -91,19 +92,19 @@ class CartPolicyTest extends TestCase
     // Strangers blocked
     // ─────────────────────────────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function stranger_cannot_view_anothers_cart(): void
     {
         $this->assertFalse($this->stranger->can('view', $this->cart));
     }
 
-    /** @test */
+    #[Test]
     public function stranger_cannot_update_anothers_cart(): void
     {
         $this->assertFalse($this->stranger->can('update', $this->cart));
     }
 
-    /** @test */
+    #[Test]
     public function stranger_cannot_delete_anothers_cart(): void
     {
         $this->assertFalse($this->stranger->can('delete', $this->cart));
@@ -113,7 +114,7 @@ class CartPolicyTest extends TestCase
     // Cross-user isolation
     // ─────────────────────────────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function carts_are_isolated_between_users(): void
     {
         $userB = User::factory()->create();

@@ -8,6 +8,7 @@ use App\Models\PriceFilterType;
 use App\Services\Pricing\Pipes\ApplyPriceFilters;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Str;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -73,7 +74,7 @@ class ApplyPriceFiltersTest extends TestCase
         return $filter;
     }
 
-    /** @test */
+    #[Test]
     public function it_does_nothing_when_no_filters_attached(): void
     {
         $ctx = $this->makeContext();
@@ -87,7 +88,7 @@ class ApplyPriceFiltersTest extends TestCase
         $this->assertSame(1_200_000.0, $ctx->listPrice);
     }
 
-    /** @test */
+    #[Test]
     public function general_percentage_filter_adjusts_both_list_and_payable(): void
     {
         $cat = $this->makeFilterCategory();
@@ -106,7 +107,7 @@ class ApplyPriceFiltersTest extends TestCase
         $this->assertSame(1_320_000.0, $ctx->listPrice, '1,200,000 + 10% = 1,320,000');
     }
 
-    /** @test */
+    #[Test]
     public function special_filter_adjusts_only_payable_price(): void
     {
         $cat = $this->makeFilterCategory();
@@ -124,7 +125,7 @@ class ApplyPriceFiltersTest extends TestCase
         $this->assertSame(1_200_000.0, $ctx->listPrice, 'List price untouched by special filter');
     }
 
-    /** @test */
+    #[Test]
     public function both_filter_applies_net_delta_to_payable(): void
     {
         $cat = $this->makeFilterCategory();
@@ -141,7 +142,7 @@ class ApplyPriceFiltersTest extends TestCase
         $this->assertSame(1_030_000.0, $ctx->payablePrice, 'Both-side adjustment +30k applied');
     }
 
-    /** @test */
+    #[Test]
     public function payable_price_is_clamped_to_zero(): void
     {
         $cat = $this->makeFilterCategory();
@@ -158,7 +159,7 @@ class ApplyPriceFiltersTest extends TestCase
         $this->assertSame(0.0, $ctx->payablePrice, 'Never goes negative');
     }
 
-    /** @test */
+    #[Test]
     public function filters_are_applied_in_sort_order(): void
     {
         $cat = $this->makeFilterCategory();
@@ -179,7 +180,7 @@ class ApplyPriceFiltersTest extends TestCase
         $this->assertSame(1_100_000.0, $ctx->payablePrice);
     }
 
-    /** @test */
+    #[Test]
     public function inactive_filters_are_skipped(): void
     {
         $cat = $this->makeFilterCategory();

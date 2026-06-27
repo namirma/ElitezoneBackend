@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\User;
 use App\Services\InventoryService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -24,7 +25,7 @@ class CancelOrderIdempotencyTest extends TestCase
 {
     use DatabaseTransactions;
 
-    /** @test */
+    #[Test]
     public function cancelling_an_already_cancelled_order_does_not_restore_stock_again(): void
     {
         $buyer = User::factory()->create();

@@ -13,6 +13,7 @@ use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -56,7 +57,7 @@ class TicketLifecycleTest extends TestCase
         ));
     }
 
-    /** @test */
+    #[Test]
     public function create_stamps_open_status_priority_and_sla_deadline(): void
     {
         $ticket = $this->makeTicket(Ticket::PRIORITY_HIGH);
@@ -70,7 +71,7 @@ class TicketLifecycleTest extends TestCase
         $this->assertTrue($ticket->sla_due_at->lessThan(now()->addHours(9)));
     }
 
-    /** @test */
+    #[Test]
     public function answering_stamps_first_response_once(): void
     {
         $ticket = $this->makeTicket();
@@ -85,7 +86,7 @@ class TicketLifecycleTest extends TestCase
         $this->assertEquals($firstAt, $ticket->fresh()->first_responded_at);
     }
 
-    /** @test */
+    #[Test]
     public function resolving_then_reopening_counts_the_reopen_and_clears_end_timestamps(): void
     {
         $ticket = $this->makeTicket();
@@ -100,7 +101,7 @@ class TicketLifecycleTest extends TestCase
         $this->assertNull($reopened->resolved_at);
     }
 
-    /** @test */
+    #[Test]
     public function adding_a_note_persists_it_against_the_ticket(): void
     {
         $ticket = $this->makeTicket();
@@ -115,7 +116,7 @@ class TicketLifecycleTest extends TestCase
         $this->assertCount(1, $ticket->fresh()->notes);
     }
 
-    /** @test */
+    #[Test]
     public function attaching_an_order_the_user_does_not_own_is_rejected(): void
     {
         $stranger = User::factory()->create();
@@ -137,7 +138,7 @@ class TicketLifecycleTest extends TestCase
         ));
     }
 
-    /** @test */
+    #[Test]
     public function opening_message_attachments_are_persisted_against_the_ticket(): void
     {
         Storage::fake('public');
@@ -156,7 +157,7 @@ class TicketLifecycleTest extends TestCase
         Storage::disk('public')->assertExists($files->first()->path);
     }
 
-    /** @test */
+    #[Test]
     public function kpis_return_the_expected_shape(): void
     {
         $this->makeTicket();

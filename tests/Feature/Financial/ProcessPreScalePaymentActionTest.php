@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\Wallet;
 use App\Services\Invoice\InvoiceGenerator;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -105,7 +106,7 @@ class ProcessPreScalePaymentActionTest extends TestCase
     // Happy path
     // ─────────────────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function it_moves_order_to_processing_and_marks_it_paid(): void
     {
         $this->action->execute($this->order);
@@ -122,7 +123,7 @@ class ProcessPreScalePaymentActionTest extends TestCase
             'paid_at timestamp must be set');
     }
 
-    /** @test */
+    #[Test]
     public function it_debits_buyer_wallet(): void
     {
         // We assert "balance decreased" rather than an exact amount —
@@ -142,7 +143,7 @@ class ProcessPreScalePaymentActionTest extends TestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function it_credits_the_system_saze_wallet(): void
     {
         // setUp() already created the system wallet — fetch it here
@@ -160,7 +161,7 @@ class ProcessPreScalePaymentActionTest extends TestCase
     // Guard: insufficient balance
     // ─────────────────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function it_throws_insufficient_balance_and_leaves_order_unchanged(): void
     {
         // Drain the wallet to clearly below any plausible POO amount.

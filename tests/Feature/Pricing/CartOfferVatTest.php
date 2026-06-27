@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\Pricing\CartPricingCalculator;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Cache;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -25,7 +26,7 @@ class CartOfferVatTest extends TestCase
 {
     use CreatesPricingFixtures, DatabaseTransactions;
 
-    /** @test */
+    #[Test]
     public function a_cart_offer_reduces_vat_proportionally(): void
     {
         Cache::flush();

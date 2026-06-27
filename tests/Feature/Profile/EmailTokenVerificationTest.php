@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\UserProfile;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Laravel\Sanctum\Sanctum;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -35,7 +36,7 @@ class EmailTokenVerificationTest extends TestCase
         return $user;
     }
 
-    /** @test */
+    #[Test]
     public function a_wrong_token_verifies_nothing(): void
     {
         $owner = $this->userWithEmailToken('correct-token');
@@ -47,7 +48,7 @@ class EmailTokenVerificationTest extends TestCase
         $this->assertNull($owner->profile->fresh()->{UserProfile::EMAIL_VERIFIED_AT});
     }
 
-    /** @test */
+    #[Test]
     public function a_token_only_verifies_its_own_profile(): void
     {
         $owner = $this->userWithEmailToken('token-A');

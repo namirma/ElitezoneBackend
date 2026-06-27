@@ -6,6 +6,7 @@ use App\Services\Pricing\Pipes\SetBasePrice;
 use App\Services\Pricing\PricingContext;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Cache;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -29,7 +30,7 @@ class SetBasePriceTest extends TestCase
         Cache::flush();
     }
 
-    /** @test */
+    #[Test]
     public function it_loads_general_and_special_prices_from_database(): void
     {
         $variant = $this->makeVariant();
@@ -46,7 +47,7 @@ class SetBasePriceTest extends TestCase
         $this->assertSame(1_200_000.0, $ctx->baseSpecialPrice);
     }
 
-    /** @test */
+    #[Test]
     public function it_uses_special_price_for_payable_when_available(): void
     {
         $variant = $this->makeVariant();
@@ -63,7 +64,7 @@ class SetBasePriceTest extends TestCase
         $this->assertSame(1_500_000.0, $ctx->listPrice, 'List path = general price');
     }
 
-    /** @test */
+    #[Test]
     public function it_falls_back_to_general_price_when_special_is_zero(): void
     {
         $variant = $this->makeVariant();
@@ -79,7 +80,7 @@ class SetBasePriceTest extends TestCase
         $this->assertSame(1_500_000.0, $ctx->payablePrice, 'Falls back to general when special=0');
     }
 
-    /** @test */
+    #[Test]
     public function it_returns_zero_when_no_price_row_exists(): void
     {
         $variant = $this->makeVariant();
@@ -97,7 +98,7 @@ class SetBasePriceTest extends TestCase
         $this->assertSame(0.0, $ctx->payablePrice);
     }
 
-    /** @test */
+    #[Test]
     public function it_reflects_an_updated_price_after_cache_flush(): void
     {
         // A single (variant, factory, location) triple is uniquely indexed,

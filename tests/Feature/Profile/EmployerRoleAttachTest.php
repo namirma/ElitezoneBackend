@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\UserType;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Laravel\Sanctum\Sanctum;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -25,7 +26,7 @@ class EmployerRoleAttachTest extends TestCase
         return UserType::firstOrCreate(['slug' => 'employer'], ['name' => 'کارفرما', 'icon' => 'briefcase']);
     }
 
-    /** @test */
+    #[Test]
     public function completing_the_employer_profile_attaches_the_employer_role(): void
     {
         Role::firstOrCreate(['name' => 'employer'], ['display_name' => 'کارفرما']);
@@ -42,7 +43,7 @@ class EmployerRoleAttachTest extends TestCase
         $this->assertTrue($user->fresh()->hasRole('employer'));
     }
 
-    /** @test */
+    #[Test]
     public function an_employer_can_reach_the_consultants_endpoint_after_completing_the_profile(): void
     {
         Role::firstOrCreate(['name' => 'employer'], ['display_name' => 'کارفرما']);

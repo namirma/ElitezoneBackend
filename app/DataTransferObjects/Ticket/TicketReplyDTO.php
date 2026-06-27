@@ -5,7 +5,7 @@ namespace App\DataTransferObjects\Ticket;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 
-final class TicketReplyDTO
+final readonly class TicketReplyDTO
 {
     public function __construct(
         public readonly string $message,

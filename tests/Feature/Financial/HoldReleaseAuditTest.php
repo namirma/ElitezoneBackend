@@ -10,6 +10,7 @@ use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use App\Services\Financial\WalletTransactionEngine;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -54,7 +55,7 @@ class HoldReleaseAuditTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function it_moves_hold_to_available_and_records_a_release_row(): void
     {
         $tx = $this->engine->releaseHold(
@@ -78,7 +79,7 @@ class HoldReleaseAuditTest extends TestCase
         $this->assertEquals('hold_release', $tx->meta['op']);
     }
 
-    /** @test */
+    #[Test]
     public function it_links_the_source_hold_in_meta(): void
     {
         // An original hold row, as ProcessWeighbridgeResultAction would have created.
@@ -105,7 +106,7 @@ class HoldReleaseAuditTest extends TestCase
         $this->assertEquals(100_000_000, $this->wallet->balance);
     }
 
-    /** @test */
+    #[Test]
     public function it_rejects_releasing_more_than_is_held(): void
     {
         $this->expectException(InsufficientBalanceException::class);

@@ -4,6 +4,7 @@ namespace Tests\Feature\Pricing;
 
 use App\Services\Pricing\Pipes\ApplyVat;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -23,7 +24,7 @@ class ApplyVatTest extends TestCase
         $this->pipe = new ApplyVat;
     }
 
-    /** @test */
+    #[Test]
     public function it_does_nothing_when_with_vat_is_false(): void
     {
         $ctx = $this->makeContext();
@@ -36,7 +37,7 @@ class ApplyVatTest extends TestCase
         $this->assertSame(0.0, $ctx->vatAmount, 'No VAT applied when withVat=false');
     }
 
-    /** @test */
+    #[Test]
     public function it_applies_default_vat_rate_when_setting_missing(): void
     {
         $ctx = $this->makeContext();
@@ -51,7 +52,7 @@ class ApplyVatTest extends TestCase
         $this->assertSame(10.0, $ctx->vatRate);
     }
 
-    /** @test */
+    #[Test]
     public function it_calculates_vat_as_percentage_of_payable_price(): void
     {
         $this->setVatRate(9.0);
@@ -67,7 +68,7 @@ class ApplyVatTest extends TestCase
         $this->assertSame(90_000.0, $ctx->vatAmount, '9% of 1,000,000 = 90,000');
     }
 
-    /** @test */
+    #[Test]
     public function it_uses_overridden_vat_rate_from_settings(): void
     {
         $this->setVatRate(15.0);
@@ -83,7 +84,7 @@ class ApplyVatTest extends TestCase
         $this->assertSame(300_000.0, $ctx->vatAmount, '15% of 2,000,000 = 300,000');
     }
 
-    /** @test */
+    #[Test]
     public function it_invokes_next_pipe(): void
     {
         $ctx = $this->makeContext();

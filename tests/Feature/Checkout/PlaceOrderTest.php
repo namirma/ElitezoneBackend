@@ -7,6 +7,7 @@ use App\Models\ShippingMethod;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Laravel\Sanctum\Sanctum;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -46,7 +47,7 @@ class PlaceOrderTest extends TestCase
     // Authentication
     // ─────────────────────────────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function it_requires_authentication(): void
     {
         $response = $this->postJson('/api/checkout');
@@ -58,7 +59,7 @@ class PlaceOrderTest extends TestCase
     // Validation
     // ─────────────────────────────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function it_requires_address_id(): void
     {
         $user = User::factory()->create();
@@ -73,7 +74,7 @@ class PlaceOrderTest extends TestCase
         $response->assertJsonValidationErrors(['address_id']);
     }
 
-    /** @test */
+    #[Test]
     public function it_requires_shipping_method_id(): void
     {
         $user = User::factory()->create();
@@ -88,7 +89,7 @@ class PlaceOrderTest extends TestCase
         $response->assertJsonValidationErrors(['shipping_method_id']);
     }
 
-    /** @test */
+    #[Test]
     public function it_rejects_unknown_shipping_method(): void
     {
         $user = User::factory()->create();
@@ -108,7 +109,7 @@ class PlaceOrderTest extends TestCase
     // Authorization — address ownership
     // ─────────────────────────────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function it_rejects_address_belonging_to_another_user(): void
     {
         $alice = User::factory()->create();
@@ -128,7 +129,7 @@ class PlaceOrderTest extends TestCase
         $response->assertJsonValidationErrors(['address_id']);
     }
 
-    /** @test */
+    #[Test]
     public function it_rejects_unknown_address(): void
     {
         $user = User::factory()->create();
@@ -148,7 +149,7 @@ class PlaceOrderTest extends TestCase
     // Cart pre-condition
     // ─────────────────────────────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function it_returns_error_when_cart_is_empty(): void
     {
         $user = User::factory()->create();
@@ -170,7 +171,7 @@ class PlaceOrderTest extends TestCase
     // Description constraint
     // ─────────────────────────────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function it_rejects_description_over_1000_chars(): void
     {
         $user = User::factory()->create();
@@ -188,7 +189,7 @@ class PlaceOrderTest extends TestCase
         $response->assertJsonValidationErrors(['description']);
     }
 
-    /** @test */
+    #[Test]
     public function it_rejects_beneficiary_user_id_that_does_not_exist(): void
     {
         $user = User::factory()->create();

@@ -9,6 +9,7 @@ use App\Models\Wallet;
 use App\Services\Financial\SettlementCalculatorService;
 use App\Services\Financial\WeighbridgeReconciler;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -36,7 +37,7 @@ class WeighbridgeReconcilerTest extends TestCase
         $this->reconciler = app(WeighbridgeReconciler::class);
     }
 
-    /** @test */
+    #[Test]
     public function billing_weight_is_capped_at_wbs_on_over_delivery(): void
     {
         $order = $this->makeOrder(wbs: 10_000.0);
@@ -47,7 +48,7 @@ class WeighbridgeReconcilerTest extends TestCase
         $this->assertSame(10_000.0, $result->billingWeight);
     }
 
-    /** @test */
+    #[Test]
     public function over_delivery_does_not_change_invoice_amount(): void
     {
         $order = $this->makeOrder(wbs: 10_000.0);
@@ -60,7 +61,7 @@ class WeighbridgeReconcilerTest extends TestCase
             'Over-delivery billingWeight is capped at WBS, so POOM must equal POOM(exact)');
     }
 
-    /** @test */
+    #[Test]
     public function billing_weight_equals_actual_on_under_delivery(): void
     {
         $order = $this->makeOrder(wbs: 10_000.0);
@@ -70,7 +71,7 @@ class WeighbridgeReconcilerTest extends TestCase
         $this->assertSame(8_000.0, $result->billingWeight);
     }
 
-    /** @test */
+    #[Test]
     public function diff_poo_is_negative_on_under_delivery(): void
     {
         // oldPOO = POO(wbs=10,000); reconcile with 8,000 → POOM < oldPOO → diffPOO < 0
@@ -81,7 +82,7 @@ class WeighbridgeReconcilerTest extends TestCase
         $this->assertLessThan(0.0, $result->diffPTS, 'Under-delivery must produce a negative diffPTS (supplier reclaim)');
     }
 
-    /** @test */
+    #[Test]
     public function diff_poo_equals_zero_on_exact_weight(): void
     {
         // oldPOO is pre-computed from the same formula for wbs, so reconciling at wbs → diff=0
@@ -91,7 +92,7 @@ class WeighbridgeReconcilerTest extends TestCase
         $this->assertEqualsWithDelta(0.0, $result->diffPOO, 1.0, 'Exact weight must produce zero diffPOO');
     }
 
-    /** @test */
+    #[Test]
     public function new_poo_matches_direct_calculator_call(): void
     {
         $calc = app(SettlementCalculatorService::class);
@@ -107,7 +108,7 @@ class WeighbridgeReconcilerTest extends TestCase
         $this->assertEqualsWithDelta($expectedPOO, $result->newPOO, 1.0);
     }
 
-    /** @test */
+    #[Test]
     public function vat_from_order_is_passed_through_to_result(): void
     {
         $order = $this->makeOrder(wbs: 5_000.0, vatRate: 9.0);

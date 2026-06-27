@@ -16,6 +16,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\Feature\Pricing\CreatesPricingFixtures;
 use Tests\TestCase;
 
@@ -41,7 +42,7 @@ class PlaceOrderFinalAmountTest extends TestCase
 {
     use CreatesPricingFixtures, DatabaseTransactions;
 
-    /** @test */
+    #[Test]
     public function it_does_not_subtract_the_variant_discount_twice_from_final_amount(): void
     {
         Cache::flush();

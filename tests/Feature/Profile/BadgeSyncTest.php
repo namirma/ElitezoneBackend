@@ -10,6 +10,7 @@ use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -36,7 +37,7 @@ class BadgeSyncTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function it_handles_the_real_no_badge_shape_message_false(): void
     {
         // Verified against the LIVE server: a mobile with no badge returns
@@ -53,7 +54,7 @@ class BadgeSyncTest extends TestCase
         $this->assertNull($user->fresh()->badge_id);
     }
 
-    /** @test */
+    #[Test]
     public function it_persists_a_gold_tier_from_saze90_onto_the_user(): void
     {
         $this->fakeSaze90('gold');
@@ -70,7 +71,7 @@ class BadgeSyncTest extends TestCase
         $this->assertTrue($user->badges()->where('badges.id', $gold->id)->exists(), 'display pivot synced');
     }
 
-    /** @test */
+    #[Test]
     public function changing_tier_replaces_the_previous_tier_and_does_not_accumulate(): void
     {
         $gold = Badge::create([Badge::NAME => 'طلایی', Badge::CODE => 'gold']);
@@ -89,7 +90,7 @@ class BadgeSyncTest extends TestCase
         $this->assertTrue($user->badges()->where('badges.id', $silver->id)->exists(), 'new tier in pivot');
     }
 
-    /** @test */
+    #[Test]
     public function it_passes_the_normalized_mobile_to_saze90(): void
     {
         $this->fakeSaze90('silver');
@@ -104,7 +105,7 @@ class BadgeSyncTest extends TestCase
             && str_contains($request->url(), 'mobile=09121112233'));
     }
 
-    /** @test */
+    #[Test]
     public function a_non_tier_code_maps_to_saze90_membership_without_a_commission_tier(): void
     {
         // Any non-false, non-tier code means the person is a saze90 member → badge "saze90",
@@ -123,7 +124,7 @@ class BadgeSyncTest extends TestCase
         $this->assertTrue($user->badges()->where('badges.code', 'saze90')->exists(), 'saze90 badge in pivot');
     }
 
-    /** @test */
+    #[Test]
     public function a_saze90_outage_fails_safe_and_never_clears_an_existing_tier(): void
     {
         $gold = Badge::create([Badge::NAME => 'طلایی', Badge::CODE => 'gold']);
@@ -139,7 +140,7 @@ class BadgeSyncTest extends TestCase
         $this->assertSame($gold->id, (int) $user->fresh()->badge_id, 'transient outage must not downgrade the tier');
     }
 
-    /** @test */
+    #[Test]
     public function a_first_year_member_is_flagged_pioneer(): void
     {
         $this->fakeSaze90('', 401); // no saze90 badge
@@ -155,7 +156,7 @@ class BadgeSyncTest extends TestCase
         $this->assertTrue($user->badges()->where('badges.code', 'pioneer')->exists(), 'pioneer badge in pivot');
     }
 
-    /** @test */
+    #[Test]
     public function a_member_past_their_first_year_is_not_pioneer(): void
     {
         $this->fakeSaze90('', 401);
@@ -168,7 +169,7 @@ class BadgeSyncTest extends TestCase
             ->assertJsonPath('data.is_pioneer', false);
     }
 
-    /** @test */
+    #[Test]
     public function get_profile_alone_returns_fresh_badge_data_on_the_first_call(): void
     {
         // No prior /badge call — GET /api/profile must already carry the badge state
@@ -189,7 +190,7 @@ class BadgeSyncTest extends TestCase
         $this->assertContains('gold', $codes);
     }
 
-    /** @test */
+    #[Test]
     public function a_saze90_member_engineer_is_persisted_and_auto_verified(): void
     {
         $this->fakeSaze90('gold');

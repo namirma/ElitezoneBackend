@@ -12,6 +12,7 @@ use App\Models\WalletTransaction;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -102,7 +103,7 @@ class WithdrawalSettlementTest extends TestCase
 
     // ─── Request side ───────────────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function requesting_a_withdrawal_debits_the_wallet_and_creates_a_pending_transaction(): void
     {
         $user = $this->makeUserWithWallet(balance: 1_000_000);
@@ -118,7 +119,7 @@ class WithdrawalSettlementTest extends TestCase
 
     // ─── Admin-approved settlement ───────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function admin_confirm_settles_via_podium_and_marks_the_transaction_confirmed(): void
     {
         $this->fakePodiumSuccess();
@@ -145,7 +146,7 @@ class WithdrawalSettlementTest extends TestCase
         });
     }
 
-    /** @test */
+    #[Test]
     public function large_amounts_settle_via_satna(): void
     {
         $this->fakePodiumSuccess('SETTLEMENT_TOOL_SATNA');
@@ -160,7 +161,7 @@ class WithdrawalSettlementTest extends TestCase
 
     // ─── Failure / safety ────────────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function a_podium_business_error_leaves_the_transaction_pending_and_retryable(): void
     {
         Http::fake([
@@ -187,7 +188,7 @@ class WithdrawalSettlementTest extends TestCase
         $this->assertEqualsWithDelta(0, (float) $user->wallet->fresh()->balance, 0.5, 'Money is neither lost nor refunded automatically');
     }
 
-    /** @test */
+    #[Test]
     public function settlement_fails_safe_when_not_configured(): void
     {
         config(['podium.settlement.enabled' => false]);
@@ -207,7 +208,7 @@ class WithdrawalSettlementTest extends TestCase
         Http::assertNothingSent();
     }
 
-    /** @test */
+    #[Test]
     public function confirming_an_already_settled_withdrawal_is_idempotent(): void
     {
         $this->fakePodiumSuccess();
@@ -223,7 +224,7 @@ class WithdrawalSettlementTest extends TestCase
 
     // ─── Reject path unchanged ───────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function admin_reject_refunds_the_wallet_and_never_calls_podium(): void
     {
         Http::fake();

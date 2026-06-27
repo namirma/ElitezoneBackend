@@ -10,6 +10,7 @@ use App\Models\ShippingMethod;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Cache;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\Feature\Pricing\CreatesPricingFixtures;
 use Tests\TestCase;
 
@@ -25,7 +26,7 @@ class UpdateCartLocationTest extends TestCase
 {
     use CreatesPricingFixtures, DatabaseTransactions;
 
-    /** @test */
+    #[Test]
     public function updating_a_cart_item_applies_the_new_location_and_factory(): void
     {
         Cache::flush(); // pricing + order-unit caches are not rolled back between tests

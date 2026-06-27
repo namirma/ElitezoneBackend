@@ -2,7 +2,7 @@
 
 namespace App\DataTransferObjects\Pricing;
 
-class CartLinePricingResult
+readonly class CartLinePricingResult
 {
     public function __construct(
         public readonly int $cartItemId,

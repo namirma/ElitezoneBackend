@@ -12,6 +12,7 @@ use App\Services\Financial\SettlementCalculatorService;
 use App\Services\Invoice\InvoiceGenerator;
 use App\Services\SmsService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -106,7 +107,7 @@ class ProcessWeighbridgeResultActionTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function over_delivery_never_charges_the_buyer(): void
     {
         $balanceBefore = (float) $this->buyerWallet->balance;
@@ -123,7 +124,7 @@ class ProcessWeighbridgeResultActionTest extends TestCase
         $this->assertEquals(20.0, (float) $this->order->weight_after_scale, 'Physical weight is still recorded');
     }
 
-    /** @test */
+    #[Test]
     public function under_delivery_refunds_the_buyer(): void
     {
         $balanceBefore = (float) $this->buyerWallet->balance;

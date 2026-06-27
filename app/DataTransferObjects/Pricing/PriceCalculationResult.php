@@ -2,7 +2,7 @@
 
 namespace App\DataTransferObjects\Pricing;
 
-class PriceCalculationResult
+readonly class PriceCalculationResult
 {
     public function __construct(
         public readonly float $baseGeneralPrice,

@@ -12,6 +12,7 @@ use App\Services\Invoice\InvoiceDataBuilder;
 use App\Services\Invoice\InvoiceGenerator;
 use App\Services\Invoice\InvoicePdfRenderer;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -74,7 +75,7 @@ class InvoiceGeneratorRoutingTest extends TestCase
 
     // ─── Direct purchase ───────────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function direct_purchase_without_consultant_emits_three_docs(): void
     {
         $this->generator->generateDirectPurchaseDocs($this->order, withConsultant: false);
@@ -87,7 +88,7 @@ class InvoiceGeneratorRoutingTest extends TestCase
         $this->assertCount(3, $codes);
     }
 
-    /** @test */
+    #[Test]
     public function direct_purchase_with_consultant_emits_four_docs(): void
     {
         $this->generator->generateDirectPurchaseDocs($this->order, withConsultant: true);
@@ -99,7 +100,7 @@ class InvoiceGeneratorRoutingTest extends TestCase
 
     // ─── Reservation ──────────────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function reservation_emits_two_docs(): void
     {
         $this->generator->generateReservationDocs($this->order);
@@ -112,7 +113,7 @@ class InvoiceGeneratorRoutingTest extends TestCase
 
     // ─── Reservation completion ───────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function reservation_completion_emits_three_docs(): void
     {
         $this->generator->generateReservationCompletionDocs($this->order);
@@ -126,7 +127,7 @@ class InvoiceGeneratorRoutingTest extends TestCase
 
     // ─── Weighbridge ──────────────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function weighbridge_equal_emits_only_bill_of_lading(): void
     {
         $this->generator->generateWeighbridgeDocs($this->order, isDeficit: false);
@@ -138,7 +139,7 @@ class InvoiceGeneratorRoutingTest extends TestCase
         $this->assertCount(1, $codes);
     }
 
-    /** @test */
+    #[Test]
     public function weighbridge_deficit_emits_three_docs(): void
     {
         $this->generator->generateWeighbridgeDocs($this->order, isDeficit: true);
@@ -152,7 +153,7 @@ class InvoiceGeneratorRoutingTest extends TestCase
 
     // ─── Cancellation ─────────────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function cancellation_without_refund_emits_only_cancel_report(): void
     {
         $this->generator->generateCancellationDocs($this->order, withRefundReceipt: false);
@@ -163,7 +164,7 @@ class InvoiceGeneratorRoutingTest extends TestCase
         $this->assertCount(1, $codes);
     }
 
-    /** @test */
+    #[Test]
     public function cancellation_with_refund_emits_two_docs(): void
     {
         $this->generator->generateCancellationDocs($this->order, withRefundReceipt: true);
@@ -176,7 +177,7 @@ class InvoiceGeneratorRoutingTest extends TestCase
 
     // ─── Moadian (tax) invoices ───────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function supplier_moadian_invoice_emits_doc_o(): void
     {
         $this->generator->generateSupplierMoadianInvoice($this->order);
@@ -185,7 +186,7 @@ class InvoiceGeneratorRoutingTest extends TestCase
         $this->assertCount(1, $this->issuedCodes());
     }
 
-    /** @test */
+    #[Test]
     public function system_moadian_invoice_emits_doc_p(): void
     {
         $this->generator->generateSystemMoadianInvoice($this->order);
@@ -194,7 +195,7 @@ class InvoiceGeneratorRoutingTest extends TestCase
         $this->assertCount(1, $this->issuedCodes());
     }
 
-    /** @test */
+    #[Test]
     public function consultant_moadian_invoice_emits_doc_q(): void
     {
         $this->generator->generateConsultantMoadianInvoice($this->order);

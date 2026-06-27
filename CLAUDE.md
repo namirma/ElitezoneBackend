@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-EliteZone Backend — a Laravel 10 API for a B2B construction materials marketplace (rebar, brick, etc.). The codebase lives entirely inside the `api/` directory. It handles user authentication (OTP-based), product catalog with dynamic pricing, shopping cart, order lifecycle (including reservation flow), wallet/financial operations, ticketing, and an admin panel.
+EliteZone Backend — a Laravel 13 / PHP 8.4 API for a B2B construction materials marketplace (rebar, brick, etc.). The codebase lives entirely inside the `api/` directory. It handles user authentication (OTP-based), product catalog with dynamic pricing, shopping cart, order lifecycle (including reservation flow), wallet/financial operations, ticketing, and an admin panel.
 
 ## Common Commands
 
@@ -38,11 +38,11 @@ php artisan optimize:clear
 php artisan scramble:export
 
 # Regenerate IDE helper files (after adding models or migrations)
-composer ide-helper
-# This runs three artisan commands:
-#   ide-helper:generate  → _ide_helper.php       (facade type hints)
-#   ide-helper:models    → _ide_helper_models.php (Eloquent @property docblocks)
-#   ide-helper:meta      → .phpstorm.meta.php     (container resolution)
+# MUST use PHP 8.4 directly — `composer ide-helper` calls @php which resolves to XAMPP PHP 8.2
+# and fails the platform check (requires >= 8.4.1).
+"C:\Users\hp\.config\herd\bin\php84\php.exe" artisan ide-helper:generate   # → _ide_helper.php
+"C:\Users\hp\.config\herd\bin\php84\php.exe" artisan ide-helper:models     # → _ide_helper_models.php
+"C:\Users\hp\.config\herd\bin\php84\php.exe" artisan ide-helper:meta       # → .phpstorm.meta.php
 ```
 
 ## Directory Structure
@@ -328,12 +328,13 @@ safely — never crashes, never phantom-credits) until the real driver is implem
 `ProcessPaymentCallbackAction::settle()` re-locks the transaction and re-checks its `pending`
 status **inside** the DB::transaction to prevent double-credit on retried bank callbacks.
 
-### DTO Style — Readonly Constructor (Only Pattern)
+### DTO Style — `readonly class` (PHP 8.2+)
 
-All DTOs use PHP 8.1 readonly properties. `BaseDTO` was deleted (commit `26b2c66`) — do not reintroduce it.
+All DTOs are declared as `readonly class` (or `final readonly class`) — a PHP 8.2 feature
+that makes every property implicitly readonly. `BaseDTO` was deleted (commit `26b2c66`) — do not reintroduce it.
 
 ```php
-class PlaceOrderData {
+readonly class PlaceOrderData {
     public function __construct(
         public readonly ?int $beneficiaryUserId,
         public readonly int  $addressId,
@@ -755,7 +756,7 @@ Jobs/
   Order/        — CheckReservationExpiryJob
 ```
 
-Scheduled jobs (crons, wired in `Console/Kernel.php`) — **all** use
+Scheduled jobs (crons, wired in `routes/console.php` via the `Schedule` facade — Laravel 13 style) — **all** use
 `withoutOverlapping()->onOneServer()`:
 - `Order/CheckReservationExpiryJob` — cancels expired reservations
 - `Financial/CheckSupplierBalancesJob` — polls `supplier_debt_pending = true` orders;
@@ -863,6 +864,26 @@ Newer test files: `Auth/AuthControllerTest`, `Financial/ConsultantLifetimeCapTes
 `Ticketing/TicketLifecycleTest`, `Order/InvoiceAccessTest`, `Cart/ShippingQuoteTest`,
 `Profile/EmailTokenVerificationTest`, `Order/HasOrderProgressTest`,
 `Financial/WithdrawalSettlementTest`, `Profile/ProfileFixesTest`.
+
+**PHPUnit 11 attributes (mandatory):** PHPUnit 11 deprecates doc-comment annotations. All 40
+test files have been migrated to PHP 8 attributes. When adding a new test method:
+
+```php
+// ✅ correct — PHP 8 attribute syntax
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\Attributes\DataProvider;
+
+#[Test]
+public function it_does_something(): void { ... }
+
+#[Test]
+#[DataProvider('myProvider')]
+public function it_works_with_data($value): void { ... }
+
+// ❌ wrong — deprecated doc-comment syntax (causes PHPUnit 11 warnings)
+/** @test */
+public function it_does_something(): void { ... }
+```
 
 Patterns to follow when adding tests:
 - **Use factories**, never `User::create([...])` with raw arrays — `UserFactory`
@@ -1019,6 +1040,42 @@ processing to the event bus (hard to test, hard to ensure atomicity). Financial 
 now happens directly inside the payment Actions. `OrderPaid` is now notifications-only →
 `SendOrderPaymentNotification`. `EventServiceProvider` has been updated accordingly.
 **Do not re-add** any financial Action call inside an event listener.
+
+## Laravel 13 / PHP 8.4 Notes
+
+### Bootstrap structure (replaces Http/Kernel + Console/Kernel + RouteServiceProvider)
+
+**Deleted files** — do not recreate these:
+- `app/Http/Kernel.php` — middleware is now in `bootstrap/app.php → withMiddleware()`
+- `app/Console/Kernel.php` — scheduled jobs are in `routes/console.php` via `Schedule` facade
+- `app/Providers/RouteServiceProvider.php` — routes registered in `bootstrap/app.php → withRouting()`
+
+**New files** (Laravel 11+ style):
+- `bootstrap/app.php` — main app configuration: routing, middleware, exception handling
+- `bootstrap/providers.php` — app service providers list (packages load via auto-discovery)
+- `routes/console.php` — scheduled tasks (uses `Illuminate\Support\Facades\Schedule`)
+
+**Rate limiters** — previously in `RouteServiceProvider`, now in `AppServiceProvider::configureRateLimiters()`.
+
+**Exception handling** — `Handler::handleApiException()` is `public` so `bootstrap/app.php` can
+call it from `withExceptions()` closure. Do not change it back to `private`/`protected`.
+
+### PHP version
+
+Requires **PHP 8.3+** (platform check enforces `>= 8.4.1` — this project uses 8.4.4 via Laravel Herd).
+All `php artisan` commands must use the Herd binary:
+```
+"C:\Users\hp\.config\herd\bin\php84\php.exe" artisan <command>
+```
+Do NOT use XAMPP's `php` (8.2) — it fails the platform check.
+
+### PHP 8.4 features in use
+
+- **`readonly class`** — all DTOs in `app/DataTransferObjects/` are now `readonly class` or
+  `final readonly class`. PHP 8.2+ feature: all properties become implicitly readonly.
+  When adding a new DTO, use `readonly class MyDTO` (not just `class MyDTO`).
+
+---
 
 ## Known Architectural Gotchas
 
