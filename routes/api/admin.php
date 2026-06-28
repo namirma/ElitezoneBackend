@@ -7,9 +7,11 @@ use App\Http\Controllers\Api\Admin\AdminAttributeValueController;
 use App\Http\Controllers\Api\Admin\AdminBadgeController;
 use App\Http\Controllers\Api\Admin\AdminCustomerTypeController;
 use App\Http\Controllers\Api\Admin\AdminDashboardController;
+use App\Http\Controllers\Api\Admin\AdminEduixController;
 use App\Http\Controllers\Api\Admin\AdminFactoryController;
 use App\Http\Controllers\Api\Admin\AdminFactoryLocationController;
 use App\Http\Controllers\Api\Admin\AdminFinancialController;
+use App\Http\Controllers\Api\Admin\AdminJobExperienceController;
 use App\Http\Controllers\Api\Admin\AdminOrderController;
 use App\Http\Controllers\Api\Admin\AdminPodiumDepositController;
 use App\Http\Controllers\Api\Admin\AdminPriceAdjustmentController;
@@ -136,10 +138,14 @@ Route::middleware(['auth:sanctum', 'role.admin'])->prefix('admin')->group(functi
     Route::controller(AdminTicketController::class)->prefix('tickets')->group(function () {
         Route::get('/', 'index');
         Route::get('/kpis', 'kpis'); // باید پیش از wildcard /{ticket} باشد
+        Route::get('/departments', 'departments'); // باید پیش از wildcard /{ticket} باشد
         Route::get('/{ticket}', 'show');
         Route::post('/{ticket}/reply', 'reply');
         Route::post('/{ticket}/status', 'changeStatus');
         Route::post('/{ticket}/note', 'addNote');
+        Route::post('/{ticket}/assign', 'assign');               // اختصاص به کارشناس
+        Route::post('/{ticket}/department', 'moveDepartment');    // انتقال دپارتمان
+        Route::post('/{ticket}/priority', 'setPriority');         // اسکالیشن (اولویت)
     });
 
     // Wallet
@@ -155,6 +161,27 @@ Route::middleware(['auth:sanctum', 'role.admin'])->prefix('admin')->group(functi
         Route::put('/{shippingRate}', 'update');
         Route::delete('/{shippingRate}', 'destroy');
         Route::post('/{shippingRate}/toggle', 'toggle');
+    });
+
+    // ══════════════════════════════════════════════════════════════════════
+    // Verification queues — صف‌های تأیید (اطلاعات شغلی / مدارک تحصیلی)
+    // ══════════════════════════════════════════════════════════════════════
+
+    // Job experiences — صفِ تأیید اطلاعات شغلی (لیست منتظرها + دیدن مدرک + تأیید/رد)
+    Route::controller(AdminJobExperienceController::class)->prefix('job-experiences')->group(function () {
+        Route::get('/', 'index');
+        Route::get('/{jobExperience}', 'show');
+        Route::get('/{jobExperience}/file', 'download')->name('admin.job-experiences.file');
+        Route::post('/{jobExperience}/approve', 'approve');
+        Route::post('/{jobExperience}/reject', 'reject');
+    });
+
+    // Education records (Eduix) — صفِ تأیید مدارک تحصیلی
+    Route::controller(AdminEduixController::class)->prefix('education-records')->group(function () {
+        Route::get('/', 'index');
+        Route::get('/{eduixRecord}', 'show');
+        Route::post('/{eduixRecord}/approve', 'approve');
+        Route::post('/{eduixRecord}/reject', 'reject');
     });
 
     // ══════════════════════════════════════════════════════════════════════

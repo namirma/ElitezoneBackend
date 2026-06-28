@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\AdminTicketReplyRequest;
 use App\Http\Requests\Admin\AdminTicketStatusRequest;
+use App\Http\Resources\Ticket\DepartmentResource;
 use App\Http\Resources\Ticket\TicketResource;
 use App\Jobs\Notification\SendSmsJob;
 use App\Models\Ticket;
@@ -14,6 +15,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 
 /**
  * پنل مدیریت — مدیریت تیکت‌های پشتیبانی
@@ -155,6 +157,54 @@ class AdminTicketController extends Controller
     public function kpis(): JsonResponse
     {
         return success($this->service->kpis(), __('global.received_successfully'));
+    }
+
+    /**
+     * اختصاص تیکت به یک کارشناسِ ادمین (Assignment طبق spec).
+     */
+    public function assign(Request $request, Ticket $ticket): JsonResponse
+    {
+        $data = $request->validate(['admin_id' => ['required', 'integer', 'exists:users,id']]);
+
+        if (! User::find($data['admin_id'])?->hasRole('admin')) {
+            return error(__('admin.tickets.assignee_not_admin'), [], 422);
+        }
+
+        $this->service->assignTo($ticket, (int) $data['admin_id']);
+
+        return success(new TicketResource($ticket->fresh(['user.profile', 'department'])), __('admin.tickets.assigned'));
+    }
+
+    /**
+     * انتقال تیکت به دپارتمان دیگر (ارجاع مرجوعی/داوری/مالی به بخشِ مربوطه).
+     */
+    public function moveDepartment(Request $request, Ticket $ticket): JsonResponse
+    {
+        $data = $request->validate(['department_id' => ['required', 'integer', 'exists:departments,id']]);
+
+        $this->service->moveToDepartment($ticket, (int) $data['department_id']);
+
+        return success(new TicketResource($ticket->fresh(['user.profile', 'department'])), __('admin.tickets.department_moved'));
+    }
+
+    /**
+     * تغییر اولویتِ تیکت (Escalation — مثلاً بالا بردن به urgent).
+     */
+    public function setPriority(Request $request, Ticket $ticket): JsonResponse
+    {
+        $data = $request->validate(['priority' => ['required', Rule::in(Ticket::PRIORITIES)]]);
+
+        $ticket->update([Ticket::PRIORITY => $data['priority']]);
+
+        return success(new TicketResource($ticket->fresh(['user.profile', 'department'])), __('admin.tickets.priority_updated'));
+    }
+
+    /**
+     * لیست دپارتمان‌های قابل‌انتخاب برای اختصاص/انتقالِ تیکت.
+     */
+    public function departments(): JsonResponse
+    {
+        return success(DepartmentResource::collection($this->service->getDepartments()), __('admin.tickets.departments_received'));
     }
 
     /**

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\User;
 
 use App\Actions\Financial\RecordSupplierMoadianInvoiceAction;
+use App\Actions\Order\CancelOrderAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Order\AddWaybillRequest;
 use App\Http\Requests\Order\SubmitMoadianInvoiceRequest;
@@ -11,6 +12,7 @@ use App\Http\Resources\Order\OrderResource;
 use App\Models\Order;
 use Exception;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class SupplierOrderController extends Controller
 {
@@ -30,6 +32,27 @@ class SupplierOrderController extends Controller
         }
 
         return error(__('orders.cannot_prepare_in_current_state'), [], 400);
+    }
+
+    /**
+     * رد سفارش توسط سوپلایر — نیمه‌ی گم‌شده‌ی «تأیید/رد سفارش» (تأیید = markAsPrepared).
+     *
+     * فقط روی سفارشِ «در حال پردازش» (پیش از آماده‌سازی/حمل) مجاز است. خریدار از طریق
+     * CancelOrderAction به‌طور کامل refund می‌شود (همان مسیرِ امنِ لغو که ادمین استفاده می‌کند).
+     */
+    public function rejectOrder(Request $request, Order $order, CancelOrderAction $cancel): JsonResponse
+    {
+        $this->authorize('manageAsSupplier', $order);
+
+        if ($order->status !== Order::STATUS_PROCESSING) {
+            return error(__('orders.cannot_reject_in_current_state'), [], 400);
+        }
+
+        $data = $request->validate(['reason' => ['required', 'string', 'max:1000']]);
+
+        $cancel->execute($order, $data['reason'], true, true);
+
+        return success(null, __('orders.supplier_rejected'));
     }
 
     public function addWaybill(AddWaybillRequest $request, Order $order): JsonResponse
