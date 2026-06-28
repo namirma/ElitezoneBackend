@@ -30,8 +30,8 @@ class ParameterDetectionController extends Controller
         $parameterIds = $request->input('parameters');
 
         if (! $request->filled('parameters') || ! is_array($parameterIds)) {
-            $cart     = null;
-            $userId   = Auth::id();
+            $cart = null;
+            $userId = Auth::id();
             $sessionId = $request->cookie('cart_session_id');
 
             if ($userId) {

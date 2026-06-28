@@ -1,10 +1,10 @@
 <?php
 
-use App\Providers\RepositoryServiceProvider;
-use App\Providers\ResponseServiceProvider;
 use Artisaninweb\SoapWrapper\SoapWrapper;
 use Illuminate\Support\Facades\Facade;
 use Illuminate\Support\ServiceProvider;
+use Mccarlosen\LaravelMpdf\Facades\LaravelMpdf;
+use Mccarlosen\LaravelMpdf\LaravelMpdfServiceProvider;
 
 return [
 
@@ -190,22 +190,18 @@ return [
     |
     */
 
+    /*
+    |--------------------------------------------------------------------------
+    | Autoloaded Service Providers
+    |--------------------------------------------------------------------------
+    |
+    | در لاراول ۱۳، providers اپلیکیشن در bootstrap/providers.php تعریف می‌شوند.
+    | پکیج‌ها از طریق auto-discovery بارگذاری می‌شوند.
+    | این آرایه فقط برای پکیج‌هایی که auto-discovery ندارند استفاده می‌شود.
+    |
+    */
     'providers' => ServiceProvider::defaultProviders()->merge([
-        /*
-         * Package Service Providers...
-         */
-
-        /*
-         * Application Service Providers...
-         */
-        App\Providers\AppServiceProvider::class,
-        App\Providers\AuthServiceProvider::class,
-        // App\Providers\BroadcastServiceProvider::class,
-        App\Providers\EventServiceProvider::class,
-        App\Providers\RouteServiceProvider::class,
-        ResponseServiceProvider::class,
-        Mccarlosen\LaravelMpdf\LaravelMpdfServiceProvider::class,
-        RepositoryServiceProvider::class,
+        LaravelMpdfServiceProvider::class,
     ])->toArray(),
 
     /*
@@ -222,7 +218,7 @@ return [
     'aliases' => Facade::defaultAliases()->merge([
         // 'Example' => App\Facades\Example::class,
         'SoapWrapper' => SoapWrapper::class,
-        'PDF' => Mccarlosen\LaravelMpdf\Facades\LaravelMpdf::class,
+        'PDF' => LaravelMpdf::class,
     ])->toArray(),
 
 ];

@@ -22,8 +22,8 @@ class SmsService
         // فراخوانی امن مقادیر از کش کانفیگ به جای کلاس Constant
         // مقدار پیش‌فرض '' تضمین می‌کند که در محیط تست (که env نیست)
         // PHP 8.1 TypeError برای property string نگیرد.
-        $this->link     = config('services.tsms.link', '');
-        $this->from     = config('services.tsms.number', '');
+        $this->link = config('services.tsms.link', '');
+        $this->from = config('services.tsms.number', '');
         $this->username = config('services.tsms.username', '');
         $this->password = config('services.tsms.password', '');
     }

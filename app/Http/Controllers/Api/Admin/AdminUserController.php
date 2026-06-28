@@ -186,8 +186,8 @@ class AdminUserController extends Controller
 
         return success(
             [
-                'user_id'     => $user->id,
-                'profile_type'=> $profile instanceof EngineerProfile ? 'engineer' : 'contractor',
+                'user_id' => $user->id,
+                'profile_type' => $profile instanceof EngineerProfile ? 'engineer' : 'contractor',
                 'is_verified' => true,
                 'verified_at' => $profile->{EngineerProfile::VERIFIED_AT}->toDateTimeString(),
             ],
@@ -215,8 +215,8 @@ class AdminUserController extends Controller
 
         return success(
             [
-                'user_id'     => $user->id,
-                'profile_type'=> $profile instanceof EngineerProfile ? 'engineer' : 'contractor',
+                'user_id' => $user->id,
+                'profile_type' => $profile instanceof EngineerProfile ? 'engineer' : 'contractor',
                 'is_verified' => false,
                 'verified_at' => null,
             ],

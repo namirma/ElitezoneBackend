@@ -2,11 +2,12 @@
 
 namespace App\Http\Resources\Ticket;
 
-use Illuminate\Http\Request;
 use App\Http\Resources\BaseJsonResource;
+use App\Models\Department;
+use Illuminate\Http\Request;
 
 /**
- * @mixin \App\Models\Department
+ * @mixin Department
  */
 class DepartmentResource extends BaseJsonResource
 {

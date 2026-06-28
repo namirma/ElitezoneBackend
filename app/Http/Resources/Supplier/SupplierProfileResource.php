@@ -2,15 +2,15 @@
 
 namespace App\Http\Resources\Supplier;
 
+use App\Http\Resources\BaseJsonResource;
 use App\Models\SupplierProfile;
 use Illuminate\Http\Request;
-use App\Http\Resources\BaseJsonResource;
 
 /**
  * @property mixed $activities
  */
 /**
- * @mixin \App\Models\SupplierProfile
+ * @mixin SupplierProfile
  */
 class SupplierProfileResource extends BaseJsonResource
 {

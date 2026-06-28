@@ -33,8 +33,8 @@ class SubmitWeighbridgeRequest extends FormRequest
     {
         return [
             'weight_after_scale.required' => __('orders.weighbridge_weight_required'),
-            'weight_after_scale.numeric'  => __('orders.weighbridge_weight_numeric'),
-            'weight_after_scale.min'      => __('orders.weighbridge_weight_min'),
+            'weight_after_scale.numeric' => __('orders.weighbridge_weight_numeric'),
+            'weight_after_scale.min' => __('orders.weighbridge_weight_min'),
         ];
     }
 

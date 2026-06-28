@@ -26,9 +26,9 @@ class AdminDashboardService
     public function todayStats(Carbon $today): array
     {
         return [
-            'new_users'  => User::whereDate('created_at', $today)->count(),
+            'new_users' => User::whereDate('created_at', $today)->count(),
             'new_orders' => Order::whereDate('created_at', $today)->count(),
-            'revenue'    => (float) Order::whereDate('created_at', $today)
+            'revenue' => (float) Order::whereDate('created_at', $today)
                 ->where(Order::PAYMENT_STATUS, Order::PAYMENT_PAID)
                 ->sum(Order::FINAL_AMOUNT),
         ];
@@ -65,8 +65,8 @@ class AdminDashboardService
         ];
 
         return collect($statuses)->map(fn ($s) => [
-            'status'       => $s,
-            'count'        => (int) ($rows[$s]->count ?? 0),
+            'status' => $s,
+            'count' => (int) ($rows[$s]->count ?? 0),
             'total_amount' => (float) ($rows[$s]->total_amount ?? 0),
         ])->values()->toArray();
     }
@@ -120,14 +120,14 @@ class AdminDashboardService
         $totalAlerts = $pendingDeposits + $supplierDebtCount + $pendingMoadianCount + $expiredReservationCount;
 
         return [
-            'has_alerts'               => $totalAlerts > 0,
-            'total_alerts'             => $totalAlerts,
-            'pending_deposits'         => $pendingDeposits,
-            'pending_deposits_amount'  => $pendingDepositAmount,
-            'supplier_debts'           => $supplierDebtCount,
-            'supplier_debts_amount'    => $supplierDebtAmount,
+            'has_alerts' => $totalAlerts > 0,
+            'total_alerts' => $totalAlerts,
+            'pending_deposits' => $pendingDeposits,
+            'pending_deposits_amount' => $pendingDepositAmount,
+            'supplier_debts' => $supplierDebtCount,
+            'supplier_debts_amount' => $supplierDebtAmount,
             'pending_moadian_invoices' => $pendingMoadianCount,
-            'expired_reservations'     => $expiredReservationCount,
+            'expired_reservations' => $expiredReservationCount,
         ];
     }
 
@@ -149,8 +149,8 @@ class AdminDashboardService
             ->orderBy(DB::raw('DATE(created_at)'))
             ->get()
             ->map(fn ($row) => [
-                'date'    => $row->date,
-                'count'   => (int) $row->count,
+                'date' => $row->date,
+                'count' => (int) $row->count,
                 'revenue' => (float) $row->revenue,
             ])
             ->toArray();
@@ -164,12 +164,12 @@ class AdminDashboardService
     public function monthlySummary(Carbon $monthStart): array
     {
         return [
-            'paid_revenue'          => (float) Order::where('created_at', '>=', $monthStart)
+            'paid_revenue' => (float) Order::where('created_at', '>=', $monthStart)
                 ->where(Order::PAYMENT_STATUS, Order::PAYMENT_PAID)
                 ->sum(Order::FINAL_AMOUNT),
-            'orders_count'          => Order::where('created_at', '>=', $monthStart)->count(),
-            'total_users'           => User::count(),
-            'new_users_this_month'  => User::where('created_at', '>=', $monthStart)->count(),
+            'orders_count' => Order::where('created_at', '>=', $monthStart)->count(),
+            'total_users' => User::count(),
+            'new_users_this_month' => User::where('created_at', '>=', $monthStart)->count(),
         ];
     }
 }

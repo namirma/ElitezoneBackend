@@ -2,7 +2,7 @@
 
 namespace App\DataTransferObjects\Pricing;
 
-class CartPricingResult
+readonly class CartPricingResult
 {
     /**
      * @param  CartLinePricingResult[]  $lines

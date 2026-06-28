@@ -9,7 +9,7 @@ namespace App\DataTransferObjects\Order;
  * Pure data — no DB access, no side effects. Produced by WeighbridgeReconciler
  * and consumed by the orchestrator, WeighbridgeVatRouter, and SupplierDebtHandler.
  */
-final class WeighbridgeReconcileResult
+final readonly class WeighbridgeReconcileResult
 {
     public function __construct(
         /** Weight used for billing — min(actualWeight, WBS). Over-delivery is absorbed by stock, never charged. */

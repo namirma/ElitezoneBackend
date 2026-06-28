@@ -8,6 +8,7 @@ use App\Events\Order\OrderPlaced;
 use App\Models\Address;
 use App\Models\Cart;
 use App\Models\CartItem;
+use App\Models\Factory;
 use App\Models\Order;
 use App\Models\OrderUnit;
 use App\Models\ShippingMethod;
@@ -15,6 +16,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\Feature\Pricing\CreatesPricingFixtures;
 use Tests\TestCase;
 
@@ -40,7 +42,7 @@ class PlaceOrderFinalAmountTest extends TestCase
 {
     use CreatesPricingFixtures, DatabaseTransactions;
 
-    /** @test */
+    #[Test]
     public function it_does_not_subtract_the_variant_discount_twice_from_final_amount(): void
     {
         Cache::flush();
@@ -51,7 +53,7 @@ class PlaceOrderFinalAmountTest extends TestCase
         $buyer = User::factory()->create();
 
         $factory = $this->makeFactory();
-        $factory->update([\App\Models\Factory::SUPPLIER_USER_ID => $supplier->id]);
+        $factory->update([Factory::SUPPLIER_USER_ID => $supplier->id]);
 
         $location = $this->makeLocation($factory);
         $product = $this->makeProduct();

@@ -8,7 +8,7 @@ use App\Models\UserBankAccount;
 use Illuminate\Http\Request;
 
 /**
- * @mixin \App\Models\UserBankAccount
+ * @mixin UserBankAccount
  */
 class UserBankAccountResource extends BaseJsonResource
 {

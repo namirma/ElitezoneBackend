@@ -24,7 +24,7 @@ Route::get('/', function () {
     ]);
 });
 
-//Route::get('/role',function (\Illuminate\Http\Request $request){
+// Route::get('/role',function (\Illuminate\Http\Request $request){
 
 //    $owner = Role::create([
 //        'name' => 'owner',
@@ -42,4 +42,4 @@ Route::get('/', function () {
 //    $user=\App\Models\User::find(2);
 //    $user->addRole(\App\Models\Role::find(2));
 //    dd($user->roles());
-//});
+// });

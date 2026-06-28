@@ -2,12 +2,12 @@
 
 namespace App\Http\Resources\Product;
 
+use App\Http\Resources\BaseJsonResource;
 use App\Models\PriceFilterCategory;
 use Illuminate\Http\Request;
-use App\Http\Resources\BaseJsonResource;
 
 /**
- * @mixin \App\Models\PriceFilterCategory
+ * @mixin PriceFilterCategory
  */
 class PriceFilterCategoryResource extends BaseJsonResource
 {
@@ -18,6 +18,7 @@ class PriceFilterCategoryResource extends BaseJsonResource
             PriceFilterCategory::NAME => $this->name,
             PriceFilterCategory::CODE => $this->code,
             PriceFilterCategory::DESCRIPTION => $this->description,
+            PriceFilterCategory::IS_ACTIVE => (bool) $this->is_active,
             PriceFilterCategory::SORT_ORDER => $this->sort_order,
             PriceFilterCategory::CREATED_AT => $this->created_at->format('Y-m-d H:i:s'),
             PriceFilterCategory::UPDATED_AT => $this->updated_at->format('Y-m-d H:i:s'),

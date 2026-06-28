@@ -2,11 +2,12 @@
 
 namespace App\Http\Resources\Product;
 
-use Illuminate\Http\Request;
 use App\Http\Resources\BaseJsonResource;
+use App\Models\AttributeValue;
+use Illuminate\Http\Request;
 
 /**
- * @mixin \App\Models\AttributeValue
+ * @mixin AttributeValue
  */
 class AttributeValueResource extends BaseJsonResource
 {
@@ -14,7 +15,9 @@ class AttributeValueResource extends BaseJsonResource
     {
         return [
             'id' => $this->id,
+            'attribute_id' => $this->attribute_id,
             'value' => $this->value,
+            'display_value' => $this->display_value,
         ];
     }
 }

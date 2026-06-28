@@ -3,9 +3,9 @@
 namespace App\Http\Requests\Order;
 
 use App\DataTransferObjects\Order\PlaceOrderData;
+use App\Models\ContractorProfile;
 use App\Models\EmployerConsultant;
 use App\Models\EngineerProfile;
-use App\Models\ContractorProfile;
 use App\Models\User;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
@@ -73,6 +73,7 @@ class StoreOrderRequest extends FormRequest
 
                     if (! $isApproved) {
                         $fail(__('orders.store_consultant_not_approved'));
+
                         return;
                     }
 
@@ -80,6 +81,7 @@ class StoreOrderRequest extends FormRequest
                     $consultant = User::find($value);
                     if (! $consultant) {
                         $fail(__('orders.store_consultant_not_found'));
+
                         return;
                     }
 
@@ -95,7 +97,7 @@ class StoreOrderRequest extends FormRequest
                 'integer',
                 Rule::exists('addresses', 'id')->where('user_id', Auth::id()),
             ],
-            'description'        => ['nullable', 'string', 'max:1000'],
+            'description' => ['nullable', 'string', 'max:1000'],
             'shipping_method_id' => ['required', 'integer', 'exists:shipping_methods,id'],
         ];
     }
@@ -135,7 +137,7 @@ class StoreOrderRequest extends FormRequest
                 'integer',
                 Rule::exists('addresses', 'id')->where('user_id', Auth::id()),
             ],
-            'description'        => ['nullable', 'string', 'max:1000'],
+            'description' => ['nullable', 'string', 'max:1000'],
             'shipping_method_id' => ['required', 'integer', 'exists:shipping_methods,id'],
         ];
     }
@@ -166,32 +168,32 @@ class StoreOrderRequest extends FormRequest
     {
         return [
             'beneficiary_user_id' => 'کارفرمای گیرنده',
-            'consultant_user_id'  => 'مشاور فنی',
-            'address_id'          => 'آدرس گیرنده',
-            'description'         => 'توضیحات',
-            'shipping_method_id'  => 'روش ارسال',
+            'consultant_user_id' => 'مشاور فنی',
+            'address_id' => 'آدرس گیرنده',
+            'description' => 'توضیحات',
+            'shipping_method_id' => 'روش ارسال',
         ];
     }
 
     public function messages(): array
     {
         return [
-            'address_id.required'  => __('orders.store_address_required'),
-            'address_id.integer'   => __('orders.store_address_integer'),
-            'address_id.exists'    => __('orders.store_address_exists'),
+            'address_id.required' => __('orders.store_address_required'),
+            'address_id.integer' => __('orders.store_address_integer'),
+            'address_id.exists' => __('orders.store_address_exists'),
 
             'shipping_method_id.required' => __('orders.store_shipping_required'),
-            'shipping_method_id.integer'  => __('orders.store_shipping_integer'),
-            'shipping_method_id.exists'   => __('orders.store_shipping_exists'),
+            'shipping_method_id.integer' => __('orders.store_shipping_integer'),
+            'shipping_method_id.exists' => __('orders.store_shipping_exists'),
 
             'beneficiary_user_id.prohibited' => __('orders.store_beneficiary_prohibited_for_employer'),
-            'beneficiary_user_id.required'   => __('orders.store_beneficiary_required_for_consultant'),
-            'beneficiary_user_id.integer'    => __('orders.store_beneficiary_integer'),
-            'beneficiary_user_id.exists'     => __('orders.store_beneficiary_exists'),
+            'beneficiary_user_id.required' => __('orders.store_beneficiary_required_for_consultant'),
+            'beneficiary_user_id.integer' => __('orders.store_beneficiary_integer'),
+            'beneficiary_user_id.exists' => __('orders.store_beneficiary_exists'),
 
             'consultant_user_id.prohibited' => __('orders.store_consultant_prohibited_for_consultant'),
-            'consultant_user_id.integer'    => __('orders.store_consultant_integer'),
-            'consultant_user_id.exists'     => __('orders.store_consultant_exists'),
+            'consultant_user_id.integer' => __('orders.store_consultant_integer'),
+            'consultant_user_id.exists' => __('orders.store_consultant_exists'),
 
             'description.max' => __('orders.store_description_max'),
         ];

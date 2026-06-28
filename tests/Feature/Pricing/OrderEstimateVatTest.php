@@ -7,6 +7,7 @@ use App\Models\Offer;
 use App\Models\OrderUnit;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Cache;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -30,7 +31,7 @@ class OrderEstimateVatTest extends TestCase
 {
     use CreatesPricingFixtures, DatabaseTransactions;
 
-    /** @test */
+    #[Test]
     public function the_estimate_adds_vat_on_top_and_reduces_it_proportionally_for_offers(): void
     {
         Cache::flush();

@@ -9,7 +9,7 @@ use App\Enums\Shipping\ShippingCostBasis;
  * single destination (address), with the freight for that leg. PlaceOrderAction turns
  * each of these into a Shipment row.
  */
-class ShipmentGroup
+readonly class ShipmentGroup
 {
     public function __construct(
         public readonly ?int $factoryId,

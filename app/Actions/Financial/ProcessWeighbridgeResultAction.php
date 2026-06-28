@@ -79,13 +79,13 @@ class ProcessWeighbridgeResultAction
             $consultantGross = $this->vatRouter->route($locked, $result);
 
             $locked->forceFill([
-                Order::WEIGHT_AFTER_SCALE    => $actualWeight,
+                Order::WEIGHT_AFTER_SCALE => $actualWeight,
                 Order::WEIGHING_COMPLETED_AT => now(),
-                Order::STATUS                => Order::STATUS_SHIPPED,
-                Order::PAYMENT_OF_OWNER      => $result->newPOO,
-                Order::PAYMENT_TO_SUPPLIER   => $result->newPTS,
+                Order::STATUS => Order::STATUS_SHIPPED,
+                Order::PAYMENT_OF_OWNER => $result->newPOO,
+                Order::PAYMENT_TO_SUPPLIER => $result->newPTS,
                 Order::PAYMENT_TO_CONSULTANT => $consultantGross,
-                Order::FINAL_AMOUNT          => $result->newPOO,
+                Order::FINAL_AMOUNT => $result->newPOO,
             ])->save();
 
             Log::channel('financial')->info("باسکول نهایی شد. وضعیت: {$status}");

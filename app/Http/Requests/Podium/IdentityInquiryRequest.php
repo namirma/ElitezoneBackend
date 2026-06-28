@@ -15,7 +15,7 @@ class IdentityInquiryRequest extends FormRequest
     {
         return [
             'national_code' => ['required', 'regex:/^\d{10}$/'],
-            'birth_date'    => ['required', 'regex:/^(\d{8}|\d{4}-\d{2}-\d{2})$/'],
+            'birth_date' => ['required', 'regex:/^(\d{8}|\d{4}-\d{2}-\d{2})$/'],
         ];
     }
 
@@ -23,9 +23,9 @@ class IdentityInquiryRequest extends FormRequest
     {
         return [
             'national_code.required' => 'کد ملی الزامی است.',
-            'national_code.regex'    => 'کد ملی باید ۱۰ رقم باشد.',
-            'birth_date.required'    => 'تاریخ تولد الزامی است.',
-            'birth_date.regex'       => 'تاریخ تولد باید به فرمت YYYYMMDD یا YYYY-MM-DD باشد.',
+            'national_code.regex' => 'کد ملی باید ۱۰ رقم باشد.',
+            'birth_date.required' => 'تاریخ تولد الزامی است.',
+            'birth_date.regex' => 'تاریخ تولد باید به فرمت YYYYMMDD یا YYYY-MM-DD باشد.',
         ];
     }
 }

@@ -4,7 +4,7 @@ namespace App\DataTransferObjects\Product;
 
 use Illuminate\Http\Request;
 
-class ProductFilterData
+readonly class ProductFilterData
 {
     public function __construct(
         public readonly ?string $search,

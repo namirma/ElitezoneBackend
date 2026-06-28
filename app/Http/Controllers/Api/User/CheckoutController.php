@@ -2,10 +2,9 @@
 
 namespace App\Http\Controllers\Api\User;
 
-use App\Http\Controllers\Controller;
-
 use App\Actions\Order\PlaceOrderAction;
 use App\DataTransferObjects\Order\PlaceOrderData;
+use App\Http\Controllers\Controller;
 use App\Http\Requests\Order\StoreOrderRequest;
 use App\Http\Resources\Order\OrderResource;
 use App\Models\Cart;

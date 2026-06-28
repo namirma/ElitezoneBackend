@@ -5,7 +5,7 @@ namespace App\DataTransferObjects\Pricing;
 use App\Models\Badge;
 use App\Models\CustomerType;
 
-class PricingContextData
+readonly class PricingContextData
 {
     public function __construct(
         public readonly string $activeCode,

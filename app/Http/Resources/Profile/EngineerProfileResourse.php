@@ -7,7 +7,7 @@ use App\Models\EngineerProfile;
 use Illuminate\Http\Request;
 
 /**
- * @mixin \App\Models\EngineerProfile
+ * @mixin EngineerProfile
  */
 class EngineerProfileResourse extends BaseJsonResource
 {

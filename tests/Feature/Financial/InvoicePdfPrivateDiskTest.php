@@ -3,6 +3,7 @@
 namespace Tests\Feature\Financial;
 
 use Illuminate\Support\Facades\Storage;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -12,7 +13,7 @@ use Tests\TestCase;
  */
 class InvoicePdfPrivateDiskTest extends TestCase
 {
-    /** @test */
+    #[Test]
     public function the_migration_moves_invoice_pdfs_from_public_to_private(): void
     {
         Storage::fake('public');

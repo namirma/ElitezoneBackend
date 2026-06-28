@@ -2,13 +2,13 @@
 
 namespace App\Http\Resources\Product;
 
+use App\Http\Resources\BaseJsonResource;
 use App\Models\Attribute;
 use App\Models\ProductVariantAttribute;
 use Illuminate\Http\Request;
-use App\Http\Resources\BaseJsonResource;
 
 /**
- * @mixin \App\Models\ProductVariantAttribute
+ * @mixin ProductVariantAttribute
  */
 class ProductVariantAttributeResource extends BaseJsonResource
 {

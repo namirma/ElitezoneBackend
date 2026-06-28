@@ -54,8 +54,8 @@ class OrderPaymentController extends Controller
         } catch (Exception $e) {
             Log::error('Order full payment failed', [
                 'order_id' => $order->id,
-                'user_id'  => Auth::id(),
-                'error'    => $e->getMessage(),
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
             ]);
 
             return error(__('orders.payment_processing_error'), [], 500);
@@ -76,8 +76,8 @@ class OrderPaymentController extends Controller
         } catch (Exception $e) {
             Log::error('Hold fee payment failed', [
                 'order_id' => $order->id,
-                'user_id'  => Auth::id(),
-                'error'    => $e->getMessage(),
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
             ]);
 
             return error(__('orders.payment_processing_error'), [], 500);

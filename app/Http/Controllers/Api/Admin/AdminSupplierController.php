@@ -30,9 +30,9 @@ class AdminSupplierController extends Controller
     public function index(Request $request): JsonResponse
     {
         $request->validate([
-            'search'    => ['nullable', 'string', 'min:2'],
+            'search' => ['nullable', 'string', 'min:2'],
             'is_active' => ['nullable', 'boolean'],
-            'per_page'  => ['nullable', 'integer', 'min:1', 'max:100'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
         $users = User::query()
@@ -75,22 +75,22 @@ class AdminSupplierController extends Controller
             ->groupBy('status')
             ->get()
             ->map(fn ($row) => [
-                'status'       => $row->status,
-                'count'        => (int) $row->count,
+                'status' => $row->status,
+                'count' => (int) $row->count,
                 'total_amount' => (float) $row->total_amount,
             ]);
 
         $formulaFlags = $user->supplier ? [
             'trans_commission' => (bool) $user->supplier->{SupplierProfile::TRANS_COMMISSION},
-            'trans_vat'        => (bool) $user->supplier->{SupplierProfile::TRANS_VAT},
+            'trans_vat' => (bool) $user->supplier->{SupplierProfile::TRANS_VAT},
         ] : null;
 
         return success([
-            'user'          => new UserResource($user),
+            'user' => new UserResource($user),
             'formula_flags' => $formulaFlags,
-            'order_stats'   => $orderStats,
-            'wallet'        => $user->wallet ? [
-                'balance'      => (float) $user->wallet->balance,
+            'order_stats' => $orderStats,
+            'wallet' => $user->wallet ? [
+                'balance' => (float) $user->wallet->balance,
                 'balance_hold' => (float) $user->wallet->balance_hold,
             ] : null,
         ], __('global.received_successfully'));
@@ -117,12 +117,12 @@ class AdminSupplierController extends Controller
 
         $supplier->update([
             SupplierProfile::TRANS_COMMISSION => $request->boolean('trans_commission'),
-            SupplierProfile::TRANS_VAT        => $request->boolean('trans_vat'),
+            SupplierProfile::TRANS_VAT => $request->boolean('trans_vat'),
         ]);
 
         return success([
             'trans_commission' => (bool) $supplier->fresh()->{SupplierProfile::TRANS_COMMISSION},
-            'trans_vat'        => (bool) $supplier->fresh()->{SupplierProfile::TRANS_VAT},
+            'trans_vat' => (bool) $supplier->fresh()->{SupplierProfile::TRANS_VAT},
         ], __('admin.suppliers.formula_updated'));
     }
 
@@ -134,7 +134,7 @@ class AdminSupplierController extends Controller
         abort_unless($user->hasRole('supplier'), 404, __('admin.suppliers.not_found'));
 
         $request->validate([
-            'status'   => ['nullable', 'string'],
+            'status' => ['nullable', 'string'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 

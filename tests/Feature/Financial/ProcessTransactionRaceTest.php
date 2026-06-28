@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -20,7 +21,7 @@ class ProcessTransactionRaceTest extends TestCase
 {
     use DatabaseTransactions;
 
-    /** @test */
+    #[Test]
     public function a_stale_confirm_does_not_double_credit_the_wallet(): void
     {
         $user = User::factory()->create();

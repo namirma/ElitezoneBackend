@@ -29,10 +29,13 @@ use Illuminate\Support\Facades\Hash;
  */
 class ConsultantTimelineTestSeeder extends Seeder
 {
-    private const CONSULTANT_MOBILE  = '09500000005';
-    private const CONSULTANT_NC      = '5555555555';
-    private const PASSWORD           = 'password123';
-    private const ORDER_NUMBER       = 'ORD-CON-TEST-001';
+    private const CONSULTANT_MOBILE = '09500000005';
+
+    private const CONSULTANT_NC = '5555555555';
+
+    private const PASSWORD = 'password123';
+
+    private const ORDER_NUMBER = 'ORD-CON-TEST-001';
 
     public function run(): void
     {
@@ -51,20 +54,20 @@ class ConsultantTimelineTestSeeder extends Seeder
         $consultant = User::firstOrCreate(
             [User::MOBILE => self::CONSULTANT_MOBILE],
             [
-                User::MOBILE        => self::CONSULTANT_MOBILE,
+                User::MOBILE => self::CONSULTANT_MOBILE,
                 User::NATIONAL_CODE => self::CONSULTANT_NC,
-                User::BIRTH_DATE    => '13700101',
-                User::PASSWORD      => Hash::make(self::PASSWORD),
-                User::TYPE_ID       => $expertType->id,
+                User::BIRTH_DATE => '13700101',
+                User::PASSWORD => Hash::make(self::PASSWORD),
+                User::TYPE_ID => $expertType->id,
             ]
         );
 
         UserProfile::firstOrCreate(
             ['user_id' => $consultant->id],
             [
-                'user_id'       => $consultant->id,
-                'name'          => 'سارا',
-                'family'        => 'مشاورزاده',
+                'user_id' => $consultant->id,
+                'name' => 'سارا',
+                'family' => 'مشاورزاده',
                 'national_code' => self::CONSULTANT_NC,
             ]
         );
@@ -72,8 +75,8 @@ class ConsultantTimelineTestSeeder extends Seeder
         Wallet::firstOrCreate(
             [Wallet::USER_ID => $consultant->id],
             [
-                Wallet::USER_ID      => $consultant->id,
-                Wallet::BALANCE      => 0,
+                Wallet::USER_ID => $consultant->id,
+                Wallet::BALANCE => 0,
                 Wallet::BALANCE_HOLD => 0,
             ]
         );
@@ -84,6 +87,7 @@ class ConsultantTimelineTestSeeder extends Seeder
 
         if (! $employer || ! $supplier) {
             $this->command->error('کارفرما یا سوپلایر پیدا نشد — ابتدا DevSeeder را اجرا کنید.');
+
             return;
         }
 
@@ -94,17 +98,17 @@ class ConsultantTimelineTestSeeder extends Seeder
         $order = Order::firstOrCreate(
             [Order::ORDER_NUMBER => self::ORDER_NUMBER],
             [
-                Order::PLACER_USER_ID      => $employer->id,
+                Order::PLACER_USER_ID => $employer->id,
                 Order::BENEFICIARY_USER_ID => $consultant->id,
-                Order::ORDER_NUMBER        => self::ORDER_NUMBER,
-                Order::STATUS              => Order::STATUS_WEIGHBRIDGE_DONE,
-                Order::PAYMENT_STATUS      => Order::PAYMENT_PAID,
-                Order::FINAL_AMOUNT        => 1_200_000_000,
-                Order::OFFICIAL_PRICE      => 1_200_000_000,
+                Order::ORDER_NUMBER => self::ORDER_NUMBER,
+                Order::STATUS => Order::STATUS_WEIGHBRIDGE_DONE,
+                Order::PAYMENT_STATUS => Order::PAYMENT_PAID,
+                Order::FINAL_AMOUNT => 1_200_000_000,
+                Order::OFFICIAL_PRICE => 1_200_000_000,
                 Order::WEIGHT_BEFORE_SCALE => 20_000,
-                Order::SHIPPING_COST       => 0,
-                Order::VAT_RATE            => 10,
-                Order::PAID_AT             => now()->subDays(3),
+                Order::SHIPPING_COST => 0,
+                Order::VAT_RATE => 10,
+                Order::PAID_AT => now()->subDays(3),
             ]
         );
 
@@ -114,21 +118,21 @@ class ConsultantTimelineTestSeeder extends Seeder
         if ($variant && $supplier) {
             OrderItem::firstOrCreate(
                 [
-                    OrderItem::ORDER_ID     => $order->id,
-                    OrderItem::VARIANT_SKU  => $variant->sku,
+                    OrderItem::ORDER_ID => $order->id,
+                    OrderItem::VARIANT_SKU => $variant->sku,
                 ],
                 [
-                    OrderItem::ORDER_ID           => $order->id,
+                    OrderItem::ORDER_ID => $order->id,
                     OrderItem::PRODUCT_VARIANT_ID => $variant->id,
-                    OrderItem::SUPPLIER_USER_ID   => $supplier->id,
-                    OrderItem::PRODUCT_NAME       => $variant->name ?? 'میلگرد آجدار',
-                    OrderItem::VARIANT_SKU        => $variant->sku,
-                    OrderItem::QUANTITY_DETAILS   => ['5.5' => 10000],
-                    OrderItem::QUANTITY           => 20_000,
-                    OrderItem::WEIGHT             => 20_000,
-                    OrderItem::UNIT_NAME          => 'کیلوگرم',
-                    OrderItem::UNIT_PRICE         => 60_000,
-                    OrderItem::TOTAL_PRICE        => 1_200_000_000,
+                    OrderItem::SUPPLIER_USER_ID => $supplier->id,
+                    OrderItem::PRODUCT_NAME => $variant->name ?? 'میلگرد آجدار',
+                    OrderItem::VARIANT_SKU => $variant->sku,
+                    OrderItem::QUANTITY_DETAILS => ['5.5' => 10000],
+                    OrderItem::QUANTITY => 20_000,
+                    OrderItem::WEIGHT => 20_000,
+                    OrderItem::UNIT_NAME => 'کیلوگرم',
+                    OrderItem::UNIT_PRICE => 60_000,
+                    OrderItem::TOTAL_PRICE => 1_200_000_000,
                 ]
             );
         }
@@ -144,7 +148,7 @@ class ConsultantTimelineTestSeeder extends Seeder
                 ['مشاور فنی', self::CONSULTANT_MOBILE, self::PASSWORD, $consultant->id],
             ]
         );
-        $this->command->info("  📦  سفارش تست: " . self::ORDER_NUMBER . " (ID: {$order->id})");
+        $this->command->info('  📦  سفارش تست: '.self::ORDER_NUMBER." (ID: {$order->id})");
         $this->command->info('');
         $this->command->info('  ▶  برای تست:');
         $this->command->info('     ۱. با موبایل 09500000005 / رمز password123 وارد شوید');

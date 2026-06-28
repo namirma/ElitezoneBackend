@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Pricing\Pipes\SetBasePrice;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -82,7 +83,7 @@ class ProductPrice extends Model
         // درایورهای بدون tag (file, database, ...) — حذف مستقیم کلید قیمت پایه؛
         // بدون این، قیمت کش‌شده تا یک ساعت بعد از تغییر قیمت کهنه می‌ماند.
         if (isset($price->factory_id, $price->factory_location_id)) {
-            Cache::forget(\App\Services\Pricing\Pipes\SetBasePrice::cacheKey(
+            Cache::forget(SetBasePrice::cacheKey(
                 (int) $price->product_variant_id,
                 (int) $price->factory_id,
                 (int) $price->factory_location_id,

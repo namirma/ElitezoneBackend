@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\UserType;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Laravel\Sanctum\Sanctum;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -37,7 +38,7 @@ class ProfileVerificationBadgeTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function expert_without_documents_returns_is_verified_false(): void
     {
         $user = $this->expertUser();
@@ -50,7 +51,7 @@ class ProfileVerificationBadgeTest extends TestCase
         $this->assertFalse($response->json('data.is_verified'));
     }
 
-    /** @test */
+    #[Test]
     public function verified_engineer_returns_is_verified_true(): void
     {
         $user = $this->expertUser();
@@ -69,7 +70,7 @@ class ProfileVerificationBadgeTest extends TestCase
         $this->assertTrue($response->json('data.is_verified'));
     }
 
-    /** @test */
+    #[Test]
     public function unverified_engineer_returns_is_verified_false(): void
     {
         $user = $this->expertUser();
@@ -88,7 +89,7 @@ class ProfileVerificationBadgeTest extends TestCase
         $this->assertFalse($response->json('data.is_verified'));
     }
 
-    /** @test */
+    #[Test]
     public function verified_contractor_returns_is_verified_true(): void
     {
         $user = $this->expertUser();
@@ -106,7 +107,7 @@ class ProfileVerificationBadgeTest extends TestCase
         $this->assertTrue($response->json('data.is_verified'));
     }
 
-    /** @test */
+    #[Test]
     public function employer_returns_is_verified_null(): void
     {
         $user = User::factory()->create([

@@ -6,6 +6,8 @@ use App\Http\Controllers\Api\Data\InventoryController;
 use App\Http\Controllers\Api\ListopherController;
 use App\Http\Controllers\Api\User\AccountSecurityController;
 use App\Http\Controllers\Api\User\AddressController;
+use App\Http\Controllers\Api\User\AvatarController;
+use App\Http\Controllers\Api\User\BadgeController;
 use App\Http\Controllers\Api\User\BeneficiaryController;
 use App\Http\Controllers\Api\User\CartController;
 use App\Http\Controllers\Api\User\CheckoutController;
@@ -112,7 +114,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
         // Collaboration badge (proxied server-side from saze90.com — fixes the CORS that
         // broke the old direct frontend call). Returns { badge, is_pioneer, badges }.
-        Route::get('/badge', [\App\Http\Controllers\Api\User\BadgeController::class, 'show']);
+        Route::get('/badge', [BadgeController::class, 'show']);
 
         // Basic profile data
         Route::get('/', [ProfileController::class, 'getProfile'])->middleware('track:account_info');
@@ -128,8 +130,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/user-types', [AuthController::class, 'types']);
 
         // Avatar (profile picture)
-        Route::post('/avatar', [\App\Http\Controllers\Api\User\AvatarController::class, 'store']);
-        Route::delete('/avatar', [\App\Http\Controllers\Api\User\AvatarController::class, 'destroy']);
+        Route::post('/avatar', [AvatarController::class, 'store']);
+        Route::delete('/avatar', [AvatarController::class, 'destroy']);
 
         // Account security (password / mobile / email)
         Route::post('/verify-email', [AccountSecurityController::class, 'setEmail']);

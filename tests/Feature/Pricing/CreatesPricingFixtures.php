@@ -33,8 +33,8 @@ trait CreatesPricingFixtures
     {
         return FactoryLocation::create([
             'factory_id' => $factory->id,
-            'name'       => 'انبار اصلی',
-            'type'       => 'main',
+            'name' => 'انبار اصلی',
+            'type' => 'main',
         ]);
     }
 
@@ -47,11 +47,11 @@ trait CreatesPricingFixtures
         ]);
 
         return Product::create([
-            'cuid'        => Str::random(20),
+            'cuid' => Str::random(20),
             'category_id' => $category->id,
-            'name'        => 'محصول تست',
-            'slug'        => 'test-product-'.Str::random(8),
-            'sku'         => 'SKU_'.Str::random(6),
+            'name' => 'محصول تست',
+            'slug' => 'test-product-'.Str::random(8),
+            'sku' => 'SKU_'.Str::random(6),
         ]);
     }
 
@@ -61,8 +61,8 @@ trait CreatesPricingFixtures
 
         return ProductVariant::create(array_merge([
             'product_id' => $product->id,
-            'name'       => 'واریانت تست',
-            'sku'        => 'VSKU_'.Str::random(6),
+            'name' => 'واریانت تست',
+            'sku' => 'VSKU_'.Str::random(6),
         ], $overrides));
     }
 
@@ -74,24 +74,24 @@ trait CreatesPricingFixtures
         float $special = 900_000,
     ): ProductPrice {
         return ProductPrice::create([
-            'product_variant_id'  => $variant->id,
-            'factory_id'          => $factory->id,
+            'product_variant_id' => $variant->id,
+            'factory_id' => $factory->id,
             'factory_location_id' => $location->id,
-            'general_price'       => $general,
-            'special_price'       => $special,
-            'golden_figure'       => 0,
+            'general_price' => $general,
+            'special_price' => $special,
+            'golden_figure' => 0,
         ]);
     }
 
     protected function makeContext(?ProductVariant $variant = null): PricingContext
     {
-        $factory  = $this->makeFactory();
+        $factory = $this->makeFactory();
         $location = $this->makeLocation($factory);
         $variant ??= $this->makeVariant();
 
         return new PricingContext(
-            variant:  $variant,
-            factory:  $factory,
+            variant: $variant,
+            factory: $factory,
             location: $location,
         );
     }

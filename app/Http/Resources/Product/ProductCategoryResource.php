@@ -2,12 +2,12 @@
 
 namespace App\Http\Resources\Product;
 
+use App\Http\Resources\BaseJsonResource;
 use App\Models\ProductCategory;
 use Illuminate\Http\Request;
-use App\Http\Resources\BaseJsonResource;
 
 /**
- * @mixin \App\Models\ProductCategory
+ * @mixin ProductCategory
  */
 class ProductCategoryResource extends BaseJsonResource
 {
@@ -19,6 +19,8 @@ class ProductCategoryResource extends BaseJsonResource
             ProductCategory::SLUG => $this->slug,
             ProductCategory::DESCRIPTION => $this->description,
             ProductCategory::IMAGE => $this->image,
+            ProductCategory::IS_ACTIVE => $this->is_active,
+            'products_count' => $this->whenCounted('products'),
         ];
     }
 }

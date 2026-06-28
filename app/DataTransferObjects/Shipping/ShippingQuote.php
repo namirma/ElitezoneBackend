@@ -7,7 +7,7 @@ namespace App\DataTransferObjects\Shipping;
  * origins AND multiple destinations: lines are grouped into shipments by
  * (origin factory location → destination address), each shipment priced on its own route.
  */
-class ShippingQuote
+readonly class ShippingQuote
 {
     public function __construct(
         /** Total freight across every shipment (Rials). */

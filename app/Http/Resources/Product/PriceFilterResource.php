@@ -2,12 +2,12 @@
 
 namespace App\Http\Resources\Product;
 
+use App\Http\Resources\BaseJsonResource;
 use App\Models\PriceFilter;
 use Illuminate\Http\Request;
-use App\Http\Resources\BaseJsonResource;
 
 /**
- * @mixin \App\Models\PriceFilter
+ * @mixin PriceFilter
  */
 class PriceFilterResource extends BaseJsonResource
 {
@@ -20,6 +20,7 @@ class PriceFilterResource extends BaseJsonResource
             PriceFilter::CODE => $this->code,
             PriceFilter::AMOUNT => $this->amount,
             PriceFilter::IS_PERCENTAGE => (bool) $this->is_percentage,
+            PriceFilter::IS_ACTIVE => (bool) $this->is_active,
             PriceFilter::SORT_ORDER => $this->sort_order,
             PriceFilter::CREATED_AT => $this->created_at,
             PriceFilter::UPDATED_AT => $this->updated_at,

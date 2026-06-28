@@ -13,7 +13,7 @@ use Illuminate\Validation\Rule;
  * Uses the readonly constructor pattern (PHP 8.1) — the standard DTO style
  * across the codebase.
  */
-final class TicketDTO
+final readonly class TicketDTO
 {
     public function __construct(
         public readonly int $department_id,

@@ -41,10 +41,10 @@ class FinalizeInvoiceAction
                 $wallet = $consultant->wallet ?: $consultant->wallet()->create([]);
 
                 $wallet->transactions()->create([
-                    'order_id'    => $order->id,
-                    'amount'      => $feeAmount,
-                    'type'        => WalletTransaction::TYPE_FEE_HOLD,
-                    'status'      => WalletTransaction::STATUS_PENDING,
+                    'order_id' => $order->id,
+                    'amount' => $feeAmount,
+                    'type' => WalletTransaction::TYPE_FEE_HOLD,
+                    'status' => WalletTransaction::STATUS_PENDING,
                     'description' => __('orders.fee_hold_description', ['order_number' => $order->order_number]),
                 ]);
 
@@ -56,7 +56,7 @@ class FinalizeInvoiceAction
     /**
      * Determine the consultant fee amount and recipient from the order.
      *
-     * @return array{0: int|float|null, 1: int|null}  [feeAmount, consultantUserId]
+     * @return array{0: int|float|null, 1: int|null} [feeAmount, consultantUserId]
      */
     private function resolveFee(Order $order): array
     {

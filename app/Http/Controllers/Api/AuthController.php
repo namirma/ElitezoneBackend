@@ -163,7 +163,7 @@ class AuthController extends Controller
         // timing information via DB query latency. hash_equals() runs in constant time.
         $user = User::where(User::MOBILE, $mobile)->first();
 
-        $storedSecret  = (string) ($user?->{User::SECRET} ?? '');
+        $storedSecret = (string) ($user?->{User::SECRET} ?? '');
         $submittedCode = (string) ($request->validated('code') ?? '');
 
         if (

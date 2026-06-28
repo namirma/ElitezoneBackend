@@ -8,7 +8,7 @@ final class PayOrderResult
 {
     public function __construct(
         public readonly string $scenario,   // 'completion' | 'direct_purchase' | 'reservation'
-        public readonly array  $documents,
+        public readonly array $documents,
         public readonly string $messageKey,
     ) {}
 }

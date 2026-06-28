@@ -152,16 +152,16 @@ class AdminFinancialController extends Controller
             ->paginate($this->perPage(20));
 
         $enriched = $orders->through(fn (Order $order) => [
-            'id'                         => $order->id,
-            'order_number'               => $order->{Order::ORDER_NUMBER},
-            'status'                     => $order->{Order::STATUS},
-            'placer'                     => $order->placer?->profile?->name,
-            'final_amount'               => (float) $order->{Order::FINAL_AMOUNT},
-            'weighing_completed_at'      => $order->{Order::WEIGHING_COMPLETED_AT},
-            'consultant_moadian_done'    => $order->{Order::CONSULTANT_MOADIAN_REF} !== null,
-            'supplier_moadian_done'      => $order->{Order::SUPPLIER_MOADIAN_REF} !== null,
-            'system_moadian_done'        => $order->{Order::SYSTEM_MOADIAN_REF} !== null,
-            'has_beneficiary'            => $order->{Order::BENEFICIARY_USER_ID} !== null,
+            'id' => $order->id,
+            'order_number' => $order->{Order::ORDER_NUMBER},
+            'status' => $order->{Order::STATUS},
+            'placer' => $order->placer?->profile?->name,
+            'final_amount' => (float) $order->{Order::FINAL_AMOUNT},
+            'weighing_completed_at' => $order->{Order::WEIGHING_COMPLETED_AT},
+            'consultant_moadian_done' => $order->{Order::CONSULTANT_MOADIAN_REF} !== null,
+            'supplier_moadian_done' => $order->{Order::SUPPLIER_MOADIAN_REF} !== null,
+            'system_moadian_done' => $order->{Order::SYSTEM_MOADIAN_REF} !== null,
+            'has_beneficiary' => $order->{Order::BENEFICIARY_USER_ID} !== null,
         ]);
 
         return success($enriched, __('admin.financial.pending_moadian_received'));

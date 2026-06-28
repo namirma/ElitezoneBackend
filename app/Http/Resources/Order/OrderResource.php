@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 /**
- * @mixin \App\Models\Order
+ * @mixin Order
  */
 class OrderResource extends BaseJsonResource
 {

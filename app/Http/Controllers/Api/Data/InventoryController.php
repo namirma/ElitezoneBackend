@@ -18,8 +18,7 @@ class InventoryController extends Controller
         // چون تاریخچه‌ی اسنپ‌شات‌ها برای backtesting نگه داشته می‌شود، فقط آخرین
         // اجرا (بیشینه‌ی calculated_at) به‌عنوان وضعیت جاری برگردانده می‌شود.
         // max() به ازای هر درخواست یک query می‌زند — کش 5 دقیقه‌ای اثر را کاهش می‌دهد.
-        $latestRun = Cache::remember('inventory_predictions_latest_run', 300, fn () =>
-            InventoryPrediction::max(InventoryPrediction::CALCULATED_AT)
+        $latestRun = Cache::remember('inventory_predictions_latest_run', 300, fn () => InventoryPrediction::max(InventoryPrediction::CALCULATED_AT)
         );
 
         $data = InventoryPrediction::with('variant.product')

@@ -49,8 +49,8 @@ class ProcessReservationPaymentAction
             $this->walletEngine->creditSystem($locked, $reserveAmount, FinancialCodes::STATUS_HOLD, "امانت مبلغ رزرو سفارش {$locked->order_number}");
 
             $locked->forceFill([
-                Order::STATUS                 => Order::STATUS_RESERVED,
-                Order::PAYMENT_TO_RESERVE     => $reserveAmount,
+                Order::STATUS => Order::STATUS_RESERVED,
+                Order::PAYMENT_TO_RESERVE => $reserveAmount,
                 Order::RESERVATION_EXPIRES_AT => now()->addHours($validityHours),
             ])->save();
 

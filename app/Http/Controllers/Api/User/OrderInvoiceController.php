@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\User;
 use App\Constants\FinancialCodes;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Services\Invoice\InvoiceGenerator;
 use Illuminate\Support\Facades\Auth;
 
@@ -116,7 +117,7 @@ class OrderInvoiceController extends Controller
                     (int) $order->{Order::BENEFICIARY_USER_ID},
                     (int) $order->{Order::CONSULTANT_USER_ID},
                 ]), true),
-                'supplier' => $order->items()->where(\App\Models\OrderItem::SUPPLIER_USER_ID, $userId)->exists(),
+                'supplier' => $order->items()->where(OrderItem::SUPPLIER_USER_ID, $userId)->exists(),
                 default => false,
             };
 

@@ -9,8 +9,11 @@ use App\Models\User;
 use App\Observers\OrderObserver;
 use App\Observers\ProductPriceObserver;
 use App\Observers\TicketObserver;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
@@ -39,6 +42,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $this->configureRateLimiters();
+
         Gate::define('viewApiDocs', function (?User $user = null) {
             if (app()->environment('local')) {
                 return true;
@@ -50,6 +55,7 @@ class AppServiceProvider extends ServiceProvider
 
             return $user && in_array($user->email, $allowed, strict: true);
         });
+
         ProductPrice::observe(ProductPriceObserver::class);
         Order::observe(OrderObserver::class);
         Ticket::observe(TicketObserver::class);
@@ -60,5 +66,78 @@ class AppServiceProvider extends ServiceProvider
         if (app()->isProduction() && config('cache.default') === 'file') {
             Log::critical('CACHE_DRIVER=file in production — OTP lockout and idempotency keys are not shared across servers.');
         }
+    }
+
+    /**
+     * Rate limiters — سابقاً در RouteServiceProvider تعریف می‌شدند.
+     * در لاراول ۱۳، اینجا در AppServiceProvider قرار می‌گیرند.
+     */
+    private function configureRateLimiters(): void
+    {
+        RateLimiter::for('api', function (Request $request) {
+            return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+        });
+
+        RateLimiter::for('sms', function (Request $request) {
+            $retryAfterFn = function (Request $request, array $headers) {
+                $retryAfter = (int) ($headers['Retry-After'] ?? 60);
+                $minutes = (int) ceil($retryAfter / 60);
+                $timeLabel = $minutes > 1 ? "{$minutes} دقیقه" : '۱ دقیقه';
+
+                return error(
+                    "تلاش بیش از حد مجاز است. لطفاً {$timeLabel} دیگر دوباره امتحان کنید.",
+                    ['retry_after_seconds' => $retryAfter],
+                    429
+                );
+            };
+
+            return Limit::perMinute(2)->by($request->ip())->response($retryAfterFn);
+        });
+
+        /**
+         * محدودیت برای تأیید کد OTP — جلوگیری از brute-force روی کد ۶ رقمی.
+         *
+         * کلید throttle: IP + شماره موبایل (username)
+         *   - هر ترکیب IP+موبایل حداکثر ۵ تلاش در دقیقه
+         */
+        RateLimiter::for('otp-verify', function (Request $request) {
+            $mobile = (string) $request->input('username', '');
+            $throttleKey = 'otp:'.$request->ip().':'.$mobile;
+
+            return Limit::perMinute(5)->by($throttleKey)->response(function () {
+                return error(__('auth.too_many_otp_attempts'), [], 429);
+            });
+        });
+
+        /**
+         * نرخ‌محدودکننده هوشمند برای عملیات مالی.
+         * - ادمین: بدون محدودیت
+         * - تأمین‌کننده تأیید‌شده: ۳۰ درخواست/دقیقه
+         * - کاربر عادی: ۱۰ درخواست/دقیقه
+         * - ناشناس: ۵ درخواست/دقیقه
+         */
+        RateLimiter::for('financial', function (Request $request) {
+            $user = $request->user();
+
+            if (! $user) {
+                return Limit::perMinute(5)->by($request->ip())->response(function () {
+                    return error(__('global.too_many_requests'), [], 429);
+                });
+            }
+
+            if ($user->hasRole('admin')) {
+                return Limit::none();
+            }
+
+            if ($user->hasRole('supplier') && $user->supplier !== null) {
+                return Limit::perMinute(30)->by($user->id)->response(function () {
+                    return error(__('global.too_many_requests'), [], 429);
+                });
+            }
+
+            return Limit::perMinute(10)->by($user->id)->response(function () {
+                return error(__('global.too_many_requests'), [], 429);
+            });
+        });
     }
 }

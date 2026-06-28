@@ -10,6 +10,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -21,7 +22,7 @@ class AvatarAndEmailTest extends TestCase
 
     // ─── Avatar ──────────────────────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function a_user_can_upload_an_avatar_and_gets_a_url(): void
     {
         Storage::fake('public');
@@ -37,7 +38,7 @@ class AvatarAndEmailTest extends TestCase
         Storage::disk('public')->assertExists($path);
     }
 
-    /** @test */
+    #[Test]
     public function the_avatar_must_be_an_allowed_image_type(): void
     {
         Storage::fake('public');
@@ -48,7 +49,7 @@ class AvatarAndEmailTest extends TestCase
         ])->assertStatus(422)->assertJsonValidationErrors('avatar');
     }
 
-    /** @test */
+    #[Test]
     public function a_user_can_delete_their_avatar(): void
     {
         Storage::fake('public');
@@ -69,7 +70,7 @@ class AvatarAndEmailTest extends TestCase
         Storage::disk('public')->assertMissing($path);
     }
 
-    /** @test */
+    #[Test]
     public function deleting_avatar_when_none_is_set_returns_422(): void
     {
         Storage::fake('public');
@@ -78,7 +79,7 @@ class AvatarAndEmailTest extends TestCase
         $this->deleteJson('/api/profile/avatar')->assertStatus(422);
     }
 
-    /** @test */
+    #[Test]
     public function uploading_a_new_avatar_deletes_the_previous_file(): void
     {
         Storage::fake('public');
@@ -96,7 +97,7 @@ class AvatarAndEmailTest extends TestCase
 
     // ─── Email ───────────────────────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function setting_an_email_stores_it_unverified_and_sends_a_link(): void
     {
         Mail::fake();
@@ -112,7 +113,7 @@ class AvatarAndEmailTest extends TestCase
         Mail::assertQueued(VerifyEmail::class);
     }
 
-    /** @test */
+    #[Test]
     public function a_duplicate_email_returns_a_persian_validation_error(): void
     {
         $owner = User::factory()->create();
@@ -129,7 +130,7 @@ class AvatarAndEmailTest extends TestCase
             ->assertJsonValidationErrors(['email' => 'این ایمیل قبلاً ثبت شده است.']);
     }
 
-    /** @test */
+    #[Test]
     public function resend_fails_when_there_is_no_pending_email(): void
     {
         Sanctum::actingAs(User::factory()->create());
@@ -137,7 +138,7 @@ class AvatarAndEmailTest extends TestCase
         $this->postJson('/api/profile/email/resend')->assertStatus(422);
     }
 
-    /** @test */
+    #[Test]
     public function resend_reissues_the_link_for_a_pending_email(): void
     {
         Mail::fake();
@@ -157,7 +158,7 @@ class AvatarAndEmailTest extends TestCase
         $this->assertNotSame('old-token', $user->fresh()->profile->email_verification_token);
     }
 
-    /** @test */
+    #[Test]
     public function resend_fails_when_the_email_is_already_verified(): void
     {
         $user = User::factory()->create();
@@ -172,7 +173,7 @@ class AvatarAndEmailTest extends TestCase
         $this->postJson('/api/profile/email/resend')->assertStatus(422);
     }
 
-    /** @test */
+    #[Test]
     public function deleting_the_email_clears_it(): void
     {
         $user = User::factory()->create();
@@ -192,7 +193,7 @@ class AvatarAndEmailTest extends TestCase
 
     // ─── GET /api/profile exposes the fields the frontend reads ───────────────────
 
-    /** @test */
+    #[Test]
     public function get_profile_exposes_avatar_url_and_email_state(): void
     {
         Storage::fake('public');

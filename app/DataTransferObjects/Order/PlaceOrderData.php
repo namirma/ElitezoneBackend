@@ -4,7 +4,7 @@ namespace App\DataTransferObjects\Order;
 
 use App\Http\Requests\Order\StoreOrderRequest;
 
-class PlaceOrderData
+readonly class PlaceOrderData
 {
     public function __construct(
         /** گیرنده سفارش — کارفرمایی که مشاور برایش خریداری می‌کند (nullable) */

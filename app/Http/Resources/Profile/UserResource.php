@@ -11,7 +11,7 @@ use App\Models\UserType;
 use Illuminate\Http\Request;
 
 /**
- * @mixin \App\Models\User
+ * @mixin User
  */
 class UserResource extends BaseJsonResource
 {

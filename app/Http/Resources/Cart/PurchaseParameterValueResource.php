@@ -2,13 +2,13 @@
 
 namespace App\Http\Resources\Cart;
 
+use App\Http\Resources\BaseJsonResource;
 use App\Models\PurchaseParameterValue;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use App\Http\Resources\BaseJsonResource;
 
 /**
- * @mixin \App\Models\PurchaseParameterValue
+ * @mixin PurchaseParameterValue
  */
 class PurchaseParameterValueResource extends BaseJsonResource
 {

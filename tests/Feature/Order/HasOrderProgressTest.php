@@ -163,10 +163,10 @@ class HasOrderProgressTest extends TestCase
         $progress = $order->consultant_progress;
 
         $this->assertSame('completed', $progress['steps'][0]['state']);
-        $this->assertSame('current',   $progress['steps'][1]['state'],
+        $this->assertSame('current', $progress['steps'][1]['state'],
             'STATUS_COMPLETED without Doc Q must also stay at step 2');
-        $this->assertSame('inactive',  $progress['steps'][2]['state']);
-        $this->assertSame('inactive',  $progress['steps'][3]['state']);
+        $this->assertSame('inactive', $progress['steps'][2]['state']);
+        $this->assertSame('inactive', $progress['steps'][3]['state']);
     }
 
     /**

@@ -11,6 +11,7 @@ use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -40,7 +41,7 @@ class ProfileFixesTest extends TestCase
 
     // ─── #2 Saze-90 flag is backend-determined (NOT user-settable) ───────────────
 
-    /** @test */
+    #[Test]
     public function is_saze90_user_cannot_be_set_through_the_engineer_endpoint(): void
     {
         $user = $this->expertUser();
@@ -56,7 +57,7 @@ class ProfileFixesTest extends TestCase
 
     // ─── #4 multiple job experiences ─────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function a_user_can_register_multiple_job_experiences(): void
     {
         Storage::fake('local');
@@ -71,7 +72,7 @@ class ProfileFixesTest extends TestCase
 
     // ─── Task 1: Jalali date range (1300 .. today) + ongoing (null end_date) ─────
 
-    /** @test */
+    #[Test]
     public function job_experience_rejects_a_start_date_before_1300(): void
     {
         Storage::fake('local');
@@ -82,7 +83,7 @@ class ProfileFixesTest extends TestCase
         ])->assertStatus(422)->assertJsonValidationErrors('start_date');
     }
 
-    /** @test */
+    #[Test]
     public function job_experience_rejects_a_future_start_date(): void
     {
         Storage::fake('local');
@@ -94,7 +95,7 @@ class ProfileFixesTest extends TestCase
         ])->assertStatus(422)->assertJsonValidationErrors('start_date');
     }
 
-    /** @test */
+    #[Test]
     public function job_experience_accepts_a_valid_past_date_and_null_end_date_for_ongoing_work(): void
     {
         Storage::fake('local');
@@ -108,7 +109,7 @@ class ProfileFixesTest extends TestCase
 
     // ─── #3 edit + guards ────────────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function a_user_can_edit_their_pending_job_experience(): void
     {
         $user = $this->expertUser();
@@ -128,7 +129,7 @@ class ProfileFixesTest extends TestCase
         $this->assertSame(JobExperience::STATUS_PENDING, $job->status);
     }
 
-    /** @test */
+    #[Test]
     public function an_approved_job_experience_cannot_be_edited(): void
     {
         $user = $this->expertUser();
@@ -144,7 +145,7 @@ class ProfileFixesTest extends TestCase
         $this->assertSame('Approved', $job->fresh()->title);
     }
 
-    /** @test */
+    #[Test]
     public function a_user_cannot_edit_someone_elses_job_experience(): void
     {
         $owner = $this->expertUser();
@@ -163,7 +164,7 @@ class ProfileFixesTest extends TestCase
 
     // ─── #5 password verify step (non-consuming) ─────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function the_password_verify_step_checks_the_code_without_consuming_it(): void
     {
         $user = $this->expertUser();

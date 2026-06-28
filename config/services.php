@@ -1,5 +1,8 @@
 <?php
 
+use App\Services\Gateways\PodiumScService;
+use App\Services\Gateways\TesnaService;
+
 return [
 
     /*
@@ -32,7 +35,7 @@ return [
     ],
 
     'tesna' => [
-        'class' => \App\Services\Gateways\TesnaService::class,
+        'class' => TesnaService::class,
         'url' => env('TESNA_BASE_URL', 'https://gateway.tesna.ir'),
         'headers' => [
             'x-api-key' => env('TESNA_API_KEY'),
@@ -41,7 +44,7 @@ return [
         ],
     ],
     'podium_sc2' => [
-        'class' => \App\Services\Gateways\PodiumScService::class,
+        'class' => PodiumScService::class,
         'url' => env('PODIUM_BASE_URL', 'https://api.pod.ir'),
         'headers' => [
             'Authorization' => 'Bearer '.env('PODIUM_BUSINESS_TOKEN'),

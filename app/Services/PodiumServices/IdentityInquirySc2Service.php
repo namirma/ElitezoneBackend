@@ -55,21 +55,21 @@ class IdentityInquirySc2Service
 
         $bd = (string) data_get($normalized, 'result.birthDate', '');
         if (preg_match('/^\d{8}$/', $bd)) {
-            $bd = substr($bd, 0, 4) . '-' . substr($bd, 4, 2) . '-' . substr($bd, 6, 2);
+            $bd = substr($bd, 0, 4).'-'.substr($bd, 4, 2).'-'.substr($bd, 6, 2);
         }
 
         return [
-            'reference_number'           => (string) ($normalized['reference_number'] ?? ''),
-            'national_code'              => (string) data_get($normalized, 'result.nationalCode', ''),
-            'birth_date'                 => $bd,
-            'first_name'                 => (string) ($info['firstName'] ?? ''),
-            'last_name'                  => (string) ($info['lastName'] ?? ''),
-            'father_name'                => (string) ($info['fatherName'] ?? ''),
-            'gender'                     => (string) ($info['gender'] ?? ''),
-            'alive'                      => $this->normalizeBool($info['alive'] ?? null),
-            'birth_place'                => (string) ($info['birthPlace'] ?? ''),
-            'birth_place_code'           => (string) ($info['birthPlaceCode'] ?? ''),
-            'identification_number'      => (string) ($info['identificationNumber'] ?? ''),
+            'reference_number' => (string) ($normalized['reference_number'] ?? ''),
+            'national_code' => (string) data_get($normalized, 'result.nationalCode', ''),
+            'birth_date' => $bd,
+            'first_name' => (string) ($info['firstName'] ?? ''),
+            'last_name' => (string) ($info['lastName'] ?? ''),
+            'father_name' => (string) ($info['fatherName'] ?? ''),
+            'gender' => (string) ($info['gender'] ?? ''),
+            'alive' => $this->normalizeBool($info['alive'] ?? null),
+            'birth_place' => (string) ($info['birthPlace'] ?? ''),
+            'birth_place_code' => (string) ($info['birthPlaceCode'] ?? ''),
+            'identification_number' => (string) ($info['identificationNumber'] ?? ''),
             'identification_serial_code' => (string) ($info['identificationSerialCode'] ?? ''),
             'identification_serial_number' => (string) ($info['identificationSerialNumber'] ?? ''),
         ];
@@ -84,6 +84,7 @@ class IdentityInquirySc2Service
         if (in_array($str, ['true', 'false', 'null'], true)) {
             return $str;
         }
+
         return 'null';
     }
 }
