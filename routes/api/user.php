@@ -232,7 +232,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
             // Supplier operations
             Route::controller(SupplierOrderController::class)->group(function () {
-                Route::post('/{order}/prepare', 'markAsPrepared')->whereNumber('order');
+                Route::post('/{order}/prepare', 'markAsPrepared')->whereNumber('order'); // تأیید (شروع آماده‌سازی)
+                Route::post('/{order}/reject', 'rejectOrder')->whereNumber('order');      // رد سفارش (+ refund خریدار)
                 Route::post('/{order}/waybill', 'addWaybill')->whereNumber('order');
                 Route::post('/{order}/espadana', 'issueEspadanaCommand')->whereNumber('order');
                 Route::post('/{order}/receipt', 'attachPaymentReceipt')->whereNumber('order');
