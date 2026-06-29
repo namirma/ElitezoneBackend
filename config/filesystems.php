@@ -28,33 +28,82 @@ return [
     |
     */
 
+    /*
+    | ─────────────────────────────────────────────────────────────────────────
+    | Cloud-ready disks (ArvanCloud / any S3-compatible object storage)
+    | ─────────────────────────────────────────────────────────────────────────
+    | Every disk below is env-driven: it stays on the server's local filesystem
+    | by default (dev/staging) and moves to object storage by ONLY changing env —
+    | no application code changes, because all uploads use the disk abstraction
+    | (Storage::disk('public')->put/url/...). Two logical targets:
+    |   • public  → FILESYSTEM_PUBLIC_DRIVER   (media: avatars, product/badge images …)
+    |   • private → FILESYSTEM_PRIVATE_DRIVER  (financial receipts, invoices, documents)
+    | To switch to ArvanCloud, set those to `s3` and fill the AWS_* vars (Arvan is
+    | S3-compatible). See .env.cloud.example for the full contract.
+    */
+
     'disks' => [
 
+        // Generic PRIVATE disk (framework default). Holds private documents such as
+        // job-experience credentials. Cloud-switchable via FILESYSTEM_PRIVATE_DRIVER.
         'local' => [
-            'driver' => 'local',
-            'root' => storage_path('app'),
-            'throw' => false,
-        ],
-
-        'public' => [
-            'driver' => 'local',
-            'root' => storage_path('app/public'),
-            'url' => env('APP_URL').'/storage',
-            'visibility' => 'public',
-            'throw' => false,
-        ],
-
-        // Private disk for sensitive financial documents (deposit/supplier/order
-        // receipts). Deliberately NOT in the `links` array below, so it is never
-        // symlinked into public/ and never reachable via a /storage/... URL — these
-        // files are served only through authenticated download endpoints.
-        'financial' => [
-            'driver' => 'local',
-            'root' => storage_path('app/financial'),
+            'driver' => env('FILESYSTEM_PRIVATE_DRIVER', 'local'),
+            'root' => env('FILESYSTEM_PRIVATE_DRIVER', 'local') === 's3'
+                ? env('FILESYSTEM_LOCAL_ROOT', 'documents')
+                : storage_path('app'),
             'visibility' => 'private',
             'throw' => false,
+            // ── S3 / ArvanCloud (used only when driver=s3) — PRIVATE bucket ──
+            'key' => env('AWS_ACCESS_KEY_ID'),
+            'secret' => env('AWS_SECRET_ACCESS_KEY'),
+            'region' => env('AWS_DEFAULT_REGION'),
+            'bucket' => env('AWS_PRIVATE_BUCKET', env('AWS_BUCKET')),
+            'endpoint' => env('AWS_ENDPOINT'),
+            'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
         ],
 
+        // PUBLIC media (avatars, product/category/badge/factory images, ticket files).
+        // URLs are always built via Storage::disk('public')->url(), so flipping the
+        // driver to s3 is enough. Cloud-switchable via FILESYSTEM_PUBLIC_DRIVER.
+        'public' => [
+            'driver' => env('FILESYSTEM_PUBLIC_DRIVER', 'local'),
+            'root' => env('FILESYSTEM_PUBLIC_DRIVER', 'local') === 's3'
+                ? env('FILESYSTEM_PUBLIC_ROOT', '')
+                : storage_path('app/public'),
+            // local → APP_URL/storage ; cloud → the public bucket / CDN base URL
+            'url' => env('FILESYSTEM_PUBLIC_URL', env('APP_URL').'/storage'),
+            'visibility' => 'public',
+            'throw' => false,
+            // ── S3 / ArvanCloud (used only when driver=s3) — PUBLIC bucket ──
+            'key' => env('AWS_ACCESS_KEY_ID'),
+            'secret' => env('AWS_SECRET_ACCESS_KEY'),
+            'region' => env('AWS_DEFAULT_REGION'),
+            'bucket' => env('AWS_PUBLIC_BUCKET', env('AWS_BUCKET')),
+            'endpoint' => env('AWS_ENDPOINT'),
+            'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
+        ],
+
+        // PRIVATE financial documents (deposit/supplier/order receipts + invoice PDFs).
+        // NEVER public — served only through authenticated download endpoints (and on
+        // s3 can use signed temporaryUrl). Deliberately NOT in the `links` array below.
+        // Cloud-switchable via FILESYSTEM_PRIVATE_DRIVER.
+        'financial' => [
+            'driver' => env('FILESYSTEM_PRIVATE_DRIVER', 'local'),
+            'root' => env('FILESYSTEM_PRIVATE_DRIVER', 'local') === 's3'
+                ? env('FILESYSTEM_FINANCIAL_ROOT', 'financial')
+                : storage_path('app/financial'),
+            'visibility' => 'private',
+            'throw' => false,
+            // ── S3 / ArvanCloud (used only when driver=s3) — PRIVATE bucket ──
+            'key' => env('AWS_ACCESS_KEY_ID'),
+            'secret' => env('AWS_SECRET_ACCESS_KEY'),
+            'region' => env('AWS_DEFAULT_REGION'),
+            'bucket' => env('AWS_PRIVATE_BUCKET', env('AWS_BUCKET')),
+            'endpoint' => env('AWS_ENDPOINT'),
+            'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
+        ],
+
+        // Generic s3 disk (kept for ad-hoc use).
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),
