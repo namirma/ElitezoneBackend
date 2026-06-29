@@ -4,10 +4,12 @@ namespace App\Services\Gateways;
 
 use App\Contracts\GatewayInterface;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class TesnaService implements GatewayInterface
 {
     protected string $baseUrl;
+
     protected array $headers;
 
     public function __construct(array $config)
@@ -18,9 +20,28 @@ class TesnaService implements GatewayInterface
 
     public function getRequest(string $endpoint, array $data = []): array
     {
-        $response = Http::withHeaders($this->headers)
-            ->get($this->baseUrl . $endpoint, $data);
+        try {
+            $response = Http::withHeaders($this->headers)
+                ->timeout(10)
+                ->get("{$this->baseUrl}$endpoint", $data);
 
-        return $response->json();
+            if ($response->failed()) {
+                Log::error('Tesna API Error', [
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ]);
+
+                return [];
+            }
+
+            $data = $response->json();
+
+            return $data ?? [];
+
+        } catch (\Exception $e) {
+            Log::error('Tesna Connection Failed: '.$e->getMessage());
+
+            return [];
+        }
     }
 }

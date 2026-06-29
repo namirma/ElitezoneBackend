@@ -17,3 +17,9 @@ yarn-error.log
 /.fleet
 /.idea
 /.vscode
+/.claude
+/storage/fonts/YekanBakh-Bold.ttf
+/storage/fonts/YekanBakh-Regular.ttf
+
+# AI context files
+backend-context.txt

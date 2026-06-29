@@ -3,12 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\StoreQuestionRequest;
+use App\Http\Requests\Shared\StoreQuestionRequest;
 use App\Mail\QuestionEmail;
-use App\Mail\VerifyEmail;
 use App\Models\Question;
-use App\Models\UserNotification;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Mail;
 
@@ -18,11 +15,10 @@ class QuestionController extends Controller
     {
         Question::create($request->validated());
 
-        Mail::to($request->email)->send(new QuestionEmail($request->validated(), 'user'));
+        Mail::to($request->email)->queue(new QuestionEmail($request->validated(), 'user'));
 
-        Mail::to(Config::get('app.companyInfoEmailAddress'))->send(new QuestionEmail($request->validated(), 'support'));
+        Mail::to(Config::get('app.companyInfoEmailAddress'))->queue(new QuestionEmail($request->validated(), 'support'));
 
         return success([], __('global.received_successfully'));
     }
-
 }

@@ -2,403 +2,261 @@
 
 namespace App\Http\Controllers\Api\User;
 
+use App\Actions\Profile\SetUserTypeAction;
+use App\Actions\Profile\SyncUserBadgeAction;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\StorePasswordRequest;
-use App\Http\Requests\StoreUserProfileRequest;
-use App\Http\Requests\StoreUserTypeRequest;
-use App\Http\Requests\UpdateMobileRequest;
-use App\Http\Requests\UpdateUserProfileRequest;
-use App\Http\Requests\VerifyEmailRequest;
-use App\Http\Resources\UserMessageResource;
-use App\Http\Resources\UserResource;
-use App\Mail\VerifyEmail;
-use App\Models\ContractorProfile;
-use App\Models\EmployerProfile;
-use App\Models\EngineerProfile;
-use App\Models\Role;
-use App\Models\SupplierProfile;
+use App\Http\Requests\Profile\StoreUserProfileRequest;
+use App\Http\Requests\Profile\StoreUserTypeRequest;
+use App\Http\Requests\Profile\UpdateLegalProfileRequest;
+use App\Http\Requests\Profile\UpdateRealProfileRequest;
+use App\Http\Requests\Profile\UpdateUserProfileRequest;
+use App\Http\Resources\Profile\BadgeResource;
+use App\Http\Resources\Profile\UserResource;
 use App\Models\User;
-use App\Models\UserNotification;
 use App\Models\UserProfile;
-use App\Services\PricingRoleResolver;
-use App\Services\SmsService;
-use Carbon\Carbon;
+use App\Models\UserType;
+use App\Services\PodiumServices\CompanyInquiryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
 
 class ProfileController extends Controller
 {
-    public function getProfile(): JsonResponse
+    public function getProfile(Request $request, SyncUserBadgeAction $badgeSync): JsonResponse
     {
         $user = Auth::user();
         if (! $user) {
-            return response()->json(['status' => false, 'message' => 'کاربر یافت نشد.'], 404);
+            return error(__('auth.no_user_found'), [], 404);
         }
 
-        $user->load(['profile', 'roles:id,name']);
-        $roleNames = $user->roles->pluck('name')->map(fn($n) => strtolower($n))->unique()->values();
+        // On-read badge sync so is_saze90_user / is_verified / the badge pivot are correct on
+        // the FIRST request after login — no separate /badge call, no refresh, no sync race.
+        // The saze90 lookup is cached (members 30 min, non-members 5 min), so this is a cache
+        // read on the vast majority of profile loads. This response is now the single source
+        // of truth for the badge state (badge, is_pioneer, is_saze90_user, badges).
+        $badge = $badgeSync->execute($user);
 
-        $relations = [];
-        if ($roleNames->contains('engineer'))   $relations[] = 'engineer';
-        if ($roleNames->contains('contractor')) $relations[] = 'contractor';
-        if ($roleNames->contains('supplier'))   $relations[] = 'supplier';
-        if ($roleNames->contains('employer'))   $relations[] = 'employer';
-        if (! empty($relations)) {
-            $user->load($relations);
+        $user->load([
+            User::RELATION_PROFILE,
+            User::RELATION_ROLES.':id,name',
+            User::RELATION_TYPE,
+            User::RELATION_BADGE,
+        ]);
+
+        $roleNames = $user->roles->pluck('name')->map(fn ($n) => strtolower($n))->unique()->values();
+        $relationsToLoad = [];
+
+        // «مشاور فنی» دو حالت دارد:
+        //   ۱) نقشِ دقیقِ engineer/contractor دارد (بعد از آپلود مدارک تعیین می‌شود)
+        //   ۲) فقط type.slug = expert دارد (نقش را انتخاب کرده ولی هنوز مدرکی آپلود نکرده)
+        // در هر دو حالت کاربر «مشاور فنی» است و باید وضعیت تأیید (is_verified) ارزیابی شود.
+        $typeSlug = strtolower((string) optional($user->{User::RELATION_TYPE})->{UserType::SLUG});
+        $isExpert = $roleNames->contains('engineer')
+            || $roleNames->contains('contractor')
+            || $typeSlug === 'expert';
+
+        if ($roleNames->contains('employer')) {
+            $relationsToLoad[] = User::RELATION_EMPLOYER;
+        }
+        if ($roleNames->contains('supplier')) {
+            $relationsToLoad[] = User::RELATION_SUPPLIER;
         }
 
-        $resolvedTypeId = $user->type_id ?? $this->resolveTypeIdFromRoleNames($roleNames->all());
-        if (is_null($user->type_id) && $resolvedTypeId && Schema::hasColumn('users', User::TYPE_ID)) {
-            $user->forceFill([User::TYPE_ID => $resolvedTypeId])->save();
+        if ($isExpert) {
+            // پروفایل‌های مهندس/پیمانکار برای ارزیابی is_verified در UserResource لود می‌شوند.
+            // اگر کاربر هنوز مدرکی آپلود نکرده باشد این relationها null خواهند بود (بی‌خطر).
+            $relationsToLoad[] = User::RELATION_ENGINEER;
+            $relationsToLoad[] = User::RELATION_CONTRACTOR;
+            $relationsToLoad[] = User::RELATION_EDUIX_RECORDS;
+            $relationsToLoad[] = User::RELATION_JOB_EXPERIENCES;
         }
 
-        $payload = [
-            'type_id'         => $resolvedTypeId,
-            'mobile'          => $user->mobile,
-            'created_at'      => $user->created_at instanceof Carbon ? $user->created_at->format('Y-m-d H:i:s') : $user->created_at,
-            'password'        => false,
-            'created_at_p'    => $user->created_at_p ?? null,
-            'created_at_diff' => $user->created_at_diff ?? null,
-            'profile'         => $user->profile,
-            'engineer'        => $roleNames->contains('engineer')   ? $user->engineer   : null,
-            'contractor'      => $roleNames->contains('contractor') ? $user->contractor : null,
-            'supplier'        => $roleNames->contains('supplier')   ? $user->supplier   : null,
-            'employer'        => $roleNames->contains('employer')   ? $user->employer   : null,
-            'roles'           => $roleNames->values()->all(),
+        if (! empty($relationsToLoad)) {
+            $user->load(array_unique($relationsToLoad));
+        }
+
+        // Merge the badge summary into the profile payload so the frontend has one source of
+        // truth at session load (no separate /api/profile/badge round-trip needed).
+        $payload = (new UserResource($user))->resolve($request);
+        $payload['badge'] = $badge['badge'];
+        $payload['is_pioneer'] = $badge['is_pioneer'];
+        $payload['is_saze90_user'] = $badge['is_saze90_user'];
+        $payload['badges'] = BadgeResource::collection($badge['badges'])->resolve($request);
+
+        return success($payload, __('global.received_successfully'));
+    }
+
+    public function getRoleOptions(): JsonResponse
+    {
+        $roleOptions = [
+            [
+                'key' => 'employer',
+                'name' => __('auth.employer'),
+                'backend_roles' => ['employer'],
+            ],
+            [
+                'key' => 'expert',
+                'name' => __('auth.expert'),
+                'backend_roles' => ['expert'],
+            ],
+            [
+                'key' => 'expert_and_employer',
+                'name' => __('auth.expert_and_employer'),
+                'backend_roles' => ['expert', 'employer'],
+            ],
+            [
+                'key' => 'supplier',
+                'name' => __('auth.supplier'),
+                'backend_roles' => ['supplier'],
+            ],
         ];
 
-        return success($payload, 'اطلاعات با موفقیت دریافت شد.');
+        return success($roleOptions, __('global.received_successfully'));
+    }
+
+    public function setUserType(StoreUserTypeRequest $request, SetUserTypeAction $action): JsonResponse
+    {
+        /** @var User $user */
+        $user = Auth::user();
+        $newDisplayRoles = collect($request->validated('roles'));
+
+        return $action->execute($user, $newDisplayRoles, $request);
     }
 
     public function setProfile(StoreUserProfileRequest $request): JsonResponse
     {
         $profile = UserProfile::firstOrCreate([UserProfile::USER_ID => Auth::id()]);
-        $data    = $request->validated();
-
-        $locked = [
-            UserProfile::NAME,
-            UserProfile::FAMILY,
-            UserProfile::NATIONAL_CODE,
-            UserProfile::BIRTHDAY,
-        ];
-
-        $mutable = [
-            UserProfile::EMAIL,
-            UserProfile::COMPANY,
-            UserProfile::ECONOMIC_CODE,
-            UserProfile::NATIONAL_ID,
-            UserProfile::REGISTER_ID,
-            UserProfile::PHONE,
-            UserProfile::PROVINCE_ID,
-            UserProfile::CITY_ID,
-            UserProfile::ENTITY,
-        ];
-
+        $data = $request->validated();
+        $locked = [UserProfile::NAME, UserProfile::FAMILY, UserProfile::NATIONAL_CODE, UserProfile::BIRTHDAY];
+        $mutable = [UserProfile::EMAIL, UserProfile::COMPANY, UserProfile::ECONOMIC_CODE, UserProfile::NATIONAL_ID, UserProfile::REGISTER_ID, UserProfile::PHONE, UserProfile::PROVINCE_ID, UserProfile::CITY_ID, UserProfile::ENTITY];
         $safe = Arr::except($data, $locked);
 
         $updates = [
-            UserProfile::USER_ID       => Auth::id(),
-            UserProfile::NAME          => $profile->name,
-            UserProfile::FAMILY        => $profile->family,
-            UserProfile::NATIONAL_CODE => $profile->national_code,
-            UserProfile::BIRTHDAY      => $profile->birthday,
+            UserProfile::USER_ID => Auth::id(),
+            UserProfile::NAME => $profile->{UserProfile::NAME} ?? ($safe[UserProfile::NAME] ?? null),
+            UserProfile::FAMILY => $profile->{UserProfile::FAMILY} ?? ($safe[UserProfile::FAMILY] ?? null),
+            UserProfile::NATIONAL_CODE => $profile->{UserProfile::NATIONAL_CODE} ?? ($safe[UserProfile::NATIONAL_CODE] ?? null),
+            UserProfile::BIRTHDAY => $profile->{UserProfile::BIRTHDAY} ?? ($safe[UserProfile::BIRTHDAY] ?? null),
         ];
-
         foreach ($mutable as $key) {
             $updates[$key] = array_key_exists($key, $safe) ? $safe[$key] : $profile->{$key};
+        }
+        foreach ($locked as $key) {
+            if (isset($safe[$key]) && $key !== UserProfile::USER_ID) {
+                $updates[$key] = $profile->{$key};
+            } elseif (is_null($updates[$key]) && ! is_null($profile->{$key})) {
+                $updates[$key] = $profile->{$key};
+            }
         }
 
         $profile->update($updates);
 
-        return success(new UserResource(User::with('profile')->find(Auth::id())));
+        return success(new UserResource(User::with('profile')->find(Auth::id())), __('profile.updated_successfully'));
     }
-    public function setUserType(StoreUserTypeRequest $request): JsonResponse
+
+    public function fetchLegalData(Request $request, CompanyInquiryService $service): JsonResponse
     {
-        $user = User::findOrFail(Auth::id());
-        $validated = $request->validated();
+        $request->validate([
+            'national_id' => 'required|string',
+        ]);
 
-        if (!empty($validated['roles'])) {
-            $roleNames = collect($validated['roles'])
-                ->map(fn($r) => strtolower($r))
-                ->filter(fn($r) => in_array($r, ['engineer', 'contractor', 'employer', 'supplier'], true))
-                ->unique()
-                ->values();
+        try {
+            $data = $service->fetchByNationalId($request->national_id);
 
-            DB::transaction(function () use ($user, $roleNames, $validated) {
-                $roleIds = $roleNames
-                    ->map(fn(string $name) => Role::firstOrCreate(
-                        ['name' => $name],
-                        ['display_name' => ucfirst($name), 'description' => null]
-                    )->id)
-                    ->values()
-                    ->all();
+            $raw = $data['company'] ?? $data;
 
-                if (method_exists($user, 'syncRoles')) {
-                    $user->syncRoles($roleIds);
-                } else {
-                    $user->roles()->sync($roleIds);
-                }
+            $response = [
 
-                $this->purgeObsoleteProfiles($user, $roleNames);
+                'company' => $raw['full_name'] ?? '',
+                'national_id' => $raw['national_number'] ?? $request->national_id,
+                'register_id' => $raw['registration_number'] ?? '',
+                'phone' => $raw['phone_number'] ?? '',
 
-                $typeId = $this->resolveTypeIdFromRoleNames($roleNames->all());
-                $user->forceFill([User::TYPE_ID => $typeId])->save();
+                'type' => $raw['type'] ?? '',
+                'registration_date' => $raw['registration_date'] ?? '',
+                'capital' => $raw['capital'] ?? '',
+                'country' => $raw['country'] ?? '',
+                'address' => $raw['address'] ?? '',
+                'postal_code' => $raw['postal_code'] ?? '',
+                'fax_number' => $raw['fax_number'] ?? '',
+                'registration_organization' => $raw['registration_organization'] ?? '',
+                'status' => $raw['status'] ?? '',
+            ];
 
-                if ($roleNames->contains('employer') && array_key_exists('employer_has_consultant', $validated)) {
-                    EmployerProfile::updateOrCreate(
-                        ['user_id' => $user->id],
-                        ['has_consultant' => (bool) $validated['employer_has_consultant']]
-                    );
-                }
-            });
+            return success($response, __('profile.company_info_received'));
+        } catch (\Exception $e) {
+            Log::warning('Company inquiry failed', [
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+            ]);
 
-            $user->refresh();
-
-            return success([
-                'user'  => new UserResource($user->load('profile')),
-                'roles' => $user->roles()->pluck('name')->values()->all(),
-                'active_price_filter_category_code' => app(PricingRoleResolver::class)->resolve($user),
-            ], __('profile.userType'));
+            return error(__('profile.company_inquiry_failed'), [], 503);
         }
-
-        $user->update([User::TYPE_ID => $validated['type_id'] ?? null]);
-
-        return success(new UserResource($user->load('profile')), __('profile.userType'));
     }
 
+    /**
+     * General-purpose profile update (PUT /profile).
+     *
+     * Accepts any subset of profile fields. Locked fields (name, family,
+     * national_code, birthday) can only be written the first time — once set,
+     * subsequent requests silently preserve the existing value so they cannot
+     * be changed via this endpoint.
+     */
     public function updateProfile(UpdateUserProfileRequest $request): JsonResponse
     {
-        $profile = UserProfile::where([UserProfile::USER_ID => Auth::id()])->firstOrFail();
-        $data    = $request->validated();
-
-        $locked = [
-            UserProfile::NAME,
-            UserProfile::FAMILY,
-            UserProfile::NATIONAL_CODE,
-            UserProfile::BIRTHDAY,
-        ];
-
-        $allowed = [
-            UserProfile::EMAIL,
-            UserProfile::COMPANY,
-            UserProfile::ECONOMIC_CODE,
-            UserProfile::NATIONAL_ID,
-            UserProfile::REGISTER_ID,
-            UserProfile::PHONE,
-            UserProfile::PROVINCE_ID,
-            UserProfile::CITY_ID,
-            UserProfile::ENTITY,
-        ];
-
-        $safe    = Arr::except($data, $locked);
-        $payload = [];
-
-        foreach ($allowed as $key) {
-            if (array_key_exists($key, $safe)) {
-                $payload[$key] = $safe[$key];
-            }
-        }
-
-        if (! empty($payload)) {
-            $profile->update($payload);
-        }
-
-        return success(new UserResource(User::with('profile')->find(Auth::id())));
-    }
-
-    public function setPassword(StorePasswordRequest $request): JsonResponse
-    {
-        $user = User::findOrFail(Auth::id());
-        $user->update([User::PASSWORD => Hash::make($request->validated()['password'])]);
-
-        return success(new UserResource($user->load('profile')), __('auth.password_changed_successfully'));
-    }
-
-    public function changePasswordFirstAttempt(): JsonResponse
-    {
-        $user = User::findOrFail(Auth::id());
-        $code = generateVerifyCode();
-
-        $notExpired = $user->secret_expires_at ? ! Carbon::parse($user->secret_expires_at)->isPast() : false;
-        if ($notExpired) {
-            return success(new UserResource($user->load('profile')), __('auth.code_sent_recently'), 202);
-        }
-
-        User::where([User::ID => $user->id])->update([
-            User::SECRET            => $code,
-            User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2),
-        ]);
-
-        (new SmsService())->send($user->mobile, $code);
-
-        return success(new UserResource($user->load('profile')), __('auth.change_password_first_attempt'));
-    }
-
-    public function updateMobile(): JsonResponse
-    {
         $user = Auth::user();
-        $code = generateVerifyCode();
-
-        $notExpired = $user->secret_expires_at ? ! Carbon::parse($user->secret_expires_at)->isPast() : false;
-        if ($notExpired) {
-            return success([], __('auth.code_sent_recently'), 202);
-        }
-
-        User::where(User::ID, $user->id)->update([
-            User::SECRET => $code,
-            User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2),
-        ]);
-
-        (new SmsService())->send($user->mobile, $code);
-
-        return success([], __('auth.verification_code_sent_successfully'), 202);
-    }
-
-    public function verifyCode(UpdateMobileRequest $request): JsonResponse
-    {
-        $user = Auth::user();
+        $profile = $user->profile()->firstOrCreate([UserProfile::USER_ID => $user->id]);
         $data = $request->validated();
 
-        $notExpired = $user->secret_expires_at ? ! Carbon::parse($user->secret_expires_at)->isPast() : false;
+        $locked = [UserProfile::NAME, UserProfile::FAMILY, UserProfile::NATIONAL_CODE, UserProfile::BIRTHDAY];
 
-        if (
-            (int) ($user->secret ?? 0) === (int) $data['code'] &&
-            $notExpired &&
-            ! empty($data['username'])
-        ) {
-            $code = generateVerifyCode();
-            (new SmsService())->send($data['username'], $code);
-
-            User::where(User::ID, $user->id)->update([
-                User::SECRET => $code,
-                User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2),
-            ]);
-
-
-            return success([], __('auth.verification_code_sent_successfully'), 202);
+        foreach ($data as $key => $value) {
+            if (in_array($key, $locked, true) && ! is_null($profile->{$key})) {
+                // Locked field already has a value — do not overwrite.
+                continue;
+            }
+            $profile->{$key} = $value;
         }
 
-        return error(__('auth.verification_code_not_match'), [], 404);
+        $profile->save();
+
+        return success(new UserResource($user->fresh('profile')), __('profile.updated_successfully'));
     }
 
-    public function confirmUpdateMobile(Request $request): JsonResponse
+    public function updateRealProfile(UpdateRealProfileRequest $request): JsonResponse
     {
-        $user     = Auth::user();
-        $code     = $request->input('code');
-        $username = $request->input('username');
+        $user = Auth::user();
+        $profile = $user->profile()->firstOrCreate([UserProfile::USER_ID => $user->id]);
+        $data = $request->validated();
 
-        $notExpired = $user->secret_expires_at ? ! Carbon::parse($user->secret_expires_at)->isPast() : false;
-
-        if (
-            (int) ($user->secret ?? 0) === (int) $code &&
-            $notExpired &&
-            ! empty($username)
-        ) {
-            DB::table('users')->where('id', $user->id)->update([
-                'mobile'            => $username,
-                'secret'            => null,
-                'secret_expires_at' => null,
-            ]);
-
-            return success([], __('profile.mobileUpdateSuccessfully'), 202);
+        if (isset($data[UserProfile::EMAIL]) && $data[UserProfile::EMAIL] !== $profile->{UserProfile::EMAIL}) {
+            $profile->{UserProfile::EMAIL_VERIFIED_AT} = null;
+            $profile->{UserProfile::EMAIL_VERIFICATION_TOKEN} = null;
         }
 
-        return error(__('auth.verification_code_not_match'), [], 404);
+        $profile->fill(array_filter($data));
+        $profile->{UserProfile::ENTITY} = 'real';
+        $profile->save();
+
+        return success(new UserResource($user->fresh('profile')), __('profile.updated_successfully'));
     }
 
-    public static function removeProfile(): void
+    public function updateLegalProfile(UpdateLegalProfileRequest $request): JsonResponse
     {
-        $uid = Auth::id();
-        ContractorProfile::where([ContractorProfile::USER_ID => $uid])->delete();
-        EmployerProfile::where([EmployerProfile::USER_ID => $uid])->delete();
-        EngineerProfile::where([EngineerProfile::USER_ID => $uid])->delete();
-        SupplierProfile::where([SupplierProfile::USER_ID => $uid])->delete();
+        $user = Auth::user();
+        $profile = $user->profile()->firstOrCreate([UserProfile::USER_ID => $user->id]);
+        $data = $request->validated();
+
+        $profile->fill($data);
+        $profile->{UserProfile::ENTITY} = 'legal';
+        $profile->save();
+
+        return success(new UserResource($user->fresh('profile')), __('profile.updated_successfully'));
     }
 
-    public function getMessages(): JsonResponse
-    {
-        $items = UserNotification::where([UserNotification::USER_ID => Auth::id()])->latest()->get();
-        return success(UserMessageResource::collection($items));
-    }
-
-    public function updateMessageStatus(UserNotification $userNotification): JsonResponse
-    {
-        $userNotification->update([UserNotification::READ_AT => Carbon::now()->toDateTimeString()]);
-        return success(new UserMessageResource($userNotification));
-    }
-
-    public function updateAllMessageStatus(): JsonResponse
-    {
-        UserNotification::where([UserNotification::USER_ID => Auth::id()])
-            ->update([UserNotification::READ_AT => Carbon::now()->toDateTimeString()]);
-        return success([]);
-    }
-
-    public function setEmail(VerifyEmailRequest $request): JsonResponse
-    {
-        $token = Str::uuid()->toString();
-
-        $profile = UserProfile::firstOrCreate([UserProfile::USER_ID => Auth::id()]);
-        $profile->update([
-            UserProfile::EMAIL                    => $request->validated()['email'],
-            UserProfile::EMAIL_VERIFIED_AT        => null,
-            UserProfile::EMAIL_VERIFICATION_TOKEN => $token,
-        ]);
-
-        Mail::to($request->validated()['email'])->send(new VerifyEmail($token));
-
-        return success([], 'global.verificationEmailSentSuccessfully');
-    }
-
-    public function checkToken(Request $request): JsonResponse
-    {
-        $profile = UserProfile::where([
-            UserProfile::EMAIL_VERIFICATION_TOKEN => $request->input('token'),
-            UserProfile::EMAIL_VERIFIED_AT        => null,
-        ])->first();
-
-        if ($profile) {
-            $profile->update([UserProfile::EMAIL_VERIFIED_AT => Carbon::now()]);
-            return success([], 'global.emailVerifiedSuccessfully');
-        }
-
-        return error('global.notFound', [], 404);
-    }
-
-    private function purgeObsoleteProfiles(User $user, Collection $roleNames): void
-    {
-        $keep = $roleNames->map(fn($r) => strtolower($r))->unique()->values()->all();
-
-        if (! in_array('engineer', $keep, true)) {
-            EngineerProfile::where(EngineerProfile::USER_ID, $user->id)->delete();
-        }
-        if (! in_array('contractor', $keep, true)) {
-            ContractorProfile::where(ContractorProfile::USER_ID, $user->id)->delete();
-        }
-        if (! in_array('supplier', $keep, true)) {
-            SupplierProfile::where(SupplierProfile::USER_ID, $user->id)->delete();
-        }
-        if (! in_array('employer', $keep, true)) {
-            EmployerProfile::where(EmployerProfile::USER_ID, $user->id)->delete();
-        }
-    }
-
-    private function resolveTypeIdFromRoleNames(array $roleNames): ?int
-    {
-        $priority = ['engineer', 'contractor', 'employer', 'supplier'];
-        $primary  = collect($priority)->first(fn($r) => in_array($r, $roleNames, true));
-        if (! $primary) {
-            return null;
-        }
-        return DB::table('user_types')->where('slug', $primary)->value('id')
-            ?: DB::table('user_types')->where('name', ucfirst($primary))->value('id');
-    }
+    // Password, mobile-change, and email management have been moved to
+    // AccountSecurityController (same namespace) to keep this controller
+    // focused on profile data (name, legal info, role selection).
 }

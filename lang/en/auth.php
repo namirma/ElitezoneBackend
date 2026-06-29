@@ -17,4 +17,6 @@ return [
     'password' => 'The provided password is incorrect.',
     'throttle' => 'Too many login attempts. Please try again in :seconds seconds.',
 
+    'identity_verification_unavailable' => 'Identity verification service is currently unavailable. Please try again in a few minutes.',
+
 ];

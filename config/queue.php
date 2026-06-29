@@ -38,7 +38,7 @@ return [
             'driver' => 'database',
             'table' => 'jobs',
             'queue' => 'default',
-            'retry_after' => 90,
+            'retry_after' => 180,
             'after_commit' => false,
         ],
 
@@ -66,7 +66,10 @@ return [
             'driver' => 'redis',
             'connection' => 'default',
             'queue' => env('REDIS_QUEUE', 'default'),
-            'retry_after' => 90,
+            // retry_after must be > max job execution time.
+            // Financial jobs (ProcessWeighbridgeResultAction) can take ~10 s with PDF rendering.
+            // Set 180 s so a slow but valid run never triggers a duplicate worker pickup.
+            'retry_after' => 180,
             'block_for' => null,
             'after_commit' => false,
         ],

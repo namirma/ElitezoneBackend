@@ -2,28 +2,29 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
-use App\Models\ProductCategory;
-use App\Models\AttributeType;
-use App\Models\CategoryAttribute;
 use App\Models\Attribute;
-use App\Models\Product;
-use App\Models\ProductImage;
-use App\Models\OrderUnit;
-use App\Models\ShippingMethod;
-use App\Models\PriceFilterType;
-use App\Models\PriceFilter;
-use App\Models\PriceFilterCategory;
-use App\Models\PriceSetting;
+use App\Models\AttributeValue;
+use App\Models\AttributeType;
+use App\Models\Badge;
+use App\Models\CategoryAttribute;
+use App\Models\CustomerType;
 use App\Models\Factory;
 use App\Models\FactoryLocation;
-use App\Models\CustomerType;
-use App\Models\Badge;
-use App\Models\PriceAdjustment;
 use App\Models\Offer;
+use App\Models\OrderUnit;
+use App\Models\PriceAdjustment;
+use App\Models\PriceFilter;
+use App\Models\PriceFilterCategory;
+use App\Models\PriceFilterType;
+use App\Models\PriceSetting;
+use App\Models\Product;
+use App\Models\ProductCategory;
+use App\Models\ProductImage;
 use App\Models\ProductPrice;
 use App\Models\ProductVariant;
+use App\Models\ShippingMethod;
 use Carbon\Carbon;
+use Illuminate\Database\Seeder;
 
 class ProductSeeder extends Seeder
 {
@@ -33,7 +34,7 @@ class ProductSeeder extends Seeder
             [ProductCategory::NAME => 'میلگرد', ProductCategory::SLUG => 'rebar', ProductCategory::DESCRIPTION => 'انواع میلگرد ساختمانی', ProductCategory::IMAGE => 'categories/rebar.jpg', ProductCategory::IS_ACTIVE => true],
             [ProductCategory::NAME => 'آهن آلات', ProductCategory::SLUG => 'steel', ProductCategory::DESCRIPTION => 'انواع آهن آلات ساختمانی', ProductCategory::IMAGE => 'categories/steel.jpg', ProductCategory::IS_ACTIVE => true],
             [ProductCategory::NAME => 'آجر', ProductCategory::SLUG => 'brick', ProductCategory::DESCRIPTION => 'انواع آجر ساختمانی', ProductCategory::IMAGE => 'categories/brick.jpg', ProductCategory::IS_ACTIVE => true],
-            [ProductCategory::NAME => 'شیرآلات', ProductCategory::SLUG => 'taps', ProductCategory::DESCRIPTION => 'انواع شیرآلات ساختمانی', ProductCategory::IMAGE => 'categories/taps.jpg', ProductCategory::IS_ACTIVE => true]
+            [ProductCategory::NAME => 'شیرآلات', ProductCategory::SLUG => 'taps', ProductCategory::DESCRIPTION => 'انواع شیرآلات ساختمانی', ProductCategory::IMAGE => 'categories/taps.jpg', ProductCategory::IS_ACTIVE => true],
         ];
         foreach ($categoriesData as $categoryDetails) {
             ProductCategory::updateOrCreate([ProductCategory::SLUG => $categoryDetails[ProductCategory::SLUG]], $categoryDetails);
@@ -76,7 +77,7 @@ class ProductSeeder extends Seeder
             $typeAttributesData = [
                 ['name' => 'شاخه', 'display_name' => 'شاخه'],
                 ['name' => 'کلاف', 'display_name' => 'کلاف'],
-                ['name' => 'صنعتی', 'display_name' => 'صنعتی']
+                ['name' => 'صنعتی', 'display_name' => 'صنعتی'],
             ];
             foreach ($typeAttributesData as $attrData) {
                 Attribute::updateOrCreate([Attribute::ATTRIBUTE_TYPE_ID => $typeAttributeType->id, Attribute::NAME => $attrData['name']], $attrData);
@@ -87,7 +88,7 @@ class ProductSeeder extends Seeder
                 ['name' => 'A1', 'display_name' => 'A1'],
                 ['name' => 'A2', 'display_name' => 'A2'],
                 ['name' => 'A3', 'display_name' => 'A3'],
-                ['name' => 'A4', 'display_name' => 'A4']
+                ['name' => 'A4', 'display_name' => 'A4'],
             ];
             foreach ($gradeAttributesData as $attrData) {
                 Attribute::updateOrCreate([Attribute::ATTRIBUTE_TYPE_ID => $gradeAttributeType->id, Attribute::NAME => $attrData['name']], $attrData);
@@ -128,7 +129,7 @@ class ProductSeeder extends Seeder
 
         $kgUnit = OrderUnit::where(OrderUnit::CODE, 'retail')->first();
 
-        if (!$rebarCategory || !$kgUnit) {
+        if (! $rebarCategory || ! $kgUnit) {
             return;
         }
 
@@ -171,13 +172,13 @@ class ProductSeeder extends Seeder
             }
 
             $shakhehAttr = Attribute::where(Attribute::ATTRIBUTE_TYPE_ID, $typeAttributeType?->id)->where(Attribute::NAME, 'شاخه')->first();
-            $kalafAttr   = Attribute::where(Attribute::ATTRIBUTE_TYPE_ID, $typeAttributeType?->id)->where(Attribute::NAME, 'کلاف')->first();
+            $kalafAttr = Attribute::where(Attribute::ATTRIBUTE_TYPE_ID, $typeAttributeType?->id)->where(Attribute::NAME, 'کلاف')->first();
             $gradeA1Attr = Attribute::where(Attribute::ATTRIBUTE_TYPE_ID, $gradeAttributeType?->id)->where(Attribute::NAME, 'A1')->first();
             $gradeA2Attr = Attribute::where(Attribute::ATTRIBUTE_TYPE_ID, $gradeAttributeType?->id)->where(Attribute::NAME, 'A2')->first();
             $gradeA3Attr = Attribute::where(Attribute::ATTRIBUTE_TYPE_ID, $gradeAttributeType?->id)->where(Attribute::NAME, 'A3')->first();
-            $size8Attr   = Attribute::where(Attribute::ATTRIBUTE_TYPE_ID, $sizeAttributeType?->id)->where(Attribute::NAME, '8')->first();
-            $size12Attr  = Attribute::where(Attribute::ATTRIBUTE_TYPE_ID, $sizeAttributeType?->id)->where(Attribute::NAME, '12')->first();
-            $size16Attr  = Attribute::where(Attribute::ATTRIBUTE_TYPE_ID, $sizeAttributeType?->id)->where(Attribute::NAME, '16')->first();
+            $size8Attr = Attribute::where(Attribute::ATTRIBUTE_TYPE_ID, $sizeAttributeType?->id)->where(Attribute::NAME, '8')->first();
+            $size12Attr = Attribute::where(Attribute::ATTRIBUTE_TYPE_ID, $sizeAttributeType?->id)->where(Attribute::NAME, '12')->first();
+            $size16Attr = Attribute::where(Attribute::ATTRIBUTE_TYPE_ID, $sizeAttributeType?->id)->where(Attribute::NAME, '16')->first();
 
             $variantsSeedData = [
                 [ProductVariant::SKU => 'RBR-A2-12-SH', ProductVariant::NAME => 'میلگرد شاخه A2 سایز 12', 'attrs_ids' => [$shakhehAttr?->id, $gradeA2Attr?->id, $size12Attr?->id], ProductVariant::STOCK_QUANTITY => 200000, ProductVariant::MIN_ORDER_VALUE => 2000, ProductVariant::MAX_ORDER_VALUE => 100000, ProductVariant::DISCOUNT_VALUE => 10.00, ProductVariant::DISCOUNT_TYPE => 'percentage', ProductVariant::DISCOUNT_START_DATE => Carbon::now(), ProductVariant::DISCOUNT_END_DATE => Carbon::now()->addMonth()],
@@ -200,7 +201,19 @@ class ProductSeeder extends Seeder
                         ProductVariant::DISCOUNT_END_DATE => $data[ProductVariant::DISCOUNT_END_DATE],
                     ]
                 );
-                $variant->variantAttributes()->sync(array_filter($data['attrs_ids']));
+                // Build pivot data with attribute_value_id (required by new schema)
+                $syncData = [];
+                foreach (array_filter($data['attrs_ids']) as $attrId) {
+                    $attr = Attribute::find($attrId);
+                    if ($attr) {
+                        $av = AttributeValue::firstOrCreate(
+                            ['attribute_id' => $attrId, 'value' => $attr->name],
+                            ['display_value' => $attr->display_name ?? $attr->name]
+                        );
+                        $syncData[$attrId] = ['attribute_value_id' => $av->id];
+                    }
+                }
+                $variant->variantAttributes()->sync($syncData);
             }
         }
 
@@ -257,14 +270,8 @@ class ProductSeeder extends Seeder
             CustomerType::updateOrCreate([CustomerType::CODE => $typeDetails[CustomerType::CODE]], $typeDetails);
         }
 
-        $badgesData = [
-            [Badge::NAME => 'برنزی', Badge::CODE => 'bronze', Badge::ICON => 'badges/bronze.svg'],
-            [Badge::NAME => 'نقره‌ای', Badge::CODE => 'silver', Badge::ICON => 'badges/silver.svg'],
-            [Badge::NAME => 'طلایی', Badge::CODE => 'gold', Badge::ICON => 'badges/gold.svg'],
-        ];
-        foreach ($badgesData as $badgeDetails) {
-            Badge::updateOrCreate([Badge::CODE => $badgeDetails[Badge::CODE]], $badgeDetails);
-        }
+        // Badges (incl. their artwork) are seeded by BadgeSeeder, which runs first
+        // in DatabaseSeeder. Do not recreate them here — single source of truth.
 
         $customerTypeInstances = CustomerType::all()->keyBy(CustomerType::CODE);
         $badgeInstances = Badge::all()->keyBy(Badge::CODE);
@@ -285,7 +292,7 @@ class ProductSeeder extends Seeder
         $badgeAdjustments = [
             ['b_code' => 'bronze', 'add' => 500],
             ['b_code' => 'silver', 'add' => 1000],
-            ['b_code' => 'gold',  'add' => 1500]
+            ['b_code' => 'gold',  'add' => 1500],
         ];
         foreach ($customerTypeInstances as $ctInstance) {
             $baseAdj = PriceAdjustment::where(PriceAdjustment::CUSTOMER_TYPE_ID, $ctInstance->id)->whereNull(PriceAdjustment::BADGE_ID)->value(PriceAdjustment::ADJUSTMENT_AMOUNT) ?? 0;
@@ -348,7 +355,7 @@ class ProductSeeder extends Seeder
                 PriceFilterCategory::DESCRIPTION => 'فیلترهای قیمت برای کارفرمای بدون مشاور',
                 PriceFilterCategory::IS_ACTIVE => true,
                 PriceFilterCategory::SORT_ORDER => 1,
-                'filters' => ['base_profit', 'regular_policy', 'employer', 'without_consultant']
+                'filters' => ['base_profit', 'regular_policy', 'employer', 'without_consultant'],
             ],
             [
                 PriceFilterCategory::NAME => 'مهندس دارای مشاور',
@@ -356,7 +363,7 @@ class ProductSeeder extends Seeder
                 PriceFilterCategory::DESCRIPTION => 'فیلترهای قیمت برای مهندس دارای مشاور',
                 PriceFilterCategory::IS_ACTIVE => true,
                 PriceFilterCategory::SORT_ORDER => 2,
-                'filters' => ['base_profit', 'competitive_policy', 'engineer', 'with_consultant']
+                'filters' => ['base_profit', 'competitive_policy', 'engineer', 'with_consultant'],
             ],
         ];
 
@@ -400,37 +407,37 @@ class ProductSeeder extends Seeder
             $rebarProduct->offers()->syncWithoutDetaching([$offer->id => ['associated_at' => now()]]);
         }
 
-        if (!$kavirFactory) {
+        if (! $kavirFactory) {
             return;
         }
 
-        $factoryDoorKavir      = FactoryLocation::where(FactoryLocation::FACTORY_ID, $kavirFactory->id)->where(FactoryLocation::TYPE, 'factory_door')->first();
+        $factoryDoorKavir = FactoryLocation::where(FactoryLocation::FACTORY_ID, $kavirFactory->id)->where(FactoryLocation::TYPE, 'factory_door')->first();
         $isfahanWarehouseKavir = FactoryLocation::where(FactoryLocation::FACTORY_ID, $kavirFactory->id)->where(FactoryLocation::TYPE, 'warehouse')->where(FactoryLocation::CITY, 'اصفهان')->first();
-        $tehranWarehouseKavir  = FactoryLocation::where(FactoryLocation::FACTORY_ID, $kavirFactory->id)->where(FactoryLocation::TYPE, 'warehouse')->where(FactoryLocation::CITY, 'تهران')->first();
-        $shirazWarehouseKavir  = FactoryLocation::where(FactoryLocation::FACTORY_ID, $kavirFactory->id)->where(FactoryLocation::TYPE, 'warehouse')->where(FactoryLocation::CITY, 'شیراز')->first();
+        $tehranWarehouseKavir = FactoryLocation::where(FactoryLocation::FACTORY_ID, $kavirFactory->id)->where(FactoryLocation::TYPE, 'warehouse')->where(FactoryLocation::CITY, 'تهران')->first();
+        $shirazWarehouseKavir = FactoryLocation::where(FactoryLocation::FACTORY_ID, $kavirFactory->id)->where(FactoryLocation::TYPE, 'warehouse')->where(FactoryLocation::CITY, 'شیراز')->first();
 
-        if (!$factoryDoorKavir || !$isfahanWarehouseKavir || !$tehranWarehouseKavir || !$shirazWarehouseKavir) {
+        if (! $factoryDoorKavir || ! $isfahanWarehouseKavir || ! $tehranWarehouseKavir || ! $shirazWarehouseKavir) {
             return;
         }
 
         $variantA2_12 = ProductVariant::where(ProductVariant::SKU, 'RBR-A2-12-SH')->first();
         $variantA3_16 = ProductVariant::where(ProductVariant::SKU, 'RBR-A3-16-SH')->first();
-        $variantA1_8  = ProductVariant::where(ProductVariant::SKU, 'RBR-A1-8-KL')->first();
+        $variantA1_8 = ProductVariant::where(ProductVariant::SKU, 'RBR-A1-8-KL')->first();
 
-        if (!$variantA2_12 || !$variantA3_16 || !$variantA1_8) {
+        if (! $variantA2_12 || ! $variantA3_16 || ! $variantA1_8) {
             return;
         }
 
         $variantBasePrices = [
             $variantA2_12->id => ['base_general' => 46500, 'base_special' => 42500],
             $variantA3_16->id => ['base_general' => 54500, 'base_special' => 50500],
-            $variantA1_8->id  => ['base_general' => 40500, 'base_special' => 36500]
+            $variantA1_8->id => ['base_general' => 40500, 'base_special' => 36500],
         ];
         $locationPriceAdjustments = [
-            $factoryDoorKavir->id      => ['general' => -500, 'special' => -500],
+            $factoryDoorKavir->id => ['general' => -500, 'special' => -500],
             $isfahanWarehouseKavir->id => ['general' => 0,    'special' => 0],
-            $tehranWarehouseKavir->id  => ['general' => 1000, 'special' => 800],
-            $shirazWarehouseKavir->id  => ['general' => 1500, 'special' => 1200]
+            $tehranWarehouseKavir->id => ['general' => 1000, 'special' => 800],
+            $shirazWarehouseKavir->id => ['general' => 1500, 'special' => 1200],
         ];
 
         foreach ($variantBasePrices as $variantId => $basePrices) {

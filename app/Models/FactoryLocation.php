@@ -11,16 +11,23 @@ class FactoryLocation extends Model
 {
     use HasFactory;
 
-    public const
-        ID         = 'id',
-        FACTORY_ID = 'factory_id',
-        NAME       = 'name',
-        TYPE       = 'type',
-        CITY       = 'city',
-        ADDRESS    = 'address',
-        IS_ACTIVE  = 'is_active',
-        CREATED_AT = 'created_at',
-        UPDATED_AT = 'updated_at';
+    public const ID = 'id';
+
+    public const FACTORY_ID = 'factory_id';
+
+    public const NAME = 'name';
+
+    public const TYPE = 'type';
+
+    public const CITY = 'city';
+
+    public const ADDRESS = 'address';
+
+    public const IS_ACTIVE = 'is_active';
+
+    public const CREATED_AT = 'created_at';
+
+    public const UPDATED_AT = 'updated_at';
 
     protected $fillable = [
         self::FACTORY_ID,

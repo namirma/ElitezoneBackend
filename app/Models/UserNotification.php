@@ -14,16 +14,21 @@ class UserNotification extends Model
 {
     use HasFactory;
 
-    CONST
-        ID = 'id',
-        USER_ID = 'user_id',
-        SENDER_ID = 'sender_id',
-        SUBJECT = 'subject',
-        BODY = 'body',
-        READ_AT = 'read_at',
-        CREATED_AT = 'created_at',
-        UPDATED_AT = 'updated_at';
+    const ID = 'id';
 
+    const USER_ID = 'user_id';
+
+    const SENDER_ID = 'sender_id';
+
+    const SUBJECT = 'subject';
+
+    const BODY = 'body';
+
+    const READ_AT = 'read_at';
+
+    const CREATED_AT = 'created_at';
+
+    const UPDATED_AT = 'updated_at';
 
     /**
      * The attributes that are mass assignable.
@@ -37,26 +42,27 @@ class UserNotification extends Model
         self::BODY,
         self::READ_AT,
         self::CREATED_AT,
-        self::UPDATED_AT
+        self::UPDATED_AT,
     ];
 
     public function getCreatedAtAttribute()
     {
-        $this->appends[] = "created_at_p";
-        $this->appends[] = "created_at_diff";
-        return $this->attributes["created_at"];
+        $this->appends[] = 'created_at_p';
+        $this->appends[] = 'created_at_diff';
+
+        return $this->attributes['created_at'];
     }
 
     public function getUpdatedAtAttribute()
     {
-        $this->appends[] = "updated_at_p";
-        $this->appends[] = "updated_at_diff";
-        return $this->attributes["updated_at"];
+        $this->appends[] = 'updated_at_p';
+        $this->appends[] = 'updated_at_diff';
+
+        return $this->attributes['updated_at'];
     }
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
-
 }

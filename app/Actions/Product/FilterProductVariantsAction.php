@@ -1,0 +1,68 @@
+<?php
+
+namespace App\Actions\Product;
+
+use App\Models\Product;
+use App\Models\ProductVariantAttribute;
+use App\Services\Pricing\VariantPriceHydrator;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
+
+class FilterProductVariantsAction
+{
+    public function __construct(
+        private readonly VariantPriceHydrator $priceHydrator
+    ) {}
+
+    public function execute(Product $product, array $filters, string $roleCode): LengthAwarePaginator
+    {
+        // ۱. ساخت کوئری
+        $query = $product->variants()
+            ->with(['prices.factory', 'prices.factoryLocation', 'variantAttributes.attributeType', 'cartItems', 'limitOrderUnit']);
+
+        // ۲. اعمال فیلتر ویژگی‌ها
+        if (! empty($filters['filter_categories'])) {
+            $query->whereHas('variantAttributes', fn ($q) => $q->whereIn(ProductVariantAttribute::ATTRIBUTE_ID, $filters['filter_categories'])
+            );
+        }
+
+        // ۳. دریافت و محاسبه قیمت
+        $variants = $query->get();
+
+        // محاسبه قیمت برای تک‌تک واریانت‌ها
+        $this->priceHydrator->hydrateMany($variants, $roleCode, $filters['debug_prices'] ?? false);
+
+        // ۴. مرتب‌سازی
+        $sortKey = $filters['sort'] ?? 'newest';
+        $sortedVariants = $this->sortVariants($variants, $sortKey);
+
+        // ۵. صفحه‌بندی
+        return $this->paginate($sortedVariants, $filters['per_page'] ?? 10);
+    }
+
+    private function sortVariants(Collection $variants, string $sortKey): Collection
+    {
+        $getter = fn ($v) => $v->min_price ?? 0;
+
+        $sorted = match ($sortKey) {
+            'cheapest' => $variants->sortBy($getter),
+            'most_expensive' => $variants->sortByDesc($getter),
+            default => $variants->sortByDesc('created_at'),
+        };
+
+        return $sorted->values();
+    }
+
+    private function paginate(Collection $items, int $perPage): LengthAwarePaginator
+    {
+        $page = LengthAwarePaginator::resolveCurrentPage();
+
+        return new LengthAwarePaginator(
+            $items->slice(($page - 1) * $perPage, $perPage)->values(),
+            $items->count(),
+            $perPage,
+            $page,
+            ['path' => LengthAwarePaginator::resolveCurrentPath()]
+        );
+    }
+}

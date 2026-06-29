@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Traits\Resilience\HasCircuitBreaker;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Config;
@@ -10,70 +11,84 @@ use Illuminate\Support\Facades\Log;
 
 class PodiumClient
 {
+    use HasCircuitBreaker;
+
     protected string $baseUrl;
+
     protected string $businessToken;
+
     protected int $timeout;
 
     public function __construct()
     {
-        $this->baseUrl       = rtrim(Config::get('podium.base_url'), '/');
+        $this->baseUrl = rtrim(Config::get('podium.base_url'), '/');
         $this->businessToken = (string) Config::get('podium.business_token');
-        $this->timeout       = (int) Config::get('podium.defaults.timeout', 30);
+        $this->timeout = (int) Config::get('podium.defaults.timeout', 30);
+
+        $this->cbThreshold = 3;
+        $this->cbTimeout = 120;
     }
 
     protected function http(): PendingRequest
     {
         return Http::asForm()
             ->timeout($this->timeout)
+            ->withOptions([
+                'proxy' => false,
+            ])
             ->withHeaders([
-                '_token_'        => $this->businessToken,
+                '_token_' => $this->businessToken,
                 '_token_issuer_' => (string) Config::get('podium.defaults._token_issuer', 1),
-                'Content-Type'   => 'application/x-www-form-urlencoded',
+                'Content-Type' => 'application/x-www-form-urlencoded',
             ]);
     }
 
     public function call(array $payload): array
     {
-        $endpoint = $this->baseUrl . Config::get('podium.endpoints.do_service_call');
+        return $this->executeProtected('podium_core', function () use ($payload) {
 
-        $response = $this->http()->post($endpoint, $payload);
+            $endpoint = $this->baseUrl.Config::get('podium.endpoints.do_service_call');
+            $response = $this->http()->post($endpoint, $payload);
 
-        if ($response->failed()) {
-            Log::error('Podium HTTP error', [
-                'status' => $response->status(),
-                'body'   => $response->body(),
-            ]);
-            $response->throw();
-        }
+            if ($response->failed()) {
+                Log::error('Podium HTTP error', [
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ]);
+                $response->throw();
+            }
 
-        return $response->json() ?? [];
+            return $response->json() ?? [];
+        });
     }
+
     protected function httpSc2(): PendingRequest
     {
         return Http::timeout($this->timeout)
             ->withHeaders([
-                'Authorization' => 'Bearer ' . $this->businessToken,
-                'Content-Type'  => 'application/json',
+                'Authorization' => 'Bearer '.$this->businessToken,
+                'Content-Type' => 'application/json',
             ]);
     }
 
     public function callSc2(array $payload): array
     {
-        $endpoint = $this->baseUrl . Config::get('podium.sc2.endpoints.do');
+        return $this->executeProtected('podium_sc2', function () use ($payload) {
 
-        $response = $this->httpSc2()->post($endpoint, $payload);
+            $endpoint = $this->baseUrl.Config::get('podium.sc2.endpoints.do');
+            $response = $this->httpSc2()->post($endpoint, $payload);
 
-        if ($response->failed()) {
-            Log::error('Podium SC2 HTTP error', [
-                'status' => $response->status(),
-                'body'   => $response->body(),
-            ]);
-            $response->throw();
-        }
+            if ($response->failed()) {
+                Log::error('Podium SC2 HTTP error', [
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ]);
+                $response->throw();
+            }
 
-        return $response->json() ?? [];
+            return $response->json() ?? [];
+        });
     }
-
 
     public static function normalize(array $res): array
     {
@@ -89,15 +104,15 @@ class PodiumClient
         }
 
         return [
-            'has_error'        => (bool) Arr::get($res, 'hasError', true),
-            'message_id'       => Arr::get($res, 'messageId'),
-            'message'          => Arr::get($res, 'message'),
+            'has_error' => (bool) Arr::get($res, 'hasError', true),
+            'message_id' => Arr::get($res, 'messageId'),
+            'message' => Arr::get($res, 'message'),
             'reference_number' => Arr::get($res, 'referenceNumber'),
-            'ott'              => Arr::get($res, 'ott'),
-            'error_code'       => Arr::get($res, 'errorCode'),
-            'status_code'      => Arr::get($res, 'statusCode'),
-            'result'           => $result,
-            'raw'              => $res,
+            'ott' => Arr::get($res, 'ott'),
+            'error_code' => Arr::get($res, 'errorCode'),
+            'status_code' => Arr::get($res, 'statusCode'),
+            'result' => $result,
+            'raw' => $res,
         ];
     }
 }

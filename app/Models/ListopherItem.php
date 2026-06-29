@@ -9,21 +9,32 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class ListopherItem extends Model
 {
     use HasFactory;
+
     public $timestamps = false;
 
-    const
-        ID = 'id',
-        LISTOPHER_ID = 'listopher_id',
-        POS = 'pos',
-        B = 'b',
-        H = 'h',
-        SHAPE = 'shape',
-        LENGTH = 'length',
-        SIZE = 'size',
-        HOOK = 'hook',
-        OVERLAP = 'overlap',
-        QUANTITY = 'quantity',
-        LENGTH_TOTAL = 'length_total';
+    const ID = 'id';
+
+    const LISTOPHER_ID = 'listopher_id';
+
+    const POS = 'pos';
+
+    const B = 'b';
+
+    const H = 'h';
+
+    const SHAPE = 'shape';
+
+    const LENGTH = 'length';
+
+    const SIZE = 'size';
+
+    const HOOK = 'hook';
+
+    const OVERLAP = 'overlap';
+
+    const QUANTITY = 'quantity';
+
+    const LENGTH_TOTAL = 'length_total';
 
     protected $fillable = [
         self::LISTOPHER_ID,
@@ -36,12 +47,11 @@ class ListopherItem extends Model
         self::HOOK,
         self::OVERLAP,
         self::QUANTITY,
-        self::LENGTH_TOTAL
+        self::LENGTH_TOTAL,
     ];
 
     public function listopher(): BelongsTo
     {
         return $this->belongsTo(Listopher::class);
     }
-
 }

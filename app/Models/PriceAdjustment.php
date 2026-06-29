@@ -10,14 +10,19 @@ class PriceAdjustment extends Model
 {
     use HasFactory;
 
-    const
-        ID = 'id',
-        CUSTOMER_TYPE_ID = 'customer_type_id',
-        BADGE_ID = 'badge_id',
-        ADJUSTMENT_AMOUNT = 'adjustment_amount',
-        IS_ACTIVE = 'is_active',
-        CREATED_AT = 'created_at',
-        UPDATED_AT = 'updated_at';
+    const ID = 'id';
+
+    const CUSTOMER_TYPE_ID = 'customer_type_id';
+
+    const BADGE_ID = 'badge_id';
+
+    const ADJUSTMENT_AMOUNT = 'adjustment_amount';
+
+    const IS_ACTIVE = 'is_active';
+
+    const CREATED_AT = 'created_at';
+
+    const UPDATED_AT = 'updated_at';
 
     protected $fillable = [
         self::CUSTOMER_TYPE_ID,

@@ -112,4 +112,21 @@ return [
 
     'password_timeout' => 10800,
 
+    /*
+    |--------------------------------------------------------------------------
+    | OTP Brute-Force Protection
+    |--------------------------------------------------------------------------
+    |
+    | Cumulative lockout for OTP/reset-code verification. After
+    | `otp_max_attempts` consecutive failures for a mobile number, further
+    | verification attempts are rejected for `otp_lockout_minutes`.
+    | The per-minute route throttle alone is not enough against a
+    | distributed brute-force of a 6-digit code.
+    |
+    */
+
+    'otp_max_attempts' => env('OTP_MAX_ATTEMPTS', 5),
+
+    'otp_lockout_minutes' => env('OTP_LOCKOUT_MINUTES', 10),
+
 ];

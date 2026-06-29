@@ -18,13 +18,17 @@ class SupplierActivityCategory extends Model
 {
     use HasFactory;
 
-    const
-        ID = 'id',
-        NAME = 'name',
-        SLUG = 'slug',
-        PARENT_ID = 'parent_id',
-        CREATED_AT = 'created_at',
-        UPDATED_AT = 'updated_at';
+    const ID = 'id';
+
+    const NAME = 'name';
+
+    const SLUG = 'slug';
+
+    const PARENT_ID = 'parent_id';
+
+    const CREATED_AT = 'created_at';
+
+    const UPDATED_AT = 'updated_at';
 
     protected $fillable = [
         self::NAME,
@@ -33,8 +37,8 @@ class SupplierActivityCategory extends Model
         self::CREATED_AT,
         self::UPDATED_AT,
     ];
-    protected $with = ['children'];
 
+    protected $with = ['children'];
 
     protected static function booted(): void
     {
@@ -47,14 +51,15 @@ class SupplierActivityCategory extends Model
         });
 
     }
-    public function scopeParentStatus(Builder $query, int|null $value): void
+
+    public function scopeParentStatus(Builder $query, ?int $value): void
     {
         $query->where(self::PARENT_ID, $value);
     }
 
     public static function getCacheKey(): string
     {
-        return (new static)->getMorphClass() . '_all';
+        return (new static)->getMorphClass().'_all';
     }
 
     public static function getAll()
@@ -71,7 +76,8 @@ class SupplierActivityCategory extends Model
 
     public function suppliers(): BelongsToMany
     {
-        return $this->belongsToMany(SupplierProfile::class, 'supplier_activity_categories', 'supplier_category_id', 'supplier_id');
+        // Pivot table: supplier_activities(activity_category_id, supplier_id)
+        return $this->belongsToMany(SupplierProfile::class, 'supplier_activities', 'activity_category_id', 'supplier_id');
     }
 
     public function scopeWithoutChildren($query)

@@ -2,12 +2,11 @@
 
 namespace App\Models;
 
+use App\Traits\PersianDate;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Builder;
-use App\Traits\PersianDate;
 
 /**
  * @method static updateOrCreate(array $array, array $array1)
@@ -18,23 +17,41 @@ class SupplierProfile extends Model
 {
     use HasFactory, PersianDate;
 
-    const
-        ID = 'id',
-        USER_ID = 'user_id',
-        ACTIVITY_DESCRIPTION = 'activity_description',
-        BRANDS = 'brands',
-        BRANDS_NOT_RELATED = 'brands_not_related',
-        ACTIVITY_HISTORY = 'activity_history',
-        ACTIVITY_PROVINCES = 'activity_provinces',
-        PRODUCTION_AMOUNT = 'production_amount',
-        STANDARDS = 'standards',
-        STANDARDS_NOT_RELATED = 'standards_not_related',
-        WEBSITE = 'website',
-        WEBSITE_NOT_RELATED = 'website_not_related',
-        COMPANY = 'company',
-        CREATED_AT = 'created_at',
-        UPDATED_AT = 'updated_at';
+    const ID = 'id';
 
+    const USER_ID = 'user_id';
+
+    const ACTIVITY_DESCRIPTION = 'activity_description';
+
+    const BRANDS = 'brands';
+
+    const BRANDS_NOT_RELATED = 'brands_not_related';
+
+    const ACTIVITY_HISTORY = 'activity_history';
+
+    const ACTIVITY_PROVINCES = 'activity_provinces';
+
+    const PRODUCTION_AMOUNT = 'production_amount';
+
+    const STANDARDS = 'standards';
+
+    const STANDARDS_NOT_RELATED = 'standards_not_related';
+
+    const WEBSITE = 'website';
+
+    const WEBSITE_NOT_RELATED = 'website_not_related';
+
+    const COMPANY = 'company';
+
+    /** +%TC: کمیسیون روی هزینه حمل اعمال می‌شود؟ (پیش‌فرض: بله) */
+    const TRANS_COMMISSION = 'trans_commission';
+
+    /** +VAT: مالیات بر ارزش افزوده روی هزینه حمل اعمال می‌شود؟ (پیش‌فرض: بله) */
+    const TRANS_VAT = 'trans_vat';
+
+    const CREATED_AT = 'created_at';
+
+    const UPDATED_AT = 'updated_at';
 
     /**
      * The attributes that are mass assignable.
@@ -54,29 +71,17 @@ class SupplierProfile extends Model
         self::WEBSITE,
         self::WEBSITE_NOT_RELATED,
         self::COMPANY,
+        self::TRANS_COMMISSION,
+        self::TRANS_VAT,
         self::CREATED_AT,
-        self::UPDATED_AT
+        self::UPDATED_AT,
     ];
-    protected $appends = [
-    'created_at_p',
-    'created_at_diff',
-    'updated_at_p',
-    'updated_at_diff',
-];
 
-    // public function getCreatedAtAttribute()
-    // {
-    //     $this->appends[] = "created_at_p";
-    //     $this->appends[] = "created_at_diff";
-    //     return $this->attributes["created_at"];
-    // }
-
-    // public function getUpdatedAtAttribute()
-    // {
-    //     $this->appends[] = "updated_at_p";
-    //     $this->appends[] = "updated_at_diff";
-    //     return $this->attributes["updated_at"];
-    // }
+    /** @var array<string, string> */
+    protected $casts = [
+        self::TRANS_COMMISSION => 'boolean',
+        self::TRANS_VAT        => 'boolean',
+    ];
 
     public function user(): BelongsTo
     {

@@ -7,11 +7,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class CustomerType extends Model
 {
-    const
-        ID = 'id',
-        NAME = 'name',
-        CODE = 'code',
-        HAS_CONSULTANT = 'has_consultant';
+    const ID = 'id';
+
+    const NAME = 'name';
+
+    const CODE = 'code';
+
+    const HAS_CONSULTANT = 'has_consultant';
 
     protected $fillable = [
         self::NAME,

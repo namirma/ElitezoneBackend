@@ -4,12 +4,17 @@ namespace App\Http;
 
 use App\Http\Middleware\AttachActivePriceCategory;
 use App\Http\Middleware\Authenticate;
+use App\Http\Middleware\CanSeeTicket;
 use App\Http\Middleware\Cors;
 use App\Http\Middleware\EncryptCookies;
+use App\Http\Middleware\EnsureRoleIsSelected;
+use App\Http\Middleware\EnsureUserIsExpert;
+use App\Http\Middleware\Idempotency;
 use App\Http\Middleware\PreventRequestsDuringMaintenance;
 use App\Http\Middleware\RedirectIfAuthenticated;
 use App\Http\Middleware\Sanitizer;
 use App\Http\Middleware\SecurityHeaders;
+use App\Http\Middleware\TrackDashboardUsage;
 use App\Http\Middleware\TrimStrings;
 use App\Http\Middleware\TrustProxies;
 use App\Http\Middleware\ValidateSignature;
@@ -69,9 +74,12 @@ class Kernel extends HttpKernel
         ],
 
         'api' => [
+            SecurityHeaders::class,
             EnsureFrontendRequestsAreStateful::class,
             ThrottleRequests::class.':api',
             SubstituteBindings::class,
+            // EnsureRoleIsSelected is applied per-route in routes/api.php (place/checkout
+            // require it; profile/role-selection explicitly opts out). Not global.
         ],
     ];
 
@@ -97,5 +105,13 @@ class Kernel extends HttpKernel
         'cors' => Cors::class,
         'SecurityHeaders' => SecurityHeaders::class,
         'attach.price.category' => AttachActivePriceCategory::class,
+        'role.admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
+        'role.expert' => EnsureUserIsExpert::class,
+        'role.employer' => \App\Http\Middleware\EnsureUserIsEmployer::class,
+        'track' => TrackDashboardUsage::class,
+        'idempotency' => Idempotency::class,
+        'role.selected' => EnsureRoleIsSelected::class,
+        'can-see-ticket' => CanSeeTicket::class,
+        'optional.sanctum' => \App\Http\Middleware\OptionalSanctum::class,
     ];
 }

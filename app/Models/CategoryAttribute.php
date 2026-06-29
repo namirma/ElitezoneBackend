@@ -10,15 +10,21 @@ class CategoryAttribute extends Model
 {
     use HasFactory;
 
-    const
-        ID = 'id',
-        CATEGORY_ID = 'category_id',
-        ATTRIBUTE_TYPE_ID = 'attribute_type_id',
-        IS_REQUIRED = 'is_required',
-        IS_FILTERABLE = 'is_filterable',
-        SORT_ORDER = 'sort_order',
-        CREATED_AT = 'created_at',
-        UPDATED_AT = 'updated_at';
+    const ID = 'id';
+
+    const CATEGORY_ID = 'category_id';
+
+    const ATTRIBUTE_TYPE_ID = 'attribute_type_id';
+
+    const IS_REQUIRED = 'is_required';
+
+    const IS_FILTERABLE = 'is_filterable';
+
+    const SORT_ORDER = 'sort_order';
+
+    const CREATED_AT = 'created_at';
+
+    const UPDATED_AT = 'updated_at';
 
     protected $table = 'category_attributes';
 

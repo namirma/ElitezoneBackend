@@ -11,11 +11,13 @@ class Wishlist extends Model
 {
     use HasFactory;
 
-    const
-        ID = 'id',
-        USER_ID = 'user_id',
-        NAME = 'name',
-        IS_DEFAULT = 'is_default';
+    const ID = 'id';
+
+    const USER_ID = 'user_id';
+
+    const NAME = 'name';
+
+    const IS_DEFAULT = 'is_default';
 
     protected $fillable = [
         self::USER_ID,

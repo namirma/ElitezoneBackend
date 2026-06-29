@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('factory_id')->constrained()->onDelete('cascade');
             $table->string('name');
-            $table->string('type'); 
+            $table->string('type');
             $table->string('city')->nullable();
             $table->text('address')->nullable();
             $table->boolean('is_active')->default(true);

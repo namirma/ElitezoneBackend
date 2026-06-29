@@ -10,36 +10,35 @@ class PodiumSettlementService
 {
     public function singleSettlement(array $payload): array
     {
-        $url    = rtrim(config('podium.base_url'), '/') . config('podium.endpoints.do_service_call');
+        $url = rtrim(config('podium.base_url'), '/').config('podium.endpoints.do_service_call');
         $header = [
-            'accept'           => 'application/json',
-            '_token_'          => (string) config('podium.business_token'),
-            '_token_issuer_'   => (string) config('podium.defaults._token_issuer'),
-            'scWrapper'        => config('podium.defaults.sc_wrapper') ? 'true' : 'false',
-            'Content-Type'     => 'application/x-www-form-urlencoded',
+            'accept' => 'application/json',
+            '_token_' => (string) config('podium.business_token'),
+            '_token_issuer_' => (string) config('podium.defaults._token_issuer'),
+            'scWrapper' => config('podium.defaults.sc_wrapper') ? 'true' : 'false',
+            'Content-Type' => 'application/x-www-form-urlencoded',
         ];
 
         $body = array_filter([
-            'scProductId'  => (string) config('podium.defaults.sc_product_id'),
-            'scApiKey'     => (string) config('podium.sc_api_keys.single_settlement'),
+            'scProductId' => (string) config('podium.defaults.sc_product_id'),
+            'scApiKey' => (string) config('podium.sc_api_keys.single_settlement'),
 
-            'amount'       => (string) $payload['amount'],
-            'firstName'    => $payload['firstName'],
-            'lastName'     => $payload['lastName'] ?? null,
-            'toolCode'     => $payload['toolCode'],
-            'toolId'       => $payload['toolId'],
+            'amount' => (string) $payload['amount'],
+            'firstName' => $payload['firstName'],
+            'lastName' => $payload['lastName'] ?? null,
+            'toolCode' => $payload['toolCode'],
+            'toolId' => $payload['toolId'],
 
+            'wallet' => $payload['wallet'] ?? config('podium.defaults.wallet'),
+            'guildCode' => $payload['guildCode'] ?? null,
 
-            'wallet'       => $payload['wallet'] ?? config('podium.defaults.wallet'),
-            'guildCode'    => $payload['guildCode'] ?? null,
-
-            'currencyCode'    => $payload['currencyCode'] ?? config('podium.defaults.currency'),
-            'description'     => $payload['description'] ?? null,
-            'paymentId'       => $payload['paymentId'] ?? null,
-            'uniqueId'        => $payload['uniqueId'] ?? null,
-            'detailType'      => $payload['detailType'] ?? null,
+            'currencyCode' => $payload['currencyCode'] ?? config('podium.defaults.currency'),
+            'description' => $payload['description'] ?? null,
+            'paymentId' => $payload['paymentId'] ?? null,
+            'uniqueId' => $payload['uniqueId'] ?? null,
+            'detailType' => $payload['detailType'] ?? null,
             'sourceDescription' => $payload['sourceDescription'] ?? null,
-        ], fn($v) => !is_null($v) && $v !== '');
+        ], fn ($v) => ! is_null($v) && $v !== '');
 
         try {
             $resp = Http::asForm()
@@ -50,19 +49,19 @@ class PodiumSettlementService
             $json = $resp->json();
 
             Log::info('[Podium][SingleSettlement] response', [
-                'status'  => $resp->status(),
-                'body'    => $json,
+                'status' => $resp->status(),
+                'body' => $json,
             ]);
 
-            if (!$resp->successful()) {
-                throw new \RuntimeException('Podium HTTP error: ' . $resp->status());
+            if (! $resp->successful()) {
+                throw new \RuntimeException('Podium HTTP error: '.$resp->status());
             }
-            if (!is_array($json) || !array_key_exists('hasError', $json)) {
+            if (! is_array($json) || ! array_key_exists('hasError', $json)) {
                 throw new \RuntimeException('Unexpected Podium schema.');
             }
             if ($json['hasError'] === true) {
-                $ref  = $json['referenceNumber'] ?? null;
-                $msg  = $json['message'] ?? data_get($json, 'result.message') ?? 'Unknown business error';
+                $ref = $json['referenceNumber'] ?? null;
+                $msg = $json['message'] ?? data_get($json, 'result.message') ?? 'Unknown business error';
                 $code = $json['errorCode'] ?? null;
                 throw new \RuntimeException("Podium business error: {$msg} (code={$code}, ref={$ref})");
             }
@@ -74,6 +73,7 @@ class PodiumSettlementService
                     $json['result']['result'] = $decoded;
                 }
             }
+
             return $json;
         } catch (ConnectionException $e) {
             Log::error('[Podium][SingleSettlement] connection error', ['e' => $e->getMessage()]);

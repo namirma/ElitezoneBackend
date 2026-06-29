@@ -23,7 +23,7 @@ return new class extends Migration
             $table->decimal('final_price', 20, 0);
             $table->decimal('vat_amount', 20, 0)->default(0);
             $table->decimal('total_with_vat', 20, 0)->default(0);
-            $table->boolean('with_vat')->default(false); 
+            $table->boolean('with_vat')->default(false);
             $table->timestamps();
         });
     }

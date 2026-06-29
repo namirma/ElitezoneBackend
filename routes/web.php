@@ -15,15 +15,14 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('/', function () {
-//    return view('welcome');
+    //    return view('welcome');
     return response()->json([
         'status' => 200,
         'data' => [
-            'message' => 'Welcome to EliteZone API!'
-        ]
+            'message' => 'Welcome to EliteZone API!',
+        ],
     ]);
 });
-
 
 //Route::get('/role',function (\Illuminate\Http\Request $request){
 

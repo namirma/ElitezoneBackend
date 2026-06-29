@@ -10,13 +10,17 @@ class Badge extends Model
 {
     use HasFactory;
 
-    const
-        ID = 'id',
-        NAME = 'name',
-        CODE = 'code',
-        ICON = 'icon',
-        CREATED_AT = 'created_at',
-        UPDATED_AT = 'updated_at';
+    const ID = 'id';
+
+    const NAME = 'name';
+
+    const CODE = 'code';
+
+    const ICON = 'icon';
+
+    const CREATED_AT = 'created_at';
+
+    const UPDATED_AT = 'updated_at';
 
     protected $fillable = [
         self::NAME,
@@ -26,8 +30,6 @@ class Badge extends Model
 
     /**
      * Relationship to the price adjustments.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
      */
     public function priceAdjustments(): HasMany
     {
@@ -36,8 +38,6 @@ class Badge extends Model
 
     /**
      * Relationship to the carts.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
      */
     public function carts(): HasMany
     {

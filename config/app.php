@@ -1,5 +1,6 @@
 <?php
 
+use App\Providers\RepositoryServiceProvider;
 use App\Providers\ResponseServiceProvider;
 use Artisaninweb\SoapWrapper\SoapWrapper;
 use Illuminate\Support\Facades\Facade;
@@ -25,8 +26,32 @@ return [
     | Custom variable
     |--------------------------------------------------------------------------
     */
-    'version' => "0.0.1",
+    'version' => '0.0.1',
     'companyInfoEmailAddress' => 'info@elitezone.me',
+
+    /*
+    |--------------------------------------------------------------------------
+    | Front-end Application URL
+    |--------------------------------------------------------------------------
+    |
+    | Base URL of the front-end SPA — used in transactional emails (e.g. links
+    | inside verify-email messages). Never reference FRONT_APP_URL via env()
+    | directly in application code; always read config('app.front_url').
+    |
+    */
+    'front_url' => env('FRONT_APP_URL', 'http://localhost:3000'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | API Docs Authorised Emails
+    |--------------------------------------------------------------------------
+    |
+    | Comma-separated list of email addresses that may access the Scramble
+    | API documentation in non-local environments.
+    | e.g. APP_API_DOCS_EMAILS=alice@example.com,bob@example.com
+    |
+    */
+    'api_docs_emails' => array_filter(explode(',', (string) env('APP_API_DOCS_EMAILS', ''))),
 
     /*
     |--------------------------------------------------------------------------
@@ -52,7 +77,7 @@ return [
     |
     */
 
-    'debug' => (bool)env('APP_DEBUG', false),
+    'debug' => (bool) env('APP_DEBUG', false),
 
     /*
     |--------------------------------------------------------------------------
@@ -178,7 +203,9 @@ return [
         // App\Providers\BroadcastServiceProvider::class,
         App\Providers\EventServiceProvider::class,
         App\Providers\RouteServiceProvider::class,
-        ResponseServiceProvider::class
+        ResponseServiceProvider::class,
+        Mccarlosen\LaravelMpdf\LaravelMpdfServiceProvider::class,
+        RepositoryServiceProvider::class,
     ])->toArray(),
 
     /*
@@ -195,6 +222,7 @@ return [
     'aliases' => Facade::defaultAliases()->merge([
         // 'Example' => App\Facades\Example::class,
         'SoapWrapper' => SoapWrapper::class,
+        'PDF' => Mccarlosen\LaravelMpdf\Facades\LaravelMpdf::class,
     ])->toArray(),
 
 ];

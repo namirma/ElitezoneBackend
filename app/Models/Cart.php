@@ -2,24 +2,29 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Cart extends Model
 {
     use HasFactory;
 
-    const
-        ID                 = 'id',
-        USER_ID            = 'user_id',
-        SESSION_ID         = 'session_id',
-        CUSTOMER_TYPE_ID   = 'customer_type_id',
-        BADGE_ID           = 'badge_id',
-        CREATED_AT         = 'created_at',
-        UPDATED_AT         = 'updated_at';
+    const ID = 'id';
+
+    const USER_ID = 'user_id';
+
+    const SESSION_ID = 'session_id';
+
+    const CUSTOMER_TYPE_ID = 'customer_type_id';
+
+    const BADGE_ID = 'badge_id';
+
+    const CREATED_AT = 'created_at';
+
+    const UPDATED_AT = 'updated_at';
 
     protected $fillable = [
         self::USER_ID,
@@ -56,6 +61,7 @@ class Cart extends Model
             ->withPivot(['cart_id', 'price_filter_category_id'])
             ->withTimestamps();
     }
+
     public function purchaseParameters(): BelongsToMany
     {
         return $this->belongsToMany(
@@ -66,4 +72,8 @@ class Cart extends Model
         )->withTimestamps();
     }
 
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
 }

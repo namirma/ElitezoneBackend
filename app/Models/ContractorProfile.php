@@ -15,23 +15,40 @@ class ContractorProfile extends Model
 {
     use HasFactory, PersianDate;
 
-    const
-        ID = 'id',
-        USER_ID = 'user_id',
-        ENGINEER_MEMBER = 'engineer_member',
-        COMPANY_NAME = 'company_name',
-        NOT_RELATED = 'not_related',
-        LICENSE_NUMBER = 'license_number',
-        SUPERVISION_BASE = 'supervision_base',
-        DESIGN_BASE = 'design_base',
-        ACTIVITY_HISTORY = 'activity_history',
-        PROJECT_DONE = 'project_done',
-        PROJECT_IN_PROGRESS = 'project_in_progress',
-        TRUSTED_CONTRACTOR = 'trusted_contractor',
-        ACTIVITY_PROVINCES = 'activity_provinces',
-        CREATED_AT = 'created_at',
-        UPDATED_AT = 'updated_at';
+    const ID = 'id';
 
+    const USER_ID = 'user_id';
+
+    /** true وقتی ادمین مدارک مشاور را تأیید کرد */
+    const IS_VERIFIED = 'is_verified';
+
+    const VERIFIED_AT = 'verified_at';
+
+    const ENGINEER_MEMBER = 'engineer_member';
+
+    const COMPANY_NAME = 'company_name';
+
+    const NOT_RELATED = 'not_related';
+
+    const LICENSE_NUMBER = 'license_number';
+
+    const SUPERVISION_BASE = 'supervision_base';
+
+    const DESIGN_BASE = 'design_base';
+
+    const ACTIVITY_HISTORY = 'activity_history';
+
+    const PROJECT_DONE = 'project_done';
+
+    const PROJECT_IN_PROGRESS = 'project_in_progress';
+
+    const TRUSTED_CONTRACTOR = 'trusted_contractor';
+
+    const ACTIVITY_PROVINCES = 'activity_provinces';
+
+    const CREATED_AT = 'created_at';
+
+    const UPDATED_AT = 'updated_at';
 
     /**
      * The attributes that are mass assignable.
@@ -40,6 +57,8 @@ class ContractorProfile extends Model
      */
     protected $fillable = [
         self::USER_ID,
+        self::IS_VERIFIED,
+        self::VERIFIED_AT,
         self::ENGINEER_MEMBER,
         self::COMPANY_NAME,
         self::NOT_RELATED,
@@ -52,21 +71,23 @@ class ContractorProfile extends Model
         self::TRUSTED_CONTRACTOR,
         self::ACTIVITY_PROVINCES,
         self::CREATED_AT,
-        self::UPDATED_AT
+        self::UPDATED_AT,
     ];
 
     public function getCreatedAtAttribute()
     {
-        $this->appends[] = "created_at_p";
-        $this->appends[] = "created_at_diff";
-        return $this->attributes["created_at"];
+        $this->appends[] = 'created_at_p';
+        $this->appends[] = 'created_at_diff';
+
+        return $this->attributes['created_at'];
     }
 
     public function getUpdatedAtAttribute()
     {
-        $this->appends[] = "updated_at_p";
-        $this->appends[] = "updated_at_diff";
-        return $this->attributes["updated_at"];
+        $this->appends[] = 'updated_at_p';
+        $this->appends[] = 'updated_at_diff';
+
+        return $this->attributes['updated_at'];
     }
 
     public function user(): BelongsTo

@@ -38,15 +38,52 @@ return [
             'x-api-key' => env('TESNA_API_KEY'),
             'Accept' => 'application/json',
             'Authorization' => env('TESNA_BEARER_TOKEN', ''),
-        ]
+        ],
     ],
     'podium_sc2' => [
         'class' => \App\Services\Gateways\PodiumScService::class,
-        'url'   => env('PODIUM_BASE_URL', 'https://api.pod.ir'),
+        'url' => env('PODIUM_BASE_URL', 'https://api.pod.ir'),
         'headers' => [
-            'Authorization' => 'Bearer ' . env('PODIUM_BUSINESS_TOKEN'),
-            'Content-Type'  => 'application/json',
+            'Authorization' => 'Bearer '.env('PODIUM_BUSINESS_TOKEN'),
+            'Content-Type' => 'application/json',
         ],
     ],
+    'company_inquiry' => [
+        'sc_api_key' => env('PODIUM_SC_API_KEY_COMPANY'),
+        'sc_product_id' => env('PODIUM_SC_PRODUCT_ID_COMPANY', 46953),
+    ],
 
+    'sheba_inquiry' => [
+        'sc_api_key' => env('PODIUM_SC_API_KEY_SHEBA'),
+        'sc_product_id' => env('PODIUM_SC_PRODUCT_ID_SHEBA', 16530455),
+    ],
+
+    'card_inquiry' => [
+        'sc_api_key' => env('PODIUM_SC_API_KEY_CARD'),
+        'sc_product_id' => env('PODIUM_SC_PRODUCT_ID_CARD', 16530454),
+    ],
+
+    // تبدیل کارت به شبا — تکمیل خودکار شبا هنگام ثبت حساب با شماره کارت
+    'card_to_iban' => [
+        'sc_api_key' => env('PODIUM_SC_API_KEY_CARD_TO_IBAN'),
+        'sc_product_id' => env('PODIUM_SC_PRODUCT_ID_CARD_TO_IBAN'),
+    ],
+
+    'tsms' => [
+        'link' => env('TSMS_LINK', 'https://tsms.ir/url/tsmshttp.php'),
+        'number' => env('TSMS_NUMBER'),
+        'username' => env('TSMS_USERNAME'),
+        'password' => env('TSMS_PASSWORD'),
+    ],
+
+    // نشانِ همکاریِ مشاور از سایت legacy «سازه ۹۰» (saze90.com).
+    // قبلاً فرانت مستقیم `get-certificate?mobile=` را صدا می‌زد (مشکل CORS)؛ حالا از
+    // بک‌اند proxy می‌شود. endpoint عمومی است و auth ندارد.
+    'saze90' => [
+        'enabled' => (bool) env('SAZE90_BADGE_ENABLED', true),
+        'base_url' => env('SAZE90_BASE_URL', 'https://www.saze90.com'),
+        'timeout' => (int) env('SAZE90_TIMEOUT', 5),
+        'cache_ttl' => (int) env('SAZE90_CACHE_TTL', 1800),        // ثانیه؛ نتیجهٔ «دارای نشان»
+        'cache_ttl_none' => (int) env('SAZE90_CACHE_TTL_NONE', 300), // ثانیه؛ نتیجهٔ «بدون نشان» (کوتاه‌تر)
+    ],
 ];

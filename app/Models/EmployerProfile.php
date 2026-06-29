@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
+use App\Traits\PersianDate;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use App\Traits\PersianDate;
 
 /**
  * @method static updateOrCreate(array $array, array $array1)
@@ -13,30 +13,41 @@ use App\Traits\PersianDate;
  */
 class EmployerProfile extends Model
 {
-    use HasFactory, PersianDate;
+    use HasFactory ,PersianDate;
 
-    const
-        ID = 'id',
-        USER_ID = 'user_id',
-        PROJECT_DONE = 'project_done',
-        PROJECT_IN_PROGRESS = 'project_in_progress',
-        ACTIVITY_PROVINCES = 'activity_provinces',
-        HAS_CONSULTANT = 'has_consultant';
+    const ID = 'id';
 
+    const USER_ID = 'user_id';
+
+    const PROJECT_DONE = 'project_done';
+
+    const PROJECT_IN_PROGRESS = 'project_in_progress';
+
+    const ACTIVITY_PROVINCES = 'activity_provinces';
+
+    const HAS_CONSULTANT = 'has_consultant';
+
+    const STATUS = 'status';
+
+    const STATUS_NEUTRAL = 'neutral';
+
+    const STATUS_SUCCESS = 'success';
+
+    const STATUS_ONGOING = 'ongoing';
+
+    const STATUS_FAILURE = 'failure';
+
+    const STATUS_CLOSED = 'closed';
 
     protected $fillable = [
         self::USER_ID,
         self::PROJECT_DONE,
         self::PROJECT_IN_PROGRESS,
         self::ACTIVITY_PROVINCES,
-        self::HAS_CONSULTANT
+        self::HAS_CONSULTANT,
+        self::STATUS,
     ];
-    protected $appends = [
-        'created_at_p',
-        'created_at_diff',
-        'updated_at_p',
-        'updated_at_diff',
-    ];
+
     // public function getCreatedAtAttribute()
     // {
     //     $this->appends[] = "created_at_p";

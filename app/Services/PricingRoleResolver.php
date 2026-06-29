@@ -14,22 +14,25 @@ class PricingRoleResolver
             if (method_exists($user, 'hasRole')) {
                 return $user->hasRole($name);
             }
+
             return method_exists($user, 'roles')
                 ? $user->roles()->where('name', $name)->exists()
                 : false;
         };
 
-        $isEngineer   = $hasRole('engineer');
+        $isEngineer = $hasRole('engineer');
         $isContractor = $hasRole('contractor');
-        $isEmployer   = $hasRole('employer');
+        $isEmployer = $hasRole('employer');
 
         if ($isEngineer || $isContractor) {
             return 'engineer_with_consultant';
         }
         if ($isEmployer) {
             $hasConsultant = (bool) optional($user->employer)->has_consultant;
+
             return $hasConsultant ? 'engineer_with_consultant' : 'employer_without_consultant';
         }
+
         return 'employer_without_consultant';
     }
 }

@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 
-use App\Models\PurchaseParameterGroup;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -21,6 +20,9 @@ class DatabaseSeeder extends Seeder
         //     'name' => 'Test UserResource',
         //     'email' => 'test@example.com',
         // ]);
+        // Badges must be seeded before ProductSeeder — its badge price-adjustment
+        // block reads the existing Badge rows by code.
+        $this->call(BadgeSeeder::class);
         $this->call(ProductSeeder::class);
         $this->call(PurchaseParameterSeeder::class);
     }

@@ -2,360 +2,188 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
-use App\Http\Requests\OrderPriceRequest;
-use App\Http\Requests\ProductIndexRequest;
-use App\Http\Requests\ProductVariantFilterRequest;
-use App\Http\Requests\ProductVariantPriceRequest;
-use App\Http\Resources\AttributeTypeResource;
-use App\Http\Resources\FactoryResource;
-use App\Http\Resources\OfferResource;
-use App\Http\Resources\ProductDetailResource;
-use App\Http\Resources\ProductResource;
-use App\Http\Resources\ProductVariantResource;
-use App\Models\Attribute;
+use App\Actions\Order\CalculateOrderEstimateAction;
+use App\Actions\Product\FilterProductsAction;
+use App\Actions\Product\FilterProductVariantsAction;
+use App\Http\Requests\Order\OrderPriceRequest;
+use App\Http\Requests\Product\ProductIndexRequest;
+use App\Http\Requests\Product\ProductVariantFilterRequest;
+use App\Http\Requests\Product\ProductVariantPriceRequest;
+use App\Http\Resources\Product\AttributeTypeResource;
+use App\Http\Resources\Product\OfferResource;
+use App\Http\Resources\Product\ProductDetailResource;
+use App\Http\Resources\Product\ProductResource;
+use App\Http\Resources\Product\ProductVariantResource;
+use App\Http\Resources\Supplier\FactoryResource;
 use App\Models\AttributeType;
 use App\Models\Badge;
-use App\Models\Cart;
 use App\Models\CustomerType;
 use App\Models\Factory;
 use App\Models\FactoryLocation;
-use App\Models\PriceFilterCategory;
 use App\Models\Product;
-use App\Models\ProductImage;
 use App\Models\ProductVariant;
-use App\Models\ProductVariantAttribute;
-use App\Models\Offer;
+use App\Repositories\Contracts\ProductRepositoryInterface;
+use App\Services\Cart\CartResolver;
 use App\Services\PriceCalculationService;
-use App\Services\PricingRoleResolver;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str;
 
 class ProductController extends Controller
 {
     public function __construct(
-        private readonly PriceCalculationService $priceService,
-        private readonly PricingRoleResolver     $roleResolver
+        private readonly CartResolver $cartResolver,
+        private readonly ProductRepositoryInterface $productRepo,
+        private readonly PriceCalculationService $priceService
     ) {}
 
-    public function index(ProductIndexRequest $request): JsonResponse
+    public function index(ProductIndexRequest $request, FilterProductsAction $action): JsonResponse
     {
-        $v = $request->validated();
-        $activeCode = $this->resolveActiveCode();
-        $withDebug  = $request->boolean('debug_prices');
+        $activeCode = $this->cartResolver->activeCode();
 
-        $products = Product::query()->active()
-            ->with([
-                'category',
-                'images' => fn($q) => $q->where(ProductImage::IS_PRIMARY, true),
-                'variants.prices.factory',
-                'variants.prices.factoryLocation',
-            ])
-            ->when(!empty($v['category']), fn($q) => $q->where(Product::CATEGORY_ID, $v['category']))
-            ->when(!empty($v['search']), function ($q) use ($v) {
-                $q->where(function ($qq) use ($v) {
-                    $qq->where(Product::NAME, 'like', "%{$v['search']}%")
-                       ->orWhere(Product::DESCRIPTION, 'like', "%{$v['search']}%");
-                });
-            })
-            ->get();
+        $filterData = $request->toDto($activeCode);
 
-        // محاسبه‌ی قیمت‌ها و مینیمم‌ها
-        $products->each(function (Product $product) use ($activeCode, $withDebug) {
-            $product->variants->each(function (ProductVariant $variant) use ($activeCode, $withDebug) {
-                $this->hydrateVariantPrices($variant, $activeCode, $withDebug);
-            });
-            $product->min_variant_price = $product->variants
-                ->flatMap(fn($v) => $v->prices)
-                ->min('final_price');
-        });
-
-        // مرتب‌سازی
-        $sortKey = $v['sort'] ?? 'newest';
-        $products = $this->applyDynamicSorting($products, $sortKey, 'products');
-
-        // pagina
-        $perPage      = !empty($v['per_page']) ? (int) $v['per_page'] : 12;
-        $currentPage  = LengthAwarePaginator::resolveCurrentPage();
-        $slice        = $products->slice(($currentPage - 1) * $perPage, $perPage)->values();
-        $paginator    = new LengthAwarePaginator($slice, $products->count(), $perPage, $currentPage);
+        $paginator = $action->execute($filterData);
 
         return success(
-            ProductResource::collection($paginator)->additional($this->paginationMeta($paginator)),
+            ProductResource::collection($paginator)->response()->getData(true),
             'global.received_successfully'
         );
     }
 
+    /**
+     * نمایش جزئیات محصول + ثبت هوشمند بازدید
+     */
     public function show(Product $product): JsonResponse
     {
-        $activeCode = $this->resolveActiveCode();
-        $withDebug  = request()->boolean('debug_prices');
-
+        // ۱. بارگذاری روابط (Eager Loading) برای جلوگیری از کوئری‌های اضافی
         $product->loadMissing([
             'category',
             'images',
             'videos',
-            'variants.variantAttributes.attributeType',
-            'variants.limitOrderUnit',
-            'variants.product.orderUnits',
-            'variants.prices.factory',
-            'variants.prices.factoryLocation',
             'orderUnits',
             'offers',
             'aggregateLimitOrderUnit',
-        ])->incrementViewCount();
+        ]);
 
-        $product->variants->each(function (ProductVariant $variant) use ($activeCode, $withDebug) {
-            $this->hydrateVariantPrices($variant, $activeCode, $withDebug);
-        });
+        // ۲. ثبت بازدید و داده‌های تحلیلی (Async)
+        \App\Jobs\Analytics\LogProductView::dispatch(
+            productId: $product->id,
+            userId: Auth::id(),
+            ipAddress: request()->ip(),
+            userAgent: request()->userAgent(),
+            sessionId: request()->cookie('cart_session_id')
+        )->afterResponse();
 
-        $factories = Factory::query()
-            ->whereHas('prices.productVariant.product', fn($q) => $q->where(Product::ID, $product->id))
-            ->with('locations')
-            ->get();
+        // ۳. دریافت لیست کارخانه‌ها
+        $factories = $this->productRepo->getProductFactories($product->id);
 
+        // ۴. بازگشت پاسخ
         return success([
-            'product'   => new ProductDetailResource($product),
+            'product' => new ProductDetailResource($product),
             'factories' => FactoryResource::collection($factories),
         ], 'global.received_successfully');
     }
 
-    public function filters(Product $product): JsonResponse
+    /**
+     * لیست واریانت‌های یک محصول (برای انتخاب سایز/رنگ)
+     */
+    public function variants(ProductVariantFilterRequest $request, Product $product, FilterProductVariantsAction $action): JsonResponse
     {
-        $product->loadMissing('variants.variantAttributes.attributeType');
-        $typeIds = $product->variants
-            ->flatMap(fn(ProductVariant $variant) => $variant->variantAttributes->pluck(Attribute::ATTRIBUTE_TYPE_ID))
-            ->unique();
+        $activeCode = $this->cartResolver->activeCode();
 
-        $attributes = AttributeType::query()
-            ->whereIn(AttributeType::ID, $typeIds)
-            ->with('attributes')
-            ->get();
-
-        return success(AttributeTypeResource::collection($attributes), 'global.received_successfully');
-    }
-
-    public function variants(ProductVariantFilterRequest $request, Product $product): JsonResponse
-    {
-        $v          = $request->validated();
-        $activeCode = $this->resolveActiveCode();
-        $withDebug  = $request->boolean('debug_prices');
-        $sort       = $v['sort'] ?? 'newest';
-
-        $variants = $product->variants()
-            ->with(['prices.factory', 'prices.factoryLocation', 'variantAttributes.attributeType', 'cartItems', 'limitOrderUnit'])
-            ->when(!empty($v['filter_categories']), function ($q) use ($v) {
-                $q->whereHas('variantAttributes', function ($qq) use ($v) {
-                    $qq->whereIn(ProductVariantAttribute::ATTRIBUTE_ID, $v['filter_categories']);
-                });
-            })
-            ->get();
-
-        $variants->each(function (ProductVariant $variant) use ($activeCode, $withDebug) {
-            $this->hydrateVariantPrices($variant, $activeCode, $withDebug);
-        });
-
-        $variants = $this->applyDynamicSorting($variants, $sort, 'variants');
-
-        $perPage      = !empty($v['per_page']) ? (int) $v['per_page'] : 10;
-        $currentPage  = LengthAwarePaginator::resolveCurrentPage();
-        $slice        = $variants->slice(($currentPage - 1) * $perPage, $perPage)->values();
-        $paginator    = new LengthAwarePaginator($slice, $variants->count(), $perPage, $currentPage);
+        $paginator = $action->execute(
+            product: $product,
+            filters: $request->validated(),
+            roleCode: $activeCode
+        );
 
         return success(
-            ProductVariantResource::collection($paginator)->additional($this->paginationMeta($paginator)),
+            ProductVariantResource::collection($paginator)->response()->getData(true),
             'global.received_successfully'
         );
     }
 
-    public function getVariantPrice(ProductVariantPriceRequest $request): JsonResponse
+    /**
+     * دریافت ویژگی‌های قابل فیلتر برای یک محصول (مثل لیست رنگ‌ها)
+     */
+    public function filters(Product $product): JsonResponse
     {
-        $v          = $request->validated();
-        $variant    = ProductVariant::find($v['variant_id']);
-        if (!$variant) return error('global.variant_not_found', [], 404);
-        $factory    = Factory::find($v['factory_id']);
-        if (!$factory) return error('global.factory_not_found', [], 404);
-        $location   = FactoryLocation::find($v['location_id']);
-        if (!$location) return error('global.location_not_found', [], 404);
+        $attributeTypes = AttributeType::query()
+            // فقط دسته‌بندی ویژگی‌هایی را بیاور که این محصول حداقل یک واریانت با آن ویژگی دارد
+            ->whereHas('attributes.productVariants', function ($q) use ($product) {
+                $q->where('product_id', $product->id);
+            })
+            ->with([
+                'attributes' => function ($q) use ($product) {
+                    // ۱. فیلتر خود ویژگی‌ها (Attributes) بر اساس موجود بودن در واریانت‌های این محصول
+                    $q->whereHas('productVariants', function ($q2) use ($product) {
+                        $q2->where('product_id', $product->id);
+                    })
+                        // ۲. لود کردن مقادیر (Values) منحصر به فردی که برای این محصول وجود دارد
+                        ->with(['values' => function ($q3) use ($product) {
+                            $q3->whereHas('productVariants', function ($q4) use ($product) {
+                                $q4->where('product_id', $product->id);
+                            })->distinct(); // جلوگیری از مقادیر تکراری
+                        }]);
+                },
+            ])
+            ->get();
 
-        // سشن سبد برای نشان‌ها
-        $sessionId = $request->cookie('cart_session_id', Str::uuid()->toString());
-        $cart = Auth::check()
-            ? Cart::firstOrCreate([Cart::USER_ID => Auth::id()])
-            : Cart::firstOrCreate([Cart::SESSION_ID => $sessionId], [Cart::USER_ID => null]);
-        if (!Auth::check()) {
-            cookie()->queue('cart_session_id', $cart->session_id, 60 * 24 * 30);
-        }
-
-        $activeCode = $this->resolveActiveCode();
-        $customerType = CustomerType::where(CustomerType::CODE, $activeCode)->first();
-        $badge        = $cart->badge_id ? Badge::find($cart->badge_id) : null;
-
-        $price = $this->priceService->calculatePrice(
-            $variant,
-            $factory,
-            $location,
-            $customerType,
-            $badge,
-            null, // filterCategoryIds (legacy)
-            (bool)($v['with_vat'] ?? false),
-            $activeCode // نقش فعال بر اساس رول
+        return success(
+            AttributeTypeResource::collection($attributeTypes),
+            'global.received_successfully'
         );
-
-        return success($price, 'global.received_successfully');
-    }
-
-    public function calculateOrderPrice(OrderPriceRequest $request): JsonResponse
-    {
-        $v          = $request->validated();
-        $variant    = ProductVariant::find($v['variant_id']);
-        if (!$variant) return error('global.variant_not_found', [], 404);
-        $factory    = Factory::find($v['factory_id']);
-        if (!$factory) return error('global.factory_not_found', [], 404);
-        $location   = FactoryLocation::find($v['location_id']);
-        if (!$location) return error('global.location_not_found', [], 404);
-
-        $badge      = !empty($v['badge_id']) ? Badge::find($v['badge_id']) : null;
-        $activeCode = $this->resolveActiveCode();
-        $customerType = CustomerType::where(CustomerType::CODE, $activeCode)->first();
-
-        $withVat = (bool)($v['with_vat'] ?? false);
-
-        $unit = $this->priceService->calculatePrice(
-            $variant,
-            $factory,
-            $location,
-            $customerType,
-            $badge,
-            null,
-            $withVat,
-            $activeCode
-        );
-
-        $order = $this->priceService->calculateTotalPrice(
-            $v['quantities'],
-            (float)$unit['final_price'],
-            $withVat
-        );
-
-        $offers = $this->checkEligibleOffers($variant->product, $order['total_count']);
-        $discounted = $this->applyDiscounts((float)$order['subtotal'], $offers);
-
-        $vatAmount = $withVat ? $discounted * ((float)$order['vat_rate'] / 100) : 0.0;
-        $final     = $discounted + $vatAmount;
-
-        return success([
-            'unit_price'         => (string)$unit['final_price'],
-            'unit_price_details' => $unit,
-            'order_details'      => $order,
-            'offers'             => OfferResource::collection($offers),
-            'discount_amount'    => (string)($order['subtotal'] - $discounted),
-            'discounted_price'   => (string)$discounted,
-            'vat_amount'         => (string)$vatAmount,
-            'vat_rate'           => (string)($withVat ? $order['vat_rate'] : 0.0),
-            'final_price'        => (string)$final,
-            'with_vat'           => $withVat,
-        ], 'global.received_successfully');
-    }
-
-    /* -------------------- Helpers -------------------- */
-
-    private function resolveActiveCode(): string
-    {
-        if (!Auth::check()) {
-            return 'employer_without_consultant';
-        }
-        // تازه‌سازی برای جلوگیری از کش نقش
-        $user = Auth::user()->fresh(['roles', 'employer']);
-        return $this->roleResolver->resolve($user);
     }
 
     /**
-     * محاسبه و چسباندن فیلدهای قیمتِ نقش‌محور به هر رکورد price و ست کردن min_price واریانت
+     * محاسبه قیمت دقیق یک واریانت خاص
      */
-    private function hydrateVariantPrices(ProductVariant $variant, string $activeCode, bool $withDebug = false): void
+    public function getVariantPrice(ProductVariantPriceRequest $request): JsonResponse
     {
-        $variant->prices->each(function ($price) use ($variant, $activeCode, $withDebug) {
-            $calc = $this->priceService->calculatePrice(
-                $variant,
-                $price->factory,
-                $price->factoryLocation,
-                null, null, null, false, $activeCode
-            );
+        $data = $request->validated();
+        $cart = $this->cartResolver->resolve($request);
 
-            $price->final_price        = (float)$calc['final_price'];
-            $price->role_special_price = (float)$calc['special_price_with_filters'];
-            $price->role_general_price = (float)$calc['general_price_with_filters'];
-            $price->role_golden_figure = (float)$calc['role_golden_figure'];
+        $variant = ProductVariant::findOrFail($data['variant_id']);
+        $factory = Factory::findOrFail($data['factory_id']);
+        $location = FactoryLocation::findOrFail($data['location_id']);
 
-            if ($withDebug) {
-                $price->pricing_debug = $calc;
-            }
-        });
+        $activeCode = $this->cartResolver->activeCode();
+        $badge = $cart->badge_id ? Badge::find($cart->badge_id) : null;
+        $customerType = CustomerType::where(CustomerType::CODE, $activeCode)->first();
 
-        $variant->min_price = $variant->prices->min('final_price');
+        $priceDto = $this->priceService->calculatePrice(
+            variant: $variant,
+            factory: $factory,
+            location: $location,
+            customerType: $customerType,
+            badge: $badge,
+            filterCategoryIds: null,
+            withVAT: (bool) ($data['with_vat'] ?? false),
+            filterCategoryCode: $activeCode
+        );
+
+        return success($priceDto->toArray(), 'global.received_successfully');
     }
 
-    private function checkEligibleOffers(Product $product, int $totalQuantity)
+    /**
+     * محاسبه پیش‌فاکتور نهایی سبد خرید/سفارش
+     */
+    public function calculateOrderPrice(OrderPriceRequest $request, CalculateOrderEstimateAction $action): JsonResponse
     {
-        return $product->offers()->current()->where(Offer::MINIMUM_QUANTITY, '<=', $totalQuantity)->get();
-    }
+        $activeCode = $this->cartResolver->activeCode();
+        $cart = $this->cartResolver->resolve($request);
+        $badge = ! empty($request->badge_id)
+            ? Badge::find($request->badge_id)
+            : ($cart->badge_id ? Badge::find($cart->badge_id) : null);
 
-    private function applyDiscounts(float $price, Collection $offers): float
-    {
-        foreach ($offers as $offer) {
-            $price = match ($offer->{Offer::TYPE}) {
-                'percentage'   => $price - ($price * (float)$offer->{Offer::VALUE} / 100),
-                'fixed_amount' => $price - (float)$offer->{Offer::VALUE},
-                default        => $price,
-            };
-        }
-        return max(0.0, $price);
-    }
+        $result = $action->execute($request->validated(), $activeCode, $badge);
 
-    private function paginationMeta(LengthAwarePaginator $paginator): array
-    {
-        return [
-            'meta' => [
-                'current_page' => $paginator->currentPage(),
-                'last_page'    => $paginator->lastPage(),
-                'per_page'     => $paginator->perPage(),
-                'total'        => $paginator->total(),
-            ],
-            'links' => [
-                'next' => $paginator->nextPageUrl(),
-                'prev' => $paginator->previousPageUrl(),
-            ],
-        ];
-    }
-
-    private function applyDynamicSorting(Collection $collection, string $sortKey, string $type = 'products'): Collection
-    {
-        $minGetter = function ($item) use ($type) {
-            return $type === 'products'
-                ? ($item->min_variant_price ?? null)
-                : ($item->min_price ?? null);
-        };
-
-        switch ($sortKey) {
-            case 'cheapest':
-                $collection = $collection->sortBy(fn($item) => $minGetter($item));
-                break;
-            case 'most_expensive':
-                $collection = $collection->sortByDesc(fn($item) => $minGetter($item));
-                break;
-            case 'most_viewed':
-                $collection = $collection->sortByDesc('view_count');
-                break;
-            case 'newest':
-            default:
-                $collection = $collection->sortByDesc('created_at');
-                break;
-        }
-
-        return $collection->values();
+        return success([
+            'unit_price' => (string) $result['unit_dto']->finalPrice,
+            'unit_price_details' => $result['unit_dto']->toArray(),
+            'order_details' => $result['order_details'],
+            'offers' => OfferResource::collection($result['offers']),
+            ...$result['financials'],
+        ], 'global.received_successfully');
     }
 }

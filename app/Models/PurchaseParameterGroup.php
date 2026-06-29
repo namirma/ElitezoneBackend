@@ -7,15 +7,21 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class PurchaseParameterGroup extends Model
 {
-    const
-        ID          = 'id',
-        NAME        = 'name',
-        CODE        = 'code',
-        DESCRIPTION = 'description',
-        ORDER       = 'order',
-        IS_ACTIVE   = 'is_active',
-        CREATED_AT  = 'created_at',
-        UPDATED_AT  = 'updated_at';
+    const ID = 'id';
+
+    const NAME = 'name';
+
+    const CODE = 'code';
+
+    const DESCRIPTION = 'description';
+
+    const ORDER = 'order';
+
+    const IS_ACTIVE = 'is_active';
+
+    const CREATED_AT = 'created_at';
+
+    const UPDATED_AT = 'updated_at';
 
     protected $fillable = [
         self::NAME,

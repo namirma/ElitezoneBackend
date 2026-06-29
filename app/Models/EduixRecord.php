@@ -4,31 +4,60 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class EduixRecord extends Model
 {
     use HasFactory;
 
-    const
-        ID            = 'id',
-        NATIONAL_CODE = 'national_code',
-        TRACE_CODE    = 'trace_code',
-        NAME          = 'name',
-        FAMILY        = 'family',
-        FATHER_NAME   = 'father_name',
-        ID_NUMBER     = 'id_number',
-        BIRTH_DATE    = 'birth_date',
-        UNIVERSITY    = 'university',
-        FIELD         = 'field',
-        COURSE_TYPE   = 'course_type',
-        ENTRY_DATE    = 'entry_date',
-        GRADUATE_DATE = 'graduate_date',
-        GPA           = 'gpa',
-        STATUS        = 'status',
-        CREATED_AT    = 'created_at',
-        UPDATED_AT    = 'updated_at';
+    const ID = 'id';
+
+    const USER_ID = 'user_id';
+
+    const NATIONAL_CODE = 'national_code';
+
+    const TRACE_CODE = 'trace_code';
+
+    const NAME = 'name';
+
+    const FAMILY = 'family';
+
+    const FATHER_NAME = 'father_name';
+
+    const ID_NUMBER = 'id_number';
+
+    const BIRTH_DATE = 'birth_date';
+
+    const UNIVERSITY = 'university';
+
+    const FIELD = 'field';
+
+    const COURSE_TYPE = 'course_type';
+
+    const ENTRY_DATE = 'entry_date';
+
+    const GRADUATE_DATE = 'graduate_date';
+
+    const GPA = 'gpa';
+
+    const STATUS = 'status';
+
+    const ADMIN_STATUS = 'admin_status';
+
+    const REJECTION_REASON = 'rejection_reason';
+
+    const CREATED_AT = 'created_at';
+
+    const UPDATED_AT = 'updated_at';
+
+    const STATUS_PENDING = 'pending';
+
+    const STATUS_APPROVED = 'approved';
+
+    const STATUS_REJECTED = 'rejected';
 
     protected $fillable = [
+        self::USER_ID,
         self::NATIONAL_CODE,
         self::TRACE_CODE,
         self::NAME,
@@ -43,5 +72,12 @@ class EduixRecord extends Model
         self::GRADUATE_DATE,
         self::GPA,
         self::STATUS,
+        self::ADMIN_STATUS,
+        self::REJECTION_REASON,
     ];
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class, self::USER_ID);
+    }
 }

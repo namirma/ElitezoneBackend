@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Services\PricingRoleResolver;
 use Closure;
+use Illuminate\Support\Facades\Auth;
 
 class AttachActivePriceCategory
 {
@@ -11,11 +12,17 @@ class AttachActivePriceCategory
 
     public function handle($request, Closure $next)
     {
-        $code = auth()->check()
-            ? $this->resolver->resolve($request->user())
-            : 'employer_without_consultant';
+        $user = auth('sanctum')->user();
+
+        if ($user) {
+            Auth::setUser($user);
+            $code = $this->resolver->resolve($user);
+        } else {
+            $code = 'employer_without_consultant';
+        }
 
         app()->instance('active_price_filter_category_code', $code);
+
         return $next($request);
     }
 }

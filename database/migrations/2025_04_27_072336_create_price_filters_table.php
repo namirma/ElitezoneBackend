@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('price_filter_type_id')->constrained()->onDelete('cascade');
             $table->string('name');
             $table->string('code')->unique();
-            $table->decimal('amount', 20, 0); 
+            $table->decimal('amount', 20, 0);
             $table->boolean('is_percentage')->default(false);
             $table->boolean('is_active')->default(true);
             $table->integer('sort_order')->default(0);

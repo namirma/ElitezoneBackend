@@ -12,7 +12,7 @@ class TestEmail extends Mailable
     public function build(): TestEmail
     {
         return $this->subject('Test Email')
-        ->view('emails.test');
+            ->view('emails.test');
 
     }
 }

@@ -17,9 +17,9 @@ return new class extends Migration
 
             $table->unsignedBigInteger('purchase_parameter_value_id');
             $table->foreign('purchase_parameter_value_id', 'cppv_param_value_fk')
-                  ->references('id')
-                  ->on('purchase_parameter_values')
-                  ->onDelete('cascade');
+                ->references('id')
+                ->on('purchase_parameter_values')
+                ->onDelete('cascade');
 
             $table->timestamps();
 

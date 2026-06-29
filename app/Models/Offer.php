@@ -7,19 +7,29 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Offer extends Model
 {
-    public const
-        ID = 'id',
-        TITLE = 'title',
-        DESCRIPTION = 'description',
-        CODE = 'code',
-        TYPE = 'type',
-        VALUE = 'value',
-        START_DATE = 'start_date',
-        END_DATE = 'end_date',
-        MINIMUM_QUANTITY = 'minimum_quantity',
-        IS_ACTIVE = 'is_active',
-        CREATED_AT = 'created_at',
-        UPDATED_AT = 'updated_at';
+    public const ID = 'id';
+
+    public const TITLE = 'title';
+
+    public const DESCRIPTION = 'description';
+
+    public const CODE = 'code';
+
+    public const TYPE = 'type';
+
+    public const VALUE = 'value';
+
+    public const START_DATE = 'start_date';
+
+    public const END_DATE = 'end_date';
+
+    public const MINIMUM_QUANTITY = 'minimum_quantity';
+
+    public const IS_ACTIVE = 'is_active';
+
+    public const CREATED_AT = 'created_at';
+
+    public const UPDATED_AT = 'updated_at';
 
     protected $fillable = [
         self::TITLE,

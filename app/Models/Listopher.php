@@ -14,14 +14,15 @@ class Listopher extends Model
 {
     use HasFactory;
 
-    const
-        ID = 'id',
-        PROJECT_CODE = 'project_code',
-        TYPE = 'type';
+    const ID = 'id';
+
+    const PROJECT_CODE = 'project_code';
+
+    const TYPE = 'type';
 
     protected $fillable = [
         self::PROJECT_CODE,
-        self::TYPE
+        self::TYPE,
     ];
 
     public function items(): HasMany
