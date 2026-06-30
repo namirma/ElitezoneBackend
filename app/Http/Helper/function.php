@@ -41,6 +41,14 @@ function error(string $message, array $errors, int $status)
 
 function generateVerifyCode(): int
 {
+    // In any non-production environment (staging/local) return a fixed, known OTP
+    // so testers can log in without waiting for a real SMS. Gate matches the
+    // `! environment('production')` convention used by DebugController.
+    // PRODUCTION ALWAYS falls through to the CSPRNG code below — never the fixed one.
+    if (! app()->environment('production')) {
+        return (int) config('auth.otp_debug_code', 111111);
+    }
+
     // Use a cryptographically-secure PRNG for OTP / password-reset codes.
     // random_int() (CSPRNG) is unpredictable, unlike mt_rand(). Full 6-digit range.
     return random_int(100000, 999999);

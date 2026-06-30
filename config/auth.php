@@ -129,4 +129,18 @@ return [
 
     'otp_lockout_minutes' => env('OTP_LOCKOUT_MINUTES', 10),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Non-Production OTP Shortcut
+    |--------------------------------------------------------------------------
+    |
+    | In any non-production environment, generateVerifyCode() returns this
+    | fixed code instead of a random one, so testers can log in without a real
+    | SMS. Production ALWAYS uses a fresh CSPRNG code — this value is ignored
+    | there. Keep it a 6-digit numeric string.
+    |
+    */
+
+    'otp_debug_code' => env('OTP_DEBUG_CODE', '111111'),
+
 ];
