@@ -115,15 +115,23 @@ class SyncKavirProducts extends Command
                 };
 
                 // 4. ساخت واریانت
-                $variant = ProductVariant::updateOrCreate(
-                    ['sku' => $code],
-                    [
-                        'product_id' => $parentProduct->id,
-                        'name' => $item['Sales_Store_Code_Name'],
-                        'is_active' => true,
-                        'stock_quantity' => 0,
-                    ]
-                );
+                // is_active فقط روی رکورد تازه false ست می‌شود (تا وقتی ادمین از پنل
+                // Product Price قیمت بزند)؛ روی رکورد موجود دست‌نخورده می‌ماند تا سینک
+                // ساعتی، واریانت‌هایی که قبلاً قیمت خورده و فعال شده‌اند را غیرفعال نکند.
+                $variant = ProductVariant::firstOrNew(['sku' => $code]);
+                $isNewVariant = ! $variant->exists;
+
+                $variant->fill([
+                    'product_id' => $parentProduct->id,
+                    'name' => $item['Sales_Store_Code_Name'],
+                    'stock_quantity' => 0,
+                ]);
+
+                if ($isNewVariant) {
+                    $variant->is_active = false;
+                }
+
+                $variant->save();
 
                 // 5. آماده‌سازی آرایه Sync
                 $syncData = [];
