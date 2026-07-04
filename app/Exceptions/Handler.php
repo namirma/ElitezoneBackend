@@ -38,7 +38,7 @@ class Handler extends ExceptionHandler
         if ($request->expectsJson() || $request->is('api/*')) {
             return response()->json([
                 'status' => false,
-                'message' => 'احراز هویت نشده‌اید. لطفاً وارد حساب کاربری شوید.',
+                'message' => __('global.errors.unauthenticated'),
                 'errors' => [],
             ], 401);
         }
@@ -56,30 +56,30 @@ class Handler extends ExceptionHandler
         // 2. احراز هویت (401) — renderable() runs BEFORE Laravel's unauthenticated()
         //    hook, so we must handle this here to return 401 (not 500).
         if ($e instanceof AuthenticationException) {
-            return $this->jsonResponse('احراز هویت نشده‌اید. لطفاً وارد حساب کاربری شوید.', 401);
+            return $this->jsonResponse(__('global.errors.unauthenticated'), 401);
         }
 
         // 3. مشکل روت لاگین
         if ($e instanceof RouteNotFoundException) {
             if (str_contains($e->getMessage(), 'Route [login] not defined')) {
-                return $this->jsonResponse('احراز هویت نشده‌اید. لطفاً وارد حساب کاربری شوید.', 401);
+                return $this->jsonResponse(__('global.errors.unauthenticated'), 401);
             }
 
-            return $this->jsonResponse('مسیر مورد نظر یافت نشد.', 404);
+            return $this->jsonResponse(__('global.errors.route_not_found'), 404);
         }
 
         // 4. عدم دسترسی (AuthorizationException - معمولاً توسط Policyهای لاراول)
         if ($e instanceof AuthorizationException) {
-            $message = $e->getMessage() ?: 'شما نقش یا مجوز لازم برای دسترسی به این بخش را ندارید.';
+            $message = $e->getMessage() ?: __('global.errors.unauthorized_role');
 
             return $this->jsonResponse($message, 403);
         }
 
         // 5. یافت نشد (404)
         if ($e instanceof NotFoundHttpException || $e instanceof ModelNotFoundException) {
-            $message = 'مسیر یا آیتم مورد نظر یافت نشد.';
+            $message = __('global.errors.item_not_found');
             if ($e instanceof ModelNotFoundException) {
-                $message = 'رکوردی با مشخصات وارد شده یافت نشد.';
+                $message = __('global.errors.record_not_found');
             }
 
             return $this->jsonResponse($message, 404);
@@ -90,16 +90,16 @@ class Handler extends ExceptionHandler
             $message = $e->getMessage();
 
             if ($statusCode === 403) {
-                $message = 'شما دسترسی لازم برای انجام این عملیات را ندارید.';
+                $message = __('global.errors.unauthorized_action');
             }
 
             // اگر پیام خالی بود (مثلا abort(500))
             if (empty($message)) {
                 $message = match ($statusCode) {
-                    403 => 'دسترسی غیرمجاز',
-                    404 => 'یافت نشد',
-                    500 => 'خطای سرور',
-                    default => 'خطای درخواست',
+                    403 => __('global.errors.forbidden_short'),
+                    404 => __('global.errors.not_found_short'),
+                    500 => __('global.errors.server_error_short'),
+                    default => __('global.errors.generic_request_error'),
                 };
             }
 
@@ -110,7 +110,7 @@ class Handler extends ExceptionHandler
         if ($e instanceof ValidationException) {
             return response()->json([
                 'status' => false,
-                'message' => 'اطلاعات ارسالی معتبر نیست.', // پیام کلی
+                'message' => __('global.errors.validation_failed'), // پیام کلی
                 'errors' => $e->errors(), // جزئیات فیلدها
             ], 422);
         }
@@ -121,7 +121,7 @@ class Handler extends ExceptionHandler
             Log::error('Database Error: '.$e->getMessage());
 
             // در حالت پروداکشن نباید خطای SQL را به کاربر نشان داد
-            $message = config('app.debug') ? $e->getMessage() : 'خطای پایگاه داده رخ داده است.';
+            $message = config('app.debug') ? $e->getMessage() : __('global.errors.database_error');
 
             return $this->jsonResponse($message, 500);
         }
@@ -129,7 +129,7 @@ class Handler extends ExceptionHandler
         // 9. سایر خطاهای سرور (500)
         Log::error('Server Error: '.$e->getMessage(), ['exception' => $e]);
 
-        $message = config('app.debug') ? $e->getMessage() : 'خطای داخلی سرور رخ داده است.';
+        $message = config('app.debug') ? $e->getMessage() : __('global.errors.internal_server_error');
 
         return $this->jsonResponse($message, 500);
     }

@@ -12,7 +12,11 @@ class EnsureUserIsEmployer
     {
         $user = $request->user();
 
-        if (! $user || ! $user->hasRole('employer')) {
+        if (! $user) {
+            return error(__('auth.unauthenticated'), [], 401);
+        }
+
+        if (! $user->hasRole('employer')) {
             return error(__('auth.forbidden'), [], 403);
         }
 

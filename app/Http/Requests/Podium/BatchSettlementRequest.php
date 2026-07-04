@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Podium;
 
+use App\Support\IranIban;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
 
@@ -84,7 +85,7 @@ class BatchSettlementRequest extends FormRequest
                 $id = (string) ($row['toolId'] ?? '');
 
                 if (in_array($code, ['SETTLEMENT_TOOL_PAYA', 'SETTLEMENT_TOOL_SATNA'], true)) {
-                    if (! preg_match('/^IR\d{24}$/', $id) || ! $this->isValidIranIban($id)) {
+                    if (! preg_match('/^IR\d{24}$/', $id) || ! IranIban::isValid($id)) {
                         $v->errors()->add("list.$i.toolId", 'شماره شبا نامعتبر است (IR + 24 رقم + checksum).');
                     }
                 } elseif ($code === 'SETTLEMENT_TOOL_CARD') {
@@ -94,25 +95,6 @@ class BatchSettlementRequest extends FormRequest
                 }
             }
         });
-    }
-
-    private function isValidIranIban(string $iban): bool
-    {
-        $iban = strtoupper(preg_replace('/\s+/', '', $iban));
-        if (! preg_match('/^IR\d{24}$/', $iban)) {
-            return false;
-        }
-        $re = substr($iban, 4).substr($iban, 0, 4);
-        $num = '';
-        foreach (str_split($re) as $ch) {
-            $num .= ctype_alpha($ch) ? (ord($ch) - 55) : $ch;
-        }
-        $rem = 0;
-        foreach (str_split($num, 9) as $chunk) {
-            $rem = (int) (($rem.$chunk) % 97);
-        }
-
-        return $rem === 1;
     }
 
     private function passesLuhn(string $digits): bool

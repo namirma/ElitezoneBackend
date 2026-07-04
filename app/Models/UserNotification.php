@@ -41,8 +41,6 @@ class UserNotification extends Model
         self::SUBJECT,
         self::BODY,
         self::READ_AT,
-        self::CREATED_AT,
-        self::UPDATED_AT,
     ];
 
     public function getCreatedAtAttribute()

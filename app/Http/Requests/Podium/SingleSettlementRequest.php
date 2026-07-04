@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Podium;
 
+use App\Support\IranIban;
 use Illuminate\Foundation\Http\FormRequest;
 
 class SingleSettlementRequest extends FormRequest
@@ -84,31 +85,11 @@ class SingleSettlementRequest extends FormRequest
             $toolCode = (string) $this->input('toolCode');
             $iban = (string) $this->input('toolId');
             if (in_array($toolCode, ['SETTLEMENT_TOOL_PAYA', 'SETTLEMENT_TOOL_SATNA'], true)) {
-                if (! $this->isValidIranIban($iban)) {
+                if (! IranIban::isValid($iban)) {
                     $v->errors()->add('toolId', 'شماره شبا نامعتبر است (IBAN checksum).');
                 }
             }
         });
-    }
-
-    private function isValidIranIban(string $iban): bool
-    {
-        $iban = strtoupper(preg_replace('/\s+/', '', $iban));
-        if (! preg_match('/^IR\d{24}$/', $iban)) {
-            return false;
-        }
-
-        $re = substr($iban, 4).substr($iban, 0, 4);
-        $num = '';
-        foreach (str_split($re) as $ch) {
-            $num .= ctype_alpha($ch) ? (ord($ch) - 55) : $ch;
-        }
-        $rem = 0;
-        foreach (str_split($num, 9) as $chunk) {
-            $rem = (int) (($rem.$chunk) % 97);
-        }
-
-        return $rem === 1;
     }
 
     public function messages(): array

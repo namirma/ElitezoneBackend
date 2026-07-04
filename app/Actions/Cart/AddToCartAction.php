@@ -55,7 +55,10 @@ class AddToCartAction
 
             if (! $this->inventoryService->checkStock($variant, $itemFinalQuantities)) {
                 throw ValidationException::withMessages([
-                    'quantities' => "موجودی محصول '{$variant->product->name}' کافی نیست. (موجودی فعلی: {$variant->stock_quantity})",
+                    'quantities' => __('cart.limits.insufficient_stock', [
+                        'name' => $variant->product->name,
+                        'stock' => $variant->stock_quantity,
+                    ]),
                 ]);
             }
 

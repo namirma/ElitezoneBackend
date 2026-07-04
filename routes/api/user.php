@@ -259,7 +259,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::controller(WalletController::class)->prefix('receipts')->group(function () {
                 Route::get('/', 'getReceipts');
                 Route::post('/', 'storeReceipt')->middleware('idempotency');
-                Route::delete('/{transaction}', 'deleteReceipt');
+                Route::delete('/{transaction}', 'deleteReceipt')->whereNumber('transaction');
                 Route::get('/transactions/{transaction}/download', 'downloadReceipt')
                     ->whereNumber('transaction')
                     ->name('api.financial.download');

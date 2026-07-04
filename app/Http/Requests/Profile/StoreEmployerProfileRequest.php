@@ -24,9 +24,9 @@ class StoreEmployerProfileRequest extends FormRequest
     public function rules(): array
     {
         return [
-            EmployerProfile::PROJECT_DONE => '',
-            EmployerProfile::PROJECT_IN_PROGRESS => '',
-            EmployerProfile::ACTIVITY_PROVINCES => '',
+            EmployerProfile::PROJECT_DONE => 'nullable|string|max:255',
+            EmployerProfile::PROJECT_IN_PROGRESS => 'nullable|string|max:255',
+            EmployerProfile::ACTIVITY_PROVINCES => 'nullable|string|max:128',
         ];
     }
 }

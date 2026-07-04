@@ -70,8 +70,6 @@ class ContractorProfile extends Model
         self::PROJECT_IN_PROGRESS,
         self::TRUSTED_CONTRACTOR,
         self::ACTIVITY_PROVINCES,
-        self::CREATED_AT,
-        self::UPDATED_AT,
     ];
 
     public function getCreatedAtAttribute()

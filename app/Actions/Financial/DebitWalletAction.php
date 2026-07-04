@@ -2,10 +2,11 @@
 
 namespace App\Actions\Financial;
 
+use App\Exceptions\InsufficientBalanceException;
+use App\Exceptions\Wallet\WalletNotFoundException;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
-use Exception;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -32,12 +33,12 @@ class DebitWalletAction
             $wallet = Wallet::where('user_id', $user->id)->lockForUpdate()->first();
 
             if (! $wallet) {
-                throw new Exception(__('wallet.insufficient_balance'));
+                throw new WalletNotFoundException(__('wallet.errors.not_found'));
             }
 
             // ۴. بررسی موجودی تحت قفل
             if ($wallet->balance < $amount) {
-                throw new Exception(__('wallet.insufficient_balance'));
+                throw new InsufficientBalanceException($amount, (float) $wallet->balance);
             }
 
             $wallet->decrement('balance', $amount);
