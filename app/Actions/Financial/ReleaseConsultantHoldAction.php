@@ -118,7 +118,7 @@ class ReleaseConsultantHoldAction
                 Order::CONSULTANT_HOLD_RELEASED_AT => now(),
             ])->save();
 
-            // Doc Q — فاکتور مودیان مشاور فنی
+            // Doc Q — فاکتور مودیان الیت یار
             $this->invoiceGenerator->generateConsultantMoadianInvoice($locked);
 
             Log::channel('financial')->info("Consultant hold released for order {$locked->id}. Ref: {$moadianRef}. Net: {$consultantNet}, VAT: {$consultantVat}");

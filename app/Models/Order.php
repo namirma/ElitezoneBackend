@@ -30,7 +30,7 @@ class Order extends Model
 
     public const BENEFICIARY_USER_ID = 'beneficiary_user_id';
 
-    /** مشاور فنی که کمیسیون CO را دریافت می‌کند (جدا از گیرنده/beneficiary) */
+    /** الیت یار که کمیسیون CO را دریافت می‌کند (جدا از گیرنده/beneficiary) */
     public const CONSULTANT_USER_ID = 'consultant_user_id';
 
     public const ADDRESS_ID = 'address_id';
@@ -186,7 +186,7 @@ class Order extends Model
     /** +VAT snapshot: آیا مالیات روی هزینه حمل اعمال شده؟ */
     public const TRANS_VAT = 'trans_vat';
 
-    /** Doc Q: شماره فاکتور مودیان مشاور فنی */
+    /** Doc Q: شماره فاکتور مودیان الیت یار */
     public const CONSULTANT_MOADIAN_REF = 'consultant_moadian_ref';
 
     /** زمان آزادسازی هولد کمیسیون مشاور */
@@ -336,7 +336,7 @@ class Order extends Model
         return $this->belongsTo(User::class, self::BENEFICIARY_USER_ID);
     }
 
-    /** مشاور فنی که کمیسیون CO را دریافت می‌کند */
+    /** الیت یار که کمیسیون CO را دریافت می‌کند */
     public function consultant(): BelongsTo
     {
         return $this->belongsTo(User::class, self::CONSULTANT_USER_ID);

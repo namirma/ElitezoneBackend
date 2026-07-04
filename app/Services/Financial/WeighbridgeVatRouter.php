@@ -79,9 +79,9 @@ class WeighbridgeVatRouter
 
         ['net' => $net, 'vat' => $vat] = $this->calculator->extractVat($candidateGross, $result->vat);
 
-        $this->walletEngine->debitSystem($order, $candidateGross, FinancialCodes::STATUS_AVAILABLE, "تخصیص سهم مشاور فنی سفارش {$order->order_number}");
-        $this->walletEngine->creditConsultant($order, $net, FinancialCodes::STATUS_HOLD, $consultantUserId, 'کمیسیون امانی مشاور فنی');
-        $this->walletEngine->creditVat($order, $vat, FinancialCodes::STATUS_HOLD, 'مالیات کمیسیون مشاور فنی امانی');
+        $this->walletEngine->debitSystem($order, $candidateGross, FinancialCodes::STATUS_AVAILABLE, "تخصیص سهم الیت یار سفارش {$order->order_number}");
+        $this->walletEngine->creditConsultant($order, $net, FinancialCodes::STATUS_HOLD, $consultantUserId, 'کمیسیون امانی الیت یار');
+        $this->walletEngine->creditVat($order, $vat, FinancialCodes::STATUS_HOLD, 'مالیات کمیسیون الیت یار امانی');
 
         return $candidateGross;
     }

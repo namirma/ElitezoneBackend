@@ -209,7 +209,7 @@ class PlaceOrderAction
         // CartPricingCalculator, which likewise never re-subtracts the variant discount.
         $finalAmount = max(0, $subtotal + $totalVat + $shippingCost);
 
-        // تعیین مشاور فنی مؤثر:
+        // تعیین الیت یار مؤثر:
         // — اگر خودِ خریدار مشاور است (engineer/contractor) → مشاور = placer (اجباری)
         // — اگر کارفرما است → مشاور همانی است که در consultant_user_id فرستاده
         $isConsultantPlacer = $user->hasRole('engineer') || $user->hasRole('contractor');
@@ -232,7 +232,7 @@ class PlaceOrderAction
     }
 
     /**
-     * محاسبه کمیسیون بر اساس مشاور فنی مؤثر سفارش.
+     * محاسبه کمیسیون بر اساس الیت یار مؤثر سفارش.
      *
      * @param  User  $placer  خریدار/ثبت‌کننده سفارش
      * @param  int|null  $consultantId  consultant_user_id مؤثر (پس از تعیین نقش)
@@ -290,7 +290,7 @@ class PlaceOrderAction
             Order::PLACER_USER_ID => $user->id,
             // beneficiary = گیرنده سفارش (فقط در مسیر مشاور که برای کارفرما خریداری می‌کند)
             Order::BENEFICIARY_USER_ID => $data->beneficiaryUserId,
-            // consultant = مشاور فنی که کمیسیون CO می‌گیرد (مؤثر — computed در calculateOrderFinancials)
+            // consultant = الیت یار که کمیسیون CO می‌گیرد (مؤثر — computed در calculateOrderFinancials)
             Order::CONSULTANT_USER_ID => $fins['effective_consultant_id'],
             Order::ADDRESS_ID => $data->addressId,
             'shipping_method_id' => $data->shippingMethodId ?? 1,

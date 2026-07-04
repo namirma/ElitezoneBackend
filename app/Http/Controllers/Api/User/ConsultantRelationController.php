@@ -48,7 +48,7 @@ class ConsultantRelationController extends Controller
     }
 
     /**
-     * دعوت مشاور فنی توسط کارفرما — فقط از طریق موبایل.
+     * دعوت الیت یار توسط کارفرما — فقط از طریق موبایل.
      *
      * سه خروجی مشخص (طبق مورد ۲، بند ۵):
      *
@@ -204,7 +204,7 @@ class ConsultantRelationController extends Controller
     }
 
     /**
-     * لیست مشتریانی که این مشاور فنی از طریق جریان «خرید برای دیگری» احراز هویت کرده.
+     * لیست مشتریانی که این الیت یار از طریق جریان «خرید برای دیگری» احراز هویت کرده.
      */
     public function listRegisteredClients(): JsonResponse
     {

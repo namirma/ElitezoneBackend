@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Schema;
  * Track Moadian (taxpayer system) invoice references on each order.
  *
  * consultant_moadian_ref        — Doc Q: reference number of the Moadian invoice
- *                                 issued by the technical consultant to Saze.
+ *                                 issued by Elite Yar to Saze.
  *                                 Null until the consultant submits it.
  * consultant_hold_released_at   — Timestamp when the consultant's commission
  *                                 was moved from balance_hold → balance (i.e.
@@ -36,7 +36,7 @@ return new class extends Migration
             // Doc Q — consultant Moadian invoice
             $table->string('consultant_moadian_ref', 100)->nullable()
                 ->after('weighing_completed_at')
-                ->comment('Doc Q: شماره فاکتور مودیان صادر شده توسط مشاور فنی');
+                ->comment('Doc Q: شماره فاکتور مودیان صادر شده توسط الیت یار');
             $table->timestamp('consultant_hold_released_at')->nullable()
                 ->after('consultant_moadian_ref')
                 ->comment('زمان آزادسازی هولد کمیسیون مشاور');

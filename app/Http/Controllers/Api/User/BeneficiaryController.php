@@ -91,7 +91,7 @@ class BeneficiaryController extends Controller
         );
 
         // نقش‌های فنی (expert, engineer, contractor) نمی‌توانند گیرنده سفارش باشند —
-        // آن‌ها مشاوران فنی هستند نه کارفرما، پس بخش financial beneficiary نمی‌شوند.
+        // آن‌ها الیت یاران هستند نه کارفرما، پس بخش financial beneficiary نمی‌شوند.
         $blockedTypeIds = UserType::whereIn(UserType::SLUG, ['expert', 'engineer', 'contractor'])
             ->pluck(UserType::ID);
         if ($blockedTypeIds->contains($beneficiaryUser->{User::TYPE_ID})) {

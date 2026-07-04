@@ -14,7 +14,7 @@ class FinancialCodes
 
     public const WALLET_SAZE = 'WSSG';  // کیف پول واسط گروه نرم‌افزاری سازه
 
-    public const WALLET_CONSULTANT = 'WCT';   // کیف پول مشاور فنی
+    public const WALLET_CONSULTANT = 'WCT';   // کیف پول الیت یار
 
     public const WALLET_VAT = 'WVAT';  // کیف پول مالیات بر ارزش افزوده
 
@@ -41,7 +41,7 @@ class FinancialCodes
 
     public const DOC_LOADING_ORDER = 'C'; // دستور بارگیری (مشترک برای سوپلایر و خریدار)
 
-    public const DOC_CONSULTANT_REPORT = 'D'; // گزارش پرداخت بک‌آفیس به مشاور فنی
+    public const DOC_CONSULTANT_REPORT = 'D'; // گزارش پرداخت بک‌آفیس به الیت یار
 
     // --- مرحله ۲: شروع رزرو (Reservation Start) ---
     public const DOC_RESERVE_RECEIPT = 'E'; // رسید پرداخت رزرو برای خریدار
@@ -79,7 +79,7 @@ class FinancialCodes
 
     public const DOC_TAX_INVOICE_BUYER = 'P'; // فاکتور نهایی روی سامانه مودیان (برای خریدار توسط شرکت نرم‌افزاری سازه)
 
-    public const DOC_TAX_INVOICE_CONSULTANT = 'Q'; // فاکتور نهایی روی سامانه مودیان (برای شرکت نرم‌افزاری سازه توسط مشاور فنی)
+    public const DOC_TAX_INVOICE_CONSULTANT = 'Q'; // فاکتور نهایی روی سامانه مودیان (برای شرکت نرم‌افزاری سازه توسط الیت یار)
 
     // --- مرحله ۷: تسویه و نظرسنجی ---
     // R: HOLD — فرآیند تسویه حساب هزینه حمل بار؛ در انتظار تصمیم محصول با فولاد کویر
@@ -87,5 +87,5 @@ class FinancialCodes
 
     public const DOC_SURVEY = 'S'; // نظرسنجی از خریدار
 
-    public const DOC_SURVEY_CONSULTANT = 'T'; // نظرسنجی از مشاور فنی
+    public const DOC_SURVEY_CONSULTANT = 'T'; // نظرسنجی از الیت یار
 }

@@ -52,7 +52,7 @@ class StoreOrderRequest extends FormRequest
                 'prohibited',
             ],
 
-            // اختیاری: مشاور فنی باید approved+verified باشد
+            // اختیاری: الیت یار باید approved+verified باشد
             'consultant_user_id' => [
                 'nullable',
                 'integer',
@@ -166,7 +166,7 @@ class StoreOrderRequest extends FormRequest
     {
         return [
             'beneficiary_user_id' => 'کارفرمای گیرنده',
-            'consultant_user_id'  => 'مشاور فنی',
+            'consultant_user_id'  => 'الیت یار',
             'address_id'          => 'آدرس گیرنده',
             'description'         => 'توضیحات',
             'shipping_method_id'  => 'روش ارسال',

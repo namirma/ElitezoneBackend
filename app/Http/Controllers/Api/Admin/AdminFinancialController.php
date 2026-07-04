@@ -45,7 +45,7 @@ class AdminFinancialController extends Controller
     }
 
     /**
-     * دریافت سهم‌های مشاور فنی (تخصیص‌یافته یا پرداخت‌شده)
+     * دریافت سهم‌های الیت یار (تخصیص‌یافته یا پرداخت‌شده)
      */
     public function getExpertShares(Request $request): JsonResponse
     {
@@ -93,7 +93,7 @@ class AdminFinancialController extends Controller
     }
 
     /**
-     * دریافت اسناد مالی مشاور فنی
+     * دریافت اسناد مالی الیت یار
      */
     public function getExpertDocuments(FinancialFilterRequest $request): JsonResponse
     {

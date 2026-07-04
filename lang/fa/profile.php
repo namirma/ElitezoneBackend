@@ -48,7 +48,7 @@ return [
     'roles_required'          => 'انتخاب حداقل یک نقش الزامی است.',
     'roles_invalid'           => 'نقش نامعتبر است. نقش‌های مجاز: employer, supplier, expert.',
     'roles_array'             => 'فیلد roles باید آرایه باشد.',
-    'roles_supplier_conflict' => 'نقش سوپلایر نمی‌تواند همزمان با کارفرما یا مشاور فنی انتخاب شود.',
+    'roles_supplier_conflict' => 'نقش سوپلایر نمی‌تواند همزمان با کارفرما یا الیت یار انتخاب شود.',
 
     // Email management
     'email_required' => 'وارد کردن ایمیل الزامی است.',

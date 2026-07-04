@@ -65,11 +65,11 @@ class UserResource extends BaseJsonResource
     }
 
     /**
-     * وضعیت تأیید مدارک کاربر — فقط برای «مشاور فنی» (مهندس یا پیمانکار).
+     * وضعیت تأیید مدارک کاربر — فقط برای «الیت یار» (مهندس یا پیمانکار).
      *
      * منطق:
      *   - پروفایل مهندس/پیمانکار لود شده و موجود است → مقدار واقعی is_verified
-     *   - کاربر «مشاور فنی» است (type.slug = expert) ولی هنوز پروفایل تأییدشده‌ای
+     *   - کاربر «الیت یار» است (type.slug = expert) ولی هنوز پروفایل تأییدشده‌ای
      *     ندارد (نقش را انتخاب کرده ولی مدرکی آپلود/تأیید نکرده) → false
      *     (تا فرانت بَج «تأیید نشده» + CTA آپلود مدارک را نشان دهد)
      *   - نقش‌های غیرمشاور (کارفرما/تأمین‌کننده/مشتری) → null (بدون بج)
@@ -93,7 +93,7 @@ class UserResource extends BaseJsonResource
             return (bool) $this->{User::RELATION_CONTRACTOR}->{ContractorProfile::IS_VERIFIED};
         }
 
-        // مشاور فنیِ تأییدنشده (هنوز مدرکی ندارد) → false، در غیر این صورت null
+        // الیت یارِ تأییدنشده (هنوز مدرکی ندارد) → false، در غیر این صورت null
         if ($this->isExpertType()) {
             return false;
         }
@@ -102,7 +102,7 @@ class UserResource extends BaseJsonResource
     }
 
     /**
-     * آیا نوع کاربر «مشاور فنی» (expert) است؟ — از روی type.slug.
+     * آیا نوع کاربر «الیت یار» (expert) است؟ — از روی type.slug.
      * فقط وقتی relationِ type لود شده باشد قابل تشخیص است؛ در غیر این صورت false
      * (مثلاً در Resourceهایی که type را لود نمی‌کنند، بج نمایش داده نمی‌شود).
      */

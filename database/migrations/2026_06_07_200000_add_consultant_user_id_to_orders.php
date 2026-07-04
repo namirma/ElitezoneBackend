@@ -5,10 +5,10 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * جداسازی مفهوم «مشاور فنی» (consultant) از «گیرنده» (beneficiary):
+ * جداسازی مفهوم «الیت یار» (consultant) از «گیرنده» (beneficiary):
  *
  *   beneficiary_user_id (موجود) = کارفرمای گیرنده — فقط وقتی مشاور برای کارفرما می‌خرد
- *   consultant_user_id  (جدید)  = مشاور فنی که کمیسیون CO می‌گیرد
+ *   consultant_user_id  (جدید)  = الیت یار که کمیسیون CO می‌گیرد
  *
  * در فلوی قبلی beneficiary_user_id هر دو نقش را داشت. این میگریشن آن را تفکیک می‌کند.
  * کلیه ردیف‌های موجود: مقدار فعلی beneficiary_user_id به consultant_user_id کپی می‌شود
@@ -22,7 +22,7 @@ return new class extends Migration
             $table->unsignedBigInteger('consultant_user_id')
                 ->nullable()
                 ->after('beneficiary_user_id')
-                ->comment('مشاور فنی که کمیسیون CO را دریافت می‌کند');
+                ->comment('الیت یار که کمیسیون CO را دریافت می‌کند');
 
             $table->foreign('consultant_user_id')
                 ->references('id')

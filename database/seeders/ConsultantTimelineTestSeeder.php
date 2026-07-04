@@ -13,11 +13,11 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
 /**
- * تایم‌لاین مشاور فنی — دیتای تست
+ * تایم‌لاین الیت یار — دیتای تست
  *
  * php artisan db:seed --class=ConsultantTimelineTestSeeder
  *
- * یک کاربر مشاور فنی + یک سفارش با وضعیت weighbridge_done می‌سازد.
+ * یک کاربر الیت یار + یک سفارش با وضعیت weighbridge_done می‌سازد.
  * با ورود به عنوان مشاور (09500000005 / password123) در داشبورد
  * Stage 2 «حق مشاوره منظور شد» به عنوان current نمایش داده می‌شود.
  *
@@ -41,11 +41,11 @@ class ConsultantTimelineTestSeeder extends Seeder
         $this->command->info('  ConsultantTimelineTestSeeder');
         $this->command->info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
-        // ─── 1. کاربر مشاور فنی ──────────────────────────────────────────
-        $this->command->info('▸ کاربر مشاور فنی...');
+        // ─── 1. کاربر الیت یار ──────────────────────────────────────────
+        $this->command->info('▸ کاربر الیت یار...');
         $expertType = UserType::firstOrCreate(
             ['slug' => 'expert'],
-            ['slug' => 'expert', 'name' => 'مشاور فنی', 'icon' => 'star']
+            ['slug' => 'expert', 'name' => 'الیت یار', 'icon' => 'star']
         );
 
         $consultant = User::firstOrCreate(
@@ -141,7 +141,7 @@ class ConsultantTimelineTestSeeder extends Seeder
         $this->command->table(
             ['نقش', 'موبایل', 'رمز', 'ID'],
             [
-                ['مشاور فنی', self::CONSULTANT_MOBILE, self::PASSWORD, $consultant->id],
+                ['الیت یار', self::CONSULTANT_MOBILE, self::PASSWORD, $consultant->id],
             ]
         );
         $this->command->info("  📦  سفارش تست: " . self::ORDER_NUMBER . " (ID: {$order->id})");
@@ -149,7 +149,7 @@ class ConsultantTimelineTestSeeder extends Seeder
         $this->command->info('  ▶  برای تست:');
         $this->command->info('     ۱. با موبایل 09500000005 / رمز password123 وارد شوید');
         $this->command->info('     ۲. داشبورد پروفایل را باز کنید');
-        $this->command->info('     ۳. تایم‌لاین مشاور فنی نمایش داده می‌شود:');
+        $this->command->info('     ۳. تایم‌لاین الیت یار نمایش داده می‌شود:');
         $this->command->info('        • مرحله ۱ (کارفرما خرید کرد)       → completed  ✅ فیروزه‌ای');
         $this->command->info('        • مرحله ۲ (حق مشاوره منظور شد)     → current    🔵 آبی + دو دکمه');
         $this->command->info('        • مرحله ۳ (فاکتور خدمات ثبت شد)    → inactive   ⬜ خاکستری');

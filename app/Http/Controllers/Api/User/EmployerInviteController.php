@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Auth;
 class EmployerInviteController extends Controller
 {
     /**
-     * ارسال دعوت‌نامه SMS برای کارفرما توسط مشاور فنی.
+     * ارسال دعوت‌نامه SMS برای کارفرما توسط الیت یار.
      *
      * POST /api/profile/employer-invites/sms
      */

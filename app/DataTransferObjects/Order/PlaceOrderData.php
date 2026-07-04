@@ -9,7 +9,7 @@ class PlaceOrderData
     public function __construct(
         /** گیرنده سفارش — کارفرمایی که مشاور برایش خریداری می‌کند (nullable) */
         public readonly ?int $beneficiaryUserId,
-        /** مشاور فنی که کمیسیون CO را دریافت می‌کند (nullable) */
+        /** الیت یار که کمیسیون CO را دریافت می‌کند (nullable) */
         public readonly ?int $consultantUserId,
         public readonly ?int $addressId,
         public readonly ?int $shippingMethodId,

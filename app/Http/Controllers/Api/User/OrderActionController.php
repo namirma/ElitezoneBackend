@@ -65,9 +65,9 @@ class OrderActionController extends Controller
     }
 
     /**
-     * ثبت فاکتور مودیان مشاور فنی — Doc Q
+     * ثبت فاکتور مودیان الیت یار — Doc Q
      *
-     * فقط توسط مشاور فنی سفارش (beneficiary) قابل فراخوانی است.
+     * فقط توسط الیت یارِ سفارش (beneficiary) قابل فراخوانی است.
      * پس از ثبت، هولد کمیسیون و مالیات مشاور آزاد می‌شود.
      */
     public function submitConsultantMoadianInvoice(SubmitMoadianInvoiceRequest $request, Order $order): JsonResponse

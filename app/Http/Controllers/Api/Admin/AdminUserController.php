@@ -164,7 +164,7 @@ class AdminUserController extends Controller
     }
 
     /**
-     * تأیید مدارک مشاور فنی توسط ادمین.
+     * تأیید مدارک الیت یار توسط ادمین.
      *
      * یکی از پروفایل مهندس یا پیمانکار کاربر را پیدا کرده و
      * is_verified = true + verified_at = now() روی آن ست می‌کند.
@@ -196,7 +196,7 @@ class AdminUserController extends Controller
     }
 
     /**
-     * لغو تأیید مدارک مشاور فنی توسط ادمین.
+     * لغو تأیید مدارک الیت یار توسط ادمین.
      *
      * POST /admin/users/{user}/unverify-consultant
      */

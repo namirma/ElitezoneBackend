@@ -14,8 +14,8 @@ use Tests\TestCase;
  * پوشش رفتار فیلد is_verified در پاسخ GET /api/profile.
  *
  * قرارداد:
- *   - مشاور فنی (type.slug = expert) با پروفایل تأییدشده → true
- *   - مشاور فنی با پروفایل تأییدنشده (یا بدون مدرک) → false
+ *   - الیت یار (type.slug = expert) با پروفایل تأییدشده → true
+ *   - الیت یار با پروفایل تأییدنشده (یا بدون مدرک) → false
  *   - نقش‌های غیرمشاور (employer/supplier/customer) → null
  */
 class ProfileVerificationBadgeTest extends TestCase

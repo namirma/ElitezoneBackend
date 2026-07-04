@@ -13,7 +13,7 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
 /**
- * RealConsultantTimelineSeeder — دیتای تایم‌لاین مشاور فنی برای حساب واقعی.
+ * RealConsultantTimelineSeeder — دیتای تایم‌لاین الیت یار برای حساب واقعی.
  *
  * php artisan db:seed --class=RealConsultantTimelineSeeder
  *
@@ -30,7 +30,7 @@ use Illuminate\Support\Facades\Hash;
  *     (placer = کاربر، beneficiary = کارفرما). نمایش: تب «خرید برای دیگران».
  *       B1 weighbridge_done  | B2 shipped | B3 cancelled
  *
- * چون خودِ کاربر مشاور فنی است، مشاورِ همهٔ این سفارش‌ها خودِ اوست → «مشاور فنی: شما».
+ * چون خودِ کاربر الیت یار است، مشاورِ همهٔ این سفارش‌ها خودِ اوست → «الیت یار: شما».
  *
  * ⚠️ حسابِ کاربرِ واقعی فقط خوانده می‌شود و هرگز تغییر نمی‌کند.
  */

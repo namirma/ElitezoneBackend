@@ -35,8 +35,8 @@ return [
     'fee_hold_description' => 'سهم رزرو شده برای سفارش :order_number',
 
     // ── Doc Q: Consultant Moadian invoice ──────────────────────────────────
-    'consultant_moadian_submitted' => 'فاکتور مودیان مشاور فنی ثبت شد و کمیسیون آزاد شد.',
-    'consultant_moadian_already_done' => 'فاکتور مودیان مشاور فنی این سفارش قبلاً ثبت شده است.',
+    'consultant_moadian_submitted' => 'فاکتور مودیان الیت یار ثبت شد و کمیسیون آزاد شد.',
+    'consultant_moadian_already_done' => 'فاکتور مودیان الیت یار این سفارش قبلاً ثبت شده است.',
 
     // ── Doc O: Supplier Moadian invoice ────────────────────────────────────
     'supplier_moadian_submitted' => 'فاکتور مودیان سوپلایر ثبت شد و مالیات آزاد شد.',
@@ -101,18 +101,18 @@ return [
     'store_beneficiary_integer' => 'فرمت کاربر ذینفع نامعتبر است.',
     'store_beneficiary_exists' => 'کاربر ذینفع در سیستم یافت نشد.',
     // beneficiary validation (مسیر مشاور)
-    'store_beneficiary_not_approved_consultant'  => 'کاربر انتخاب‌شده مشاور فنی تأییدشدهٔ شما نیست.',
+    'store_beneficiary_not_approved_consultant'  => 'کاربر انتخاب‌شده الیت یار تأییدشدهٔ شما نیست.',
     'store_beneficiary_prohibited_for_employer'  => 'کارفرما نمی‌تواند فیلد گیرنده سفارش را مستقیم ارسال کند.',
-    'store_beneficiary_required_for_consultant'  => 'مشاور فنی باید کارفرمای گیرنده سفارش را مشخص کند.',
+    'store_beneficiary_required_for_consultant'  => 'الیت یار باید کارفرمای گیرنده سفارش را مشخص کند.',
     'store_beneficiary_not_approved_employer'    => 'کاربر انتخاب‌شده کارفرمای تأییدشدهٔ شما نیست.',
 
     // consultant_user_id validation (مسیر کارفرما)
-    'store_consultant_integer'              => 'فرمت مشاور فنی نامعتبر است.',
-    'store_consultant_exists'              => 'مشاور فنی در سیستم یافت نشد.',
-    'store_consultant_not_approved'        => 'مشاور فنی انتخاب‌شده در لیست مشاوران تأییدشده شما نیست.',
-    'store_consultant_not_found'           => 'مشاور فنی انتخاب‌شده در سیستم یافت نشد.',
-    'store_consultant_not_verified'        => 'مشاور فنی انتخاب‌شده هنوز مدارک تأییدشده ندارد.',
-    'store_consultant_prohibited_for_consultant' => 'مشاور فنی نمی‌تواند در هنگام ثبت سفارش مشاور دیگری انتخاب کند.',
+    'store_consultant_integer'              => 'فرمت الیت یار نامعتبر است.',
+    'store_consultant_exists'              => 'الیت یار در سیستم یافت نشد.',
+    'store_consultant_not_approved'        => 'الیت یار انتخاب‌شده در لیست مشاوران تأییدشده شما نیست.',
+    'store_consultant_not_found'           => 'الیت یار انتخاب‌شده در سیستم یافت نشد.',
+    'store_consultant_not_verified'        => 'الیت یار انتخاب‌شده هنوز مدارک تأییدشده ندارد.',
+    'store_consultant_prohibited_for_consultant' => 'الیت یار نمی‌تواند در هنگام ثبت سفارش مشاور دیگری انتخاب کند.',
 
     'store_description_max' => 'توضیحات سفارش نمی‌تواند بیشتر از 1000 کاراکتر باشد.',
 
@@ -146,7 +146,7 @@ return [
     'internal_order_not_found'        => 'خطای داخلی: سفارش در فرآیند پردازش یافت نشد.',
     'items_missing_for_payment'       => 'اقلام سفارش برای پردازش مالی تعریف نشده‌اند.',
     'items_missing_for_completion'    => 'اقلام سفارش برای تکمیل رزرو یافت نشد.',
-    'consultant_not_found_internal'   => 'خطای داخلی: مشاور فنی این سفارش یافت نشد.',
+    'consultant_not_found_internal'   => 'خطای داخلی: الیت یار این سفارش یافت نشد.',
     'reserved_cannot_cancel_before_expiry' => 'سفارشات رزرو شده تا پیش از پایان زمان انقضا قابل لغو نیستند.',
     'reserved_expired_auto_cancel'    => 'سفارشات رزرو شده منقضی، تنها توسط سیستم به صورت خودکار لغو می‌شوند.',
     'invalid_financial_calculation'   => 'محاسبه مالی سفارش معتبر نیست.',
@@ -167,7 +167,7 @@ return [
         'cart_empty' => 'سبد خرید شما خالی است.',
         // Moadian / post-weighbridge
         'weighbridge_not_completed' => 'نتیجه باسکول برای این سفارش هنوز ثبت نشده است.',
-        'no_consultant' => 'این سفارش مشاور فنی ندارد.',
+        'no_consultant' => 'این سفارش الیت یار ندارد.',
         'moadian_ref_required' => 'شماره فاکتور مودیان الزامی است.',
     ],
 
