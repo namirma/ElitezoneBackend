@@ -8,6 +8,6 @@ class InvalidOtpException extends BusinessException
 {
     public function __construct()
     {
-        parent::__construct(__('auth.code_invalid'), 401);
+        parent::__construct(__('auth.code_invalid'), 422);
     }
 }

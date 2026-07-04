@@ -4,4 +4,13 @@
 
 namespace App\Exceptions\Wallet;
 
-class WalletNotFoundException extends \DomainException {}
+use App\Exceptions\BusinessException;
+use Symfony\Component\HttpFoundation\Response;
+
+class WalletNotFoundException extends BusinessException
+{
+    public function __construct(string $message)
+    {
+        parent::__construct($message, Response::HTTP_NOT_FOUND);
+    }
+}

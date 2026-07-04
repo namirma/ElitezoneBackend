@@ -44,9 +44,9 @@ class PriceHistory extends Model
     ];
 
     protected $casts = [
-        self::GENERAL_PRICE => 'float',
-        self::SPECIAL_PRICE => 'float',
-        self::GOLDEN_FIGURE => 'float',
+        self::GENERAL_PRICE => 'decimal:2',
+        self::SPECIAL_PRICE => 'decimal:2',
+        self::GOLDEN_FIGURE => 'decimal:2',
         self::CREATED_AT => 'datetime',
     ];
 
