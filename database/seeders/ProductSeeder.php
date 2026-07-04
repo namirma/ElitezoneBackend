@@ -130,6 +130,8 @@ class ProductSeeder extends Seeder
         $kgUnit = OrderUnit::where(OrderUnit::CODE, 'retail')->first();
 
         if (! $rebarCategory || ! $kgUnit) {
+            $this->command?->warn('ProductSeeder: rebar category or retail OrderUnit missing — stopping before creating any product/price data.');
+
             return;
         }
 
@@ -186,9 +188,15 @@ class ProductSeeder extends Seeder
                 [ProductVariant::SKU => 'RBR-A1-8-KL', ProductVariant::NAME => 'میلگرد کلاف A1 سایز 8', 'attrs_ids' => [$kalafAttr?->id, $gradeA1Attr?->id, $size8Attr?->id], ProductVariant::STOCK_QUANTITY => 300000, ProductVariant::MIN_ORDER_VALUE => 2000, ProductVariant::MAX_ORDER_VALUE => 2000000, ProductVariant::DISCOUNT_VALUE => null, ProductVariant::DISCOUNT_TYPE => null, ProductVariant::DISCOUNT_START_DATE => null, ProductVariant::DISCOUNT_END_DATE => null],
             ];
             foreach ($variantsSeedData as $data) {
+                // Lookup key must be `sku` ALONE — product_variants.sku has a global unique
+                // index (not composite with product_id). Including product_id here made
+                // updateOrCreate attempt an INSERT (not an UPDATE) whenever a row with this
+                // sku already existed under a different product_id, crashing with a
+                // duplicate-key SQL error instead of re-linking/updating the existing row.
                 $variant = ProductVariant::updateOrCreate(
-                    [ProductVariant::PRODUCT_ID => $rebarProduct->id, ProductVariant::SKU => $data[ProductVariant::SKU]],
+                    [ProductVariant::SKU => $data[ProductVariant::SKU]],
                     [
+                        ProductVariant::PRODUCT_ID => $rebarProduct->id,
                         ProductVariant::NAME => $data[ProductVariant::NAME],
                         ProductVariant::IS_ACTIVE => true,
                         ProductVariant::STOCK_QUANTITY => $data[ProductVariant::STOCK_QUANTITY],
@@ -408,6 +416,8 @@ class ProductSeeder extends Seeder
         }
 
         if (! $kavirFactory) {
+            $this->command?->warn('ProductSeeder: kavir-steel Factory missing — stopping before creating ProductPrice rows.');
+
             return;
         }
 
@@ -417,6 +427,8 @@ class ProductSeeder extends Seeder
         $shirazWarehouseKavir = FactoryLocation::where(FactoryLocation::FACTORY_ID, $kavirFactory->id)->where(FactoryLocation::TYPE, 'warehouse')->where(FactoryLocation::CITY, 'شیراز')->first();
 
         if (! $factoryDoorKavir || ! $isfahanWarehouseKavir || ! $tehranWarehouseKavir || ! $shirazWarehouseKavir) {
+            $this->command?->warn('ProductSeeder: one or more kavir-steel FactoryLocation rows missing — stopping before creating ProductPrice rows.');
+
             return;
         }
 
@@ -425,6 +437,8 @@ class ProductSeeder extends Seeder
         $variantA1_8 = ProductVariant::where(ProductVariant::SKU, 'RBR-A1-8-KL')->first();
 
         if (! $variantA2_12 || ! $variantA3_16 || ! $variantA1_8) {
+            $this->command?->warn('ProductSeeder: one or more rebar ProductVariant rows missing — stopping before creating ProductPrice rows.');
+
             return;
         }
 
@@ -450,5 +464,11 @@ class ProductSeeder extends Seeder
                 );
             }
         }
+
+        $this->command?->info(sprintf(
+            'ProductSeeder: done — %d rebar variant(s), %d ProductPrice row(s) for kavir-steel.',
+            count($variantBasePrices),
+            count($variantBasePrices) * count($locationPriceAdjustments)
+        ));
     }
 }
