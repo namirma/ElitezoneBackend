@@ -284,9 +284,11 @@ class AuthController extends Controller
             'username' => 'required|exists:users,mobile',
         ]);
 
-        $user = User::where([User::MOBILE => $request->input('username')])->where(User::PASSWORD, '!=', null)->first();
+        $mobile = PhoneNumber::to09($request->input('username'));
+
+        $user = User::where(User::MOBILE, $mobile)->where(User::PASSWORD, '!=', null)->first();
         if (! is_null($user)) {
-            app(RequestOtpAction::class)->execute($user, $request->input('username'), 3);
+            app(RequestOtpAction::class)->execute($user, $mobile, 3);
 
             return success([], 'auth.forget_password_code_sent_successfully');
         }

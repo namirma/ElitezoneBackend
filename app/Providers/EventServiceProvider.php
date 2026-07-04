@@ -7,11 +7,13 @@ use App\Events\User\CustomerSegmentChanged;
 use App\Events\Order\OrderCancelled;
 use App\Events\Order\OrderPaid;
 use App\Events\Order\OrderPlaced;
+use App\Events\Financial\TransactionProcessed;
 use App\Events\Financial\WalletFunded;
 use App\Listeners\Cart\LogCartEvent;
 use App\Listeners\Order\SendOrderCancellationNotification;
 use App\Listeners\Order\SendOrderPaymentNotification;
 use App\Listeners\Order\SendOrderPlacedNotification;
+use App\Listeners\Financial\SendTransactionNotification;
 use App\Listeners\Financial\SendWalletFundingNotification;
 use App\Listeners\User\SendWinBackOffer;
 use Illuminate\Auth\Events\Registered;
@@ -35,6 +37,9 @@ class EventServiceProvider extends ServiceProvider
         ],
         WalletFunded::class => [
             SendWalletFundingNotification::class,
+        ],
+        TransactionProcessed::class => [
+            SendTransactionNotification::class,
         ],
         OrderCancelled::class => [
             SendOrderCancellationNotification::class,

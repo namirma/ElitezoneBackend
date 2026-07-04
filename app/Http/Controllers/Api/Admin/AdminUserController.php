@@ -180,8 +180,8 @@ class AdminUserController extends Controller
         }
 
         $profile->update([
-            EngineerProfile::IS_VERIFIED => true,
-            EngineerProfile::VERIFIED_AT => now(),
+            $profile::IS_VERIFIED => true,
+            $profile::VERIFIED_AT => now(),
         ]);
 
         return success(
@@ -189,7 +189,7 @@ class AdminUserController extends Controller
                 'user_id'     => $user->id,
                 'profile_type'=> $profile instanceof EngineerProfile ? 'engineer' : 'contractor',
                 'is_verified' => true,
-                'verified_at' => $profile->{EngineerProfile::VERIFIED_AT}->toDateTimeString(),
+                'verified_at' => $profile->{$profile::VERIFIED_AT}->toDateTimeString(),
             ],
             __('admin.users.consultant_verified')
         );
@@ -209,8 +209,8 @@ class AdminUserController extends Controller
         }
 
         $profile->update([
-            EngineerProfile::IS_VERIFIED => false,
-            EngineerProfile::VERIFIED_AT => null,
+            $profile::IS_VERIFIED => false,
+            $profile::VERIFIED_AT => null,
         ]);
 
         return success(

@@ -258,7 +258,7 @@ class AdminPodiumDepositController extends Controller
             return $walletTxn;
         });
 
-        WalletFunded::dispatch($txn);
+        WalletFunded::dispatch($user, $txn);
 
         return success([
             'user_id'        => $user->id,
