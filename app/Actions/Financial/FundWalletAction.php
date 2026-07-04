@@ -24,7 +24,7 @@ class FundWalletAction
         return DB::transaction(function () use ($user, $amount, $paymentMethod, $description, $receiptFile, $extraMeta) {
 
             // 1. دریافت یا ساخت کیف پول
-            $wallet = $user->wallet()->firstOrCreate([]);
+            $wallet = $user->wallet()->lockForUpdate()->firstOrCreate([]);
 
             $meta = [
                 'payment_method' => $paymentMethod,
