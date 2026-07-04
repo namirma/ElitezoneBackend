@@ -38,7 +38,6 @@ class OrderStatusHistory extends Model
         self::TO_STATUS,
         self::USER_ID,
         self::DURATION_MINUTES,
-        self::CREATED_AT,
     ];
 
     protected $casts = [

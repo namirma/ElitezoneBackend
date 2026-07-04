@@ -82,8 +82,6 @@ class UserProfile extends Model
         self::PROVINCE_ID,
         self::CITY_ID,
         self::ENTITY,
-        self::CREATED_AT,
-        self::UPDATED_AT,
     ];
 
     /**

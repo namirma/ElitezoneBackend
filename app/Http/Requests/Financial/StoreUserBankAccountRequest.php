@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Financial;
 
 use App\Models\UserBankAccount;
+use App\Support\IranIban;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -43,29 +44,10 @@ class StoreUserBankAccountRequest extends FormRequest
             $shaba = (string) $this->input(UserBankAccount::SHABA);
 
             // فقط اگر شبا پر شده بود الگوریتم را چک کن
-            if (! empty($shaba) && ! $this->isValidIranIban($shaba)) {
+            if (! empty($shaba) && ! IranIban::isValid($shaba)) {
                 $v->errors()->add(UserBankAccount::SHABA, __('auth.shaba_invalid_algorithm'));
             }
         });
-    }
-
-    private function isValidIranIban(string $iban): bool
-    {
-        $iban = strtoupper(preg_replace('/\s+/', '', $iban));
-        if (! preg_match('/^IR\d{24}$/', $iban)) {
-            return false;
-        }
-        $re = substr($iban, 4).substr($iban, 0, 4);
-        $num = '';
-        foreach (str_split($re) as $ch) {
-            $num .= ctype_alpha($ch) ? (ord($ch) - 55) : $ch;
-        }
-        $rem = 0;
-        foreach (str_split($num, 9) as $chunk) {
-            $rem = (int) (($rem.$chunk) % 97);
-        }
-
-        return $rem === 1;
     }
 
     public function messages(): array

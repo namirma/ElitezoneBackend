@@ -33,7 +33,7 @@ Route::post('/new-question', [QuestionController::class, 'submitQuestion']);
 // ── Authentication ────────────────────────────────────────────────────────
 Route::controller(AuthController::class)->prefix('authenticate')->group(function () {
     Route::post('/', 'register')->middleware('throttle:sms');
-    Route::post('/check-user', 'checkUserAndSendCode');
+    Route::post('/check-user', 'checkUserAndSendCode')->middleware('throttle:sms');
     Route::post('/verify-code', 'verifyCode')->middleware('throttle:otp-verify');
     Route::post('/password/check', 'checkPassword')->middleware('throttle:otp-verify');
     Route::post('/forget-password', 'forgetPassword')->middleware('throttle:sms');

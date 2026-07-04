@@ -3,6 +3,7 @@
 namespace App\Http\Resources\Product;
 
 use App\Http\Resources\BaseJsonResource;
+use App\Http\Resources\Order\OrderUnitResource;
 use App\Models\Product;
 use Carbon\Carbon;
 use Illuminate\Http\Request;

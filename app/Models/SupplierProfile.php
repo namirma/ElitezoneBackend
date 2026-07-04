@@ -73,8 +73,6 @@ class SupplierProfile extends Model
         self::COMPANY,
         self::TRANS_COMMISSION,
         self::TRANS_VAT,
-        self::CREATED_AT,
-        self::UPDATED_AT,
     ];
 
     /** @var array<string, string> */

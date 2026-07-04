@@ -10,5 +10,6 @@ return [
         'max_variant_value' => 'سقف مجاز سفارش «:name» حداکثر :max :unit است، اما مجموع درخواستی شما در سبد خرید به :current :unit رسیده است.',
         'min_product_value' => 'حداقل مجموع سفارش برای گروه کالایی «:name» برابر با :min :unit است، اما مجموع شما :current :unit می‌باشد.',
         'max_product_value' => 'حداکثر مجموع سفارش برای گروه کالایی «:name» برابر با :max :unit است، اما مجموع شما به :current :unit رسیده است.',
+        'insufficient_stock' => 'موجودی محصول «:name» کافی نیست. (موجودی فعلی: :stock)',
     ],
 ];

@@ -34,8 +34,6 @@ class SupplierActivityCategory extends Model
         self::NAME,
         self::SLUG,
         self::PARENT_ID,
-        self::CREATED_AT,
-        self::UPDATED_AT,
     ];
 
     protected $with = ['children'];

@@ -27,21 +27,21 @@ class EduixController extends Controller
         if ($hasActiveRecord) {
             return error(__('education.already_has_active_request'), [], 403);
         }
-        $valitadion = $request->validate([
+        $validated = $request->validate([
             'national_code' => 'required|string',
             'trace_code' => 'required|string',
         ]);
-        if ($user->{User::NATIONAL_CODE} && $user->{User::NATIONAL_CODE} !== $valitadion['national_code']) {
+        if ($user->{User::NATIONAL_CODE} && $user->{User::NATIONAL_CODE} !== $validated['national_code']) {
             return error(__('education.national_code_mismatch'), [], 422);
         }
 
         try {
-            $data = $this->scraper->fetchData($valitadion['national_code'], $valitadion['trace_code']);
+            $data = $this->scraper->fetchData($validated['national_code'], $validated['trace_code']);
 
             $record = EduixRecord::updateOrCreate(
                 [
                     EduixRecord::USER_ID => $user->id,
-                    EduixRecord::TRACE_CODE => $valitadion['trace_code'],
+                    EduixRecord::TRACE_CODE => $validated['trace_code'],
                 ],
                 array_merge($data, [
                     EduixRecord::USER_ID => $user->id,

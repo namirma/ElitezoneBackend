@@ -78,8 +78,6 @@ class EngineerProfile extends Model
         self::ACTIVITY_PROVINCE_ID,
         self::CITY_ID,
         self::ACTIVITY_CITY_ID,
-        self::CREATED_AT,
-        self::UPDATED_AT,
     ];
 
     protected $casts = [
