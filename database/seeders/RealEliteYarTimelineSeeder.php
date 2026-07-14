@@ -56,13 +56,13 @@ class RealEliteYarTimelineSeeder extends Seeder
         $this->command->info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
         // ─── الیت یار واقعی (READ-ONLY) ────────────────────────────────────
-        $consultant = User::where(User::MOBILE, self::CONSULTANT_MOBILE)->first();
-        if (! $consultant) {
+        $eliteYar = User::where(User::MOBILE, self::CONSULTANT_MOBILE)->first();
+        if (! $eliteYar) {
             $this->command->error('  ✗ کاربر '.self::CONSULTANT_MOBILE.' یافت نشد.');
 
             return;
         }
-        $this->command->info("  ✓ الیت یار واقعی: ID={$consultant->id} (دست‌نخورده)");
+        $this->command->info("  ✓ الیت یار واقعی: ID={$eliteYar->id} (دست‌نخورده)");
 
         // ─── پاک‌سازی دیتای تستِ قبلی (سفارش‌ها + کاربرانِ جای‌گزینِ قدیمی) ─
         $this->cleanupPreviousTestData();
@@ -83,23 +83,23 @@ class RealEliteYarTimelineSeeder extends Seeder
 
         // ─── سناریو A: کاربر الیت یارِ سفارشِ کارفرماست (داشبورد) ──────────
         $this->command->info('▸ سناریو A — کارفرما خرید کرده، کاربر الیت یارِ آن است:');
-        $a1 = $this->makeOrder($employerA->id, $consultant->id, 'ORD-CONS-A1', Order::STATUS_PROCESSING);
-        $a2 = $this->makeOrder($employerA->id, $consultant->id, 'ORD-CONS-A2', Order::STATUS_WEIGHBRIDGE_DONE);
-        $a3 = $this->makeOrder($employerB->id, $consultant->id, 'ORD-CONS-A3', Order::STATUS_WEIGHBRIDGE_DONE, [
+        $a1 = $this->makeOrder($employerA->id, $eliteYar->id, 'ORD-CONS-A1', Order::STATUS_PROCESSING);
+        $a2 = $this->makeOrder($employerA->id, $eliteYar->id, 'ORD-CONS-A2', Order::STATUS_WEIGHBRIDGE_DONE);
+        $a3 = $this->makeOrder($employerB->id, $eliteYar->id, 'ORD-CONS-A3', Order::STATUS_WEIGHBRIDGE_DONE, [
             Order::CONSULTANT_MOADIAN_REF => '1402-CON-A3-77451',
         ]);
-        $a4 = $this->makeOrder($employerB->id, $consultant->id, 'ORD-CONS-A4', Order::STATUS_WEIGHBRIDGE_DONE, [
+        $a4 = $this->makeOrder($employerB->id, $eliteYar->id, 'ORD-CONS-A4', Order::STATUS_WEIGHBRIDGE_DONE, [
             Order::CONSULTANT_MOADIAN_REF => '1402-CON-A4-77452',
             Order::CONSULTANT_HOLD_RELEASED_AT => now()->subDay(),
         ]);
 
         // ─── سناریو B: کاربر برای کارفرما خرید کرده (تب خرید برای دیگران) ─
         $this->command->info('▸ سناریو B — کاربر برای کارفرمای دیگری خرید کرده:');
-        $this->makeOrder($consultant->id, $client->id, 'ORD-CONS-B1', Order::STATUS_WEIGHBRIDGE_DONE);
-        $this->makeOrder($consultant->id, $client->id, 'ORD-CONS-B2', Order::STATUS_SHIPPED);
-        $this->makeOrder($consultant->id, $client->id, 'ORD-CONS-B3', Order::STATUS_CANCELLED);
+        $this->makeOrder($eliteYar->id, $client->id, 'ORD-CONS-B1', Order::STATUS_WEIGHBRIDGE_DONE);
+        $this->makeOrder($eliteYar->id, $client->id, 'ORD-CONS-B2', Order::STATUS_SHIPPED);
+        $this->makeOrder($eliteYar->id, $client->id, 'ORD-CONS-B3', Order::STATUS_CANCELLED);
         // تحویل‌شده: پورسانت آزاد شده → هر ۴ مرحلهٔ تایم‌لاین الیت یار completed
-        $this->makeOrder($consultant->id, $client->id, 'ORD-CONS-B4', Order::STATUS_DELIVERED, [
+        $this->makeOrder($eliteYar->id, $client->id, 'ORD-CONS-B4', Order::STATUS_DELIVERED, [
             Order::CONSULTANT_MOADIAN_REF => '1402-CON-B4-88120',
             Order::CONSULTANT_HOLD_RELEASED_AT => now()->subDay(),
         ]);

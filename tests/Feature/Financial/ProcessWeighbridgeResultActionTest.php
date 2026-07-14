@@ -81,7 +81,7 @@ class ProcessWeighbridgeResultActionTest extends TestCase
 
         $this->order = Order::create([
             Order::PLACER_USER_ID => $this->buyer->id,
-            Order::BENEFICIARY_USER_ID => $this->buyer->id, // self → no consultant payout
+            Order::BENEFICIARY_USER_ID => $this->buyer->id, // self → no eliteYar payout
             Order::ORDER_NUMBER => 'TEST-WB-'.now()->format('YmdHis').rand(100, 999),
             Order::STATUS => Order::STATUS_PROCESSING,
             Order::PAYMENT_STATUS => Order::PAYMENT_PAID,

@@ -28,7 +28,7 @@ class EliteYarRelationResource extends BaseJsonResource
         };
 
         // وضعیت تأیید مدارک الیت یار — از پروفایل مهندس یا پیمانکار
-        $isVerified = $this->getConsultantVerifiedStatus();
+        $isVerified = $this->getEliteYarVerifiedStatus();
 
         return [
             'user_id' => $this->id,
@@ -64,7 +64,7 @@ class EliteYarRelationResource extends BaseJsonResource
      * الیت یار می‌تواند مهندس (engineer) یا پیمانکار (contractor) باشد؛
      * هر دو پروفایل دارای is_verified/verified_at هستند (migration 200100).
      */
-    private function getConsultantVerifiedStatus(): bool
+    private function getEliteYarVerifiedStatus(): bool
     {
         // ترجیح: اگر پروفایل از پیش لود شده، از آن استفاده می‌کنیم
         if ($this->relationLoaded('engineerProfile') && $this->engineerProfile) {

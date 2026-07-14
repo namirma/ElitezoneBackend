@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Log;
  * At weighbridge time (ProcessWeighbridgeResultAction) the platform's net
  * margin VAT (sazeVat) is computed and parked in the WVAT wallet as a hold:
  *
- *   sazeGross = (POOM − PTSM) − consultantGross
+ *   sazeGross = (POOM − PTSM) − eliteYarGross
  *   sazeVat   = sazeGross × (vat% / (100 + vat%))
  *   WVAT balance_hold(+)
  *
@@ -62,18 +62,18 @@ class RecordSystemMoadianInvoiceAction
         // ProcessWeighbridgeResultAction stores the updated values on the order:
         //   payment_of_owner      = POOM (updated from oldPOO)
         //   payment_to_supplier   = PTSM (updated from oldPTS)
-        //   payment_to_consultant = consultantGross (0 when no consultant)
+        //   payment_to_consultant = eliteYarGross (0 when no eliteYar)
         //   vat_rate              = the percentage used at payment time
         //
-        // sazeGross = (POOM − PTSM) − consultantGross
+        // sazeGross = (POOM − PTSM) − eliteYarGross
         // sazeVat   = sazeGross × vatMultiplier
         $poom = (float) $order->payment_of_owner;
         $ptsm = (float) $order->payment_to_supplier;
-        $consultantGross = (float) ($order->payment_to_consultant ?? 0);
+        $eliteYarGross = (float) ($order->payment_to_consultant ?? 0);
         $vatRate = (float) ($order->{Order::VAT_RATE} ?? 10.0);
 
         // Same bcmath split used at weighbridge time — releases exactly what was held.
-        $sazeGross = ($poom - $ptsm) - $consultantGross;
+        $sazeGross = ($poom - $ptsm) - $eliteYarGross;
         $sazeVat = $this->calculator->extractVat($sazeGross, $vatRate)['vat'];
 
         DB::transaction(function () use (

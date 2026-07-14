@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Reads a consultant's collaboration badge from the legacy «سازه ۹۰» (saze90.com)
+ * Reads a eliteYar's collaboration badge from the legacy «سازه ۹۰» (saze90.com)
  * site. This call used to live on the frontend (`axios.get('https://www.saze90.com/
  * get-certificate?mobile=…')`) which broke under CORS; it now runs server-side.
  *
@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Log;
  *
  * FAIL-SAFE: any error (network, circuit open, bad shape) returns null — never throws to
  * the caller. Only a successful, non-empty result is cached (so an outage is retried, not
- * memoised). saze90 does NOT expose the badge *purchase amount*, so the consultant lifetime
+ * memoised). saze90 does NOT expose the badge *purchase amount*, so the eliteYar lifetime
  * cap (which needs that) stays dormant — pending a separate endpoint from the supervisor.
  */
 class Saze90BadgeService

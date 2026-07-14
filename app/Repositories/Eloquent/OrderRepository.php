@@ -32,7 +32,7 @@ class OrderRepository implements OrderRepositoryInterface
     {
         return Order::query()
             // Single source of truth for eager-loads — same set OrderResource renders.
-            // (Previously omitted `consultant`, causing an N+1 when the resource read it.)
+            // (Previously omitted `eliteYar`, causing an N+1 when the resource read it.)
             ->with(Order::resourceRelations())
             ->where(function (Builder $query) use ($userId, $roleType) {
                 if ($roleType === 'beneficiary') {

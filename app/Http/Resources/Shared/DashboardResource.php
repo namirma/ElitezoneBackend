@@ -17,11 +17,11 @@ class DashboardResource extends BaseJsonResource
             'active_orders' => $this['active_orders']->map(function ($order) use ($currentUser, $viewerId) {
                 // الیت یارِ سفارش: اگر خریدار خودش «الیت یار» (type=expert) باشد، خودِ اوست؛
                 // وگرنه الیت یارِ نام‌برده‌شده = beneficiary.
-                $placerIsConsultant = optional($order->placer?->type)->slug === 'expert';
-                $consultantUser = $placerIsConsultant
+                $placerIsEliteYar = optional($order->placer?->type)->slug === 'expert';
+                $eliteYarUser = $placerIsEliteYar
                     ? $order->placer
                     : ($order->beneficiary_user_id ? $order->beneficiary : null);
-                $consultantIsSelf = $consultantUser && $consultantUser->id === $viewerId;
+                $eliteYarIsSelf = $eliteYarUser && $eliteYarUser->id === $viewerId;
 
                 return [
                     'id' => $order->id,
@@ -29,7 +29,7 @@ class DashboardResource extends BaseJsonResource
                     'status_text' => __('orders.status.'.$order->status),
                     'progress' => $order->dashboard_progress,
                     // تایم‌لاین الیت یار — فقط وقتی کاربر جاری همان الیت یارِ این سفارش است
-                    'elite_yar_progress' => $consultantIsSelf
+                    'elite_yar_progress' => $eliteYarIsSelf
                         ? $order->elite_yar_progress
                         : null,
                     // تایم‌لاین سوپلایر — فقط برای کاربران با نقش سوپلایر
@@ -46,10 +46,10 @@ class DashboardResource extends BaseJsonResource
                         'full_name' => $order->beneficiary?->full_name,
                         'is_self' => $order->beneficiary_user_id === $viewerId,
                     ] : null,
-                    'elite_yar' => $consultantUser ? [
-                        'id' => $consultantUser->id,
-                        'full_name' => $consultantUser->full_name,
-                        'is_self' => $consultantIsSelf,
+                    'elite_yar' => $eliteYarUser ? [
+                        'id' => $eliteYarUser->id,
+                        'full_name' => $eliteYarUser->full_name,
+                        'is_self' => $eliteYarIsSelf,
                     ] : null,
                     'created_at_p' => $order->created_at_p,
                 ];

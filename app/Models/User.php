@@ -35,9 +35,9 @@ class User extends Authenticatable
     public const BADGE_ID = 'badge_id';
 
     /**
-     * Invoice amount (Rials) the consultant paid when purchasing their badge.
+     * Invoice amount (Rials) the eliteYar paid when purchasing their badge.
      * Basis for the lifetime commission cap (cap_multiplier × this amount).
-     * NULL = no paid badge on record → the consultant is uncapped.
+     * NULL = no paid badge on record → the eliteYar is uncapped.
      */
     public const BADGE_PURCHASE_AMOUNT = 'badge_purchase_amount';
 

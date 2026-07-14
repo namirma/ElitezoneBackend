@@ -12,12 +12,12 @@ use App\Models\User;
 /**
  * Executes all three VAT-routing legs that follow every weighbridge result.
  *
- * Three legs — consultant, supplier, saze — must run in every weighbridge outcome
+ * Three legs — eliteYar, supplier, saze — must run in every weighbridge outcome
  * (equal or deficit), so this service is called unconditionally by the orchestrator
  * after the deficit leg (if any) has been resolved.
  *
  * Must be called inside an active DB::transaction with a locked Order.
- * Returns the actual consultantGross so the orchestrator can snapshot it on the order.
+ * Returns the actual eliteYarGross so the orchestrator can snapshot it on the order.
  */
 class WeighbridgeVatRouter
 {
@@ -30,25 +30,25 @@ class WeighbridgeVatRouter
     {
         $supplierId = (int) $order->items->first()->supplier_user_id;
 
-        $consultantGross = $this->routeConsultant($order, $result);
+        $eliteYarGross = $this->routeEliteYar($order, $result);
         $this->routeSupplierVat($order, $result, $supplierId);
-        $this->routeSazeVat($order, $result, $consultantGross);
+        $this->routeSazeVat($order, $result, $eliteYarGross);
 
-        return $consultantGross;
+        return $eliteYarGross;
     }
 
     /**
-     * Routes the consultant's net commission and its VAT into their respective holds.
-     * Returns the gross amount allocated (after lifetime cap), or 0.0 if no consultant.
+     * Routes the eliteYar's net commission and its VAT into their respective holds.
+     * Returns the gross amount allocated (after lifetime cap), or 0.0 if no eliteYar.
      */
-    private function routeConsultant(
+    private function routeEliteYar(
         Order $order,
         WeighbridgeReconcileResult $result,
     ): float {
-        $consultantUserId = (int) ($order->{Order::CONSULTANT_USER_ID} ?? 0);
+        $eliteYarUserId = (int) ($order->{Order::CONSULTANT_USER_ID} ?? 0);
         $buyerId = (int) $order->placer_user_id;
 
-        if (! $consultantUserId || $consultantUserId === $buyerId) {
+        if (! $eliteYarUserId || $eliteYarUserId === $buyerId) {
             return 0.0;
         }
 
@@ -67,8 +67,8 @@ class WeighbridgeVatRouter
             return 0.0;
         }
 
-        $candidateGross = $this->applyConsultantLifetimeCap(
-            $consultantUserId,
+        $candidateGross = $this->applyEliteYarLifetimeCap(
+            $eliteYarUserId,
             (int) $order->id,
             $candidateGross
         );
@@ -80,7 +80,7 @@ class WeighbridgeVatRouter
         ['net' => $net, 'vat' => $vat] = $this->calculator->extractVat($candidateGross, $result->vat);
 
         $this->walletEngine->debitSystem($order, $candidateGross, FinancialCodes::STATUS_AVAILABLE, "تخصیص سهم الیت یار سفارش {$order->order_number}");
-        $this->walletEngine->creditConsultant($order, $net, FinancialCodes::STATUS_HOLD, $consultantUserId, 'کمیسیون امانی الیت یار');
+        $this->walletEngine->creditEliteYar($order, $net, FinancialCodes::STATUS_HOLD, $eliteYarUserId, 'کمیسیون امانی الیت یار');
         $this->walletEngine->creditVat($order, $vat, FinancialCodes::STATUS_HOLD, 'مالیات کمیسیون الیت یار امانی');
 
         return $candidateGross;
@@ -106,15 +106,15 @@ class WeighbridgeVatRouter
 
     /**
      * Deducts the platform's (Saze) escrow VAT from WALLET_SAZE and holds it in WALLET_VAT.
-     * sazeGross = commissionPool − consultantGross.
+     * sazeGross = commissionPool − eliteYarGross.
      * (Doc P — RecordSystemMoadianInvoiceAction releases this hold later.)
      */
     private function routeSazeVat(
         Order $order,
         WeighbridgeReconcileResult $result,
-        float $consultantGross,
+        float $eliteYarGross,
     ): void {
-        $sazeGross = ($result->newPOO - $result->newPTS) - $consultantGross;
+        $sazeGross = ($result->newPOO - $result->newPTS) - $eliteYarGross;
         $sazeVat = $this->calculator->extractVat($sazeGross, $result->vat)['vat'];
         if ($sazeVat <= 0.0) {
             return;
@@ -125,28 +125,28 @@ class WeighbridgeVatRouter
     }
 
     /**
-     * Cap the consultant payout to their remaining lifetime headroom.
+     * Cap the eliteYar payout to their remaining lifetime headroom.
      *
      * Spec ("پروسه خرید"): the total lifetime commission paid to a gold/silver/bronze
-     * consultant may not exceed `cap_multiplier × badge-purchase invoice`. We sum the
-     * gross already routed to this consultant on prior settled orders and clamp the
+     * eliteYar may not exceed `cap_multiplier × badge-purchase invoice`. We sum the
+     * gross already routed to this eliteYar on prior settled orders and clamp the
      * current allocation to whatever ceiling headroom remains (never below zero).
      *
-     * A consultant with no recorded badge-purchase amount (NULL) is uncapped — see
-     * consultantLifetimeCeiling().
+     * A eliteYar with no recorded badge-purchase amount (NULL) is uncapped — see
+     * eliteYarLifetimeCeiling().
      */
-    private function applyConsultantLifetimeCap(
-        int $consultantUserId,
+    private function applyEliteYarLifetimeCap(
+        int $eliteYarUserId,
         int $currentOrderId,
         float $candidateGross,
     ): float {
-        $ceiling = $this->consultantLifetimeCeiling($consultantUserId);
+        $ceiling = $this->eliteYarLifetimeCeiling($eliteYarUserId);
         if ($ceiling === null) {
             return $candidateGross;
         }
 
         $alreadyPaid = (float) Order::query()
-            ->where(Order::CONSULTANT_USER_ID, $consultantUserId)
+            ->where(Order::CONSULTANT_USER_ID, $eliteYarUserId)
             ->whereNotNull(Order::WEIGHING_COMPLETED_AT)
             ->where(Order::ID, '!=', $currentOrderId)
             ->sum(Order::PAYMENT_TO_CONSULTANT);
@@ -155,18 +155,18 @@ class WeighbridgeVatRouter
     }
 
     /**
-     * Returns the lifetime commission ceiling for a consultant, or null when uncapped.
+     * Returns the lifetime commission ceiling for a eliteYar, or null when uncapped.
      *
      * ceiling = config('financial.consultant_lifetime_cap_multiplier') × the invoice the
-     * consultant paid when purchasing their badge (users.badge_purchase_amount). When that
-     * amount is NULL or non-positive (e.g. pioneer/normal consultants who never bought a
-     * paid badge) there is no cap and we return null so applyConsultantLifetimeCap() leaves
+     * eliteYar paid when purchasing their badge (users.badge_purchase_amount). When that
+     * amount is NULL or non-positive (e.g. pioneer/normal eliteYars who never bought a
+     * paid badge) there is no cap and we return null so applyEliteYarLifetimeCap() leaves
      * the allocation untouched.
      */
-    private function consultantLifetimeCeiling(int $consultantUserId): ?float
+    private function eliteYarLifetimeCeiling(int $eliteYarUserId): ?float
     {
         $badgePurchaseAmount = User::query()
-            ->whereKey($consultantUserId)
+            ->whereKey($eliteYarUserId)
             ->value(User::BADGE_PURCHASE_AMOUNT);
 
         if ($badgePurchaseAmount === null || (float) $badgePurchaseAmount <= 0.0) {

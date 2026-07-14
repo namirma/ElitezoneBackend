@@ -215,7 +215,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::controller(OrderActionController::class)->group(function () {
                 Route::post('/{order}/cancel', 'cancel')->whereNumber('order');
                 Route::post('/{order}/finalize-invoice', 'finalizeInvoice')->whereNumber('order');
-                // Doc Q: consultant submits Moadian invoice → releases commission hold
+                // Doc Q: eliteYar submits Moadian invoice → releases commission hold
                 Route::post('/{order}/elite-yar-moadian-invoice', 'submitEliteYarMoadianInvoice')->whereNumber('order');
             });
 
@@ -301,12 +301,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::get('/surveys', 'surveys');
         });
 
-        // Consultants ↔ Employers
+        // EliteYars ↔ Employers
         Route::prefix('elite-yars')->controller(EliteYarRelationController::class)->group(function () {
             Route::middleware('role.employer')->group(function () {
                 Route::get('/', 'listMyEliteYars')->middleware('track:relations');
                 Route::post('/invite', 'inviteEliteYar');
-                Route::delete('/{consultant}', 'removeEliteYar');
+                Route::delete('/{eliteYar}', 'removeEliteYar');
             });
             Route::middleware('role.expert')->group(function () {
                 Route::get('/employers', 'listMyEmployers');

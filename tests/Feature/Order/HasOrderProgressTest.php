@@ -50,7 +50,7 @@ class HasOrderProgressTest extends TestCase
     }
 
     // =========================================================================
-    //  Consultant Progress
+    //  EliteYar Progress
     // =========================================================================
 
     /** مرحله ۱ باید current باشد وقتی status = PROCESSING و فیلدهای مودیان null است */
@@ -137,7 +137,7 @@ class HasOrderProgressTest extends TestCase
 
         // مرحله ۲: حق مشاوره منظور شده ولی Hold است → current (منتظر Doc Q)
         $this->assertSame('current', $progress['steps'][1]['state'],
-            'Step 2 must be current: commission is in hold, waiting for consultant to submit Doc Q');
+            'Step 2 must be current: commission is in hold, waiting for eliteYar to submit Doc Q');
 
         // مراحل ۳ و ۴ هنوز inactive
         $this->assertSame('inactive', $progress['steps'][2]['state'],

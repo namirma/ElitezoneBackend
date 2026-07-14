@@ -25,7 +25,7 @@ return [
     'toggle_successfully' => 'وضعیت محصول در علاقه‌مندی‌ها با موفقیت تغییر کرد.',
     'invalid_verification_token' => 'توکن تایید نامعتبر است یا قبلا استفاده شده است.',
     'model_not_found' => 'درخواستی یافت نشد.',
-    'consultantInvitationSubject' => 'درخواست همکاری جدید',
+    'eliteYarInvitationSubject' => 'درخواست همکاری جدید',
     'system_busy_try_again' => 'سیستم در حال پردازش درخواست دیگری است. لطفاً لحظاتی دیگر مجدداً تلاش کنید.',
     'too_many_requests' => 'تعداد درخواست‌های شما بیش از حد مجاز است. لطفاً لحظاتی صبر کنید و دوباره تلاش کنید.',
     'operation_successful' => 'عملیات با موفقیت انجام شد.',

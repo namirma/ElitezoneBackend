@@ -11,7 +11,7 @@ use App\Models\Order;
  * Pure recalculation service for post-weighbridge settlement.
  *
  * No DB writes, no wallet ops, no side effects. Given an Order (with loaded
- * items + consultant.badge relations) and the scale's actual weight, produces
+ * items + eliteYar.badge relations) and the scale's actual weight, produces
  * a WeighbridgeReconcileResult that every downstream step can read from.
  */
 class WeighbridgeReconciler

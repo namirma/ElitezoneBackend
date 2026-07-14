@@ -28,9 +28,9 @@ class PricingRoleResolver
             return 'engineer_with_consultant';
         }
         if ($isEmployer) {
-            $hasConsultant = (bool) optional($user->employer)->has_consultant;
+            $hasEliteYar = (bool) optional($user->employer)->has_consultant;
 
-            return $hasConsultant ? 'engineer_with_consultant' : 'employer_without_consultant';
+            return $hasEliteYar ? 'engineer_with_consultant' : 'employer_without_consultant';
         }
 
         return 'employer_without_consultant';

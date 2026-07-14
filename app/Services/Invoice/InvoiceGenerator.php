@@ -17,14 +17,14 @@ use Illuminate\Support\Facades\Log;
  *  - InvoicePdfRenderer      : رندر PDF و ذخیره روی disk
  *
  * Public API — scenario methods (save mode, void):
- *   generateDirectPurchaseDocs()        — Docs A, B, C (+ D if consultant)
+ *   generateDirectPurchaseDocs()        — Docs A, B, C (+ D if eliteYar)
  *   generateReservationDocs()           — Docs E, F
  *   generateReservationCompletionDocs() — Docs G, H, C
  *   generateWeighbridgeDocs()           — Doc I (+ LO/LS if deficit)
  *   generateCancellationDocs()          — Doc j (+ i if refund happened)
  *   generateSupplierMoadianInvoice()    — Doc O
  *   generateSystemMoadianInvoice()      — Doc P
- *   generateConsultantMoadianInvoice()  — Doc Q
+ *   generateEliteYarMoadianInvoice()  — Doc Q
  *   download()                          — any single doc as a streamed PDF
  */
 class InvoiceGenerator
@@ -39,13 +39,13 @@ class InvoiceGenerator
     // Scenario entry-points (callers express intent; routing logic stays here)
     // ─────────────────────────────────────────────────────────────────────────
 
-    /** Docs A + B + C (direct purchase). Adds Doc D when $withConsultant. */
-    public function generateDirectPurchaseDocs(Order $order, bool $withConsultant = false): void
+    /** Docs A + B + C (direct purchase). Adds Doc D when $withEliteYar. */
+    public function generateDirectPurchaseDocs(Order $order, bool $withEliteYar = false): void
     {
         $this->generate($order, FinancialCodes::DOC_RECEIPT_OWNER);
         $this->generate($order, FinancialCodes::DOC_REPORT_SUPPLIER);
         $this->generate($order, FinancialCodes::DOC_LOADING_ORDER);
-        if ($withConsultant) {
+        if ($withEliteYar) {
             $this->generate($order, FinancialCodes::DOC_ELITE_YAR_REPORT);
         }
     }
@@ -96,8 +96,8 @@ class InvoiceGenerator
         $this->generate($order, FinancialCodes::DOC_TAX_INVOICE_BUYER);
     }
 
-    /** Doc Q — consultant Moadian invoice. */
-    public function generateConsultantMoadianInvoice(Order $order): void
+    /** Doc Q — eliteYar Moadian invoice. */
+    public function generateEliteYarMoadianInvoice(Order $order): void
     {
         $this->generate($order, FinancialCodes::DOC_TAX_INVOICE_ELITE_YAR);
     }

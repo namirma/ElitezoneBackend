@@ -51,9 +51,9 @@ class SavePurchaseParametersRequest extends FormRequest
             $valuesByCode = $valuesCollection->keyBy(fn ($value) => $value->group->code);
 
             $customerType = $valuesByCode['customer_type'] ?? null;
-            $consultantStatus = $valuesByCode['consultant_status'] ?? null;
+            $eliteYarStatus = $valuesByCode['consultant_status'] ?? null;
 
-            if (! $customerType || ! $consultantStatus) {
+            if (! $customerType || ! $eliteYarStatus) {
                 $v->errors()->add(
                     'parameters',
                     'لطفاً هم "نوع مشتری" و هم "وضعیت الیت یار" را انتخاب کنید.'
@@ -63,12 +63,12 @@ class SavePurchaseParametersRequest extends FormRequest
             }
 
             $customerTypeCode = $customerType->code;
-            $consultantStatusCode = $consultantStatus->code;
+            $eliteYarStatusCode = $eliteYarStatus->code;
 
             $isEngineerOrContractor = in_array($customerTypeCode, ['engineer', 'contractor']);
-            $isWithoutConsultant = $consultantStatusCode === 'without_consultant';
+            $isWithoutEliteYar = $eliteYarStatusCode === 'without_consultant';
 
-            if ($isEngineerOrContractor && $isWithoutConsultant) {
+            if ($isEngineerOrContractor && $isWithoutEliteYar) {
                 $v->errors()->add(
                     'parameters',
                     'مهندسان و پیمانکاران حتماً باید گزینه "دارای الیت یار" را انتخاب کنند.'

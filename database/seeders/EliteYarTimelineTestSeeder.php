@@ -48,7 +48,7 @@ class EliteYarTimelineTestSeeder extends Seeder
             ['slug' => 'expert', 'name' => 'الیت یار', 'icon' => 'star']
         );
 
-        $consultant = User::firstOrCreate(
+        $eliteYar = User::firstOrCreate(
             [User::MOBILE => self::CONSULTANT_MOBILE],
             [
                 User::MOBILE        => self::CONSULTANT_MOBILE,
@@ -60,9 +60,9 @@ class EliteYarTimelineTestSeeder extends Seeder
         );
 
         UserProfile::firstOrCreate(
-            ['user_id' => $consultant->id],
+            ['user_id' => $eliteYar->id],
             [
-                'user_id'       => $consultant->id,
+                'user_id'       => $eliteYar->id,
                 'name'          => 'سارا',
                 'family'        => 'الیت یارزاده',
                 'national_code' => self::CONSULTANT_NC,
@@ -70,9 +70,9 @@ class EliteYarTimelineTestSeeder extends Seeder
         );
 
         Wallet::firstOrCreate(
-            [Wallet::USER_ID => $consultant->id],
+            [Wallet::USER_ID => $eliteYar->id],
             [
-                Wallet::USER_ID      => $consultant->id,
+                Wallet::USER_ID      => $eliteYar->id,
                 Wallet::BALANCE      => 0,
                 Wallet::BALANCE_HOLD => 0,
             ]
@@ -95,7 +95,7 @@ class EliteYarTimelineTestSeeder extends Seeder
             [Order::ORDER_NUMBER => self::ORDER_NUMBER],
             [
                 Order::PLACER_USER_ID      => $employer->id,
-                Order::BENEFICIARY_USER_ID => $consultant->id,
+                Order::BENEFICIARY_USER_ID => $eliteYar->id,
                 Order::ORDER_NUMBER        => self::ORDER_NUMBER,
                 Order::STATUS              => Order::STATUS_WEIGHBRIDGE_DONE,
                 Order::PAYMENT_STATUS      => Order::PAYMENT_PAID,
@@ -141,7 +141,7 @@ class EliteYarTimelineTestSeeder extends Seeder
         $this->command->table(
             ['نقش', 'موبایل', 'رمز', 'ID'],
             [
-                ['الیت یار', self::CONSULTANT_MOBILE, self::PASSWORD, $consultant->id],
+                ['الیت یار', self::CONSULTANT_MOBILE, self::PASSWORD, $eliteYar->id],
             ]
         );
         $this->command->info("  📦  سفارش تست: " . self::ORDER_NUMBER . " (ID: {$order->id})");

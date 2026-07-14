@@ -23,11 +23,11 @@ class PriceFilterCategoryDetectorService
             ->keyBy(fn ($value) => $value->group->code);
 
         $customerTypeValue    = $parameterValues['customer_type']      ?? null;
-        $consultantStatusValue = $parameterValues['consultant_status'] ?? null;
+        $eliteYarStatusValue = $parameterValues['consultant_status'] ?? null;
         $purchasePurposeValue  = $parameterValues['purchase_purpose']  ?? null;
 
-        if ($customerTypeValue && $consultantStatusValue) {
-            if ($consultantStatusValue->code === 'with_consultant') {
+        if ($customerTypeValue && $eliteYarStatusValue) {
+            if ($eliteYarStatusValue->code === 'with_consultant') {
                 $prefix   = strstr($customerTypeValue->code, '_', true) ?: $customerTypeValue->code;
                 $category = PriceFilterCategory::where(PriceFilterCategory::CODE, "{$prefix}_with_consultant")->first();
                 if ($category) {
@@ -51,7 +51,7 @@ class PriceFilterCategoryDetectorService
             }
         }
 
-        foreach ([$consultantStatusValue, $customerTypeValue, $purchasePurposeValue] as $value) {
+        foreach ([$eliteYarStatusValue, $customerTypeValue, $purchasePurposeValue] as $value) {
             if ($value && $value->priceFilterCategory) {
                 return $value->priceFilterCategory;
             }

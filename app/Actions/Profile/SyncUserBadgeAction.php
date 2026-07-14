@@ -26,7 +26,7 @@ use Illuminate\Support\Collection;
  * Persistence (deliberately conservative):
  *  - `users.badge_id` ← ONLY the commission tiers (gold/silver/bronze). A null badge_id
  *    already maps to pioneer/default rates in SettlementCalculator. Never cleared on a null
- *    result (a transient saze90 outage must not silently downgrade a consultant).
+ *    result (a transient saze90 outage must not silently downgrade a eliteYar).
  *  - `engineer_profiles.is_saze90_user` ← backend-determined (read-only for the frontend).
  *  - `badge_user` pivot ← the managed badge set (tier|saze90 + pioneer) for "my badges".
  */

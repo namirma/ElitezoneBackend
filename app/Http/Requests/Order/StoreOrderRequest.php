@@ -33,10 +33,10 @@ class StoreOrderRequest extends FormRequest
     public function rules(): array
     {
         $user = Auth::user();
-        $isConsultant = $user?->hasRole('engineer') || $user?->hasRole('contractor');
+        $isEliteYar = $user?->hasRole('engineer') || $user?->hasRole('contractor');
 
-        if ($isConsultant) {
-            return $this->consultantRules();
+        if ($isEliteYar) {
+            return $this->eliteYarRules();
         }
 
         return $this->employerRules();
@@ -77,13 +77,13 @@ class StoreOrderRequest extends FormRequest
                     }
 
                     // بررسی ۲: آیا الیت یار گواهی تأیید مدارک دارد (is_verified = true)؟
-                    $consultant = User::find($value);
-                    if (! $consultant) {
+                    $eliteYar = User::find($value);
+                    if (! $eliteYar) {
                         $fail(__('orders.store_consultant_not_found'));
                         return;
                     }
 
-                    $isVerified = $this->isEliteYarVerified($consultant);
+                    $isVerified = $this->isEliteYarVerified($eliteYar);
                     if (! $isVerified) {
                         $fail(__('orders.store_consultant_not_verified'));
                     }
@@ -102,7 +102,7 @@ class StoreOrderRequest extends FormRequest
 
     // ── مسیر الیت یار (engineer / contractor) ────────────────────────────────────
 
-    private function consultantRules(): array
+    private function eliteYarRules(): array
     {
         return [
             // ممنوع: الیت یار consultant_user_id نمی‌فرستد — Action آن را = self ست می‌کند
@@ -116,9 +116,9 @@ class StoreOrderRequest extends FormRequest
                 'integer',
                 'exists:users,id',
                 function (string $attribute, $value, Closure $fail): void {
-                    $consultant = Auth::user();
+                    $eliteYar = Auth::user();
 
-                    $isApprovedEmployer = $consultant
+                    $isApprovedEmployer = $eliteYar
                         ->associatedEmployers()
                         ->where('users.id', $value)
                         ->wherePivot(EmployerEliteYar::STATUS, EmployerEliteYar::STATUS_APPROVED)
@@ -145,14 +145,14 @@ class StoreOrderRequest extends FormRequest
     /**
      * بررسی تأیید مدارک الیت یار (engineer یا contractor profile).
      */
-    private function isEliteYarVerified(User $consultant): bool
+    private function isEliteYarVerified(User $eliteYar): bool
     {
-        $engineerProfile = EngineerProfile::where(EngineerProfile::USER_ID, $consultant->id)->first();
+        $engineerProfile = EngineerProfile::where(EngineerProfile::USER_ID, $eliteYar->id)->first();
         if ($engineerProfile) {
             return (bool) $engineerProfile->{EngineerProfile::IS_VERIFIED};
         }
 
-        $contractorProfile = ContractorProfile::where(ContractorProfile::USER_ID, $consultant->id)->first();
+        $contractorProfile = ContractorProfile::where(ContractorProfile::USER_ID, $eliteYar->id)->first();
         if ($contractorProfile) {
             return (bool) $contractorProfile->{ContractorProfile::IS_VERIFIED};
         }

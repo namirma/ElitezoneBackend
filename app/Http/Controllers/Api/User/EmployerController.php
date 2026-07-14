@@ -33,8 +33,8 @@ class EmployerController extends Controller
     {
         $user = Auth::user();
         // Completing the employer profile must grant the `employer` Laratrust role,
-        // otherwise the role-gated endpoints (GET /profile/consultants, /invite,
-        // DELETE /consultants/{id}) return 403. setUserType already attaches it via
+        // otherwise the role-gated endpoints (GET /profile/eliteYars, /invite,
+        // DELETE /eliteYars/{id}) return 403. setUserType already attaches it via
         // SyncUserRolesAction; this is the second safety net for users whose persona
         // was set without the role (legacy/edge data). Mirrors EngineerController:
         // only attach when the user is actually of the employer type.

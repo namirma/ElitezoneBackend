@@ -34,7 +34,7 @@ return [
     'finalize_invoice_success' => 'فاکتور نهایی با موفقیت ثبت شد.',
     'fee_hold_description' => 'سهم رزرو شده برای سفارش :order_number',
 
-    // ── Doc Q: Consultant Moadian invoice ──────────────────────────────────
+    // ── Doc Q: EliteYar Moadian invoice ──────────────────────────────────
     'consultant_moadian_submitted' => 'فاکتور مودیان الیت یار ثبت شد و کمیسیون آزاد شد.',
     'consultant_moadian_already_done' => 'فاکتور مودیان الیت یار این سفارش قبلاً ثبت شده است.',
 

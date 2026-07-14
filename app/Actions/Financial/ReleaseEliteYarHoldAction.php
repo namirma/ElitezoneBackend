@@ -13,16 +13,16 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Release the technical consultant's commission hold after they submit their
+ * Release the technical eliteYar's commission hold after they submit their
  * Moadian (taxpayer-system) invoice — Doc Q in the purchase-process design.
  *
- * At weighbridge time (ProcessWeighbridgeResultAction), the consultant's
+ * At weighbridge time (ProcessWeighbridgeResultAction), the eliteYar's
  * payment is split and parked as:
- *   - consultantNet  → WCT balance_hold  (commission net of VAT)
- *   - consultantVat  → WVAT balance_hold (VAT portion, pending Moadian)
+ *   - eliteYarNet  → WCT balance_hold  (commission net of VAT)
+ *   - eliteYarVat  → WVAT balance_hold (VAT portion, pending Moadian)
  *
- * When the consultant issues Doc Q, both holds are released to available:
- *   WCT:  balance_hold(-) → balance(+)   (consultant can now withdraw)
+ * When the eliteYar issues Doc Q, both holds are released to available:
+ *   WCT:  balance_hold(-) → balance(+)   (eliteYar can now withdraw)
  *   WVAT: balance_hold(-) → balance(+)   (VAT recognised as due)
  *
  * The moadian_ref is recorded on the order so the release is idempotent:
@@ -37,7 +37,7 @@ class ReleaseEliteYarHoldAction
     ) {}
 
     /**
-     * @param  Order  $order  The order whose consultant hold should be released.
+     * @param  Order  $order  The order whose eliteYar hold should be released.
      * @param  string  $moadianRef  Doc-Q reference from the Moadian system.
      */
     public function execute(Order $order, string $moadianRef): void
@@ -54,10 +54,10 @@ class ReleaseEliteYarHoldAction
             throw new \RuntimeException(__('orders.errors.weighbridge_not_completed'));
         }
 
-        $consultantGross = (float) $order->{Order::PAYMENT_TO_CONSULTANT};
-        if ($consultantGross <= 0) {
-            // No consultant commission was held for this order (no consultant)
-            Log::channel('financial')->info("ReleaseEliteYarHoldAction: order {$order->id} has no consultant commission — only recording ref.");
+        $eliteYarGross = (float) $order->{Order::PAYMENT_TO_CONSULTANT};
+        if ($eliteYarGross <= 0) {
+            // No eliteYar commission was held for this order (no eliteYar)
+            Log::channel('financial')->info("ReleaseEliteYarHoldAction: order {$order->id} has no eliteYar commission — only recording ref.");
             $order->forceFill([
                 Order::CONSULTANT_MOADIAN_REF      => $moadianRef,
                 Order::CONSULTANT_HOLD_RELEASED_AT => now(),
@@ -66,8 +66,8 @@ class ReleaseEliteYarHoldAction
             return;
         }
 
-        $consultantUserId = $order->{Order::CONSULTANT_USER_ID};
-        if (! $consultantUserId) {
+        $eliteYarUserId = $order->{Order::CONSULTANT_USER_ID};
+        if (! $eliteYarUserId) {
             throw new \RuntimeException(__('orders.errors.no_consultant'));
         }
 
@@ -75,12 +75,12 @@ class ReleaseEliteYarHoldAction
         // Must use the SAME bcmath split as ProcessWeighbridgeResultAction held, so
         // the released net+VAT exactly equals what was parked (no balance_hold dust).
         $vatRate = (float) ($order->{Order::VAT_RATE} ?? 10.0);
-        ['net' => $consultantNet, 'vat' => $consultantVat] = $this->calculator->extractVat($consultantGross, $vatRate);
+        ['net' => $eliteYarNet, 'vat' => $eliteYarVat] = $this->calculator->extractVat($eliteYarGross, $vatRate);
 
         DB::transaction(function () use (
             $order, $moadianRef,
-            $consultantNet, $consultantVat,
-            $consultantUserId
+            $eliteYarNet, $eliteYarVat,
+            $eliteYarUserId
         ) {
             $locked = Order::where('id', $order->id)->lockForUpdate()->first();
 
@@ -94,22 +94,22 @@ class ReleaseEliteYarHoldAction
             }
 
             // WCT: release net from hold → available
-            $this->walletEngine->debitConsultant(
-                $locked, $consultantNet, FinancialCodes::STATUS_HOLD, $consultantUserId,
+            $this->walletEngine->debitEliteYar(
+                $locked, $eliteYarNet, FinancialCodes::STATUS_HOLD, $eliteYarUserId,
                 "آزادسازی کمیسیون الیت یار (هولد) بابت سفارش {$locked->order_number}"
             );
-            $this->walletEngine->creditConsultant(
-                $locked, $consultantNet, FinancialCodes::STATUS_AVAILABLE, $consultantUserId,
+            $this->walletEngine->creditEliteYar(
+                $locked, $eliteYarNet, FinancialCodes::STATUS_AVAILABLE, $eliteYarUserId,
                 "کمیسیون الیت یار آزاد شد — فاکتور مودیان: {$moadianRef}"
             );
 
-            // WVAT: release consultant VAT from hold → available
+            // WVAT: release eliteYar VAT from hold → available
             $this->walletEngine->debitVat(
-                $locked, $consultantVat, FinancialCodes::STATUS_HOLD,
+                $locked, $eliteYarVat, FinancialCodes::STATUS_HOLD,
                 "آزادسازی مالیات الیت یار (هولد) بابت سفارش {$locked->order_number}"
             );
             $this->walletEngine->creditVat(
-                $locked, $consultantVat, FinancialCodes::STATUS_AVAILABLE,
+                $locked, $eliteYarVat, FinancialCodes::STATUS_AVAILABLE,
                 "مالیات الیت یار شناسایی شد — فاکتور مودیان: {$moadianRef}"
             );
 
@@ -119,9 +119,9 @@ class ReleaseEliteYarHoldAction
             ])->save();
 
             // Doc Q — فاکتور مودیان الیت یار
-            $this->invoiceGenerator->generateConsultantMoadianInvoice($locked);
+            $this->invoiceGenerator->generateEliteYarMoadianInvoice($locked);
 
-            Log::channel('financial')->info("Consultant hold released for order {$locked->id}. Ref: {$moadianRef}. Net: {$consultantNet}, VAT: {$consultantVat}");
+            Log::channel('financial')->info("EliteYar hold released for order {$locked->id}. Ref: {$moadianRef}. Net: {$eliteYarNet}, VAT: {$eliteYarVat}");
         }, 3);
     }
 }

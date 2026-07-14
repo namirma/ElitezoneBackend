@@ -76,7 +76,7 @@ class ProcessWeighbridgeResultAction
             // Doc I (always) + LO/LS (only when deficit)
             $this->invoiceGenerator->generateWeighbridgeDocs($locked, $isDeficit);
 
-            $consultantGross = $this->vatRouter->route($locked, $result);
+            $eliteYarGross = $this->vatRouter->route($locked, $result);
 
             $locked->forceFill([
                 Order::WEIGHT_AFTER_SCALE    => $actualWeight,
@@ -84,7 +84,7 @@ class ProcessWeighbridgeResultAction
                 Order::STATUS                => Order::STATUS_SHIPPED,
                 Order::PAYMENT_OF_OWNER      => $result->newPOO,
                 Order::PAYMENT_TO_SUPPLIER   => $result->newPTS,
-                Order::PAYMENT_TO_CONSULTANT => $consultantGross,
+                Order::PAYMENT_TO_CONSULTANT => $eliteYarGross,
                 Order::FINAL_AMOUNT          => $result->newPOO,
             ])->save();
 

@@ -88,7 +88,7 @@ class PlaceOrderFinalAmountTest extends TestCase
 
         $data = new PlaceOrderData(
             beneficiaryUserId: null,
-            consultantUserId: null,
+            eliteYarUserId: null,
             addressId: $address->id,
             shippingMethodId: $sm->id,
             description: null,

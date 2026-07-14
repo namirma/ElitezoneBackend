@@ -24,18 +24,18 @@ class EliteYarRelationController extends Controller
     public function listMyEliteYars(): JsonResponse
     {
         $employer = Auth::user();
-        $consultants = $employer->technicalEliteYars()
+        $eliteYars = $employer->technicalEliteYars()
             ->with('profile')
             ->get();
 
-        return success(EliteYarRelationResource::collection($consultants), __('elite_yar.list_received'));
+        return success(EliteYarRelationResource::collection($eliteYars), __('elite_yar.list_received'));
     }
 
     public function listMyEmployers(): JsonResponse
     {
-        $consultant = Auth::user();
+        $eliteYar = Auth::user();
 
-        $employers = $consultant->associatedEmployers()
+        $employers = $eliteYar->associatedEmployers()
             ->wherePivotIn(EmployerEliteYar::STATUS, [
                 EmployerEliteYar::STATUS_APPROVED,
                 EmployerEliteYar::STATUS_REJECTED,
@@ -66,8 +66,8 @@ class EliteYarRelationController extends Controller
         $mobile = PhoneNumber::to09($request->validated(User::MOBILE));
 
         // ── خروجی ① : not_registered ────────────────────────────────────────
-        $consultant = User::where(User::MOBILE, $mobile)->first();
-        if (! $consultant) {
+        $eliteYar = User::where(User::MOBILE, $mobile)->first();
+        if (! $eliteYar) {
             return success(
                 ['outcome' => 'not_registered', 'mobile' => $mobile],
                 __('elite_yar.not_registered_mobile')
@@ -75,26 +75,26 @@ class EliteYarRelationController extends Controller
         }
 
         // بررسی نوع کاربر — باید نقش فنی (engineer/contractor/expert) داشته باشد
-        $consultantTypeId = $consultant->{User::TYPE_ID};
+        $eliteYarTypeId = $eliteYar->{User::TYPE_ID};
         $expertTypes = UserType::whereIn(UserType::SLUG, ['engineer', 'contractor', 'expert'])
             ->pluck(UserType::ID);
 
-        if (! $expertTypes->contains($consultantTypeId)) {
+        if (! $expertTypes->contains($eliteYarTypeId)) {
             return error(__('auth.consultant_is_not_expert'), [], 422);
         }
 
-        if ($employer->id === $consultant->id) {
+        if ($employer->id === $eliteYar->id) {
             return error(__('auth.cannot_invite_self'), [], 422);
         }
 
         // ── خروجی ② : registered ولی not_verified ──────────────────────────
-        if (! $this->isEliteYarVerified($consultant)) {
+        if (! $this->isEliteYarVerified($eliteYar)) {
             return error(__('elite_yar.consultant_not_verified'), [], 422);
         }
 
         // ── خروجی ③ : registered + verified → ادامه دعوت ───────────────────
         $existingRelation = $employer->technicalEliteYars()
-            ->where(EmployerEliteYar::CONSULTANT_ID, $consultant->id)
+            ->where(EmployerEliteYar::CONSULTANT_ID, $eliteYar->id)
             ->first();
 
         if ($existingRelation) {
@@ -112,14 +112,14 @@ class EliteYarRelationController extends Controller
                     return error(__('elite_yar.retry_delay', ['hours' => $hoursLeft]), [], 429);
                 }
 
-                $employer->technicalEliteYars()->updateExistingPivot($consultant->id, [
+                $employer->technicalEliteYars()->updateExistingPivot($eliteYar->id, [
                     EmployerEliteYar::STATUS       => EmployerEliteYar::STATUS_PENDING,
                     EmployerEliteYar::REJECT_REASON => null,
                     'updated_at'                     => now(),
                 ]);
             }
         } else {
-            $employer->technicalEliteYars()->attach($consultant->id, [
+            $employer->technicalEliteYars()->attach($eliteYar->id, [
                 EmployerEliteYar::STATUS => EmployerEliteYar::STATUS_PENDING,
             ]);
         }
@@ -129,13 +129,13 @@ class EliteYarRelationController extends Controller
         $smsMessage = __('sms.consultant_invitation', ['employer_name' => $employerName]);
 
         UserNotification::create([
-            UserNotification::USER_ID  => $consultant->id,
+            UserNotification::USER_ID  => $eliteYar->id,
             UserNotification::SENDER_ID => $employer->id,
-            UserNotification::SUBJECT  => __('global.consultantInvitationSubject'),
+            UserNotification::SUBJECT  => __('global.eliteYarInvitationSubject'),
             UserNotification::BODY     => $smsMessage,
         ]);
 
-        SendSmsJob::dispatch($consultant->{User::MOBILE}, $smsMessage);
+        SendSmsJob::dispatch($eliteYar->{User::MOBILE}, $smsMessage);
 
         return success(
             ['outcome' => 'invited'],
@@ -143,11 +143,11 @@ class EliteYarRelationController extends Controller
         );
     }
 
-    public function removeEliteYar(User $consultant): JsonResponse
+    public function removeEliteYar(User $eliteYar): JsonResponse
     {
         $employer = Auth::user();
 
-        if ($employer->technicalEliteYars()->detach($consultant->id)) {
+        if ($employer->technicalEliteYars()->detach($eliteYar->id)) {
             return success([], __('auth.consultant_relation_removed'));
         }
 
@@ -156,8 +156,8 @@ class EliteYarRelationController extends Controller
 
     public function listMyInvitations(): JsonResponse
     {
-        $consultant = Auth::user();
-        $invitations = $consultant->associatedEmployers()
+        $eliteYar = Auth::user();
+        $invitations = $eliteYar->associatedEmployers()
             ->where(EmployerEliteYar::STATUS, EmployerEliteYar::STATUS_PENDING)
             ->with('profile')
             ->get();
@@ -167,14 +167,14 @@ class EliteYarRelationController extends Controller
 
     public function acceptInvitation(User $employer): JsonResponse
     {
-        $consultant = Auth::user();
-        $pivot = $consultant->associatedEmployers()->where(EmployerEliteYar::EMPLOYER_ID, $employer->id)->first();
+        $eliteYar = Auth::user();
+        $pivot = $eliteYar->associatedEmployers()->where(EmployerEliteYar::EMPLOYER_ID, $employer->id)->first();
 
         if (! $pivot || $pivot->pivot->{EmployerEliteYar::STATUS} !== EmployerEliteYar::STATUS_PENDING) {
             return error(__('auth.invitation_not_found'), [], 404);
         }
 
-        $consultant->associatedEmployers()->updateExistingPivot($employer->id, [
+        $eliteYar->associatedEmployers()->updateExistingPivot($employer->id, [
             EmployerEliteYar::STATUS => EmployerEliteYar::STATUS_APPROVED,
         ]);
 
@@ -183,14 +183,14 @@ class EliteYarRelationController extends Controller
 
     public function rejectInvitation(RejectInvitationRequest $request, User $employer): JsonResponse
     {
-        $consultant = Auth::user();
-        $pivot = $consultant->associatedEmployers()->where(EmployerEliteYar::EMPLOYER_ID, $employer->id)->first();
+        $eliteYar = Auth::user();
+        $pivot = $eliteYar->associatedEmployers()->where(EmployerEliteYar::EMPLOYER_ID, $employer->id)->first();
 
         if (! $pivot || $pivot->pivot->{EmployerEliteYar::STATUS} !== EmployerEliteYar::STATUS_PENDING) {
             return error(__('auth.invitation_not_found'), [], 404);
         }
 
-        $consultant->associatedEmployers()->updateExistingPivot($employer->id, [
+        $eliteYar->associatedEmployers()->updateExistingPivot($employer->id, [
             EmployerEliteYar::STATUS => EmployerEliteYar::STATUS_REJECTED,
             EmployerEliteYar::REJECT_REASON => $request->validated('reject_reason'),
         ]);
@@ -208,9 +208,9 @@ class EliteYarRelationController extends Controller
      */
     public function listRegisteredClients(): JsonResponse
     {
-        $consultant = Auth::user();
+        $eliteYar = Auth::user();
 
-        $clients = $consultant->registeredClients()
+        $clients = $eliteYar->registeredClients()
             ->with('profile')
             ->orderByPivot('created_at', 'desc')
             ->get()
@@ -243,14 +243,14 @@ class EliteYarRelationController extends Controller
     /**
      * بررسی تأیید مدارک الیت یار از روی پروفایل مهندس یا پیمانکار.
      */
-    private function isEliteYarVerified(User $consultant): bool
+    private function isEliteYarVerified(User $eliteYar): bool
     {
-        $engineerProfile = EngineerProfile::where(EngineerProfile::USER_ID, $consultant->id)->first();
+        $engineerProfile = EngineerProfile::where(EngineerProfile::USER_ID, $eliteYar->id)->first();
         if ($engineerProfile) {
             return (bool) $engineerProfile->{EngineerProfile::IS_VERIFIED};
         }
 
-        $contractorProfile = ContractorProfile::where(ContractorProfile::USER_ID, $consultant->id)->first();
+        $contractorProfile = ContractorProfile::where(ContractorProfile::USER_ID, $eliteYar->id)->first();
         if ($contractorProfile) {
             return (bool) $contractorProfile->{ContractorProfile::IS_VERIFIED};
         }

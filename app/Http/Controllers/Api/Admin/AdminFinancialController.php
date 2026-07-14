@@ -130,7 +130,7 @@ class AdminFinancialController extends Controller
     /**
      * سفارشاتی که باسکول شده‌اند اما یک یا چند سند مودیان هنوز ثبت نشده
      *
-     * Doc Q (consultant) | Doc O (supplier) | Doc P (system/Saze)
+     * Doc Q (eliteYar) | Doc O (supplier) | Doc P (system/Saze)
      */
     public function pendingMoadianInvoices(): JsonResponse
     {

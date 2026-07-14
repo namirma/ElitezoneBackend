@@ -18,7 +18,7 @@ class OrderActionController extends Controller
 {
     public function __construct(
         private readonly FinalizeInvoiceAction $finalizeAction,
-        private readonly ReleaseEliteYarHoldAction $releaseConsultantHold,
+        private readonly ReleaseEliteYarHoldAction $releaseEliteYarHold,
     ) {}
 
     /**
@@ -33,7 +33,7 @@ class OrderActionController extends Controller
         // - RESERVED / RESERVED_EXTENDED orders cannot be cancelled before expiry
         //   (CancelOrderAction enforces this); the system auto-cancels them on expiry.
         // - PROCESSING and later states are paid/settled and must NOT be unwound by a
-        //   simple refund (supplier/consultant/VAT legs are involved). Those go through
+        //   simple refund (supplier/eliteYar/VAT legs are involved). Those go through
         //   the dedicated return/dispute flow (مرجوعی/داوری), never self-cancel.
         if ($order->status !== Order::STATUS_PENDING) {
             return error(__('orders.cannot_cancel'), [], 400);
@@ -84,7 +84,7 @@ class OrderActionController extends Controller
         }
 
         try {
-            $this->releaseConsultantHold->execute(
+            $this->releaseEliteYarHold->execute(
                 $order,
                 $request->validated('moadian_ref')
             );
