@@ -171,9 +171,9 @@ class AdminUserController extends Controller
      *
      * POST /admin/users/{user}/verify-elite-yar
      */
-    public function verifyEliteYar(User $user): JsonResponse
+    public function verifyEliteYAR(User $user): JsonResponse
     {
-        $profile = $this->resolveEliteYarProfile($user);
+        $profile = $this->resolveEliteYARProfile($user);
 
         if (! $profile) {
             return error(__('admin.users.no_consultant_profile'), [], 422);
@@ -200,9 +200,9 @@ class AdminUserController extends Controller
      *
      * POST /admin/users/{user}/unverify-elite-yar
      */
-    public function unverifyEliteYar(User $user): JsonResponse
+    public function unverifyEliteYAR(User $user): JsonResponse
     {
-        $profile = $this->resolveEliteYarProfile($user);
+        $profile = $this->resolveEliteYARProfile($user);
 
         if (! $profile) {
             return error(__('admin.users.no_consultant_profile'), [], 422);
@@ -228,7 +228,7 @@ class AdminUserController extends Controller
      * پیدا کردن پروفایل الیت یار (مهندس یا پیمانکار) برای یک کاربر.
      * مهندس اولویت دارد؛ اگر نبود پیمانکار را برمی‌گرداند.
      */
-    private function resolveEliteYarProfile(User $user): EngineerProfile|ContractorProfile|null
+    private function resolveEliteYARProfile(User $user): EngineerProfile|ContractorProfile|null
     {
         $engineer = EngineerProfile::where(EngineerProfile::USER_ID, $user->id)->first();
         if ($engineer) {

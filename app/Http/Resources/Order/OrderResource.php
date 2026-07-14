@@ -21,7 +21,7 @@ class OrderResource extends BaseJsonResource
 
         // الیت یارِ سفارش — مستقیماً از consultant_user_id خوانده می‌شود.
         // (قبلاً از placer.type یا beneficiary_user_id استنتاج می‌شد — حالا ستون جداست)
-        $eliteYarUser = $this->{Order::ELITE_YAR_USER_ID} ? $this->eliteYar : null;
+        $eliteYARUser = $this->{Order::ELITE_YAR_USER_ID} ? $this->eliteYAR : null;
 
         $progress = $this->dashboard_progress ?? [];
 
@@ -61,7 +61,7 @@ class OrderResource extends BaseJsonResource
                     default => 'primary',
                 },
                 'progress_data' => $progress,
-                'elite_yar_progress_data' => $eliteYarUser
+                'elite_yar_progress_data' => $eliteYARUser
                     ? $this->elite_yar_progress
                     : null,
                 'supplier_progress_data' => $isSupplier
@@ -117,11 +117,11 @@ class OrderResource extends BaseJsonResource
                 ];
             }, null),
 
-            // --- EliteYar Info (الیت یارِ سفارش — مستقیم از consultant_user_id) ---
-            'elite_yar' => $eliteYarUser ? [
-                'id' => $eliteYarUser->id,
-                'full_name' => $eliteYarUser->full_name,
-                'is_self' => $eliteYarUser->id === $viewerId,
+            // --- EliteYAR Info (الیت یارِ سفارش — مستقیم از consultant_user_id) ---
+            'elite_yar' => $eliteYARUser ? [
+                'id' => $eliteYARUser->id,
+                'full_name' => $eliteYARUser->full_name,
+                'is_self' => $eliteYARUser->id === $viewerId,
             ] : null,
 
             // --- Financial Info ---

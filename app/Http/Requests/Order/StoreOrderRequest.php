@@ -3,7 +3,7 @@
 namespace App\Http\Requests\Order;
 
 use App\DataTransferObjects\Order\PlaceOrderData;
-use App\Models\EmployerEliteYar;
+use App\Models\EmployerEliteYAR;
 use App\Models\EngineerProfile;
 use App\Models\ContractorProfile;
 use App\Models\User;
@@ -33,10 +33,10 @@ class StoreOrderRequest extends FormRequest
     public function rules(): array
     {
         $user = Auth::user();
-        $isEliteYar = $user?->hasRole('engineer') || $user?->hasRole('contractor');
+        $isEliteYAR = $user?->hasRole('engineer') || $user?->hasRole('contractor');
 
-        if ($isEliteYar) {
-            return $this->eliteYarRules();
+        if ($isEliteYAR) {
+            return $this->eliteYARRules();
         }
 
         return $this->employerRules();
@@ -66,9 +66,9 @@ class StoreOrderRequest extends FormRequest
 
                     // بررسی ۱: آیا الیت یار در لیست الیت یارها تأییدشده این کارفرما هست؟
                     $isApproved = $employer
-                        ->technicalEliteYars()
+                        ->technicalEliteYARs()
                         ->where('users.id', $value)
-                        ->wherePivot(EmployerEliteYar::STATUS, EmployerEliteYar::STATUS_APPROVED)
+                        ->wherePivot(EmployerEliteYAR::STATUS, EmployerEliteYAR::STATUS_APPROVED)
                         ->exists();
 
                     if (! $isApproved) {
@@ -77,13 +77,13 @@ class StoreOrderRequest extends FormRequest
                     }
 
                     // بررسی ۲: آیا الیت یار گواهی تأیید مدارک دارد (is_verified = true)؟
-                    $eliteYar = User::find($value);
-                    if (! $eliteYar) {
+                    $eliteYAR = User::find($value);
+                    if (! $eliteYAR) {
                         $fail(__('orders.store_consultant_not_found'));
                         return;
                     }
 
-                    $isVerified = $this->isEliteYarVerified($eliteYar);
+                    $isVerified = $this->isEliteYARVerified($eliteYAR);
                     if (! $isVerified) {
                         $fail(__('orders.store_consultant_not_verified'));
                     }
@@ -102,7 +102,7 @@ class StoreOrderRequest extends FormRequest
 
     // ── مسیر الیت یار (engineer / contractor) ────────────────────────────────────
 
-    private function eliteYarRules(): array
+    private function eliteYARRules(): array
     {
         return [
             // ممنوع: الیت یار consultant_user_id نمی‌فرستد — Action آن را = self ست می‌کند
@@ -116,12 +116,12 @@ class StoreOrderRequest extends FormRequest
                 'integer',
                 'exists:users,id',
                 function (string $attribute, $value, Closure $fail): void {
-                    $eliteYar = Auth::user();
+                    $eliteYAR = Auth::user();
 
-                    $isApprovedEmployer = $eliteYar
+                    $isApprovedEmployer = $eliteYAR
                         ->associatedEmployers()
                         ->where('users.id', $value)
-                        ->wherePivot(EmployerEliteYar::STATUS, EmployerEliteYar::STATUS_APPROVED)
+                        ->wherePivot(EmployerEliteYAR::STATUS, EmployerEliteYAR::STATUS_APPROVED)
                         ->exists();
 
                     if (! $isApprovedEmployer) {
@@ -145,14 +145,14 @@ class StoreOrderRequest extends FormRequest
     /**
      * بررسی تأیید مدارک الیت یار (engineer یا contractor profile).
      */
-    private function isEliteYarVerified(User $eliteYar): bool
+    private function isEliteYARVerified(User $eliteYAR): bool
     {
-        $engineerProfile = EngineerProfile::where(EngineerProfile::USER_ID, $eliteYar->id)->first();
+        $engineerProfile = EngineerProfile::where(EngineerProfile::USER_ID, $eliteYAR->id)->first();
         if ($engineerProfile) {
             return (bool) $engineerProfile->{EngineerProfile::IS_VERIFIED};
         }
 
-        $contractorProfile = ContractorProfile::where(ContractorProfile::USER_ID, $eliteYar->id)->first();
+        $contractorProfile = ContractorProfile::where(ContractorProfile::USER_ID, $eliteYAR->id)->first();
         if ($contractorProfile) {
             return (bool) $contractorProfile->{ContractorProfile::IS_VERIFIED};
         }

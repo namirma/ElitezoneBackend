@@ -4,12 +4,12 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Stage 3 rename: the EliteYar wallet ledger code 'WCT' → 'WEY'.
+ * Stage 3 rename: the EliteYAR wallet ledger code 'WCT' → 'WEY'.
  *
  * The wallet code is persisted only inside the JSON `wallet_transactions.meta`
  * column (a `longtext`, written by WalletTransactionEngine as {"code":"WCT","op":…}).
  * There is no dedicated code column. This backfills the code in already-persisted
- * rows so historical EliteYar-wallet transactions match the new constant value
+ * rows so historical EliteYAR-wallet transactions match the new constant value
  * (FinancialCodes::WALLET_ELITE_YAR). New rows already use 'WEY' post-deploy.
  *
  * REPLACE() only rewrites the exact "code":"WCT" token and leaves the rest of the

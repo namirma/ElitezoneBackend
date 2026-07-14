@@ -9,7 +9,7 @@ use App\Http\Controllers\Api\User\AddressController;
 use App\Http\Controllers\Api\User\BeneficiaryController;
 use App\Http\Controllers\Api\User\CartController;
 use App\Http\Controllers\Api\User\CheckoutController;
-use App\Http\Controllers\Api\User\EliteYarRelationController;
+use App\Http\Controllers\Api\User\EliteYARRelationController;
 use App\Http\Controllers\Api\User\ContractorController;
 use App\Http\Controllers\Api\User\DashboardController;
 use App\Http\Controllers\Api\User\EduixController;
@@ -215,8 +215,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::controller(OrderActionController::class)->group(function () {
                 Route::post('/{order}/cancel', 'cancel')->whereNumber('order');
                 Route::post('/{order}/finalize-invoice', 'finalizeInvoice')->whereNumber('order');
-                // Doc Q: eliteYar submits Moadian invoice → releases commission hold
-                Route::post('/{order}/elite-yar-moadian-invoice', 'submitEliteYarMoadianInvoice')->whereNumber('order');
+                // Doc Q: eliteYAR submits Moadian invoice → releases commission hold
+                Route::post('/{order}/elite-yar-moadian-invoice', 'submitEliteYARMoadianInvoice')->whereNumber('order');
             });
 
             // Invoice downloads
@@ -301,12 +301,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::get('/surveys', 'surveys');
         });
 
-        // EliteYars ↔ Employers
-        Route::prefix('elite-yars')->controller(EliteYarRelationController::class)->group(function () {
+        // EliteYARs ↔ Employers
+        Route::prefix('elite-yars')->controller(EliteYARRelationController::class)->group(function () {
             Route::middleware('role.employer')->group(function () {
-                Route::get('/', 'listMyEliteYars')->middleware('track:relations');
-                Route::post('/invite', 'inviteEliteYar');
-                Route::delete('/{eliteYar}', 'removeEliteYar');
+                Route::get('/', 'listMyEliteYARs')->middleware('track:relations');
+                Route::post('/invite', 'inviteEliteYAR');
+                Route::delete('/{eliteYAR}', 'removeEliteYAR');
             });
             Route::middleware('role.expert')->group(function () {
                 Route::get('/employers', 'listMyEmployers');

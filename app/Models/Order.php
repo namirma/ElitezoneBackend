@@ -312,8 +312,8 @@ class Order extends Model
             'placer.profile',
             'placer.type',
             'beneficiary.profile',
-            'eliteYar.profile',
-            'eliteYar.badge',
+            'eliteYAR.profile',
+            'eliteYAR.badge',
             'address.city',
             'address.province',
             'shipments.originFactory',
@@ -337,7 +337,7 @@ class Order extends Model
     }
 
     /** الیت یار که کمیسیون CO را دریافت می‌کند */
-    public function eliteYar(): BelongsTo
+    public function eliteYAR(): BelongsTo
     {
         return $this->belongsTo(User::class, self::ELITE_YAR_USER_ID);
     }

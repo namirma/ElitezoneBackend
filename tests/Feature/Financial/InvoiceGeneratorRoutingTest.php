@@ -76,23 +76,23 @@ class InvoiceGeneratorRoutingTest extends TestCase
     /** @test */
     public function direct_purchase_without_elite_yar_emits_three_docs(): void
     {
-        $this->generator->generateDirectPurchaseDocs($this->order, withEliteYar: false);
+        $this->generator->generateDirectPurchaseDocs($this->order, withEliteYAR: false);
 
         $codes = $this->issuedCodes();
         $this->assertContains(FinancialCodes::DOC_RECEIPT_OWNER, $codes, 'Doc A missing');
         $this->assertContains(FinancialCodes::DOC_REPORT_SUPPLIER, $codes, 'Doc B missing');
         $this->assertContains(FinancialCodes::DOC_LOADING_ORDER, $codes, 'Doc C missing');
-        $this->assertNotContains(FinancialCodes::DOC_ELITE_YAR_REPORT, $codes, 'Doc D must not appear without eliteYar');
+        $this->assertNotContains(FinancialCodes::DOC_ELITE_YAR_REPORT, $codes, 'Doc D must not appear without eliteYAR');
         $this->assertCount(3, $codes);
     }
 
     /** @test */
     public function direct_purchase_with_elite_yar_emits_four_docs(): void
     {
-        $this->generator->generateDirectPurchaseDocs($this->order, withEliteYar: true);
+        $this->generator->generateDirectPurchaseDocs($this->order, withEliteYAR: true);
 
         $codes = $this->issuedCodes();
-        $this->assertContains(FinancialCodes::DOC_ELITE_YAR_REPORT, $codes, 'Doc D must appear when withEliteYar=true');
+        $this->assertContains(FinancialCodes::DOC_ELITE_YAR_REPORT, $codes, 'Doc D must appear when withEliteYAR=true');
         $this->assertCount(4, $codes);
     }
 
@@ -196,7 +196,7 @@ class InvoiceGeneratorRoutingTest extends TestCase
     /** @test */
     public function consultant_moadian_invoice_emits_doc_q(): void
     {
-        $this->generator->generateEliteYarMoadianInvoice($this->order);
+        $this->generator->generateEliteYARMoadianInvoice($this->order);
 
         $this->assertContains(FinancialCodes::DOC_TAX_INVOICE_ELITE_YAR, $this->issuedCodes());
         $this->assertCount(1, $this->issuedCodes());

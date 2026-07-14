@@ -12,26 +12,26 @@ use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 /**
- * Verifies the eliteYar lifetime commission cap
- * (WeighbridgeVatRouter::eliteYarLifetimeCeiling).
+ * Verifies the eliteYAR lifetime commission cap
+ * (WeighbridgeVatRouter::eliteYARLifetimeCeiling).
  *
  * Spec ("پروسه خرید"): the total lifetime commission paid to a gold/silver/bronze
- * eliteYar may not exceed `cap_multiplier × the invoice they paid for their badge`.
- * A eliteYar with no recorded badge purchase (users.badge_purchase_amount = NULL)
+ * eliteYAR may not exceed `cap_multiplier × the invoice they paid for their badge`.
+ * A eliteYAR with no recorded badge purchase (users.badge_purchase_amount = NULL)
  * is uncapped.
  *
- * route() returns the actual eliteYarGross allocated (after the cap), so we assert
+ * route() returns the actual eliteYARGross allocated (after the cap), so we assert
  * on that return value directly.
  *
  * DatabaseTransactions: all writes roll back; the live DB is never mutated.
  */
-class EliteYarLifetimeCapTest extends TestCase
+class EliteYARLifetimeCapTest extends TestCase
 {
     use DatabaseTransactions;
 
     private WeighbridgeVatRouter $router;
 
-    private User $eliteYar;
+    private User $eliteYAR;
 
     private User $supplier;
 
@@ -57,15 +57,15 @@ class EliteYarLifetimeCapTest extends TestCase
         $buyer = User::factory()->create();
         Wallet::create([Wallet::USER_ID => $buyer->id, Wallet::BALANCE => 0, Wallet::BALANCE_HOLD => 0]);
 
-        $this->eliteYar = User::factory()->create();
-        Wallet::create([Wallet::USER_ID => $this->eliteYar->id, Wallet::BALANCE => 0, Wallet::BALANCE_HOLD => 0]);
+        $this->eliteYAR = User::factory()->create();
+        Wallet::create([Wallet::USER_ID => $this->eliteYAR->id, Wallet::BALANCE => 0, Wallet::BALANCE_HOLD => 0]);
 
         $this->supplier = User::factory()->create();
         Wallet::create([Wallet::USER_ID => $this->supplier->id, Wallet::BALANCE => 1_000_000_000, Wallet::BALANCE_HOLD => 0]);
 
         $this->order = Order::create([
             Order::PLACER_USER_ID => $buyer->id,
-            Order::ELITE_YAR_USER_ID => $this->eliteYar->id,
+            Order::ELITE_YAR_USER_ID => $this->eliteYAR->id,
             Order::ORDER_NUMBER => 'CAP-'.now()->format('YmdHis').rand(100, 999),
             Order::STATUS => Order::STATUS_SHIPPED,
             Order::FINAL_AMOUNT => 200_000_000,
@@ -81,7 +81,7 @@ class EliteYarLifetimeCapTest extends TestCase
     }
 
     /**
-     * Commission pool = newPOO − newPTS. With gold rates the eliteYar ratio is
+     * Commission pool = newPOO − newPTS. With gold rates the eliteYAR ratio is
      * co/(co+ssg) = 0.375 / 0.6 = 0.625, so candidateGross = pool × 0.625.
      */
     private function resultWithPool(): WeighbridgeReconcileResult
@@ -101,7 +101,7 @@ class EliteYarLifetimeCapTest extends TestCase
     /** @test */
     public function consultant_with_no_badge_purchase_is_uncapped(): void
     {
-        $this->eliteYar->update([User::BADGE_PURCHASE_AMOUNT => null]);
+        $this->eliteYAR->update([User::BADGE_PURCHASE_AMOUNT => null]);
 
         $gross = $this->router->route($this->order->fresh(), $this->resultWithPool());
 
@@ -113,7 +113,7 @@ class EliteYarLifetimeCapTest extends TestCase
     public function consultant_gross_is_clamped_to_two_times_badge_purchase(): void
     {
         // Badge invoice 10M → ceiling = 2 × 10M = 20M, well below the 62.5M candidate.
-        $this->eliteYar->update([User::BADGE_PURCHASE_AMOUNT => 10_000_000]);
+        $this->eliteYAR->update([User::BADGE_PURCHASE_AMOUNT => 10_000_000]);
 
         $gross = $this->router->route($this->order->fresh(), $this->resultWithPool());
 
@@ -124,11 +124,11 @@ class EliteYarLifetimeCapTest extends TestCase
     public function prior_payouts_consume_the_lifetime_headroom(): void
     {
         // Ceiling 20M, but 15M already paid on a prior settled order → only 5M headroom.
-        $this->eliteYar->update([User::BADGE_PURCHASE_AMOUNT => 10_000_000]);
+        $this->eliteYAR->update([User::BADGE_PURCHASE_AMOUNT => 10_000_000]);
 
         Order::create([
             Order::PLACER_USER_ID     => $this->order->placer_user_id,
-            Order::ELITE_YAR_USER_ID => $this->eliteYar->id,
+            Order::ELITE_YAR_USER_ID => $this->eliteYAR->id,
             Order::ORDER_NUMBER       => 'PRIOR-'.now()->format('YmdHis').rand(100, 999),
             Order::STATUS             => Order::STATUS_SHIPPED,
             Order::PAYMENT_STATUS     => 'paid',

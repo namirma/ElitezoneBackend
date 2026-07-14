@@ -575,11 +575,11 @@ namespace App\Models{
 
 namespace App\Models{
 /**
- * @method static \Illuminate\Database\Eloquent\Builder|EmployerEliteYar newModelQuery()
- * @method static \Illuminate\Database\Eloquent\Builder|EmployerEliteYar newQuery()
- * @method static \Illuminate\Database\Eloquent\Builder|EmployerEliteYar query()
+ * @method static \Illuminate\Database\Eloquent\Builder|EmployerEliteYAR newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|EmployerEliteYAR newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|EmployerEliteYAR query()
  */
-	class EmployerEliteYar extends \Eloquent {}
+	class EmployerEliteYAR extends \Eloquent {}
 }
 
 namespace App\Models{
@@ -1020,7 +1020,7 @@ namespace App\Models{
  * @property-read int|null $activities_count
  * @property-read \App\Models\Address|null $address
  * @property-read \App\Models\User|null $beneficiary
- * @property-read \App\Models\User|null $eliteYar
+ * @property-read \App\Models\User|null $eliteYAR
  * @property-read string|void $created_at_diff
  * @property-read string|void $created_at_p
  * @property-read array $dashboard_progress
@@ -2373,7 +2373,7 @@ namespace App\Models{
  * @property-read int|null $addresses_count
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Agreement> $agreements
  * @property-read int|null $agreements_count
- * @property-read \App\Models\EmployerEliteYar $pivot
+ * @property-read \App\Models\EmployerEliteYAR $pivot
  * @property-read \Illuminate\Database\Eloquent\Collection<int, User> $associatedEmployers
  * @property-read int|null $associated_employers_count
  * @property-read \App\Models\Badge|null $badge
@@ -2416,7 +2416,7 @@ namespace App\Models{
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\StockSubscription> $stockSubscriptions
  * @property-read int|null $stock_subscriptions_count
  * @property-read \App\Models\SupplierProfile|null $supplier
- * @property-read \Illuminate\Database\Eloquent\Collection<int, User> $technicalEliteYars
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, User> $technicalEliteYARs
  * @property-read int|null $technical_elite_yars_count
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \Laravel\Sanctum\PersonalAccessToken> $tokens
  * @property-read int|null $tokens_count

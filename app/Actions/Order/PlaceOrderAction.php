@@ -212,10 +212,10 @@ class PlaceOrderAction
         // تعیین الیت یار مؤثر:
         // — اگر خودِ خریدار الیت یار است (engineer/contractor) → الیت یار = placer (اجباری)
         // — اگر کارفرما است → الیت یار همانی است که در consultant_user_id فرستاده
-        $isEliteYarPlacer = $user->hasRole('engineer') || $user->hasRole('contractor');
-        $effectiveEliteYarId = $isEliteYarPlacer ? $user->id : $data->eliteYarUserId;
+        $isEliteYARPlacer = $user->hasRole('engineer') || $user->hasRole('contractor');
+        $effectiveEliteYARId = $isEliteYARPlacer ? $user->id : $data->eliteYARUserId;
 
-        $commissions = $this->calculateCommissions($user, $effectiveEliteYarId, $subtotal);
+        $commissions = $this->calculateCommissions($user, $effectiveEliteYARId, $subtotal);
 
         return [
             'subtotal' => $subtotal,
@@ -225,7 +225,7 @@ class PlaceOrderAction
             'final_amount' => $finalAmount,
             'total_weight' => $totalWeight,
             'commissions' => $commissions,
-            'effective_consultant_id' => $effectiveEliteYarId,
+            'effective_consultant_id' => $effectiveEliteYARId,
             'items_data' => $itemsData,
             'shipments' => $shippingQuote->shipments,
         ];
@@ -235,22 +235,22 @@ class PlaceOrderAction
      * محاسبه کمیسیون بر اساس الیت یار مؤثر سفارش.
      *
      * @param  User  $placer  خریدار/ثبت‌کننده سفارش
-     * @param  int|null  $eliteYarId  consultant_user_id مؤثر (پس از تعیین نقش)
+     * @param  int|null  $eliteYARId  consultant_user_id مؤثر (پس از تعیین نقش)
      */
-    private function calculateCommissions(User $placer, ?int $eliteYarId, float $subtotal): array
+    private function calculateCommissions(User $placer, ?int $eliteYARId, float $subtotal): array
     {
         $fees = ['engineer' => 0, 'contractor' => 0];
 
-        if (! $eliteYarId) {
+        if (! $eliteYARId) {
             return $fees;
         }
 
-        $eliteYar = User::find($eliteYarId);
-        if (! $eliteYar) {
+        $eliteYAR = User::find($eliteYARId);
+        if (! $eliteYAR) {
             return $fees;
         }
 
-        $badgeCode = $eliteYar->badge?->code ?? 'pioneer';
+        $badgeCode = $eliteYAR->badge?->code ?? 'pioneer';
         $calculated = $this->settlementCalculator->calculateCommissions($subtotal, $badgeCode);
         $amount = $calculated['CO'] ?? 0;
 
@@ -259,9 +259,9 @@ class PlaceOrderAction
         $contractorTypeId = Cache::remember('user_type_id_contractor', 86400,
             fn () => UserType::where('slug', 'contractor')->value('id'));
 
-        if ($eliteYar->hasRole('engineer') || $eliteYar->{User::TYPE_ID} === $engineerTypeId) {
+        if ($eliteYAR->hasRole('engineer') || $eliteYAR->{User::TYPE_ID} === $engineerTypeId) {
             $fees['engineer'] = $amount;
-        } elseif ($eliteYar->hasRole('contractor') || $eliteYar->{User::TYPE_ID} === $contractorTypeId) {
+        } elseif ($eliteYAR->hasRole('contractor') || $eliteYAR->{User::TYPE_ID} === $contractorTypeId) {
             $fees['contractor'] = $amount;
         }
 
@@ -290,7 +290,7 @@ class PlaceOrderAction
             Order::PLACER_USER_ID => $user->id,
             // beneficiary = گیرنده سفارش (فقط در مسیر الیت یار که برای کارفرما خریداری می‌کند)
             Order::BENEFICIARY_USER_ID => $data->beneficiaryUserId,
-            // eliteYar = الیت یار که کمیسیون CO می‌گیرد (مؤثر — computed در calculateOrderFinancials)
+            // eliteYAR = الیت یار که کمیسیون CO می‌گیرد (مؤثر — computed در calculateOrderFinancials)
             Order::ELITE_YAR_USER_ID => $fins['effective_consultant_id'],
             Order::ADDRESS_ID => $data->addressId,
             'shipping_method_id' => $data->shippingMethodId ?? 1,

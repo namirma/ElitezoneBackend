@@ -35,9 +35,9 @@ class User extends Authenticatable
     public const BADGE_ID = 'badge_id';
 
     /**
-     * Invoice amount (Rials) the eliteYar paid when purchasing their badge.
+     * Invoice amount (Rials) the eliteYAR paid when purchasing their badge.
      * Basis for the lifetime commission cap (cap_multiplier × this amount).
-     * NULL = no paid badge on record → the eliteYar is uncapped.
+     * NULL = no paid badge on record → the eliteYAR is uncapped.
      */
     public const BADGE_PURCHASE_AMOUNT = 'badge_purchase_amount';
 
@@ -221,19 +221,19 @@ class User extends Authenticatable
         return $this->hasMany(UserNote::class, UserNote::USER_ID);
     }
 
-    public function technicalEliteYars(): BelongsToMany
+    public function technicalEliteYARs(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, 'employer_elite_yar', EmployerEliteYar::EMPLOYER_ID, EmployerEliteYar::ELITE_YAR_ID)
-            ->using(EmployerEliteYar::class)
-            ->withPivot([EmployerEliteYar::STATUS, EmployerEliteYar::REJECT_REASON])
+        return $this->belongsToMany(User::class, 'employer_elite_yar', EmployerEliteYAR::EMPLOYER_ID, EmployerEliteYAR::ELITE_YAR_ID)
+            ->using(EmployerEliteYAR::class)
+            ->withPivot([EmployerEliteYAR::STATUS, EmployerEliteYAR::REJECT_REASON])
             ->withTimestamps();
     }
 
     public function associatedEmployers(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, 'employer_elite_yar', EmployerEliteYar::ELITE_YAR_ID, EmployerEliteYar::EMPLOYER_ID)
-            ->using(EmployerEliteYar::class)
-            ->withPivot([EmployerEliteYar::STATUS, EmployerEliteYar::REJECT_REASON])
+        return $this->belongsToMany(User::class, 'employer_elite_yar', EmployerEliteYAR::ELITE_YAR_ID, EmployerEliteYAR::EMPLOYER_ID)
+            ->using(EmployerEliteYAR::class)
+            ->withPivot([EmployerEliteYAR::STATUS, EmployerEliteYAR::REJECT_REASON])
             ->withTimestamps();
     }
 

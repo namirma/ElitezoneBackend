@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Relations\Pivot;
 
-class EmployerEliteYar extends Pivot
+class EmployerEliteYAR extends Pivot
 {
     protected $table = 'employer_elite_yar';
 

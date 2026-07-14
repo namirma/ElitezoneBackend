@@ -28,9 +28,9 @@ class PricingRoleResolver
             return 'engineer_with_elite_yar';
         }
         if ($isEmployer) {
-            $hasEliteYar = (bool) optional($user->employer)->has_consultant;
+            $hasEliteYAR = (bool) optional($user->employer)->has_consultant;
 
-            return $hasEliteYar ? 'engineer_with_elite_yar' : 'employer_without_elite_yar';
+            return $hasEliteYAR ? 'engineer_with_elite_yar' : 'employer_without_elite_yar';
         }
 
         return 'employer_without_elite_yar';

@@ -10,7 +10,7 @@ use Tests\TestCase;
 /**
  * Tests for HasOrderProgress trait accessors.
  *
- * Covers getDashboardProgressAttribute (buyer), getEliteYarProgressAttribute,
+ * Covers getDashboardProgressAttribute (buyer), getEliteYARProgressAttribute,
  * and getSupplierProgressAttribute.
  *
  * DatabaseTransactions: all DB writes are rolled back after each test;
@@ -50,7 +50,7 @@ class HasOrderProgressTest extends TestCase
     }
 
     // =========================================================================
-    //  EliteYar Progress
+    //  EliteYAR Progress
     // =========================================================================
 
     /** مرحله ۱ باید current باشد وقتی status = PROCESSING و فیلدهای مودیان null است */
@@ -137,13 +137,13 @@ class HasOrderProgressTest extends TestCase
 
         // مرحله ۲: حق مشاوره منظور شده ولی Hold است → current (منتظر Doc Q)
         $this->assertSame('current', $progress['steps'][1]['state'],
-            'Step 2 must be current: commission is in hold, waiting for eliteYar to submit Doc Q');
+            'Step 2 must be current: commission is in hold, waiting for eliteYAR to submit Doc Q');
 
         // مراحل ۳ و ۴ هنوز inactive
         $this->assertSame('inactive', $progress['steps'][2]['state'],
             'Step 3 should be inactive until Doc Q is submitted');
         $this->assertSame('inactive', $progress['steps'][3]['state'],
-            'Step 4 should be inactive until hold_released_at is set by ReleaseEliteYarHoldAction');
+            'Step 4 should be inactive until hold_released_at is set by ReleaseEliteYARHoldAction');
 
         // دکمه «ثبت فاکتور» باید نمایش داشته باشد — بدون آن الیت یار نمی‌تواند پولش را آزاد کند
         $step2Labels = array_column($progress['steps'][1]['actions'], 'label');

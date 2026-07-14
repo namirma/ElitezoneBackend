@@ -55,7 +55,7 @@ class ProcessWeighbridgeResultAction
                 return $this->buildAlreadyProcessedResponse($locked);
             }
 
-            $locked->load('items', 'eliteYar.badge');
+            $locked->load('items', 'eliteYAR.badge');
 
             Log::channel('financial')->info("شروع پردازش باسکول سفارش {$locked->id}.");
 
@@ -76,7 +76,7 @@ class ProcessWeighbridgeResultAction
             // Doc I (always) + LO/LS (only when deficit)
             $this->invoiceGenerator->generateWeighbridgeDocs($locked, $isDeficit);
 
-            $eliteYarGross = $this->vatRouter->route($locked, $result);
+            $eliteYARGross = $this->vatRouter->route($locked, $result);
 
             $locked->forceFill([
                 Order::WEIGHT_AFTER_SCALE    => $actualWeight,
@@ -84,7 +84,7 @@ class ProcessWeighbridgeResultAction
                 Order::STATUS                => Order::STATUS_SHIPPED,
                 Order::PAYMENT_OF_OWNER      => $result->newPOO,
                 Order::PAYMENT_TO_SUPPLIER   => $result->newPTS,
-                Order::PAYMENT_TO_ELITE_YAR => $eliteYarGross,
+                Order::PAYMENT_TO_ELITE_YAR => $eliteYARGross,
                 Order::FINAL_AMOUNT          => $result->newPOO,
             ])->save();
 

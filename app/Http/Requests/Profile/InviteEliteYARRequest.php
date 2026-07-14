@@ -5,7 +5,7 @@ namespace App\Http\Requests\Profile;
 use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 
-class InviteEliteYarRequest extends FormRequest
+class InviteEliteYARRequest extends FormRequest
 {
     public function authorize(): bool
     {

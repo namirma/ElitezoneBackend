@@ -14,31 +14,31 @@ use Illuminate\Support\Facades\Log;
 class FinalizeInvoiceAction
 {
     /**
-     * Record the final invoice reference and hold the eliteYar's fee in their wallet.
+     * Record the final invoice reference and hold the eliteYAR's fee in their wallet.
      *
      * Wraps both writes in a single DB::transaction so the order update and
      * the wallet hold are always atomic.
      *
-     * @throws Exception when the eliteYar user cannot be found
+     * @throws Exception when the eliteYAR user cannot be found
      */
     public function execute(Order $order, string $finalInvoiceRef): void
     {
-        [$feeAmount, $eliteYarUserId] = $this->resolveFee($order);
+        [$feeAmount, $eliteYARUserId] = $this->resolveFee($order);
 
-        DB::transaction(function () use ($order, $finalInvoiceRef, $feeAmount, $eliteYarUserId) {
+        DB::transaction(function () use ($order, $finalInvoiceRef, $feeAmount, $eliteYARUserId) {
             $order->update([
                 Order::FINAL_INVOICE_REF => $finalInvoiceRef,
             ]);
 
-            if ($feeAmount && $eliteYarUserId) {
-                $eliteYar = User::find($eliteYarUserId);
+            if ($feeAmount && $eliteYARUserId) {
+                $eliteYAR = User::find($eliteYARUserId);
 
-                if (! $eliteYar) {
-                    Log::channel('orders')->error("User not found for eliteYar fee hold. Order: {$order->id}");
+                if (! $eliteYAR) {
+                    Log::channel('orders')->error("User not found for eliteYAR fee hold. Order: {$order->id}");
                     throw new Exception(__('orders.consultant_not_found_internal'));
                 }
 
-                $wallet = $eliteYar->wallet ?: $eliteYar->wallet()->create([]);
+                $wallet = $eliteYAR->wallet ?: $eliteYAR->wallet()->create([]);
 
                 $wallet->transactions()->create([
                     'order_id'    => $order->id,
@@ -54,9 +54,9 @@ class FinalizeInvoiceAction
     }
 
     /**
-     * Determine the eliteYar fee amount and recipient from the order.
+     * Determine the eliteYAR fee amount and recipient from the order.
      *
-     * @return array{0: int|float|null, 1: int|null}  [feeAmount, eliteYarUserId]
+     * @return array{0: int|float|null, 1: int|null}  [feeAmount, eliteYARUserId]
      */
     private function resolveFee(Order $order): array
     {

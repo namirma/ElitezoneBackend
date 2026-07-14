@@ -66,7 +66,7 @@ class ProcessPreScalePaymentAction
 
             $ownerDiscountRate = $rates['ow_final_rate'];
             $sazeShareRate = $rates['ssg_final_rate'];
-            $eliteYarRate = $rates['co_final_rate'];
+            $eliteYARRate = $rates['co_final_rate'];
 
             // ── Snapshot formula-variant flags from supplier contract ──────────
             $realSupplierId = $firstItem->supplier_user_id;
@@ -82,7 +82,7 @@ class ProcessPreScalePaymentAction
             );
             $PTS = $this->calculator->calculatePTS(
                 $shippingCost, $officialPrice, $weightBeforeScale,
-                $ownerDiscountRate, $sazeShareRate, $eliteYarRate, $vatRate,
+                $ownerDiscountRate, $sazeShareRate, $eliteYARRate, $vatRate,
                 $transCommission, $transVat
             );
 
@@ -126,7 +126,7 @@ class ProcessPreScalePaymentAction
             // ── صدور اسناد مالی خرید مستقیم (A + B + C، با D در صورت داشتن الیت یار) ──
             $this->invoiceGenerator->generateDirectPurchaseDocs(
                 $locked,
-                withEliteYar: $locked->{Order::BENEFICIARY_USER_ID} !== null
+                withEliteYAR: $locked->{Order::BENEFICIARY_USER_ID} !== null
             );
 
             Log::channel('financial')->info("پرداخت سفارش {$locked->id} با موفقیت انجام شد. فرمول: TC={$transCommission} VAT={$transVat}");

@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Api\User;
 
-use App\Actions\Financial\ReleaseEliteYarHoldAction;
+use App\Actions\Financial\ReleaseEliteYARHoldAction;
 use App\Actions\Order\CancelOrderAction;
 use App\Actions\Order\FinalizeInvoiceAction;
 use App\Http\Controllers\Controller;
@@ -18,7 +18,7 @@ class OrderActionController extends Controller
 {
     public function __construct(
         private readonly FinalizeInvoiceAction $finalizeAction,
-        private readonly ReleaseEliteYarHoldAction $releaseEliteYarHold,
+        private readonly ReleaseEliteYARHoldAction $releaseEliteYARHold,
     ) {}
 
     /**
@@ -33,7 +33,7 @@ class OrderActionController extends Controller
         // - RESERVED / RESERVED_EXTENDED orders cannot be cancelled before expiry
         //   (CancelOrderAction enforces this); the system auto-cancels them on expiry.
         // - PROCESSING and later states are paid/settled and must NOT be unwound by a
-        //   simple refund (supplier/eliteYar/VAT legs are involved). Those go through
+        //   simple refund (supplier/eliteYAR/VAT legs are involved). Those go through
         //   the dedicated return/dispute flow (مرجوعی/داوری), never self-cancel.
         if ($order->status !== Order::STATUS_PENDING) {
             return error(__('orders.cannot_cancel'), [], 400);
@@ -70,7 +70,7 @@ class OrderActionController extends Controller
      * فقط توسط الیت یارِ سفارش (beneficiary) قابل فراخوانی است.
      * پس از ثبت، هولد کمیسیون و مالیات الیت یار آزاد می‌شود.
      */
-    public function submitEliteYarMoadianInvoice(SubmitMoadianInvoiceRequest $request, Order $order): JsonResponse
+    public function submitEliteYARMoadianInvoice(SubmitMoadianInvoiceRequest $request, Order $order): JsonResponse
     {
         $user = Auth::user();
 
@@ -84,7 +84,7 @@ class OrderActionController extends Controller
         }
 
         try {
-            $this->releaseEliteYarHold->execute(
+            $this->releaseEliteYARHold->execute(
                 $order,
                 $request->validated('moadian_ref')
             );

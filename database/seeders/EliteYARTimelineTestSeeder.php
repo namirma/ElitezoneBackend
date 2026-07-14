@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Hash;
 /**
  * تایم‌لاین الیت یار — دیتای تست
  *
- * php artisan db:seed --class=EliteYarTimelineTestSeeder
+ * php artisan db:seed --class=EliteYARTimelineTestSeeder
  *
  * یک کاربر الیت یار + یک سفارش با وضعیت weighbridge_done می‌سازد.
  * با ورود به عنوان الیت یار (09500000005 / password123) در داشبورد
@@ -27,7 +27,7 @@ use Illuminate\Support\Facades\Hash;
  *   مرحله ۳  فاکتور خدمات ثبت شد      → inactive   (خاکستری)
  *   مرحله ۴  حق مشاوره در دسترس است   → inactive   (خاکستری)
  */
-class EliteYarTimelineTestSeeder extends Seeder
+class EliteYARTimelineTestSeeder extends Seeder
 {
     private const CONSULTANT_MOBILE  = '09500000005';
     private const CONSULTANT_NC      = '5555555555';
@@ -38,7 +38,7 @@ class EliteYarTimelineTestSeeder extends Seeder
     {
         $this->command->info('');
         $this->command->info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        $this->command->info('  EliteYarTimelineTestSeeder');
+        $this->command->info('  EliteYARTimelineTestSeeder');
         $this->command->info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
         // ─── 1. کاربر الیت یار ──────────────────────────────────────────
@@ -48,7 +48,7 @@ class EliteYarTimelineTestSeeder extends Seeder
             ['slug' => 'expert', 'name' => 'الیت یار', 'icon' => 'star']
         );
 
-        $eliteYar = User::firstOrCreate(
+        $eliteYAR = User::firstOrCreate(
             [User::MOBILE => self::CONSULTANT_MOBILE],
             [
                 User::MOBILE        => self::CONSULTANT_MOBILE,
@@ -60,9 +60,9 @@ class EliteYarTimelineTestSeeder extends Seeder
         );
 
         UserProfile::firstOrCreate(
-            ['user_id' => $eliteYar->id],
+            ['user_id' => $eliteYAR->id],
             [
-                'user_id'       => $eliteYar->id,
+                'user_id'       => $eliteYAR->id,
                 'name'          => 'سارا',
                 'family'        => 'الیت یارزاده',
                 'national_code' => self::CONSULTANT_NC,
@@ -70,9 +70,9 @@ class EliteYarTimelineTestSeeder extends Seeder
         );
 
         Wallet::firstOrCreate(
-            [Wallet::USER_ID => $eliteYar->id],
+            [Wallet::USER_ID => $eliteYAR->id],
             [
-                Wallet::USER_ID      => $eliteYar->id,
+                Wallet::USER_ID      => $eliteYAR->id,
                 Wallet::BALANCE      => 0,
                 Wallet::BALANCE_HOLD => 0,
             ]
@@ -95,7 +95,7 @@ class EliteYarTimelineTestSeeder extends Seeder
             [Order::ORDER_NUMBER => self::ORDER_NUMBER],
             [
                 Order::PLACER_USER_ID      => $employer->id,
-                Order::BENEFICIARY_USER_ID => $eliteYar->id,
+                Order::BENEFICIARY_USER_ID => $eliteYAR->id,
                 Order::ORDER_NUMBER        => self::ORDER_NUMBER,
                 Order::STATUS              => Order::STATUS_WEIGHBRIDGE_DONE,
                 Order::PAYMENT_STATUS      => Order::PAYMENT_PAID,
@@ -141,7 +141,7 @@ class EliteYarTimelineTestSeeder extends Seeder
         $this->command->table(
             ['نقش', 'موبایل', 'رمز', 'ID'],
             [
-                ['الیت یار', self::CONSULTANT_MOBILE, self::PASSWORD, $eliteYar->id],
+                ['الیت یار', self::CONSULTANT_MOBILE, self::PASSWORD, $eliteYAR->id],
             ]
         );
         $this->command->info("  📦  سفارش تست: " . self::ORDER_NUMBER . " (ID: {$order->id})");

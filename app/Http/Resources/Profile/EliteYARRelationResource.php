@@ -4,7 +4,7 @@ namespace App\Http\Resources\Profile;
 
 use App\Enums\Shared\StatusTone;
 use App\Models\ContractorProfile;
-use App\Models\EmployerEliteYar;
+use App\Models\EmployerEliteYAR;
 use App\Models\EngineerProfile;
 use App\Models\User;
 use App\Models\UserProfile;
@@ -12,23 +12,23 @@ use Illuminate\Http\Request;
 use App\Http\Resources\BaseJsonResource;
 
 /**
- * @mixin \App\Models\EmployerEliteYar
+ * @mixin \App\Models\EmployerEliteYAR
  */
-class EliteYarRelationResource extends BaseJsonResource
+class EliteYARRelationResource extends BaseJsonResource
 {
     public function toArray(Request $request): array
     {
-        $status = $this->pivot->{EmployerEliteYar::STATUS};
+        $status = $this->pivot->{EmployerEliteYAR::STATUS};
 
         $statusLabel = match ($status) {
-            EmployerEliteYar::STATUS_PENDING  => 'در انتظار تایید',
-            EmployerEliteYar::STATUS_APPROVED => 'تایید شده',
-            EmployerEliteYar::STATUS_REJECTED => 'رد شده',
+            EmployerEliteYAR::STATUS_PENDING  => 'در انتظار تایید',
+            EmployerEliteYAR::STATUS_APPROVED => 'تایید شده',
+            EmployerEliteYAR::STATUS_REJECTED => 'رد شده',
             default                              => $status,
         };
 
         // وضعیت تأیید مدارک الیت یار — از پروفایل مهندس یا پیمانکار
-        $isVerified = $this->getEliteYarVerifiedStatus();
+        $isVerified = $this->getEliteYARVerifiedStatus();
 
         return [
             'user_id' => $this->id,
@@ -49,8 +49,8 @@ class EliteYarRelationResource extends BaseJsonResource
             'status_code' => $status,
 
             'reject_reason' => $this->when(
-                $status === EmployerEliteYar::STATUS_REJECTED,
-                $this->pivot->{EmployerEliteYar::REJECT_REASON}
+                $status === EmployerEliteYAR::STATUS_REJECTED,
+                $this->pivot->{EmployerEliteYAR::REJECT_REASON}
             ),
 
             // فلگ تأیید مدارک — فرانت از این برای نمایش badge «تأییدشده» استفاده می‌کند
@@ -64,7 +64,7 @@ class EliteYarRelationResource extends BaseJsonResource
      * الیت یار می‌تواند مهندس (engineer) یا پیمانکار (contractor) باشد؛
      * هر دو پروفایل دارای is_verified/verified_at هستند (migration 200100).
      */
-    private function getEliteYarVerifiedStatus(): bool
+    private function getEliteYARVerifiedStatus(): bool
     {
         // ترجیح: اگر پروفایل از پیش لود شده، از آن استفاده می‌کنیم
         if ($this->relationLoaded('engineerProfile') && $this->engineerProfile) {

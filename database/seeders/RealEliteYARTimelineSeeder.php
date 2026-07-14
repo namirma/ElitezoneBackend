@@ -13,9 +13,9 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
 /**
- * RealEliteYarTimelineSeeder — دیتای تایم‌لاین الیت یار برای حساب واقعی.
+ * RealEliteYARTimelineSeeder — دیتای تایم‌لاین الیت یار برای حساب واقعی.
  *
- * php artisan db:seed --class=RealEliteYarTimelineSeeder
+ * php artisan db:seed --class=RealEliteYARTimelineSeeder
  *
  * با شخصیت‌های واقع‌گرایانه (نام، کد ملی معتبر، موبایل، تاریخ تولد) دو سناریو می‌سازد:
  *
@@ -34,7 +34,7 @@ use Illuminate\Support\Facades\Hash;
  *
  * ⚠️ حسابِ کاربرِ واقعی فقط خوانده می‌شود و هرگز تغییر نمی‌کند.
  */
-class RealEliteYarTimelineSeeder extends Seeder
+class RealEliteYARTimelineSeeder extends Seeder
 {
     private const CONSULTANT_MOBILE = '09130603199'; // فقط برای پیدا کردن (read-only)
 
@@ -52,17 +52,17 @@ class RealEliteYarTimelineSeeder extends Seeder
     {
         $this->command->info('');
         $this->command->info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        $this->command->info('  RealEliteYarTimelineSeeder');
+        $this->command->info('  RealEliteYARTimelineSeeder');
         $this->command->info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
         // ─── الیت یار واقعی (READ-ONLY) ────────────────────────────────────
-        $eliteYar = User::where(User::MOBILE, self::CONSULTANT_MOBILE)->first();
-        if (! $eliteYar) {
+        $eliteYAR = User::where(User::MOBILE, self::CONSULTANT_MOBILE)->first();
+        if (! $eliteYAR) {
             $this->command->error('  ✗ کاربر '.self::CONSULTANT_MOBILE.' یافت نشد.');
 
             return;
         }
-        $this->command->info("  ✓ الیت یار واقعی: ID={$eliteYar->id} (دست‌نخورده)");
+        $this->command->info("  ✓ الیت یار واقعی: ID={$eliteYAR->id} (دست‌نخورده)");
 
         // ─── پاک‌سازی دیتای تستِ قبلی (سفارش‌ها + کاربرانِ جای‌گزینِ قدیمی) ─
         $this->cleanupPreviousTestData();
@@ -83,23 +83,23 @@ class RealEliteYarTimelineSeeder extends Seeder
 
         // ─── سناریو A: کاربر الیت یارِ سفارشِ کارفرماست (داشبورد) ──────────
         $this->command->info('▸ سناریو A — کارفرما خرید کرده، کاربر الیت یارِ آن است:');
-        $a1 = $this->makeOrder($employerA->id, $eliteYar->id, 'ORD-CONS-A1', Order::STATUS_PROCESSING);
-        $a2 = $this->makeOrder($employerA->id, $eliteYar->id, 'ORD-CONS-A2', Order::STATUS_WEIGHBRIDGE_DONE);
-        $a3 = $this->makeOrder($employerB->id, $eliteYar->id, 'ORD-CONS-A3', Order::STATUS_WEIGHBRIDGE_DONE, [
+        $a1 = $this->makeOrder($employerA->id, $eliteYAR->id, 'ORD-CONS-A1', Order::STATUS_PROCESSING);
+        $a2 = $this->makeOrder($employerA->id, $eliteYAR->id, 'ORD-CONS-A2', Order::STATUS_WEIGHBRIDGE_DONE);
+        $a3 = $this->makeOrder($employerB->id, $eliteYAR->id, 'ORD-CONS-A3', Order::STATUS_WEIGHBRIDGE_DONE, [
             Order::ELITE_YAR_MOADIAN_REF => '1402-CON-A3-77451',
         ]);
-        $a4 = $this->makeOrder($employerB->id, $eliteYar->id, 'ORD-CONS-A4', Order::STATUS_WEIGHBRIDGE_DONE, [
+        $a4 = $this->makeOrder($employerB->id, $eliteYAR->id, 'ORD-CONS-A4', Order::STATUS_WEIGHBRIDGE_DONE, [
             Order::ELITE_YAR_MOADIAN_REF => '1402-CON-A4-77452',
             Order::ELITE_YAR_HOLD_RELEASED_AT => now()->subDay(),
         ]);
 
         // ─── سناریو B: کاربر برای کارفرما خرید کرده (تب خرید برای دیگران) ─
         $this->command->info('▸ سناریو B — کاربر برای کارفرمای دیگری خرید کرده:');
-        $this->makeOrder($eliteYar->id, $client->id, 'ORD-CONS-B1', Order::STATUS_WEIGHBRIDGE_DONE);
-        $this->makeOrder($eliteYar->id, $client->id, 'ORD-CONS-B2', Order::STATUS_SHIPPED);
-        $this->makeOrder($eliteYar->id, $client->id, 'ORD-CONS-B3', Order::STATUS_CANCELLED);
+        $this->makeOrder($eliteYAR->id, $client->id, 'ORD-CONS-B1', Order::STATUS_WEIGHBRIDGE_DONE);
+        $this->makeOrder($eliteYAR->id, $client->id, 'ORD-CONS-B2', Order::STATUS_SHIPPED);
+        $this->makeOrder($eliteYAR->id, $client->id, 'ORD-CONS-B3', Order::STATUS_CANCELLED);
         // تحویل‌شده: پورسانت آزاد شده → هر ۴ مرحلهٔ تایم‌لاین الیت یار completed
-        $this->makeOrder($eliteYar->id, $client->id, 'ORD-CONS-B4', Order::STATUS_DELIVERED, [
+        $this->makeOrder($eliteYAR->id, $client->id, 'ORD-CONS-B4', Order::STATUS_DELIVERED, [
             Order::ELITE_YAR_MOADIAN_REF => '1402-CON-B4-88120',
             Order::ELITE_YAR_HOLD_RELEASED_AT => now()->subDay(),
         ]);

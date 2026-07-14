@@ -178,7 +178,7 @@ trait HasOrderProgress
      * نه فقط ستون status، تا رویدادهایی مانند ثبت فاکتور مودیان نیز
      * به‌درستی منعکس شوند.
      */
-    public function getEliteYarProgressAttribute(): array
+    public function getEliteYARProgressAttribute(): array
     {
         $status = $this->status;
         $id = $this->id;
@@ -200,7 +200,7 @@ trait HasOrderProgress
 
         // ---------------------------------------------------------
         // ۲. تشخیص پیشرفته‌ترین مرحله فعال (از آخر به اول)
-        //    چون ReleaseEliteYarHoldAction هر دو فیلد را اتمیک ست
+        //    چون ReleaseEliteYARHoldAction هر دو فیلد را اتمیک ست
         //    می‌کند، مرحله ۳ (consultant_moadian_ref) عملاً هرگز
         //    به‌عنوان «current» نمایش داده نمی‌شود — اما منطقاً
         //    پوشش داده شده است.
@@ -211,7 +211,7 @@ trait HasOrderProgress
             // مرحله ۴ فقط وقتی Doc Q ثبت و hold واقعاً آزاد شده — نه صرف تحویل کالا.
             // طبق پروسه خرید (بخش «الگوریتم وابستگی واریزها»):
             // «تا زمان صدور فاکتور سامانه مودیان توسط الیت یار در کیف پول وی هولد می‌شود».
-            // پس delivered/completed به‌تنهایی hold را آزاد نمی‌کند؛ ReleaseEliteYarHoldAction لازم است.
+            // پس delivered/completed به‌تنهایی hold را آزاد نمی‌کند؛ ReleaseEliteYARHoldAction لازم است.
             if ($this->{Order::ELITE_YAR_HOLD_RELEASED_AT} !== null) {
                 $currentIndex = 3; // مرحله ۴: حق مشاوره در دسترس
             } elseif ($this->{Order::ELITE_YAR_MOADIAN_REF} !== null) {
