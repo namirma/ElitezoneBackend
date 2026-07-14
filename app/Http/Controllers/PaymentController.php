@@ -61,13 +61,16 @@ class PaymentController extends Controller
         }
     }
 
+    public const STATUS_SUCCESS = 'success';
+    public const STATUS_FAILED = 'failed';
+
     private function redirectClient(bool $success, string $message, ?string $refId = null): RedirectResponse
     {
         $baseUrl = config('app.front_url', 'http://localhost:3000');
         $url = $baseUrl.'/payment/result';
 
         $queryParams = http_build_query([
-            'status' => $success ? 'success' : 'failed',
+            'status' => $success ? self::STATUS_SUCCESS : self::STATUS_FAILED,
             'message' => $message,
             'ref_id' => $refId,
         ]);

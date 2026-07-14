@@ -40,6 +40,9 @@ class Invoice extends Model
 
     protected $guarded = ['id'];
 
+    public const STATUS_ISSUED = 'issued';
+    public const STATUS_VOID = 'void';
+
     /**
      * ارتباط با سفارش
      */
