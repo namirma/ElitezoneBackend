@@ -33,7 +33,7 @@ class AuthControllerTest extends TestCase
 
         $this->postJson('/api/authenticate/check-user', ['username' => '09100000002'])
             ->assertStatus(404)
-            ->assertJsonPath('data.action', 'register');
+            ->assertJsonPath('errors.action', 'register');
     }
 
     public function test_check_user_returns_login_with_password_when_password_is_set(): void

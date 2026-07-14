@@ -2,6 +2,7 @@
 
 namespace App\Actions\Order;
 
+use App\Actions\Order\RefundOrderToWalletAction;
 use App\Constants\FinancialCodes;
 use App\Events\Order\OrderCancelled;
 use App\Models\Order;
@@ -18,6 +19,7 @@ class CancelOrderAction
         protected InventoryService $inventoryService,
         protected WalletTransactionEngine $walletEngine,
         protected InvoiceGenerator $invoiceGenerator,
+        protected RefundOrderToWalletAction $refundAction,
     ) {}
 
     /**
@@ -83,10 +85,12 @@ class CancelOrderAction
 
             // ۵. صدور اسناد لغو (Doc j همیشه، Doc i فقط اگر استرداد شد) ─────
             if ($wasReserved || $wasPaid) {
-                $this->invoiceGenerator->generateCancellationDocs(
-                    $locked,
-                    withRefundReceipt: (bool) $refundWallet
-                );
+                DB::afterCommit(function () use ($locked, $refundWallet) {
+                    $this->invoiceGenerator->generateCancellationDocs(
+                        $locked,
+                        withRefundReceipt: (bool) $refundWallet
+                    );
+                });
             }
 
             Log::channel('orders')->info("سفارش شماره {$locked->order_number} با موفقیت لغو شد.", [
@@ -123,8 +127,8 @@ class CancelOrderAction
         }
         // ب) اگر سفارش خرید مستقیم بوده (بدون رزرو و هولد)
         elseif ($order->payment_status === Order::PAYMENT_PAID) {
-            // استفاده از متد بازگشت وجه عادی که قبلا نوشتیم
-            $order->refundToWallet();
+            // استفاده از اکشن مجزا به جای متد مدل
+            $this->refundAction->execute($order);
         }
     }
 
