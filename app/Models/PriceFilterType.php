@@ -6,6 +6,33 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property string $name
+ * @property string $code
+ * @property string $apply_on
+ * @property bool $is_active
+ * @property int $sort_order
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\PriceFilter> $filters
+ * @property-read int|null $filters_count
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceFilterType active()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceFilterType forGeneral()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceFilterType forSpecial()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceFilterType newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceFilterType newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceFilterType query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceFilterType whereApplyOn($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceFilterType whereCode($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceFilterType whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceFilterType whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceFilterType whereIsActive($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceFilterType whereName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceFilterType whereSortOrder($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceFilterType whereUpdatedAt($value)
+ * @mixin \Eloquent
+ */
 class PriceFilterType extends Model
 {
     use HasFactory;

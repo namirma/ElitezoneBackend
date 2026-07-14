@@ -11,6 +11,67 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Visus\Cuid2\Cuid2;
 
+/**
+ * @property int $id
+ * @property string $cuid
+ * @property int $category_id
+ * @property string $name
+ * @property string $slug
+ * @property string|null $description
+ * @property string|null $shipping_promo
+ * @property string $sku
+ * @property bool $is_active
+ * @property bool $is_featured
+ * @property int $view_count
+ * @property int $items_per_page
+ * @property numeric|null $aggregate_min_order_value
+ * @property numeric|null $aggregate_max_order_value
+ * @property int|null $aggregate_limit_order_unit_id
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\OrderUnit|null $aggregateLimitOrderUnit
+ * @property-read \App\Models\ProductCategory $category
+ * @property-read string|void $created_at_diff
+ * @property-read string|void $created_at_p
+ * @property-read string|void $expire_at_days
+ * @property-read string|void $updated_at_diff
+ * @property-read string|void $updated_at_p
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ProductImage> $images
+ * @property-read int|null $images_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Offer> $offers
+ * @property-read int|null $offers_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\OrderUnit> $orderUnits
+ * @property-read int|null $order_units_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ProductPrice> $variantPrices
+ * @property-read int|null $variant_prices_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ProductVariant> $variants
+ * @property-read int|null $variants_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ProductVideo> $videos
+ * @property-read int|null $videos_count
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product active()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product featured()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereAggregateLimitOrderUnitId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereAggregateMaxOrderValue($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereAggregateMinOrderValue($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereCategoryId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereCuid($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereDescription($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereIsActive($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereIsFeatured($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereItemsPerPage($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereShippingPromo($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereSku($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereSlug($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereViewCount($value)
+ * @mixin \Eloquent
+ */
 class Product extends Model
 {
     use HasFactory, PersianDate;

@@ -10,6 +10,34 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * @method static updateOrCreate(array $array, array $array1)
  * @method static where(array $array)
+ * @property int $id
+ * @property int $user_id
+ * @property int $has_consultant
+ * @property string $status
+ * @property string|null $project_done
+ * @property string|null $project_in_progress
+ * @property string|null $activity_provinces
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read string|void $created_at_diff
+ * @property-read string|void $created_at_p
+ * @property-read string|void $expire_at_days
+ * @property-read string|void $updated_at_diff
+ * @property-read string|void $updated_at_p
+ * @property-read \App\Models\User $user
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|EmployerProfile newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|EmployerProfile newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|EmployerProfile query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|EmployerProfile whereActivityProvinces($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|EmployerProfile whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|EmployerProfile whereHasConsultant($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|EmployerProfile whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|EmployerProfile whereProjectDone($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|EmployerProfile whereProjectInProgress($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|EmployerProfile whereStatus($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|EmployerProfile whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|EmployerProfile whereUserId($value)
+ * @mixin \Eloquent
  */
 class EmployerProfile extends Model
 {

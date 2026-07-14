@@ -8,6 +8,37 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
+/**
+ * @property int $id
+ * @property int $user_id
+ * @property string $bank_name
+ * @property string $account_holder_name
+ * @property string|null $shaba
+ * @property string|null $card_number
+ * @property string $status
+ * @property string|null $rejection_reason
+ * @property bool $is_default
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \Spatie\Activitylog\Models\Activity> $activities
+ * @property-read int|null $activities_count
+ * @property-read \App\Models\User $user
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserBankAccount newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserBankAccount newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserBankAccount query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserBankAccount whereAccountHolderName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserBankAccount whereBankName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserBankAccount whereCardNumber($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserBankAccount whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserBankAccount whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserBankAccount whereIsDefault($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserBankAccount whereRejectionReason($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserBankAccount whereShaba($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserBankAccount whereStatus($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserBankAccount whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserBankAccount whereUserId($value)
+ * @mixin \Eloquent
+ */
 class UserBankAccount extends Model
 {
     use HasFactory, LogsActivity;

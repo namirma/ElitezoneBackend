@@ -6,6 +6,38 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $product_variant_id
+ * @property int|null $product_price_id
+ * @property int|null $factory_id
+ * @property int|null $factory_location_id
+ * @property numeric|null $general_price
+ * @property numeric|null $special_price
+ * @property numeric|null $golden_figure
+ * @property int|null $user_id
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Factory|null $factory
+ * @property-read \App\Models\ProductPrice|null $productPrice
+ * @property-read \App\Models\ProductVariant $productVariant
+ * @property-read \App\Models\User|null $user
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceHistory newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceHistory newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceHistory query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceHistory whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceHistory whereFactoryId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceHistory whereFactoryLocationId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceHistory whereGeneralPrice($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceHistory whereGoldenFigure($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceHistory whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceHistory whereProductPriceId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceHistory whereProductVariantId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceHistory whereSpecialPrice($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceHistory whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceHistory whereUserId($value)
+ * @mixin \Eloquent
+ */
 class PriceHistory extends Model
 {
     use HasFactory;

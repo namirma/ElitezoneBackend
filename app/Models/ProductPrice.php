@@ -9,6 +9,35 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * @property int $id
+ * @property int $product_variant_id
+ * @property int $factory_id
+ * @property int $factory_location_id
+ * @property numeric $general_price
+ * @property numeric $special_price
+ * @property numeric $golden_figure
+ * @property \Illuminate\Support\Carbon $last_updated_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Factory $factory
+ * @property-read \App\Models\FactoryLocation $factoryLocation
+ * @property-read \App\Models\ProductVariant $productVariant
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ProductPrice newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ProductPrice newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ProductPrice query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ProductPrice whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ProductPrice whereFactoryId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ProductPrice whereFactoryLocationId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ProductPrice whereGeneralPrice($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ProductPrice whereGoldenFigure($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ProductPrice whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ProductPrice whereLastUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ProductPrice whereProductVariantId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ProductPrice whereSpecialPrice($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ProductPrice whereUpdatedAt($value)
+ * @mixin \Eloquent
+ */
 class ProductPrice extends Model
 {
     use HasFactory;

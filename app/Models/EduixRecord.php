@@ -6,6 +6,53 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int|null $user_id
+ * @property string $national_code
+ * @property string $trace_code
+ * @property string $name
+ * @property string $family
+ * @property string|null $father_name
+ * @property string|null $id_number
+ * @property string|null $birth_date
+ * @property string|null $university
+ * @property string|null $field
+ * @property string|null $course_type
+ * @property string|null $entry_date
+ * @property string|null $graduate_date
+ * @property string|null $gpa
+ * @property string|null $status
+ * @property string $admin_status
+ * @property string|null $rejection_reason
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\User|null $user
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|EduixRecord newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|EduixRecord newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|EduixRecord query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|EduixRecord whereAdminStatus($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|EduixRecord whereBirthDate($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|EduixRecord whereCourseType($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|EduixRecord whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|EduixRecord whereEntryDate($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|EduixRecord whereFamily($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|EduixRecord whereFatherName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|EduixRecord whereField($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|EduixRecord whereGpa($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|EduixRecord whereGraduateDate($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|EduixRecord whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|EduixRecord whereIdNumber($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|EduixRecord whereName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|EduixRecord whereNationalCode($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|EduixRecord whereRejectionReason($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|EduixRecord whereStatus($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|EduixRecord whereTraceCode($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|EduixRecord whereUniversity($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|EduixRecord whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|EduixRecord whereUserId($value)
+ * @mixin \Eloquent
+ */
 class EduixRecord extends Model
 {
     use HasFactory;

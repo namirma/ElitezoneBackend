@@ -16,6 +16,34 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * per_count_cost × sales-count (e.g. brick / wall-mesh). Each route picks its own basis.
  *
  * @see ShippingCostCalculator
+ * @property int $id
+ * @property int $factory_location_id
+ * @property int $destination_province_id
+ * @property int|null $destination_city_id
+ * @property numeric $flat_cost
+ * @property numeric $per_kg_cost
+ * @property ShippingCostBasis $cost_basis
+ * @property numeric $per_count_cost
+ * @property bool $is_active
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\FactoryLocation $factoryLocation
+ * @method static Builder<static>|ShippingRate active()
+ * @method static Builder<static>|ShippingRate newModelQuery()
+ * @method static Builder<static>|ShippingRate newQuery()
+ * @method static Builder<static>|ShippingRate query()
+ * @method static Builder<static>|ShippingRate whereCostBasis($value)
+ * @method static Builder<static>|ShippingRate whereCreatedAt($value)
+ * @method static Builder<static>|ShippingRate whereDestinationCityId($value)
+ * @method static Builder<static>|ShippingRate whereDestinationProvinceId($value)
+ * @method static Builder<static>|ShippingRate whereFactoryLocationId($value)
+ * @method static Builder<static>|ShippingRate whereFlatCost($value)
+ * @method static Builder<static>|ShippingRate whereId($value)
+ * @method static Builder<static>|ShippingRate whereIsActive($value)
+ * @method static Builder<static>|ShippingRate wherePerCountCost($value)
+ * @method static Builder<static>|ShippingRate wherePerKgCost($value)
+ * @method static Builder<static>|ShippingRate whereUpdatedAt($value)
+ * @mixin \Eloquent
  */
 class ShippingRate extends Model
 {

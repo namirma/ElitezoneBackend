@@ -12,6 +12,52 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  * @method static updateOrCreate(array $array, array $array1)
  * @method static where(array $array)
  * @method static withoutChildren()
+ * @property int $id
+ * @property int $user_id
+ * @property string|null $activity_description
+ * @property string|null $brands
+ * @property int $brands_not_related
+ * @property int|null $activity_history
+ * @property string|null $activity_provinces
+ * @property string|null $production_amount میزان تولید
+ * @property string|null $standards استاندارد‌های کسب شده
+ * @property int $standards_not_related
+ * @property string|null $website
+ * @property int $website_not_related
+ * @property string|null $company
+ * @property bool $trans_commission +%TC: آیا کمیسیون روی هزینه حمل اعمال می‌شود؟
+ * @property bool $trans_vat +VAT: آیا مالیات بر ارزش افزوده روی هزینه حمل اعمال می‌شود؟
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SupplierActivityCategory> $activities
+ * @property-read int|null $activities_count
+ * @property-read string|void $created_at_diff
+ * @property-read string|void $created_at_p
+ * @property-read string|void $expire_at_days
+ * @property-read string|void $updated_at_diff
+ * @property-read string|void $updated_at_p
+ * @property-read \App\Models\User $user
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SupplierProfile newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SupplierProfile newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SupplierProfile query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SupplierProfile whereActivityDescription($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SupplierProfile whereActivityHistory($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SupplierProfile whereActivityProvinces($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SupplierProfile whereBrands($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SupplierProfile whereBrandsNotRelated($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SupplierProfile whereCompany($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SupplierProfile whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SupplierProfile whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SupplierProfile whereProductionAmount($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SupplierProfile whereStandards($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SupplierProfile whereStandardsNotRelated($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SupplierProfile whereTransCommission($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SupplierProfile whereTransVat($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SupplierProfile whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SupplierProfile whereUserId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SupplierProfile whereWebsite($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SupplierProfile whereWebsiteNotRelated($value)
+ * @mixin \Eloquent
  */
 class SupplierProfile extends Model
 {

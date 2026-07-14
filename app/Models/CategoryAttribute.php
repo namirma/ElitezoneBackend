@@ -6,6 +6,30 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $category_id
+ * @property int $attribute_type_id
+ * @property bool $is_required
+ * @property bool $is_filterable
+ * @property int $sort_order
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\AttributeType $attributeType
+ * @property-read \App\Models\ProductCategory $category
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CategoryAttribute newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CategoryAttribute newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CategoryAttribute query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CategoryAttribute whereAttributeTypeId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CategoryAttribute whereCategoryId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CategoryAttribute whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CategoryAttribute whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CategoryAttribute whereIsFilterable($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CategoryAttribute whereIsRequired($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CategoryAttribute whereSortOrder($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CategoryAttribute whereUpdatedAt($value)
+ * @mixin \Eloquent
+ */
 class CategoryAttribute extends Model
 {
     use HasFactory;

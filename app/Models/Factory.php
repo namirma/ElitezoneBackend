@@ -6,6 +6,40 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property int|null $supplier_user_id
+ * @property string $name
+ * @property string $slug
+ * @property string|null $description
+ * @property string|null $logo
+ * @property string|null $api_key
+ * @property string|null $api_url
+ * @property int $is_active
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\FactoryLocation> $locations
+ * @property-read int|null $locations_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ProductPrice> $prices
+ * @property-read int|null $prices_count
+ * @property-read \App\Models\User|null $supplier
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Factory active()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Factory newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Factory newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Factory query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Factory whereApiKey($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Factory whereApiUrl($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Factory whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Factory whereDescription($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Factory whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Factory whereIsActive($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Factory whereLogo($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Factory whereName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Factory whereSlug($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Factory whereSupplierUserId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Factory whereUpdatedAt($value)
+ * @mixin \Eloquent
+ */
 class Factory extends Model
 {
     const ID = 'id';

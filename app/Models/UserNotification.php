@@ -9,6 +9,27 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * @method static where(array $array)
  * @method static create(array $array)
+ * @property int $id
+ * @property int|null $user_id
+ * @property int|null $sender_id
+ * @property string|null $subject
+ * @property string|null $body
+ * @property string|null $read_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\User|null $user
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserNotification newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserNotification newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserNotification query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserNotification whereBody($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserNotification whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserNotification whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserNotification whereReadAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserNotification whereSenderId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserNotification whereSubject($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserNotification whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserNotification whereUserId($value)
+ * @mixin \Eloquent
  */
 class UserNotification extends Model
 {

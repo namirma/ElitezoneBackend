@@ -13,6 +13,44 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * destination address, with its own freight cost and lifecycle status.
  *
  * @see ShippingCostCalculator
+ * @property int $id
+ * @property int $order_id
+ * @property int|null $factory_id
+ * @property int|null $factory_location_id
+ * @property int|null $address_id
+ * @property int|null $destination_province_id
+ * @property int|null $destination_city_id
+ * @property numeric $weight
+ * @property numeric $billed_count
+ * @property ShippingCostBasis $cost_basis
+ * @property numeric $shipping_cost
+ * @property string $status
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Address|null $destinationAddress
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\OrderItem> $items
+ * @property-read int|null $items_count
+ * @property-read \App\Models\Order $order
+ * @property-read \App\Models\Factory|null $originFactory
+ * @property-read \App\Models\FactoryLocation|null $originFactoryLocation
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Shipment newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Shipment newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Shipment query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Shipment whereAddressId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Shipment whereBilledCount($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Shipment whereCostBasis($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Shipment whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Shipment whereDestinationCityId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Shipment whereDestinationProvinceId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Shipment whereFactoryId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Shipment whereFactoryLocationId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Shipment whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Shipment whereOrderId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Shipment whereShippingCost($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Shipment whereStatus($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Shipment whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Shipment whereWeight($value)
+ * @mixin \Eloquent
  */
 class Shipment extends Model
 {

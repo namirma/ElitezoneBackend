@@ -7,6 +7,56 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $order_id
+ * @property int|null $shipment_id
+ * @property int|null $product_variant_id
+ * @property int|null $supplier_user_id User ID of the supplier fulfilling this item
+ * @property int|null $factory_id
+ * @property int|null $factory_location_id
+ * @property string $product_name
+ * @property string|null $variant_sku
+ * @property array<array-key, mixed> $quantity_details
+ * @property numeric $weight Total logistics weight in KG (Required for Weighbridge)
+ * @property numeric $quantity Sales quantity (Count, Area, Volume, etc.)
+ * @property string|null $unit_name Snapshot of the unit name (e.g., Bundle, M2, Branch)
+ * @property numeric $unit_price
+ * @property numeric $total_price
+ * @property numeric $shipping_cost
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Order $order
+ * @property-read \App\Models\Factory|null $originFactory
+ * @property-read \App\Models\FactoryLocation|null $originFactoryLocation
+ * @property-read \App\Models\ProductVariant|null $productVariant
+ * @property-read \App\Models\Shipment|null $shipment
+ * @property-read \App\Models\User|null $supplier
+ * @method static \Database\Factories\OrderItemFactory factory($count = null, $state = [])
+ * @method static Builder<static>|OrderItem newModelQuery()
+ * @method static Builder<static>|OrderItem newQuery()
+ * @method static Builder<static>|OrderItem query()
+ * @method static Builder<static>|OrderItem sumQuantity()
+ * @method static Builder<static>|OrderItem whereCreatedAt($value)
+ * @method static Builder<static>|OrderItem whereFactoryId($value)
+ * @method static Builder<static>|OrderItem whereFactoryLocationId($value)
+ * @method static Builder<static>|OrderItem whereId($value)
+ * @method static Builder<static>|OrderItem whereOrderId($value)
+ * @method static Builder<static>|OrderItem whereProductName($value)
+ * @method static Builder<static>|OrderItem whereProductVariantId($value)
+ * @method static Builder<static>|OrderItem whereQuantity($value)
+ * @method static Builder<static>|OrderItem whereQuantityDetails($value)
+ * @method static Builder<static>|OrderItem whereShipmentId($value)
+ * @method static Builder<static>|OrderItem whereShippingCost($value)
+ * @method static Builder<static>|OrderItem whereSupplierUserId($value)
+ * @method static Builder<static>|OrderItem whereTotalPrice($value)
+ * @method static Builder<static>|OrderItem whereUnitName($value)
+ * @method static Builder<static>|OrderItem whereUnitPrice($value)
+ * @method static Builder<static>|OrderItem whereUpdatedAt($value)
+ * @method static Builder<static>|OrderItem whereVariantSku($value)
+ * @method static Builder<static>|OrderItem whereWeight($value)
+ * @mixin \Eloquent
+ */
 class OrderItem extends Model
 {
     use HasFactory;

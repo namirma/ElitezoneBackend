@@ -5,6 +5,33 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $product_variant_id
+ * @property int $current_stock
+ * @property numeric $sales_velocity_30d
+ * @property int $search_volume_7d
+ * @property numeric $predicted_demand_next_7d
+ * @property numeric $recommended_restock_amount
+ * @property string $priority
+ * @property string|null $reason
+ * @property string $calculated_at
+ * @property-read \App\Models\ProductVariant $variant
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryPrediction newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryPrediction newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryPrediction query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryPrediction whereCalculatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryPrediction whereCurrentStock($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryPrediction whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryPrediction wherePredictedDemandNext7d($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryPrediction wherePriority($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryPrediction whereProductVariantId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryPrediction whereReason($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryPrediction whereRecommendedRestockAmount($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryPrediction whereSalesVelocity30d($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryPrediction whereSearchVolume7d($value)
+ * @mixin \Eloquent
+ */
 class InventoryPrediction extends Model
 {
     public $timestamps = false;

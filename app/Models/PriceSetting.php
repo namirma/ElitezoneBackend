@@ -6,6 +6,26 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
 
+/**
+ * @property int $id
+ * @property string $name
+ * @property string $code
+ * @property string $value
+ * @property string|null $description
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceSetting newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceSetting newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceSetting query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceSetting whereCode($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceSetting whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceSetting whereDescription($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceSetting whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceSetting whereName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceSetting whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceSetting whereValue($value)
+ * @mixin \Eloquent
+ */
 class PriceSetting extends Model
 {
     use HasFactory;

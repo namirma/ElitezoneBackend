@@ -7,6 +7,39 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
+/**
+ * @property int $id
+ * @property int $wallet_id
+ * @property int|null $order_id
+ * @property numeric $amount
+ * @property string $type
+ * @property string $status
+ * @property string|null $description
+ * @property array<array-key, mixed>|null $meta
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \Spatie\Activitylog\Models\Activity> $activities
+ * @property-read int|null $activities_count
+ * @property-read mixed $receipt_details
+ * @property-read string $status_color
+ * @property-read string $status_label
+ * @property-read \App\Models\Order|null $order
+ * @property-read \App\Models\Wallet $wallet
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|WalletTransaction newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|WalletTransaction newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|WalletTransaction query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|WalletTransaction whereAmount($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|WalletTransaction whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|WalletTransaction whereDescription($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|WalletTransaction whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|WalletTransaction whereMeta($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|WalletTransaction whereOrderId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|WalletTransaction whereStatus($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|WalletTransaction whereType($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|WalletTransaction whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|WalletTransaction whereWalletId($value)
+ * @mixin \Eloquent
+ */
 class WalletTransaction extends Model
 {
     use LogsActivity;

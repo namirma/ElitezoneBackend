@@ -6,6 +6,31 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Facades\Cache;
 
+/**
+ * @property int $id
+ * @property string $name
+ * @property string $code
+ * @property string|null $description
+ * @property int $is_active
+ * @property int $sort_order
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\PriceFilter> $filters
+ * @property-read int|null $filters_count
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceFilterCategory active()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceFilterCategory newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceFilterCategory newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceFilterCategory query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceFilterCategory whereCode($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceFilterCategory whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceFilterCategory whereDescription($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceFilterCategory whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceFilterCategory whereIsActive($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceFilterCategory whereName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceFilterCategory whereSortOrder($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceFilterCategory whereUpdatedAt($value)
+ * @mixin \Eloquent
+ */
 class PriceFilterCategory extends Model
 {
     const ID = 'id';
