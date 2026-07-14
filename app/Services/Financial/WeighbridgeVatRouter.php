@@ -157,7 +157,7 @@ class WeighbridgeVatRouter
     /**
      * Returns the lifetime commission ceiling for a eliteYAR, or null when uncapped.
      *
-     * ceiling = config('financial.consultant_lifetime_cap_multiplier') × the invoice the
+     * ceiling = config('financial.elite_yar_lifetime_cap_multiplier') × the invoice the
      * eliteYAR paid when purchasing their badge (users.badge_purchase_amount). When that
      * amount is NULL or non-positive (e.g. pioneer/normal eliteYARs who never bought a
      * paid badge) there is no cap and we return null so applyEliteYARLifetimeCap() leaves
@@ -173,7 +173,7 @@ class WeighbridgeVatRouter
             return null;
         }
 
-        $multiplier = (float) config('financial.consultant_lifetime_cap_multiplier', 2.0);
+        $multiplier = (float) config('financial.elite_yar_lifetime_cap_multiplier', 2.0);
 
         return (float) $badgePurchaseAmount * $multiplier;
     }

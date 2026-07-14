@@ -35,7 +35,7 @@ class FinalizeInvoiceAction
 
                 if (! $eliteYAR) {
                     Log::channel('orders')->error("User not found for eliteYAR fee hold. Order: {$order->id}");
-                    throw new Exception(__('orders.consultant_not_found_internal'));
+                    throw new Exception(__('orders.elite_yar_not_found_internal'));
                 }
 
                 $wallet = $eliteYAR->wallet ?: $eliteYAR->wallet()->create([]);

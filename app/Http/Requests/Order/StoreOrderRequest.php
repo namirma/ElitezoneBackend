@@ -16,12 +16,12 @@ use Illuminate\Validation\Rule;
  * اعتبارسنجی نقش‌محور ثبت سفارش:
  *
  * مسیر کارفرما (employer):
- *   - consultant_user_id: اختیاری؛ باید الیت یار approved+verified خودِ کارفرما باشد
+ *   - elite_yar_user_id: اختیاری؛ باید الیت یار approved+verified خودِ کارفرما باشد
  *   - beneficiary_user_id: ممنوع (کارفرما گیرنده خودش است)
  *
  * مسیر الیت یار (engineer / contractor):
  *   - beneficiary_user_id: اجباری؛ باید کارفرمای approved همین الیت یار باشد
- *   - consultant_user_id: ممنوع در request؛ توسط PlaceOrderAction = self ست می‌شود
+ *   - elite_yar_user_id: ممنوع در request؛ توسط PlaceOrderAction = self ست می‌شود
  */
 class StoreOrderRequest extends FormRequest
 {
@@ -72,20 +72,20 @@ class StoreOrderRequest extends FormRequest
                         ->exists();
 
                     if (! $isApproved) {
-                        $fail(__('orders.store_consultant_not_approved'));
+                        $fail(__('orders.store_elite_yar_not_approved'));
                         return;
                     }
 
                     // بررسی ۲: آیا الیت یار گواهی تأیید مدارک دارد (is_verified = true)؟
                     $eliteYAR = User::find($value);
                     if (! $eliteYAR) {
-                        $fail(__('orders.store_consultant_not_found'));
+                        $fail(__('orders.store_elite_yar_not_found'));
                         return;
                     }
 
                     $isVerified = $this->isEliteYARVerified($eliteYAR);
                     if (! $isVerified) {
-                        $fail(__('orders.store_consultant_not_verified'));
+                        $fail(__('orders.store_elite_yar_not_verified'));
                     }
                 },
             ],
@@ -105,7 +105,7 @@ class StoreOrderRequest extends FormRequest
     private function eliteYARRules(): array
     {
         return [
-            // ممنوع: الیت یار consultant_user_id نمی‌فرستد — Action آن را = self ست می‌کند
+            // ممنوع: الیت یار elite_yar_user_id نمی‌فرستد — Action آن را = self ست می‌کند
             'elite_yar_user_id' => [
                 'prohibited',
             ],
@@ -185,13 +185,13 @@ class StoreOrderRequest extends FormRequest
             'shipping_method_id.exists'   => __('orders.store_shipping_exists'),
 
             'beneficiary_user_id.prohibited' => __('orders.store_beneficiary_prohibited_for_employer'),
-            'beneficiary_user_id.required'   => __('orders.store_beneficiary_required_for_consultant'),
+            'beneficiary_user_id.required'   => __('orders.store_beneficiary_required_for_elite_yar'),
             'beneficiary_user_id.integer'    => __('orders.store_beneficiary_integer'),
             'beneficiary_user_id.exists'     => __('orders.store_beneficiary_exists'),
 
-            'elite_yar_user_id.prohibited' => __('orders.store_consultant_prohibited_for_consultant'),
-            'elite_yar_user_id.integer'    => __('orders.store_consultant_integer'),
-            'elite_yar_user_id.exists'     => __('orders.store_consultant_exists'),
+            'elite_yar_user_id.prohibited' => __('orders.store_elite_yar_prohibited_for_elite_yar'),
+            'elite_yar_user_id.integer'    => __('orders.store_elite_yar_integer'),
+            'elite_yar_user_id.exists'     => __('orders.store_elite_yar_exists'),
 
             'description.max' => __('orders.store_description_max'),
         ];

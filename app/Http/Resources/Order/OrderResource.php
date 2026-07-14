@@ -19,7 +19,7 @@ class OrderResource extends BaseJsonResource
         $viewerId = Auth::id();
         $isSupplier = $user ? $user->hasRole('supplier') : false;
 
-        // الیت یارِ سفارش — مستقیماً از consultant_user_id خوانده می‌شود.
+        // الیت یارِ سفارش — مستقیماً از elite_yar_user_id خوانده می‌شود.
         // (قبلاً از placer.type یا beneficiary_user_id استنتاج می‌شد — حالا ستون جداست)
         $eliteYARUser = $this->{Order::ELITE_YAR_USER_ID} ? $this->eliteYAR : null;
 
@@ -117,7 +117,7 @@ class OrderResource extends BaseJsonResource
                 ];
             }, null),
 
-            // --- EliteYAR Info (الیت یارِ سفارش — مستقیم از consultant_user_id) ---
+            // --- EliteYAR Info (الیت یارِ سفارش — مستقیم از elite_yar_user_id) ---
             'elite_yar' => $eliteYARUser ? [
                 'id' => $eliteYARUser->id,
                 'full_name' => $eliteYARUser->full_name,

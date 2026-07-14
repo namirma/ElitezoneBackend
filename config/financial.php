@@ -86,18 +86,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Consultant lifetime commission cap multiplier
+    | EliteYAR lifetime commission cap multiplier
     |--------------------------------------------------------------------------
     |
     | Spec ("پروسه خرید"): the total lifetime commission paid to a gold/silver/bronze
-    | consultant may not exceed this multiple of the invoice they paid when purchasing
-    | their badge. The per-consultant badge-purchase amount is stored in
-    | users.badge_purchase_amount; WeighbridgeVatRouter::consultantLifetimeCeiling()
+    | elite yar may not exceed this multiple of the invoice they paid when purchasing
+    | their badge. The per-elite yar badge-purchase amount is stored in
+    | users.badge_purchase_amount; WeighbridgeVatRouter::eliteYARLifetimeCeiling()
     | multiplies it by this value to derive the cap. A NULL badge_purchase_amount
-    | (e.g. pioneer/normal consultants) means uncapped.
+    | (e.g. pioneer/normal elite yars) means uncapped.
     |
     */
-    'consultant_lifetime_cap_multiplier' => (float) env('CONSULTANT_LIFETIME_CAP_MULTIPLIER', 2.0),
+    'elite_yar_lifetime_cap_multiplier' => (float) env('ELITE_YAR_LIFETIME_CAP_MULTIPLIER', 2.0),
 
     /*
     |--------------------------------------------------------------------------

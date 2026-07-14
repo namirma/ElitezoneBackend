@@ -44,7 +44,7 @@ class ReleaseEliteYARHoldAction
     {
         // ── Idempotency guard ─────────────────────────────────────────────────
         if ($order->{Order::ELITE_YAR_MOADIAN_REF} !== null) {
-            Log::channel('financial')->info("ReleaseEliteYARHoldAction skipped: order {$order->id} already has consultant_moadian_ref.");
+            Log::channel('financial')->info("ReleaseEliteYARHoldAction skipped: order {$order->id} already has elite_yar_moadian_ref.");
 
             return;
         }
@@ -68,7 +68,7 @@ class ReleaseEliteYARHoldAction
 
         $eliteYARUserId = $order->{Order::ELITE_YAR_USER_ID};
         if (! $eliteYARUserId) {
-            throw new \RuntimeException(__('orders.errors.no_consultant'));
+            throw new \RuntimeException(__('orders.errors.no_elite_yar'));
         }
 
         // ── Recalculate the net / VAT split ───────────────────────────────────

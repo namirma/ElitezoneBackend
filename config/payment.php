@@ -8,7 +8,7 @@ return [
      * محاسبه خواهد شد.
      * مثال: 2.0 = 2 درصد
      */
-    'consultant_fee_percentage' => 2.0,
+    'elite_yar_fee_percentage' => 2.0,
 
     'contractor_fee_percentage' => 2.0, // فعلا برابر با مهندس
 

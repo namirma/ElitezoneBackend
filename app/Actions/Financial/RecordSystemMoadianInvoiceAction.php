@@ -62,7 +62,7 @@ class RecordSystemMoadianInvoiceAction
         // ProcessWeighbridgeResultAction stores the updated values on the order:
         //   payment_of_owner      = POOM (updated from oldPOO)
         //   payment_to_supplier   = PTSM (updated from oldPTS)
-        //   payment_to_consultant = eliteYARGross (0 when no eliteYAR)
+        //   payment_to_elite_yar = eliteYARGross (0 when no eliteYAR)
         //   vat_rate              = the percentage used at payment time
         //
         // sazeGross = (POOM − PTSM) − eliteYARGross

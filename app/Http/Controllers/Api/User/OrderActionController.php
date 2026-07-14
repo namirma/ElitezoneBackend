@@ -80,7 +80,7 @@ class OrderActionController extends Controller
         }
 
         if ($order->{Order::ELITE_YAR_MOADIAN_REF} !== null) {
-            return error(__('orders.consultant_moadian_already_done'), [], 409);
+            return error(__('orders.elite_yar_moadian_already_done'), [], 409);
         }
 
         try {
@@ -94,6 +94,6 @@ class OrderActionController extends Controller
             return error(__('orders.unknown_processing_error'), [], 500);
         }
 
-        return success([], __('orders.consultant_moadian_submitted'));
+        return success([], __('orders.elite_yar_moadian_submitted'));
     }
 }

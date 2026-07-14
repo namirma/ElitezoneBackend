@@ -158,7 +158,7 @@ class AdminFinancialController extends Controller
             'placer'                     => $order->placer?->profile?->name,
             'final_amount'               => (float) $order->{Order::FINAL_AMOUNT},
             'weighing_completed_at'      => $order->{Order::WEIGHING_COMPLETED_AT},
-            'consultant_moadian_done'    => $order->{Order::ELITE_YAR_MOADIAN_REF} !== null,
+            'elite_yar_moadian_done'    => $order->{Order::ELITE_YAR_MOADIAN_REF} !== null,
             'supplier_moadian_done'      => $order->{Order::SUPPLIER_MOADIAN_REF} !== null,
             'system_moadian_done'        => $order->{Order::SYSTEM_MOADIAN_REF} !== null,
             'has_beneficiary'            => $order->{Order::BENEFICIARY_USER_ID} !== null,

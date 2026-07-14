@@ -176,7 +176,7 @@ class AdminUserController extends Controller
         $profile = $this->resolveEliteYARProfile($user);
 
         if (! $profile) {
-            return error(__('admin.users.no_consultant_profile'), [], 422);
+            return error(__('admin.users.no_elite_yar_profile'), [], 422);
         }
 
         $profile->update([
@@ -191,7 +191,7 @@ class AdminUserController extends Controller
                 'is_verified' => true,
                 'verified_at' => $profile->{$profile::VERIFIED_AT}->toDateTimeString(),
             ],
-            __('admin.users.consultant_verified')
+            __('admin.users.elite_yar_verified')
         );
     }
 
@@ -205,7 +205,7 @@ class AdminUserController extends Controller
         $profile = $this->resolveEliteYARProfile($user);
 
         if (! $profile) {
-            return error(__('admin.users.no_consultant_profile'), [], 422);
+            return error(__('admin.users.no_elite_yar_profile'), [], 422);
         }
 
         $profile->update([
@@ -220,7 +220,7 @@ class AdminUserController extends Controller
                 'is_verified' => false,
                 'verified_at' => null,
             ],
-            __('admin.users.consultant_unverified')
+            __('admin.users.elite_yar_unverified')
         );
     }
 

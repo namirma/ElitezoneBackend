@@ -22,7 +22,7 @@ final class SignAgreementAction
     public function execute(User $user, string $roleSlug, Request $request): void
     {
         $agreementSlug = match ($roleSlug) {
-            'expert' => 'consultant_terms',
+            'expert' => 'elite_yar_terms',
             'employer' => 'employer_terms',
             'supplier' => 'supplier_terms',
             default => null,

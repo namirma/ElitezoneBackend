@@ -211,7 +211,7 @@ class PlaceOrderAction
 
         // تعیین الیت یار مؤثر:
         // — اگر خودِ خریدار الیت یار است (engineer/contractor) → الیت یار = placer (اجباری)
-        // — اگر کارفرما است → الیت یار همانی است که در consultant_user_id فرستاده
+        // — اگر کارفرما است → الیت یار همانی است که در elite_yar_user_id فرستاده
         $isEliteYARPlacer = $user->hasRole('engineer') || $user->hasRole('contractor');
         $effectiveEliteYARId = $isEliteYARPlacer ? $user->id : $data->eliteYARUserId;
 
@@ -235,7 +235,7 @@ class PlaceOrderAction
      * محاسبه کمیسیون بر اساس الیت یار مؤثر سفارش.
      *
      * @param  User  $placer  خریدار/ثبت‌کننده سفارش
-     * @param  int|null  $eliteYARId  consultant_user_id مؤثر (پس از تعیین نقش)
+     * @param  int|null  $eliteYARId  elite_yar_user_id مؤثر (پس از تعیین نقش)
      */
     private function calculateCommissions(User $placer, ?int $eliteYARId, float $subtotal): array
     {

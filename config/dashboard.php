@@ -45,7 +45,7 @@ return [
         'relations' => [
             'title' => 'کارفرمایان',
             'icon' => 'users',
-            'link' => '/profile/consultants',
+            'link' => '/profile/elite-yars',
         ],
     ],
 

@@ -55,7 +55,7 @@ class EliteYARRelationController extends Controller
      *   ① not_registered   — موبایل در سیستم وجود ندارد
      *                        → فرانت پنجره «دعوت به ثبت‌نام» را نشان می‌دهد
      *
-     *   ② consultant_not_verified — کاربر ثبت‌نام کرده ولی مدارک تأیید نشده
+     *   ② elite_yar_not_verified — کاربر ثبت‌نام کرده ولی مدارک تأیید نشده
      *                        → خطای مناسب با پیشنهاد تماس با پشتیبانی
      *
      *   ③ (موفق)           — کاربر ثبت‌نام + تأییدشده → ادامه فرایند دعوت
@@ -80,7 +80,7 @@ class EliteYARRelationController extends Controller
             ->pluck(UserType::ID);
 
         if (! $expertTypes->contains($eliteYARTypeId)) {
-            return error(__('auth.consultant_is_not_expert'), [], 422);
+            return error(__('auth.elite_yar_is_not_expert'), [], 422);
         }
 
         if ($employer->id === $eliteYAR->id) {
@@ -89,7 +89,7 @@ class EliteYARRelationController extends Controller
 
         // ── خروجی ② : registered ولی not_verified ──────────────────────────
         if (! $this->isEliteYARVerified($eliteYAR)) {
-            return error(__('elite_yar.consultant_not_verified'), [], 422);
+            return error(__('elite_yar.elite_yar_not_verified'), [], 422);
         }
 
         // ── خروجی ③ : registered + verified → ادامه دعوت ───────────────────
@@ -102,7 +102,7 @@ class EliteYARRelationController extends Controller
             $updatedAt = $existingRelation->pivot->updated_at;
 
             if (in_array($status, [EmployerEliteYAR::STATUS_PENDING, EmployerEliteYAR::STATUS_APPROVED])) {
-                return error(__('auth.consultant_already_added'), [], 409);
+                return error(__('auth.elite_yar_already_added'), [], 409);
             }
 
             if ($status === EmployerEliteYAR::STATUS_REJECTED) {
@@ -126,7 +126,7 @@ class EliteYARRelationController extends Controller
 
         $employer->loadMissing('profile');
         $employerName = $employer->profile->name ?? $employer->{User::MOBILE};
-        $smsMessage = __('sms.consultant_invitation', ['employer_name' => $employerName]);
+        $smsMessage = __('sms.elite_yar_invitation', ['employer_name' => $employerName]);
 
         UserNotification::create([
             UserNotification::USER_ID  => $eliteYAR->id,
@@ -148,10 +148,10 @@ class EliteYARRelationController extends Controller
         $employer = Auth::user();
 
         if ($employer->technicalEliteYARs()->detach($eliteYAR->id)) {
-            return success([], __('auth.consultant_relation_removed'));
+            return success([], __('auth.elite_yar_relation_removed'));
         }
 
-        return error(__('auth.consultant_relation_not_found'), [], 404);
+        return error(__('auth.elite_yar_relation_not_found'), [], 404);
     }
 
     public function listMyInvitations(): JsonResponse
