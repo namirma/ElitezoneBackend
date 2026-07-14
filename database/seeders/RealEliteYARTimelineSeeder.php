@@ -36,7 +36,7 @@ use Illuminate\Support\Facades\Hash;
  */
 class RealEliteYARTimelineSeeder extends Seeder
 {
-    private const CONSULTANT_MOBILE = '09130603199'; // فقط برای پیدا کردن (read-only)
+    private const ELITE_YAR_MOBILE = '09130603199'; // فقط برای پیدا کردن (read-only)
 
     private const PASSWORD = 'password123';
 
@@ -56,9 +56,9 @@ class RealEliteYARTimelineSeeder extends Seeder
         $this->command->info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
         // ─── الیت یار واقعی (READ-ONLY) ────────────────────────────────────
-        $eliteYAR = User::where(User::MOBILE, self::CONSULTANT_MOBILE)->first();
+        $eliteYAR = User::where(User::MOBILE, self::ELITE_YAR_MOBILE)->first();
         if (! $eliteYAR) {
-            $this->command->error('  ✗ کاربر '.self::CONSULTANT_MOBILE.' یافت نشد.');
+            $this->command->error('  ✗ کاربر '.self::ELITE_YAR_MOBILE.' یافت نشد.');
 
             return;
         }
@@ -120,7 +120,7 @@ class RealEliteYARTimelineSeeder extends Seeder
         $this->command->info("    کارفرما B: کیوان شفیعی    ({$employerB->mobile})");
         $this->command->info("    گیرنده   : امیرحسین تقوی  ({$client->mobile})");
         $this->command->info('');
-        $this->command->info('  ▶  با '.self::CONSULTANT_MOBILE.' (کد پیامکی) وارد شوید → داشبورد و تب سفارش‌ها.');
+        $this->command->info('  ▶  با '.self::ELITE_YAR_MOBILE.' (کد پیامکی) وارد شوید → داشبورد و تب سفارش‌ها.');
         $this->command->info('');
     }
 

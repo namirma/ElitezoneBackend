@@ -1,6 +1,6 @@
 # EliteZone — Frontend Change Notes
 
-> Backend branch: `feature/spec-gaps-consultant-cap-ticketing`.
+> Backend branch: `feature/spec-gaps-elite yar-cap-ticketing`.
 > Most screens already exist; the items below **changed behaviour or contract** and the
 > existing frontend must be updated. First: backend runs `php artisan migrate`.
 > Response envelope everywhere: `{ status: bool, message: string, data: … }`.
@@ -12,7 +12,7 @@
 ### A1. Order invoice download is now authorization-restricted  ⚠️ breaking
 `GET /api/profile/orders/{order}/invoice/{type}`  (`type` ∈ `initial | final | tax`)
 - These are **buyer documents** → only the order's **buyer (placer)** (or an admin) may download.
-- If a user who is the **supplier or consultant** of that order requests them → **403** (was 200).
+- If a user who is the **supplier or elite yar** of that order requests them → **403** (was 200).
 - Action: hide these buttons for non-buyer roles, and handle 403 gracefully.
 
 ### A2. Email-token verification now returns 400 on a wrong token  ⚠️ behaviour change
@@ -28,10 +28,10 @@
 - Action: if the frontend was converting these to Gregorian or blocking day 31 of months 1–6,
   remove that — send the Jalali string as-is.
 
-### A4. Technical-consultant role now actually attaches after profile completion
+### A4. Technical-elite yar role now actually attaches after profile completion
 `POST /api/profile/engineer` and `POST /api/profile/contractor`
 - A backend bug meant the `engineer` / `contractor` **role** was never attached. It now attaches
-  when the user’s type is the technical-consultant type.
+  when the user’s type is the technical-elite yar type.
 - Action: any role-gated UI (menus, permissions) should expect the `engineer`/`contractor` role to
   appear in the user’s roles right after they complete that profile.
 
@@ -116,12 +116,12 @@ waiting_supplier, answered, resolved, closed` (+ legacy `pending`). Render via
 - Financial receipts moved to a private disk — the **download link is unchanged** (still the
   authenticated `…/receipts/transactions/{transaction}/download` route).
 - Mobile-change now stores the normalized `09…` number (internal correctness).
-- Consultant lifetime commission cap, Pasargad gateway scaffold — backend only.
+- EliteYAR lifetime commission cap, Pasargad gateway scaffold — backend only.
 
 ---
 
 ## E) Quick checklist for the frontend team
-- [ ] Hide buyer-invoice buttons for supplier/consultant; handle 403 (A1).
+- [ ] Hide buyer-invoice buttons for supplier/elite yar; handle 403 (A1).
 - [ ] Handle 400 on email-token verify (A2).
 - [ ] Send Jalali dates as-is for job experience; stop blocking day 31 (A3).
 - [ ] Expect engineer/contractor role after profile completion (A4).

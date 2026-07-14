@@ -35,11 +35,11 @@ The internal **wallet settlement math is correct** and the core money-movement a
 
 ### 1.1 Settlement formulas — ✅ CORRECT (and the spec contradicts itself)
 
-`SettlementCalculatorService` was verified **formula-by-formula** against spec lines 1299–1685. **All four ±%TC/±%VAT variants of POO, POOM, PTS, PTSM match exactly**, and the consultant gross derivation `(POOM−PTSM)×%CO/(%CO+%SSG)` is algebraically equal to the spec's intended PTC (the spec's PTC table is copy-paste-corrupted; the code's derivation is actually more robust). Badge splits and the VAT multiplier `(vat/100)/(1+vat/100)` match.
+`SettlementCalculatorService` was verified **formula-by-formula** against spec lines 1299–1685. **All four ±%TC/±%VAT variants of POO, POOM, PTS, PTSM match exactly**, and the elite yar gross derivation `(POOM−PTSM)×%CO/(%CO+%SSG)` is algebraically equal to the spec's intended PTC (the spec's PTC table is copy-paste-corrupted; the code's derivation is actually more robust). Badge splits and the VAT multiplier `(vat/100)/(1+vat/100)` match.
 
-> ⚠️ **Important nuance:** the audit brief's "%OW = 60% × %TC" comes from the spec **glossary (line 1528)**, which **contradicts the spec's own calculation section (lines 1635–1636)** where `%OW = 40% × %TC` and `%CO+%SSG = 60% × %TC`. The code uses **40%** (`SettlementCalculatorService.php:202-205`), matching the authoritative calculation section. **Do NOT "fix" it to 60%** — that would break every badge split and underpay Saze/consultants. Recommend correcting the spec glossary instead.
+> ⚠️ **Important nuance:** the audit brief's "%OW = 60% × %TC" comes from the spec **glossary (line 1528)**, which **contradicts the spec's own calculation section (lines 1635–1636)** where `%OW = 40% × %TC` and `%CO+%SSG = 60% × %TC`. The code uses **40%** (`SettlementCalculatorService.php:202-205`), matching the authoritative calculation section. **Do NOT "fix" it to 60%** — that would break every badge split and underpay Saze/elite yars. Recommend correcting the spec glossary instead.
 
-Residual (not bugs): consultant **lifetime cap is inert** (`consultantLifetimeCeiling()` returns `null`, `ProcessWeighbridgeResultAction.php:306`) — a gold/silver consultant can exceed the 2× lifetime ceiling; and **`%TC` is hardcoded at 1%** (`SettlementCalculatorService.php:35`) though the spec says it's super-admin-editable per supplier.
+Residual (not bugs): elite yar **lifetime cap is inert** (`eliteYARLifetimeCeiling()` returns `null`, `ProcessWeighbridgeResultAction.php:306`) — a gold/silver elite yar can exceed the 2× lifetime ceiling; and **`%TC` is hardcoded at 1%** (`SettlementCalculatorService.php:35`) though the spec says it's super-admin-editable per supplier.
 
 ### 1.2 Wallet ledger movements per stage — ⚠️ mostly correct, with deliberate & accidental deviations
 
@@ -50,13 +50,13 @@ Residual (not bugs): consultant **lifetime cap is inert** (`consultantLifetimeCe
 | Reservation completion | G:(POO−PTR,WO,A)→WSSG; H:(PTS,WSSG)→WS | `ProcessReservationCompletionAction.php:110-122` | ✅ MATCH (+justified hold-release leg) |
 | Reserve cancel (expiry) | i:(PTR,WSSG,**A**)→(PTR,WO,A) | `CancelOrderAction.php:106-108` subtracts from WSSG **hold** | ⚠️ code uses Hold (more correct than spec's `A`); reconcile spec |
 | Weighbridge LO/LS | (POO−POOM) WSSG→WO ; (PTS−PTSM) WS→WSSG | `ProcessWeighbridgeResultAction.php:131-165` | ⚠️ buyer refund credited to **Hold** when supplier can't cover (deliberate safety extension) |
-| Weighbridge VAT legs | O:(%VATPTSM,WVAT,**A**); Q:(%VATPTC,WVAT,**A**); P:(%VATPOOM,WVAT,**H**) | code puts **supplier & consultant VAT in HOLD** and releases on Moadian submission; P basis = `%VAT of (POOM−PTSM−consultantGross)` not `%VAT of POOM` | ⚠️ **systematic Hold/Available + basis mismatch** vs spec |
+| Weighbridge VAT legs | O:(%VATPTSM,WVAT,**A**); Q:(%VATPTC,WVAT,**A**); P:(%VATPOOM,WVAT,**H**) | code puts **supplier & elite yar VAT in HOLD** and releases on Moadian submission; P basis = `%VAT of (POOM−PTSM−eliteYARGross)` not `%VAT of POOM` | ⚠️ **systematic Hold/Available + basis mismatch** vs spec |
 
 🔴 **Ledger leak — `PayHoldFeeAction`** (`PayHoldFeeAction.php:70`): the hold fee is **debited from WO with no offsetting credit to any wallet** — double-entry is violated; the money vanishes from the ledger. Must credit WSSG (or wherever the fee accrues).
 
 ### 1.3 Documents — ⚠️ letter scheme diverged; several docs never generated
 
-Spec documents: `0, A–H, i, j, K(=waybill), LO, LS, O, P, Q, R(=freight settlement), S(buyer survey), T(consultant survey)`.
+Spec documents: `0, A–H, i, j, K(=waybill), LO, LS, O, P, Q, R(=freight settlement), S(buyer survey), T(elite yar survey)`.
 
 | Issue | Detail | Evidence |
 |---|---|---|
@@ -76,8 +76,8 @@ Spec documents: `0, A–H, i, j, K(=waybill), LO, LS, O, P, Q, R(=freight settle
 |---|---|---|
 | 🔴 **Buy-for-others consent OTP gate** | **PARTIAL — not enforced.** OTP send/verify exists (`BeneficiaryController`) but placement never checks consent; `StoreOrderRequest.php:20` accepts any `beneficiary_user_id` as `exists:users,id`; `confirmVerification` stores no persistent consent flag. Any user can name an arbitrary beneficiary (→ commission routing). Legal-person BackOffice approval also absent. | `StoreOrderRequest.php:20`, `PlaceOrderAction.php:298`, `BeneficiaryController.php:138-141` |
 | 🔴 **Passargad gateway** | **ABSENT.** Spec's bank is Passargad; code only has stubbed `shaparak` + `podium`/`tesna` (external sync). (Spec notes gateway is pending license, so partly expected — but `shaparak` naming is misleading and broken.) | `config/services.php`, `Services/Payment/Gateways/*` |
-| 🟠 **4 dedicated agreements** | **PARTIAL.** Only 3 slugs mapped (`consultant/employer/supplier_terms`); spec also requires `elitezone_terms` + `privacy_policy` (5 total). **No agreement seeder exists**, so acceptance is a silent no-op today. Legal metadata (accepted_at/ip/user_agent) IS captured. | `SignAgreementAction.php:24-29,40-51` |
-| 🟠 **Surveys S (buyer) & T (consultant)** | **PARTIAL.** `OrderSurvey` has no `type`/role column; the first submitter (buyer **or** consultant) sets `SURVEY_COMPLETED` and blocks the other. Cannot record both S and T. | `OrderSurveyController.php:27-40`, `OrderSurvey.php` |
+| 🟠 **4 dedicated agreements** | **PARTIAL.** Only 3 slugs mapped (`elite yar/employer/supplier_terms`); spec also requires `elitezone_terms` + `privacy_policy` (5 total). **No agreement seeder exists**, so acceptance is a silent no-op today. Legal metadata (accepted_at/ip/user_agent) IS captured. | `SignAgreementAction.php:24-29,40-51` |
+| 🟠 **Surveys S (buyer) & T (elite yar)** | **PARTIAL.** `OrderSurvey` has no `type`/role column; the first submitter (buyer **or** elite yar) sets `SURVEY_COMPLETED` and blocks the other. Cannot record both S and T. | `OrderSurveyController.php:27-40`, `OrderSurvey.php` |
 | 🟠 **Reservation threshold** | **MISMATCH.** Code default `1,950,000,000` Rials (195M Toman); spec payment limit = **200M Toman**. Orders 195–200M Toman are needlessly forced into reservation. | `config/financial.php:21` |
 | ✅ Stock "bell" subscription | PRESENT | `StockSubscriptionController`, `stock_subscriptions` |
 | ✅ SHEBA refund collection | PRESENT | `UserBankAccount`, `ShebaInquiryService` |
@@ -206,7 +206,7 @@ Plus: `AdminActivityLogController` builds a class name from user input (`'App\\M
 
 ## 7. What's genuinely good (keep)
 
-- Settlement **formulas are correct** across all 4 variants; consultant derivation is robust.
+- Settlement **formulas are correct** across all 4 variants; elite yar derivation is robust.
 - `WalletTransactionEngine` / direct-purchase / reservation actions: `DB::transaction` + `lockForUpdate` + idempotency re-checked **under** the lock; refunds reverse **both** ledger legs (no money-minting).
 - `PlaceOrderAction` (single locked transaction, decomposed). Policies + admin-bypass `before()`. `address_id` ownership scoping. IDOR ownership checks **are present and correct** on notifications, addresses, eduix, job-experiences, wishlists, my-items, wallet receipts. Sensitive `User` fields hidden. Document-numbering format. `ShouldQueue` on listeners.
 

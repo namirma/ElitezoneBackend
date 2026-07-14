@@ -29,8 +29,8 @@ use Illuminate\Support\Facades\Hash;
  */
 class EliteYARTimelineTestSeeder extends Seeder
 {
-    private const CONSULTANT_MOBILE  = '09500000005';
-    private const CONSULTANT_NC      = '5555555555';
+    private const ELITE_YAR_MOBILE  = '09500000005';
+    private const ELITE_YAR_NC      = '5555555555';
     private const PASSWORD           = 'password123';
     private const ORDER_NUMBER       = 'ORD-CON-TEST-001';
 
@@ -49,10 +49,10 @@ class EliteYARTimelineTestSeeder extends Seeder
         );
 
         $eliteYAR = User::firstOrCreate(
-            [User::MOBILE => self::CONSULTANT_MOBILE],
+            [User::MOBILE => self::ELITE_YAR_MOBILE],
             [
-                User::MOBILE        => self::CONSULTANT_MOBILE,
-                User::NATIONAL_CODE => self::CONSULTANT_NC,
+                User::MOBILE        => self::ELITE_YAR_MOBILE,
+                User::NATIONAL_CODE => self::ELITE_YAR_NC,
                 User::BIRTH_DATE    => '13700101',
                 User::PASSWORD      => Hash::make(self::PASSWORD),
                 User::TYPE_ID       => $expertType->id,
@@ -65,7 +65,7 @@ class EliteYARTimelineTestSeeder extends Seeder
                 'user_id'       => $eliteYAR->id,
                 'name'          => 'سارا',
                 'family'        => 'الیت یارزاده',
-                'national_code' => self::CONSULTANT_NC,
+                'national_code' => self::ELITE_YAR_NC,
             ]
         );
 
@@ -141,7 +141,7 @@ class EliteYARTimelineTestSeeder extends Seeder
         $this->command->table(
             ['نقش', 'موبایل', 'رمز', 'ID'],
             [
-                ['الیت یار', self::CONSULTANT_MOBILE, self::PASSWORD, $eliteYAR->id],
+                ['الیت یار', self::ELITE_YAR_MOBILE, self::PASSWORD, $eliteYAR->id],
             ]
         );
         $this->command->info("  📦  سفارش تست: " . self::ORDER_NUMBER . " (ID: {$order->id})");

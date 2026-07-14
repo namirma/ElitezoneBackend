@@ -57,7 +57,7 @@ Http/Requests/
   Cart/        — AddToCartRequest, UpdateCartItemRequest, UpdateCartFiltersRequest, SavePurchaseParametersRequest, UpdateCustomerTypeRequest
   Order/       — StoreOrderRequest, PayFullOrderRequest, PayHoldFeeRequest, AddWaybillRequest, SubmitWeighbridgeRequest,
                  UploadOrderReceiptRequest, StoreOrderSurveyRequest, FinalizeOrderInvoiceRequest, OrderPriceRequest,
-                 SubmitMoadianInvoiceRequest  ← shared by Doc Q (consultant) and Doc O (supplier) endpoints
+                 SubmitMoadianInvoiceRequest  ← shared by Doc Q (elite yar) and Doc O (supplier) endpoints
   Product/     — ProductIndexRequest, ProductVariantFilterRequest, ProductVariantPriceRequest, SearchRequest, ToggleStockSubscriptionRequest
   Profile/     — UpdateRealProfileRequest, UpdateLegalProfileRequest, StoreUserTypeRequest, StoreEngineerProfileRequest,
                  StoreContractorProfileRequest, StoreEmployerProfileRequest, StoreSupplierProfileRequest,
@@ -182,7 +182,7 @@ Actions/
                  PayHoldFeeAction, ProcessPreScalePaymentAction,
                  ProcessReservationPaymentAction, ProcessReservationCompletionAction,
                  ProcessWeighbridgeResultAction, ProcessPaymentCallbackAction,
-                 ReleaseEliteYARHoldAction,    ← Doc Q: releases WCT+WVAT holds
+                 ReleaseEliteYARHoldAction,    ← Doc Q: releases WEY+WVAT holds
                  RecordSupplierMoadianInvoiceAction, ← Doc O: releases WVAT hold
                  AttachReceiptToDepositAction, DeleteReceiptAction
   Order/       — PlaceOrderAction, RefundOrderToWalletAction, CancelOrderAction,
@@ -201,13 +201,13 @@ wallet (DB::transaction + lockForUpdate + WalletFunded dispatch). `PaymentContro
 delegates entirely to this action; it holds no DB or financial logic itself.
 
 `FinalizeInvoiceAction` — atomically updates `final_invoice_ref` and holds the
-consultant fee (TYPE_FEE_HOLD WalletTransaction + balance_hold increment) inside a
+elite yar fee (TYPE_FEE_HOLD WalletTransaction + balance_hold increment) inside a
 single DB::transaction. `OrderActionController::finalizeInvoice()` delegates to it.
 
-`ReleaseEliteYARHoldAction` — Doc Q post-weighbridge: when the consultant submits
-their Moadian invoice, releases WCT hold→available (consultant net) and WVAT
-hold→available (consultant VAT). Idempotent via `consultant_moadian_ref` guard.
-Route: `POST /profile/orders/{order}/consultant-moadian-invoice` (OrderActionController).
+`ReleaseEliteYARHoldAction` — Doc Q post-weighbridge: when the elite yar submits
+their Moadian invoice, releases WEY hold→available (elite yar net) and WVAT
+hold→available (elite yar VAT). Idempotent via `elite_yar_moadian_ref` guard.
+Route: `POST /profile/orders/{order}/elite-yar-moadian-invoice` (OrderActionController).
 
 `RecordSupplierMoadianInvoiceAction` — Doc O post-weighbridge: when the supplier
 submits their Moadian invoice, releases WVAT hold→available (supplier VAT portion of
@@ -217,7 +217,7 @@ Route: `POST /profile/orders/{order}/supplier-moadian-invoice` (SupplierOrderCon
 `RecordSystemMoadianInvoiceAction` — Doc P post-weighbridge: when an admin issues
 the platform's (Saze) Moadian invoice to the buyer, releases `sazeVat` from
 WVAT hold→available. `sazeVat` is re-derived at release time from the stored
-POOM/PTSM/consultantGross snapshots and `vat_rate`. Idempotent via
+POOM/PTSM/eliteYARGross snapshots and `vat_rate`. Idempotent via
 `system_moadian_ref` guard; pre-condition: `weighing_completed_at ≠ null`.
 Route: `POST /admin/orders/{order}/system-moadian-invoice` (AdminOrderController).
 
@@ -248,7 +248,7 @@ Services/
   Financial/
     WalletTransactionEngine    — multi-wallet operations for all 5 wallet codes:
                                  WO (buyer), WS (supplier), WSSG (Saze/system),
-                                 WCT (consultant), WVAT (VAT escrow).
+                                 WEY (elite yar), WVAT (VAT escrow).
                                  resolveUserId() maps each code to a user_id;
                                  WALLET_SUPPLIER always requires explicit targetUserId
                                  (supplier lives on order items, not the order row).
@@ -272,7 +272,7 @@ into an Action (write side-effects) or a Service (read/composition).
 
 **`CartResolver::activeCode()`** is the canonical way to get the active pricing
 code anywhere in the codebase. It checks (in order): middleware-bound container
-value → authenticated user's role via `PricingRoleResolver` → `'employer_without_consultant'`
+value → authenticated user's role via `PricingRoleResolver` → `'employer_without_elite_yar'`
 guest default. `ProductController` was previously duplicating this logic in a
 private `resolveActiveCode()` method — that was removed in favour of `CartResolver`.
 
@@ -483,15 +483,15 @@ physically (`weight_after_scale` + stock) but clamped for billing. There is **no
 "surplus" branch** that charges the buyer extra; the only non-equal outcome is a
 deficit (under-delivery → buyer refunded POO − POOM).
 
-**Consultant gross (PTC)** is the `%CO` slice of the commission pool:
+**EliteYAR gross (PTC)** is the `%CO` slice of the commission pool:
 `(POOM − PTSM) × %CO / (%CO + %SSG)`. Deriving it from POOM−PTSM inherits the same
 ±TC/±VAT handling as POO/PTS instead of an ad-hoc formula. The lifetime cap
-(`consultant_lifetime_cap_multiplier`, default 2) is enforced in
-`WeighbridgeVatRouter::applyConsultantLifetimeCap()` and is now **wired**:
-`consultantLifetimeCeiling()` returns `cap_multiplier × users.badge_purchase_amount`
-(the invoice the consultant paid for their badge). A NULL `badge_purchase_amount`
-(e.g. pioneer/normal consultants with no paid badge) means **uncapped**. The cap clamps
-each payout to the remaining headroom = `ceiling − Σ payment_to_consultant on prior
+(`elite_yar_lifetime_cap_multiplier`, default 2) is enforced in
+`WeighbridgeVatRouter::applyEliteYARLifetimeCap()` and is now **wired**:
+`eliteYARLifetimeCeiling()` returns `cap_multiplier × users.badge_purchase_amount`
+(the invoice the elite yar paid for their badge). A NULL `badge_purchase_amount`
+(e.g. pioneer/normal elite yars with no paid badge) means **uncapped**. The cap clamps
+each payout to the remaining headroom = `ceiling − Σ payment_to_elite_yar on prior
 settled orders`.
 
 **Where `badge_purchase_amount` will come from (interim: dormant).** Badges live on the
@@ -517,12 +517,12 @@ Badge-based commission splits (`getCommissionRates()`) — canonical codes are
 After the weighbridge result is processed, two VAT-related holds remain open until
 documents are submitted:
 
-**Doc Q — Consultant Moadian Invoice** (submitted by consultant)
-- At weighbridge: `consultantNet → WCT balance_hold`, `consultantVat → WVAT balance_hold`
-- VAT split: `vatMultiplier = (vat%/100) / (1 + vat%/100)`; `consultantVat = gross × vatMultiplier`
+**Doc Q — EliteYAR Moadian Invoice** (submitted by elite yar)
+- At weighbridge: `eliteYARNet → WEY balance_hold`, `eliteYARVat → WVAT balance_hold`
+- VAT split: `vatMultiplier = (vat%/100) / (1 + vat%/100)`; `eliteYARVat = gross × vatMultiplier`
 - On submission: `ReleaseEliteYARHoldAction` releases both holds to available
-- Order fields set: `consultant_moadian_ref`, `consultant_hold_released_at`
-- Authorization: only `order.beneficiary_user_id` (the consultant) can call this
+- Order fields set: `elite_yar_moadian_ref`, `elite_yar_hold_released_at`
+- Authorization: only `order.beneficiary_user_id` (the elite yar) can call this
 
 **Doc O — Supplier Moadian Invoice** (submitted by supplier)
 - At weighbridge: `supplierVat = PTSM × vatMultiplier → WVAT balance_hold`
@@ -532,9 +532,9 @@ documents are submitted:
 
 **Doc P — System (Saze) Moadian Invoice** (submitted by admin)
 - At weighbridge: `sazeVat = sazeGross × vatMultiplier → WVAT balance_hold`
-  where `sazeGross = (POOM − PTSM) − consultantGross`
+  where `sazeGross = (POOM − PTSM) − eliteYARGross`
 - On submission: `RecordSystemMoadianInvoiceAction` derives `sazeVat` from stored
-  POOM/PTSM/consultantGross snapshots and releases the WVAT hold to available
+  POOM/PTSM/eliteYARGross snapshots and releases the WVAT hold to available
 - Order fields set: `system_moadian_ref`, `system_hold_released_at`
 - Authorization: admin only (`POST /admin/orders/{order}/system-moadian-invoice`)
 
@@ -553,8 +553,8 @@ If at weighbridge time the supplier's wallet balance < `PTS − PTSM` (reclaimAm
 ```php
 Order::TRANS_COMMISSION            // bool snapshot of supplier formula flag
 Order::TRANS_VAT                   // bool snapshot of supplier formula flag
-Order::CONSULTANT_MOADIAN_REF      // string|null — set when Doc Q submitted
-Order::CONSULTANT_HOLD_RELEASED_AT // datetime|null
+Order::ELITE_YAR_MOADIAN_REF      // string|null — set when Doc Q submitted
+Order::ELITE_YAR_HOLD_RELEASED_AT // datetime|null
 Order::SUPPLIER_MOADIAN_REF        // string|null — set when Doc O submitted
 Order::SUPPLIER_HOLD_RELEASED_AT   // datetime|null
 Order::SUPPLIER_DEBT_PENDING       // bool — true while deficit awaits supplier top-up
@@ -589,7 +589,7 @@ mode (file stored on disk, `Invoice` DB record created).
 | M | `DOC_REFUND_REPORT_WEIGH` | Weighbridge deficit | `ProcessWeighbridgeResultAction` |
 | O | `DOC_TAX_INVOICE_SUPPLIER` | Supplier submits Moadian invoice | `RecordSupplierMoadianInvoiceAction` |
 | P | `DOC_TAX_INVOICE_BUYER` | Admin submits system Moadian invoice | `RecordSystemMoadianInvoiceAction` |
-| Q | `DOC_TAX_INVOICE_ELITE_YAR` | Consultant submits Moadian invoice | `ReleaseEliteYARHoldAction` |
+| Q | `DOC_TAX_INVOICE_ELITE_YAR` | EliteYAR submits Moadian invoice | `ReleaseEliteYARHoldAction` |
 
 **`OrderInvoiceController::download()`** serves any of the above by slug (e.g.
 `GET /profile/orders/{order}/invoices/receipt` → `DOC_RECEIPT_OWNER`). The slug→code
@@ -600,7 +600,7 @@ map is an explicit `$typeMap` array; unknown slugs return 422. Never add a
 $order)`, `download()` also enforces `mayAccessDocument($order, $type)` against a
 `DOCUMENT_AUDIENCES` map: buyer-docs (initial/receipt/final/refund/tax/…) → placer only;
 supplier-docs (supplier_report/final_supplier/tax_supplier/…) → the order's item supplier;
-consultant-docs (consultant_report/tax_consultant/…) → beneficiary/consultant; admins
+elite yar-docs (elite_yar_report/tax_elite_yar/…) → beneficiary/elite yar; admins
 bypass. This closed a real leak where any order party that passed `view` could pull
 another party's tax invoice. The user-facing route currently whitelists only
 `['initial','final','tax']`; keep the audience map complete anyway in case the route widens.
@@ -614,7 +614,7 @@ The system has a wallet-based payment model. Five wallet codes are in use:
 | `WO` | `WALLET_OWNER` | buyer (`placer_user_id`) |
 | `WS` | `WALLET_SUPPLIER` | supplier (from `order.items.first().supplier_user_id`) |
 | `WSSG` | `WALLET_SAZE` | platform system (`financial.system_user_id`) |
-| `WCT` | `WALLET_CONSULTANT` | consultant (`beneficiary_user_id`) |
+| `WEY` | `WALLET_ELITE_YAR` | elite yar (`beneficiary_user_id`) |
 | `WVAT` | `WALLET_VAT` | VAT escrow (`financial.vat_user_id`, falls back to system_user_id) |
 
 Payment entry points:
@@ -622,7 +622,7 @@ Payment entry points:
 1. **WalletPaymentController** — generic wallet payment for orders
 2. **OrderPaymentController::payFullOrder** — handles 3 scenarios: direct purchase, reservation (above `financial.reservation_threshold`, default 200M Tomans), and completion of reserved orders; protected by `idempotency` middleware
 3. **OrderPaymentController::payHoldFee** — hold fee extension; protected by `idempotency` middleware
-4. **OrderActionController::submitEliteYARMoadianInvoice** — Doc Q; releases WCT+WVAT holds
+4. **OrderActionController::submitEliteYARMoadianInvoice** — Doc Q; releases WEY+WVAT holds
 5. **SupplierOrderController::submitSupplierMoadianInvoice** — Doc O; releases WVAT hold
 6. **AdminOrderController::submitSystemMoadianInvoice** — Doc P; releases sazeVat WVAT hold
 
@@ -674,7 +674,7 @@ routes/
 │   │                   purchase-parameters, /authenticate group
 │   ├── user.php      — every auth:sanctum route: cart, checkout,
 │   │                   /profile/* (orders, financial, addresses,
-│   │                   wishlists, education, consultants, etc.),
+│   │                   wishlists, education, elite yars, etc.),
 │   │                   beneficiaries, listophers, /user
 │   └── admin.php     — /admin/* panel + /v1/podium/* services
 │                       (both behind auth:sanctum + role:admin)
@@ -730,7 +730,7 @@ Dispatch flow:
 
 Users can have roles: `admin`, `engineer`, `contractor`, `employer`, `supplier`. Each role has a corresponding profile model (EngineerProfile, ContractorProfile, etc.) linked to the User. Role selection happens in `ProfileController::setUserType`.
 
-**UserType slug gotcha:** the technical-consultant `user_types` row is seeded with slug
+**UserType slug gotcha:** the technical-elite yar `user_types` row is seeded with slug
 **`expert`** (`UserTypeSeeder`), not `consultant`. `EngineerController`/`ContractorController`
 auto-attach the engineer/contractor role only when `user.type_id` matches the `expert` type —
 querying `slug = 'consultant'` (the old bug) returned null and never attached the role.
@@ -945,7 +945,7 @@ Performance-critical indexes added across multiple migrations:
 | `wallet_transactions` | `wt_order_type_status_idx` (composite) | `2026_06_22_000000_*` | financial report filters |
 | `order_items` | `order_items_supplier_user_id_idx` | `2026_06_22_000000_*` | supplier order listing |
 | `tickets` | `tickets_status_sla_due_at_idx` (composite) | `2026_06_22_010000_*` | SLA breach queries + KPI reports |
-| `consultant_registered_clients` | `consultant_client_unique` (composite, unique) | `2026_06_22_020000_*` | one-to-one per consultant/client pair |
+| `elite_yar_registered_clients` | `elite_yar_client_unique` (composite, unique) | `2026_06_22_020000_*` | one-to-one per elite yar/client pair |
 
 When adding queries that filter heavily on a column, check this list and
 add an index in a new migration if needed. Always make migrations additive.
@@ -995,17 +995,17 @@ ALL active `PriceFilterCategory` rows with their `filters.filterType` relations 
 Use `route('wallet.deposit', [], false)` wherever you need the path in a response body
 (the third argument `false` returns a path without domain).
 
-### Beneficiary flow — consultant-client relationship is saved on confirm
+### Beneficiary flow — elite yar-client relationship is saved on confirm
 
 `BeneficiaryController::confirmVerification()` calls:
 ```php
 Auth::user()->registeredClients()->syncWithoutDetaching([$beneficiaryUser->id]);
 ```
-after a successful OTP check. This records the consultant→client relationship in
-`consultant_registered_clients` (unique per pair). The link is used by:
-- `GET /api/profile/consultants/registered-clients` — lists all clients this consultant
+after a successful OTP check. This records the elite yar→client relationship in
+`elite_yar_registered_clients` (unique per pair). The link is used by:
+- `GET /api/profile/elite-yars/registered-clients` — lists all clients this elite yar
   has verified, via `EliteYARRelationController::listRegisteredClients()` (role.expert only)
-- `User::registeredClients()` — BelongsToMany via `consultant_registered_clients`
+- `User::registeredClients()` — BelongsToMany via `elite_yar_registered_clients`
 
 Mobile is masked as `0910****567` (same `maskMobile()` logic as `UserResource`).
 **Do not** add a second registration hook in `startVerification` — the relationship is
@@ -1063,7 +1063,7 @@ PriceFilter::create(['price_filter_category_id' => $cat->id, ...]);
 ### `CheckSupplierBalancesJob` — scope to `supplier_debt_pending` only; use `chunkById`
 
 This job must query **only** orders where `supplier_debt_pending = true`. Querying
-all hold transactions would accidentally release consultant-commission holds (WCT)
+all hold transactions would accidentally release elite yar-commission holds (WEY)
 that are waiting for Doc Q. The job uses `chunkById(100, ...)` (not `->get()`) so
 it never loads all debt orders into memory at once — important when many debts accumulate:
 
@@ -1101,10 +1101,10 @@ Mass-assignment via `Order::create([...])` or `$order->fill([...])` will **silen
 
 ```
 OFFICIAL_PRICE, COMMISSION_RATE, OWNER_DISCOUNT_RATE, SAZE_SHARE_RATE,
-CONSULTANT_SHARE_RATE, VAT_RATE, PAYMENT_OF_OWNER, PAYMENT_TO_SUPPLIER,
-PAYMENT_TO_CONSULTANT, PAYMENT_TO_RESERVE, VALIDATION_OF_RESERVE,
+ELITE_YAR_SHARE_RATE, VAT_RATE, PAYMENT_OF_OWNER, PAYMENT_TO_SUPPLIER,
+PAYMENT_TO_ELITE_YAR, PAYMENT_TO_RESERVE, VALIDATION_OF_RESERVE,
 WEIGHT_AFTER_SCALE, WEIGHING_COMPLETED_AT, TRANS_COMMISSION, TRANS_VAT,
-CONSULTANT_MOADIAN_REF, CONSULTANT_HOLD_RELEASED_AT, SUPPLIER_MOADIAN_REF,
+ELITE_YAR_MOADIAN_REF, ELITE_YAR_HOLD_RELEASED_AT, SUPPLIER_MOADIAN_REF,
 SUPPLIER_HOLD_RELEASED_AT, SUPPLIER_DEBT_PENDING, SUPPLIER_DEBT_AMOUNT,
 SYSTEM_MOADIAN_REF, SYSTEM_HOLD_RELEASED_AT
 ```
@@ -1132,7 +1132,7 @@ $this->order = Order::create([...])->forceFill([...])->save() ?? null;
 
 Test helpers that accept `array $overrides` (like `makeOrder()` in `HasOrderProgressTest`)
 must call `$order->forceFill($overrides)->save()` after `Order::create()` so that any
-non-fillable override (e.g. `CONSULTANT_MOADIAN_REF`) is actually persisted.
+non-fillable override (e.g. `ELITE_YAR_MOADIAN_REF`) is actually persisted.
 
 ### `WalletTransactionEngine` — always pass `$targetUserId` for `WALLET_SUPPLIER`
 
@@ -1163,7 +1163,7 @@ Rules:
 - Always go through `WalletTransactionEngine` so every leg is an auditable
   `WalletTransaction`.
 - The action **refuses** orders past the weighbridge (`weighing_completed_at !== null`):
-  they carry supplier/consultant/VAT holds and must go through the return/settlement
+  they carry supplier/elite yar/VAT holds and must go through the return/settlement
   flow, not a simple refund.
 
 `CheckSupplierBalancesJob` follows the same rule — the supplier-debt reclaim
@@ -1181,11 +1181,11 @@ trigger an incomplete refund.
 the policy to allow broader states than the controller accepts, or the defense-in-depth
 is broken (another caller of the policy would allow cancellation the controller forbids).
 
-### Order `beneficiary_user_id` must be an APPROVED consultant of the placer
+### Order `beneficiary_user_id` must be an APPROVED elite yar of the placer
 
-`beneficiary_user_id` drives consultant-commission routing (`WALLET_CONSULTANT`), so
+`beneficiary_user_id` drives elite yar-commission routing (`WALLET_ELITE_YAR`), so
 `StoreOrderRequest` validates (via a closure rule) that it is either the placer themselves
-or an **approved** technical consultant of the placer:
+or an **approved** technical elite yar of the placer:
 `Auth::user()->technicalEliteYARs()->where('users.id', $value)->wherePivot('status', 'approved')->exists()`.
 A bare `exists:users,id` is not enough — it would let anyone route commission to an arbitrary user.
 
@@ -1194,7 +1194,7 @@ A bare `exists:users,id` is not enough — it would let anyone route commission 
 The seeder (`database/seeders/ProductSeeder.php`) is the source of truth: the gold tier
 code is **`gold`** (not `golden`). `SettlementCalculatorService::getCommissionRates()`
 matches `'gold', 'golden'` (alias) so a legacy value never silently falls through to the
-default rate and underpays a gold-tier consultant.
+default rate and underpays a gold-tier elite yar.
 
 ### Money math is bcmath — never chain raw floats
 
@@ -1440,7 +1440,7 @@ Podium PAYA/SATNA settlement. Flow:
 
 ### saze90.com badge sync — server-side proxy (`GET /api/profile/badge`)
 
-Consultant badges/«نشان» come from the company's legacy site **`saze90.com`**. The working
+EliteYAR badges/«نشان» come from the company's legacy site **`saze90.com`**. The working
 integration was always **frontend-only** (`axios.get('https://www.saze90.com/get-certificate?
 mobile=…')`), which broke under CORS. It is now proxied server-side:
 
@@ -1453,11 +1453,11 @@ mobile=…')`), which broke under CORS. It is now proxied server-side:
   member's **first year**: `created_at > now()-1y`, NOT from saze90), and persists
   `users.badge_id` **only** for the commission tiers gold/silver/bronze (null already maps to
   pioneer/default rates in `SettlementCalculator`). It **never clears a tier on a null result**
-  (a transient saze90 outage must not silently downgrade a consultant's commission rate).
+  (a transient saze90 outage must not silently downgrade a elite yar's commission rate).
 - `BadgeController::show` → `GET /api/profile/badge` returns `{badge, is_pioneer, badges}`.
   The frontend should call this instead of saze90 directly. Tests: `Profile/BadgeSyncTest`.
 
-**Still dormant — the consultant lifetime cap.** `get-certificate` returns only the tier, NOT
+**Still dormant — the elite yar lifetime cap.** `get-certificate` returns only the tier, NOT
 the badge **purchase amount** (`users.badge_purchase_amount`), so the cap stays dormant. The
 SOAP service is live (`http://spidtech.com/api/`, WSDL at `https://www.saze90.com/api/?wsdl`,
 op `getUser({Auth,UserID,CustomerType})` returning an opaque JSON string that *could* carry the

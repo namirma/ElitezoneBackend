@@ -1,11 +1,11 @@
-# Changelog — branch `feature/spec-gaps-consultant-cap-ticketing`
+# Changelog — branch `feature/spec-gaps-elite yar-cap-ticketing`
 
 Backend changes since `main`. **All 203 tests pass; Pint clean.** Run `php artisan migrate`
 after deploy (see `docs/DEPLOY-runbook.md`).
 
 ## 🔒 Security fixes
 - **Order invoice download authorization** — buyer documents (initial/final/tax) were
-  downloadable by any order party (supplier/consultant). Now restricted per-document to the
+  downloadable by any order party (supplier/elite yar). Now restricted per-document to the
   rightful audience; others get 403. (`OrderInvoiceController`)
 - **Financial receipts off the public disk** — wallet/supplier/order receipts moved to a
   private `financial` disk (no longer reachable at `/storage/...`). Data migration relocates
@@ -21,7 +21,7 @@ after deploy (see `docs/DEPLOY-runbook.md`).
 - **Mobile change** — the new number is now persisted in the normalized `09…` form.
 
 ## ✨ Features
-- **Consultant lifetime commission cap** — wired (`users.badge_purchase_amount` ×
+- **EliteYAR lifetime commission cap** — wired (`users.badge_purchase_amount` ×
   `cap_multiplier`); dormant until that field is populated (Saze Nod import — see CLAUDE.md).
 - **Ticketing helpdesk model** — full status state-machine, priority, order/location link,
   SLA stamping, internal notes (`ticket_notes`), opening-message attachments
@@ -32,10 +32,10 @@ after deploy (see `docs/DEPLOY-runbook.md`).
   when bank credentials arrive.
 
 ## 🐞 Bug fixes (frontend-reported)
-- Engineer/Contractor role auto-attach used wrong UserType slug (`consultant` → `expert`).
+- Engineer/Contractor role auto-attach used wrong UserType slug (`elite yar` → `expert`).
 - Job-experience dates rejected valid Jalali dates (`date_format` → regex).
 - `ProductVariantResource` now exposes purchase limits (min/max order value, limit unit).
-- Removed dead `EmployerController::updateConsultant`.
+- Removed dead `EmployerController::updateEliteYAR`.
 - `OrderResource` variant name (snake_case relation never resolved).
 - Reservation-threshold code fallback aligned with config (1_950M → 2_000M).
 - `OrderRepository` my-orders N+1 (eager-load `Order::resourceRelations()`).
@@ -54,7 +54,7 @@ after deploy (see `docs/DEPLOY-runbook.md`).
 6. move invoice PDFs → private disk (data migration)
 
 ## ⚙️ New env vars (all optional — have safe defaults)
-- `CONSULTANT_LIFETIME_CAP_MULTIPLIER` (default 2)
+- `ELITE_YAR_LIFETIME_CAP_MULTIPLIER` (default 2)
 - `TICKET_SLA_URGENT_HOURS` / `_HIGH_` / `_NORMAL_` / `_LOW_` (defaults 2/8/24/72)
 - Pasargad (only when going live): `PASARGAD_BASE_URL`, `PASARGAD_API_KEY`,
   `PASARGAD_TERMINAL_ID`, `PASARGAD_MERCHANT_ID`, `PASARGAD_CALLBACK_URL`
