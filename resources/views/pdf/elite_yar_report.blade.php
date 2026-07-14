@@ -2,7 +2,7 @@
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>گزارش پرداخت حق مشاوره {{ $invoice_number ?? ($order->order_number ?? '') }}</title>
+    <title>گزارش پرداخت کارمزد الیت یار {{ $invoice_number ?? ($order->order_number ?? '') }}</title>
     @include('pdf.partials.styles')
     <style>
         /* Summary table for doc D */
@@ -32,7 +32,7 @@
         <tr>
             <td class="lbl text-right">شماره سفارش :</td>
             <td class="val text-right font-bold">{{ enToFa($invoice_number ?? ($order->order_number ?? '-')) }}</td>
-            <td colspan="9" rowspan="3" class="title-main text-center bg-white">گزارش پرداخت حق مشاوره</td>
+            <td colspan="9" rowspan="3" class="title-main text-center bg-white">گزارش پرداخت کارمزد الیت یار</td>
         </tr>
         <tr>
             <td class="lbl text-right">تاریخ صدور :</td>
@@ -54,7 +54,7 @@
         @include('pdf.partials.buyer_section')
 
         {{-- ===== SUMMARY TABLE (Doc D — no items table) ===== --}}
-        <tr><td colspan="11" class="section-title">خلاصه سفارش و حق مشاوره</td></tr>
+        <tr><td colspan="11" class="section-title">خلاصه سفارش و کارمزد الیت یار</td></tr>
         <tr>
             <td colspan="3" class="lbl text-right font-bold">شماره سفارش</td>
             <td colspan="8" class="val text-right">{{ enToFa($order->order_number ?? '-') }}</td>
@@ -64,7 +64,7 @@
             <td colspan="8" class="val text-right amount-cell">{{ enToFa(number_format($totals['final'] ?? 0)) }}</td>
         </tr>
         <tr>
-            <td colspan="3" class="lbl text-right font-bold">حق مشاوره تخمینی (ریال)</td>
+            <td colspan="3" class="lbl text-right font-bold">کارمزد الیت یار تخمینی (ریال)</td>
             <td colspan="8" class="val text-right amount-cell">{{ enToFa(number_format((int)round(($totals['final'] ?? 0) * 0.006))) }}</td>
         </tr>
 
@@ -72,7 +72,7 @@
         <tr>
             <td colspan="1" class="bg-gray font-bold text-center" valign="top" style="border-left: none; padding-top: 10px;">توضیحات مهم</td>
             <td colspan="10" class="notes-text text-right bg-white" valign="top" style="border-right: none;">
-                حق مشاوره پس از تأیید فاکتور سامانه مودیان از حالت هولد خارج و به کیف پول الیت یار واریز می‌گردد.
+                کارمزد الیت یار پس از تأیید فاکتور سامانه مودیان از حالت هولد خارج و به کیف پول الیت یار واریز می‌گردد.
             </td>
         </tr>
     </table>

@@ -193,9 +193,9 @@ trait HasOrderProgress
         // ---------------------------------------------------------
         $stepsBlueprint = [
             ['title' => 'کارفرما خرید کرد'],
-            ['title' => 'حق مشاوره منظور شد'],
+            ['title' => 'کارمزد الیت یار منظور شد'],
             ['title' => 'فاکتور خدمات ثبت شد'],
-            ['title' => 'حق مشاوره در دسترس است'],
+            ['title' => 'کارمزد الیت یار در دسترس است'],
         ];
 
         // ---------------------------------------------------------
@@ -213,7 +213,7 @@ trait HasOrderProgress
             // «تا زمان صدور فاکتور سامانه مودیان توسط الیت یار در کیف پول وی هولد می‌شود».
             // پس delivered/completed به‌تنهایی hold را آزاد نمی‌کند؛ ReleaseEliteYARHoldAction لازم است.
             if ($this->{Order::ELITE_YAR_HOLD_RELEASED_AT} !== null) {
-                $currentIndex = 3; // مرحله ۴: حق مشاوره در دسترس
+                $currentIndex = 3; // مرحله ۴: کارمزد الیت یار در دسترس
             } elseif ($this->{Order::ELITE_YAR_MOADIAN_REF} !== null) {
                 $currentIndex = 2; // مرحله ۳: فاکتور خدمات ثبت شد (حالت گذرا — atomically به ۴ می‌رسد)
             } elseif (in_array($status, [
@@ -224,7 +224,7 @@ trait HasOrderProgress
                 Order::STATUS_DELIVERED,  // کالا تحویل شده ولی الیت یار هنوز Doc Q ثبت نکرده
                 Order::STATUS_COMPLETED,  // → کمیسیون در کیف‌پول الیت یار به‌صورت Hold؛ باید Doc Q ثبت کند
             ])) {
-                $currentIndex = 1; // مرحله ۲: حق مشاوره منظور شد
+                $currentIndex = 1; // مرحله ۲: کارمزد الیت یار منظور شد
             } elseif (in_array($status, [
                 Order::STATUS_PROCESSING,
                 Order::STATUS_PREPARING,
@@ -272,7 +272,7 @@ trait HasOrderProgress
                         ];
                         break;
 
-                    case 'حق مشاوره منظور شد':
+                    case 'کارمزد الیت یار منظور شد':
                         $actions[] = [
                             'label' => 'مشاهده کیف پول',
                             'link' => '/profile/finance',
@@ -293,7 +293,7 @@ trait HasOrderProgress
                         ];
                         break;
 
-                        // مرحله ۴ (حق مشاوره در دسترس است): بدون دکمه
+                        // مرحله ۴ (کارمزد الیت یار در دسترس است): بدون دکمه
                 }
             }
 
@@ -305,7 +305,7 @@ trait HasOrderProgress
             ];
         }
 
-        // آخرین مرحله («حق مشاوره در دسترس است») فقط وقتی Doc Q ثبت و hold آزاد شده «completed» می‌شود.
+        // آخرین مرحله («کارمزد الیت یار در دسترس است») فقط وقتی Doc Q ثبت و hold آزاد شده «completed» می‌شود.
         // delivered/completed بدون Doc Q → مرحله ۲ current باقی می‌ماند (hold هنوز فعال است).
         if ($this->{Order::ELITE_YAR_HOLD_RELEASED_AT} !== null) {
             $steps[count($steps) - 1]['state'] = 'completed';

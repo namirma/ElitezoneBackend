@@ -135,7 +135,7 @@ class HasOrderProgressTest extends TestCase
         $this->assertSame('completed', $progress['steps'][0]['state'],
             'Step 1 should be completed (purchase happened)');
 
-        // مرحله ۲: حق مشاوره منظور شده ولی Hold است → current (منتظر Doc Q)
+        // مرحله ۲: کارمزد الیت یار منظور شده ولی Hold است → current (منتظر Doc Q)
         $this->assertSame('current', $progress['steps'][1]['state'],
             'Step 2 must be current: commission is in hold, waiting for eliteYAR to submit Doc Q');
 

@@ -66,7 +66,7 @@
             <td colspan="8" class="val text-right">{{ enToFa($date_shamsi ?? '-') }}</td>
         </tr>
         <tr>
-            <td colspan="3" class="lbl text-right font-bold">مبلغ حق مشاوره (ریال)</td>
+            <td colspan="3" class="lbl text-right font-bold">مبلغ کارمزد الیت یار (ریال)</td>
             <td colspan="8" class="val text-right amount-cell">{{ enToFa(number_format((int)round(($totals['final'] ?? 0) * 0.006))) }}</td>
         </tr>
 
@@ -74,7 +74,7 @@
         <tr>
             <td colspan="1" class="bg-gray font-bold text-center" valign="top" style="border-left: none; padding-top: 10px;">توضیحات مهم</td>
             <td colspan="10" class="notes-text text-right bg-white" valign="top" style="border-right: none;">
-                این تأییدیه برای فاکتور صادر شده توسط الیت یار در سامانه مودیان است. پس از تأیید، حق مشاوره از حالت هولد خارج می‌گردد.
+                این تأییدیه برای فاکتور صادر شده توسط الیت یار در سامانه مودیان است. پس از تأیید، کارمزد الیت یار از حالت هولد خارج می‌گردد.
             </td>
         </tr>
     </table>
