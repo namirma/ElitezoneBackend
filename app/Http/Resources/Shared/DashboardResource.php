@@ -30,7 +30,7 @@ class DashboardResource extends BaseJsonResource
                     'progress' => $order->dashboard_progress,
                     // تایم‌لاین الیت یار — فقط وقتی کاربر جاری همان الیت یارِ این سفارش است
                     'elite_yar_progress' => $consultantIsSelf
-                        ? $order->consultant_progress
+                        ? $order->elite_yar_progress
                         : null,
                     // تایم‌لاین سوپلایر — فقط برای کاربران با نقش سوپلایر
                     'supplier_progress' => $currentUser?->hasRole('supplier')

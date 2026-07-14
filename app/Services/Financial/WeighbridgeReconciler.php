@@ -29,7 +29,7 @@ class WeighbridgeReconciler
         // but never charged — there is deliberately no "surplus" payment path.
         $billingWeight = min($actualWeight, $wbs);
 
-        $badgeCode = $order->consultant?->badge?->code ?? 'pioneer';
+        $badgeCode = $order->eliteYar?->badge?->code ?? 'pioneer';
         $rates = $this->calculator->getCommissionRates($badgeCode);
 
         $trans = (float) $order->shipping_cost;

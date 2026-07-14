@@ -119,7 +119,7 @@ class DashboardAlertsService
         foreach ($user->associatedEmployers()->wherePivot('status', 'pending')->get() as $employer) {
             $alerts[] = $this->makeAlert('invite_received', 'info', 'user-group', '/profile/consultants', ['name' => $employer->profile->name], $employer->id);
         }
-        foreach ($user->technicalConsultants()->wherePivot('status', 'rejected')->where('employer_consultant.updated_at', '>=', now()->subDays(3))->get() as $consultant) {
+        foreach ($user->technicalEliteYars()->wherePivot('status', 'rejected')->where('employer_consultant.updated_at', '>=', now()->subDays(3))->get() as $consultant) {
             $alerts[] = $this->makeAlert('invite_rejected', 'warning', 'user-minus', '/profile/consultants', ['name' => $consultant->profile->name], $consultant->id);
         }
 

@@ -55,7 +55,7 @@ class ProcessWeighbridgeResultAction
                 return $this->buildAlreadyProcessedResponse($locked);
             }
 
-            $locked->load('items', 'consultant.badge');
+            $locked->load('items', 'eliteYar.badge');
 
             Log::channel('financial')->info("شروع پردازش باسکول سفارش {$locked->id}.");
 

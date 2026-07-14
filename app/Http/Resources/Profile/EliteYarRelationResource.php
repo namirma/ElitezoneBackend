@@ -4,7 +4,7 @@ namespace App\Http\Resources\Profile;
 
 use App\Enums\Shared\StatusTone;
 use App\Models\ContractorProfile;
-use App\Models\EmployerConsultant;
+use App\Models\EmployerEliteYar;
 use App\Models\EngineerProfile;
 use App\Models\User;
 use App\Models\UserProfile;
@@ -12,18 +12,18 @@ use Illuminate\Http\Request;
 use App\Http\Resources\BaseJsonResource;
 
 /**
- * @mixin \App\Models\EmployerConsultant
+ * @mixin \App\Models\EmployerEliteYar
  */
 class EliteYarRelationResource extends BaseJsonResource
 {
     public function toArray(Request $request): array
     {
-        $status = $this->pivot->{EmployerConsultant::STATUS};
+        $status = $this->pivot->{EmployerEliteYar::STATUS};
 
         $statusLabel = match ($status) {
-            EmployerConsultant::STATUS_PENDING  => 'در انتظار تایید',
-            EmployerConsultant::STATUS_APPROVED => 'تایید شده',
-            EmployerConsultant::STATUS_REJECTED => 'رد شده',
+            EmployerEliteYar::STATUS_PENDING  => 'در انتظار تایید',
+            EmployerEliteYar::STATUS_APPROVED => 'تایید شده',
+            EmployerEliteYar::STATUS_REJECTED => 'رد شده',
             default                              => $status,
         };
 
@@ -49,8 +49,8 @@ class EliteYarRelationResource extends BaseJsonResource
             'status_code' => $status,
 
             'reject_reason' => $this->when(
-                $status === EmployerConsultant::STATUS_REJECTED,
-                $this->pivot->{EmployerConsultant::REJECT_REASON}
+                $status === EmployerEliteYar::STATUS_REJECTED,
+                $this->pivot->{EmployerEliteYar::REJECT_REASON}
             ),
 
             // فلگ تأیید مدارک — فرانت از این برای نمایش badge «تأییدشده» استفاده می‌کند

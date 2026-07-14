@@ -578,18 +578,18 @@ namespace App\Models{
  * @property string|null $reject_reason
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
- * @method static \Illuminate\Database\Eloquent\Builder|EmployerConsultant newModelQuery()
- * @method static \Illuminate\Database\Eloquent\Builder|EmployerConsultant newQuery()
- * @method static \Illuminate\Database\Eloquent\Builder|EmployerConsultant query()
- * @method static \Illuminate\Database\Eloquent\Builder|EmployerConsultant whereConsultantId($value)
- * @method static \Illuminate\Database\Eloquent\Builder|EmployerConsultant whereCreatedAt($value)
- * @method static \Illuminate\Database\Eloquent\Builder|EmployerConsultant whereEmployerId($value)
- * @method static \Illuminate\Database\Eloquent\Builder|EmployerConsultant whereId($value)
- * @method static \Illuminate\Database\Eloquent\Builder|EmployerConsultant whereRejectReason($value)
- * @method static \Illuminate\Database\Eloquent\Builder|EmployerConsultant whereStatus($value)
- * @method static \Illuminate\Database\Eloquent\Builder|EmployerConsultant whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|EmployerEliteYar newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|EmployerEliteYar newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|EmployerEliteYar query()
+ * @method static \Illuminate\Database\Eloquent\Builder|EmployerEliteYar whereConsultantId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|EmployerEliteYar whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|EmployerEliteYar whereEmployerId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|EmployerEliteYar whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|EmployerEliteYar whereRejectReason($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|EmployerEliteYar whereStatus($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|EmployerEliteYar whereUpdatedAt($value)
  */
-	class EmployerConsultant extends \Eloquent {}
+	class EmployerEliteYar extends \Eloquent {}
 }
 
 namespace App\Models{
@@ -2191,7 +2191,7 @@ namespace App\Models{
  * @property-read int|null $addresses_count
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Agreement> $agreements
  * @property-read int|null $agreements_count
- * @property-read \App\Models\EmployerConsultant $pivot
+ * @property-read \App\Models\EmployerEliteYar $pivot
  * @property-read \Illuminate\Database\Eloquent\Collection<int, User> $associatedEmployers
  * @property-read int|null $associated_employers_count
  * @property-read \App\Models\Badge|null $badge
@@ -2230,7 +2230,7 @@ namespace App\Models{
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\StockSubscription> $stockSubscriptions
  * @property-read int|null $stock_subscriptions_count
  * @property-read \App\Models\SupplierProfile|null $supplier
- * @property-read \Illuminate\Database\Eloquent\Collection<int, User> $technicalConsultants
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, User> $technicalEliteYars
  * @property-read int|null $technical_consultants_count
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \Laravel\Sanctum\PersonalAccessToken> $tokens
  * @property-read int|null $tokens_count

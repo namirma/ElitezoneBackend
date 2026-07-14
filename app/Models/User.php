@@ -221,19 +221,19 @@ class User extends Authenticatable
         return $this->hasMany(UserNote::class, UserNote::USER_ID);
     }
 
-    public function technicalConsultants(): BelongsToMany
+    public function technicalEliteYars(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, 'employer_consultant', EmployerConsultant::EMPLOYER_ID, EmployerConsultant::CONSULTANT_ID)
-            ->using(EmployerConsultant::class)
-            ->withPivot([EmployerConsultant::STATUS, EmployerConsultant::REJECT_REASON])
+        return $this->belongsToMany(User::class, 'employer_consultant', EmployerEliteYar::EMPLOYER_ID, EmployerEliteYar::CONSULTANT_ID)
+            ->using(EmployerEliteYar::class)
+            ->withPivot([EmployerEliteYar::STATUS, EmployerEliteYar::REJECT_REASON])
             ->withTimestamps();
     }
 
     public function associatedEmployers(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, 'employer_consultant', EmployerConsultant::CONSULTANT_ID, EmployerConsultant::EMPLOYER_ID)
-            ->using(EmployerConsultant::class)
-            ->withPivot([EmployerConsultant::STATUS, EmployerConsultant::REJECT_REASON])
+        return $this->belongsToMany(User::class, 'employer_consultant', EmployerEliteYar::CONSULTANT_ID, EmployerEliteYar::EMPLOYER_ID)
+            ->using(EmployerEliteYar::class)
+            ->withPivot([EmployerEliteYar::STATUS, EmployerEliteYar::REJECT_REASON])
             ->withTimestamps();
     }
 

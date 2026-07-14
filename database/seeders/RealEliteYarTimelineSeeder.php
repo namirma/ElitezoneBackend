@@ -13,9 +13,9 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
 /**
- * RealConsultantTimelineSeeder — دیتای تایم‌لاین الیت یار برای حساب واقعی.
+ * RealEliteYarTimelineSeeder — دیتای تایم‌لاین الیت یار برای حساب واقعی.
  *
- * php artisan db:seed --class=RealConsultantTimelineSeeder
+ * php artisan db:seed --class=RealEliteYarTimelineSeeder
  *
  * با شخصیت‌های واقع‌گرایانه (نام، کد ملی معتبر، موبایل، تاریخ تولد) دو سناریو می‌سازد:
  *
@@ -34,7 +34,7 @@ use Illuminate\Support\Facades\Hash;
  *
  * ⚠️ حسابِ کاربرِ واقعی فقط خوانده می‌شود و هرگز تغییر نمی‌کند.
  */
-class RealConsultantTimelineSeeder extends Seeder
+class RealEliteYarTimelineSeeder extends Seeder
 {
     private const CONSULTANT_MOBILE = '09130603199'; // فقط برای پیدا کردن (read-only)
 
@@ -52,7 +52,7 @@ class RealConsultantTimelineSeeder extends Seeder
     {
         $this->command->info('');
         $this->command->info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        $this->command->info('  RealConsultantTimelineSeeder');
+        $this->command->info('  RealEliteYarTimelineSeeder');
         $this->command->info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
         // ─── الیت یار واقعی (READ-ONLY) ────────────────────────────────────
@@ -109,7 +109,7 @@ class RealConsultantTimelineSeeder extends Seeder
         $this->command->info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         $this->command->info('  ✅  ساخته شد — وضعیت تایم‌لاین الیت یار (سناریو A):');
         foreach ([['A1', $a1], ['A2', $a2], ['A3', $a3], ['A4', $a4]] as [$tag, $o]) {
-            $cp = $o->fresh()->consultant_progress;
+            $cp = $o->fresh()->elite_yar_progress;
             $current = collect($cp['steps'])->firstWhere('state', 'current');
             $label = $current ? "مرحله {$current['step']} ({$current['title']})" : 'تکمیل‌شده';
             $this->command->info("    {$tag} [{$o->order_number}] → {$label}");

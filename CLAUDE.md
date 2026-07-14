@@ -858,7 +858,7 @@ tests/
 
 **Total: 232 tests, ~525 assertions — all green. ✅**
 
-Newer test files: `Auth/AuthControllerTest`, `Financial/ConsultantLifetimeCapTest`,
+Newer test files: `Auth/AuthControllerTest`, `Financial/EliteYarLifetimeCapTest`,
 `Financial/ReceiptPrivateDiskTest`, `Financial/ProcessTransactionRaceTest`,
 `Ticketing/TicketLifecycleTest`, `Order/InvoiceAccessTest`, `Cart/ShippingQuoteTest`,
 `Profile/EmailTokenVerificationTest`, `Order/HasOrderProgressTest`,
@@ -1186,7 +1186,7 @@ is broken (another caller of the policy would allow cancellation the controller 
 `beneficiary_user_id` drives consultant-commission routing (`WALLET_CONSULTANT`), so
 `StoreOrderRequest` validates (via a closure rule) that it is either the placer themselves
 or an **approved** technical consultant of the placer:
-`Auth::user()->technicalConsultants()->where('users.id', $value)->wherePivot('status', 'approved')->exists()`.
+`Auth::user()->technicalEliteYars()->where('users.id', $value)->wherePivot('status', 'approved')->exists()`.
 A bare `exists:users,id` is not enough — it would let anyone route commission to an arbitrary user.
 
 ### Badge codes are `gold` / `silver` / `bronze` / `pioneer`

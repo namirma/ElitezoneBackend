@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Hash;
 /**
  * تایم‌لاین الیت یار — دیتای تست
  *
- * php artisan db:seed --class=ConsultantTimelineTestSeeder
+ * php artisan db:seed --class=EliteYarTimelineTestSeeder
  *
  * یک کاربر الیت یار + یک سفارش با وضعیت weighbridge_done می‌سازد.
  * با ورود به عنوان الیت یار (09500000005 / password123) در داشبورد
@@ -27,7 +27,7 @@ use Illuminate\Support\Facades\Hash;
  *   مرحله ۳  فاکتور خدمات ثبت شد      → inactive   (خاکستری)
  *   مرحله ۴  حق مشاوره در دسترس است   → inactive   (خاکستری)
  */
-class ConsultantTimelineTestSeeder extends Seeder
+class EliteYarTimelineTestSeeder extends Seeder
 {
     private const CONSULTANT_MOBILE  = '09500000005';
     private const CONSULTANT_NC      = '5555555555';
@@ -38,7 +38,7 @@ class ConsultantTimelineTestSeeder extends Seeder
     {
         $this->command->info('');
         $this->command->info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        $this->command->info('  ConsultantTimelineTestSeeder');
+        $this->command->info('  EliteYarTimelineTestSeeder');
         $this->command->info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
         // ─── 1. کاربر الیت یار ──────────────────────────────────────────

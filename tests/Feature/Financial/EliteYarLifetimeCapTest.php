@@ -25,7 +25,7 @@ use Tests\TestCase;
  *
  * DatabaseTransactions: all writes roll back; the live DB is never mutated.
  */
-class ConsultantLifetimeCapTest extends TestCase
+class EliteYarLifetimeCapTest extends TestCase
 {
     use DatabaseTransactions;
 

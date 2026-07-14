@@ -3,7 +3,7 @@
 namespace App\Http\Requests\Order;
 
 use App\DataTransferObjects\Order\PlaceOrderData;
-use App\Models\EmployerConsultant;
+use App\Models\EmployerEliteYar;
 use App\Models\EngineerProfile;
 use App\Models\ContractorProfile;
 use App\Models\User;
@@ -66,9 +66,9 @@ class StoreOrderRequest extends FormRequest
 
                     // بررسی ۱: آیا الیت یار در لیست الیت یارها تأییدشده این کارفرما هست؟
                     $isApproved = $employer
-                        ->technicalConsultants()
+                        ->technicalEliteYars()
                         ->where('users.id', $value)
-                        ->wherePivot(EmployerConsultant::STATUS, EmployerConsultant::STATUS_APPROVED)
+                        ->wherePivot(EmployerEliteYar::STATUS, EmployerEliteYar::STATUS_APPROVED)
                         ->exists();
 
                     if (! $isApproved) {
@@ -83,7 +83,7 @@ class StoreOrderRequest extends FormRequest
                         return;
                     }
 
-                    $isVerified = $this->isConsultantVerified($consultant);
+                    $isVerified = $this->isEliteYarVerified($consultant);
                     if (! $isVerified) {
                         $fail(__('orders.store_consultant_not_verified'));
                     }
@@ -121,7 +121,7 @@ class StoreOrderRequest extends FormRequest
                     $isApprovedEmployer = $consultant
                         ->associatedEmployers()
                         ->where('users.id', $value)
-                        ->wherePivot(EmployerConsultant::STATUS, EmployerConsultant::STATUS_APPROVED)
+                        ->wherePivot(EmployerEliteYar::STATUS, EmployerEliteYar::STATUS_APPROVED)
                         ->exists();
 
                     if (! $isApprovedEmployer) {
@@ -145,7 +145,7 @@ class StoreOrderRequest extends FormRequest
     /**
      * بررسی تأیید مدارک الیت یار (engineer یا contractor profile).
      */
-    private function isConsultantVerified(User $consultant): bool
+    private function isEliteYarVerified(User $consultant): bool
     {
         $engineerProfile = EngineerProfile::where(EngineerProfile::USER_ID, $consultant->id)->first();
         if ($engineerProfile) {

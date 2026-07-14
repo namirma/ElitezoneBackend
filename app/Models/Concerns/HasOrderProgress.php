@@ -178,7 +178,7 @@ trait HasOrderProgress
      * نه فقط ستون status، تا رویدادهایی مانند ثبت فاکتور مودیان نیز
      * به‌درستی منعکس شوند.
      */
-    public function getConsultantProgressAttribute(): array
+    public function getEliteYarProgressAttribute(): array
     {
         $status = $this->status;
         $id = $this->id;
