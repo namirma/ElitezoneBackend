@@ -31,7 +31,7 @@ class Order extends Model
     public const BENEFICIARY_USER_ID = 'beneficiary_user_id';
 
     /** الیت یار که کمیسیون CO را دریافت می‌کند (جدا از گیرنده/beneficiary) */
-    public const CONSULTANT_USER_ID = 'consultant_user_id';
+    public const ELITE_YAR_USER_ID = 'elite_yar_user_id';
 
     public const ADDRESS_ID = 'address_id';
 
@@ -162,7 +162,7 @@ class Order extends Model
 
     public const SAZE_SHARE_RATE = 'saze_share_rate';
 
-    public const CONSULTANT_SHARE_RATE = 'consultant_share_rate';
+    public const ELITE_YAR_SHARE_RATE = 'elite_yar_share_rate';
 
     public const VAT_RATE = 'vat_rate';
 
@@ -170,7 +170,7 @@ class Order extends Model
 
     public const PAYMENT_TO_SUPPLIER = 'payment_to_supplier';
 
-    public const PAYMENT_TO_CONSULTANT = 'payment_to_consultant';
+    public const PAYMENT_TO_ELITE_YAR = 'payment_to_elite_yar';
 
     public const PAYMENT_TO_RESERVE = 'payment_to_reserve';
 
@@ -187,10 +187,10 @@ class Order extends Model
     public const TRANS_VAT = 'trans_vat';
 
     /** Doc Q: شماره فاکتور مودیان الیت یار */
-    public const CONSULTANT_MOADIAN_REF = 'consultant_moadian_ref';
+    public const ELITE_YAR_MOADIAN_REF = 'elite_yar_moadian_ref';
 
     /** زمان آزادسازی هولد کمیسیون الیت یار */
-    public const CONSULTANT_HOLD_RELEASED_AT = 'consultant_hold_released_at';
+    public const ELITE_YAR_HOLD_RELEASED_AT = 'elite_yar_hold_released_at';
 
     /** Doc O: شماره فاکتور مودیان سوپلایر */
     public const SUPPLIER_MOADIAN_REF = 'supplier_moadian_ref';
@@ -216,7 +216,7 @@ class Order extends Model
     protected $fillable = [
         self::PLACER_USER_ID,
         self::BENEFICIARY_USER_ID,
-        self::CONSULTANT_USER_ID,
+        self::ELITE_YAR_USER_ID,
         self::ADDRESS_ID,
         self::ORDER_NUMBER,
         self::STATUS,
@@ -273,18 +273,18 @@ class Order extends Model
         self::COMMISSION_RATE => 'decimal:2',
         self::OWNER_DISCOUNT_RATE => 'decimal:2',
         self::SAZE_SHARE_RATE => 'decimal:2',
-        self::CONSULTANT_SHARE_RATE => 'decimal:2',
+        self::ELITE_YAR_SHARE_RATE => 'decimal:2',
         self::VAT_RATE => 'decimal:2',
         self::PAYMENT_OF_OWNER => 'decimal:2',
         self::PAYMENT_TO_SUPPLIER => 'decimal:2',
-        self::PAYMENT_TO_CONSULTANT => 'decimal:2',
+        self::PAYMENT_TO_ELITE_YAR => 'decimal:2',
         self::PAYMENT_TO_RESERVE => 'decimal:2',
         self::VALIDATION_OF_RESERVE => 'datetime',
         self::WEIGHT_AFTER_SCALE => 'decimal:3',
         self::WEIGHING_COMPLETED_AT => 'datetime',
         self::TRANS_COMMISSION => 'boolean',
         self::TRANS_VAT => 'boolean',
-        self::CONSULTANT_HOLD_RELEASED_AT => 'datetime',
+        self::ELITE_YAR_HOLD_RELEASED_AT => 'datetime',
         self::SUPPLIER_HOLD_RELEASED_AT => 'datetime',
         self::SUPPLIER_DEBT_PENDING => 'boolean',
         self::SUPPLIER_DEBT_AMOUNT => 'decimal:2',
@@ -339,7 +339,7 @@ class Order extends Model
     /** الیت یار که کمیسیون CO را دریافت می‌کند */
     public function eliteYar(): BelongsTo
     {
-        return $this->belongsTo(User::class, self::CONSULTANT_USER_ID);
+        return $this->belongsTo(User::class, self::ELITE_YAR_USER_ID);
     }
 
     public function address(): BelongsTo

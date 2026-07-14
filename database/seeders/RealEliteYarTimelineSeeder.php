@@ -86,11 +86,11 @@ class RealEliteYarTimelineSeeder extends Seeder
         $a1 = $this->makeOrder($employerA->id, $eliteYar->id, 'ORD-CONS-A1', Order::STATUS_PROCESSING);
         $a2 = $this->makeOrder($employerA->id, $eliteYar->id, 'ORD-CONS-A2', Order::STATUS_WEIGHBRIDGE_DONE);
         $a3 = $this->makeOrder($employerB->id, $eliteYar->id, 'ORD-CONS-A3', Order::STATUS_WEIGHBRIDGE_DONE, [
-            Order::CONSULTANT_MOADIAN_REF => '1402-CON-A3-77451',
+            Order::ELITE_YAR_MOADIAN_REF => '1402-CON-A3-77451',
         ]);
         $a4 = $this->makeOrder($employerB->id, $eliteYar->id, 'ORD-CONS-A4', Order::STATUS_WEIGHBRIDGE_DONE, [
-            Order::CONSULTANT_MOADIAN_REF => '1402-CON-A4-77452',
-            Order::CONSULTANT_HOLD_RELEASED_AT => now()->subDay(),
+            Order::ELITE_YAR_MOADIAN_REF => '1402-CON-A4-77452',
+            Order::ELITE_YAR_HOLD_RELEASED_AT => now()->subDay(),
         ]);
 
         // ─── سناریو B: کاربر برای کارفرما خرید کرده (تب خرید برای دیگران) ─
@@ -100,8 +100,8 @@ class RealEliteYarTimelineSeeder extends Seeder
         $this->makeOrder($eliteYar->id, $client->id, 'ORD-CONS-B3', Order::STATUS_CANCELLED);
         // تحویل‌شده: پورسانت آزاد شده → هر ۴ مرحلهٔ تایم‌لاین الیت یار completed
         $this->makeOrder($eliteYar->id, $client->id, 'ORD-CONS-B4', Order::STATUS_DELIVERED, [
-            Order::CONSULTANT_MOADIAN_REF => '1402-CON-B4-88120',
-            Order::CONSULTANT_HOLD_RELEASED_AT => now()->subDay(),
+            Order::ELITE_YAR_MOADIAN_REF => '1402-CON-B4-88120',
+            Order::ELITE_YAR_HOLD_RELEASED_AT => now()->subDay(),
         ]);
 
         // ─── خلاصه ───────────────────────────────────────────────────────

@@ -271,8 +271,8 @@ class ProductSeeder extends Seeder
         }
 
         $customerTypesData = [
-            [CustomerType::NAME => 'کارفرمای بدون الیت یار', CustomerType::CODE => 'employer_without_consultant', CustomerType::HAS_CONSULTANT => false],
-            [CustomerType::NAME => 'مهندس دارای الیت یار', CustomerType::CODE => 'engineer_with_consultant', CustomerType::HAS_CONSULTANT => true],
+            [CustomerType::NAME => 'کارفرمای بدون الیت یار', CustomerType::CODE => 'employer_without_consultant', CustomerType::HAS_ELITE_YAR => false],
+            [CustomerType::NAME => 'مهندس دارای الیت یار', CustomerType::CODE => 'engineer_with_consultant', CustomerType::HAS_ELITE_YAR => true],
         ];
         foreach ($customerTypesData as $typeDetails) {
             CustomerType::updateOrCreate([CustomerType::CODE => $typeDetails[CustomerType::CODE]], $typeDetails);

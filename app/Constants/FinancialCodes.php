@@ -14,7 +14,7 @@ class FinancialCodes
 
     public const WALLET_SAZE = 'WSSG';  // کیف پول واسط گروه نرم‌افزاری سازه
 
-    public const WALLET_CONSULTANT = 'WCT';   // کیف پول الیت یار
+    public const WALLET_ELITE_YAR = 'WEY';   // کیف پول الیت یار
 
     public const WALLET_VAT = 'WVAT';  // کیف پول مالیات بر ارزش افزوده
 

@@ -98,8 +98,8 @@ class HasOrderProgressTest extends TestCase
     {
         $order = $this->makeOrder([
             Order::STATUS => Order::STATUS_DELIVERED,
-            Order::CONSULTANT_MOADIAN_REF => 'TAX-REF-001',
-            Order::CONSULTANT_HOLD_RELEASED_AT => now(),
+            Order::ELITE_YAR_MOADIAN_REF => 'TAX-REF-001',
+            Order::ELITE_YAR_HOLD_RELEASED_AT => now(),
         ]);
 
         $progress = $order->elite_yar_progress;
@@ -123,8 +123,8 @@ class HasOrderProgressTest extends TestCase
     {
         $order = $this->makeOrder([
             Order::STATUS => Order::STATUS_DELIVERED,
-            Order::CONSULTANT_MOADIAN_REF => null,
-            Order::CONSULTANT_HOLD_RELEASED_AT => null,
+            Order::ELITE_YAR_MOADIAN_REF => null,
+            Order::ELITE_YAR_HOLD_RELEASED_AT => null,
         ]);
 
         $progress = $order->elite_yar_progress;
@@ -156,8 +156,8 @@ class HasOrderProgressTest extends TestCase
     {
         $order = $this->makeOrder([
             Order::STATUS => Order::STATUS_COMPLETED,
-            Order::CONSULTANT_MOADIAN_REF => null,
-            Order::CONSULTANT_HOLD_RELEASED_AT => null,
+            Order::ELITE_YAR_MOADIAN_REF => null,
+            Order::ELITE_YAR_HOLD_RELEASED_AT => null,
         ]);
 
         $progress = $order->elite_yar_progress;

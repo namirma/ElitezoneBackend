@@ -45,7 +45,7 @@ class WeighbridgeVatRouter
         Order $order,
         WeighbridgeReconcileResult $result,
     ): float {
-        $eliteYarUserId = (int) ($order->{Order::CONSULTANT_USER_ID} ?? 0);
+        $eliteYarUserId = (int) ($order->{Order::ELITE_YAR_USER_ID} ?? 0);
         $buyerId = (int) $order->placer_user_id;
 
         if (! $eliteYarUserId || $eliteYarUserId === $buyerId) {
@@ -146,10 +146,10 @@ class WeighbridgeVatRouter
         }
 
         $alreadyPaid = (float) Order::query()
-            ->where(Order::CONSULTANT_USER_ID, $eliteYarUserId)
+            ->where(Order::ELITE_YAR_USER_ID, $eliteYarUserId)
             ->whereNotNull(Order::WEIGHING_COMPLETED_AT)
             ->where(Order::ID, '!=', $currentOrderId)
-            ->sum(Order::PAYMENT_TO_CONSULTANT);
+            ->sum(Order::PAYMENT_TO_ELITE_YAR);
 
         return min($candidateGross, max(0.0, $ceiling - $alreadyPaid));
     }

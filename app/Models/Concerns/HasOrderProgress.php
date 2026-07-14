@@ -212,9 +212,9 @@ trait HasOrderProgress
             // طبق پروسه خرید (بخش «الگوریتم وابستگی واریزها»):
             // «تا زمان صدور فاکتور سامانه مودیان توسط الیت یار در کیف پول وی هولد می‌شود».
             // پس delivered/completed به‌تنهایی hold را آزاد نمی‌کند؛ ReleaseEliteYarHoldAction لازم است.
-            if ($this->{Order::CONSULTANT_HOLD_RELEASED_AT} !== null) {
+            if ($this->{Order::ELITE_YAR_HOLD_RELEASED_AT} !== null) {
                 $currentIndex = 3; // مرحله ۴: حق مشاوره در دسترس
-            } elseif ($this->{Order::CONSULTANT_MOADIAN_REF} !== null) {
+            } elseif ($this->{Order::ELITE_YAR_MOADIAN_REF} !== null) {
                 $currentIndex = 2; // مرحله ۳: فاکتور خدمات ثبت شد (حالت گذرا — atomically به ۴ می‌رسد)
             } elseif (in_array($status, [
                 Order::STATUS_WEIGHBRIDGE_DONE,
@@ -307,7 +307,7 @@ trait HasOrderProgress
 
         // آخرین مرحله («حق مشاوره در دسترس است») فقط وقتی Doc Q ثبت و hold آزاد شده «completed» می‌شود.
         // delivered/completed بدون Doc Q → مرحله ۲ current باقی می‌ماند (hold هنوز فعال است).
-        if ($this->{Order::CONSULTANT_HOLD_RELEASED_AT} !== null) {
+        if ($this->{Order::ELITE_YAR_HOLD_RELEASED_AT} !== null) {
             $steps[count($steps) - 1]['state'] = 'completed';
         }
 

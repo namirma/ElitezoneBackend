@@ -114,7 +114,7 @@ class OrderInvoiceController extends Controller
                 'buyer' => (int) $order->{Order::PLACER_USER_ID} === $userId,
                 'elite_yar' => in_array($userId, array_filter([
                     (int) $order->{Order::BENEFICIARY_USER_ID},
-                    (int) $order->{Order::CONSULTANT_USER_ID},
+                    (int) $order->{Order::ELITE_YAR_USER_ID},
                 ]), true),
                 'supplier' => $order->items()->where(\App\Models\OrderItem::SUPPLIER_USER_ID, $userId)->exists(),
                 default => false,

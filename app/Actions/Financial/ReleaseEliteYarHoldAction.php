@@ -18,11 +18,11 @@ use Illuminate\Support\Facades\Log;
  *
  * At weighbridge time (ProcessWeighbridgeResultAction), the eliteYar's
  * payment is split and parked as:
- *   - eliteYarNet  → WCT balance_hold  (commission net of VAT)
+ *   - eliteYarNet  → WEY balance_hold  (commission net of VAT)
  *   - eliteYarVat  → WVAT balance_hold (VAT portion, pending Moadian)
  *
  * When the eliteYar issues Doc Q, both holds are released to available:
- *   WCT:  balance_hold(-) → balance(+)   (eliteYar can now withdraw)
+ *   WEY:  balance_hold(-) → balance(+)   (eliteYar can now withdraw)
  *   WVAT: balance_hold(-) → balance(+)   (VAT recognised as due)
  *
  * The moadian_ref is recorded on the order so the release is idempotent:
@@ -43,7 +43,7 @@ class ReleaseEliteYarHoldAction
     public function execute(Order $order, string $moadianRef): void
     {
         // ── Idempotency guard ─────────────────────────────────────────────────
-        if ($order->{Order::CONSULTANT_MOADIAN_REF} !== null) {
+        if ($order->{Order::ELITE_YAR_MOADIAN_REF} !== null) {
             Log::channel('financial')->info("ReleaseEliteYarHoldAction skipped: order {$order->id} already has consultant_moadian_ref.");
 
             return;
@@ -54,19 +54,19 @@ class ReleaseEliteYarHoldAction
             throw new \RuntimeException(__('orders.errors.weighbridge_not_completed'));
         }
 
-        $eliteYarGross = (float) $order->{Order::PAYMENT_TO_CONSULTANT};
+        $eliteYarGross = (float) $order->{Order::PAYMENT_TO_ELITE_YAR};
         if ($eliteYarGross <= 0) {
             // No eliteYar commission was held for this order (no eliteYar)
             Log::channel('financial')->info("ReleaseEliteYarHoldAction: order {$order->id} has no eliteYar commission — only recording ref.");
             $order->forceFill([
-                Order::CONSULTANT_MOADIAN_REF      => $moadianRef,
-                Order::CONSULTANT_HOLD_RELEASED_AT => now(),
+                Order::ELITE_YAR_MOADIAN_REF      => $moadianRef,
+                Order::ELITE_YAR_HOLD_RELEASED_AT => now(),
             ])->save();
 
             return;
         }
 
-        $eliteYarUserId = $order->{Order::CONSULTANT_USER_ID};
+        $eliteYarUserId = $order->{Order::ELITE_YAR_USER_ID};
         if (! $eliteYarUserId) {
             throw new \RuntimeException(__('orders.errors.no_consultant'));
         }
@@ -89,11 +89,11 @@ class ReleaseEliteYarHoldAction
             }
 
             // Double-check idempotency inside the transaction
-            if ($locked->{Order::CONSULTANT_MOADIAN_REF} !== null) {
+            if ($locked->{Order::ELITE_YAR_MOADIAN_REF} !== null) {
                 return;
             }
 
-            // WCT: release net from hold → available
+            // WEY: release net from hold → available
             $this->walletEngine->debitEliteYar(
                 $locked, $eliteYarNet, FinancialCodes::STATUS_HOLD, $eliteYarUserId,
                 "آزادسازی کمیسیون الیت یار (هولد) بابت سفارش {$locked->order_number}"
@@ -114,8 +114,8 @@ class ReleaseEliteYarHoldAction
             );
 
             $locked->forceFill([
-                Order::CONSULTANT_MOADIAN_REF      => $moadianRef,
-                Order::CONSULTANT_HOLD_RELEASED_AT => now(),
+                Order::ELITE_YAR_MOADIAN_REF      => $moadianRef,
+                Order::ELITE_YAR_HOLD_RELEASED_AT => now(),
             ])->save();
 
             // Doc Q — فاکتور مودیان الیت یار

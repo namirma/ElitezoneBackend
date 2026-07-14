@@ -65,7 +65,7 @@ class EliteYarLifetimeCapTest extends TestCase
 
         $this->order = Order::create([
             Order::PLACER_USER_ID => $buyer->id,
-            Order::CONSULTANT_USER_ID => $this->eliteYar->id,
+            Order::ELITE_YAR_USER_ID => $this->eliteYar->id,
             Order::ORDER_NUMBER => 'CAP-'.now()->format('YmdHis').rand(100, 999),
             Order::STATUS => Order::STATUS_SHIPPED,
             Order::FINAL_AMOUNT => 200_000_000,
@@ -128,13 +128,13 @@ class EliteYarLifetimeCapTest extends TestCase
 
         Order::create([
             Order::PLACER_USER_ID     => $this->order->placer_user_id,
-            Order::CONSULTANT_USER_ID => $this->eliteYar->id,
+            Order::ELITE_YAR_USER_ID => $this->eliteYar->id,
             Order::ORDER_NUMBER       => 'PRIOR-'.now()->format('YmdHis').rand(100, 999),
             Order::STATUS             => Order::STATUS_SHIPPED,
             Order::PAYMENT_STATUS     => 'paid',
         ])->forceFill([
             Order::WEIGHING_COMPLETED_AT => now()->subDay(),
-            Order::PAYMENT_TO_CONSULTANT => 15_000_000,
+            Order::PAYMENT_TO_ELITE_YAR => 15_000_000,
         ])->save();
 
         $gross = $this->router->route($this->order->fresh(), $this->resultWithPool());

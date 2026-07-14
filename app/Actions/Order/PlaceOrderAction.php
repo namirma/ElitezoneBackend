@@ -291,7 +291,7 @@ class PlaceOrderAction
             // beneficiary = گیرنده سفارش (فقط در مسیر الیت یار که برای کارفرما خریداری می‌کند)
             Order::BENEFICIARY_USER_ID => $data->beneficiaryUserId,
             // eliteYar = الیت یار که کمیسیون CO می‌گیرد (مؤثر — computed در calculateOrderFinancials)
-            Order::CONSULTANT_USER_ID => $fins['effective_consultant_id'],
+            Order::ELITE_YAR_USER_ID => $fins['effective_consultant_id'],
             Order::ADDRESS_ID => $data->addressId,
             'shipping_method_id' => $data->shippingMethodId ?? 1,
             Order::ORDER_NUMBER => $orderNumber, // استفاده از شماره تولید شده

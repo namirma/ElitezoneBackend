@@ -25,7 +25,7 @@ class EmployerProfile extends Model
 
     const ACTIVITY_PROVINCES = 'activity_provinces';
 
-    const HAS_CONSULTANT = 'has_consultant';
+    const HAS_ELITE_YAR = 'has_elite_yar';
 
     const STATUS = 'status';
 
@@ -44,7 +44,7 @@ class EmployerProfile extends Model
         self::PROJECT_DONE,
         self::PROJECT_IN_PROGRESS,
         self::ACTIVITY_PROVINCES,
-        self::HAS_CONSULTANT,
+        self::HAS_ELITE_YAR,
         self::STATUS,
     ];
 

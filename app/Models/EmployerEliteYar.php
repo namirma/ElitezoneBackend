@@ -6,11 +6,11 @@ use Illuminate\Database\Eloquent\Relations\Pivot;
 
 class EmployerEliteYar extends Pivot
 {
-    protected $table = 'employer_consultant';
+    protected $table = 'employer_elite_yar';
 
     public const EMPLOYER_ID = 'employer_id';
 
-    public const CONSULTANT_ID = 'consultant_id';
+    public const ELITE_YAR_ID = 'elite_yar_id';
 
     public const STATUS = 'status';
 

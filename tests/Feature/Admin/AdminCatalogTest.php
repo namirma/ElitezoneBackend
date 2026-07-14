@@ -179,7 +179,7 @@ class AdminCatalogTest extends TestCase
         $u = $this->uid();
 
         $customerType = $this->postJson('/api/admin/customer-types', [
-            'name' => "مشتری {$u}", 'code' => "ct-{$u}", 'has_consultant' => false,
+            'name' => "مشتری {$u}", 'code' => "ct-{$u}", 'has_elite_yar' => false,
         ])->assertCreated()->json('data.id');
 
         $this->postJson('/api/admin/price-adjustments', [

@@ -53,7 +53,7 @@ class StoreOrderRequest extends FormRequest
             ],
 
             // اختیاری: الیت یار باید approved+verified باشد
-            'consultant_user_id' => [
+            'elite_yar_user_id' => [
                 'nullable',
                 'integer',
                 'exists:users,id',
@@ -106,7 +106,7 @@ class StoreOrderRequest extends FormRequest
     {
         return [
             // ممنوع: الیت یار consultant_user_id نمی‌فرستد — Action آن را = self ست می‌کند
-            'consultant_user_id' => [
+            'elite_yar_user_id' => [
                 'prohibited',
             ],
 
@@ -166,7 +166,7 @@ class StoreOrderRequest extends FormRequest
     {
         return [
             'beneficiary_user_id' => 'کارفرمای گیرنده',
-            'consultant_user_id'  => 'الیت یار',
+            'elite_yar_user_id'  => 'الیت یار',
             'address_id'          => 'آدرس گیرنده',
             'description'         => 'توضیحات',
             'shipping_method_id'  => 'روش ارسال',

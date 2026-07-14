@@ -21,7 +21,7 @@ class OrderResource extends BaseJsonResource
 
         // الیت یارِ سفارش — مستقیماً از consultant_user_id خوانده می‌شود.
         // (قبلاً از placer.type یا beneficiary_user_id استنتاج می‌شد — حالا ستون جداست)
-        $eliteYarUser = $this->{Order::CONSULTANT_USER_ID} ? $this->eliteYar : null;
+        $eliteYarUser = $this->{Order::ELITE_YAR_USER_ID} ? $this->eliteYar : null;
 
         $progress = $this->dashboard_progress ?? [];
 

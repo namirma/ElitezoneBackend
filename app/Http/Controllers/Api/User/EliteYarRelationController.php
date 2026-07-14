@@ -94,7 +94,7 @@ class EliteYarRelationController extends Controller
 
         // ── خروجی ③ : registered + verified → ادامه دعوت ───────────────────
         $existingRelation = $employer->technicalEliteYars()
-            ->where(EmployerEliteYar::CONSULTANT_ID, $eliteYar->id)
+            ->where(EmployerEliteYar::ELITE_YAR_ID, $eliteYar->id)
             ->first();
 
         if ($existingRelation) {

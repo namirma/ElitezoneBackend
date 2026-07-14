@@ -28,7 +28,7 @@ class PlaceOrderData
 
         return new self(
             beneficiaryUserId: isset($data['beneficiary_user_id']) ? (int) $data['beneficiary_user_id'] : null,
-            eliteYarUserId: isset($data['consultant_user_id']) ? (int) $data['consultant_user_id'] : null,
+            eliteYarUserId: isset($data['elite_yar_user_id']) ? (int) $data['elite_yar_user_id'] : null,
             addressId: isset($data['address_id']) ? (int) $data['address_id'] : null,
             shippingMethodId: isset($data['shipping_method_id']) ? (int) $data['shipping_method_id'] : null,
             description: $data['description'] ?? null,
@@ -42,7 +42,7 @@ class PlaceOrderData
     {
         return [
             'beneficiary_user_id' => $this->beneficiaryUserId,
-            'consultant_user_id' => $this->eliteYarUserId,
+            'elite_yar_user_id' => $this->eliteYarUserId,
             'address_id' => $this->addressId,
             'shipping_method_id' => $this->shippingMethodId,
             'description' => $this->description,

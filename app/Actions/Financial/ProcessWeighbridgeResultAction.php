@@ -84,7 +84,7 @@ class ProcessWeighbridgeResultAction
                 Order::STATUS                => Order::STATUS_SHIPPED,
                 Order::PAYMENT_OF_OWNER      => $result->newPOO,
                 Order::PAYMENT_TO_SUPPLIER   => $result->newPTS,
-                Order::PAYMENT_TO_CONSULTANT => $eliteYarGross,
+                Order::PAYMENT_TO_ELITE_YAR => $eliteYarGross,
                 Order::FINAL_AMOUNT          => $result->newPOO,
             ])->save();
 

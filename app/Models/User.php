@@ -223,7 +223,7 @@ class User extends Authenticatable
 
     public function technicalEliteYars(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, 'employer_consultant', EmployerEliteYar::EMPLOYER_ID, EmployerEliteYar::CONSULTANT_ID)
+        return $this->belongsToMany(User::class, 'employer_elite_yar', EmployerEliteYar::EMPLOYER_ID, EmployerEliteYar::ELITE_YAR_ID)
             ->using(EmployerEliteYar::class)
             ->withPivot([EmployerEliteYar::STATUS, EmployerEliteYar::REJECT_REASON])
             ->withTimestamps();
@@ -231,7 +231,7 @@ class User extends Authenticatable
 
     public function associatedEmployers(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, 'employer_consultant', EmployerEliteYar::CONSULTANT_ID, EmployerEliteYar::EMPLOYER_ID)
+        return $this->belongsToMany(User::class, 'employer_elite_yar', EmployerEliteYar::ELITE_YAR_ID, EmployerEliteYar::EMPLOYER_ID)
             ->using(EmployerEliteYar::class)
             ->withPivot([EmployerEliteYar::STATUS, EmployerEliteYar::REJECT_REASON])
             ->withTimestamps();
@@ -240,7 +240,7 @@ class User extends Authenticatable
     /** مشتریانی که این الیت یار از طریق جریان «خرید برای دیگری» احراز هویت کرده */
     public function registeredClients(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, 'consultant_registered_clients', 'consultant_user_id', 'client_user_id')
+        return $this->belongsToMany(User::class, 'elite_yar_registered_clients', 'elite_yar_user_id', 'client_user_id')
             ->withTimestamps();
     }
 

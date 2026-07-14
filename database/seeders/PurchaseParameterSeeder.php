@@ -64,13 +64,13 @@ class PurchaseParameterSeeder extends Seeder
             }
 
             $customerTypes = [
-                ['code' => 'employer_without_consultant', 'name' => 'کارفرما بدون الیت یار', 'has_consultant' => false],
-                ['code' => 'engineer_with_consultant',    'name' => 'مهندس با الیت یار',     'has_consultant' => true],
+                ['code' => 'employer_without_consultant', 'name' => 'کارفرما بدون الیت یار', 'has_elite_yar' => false],
+                ['code' => 'engineer_with_consultant',    'name' => 'مهندس با الیت یار',     'has_elite_yar' => true],
             ];
             foreach ($customerTypes as $ct) {
                 CustomerType::updateOrCreate(
                     ['code' => $ct['code']],
-                    ['name' => $ct['name'], 'has_consultant' => $ct['has_consultant']]
+                    ['name' => $ct['name'], 'has_elite_yar' => $ct['has_elite_yar']]
                 );
             }
             CustomerType::whereNotIn('code', collect($customerTypes)->pluck('code'))->delete();

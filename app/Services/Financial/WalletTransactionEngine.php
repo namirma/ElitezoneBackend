@@ -20,7 +20,7 @@ class WalletTransactionEngine
     //   WO (buyer)   → order->placer_user_id
     //   WS (supplier)→ $supplierId (required; lives on items, not the order row)
     //   WSSG (saze)  → config('financial.system_user_id')
-    //   WCT (consult)→ $eliteYarId (required; two possible order columns)
+    //   WEY (consult)→ $eliteYarId (required; two possible order columns)
     //   WVAT (vat)   → config('financial.vat_user_id', system_user_id)
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -56,12 +56,12 @@ class WalletTransactionEngine
 
     public function debitEliteYar(Order $order, float $amount, string $status, int $eliteYarId, ?string $description = null): void
     {
-        $this->process('-', $amount, FinancialCodes::WALLET_CONSULTANT, $status, $order, $description, $eliteYarId);
+        $this->process('-', $amount, FinancialCodes::WALLET_ELITE_YAR, $status, $order, $description, $eliteYarId);
     }
 
     public function creditEliteYar(Order $order, float $amount, string $status, int $eliteYarId, ?string $description = null): void
     {
-        $this->process('+', $amount, FinancialCodes::WALLET_CONSULTANT, $status, $order, $description, $eliteYarId);
+        $this->process('+', $amount, FinancialCodes::WALLET_ELITE_YAR, $status, $order, $description, $eliteYarId);
     }
 
     public function debitVat(Order $order, float $amount, string $status, ?string $description = null): void
@@ -194,7 +194,7 @@ class WalletTransactionEngine
      * Note: callers that know the target user ID up-front should always pass
      * $targetUserId explicitly to process() — this fallback is a safety-net.
      *
-     * WALLET_CONSULTANT → beneficiary_user_id (the eliteYar on the order)
+     * WALLET_ELITE_YAR → beneficiary_user_id (the eliteYar on the order)
      * WALLET_VAT        → financial.vat_user_id (separate VAT escrow user; P5)
      */
     private function resolveUserId(string $code, Order $order): int
@@ -210,8 +210,8 @@ class WalletTransactionEngine
             FinancialCodes::WALLET_SAZE => (int) config('financial.system_user_id', 1),
 
             // EliteYar commission wallet — beneficiary_user_id is the eliteYar.
-            FinancialCodes::WALLET_CONSULTANT => (int) ($order->beneficiary_user_id
-                ?? throw new \RuntimeException("WALLET_CONSULTANT: order {$order->id} has no eliteYar (beneficiary_user_id is null)")),
+            FinancialCodes::WALLET_ELITE_YAR => (int) ($order->beneficiary_user_id
+                ?? throw new \RuntimeException("WALLET_ELITE_YAR: order {$order->id} has no eliteYar (beneficiary_user_id is null)")),
 
             // VAT escrow wallet — uses dedicated vat_user_id when configured (P5),
             // falls back to system_user_id so the system stays correct before

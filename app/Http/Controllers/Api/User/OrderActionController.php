@@ -79,7 +79,7 @@ class OrderActionController extends Controller
             return error(__('global.forbidden'), [], 403);
         }
 
-        if ($order->{Order::CONSULTANT_MOADIAN_REF} !== null) {
+        if ($order->{Order::ELITE_YAR_MOADIAN_REF} !== null) {
             return error(__('orders.consultant_moadian_already_done'), [], 409);
         }
 
