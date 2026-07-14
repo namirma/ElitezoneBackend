@@ -33,7 +33,7 @@ class WalletDepositTest extends TestCase
 
         $payload = [
             'amount' => 500000,
-            'payment_method' => 'bank_transfer',
+            'payment_method' => WalletTransaction::METHOD_BANK_TRANSFER,
         ];
 
         // 3. ارسال درخواست

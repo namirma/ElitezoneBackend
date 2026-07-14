@@ -45,7 +45,7 @@ class AddToCartAction
                 CartItem::SHIPPING_METHOD_ID => $data['shipping_method_id'],
             ];
 
-            $existingItem = $cart->items()->where($identifiers)->first();
+            $existingItem = $cart->items()->where($identifiers)->lockForUpdate()->first();
 
             $itemFinalQuantities = $data['quantities'];
             if ($existingItem) {

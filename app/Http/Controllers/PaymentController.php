@@ -39,15 +39,8 @@ class PaymentController extends Controller
             return $this->redirectClient(false, __('payment.transaction_not_found'));
         }
 
-        // 3. Check the bank-side status before calling the gateway
-        if (strtolower((string) $status) !== 'ok' && strtolower((string) $status) !== 'success') {
-            $transaction->update(['status' => WalletTransaction::STATUS_FAILED]);
-
-            return $this->redirectClient(false, __('payment.payment_failed'));
-        }
-
         try {
-            // 4. Verify with the gateway and settle the wallet
+            // 3. Verify with the gateway and settle the wallet (Always verify, ignore URL status)
             $gatewayName = $transaction->meta['gateway'] ?? 'shaparak';
             $refId = $this->callbackAction->execute($transaction, (string) $authority, $gatewayName);
 
@@ -63,8 +56,7 @@ class PaymentController extends Controller
                 'authority' => $authority,
             ]);
 
-            $transaction->update(['status' => WalletTransaction::STATUS_FAILED]);
-
+            // DO NOT update to failed on exception (timeout/network error) so reconciliation can check it later.
             return $this->redirectClient(false, __('payment.technical_error'));
         }
     }

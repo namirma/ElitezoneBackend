@@ -101,11 +101,12 @@ class PlaceOrderFinalAmountTest extends TestCase
 
         $order = app(PlaceOrderAction::class)->execute($buyer, $data);
 
-        // subtotal is post-discount (900,000); discount is recorded for display only.
-        $this->assertEqualsWithDelta(900_000, (float) $order->{Order::SUBTOTAL}, 1);
+        // subtotal is now pre-discount (1,000,000); discount is subtracted to calculate final amount.
+        $this->assertEqualsWithDelta(1_000_000, (float) $order->{Order::SUBTOTAL}, 1);
         $this->assertEqualsWithDelta(100_000, (float) $order->{Order::DISCOUNT_AMOUNT}, 1);
         $this->assertEqualsWithDelta(90_000, (float) $order->{Order::VAT_AMOUNT}, 1);
-        // The discount must NOT be subtracted again: 900,000 + 90,000 = 990,000 (not 890,000).
+        // The final amount formula: Subtotal - Discount + Tax + Shipping
+        // 1,000,000 - 100,000 + 90,000 + 0 = 990,000.
         $this->assertEqualsWithDelta(990_000, (float) $order->{Order::FINAL_AMOUNT}, 1);
     }
 }
