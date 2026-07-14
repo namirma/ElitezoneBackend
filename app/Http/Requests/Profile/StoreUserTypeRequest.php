@@ -16,7 +16,7 @@ class StoreUserTypeRequest extends FormRequest
         return [
             'roles' => 'required|array|min:1',
             'roles.*' => 'in:employer,supplier,expert',
-            'employer_has_consultant' => 'nullable|boolean',
+            'employer_has_elite_yar' => 'nullable|boolean',
             'type_id' => 'nullable|integer|exists:user_types,id',
         ];
     }

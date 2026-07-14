@@ -189,9 +189,9 @@ class StoreOrderRequest extends FormRequest
             'beneficiary_user_id.integer'    => __('orders.store_beneficiary_integer'),
             'beneficiary_user_id.exists'     => __('orders.store_beneficiary_exists'),
 
-            'consultant_user_id.prohibited' => __('orders.store_consultant_prohibited_for_consultant'),
-            'consultant_user_id.integer'    => __('orders.store_consultant_integer'),
-            'consultant_user_id.exists'     => __('orders.store_consultant_exists'),
+            'elite_yar_user_id.prohibited' => __('orders.store_consultant_prohibited_for_consultant'),
+            'elite_yar_user_id.integer'    => __('orders.store_consultant_integer'),
+            'elite_yar_user_id.exists'     => __('orders.store_consultant_exists'),
 
             'description.max' => __('orders.store_description_max'),
         ];
