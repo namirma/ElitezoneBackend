@@ -37,6 +37,9 @@ class AddToCartAction
 
         return DB::transaction(function () use ($cart, $variant, $data, $orderUnitsMap) {
 
+            // قفل کردن کل سبد خرید برای جلوگیری از Race Conditions هنگام اضافه کردن همزمان آیتم‌ها
+            $cart = Cart::where('id', $cart->id)->lockForUpdate()->first();
+
             $identifiers = [
                 CartItem::CART_ID => $cart->id,
                 CartItem::PRODUCT_VARIANT_ID => $variant->id,
@@ -45,7 +48,10 @@ class AddToCartAction
                 CartItem::SHIPPING_METHOD_ID => $data['shipping_method_id'],
             ];
 
-            $existingItem = $cart->items()->where($identifiers)->lockForUpdate()->first();
+            // اگر سبد خرید قفل شده باشد، دیگر نیازی به قفل کردن این کوئری نیست
+            // اما برای سازگاری آن را رها می‌کنیم. از آنجا که تراکنش‌های همزمان روی همین سبد
+            // در خط بالا منتظر می‌مانند، در اینجا با خیالی آسوده و بدون خطای duplicate می‌توان insert کرد.
+            $existingItem = $cart->items()->where($identifiers)->first();
 
             $itemFinalQuantities = $data['quantities'];
             if ($existingItem) {
