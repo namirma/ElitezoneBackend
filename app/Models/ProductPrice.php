@@ -8,6 +8,35 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * @property int $id
+ * @property int $product_variant_id
+ * @property int $factory_id
+ * @property int $factory_location_id
+ * @property string $general_price
+ * @property string $special_price
+ * @property string $golden_figure
+ * @property \Illuminate\Support\Carbon $last_updated_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Factory $factory
+ * @property-read \App\Models\FactoryLocation $factoryLocation
+ * @property-read \App\Models\ProductVariant $productVariant
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductPrice newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductPrice newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductPrice query()
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductPrice whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductPrice whereFactoryId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductPrice whereFactoryLocationId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductPrice whereGeneralPrice($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductPrice whereGoldenFigure($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductPrice whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductPrice whereLastUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductPrice whereProductVariantId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductPrice whereSpecialPrice($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductPrice whereUpdatedAt($value)
+ * @mixin \Eloquent
+ */
 class ProductPrice extends Model
 {
     use HasFactory;

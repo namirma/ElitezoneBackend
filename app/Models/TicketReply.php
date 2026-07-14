@@ -7,6 +7,30 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property int $ticket_id
+ * @property int|null $user_id
+ * @property int|null $admin_id
+ * @property string $message
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\TicketFile> $files
+ * @property-read int|null $files_count
+ * @property-read \App\Models\Ticket $ticket
+ * @property-read \App\Models\User|null $user
+ * @method static \Illuminate\Database\Eloquent\Builder|TicketReply newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|TicketReply newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|TicketReply query()
+ * @method static \Illuminate\Database\Eloquent\Builder|TicketReply whereAdminId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|TicketReply whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|TicketReply whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|TicketReply whereMessage($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|TicketReply whereTicketId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|TicketReply whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|TicketReply whereUserId($value)
+ * @mixin \Eloquent
+ */
 class TicketReply extends Model
 {
     use HasFactory;

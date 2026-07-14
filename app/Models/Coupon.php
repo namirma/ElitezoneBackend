@@ -6,6 +6,33 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property string $code
+ * @property string $type
+ * @property string $amount
+ * @property int|null $user_id
+ * @property \Illuminate\Support\Carbon|null $expires_at
+ * @property \Illuminate\Support\Carbon|null $used_at
+ * @property string|null $reason
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\User|null $owner
+ * @method static \Illuminate\Database\Eloquent\Builder|Coupon newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|Coupon newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|Coupon query()
+ * @method static \Illuminate\Database\Eloquent\Builder|Coupon whereAmount($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Coupon whereCode($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Coupon whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Coupon whereExpiresAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Coupon whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Coupon whereReason($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Coupon whereType($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Coupon whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Coupon whereUsedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Coupon whereUserId($value)
+ * @mixin \Eloquent
+ */
 class Coupon extends Model
 {
     use HasFactory;

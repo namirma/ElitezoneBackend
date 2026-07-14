@@ -5,6 +5,27 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property string $name
+ * @property string $slug
+ * @property int|null $parent_id
+ * @property string|null $description
+ * @property int $is_available_for_ticket
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Ticket> $tickets
+ * @property-read int|null $tickets_count
+ * @method static \Illuminate\Database\Eloquent\Builder|Department isAvailableForTicket()
+ * @method static \Illuminate\Database\Eloquent\Builder|Department newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|Department newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|Department query()
+ * @method static \Illuminate\Database\Eloquent\Builder|Department whereDescription($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Department whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Department whereIsAvailableForTicket($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Department whereName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Department whereParentId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Department whereSlug($value)
+ * @mixin \Eloquent
+ */
 class Department extends Model
 {
     public $timestamps = false;

@@ -8,6 +8,71 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * @property int $id
+ * @property string|null $code
+ * @property int $user_id
+ * @property int|null $order_id
+ * @property int|null $province_id
+ * @property int|null $city_id
+ * @property int $department_id
+ * @property int|null $previous_department_id
+ * @property int|null $admin_id
+ * @property \Illuminate\Support\Carbon|null $assigned_at
+ * @property \Illuminate\Support\Carbon|null $first_responded_at
+ * @property \Illuminate\Support\Carbon|null $resolved_at
+ * @property \Illuminate\Support\Carbon|null $closed_at
+ * @property \Illuminate\Support\Carbon|null $sla_due_at
+ * @property int $reopened_count
+ * @property string $subject
+ * @property string $message
+ * @property string $status
+ * @property string $priority
+ * @property \Illuminate\Support\Carbon|null $deleted_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\User|null $admin
+ * @property-read \App\Models\Department $department
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\TicketFile> $files
+ * @property-read int|null $files_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\TicketNote> $notes
+ * @property-read int|null $notes_count
+ * @property-read \App\Models\Order|null $order
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\TicketReply> $replies
+ * @property-read int|null $replies_count
+ * @property-read \App\Models\User $user
+ * @method static Builder|Ticket breachingSla()
+ * @method static Builder|Ticket newModelQuery()
+ * @method static Builder|Ticket newQuery()
+ * @method static Builder|Ticket onlyTrashed()
+ * @method static Builder|Ticket open()
+ * @method static Builder|Ticket query()
+ * @method static Builder|Ticket whereAdminId($value)
+ * @method static Builder|Ticket whereAssignedAt($value)
+ * @method static Builder|Ticket whereCityId($value)
+ * @method static Builder|Ticket whereClosedAt($value)
+ * @method static Builder|Ticket whereCode($value)
+ * @method static Builder|Ticket whereCreatedAt($value)
+ * @method static Builder|Ticket whereDeletedAt($value)
+ * @method static Builder|Ticket whereDepartmentId($value)
+ * @method static Builder|Ticket whereFirstRespondedAt($value)
+ * @method static Builder|Ticket whereId($value)
+ * @method static Builder|Ticket whereMessage($value)
+ * @method static Builder|Ticket whereOrderId($value)
+ * @method static Builder|Ticket wherePreviousDepartmentId($value)
+ * @method static Builder|Ticket wherePriority($value)
+ * @method static Builder|Ticket whereProvinceId($value)
+ * @method static Builder|Ticket whereReopenedCount($value)
+ * @method static Builder|Ticket whereResolvedAt($value)
+ * @method static Builder|Ticket whereSlaDueAt($value)
+ * @method static Builder|Ticket whereStatus($value)
+ * @method static Builder|Ticket whereSubject($value)
+ * @method static Builder|Ticket whereUpdatedAt($value)
+ * @method static Builder|Ticket whereUserId($value)
+ * @method static Builder|Ticket withTrashed()
+ * @method static Builder|Ticket withoutTrashed()
+ * @mixin \Eloquent
+ */
 class Ticket extends Model
 {
     use SoftDeletes;

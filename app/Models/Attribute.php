@@ -8,6 +8,29 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property int $attribute_type_id
+ * @property string $name
+ * @property string $display_name
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\AttributeType $attributeType
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ProductVariant> $productVariants
+ * @property-read int|null $product_variants_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\AttributeValue> $values
+ * @property-read int|null $values_count
+ * @method static \Illuminate\Database\Eloquent\Builder|Attribute newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|Attribute newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|Attribute query()
+ * @method static \Illuminate\Database\Eloquent\Builder|Attribute whereAttributeTypeId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Attribute whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Attribute whereDisplayName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Attribute whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Attribute whereName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Attribute whereUpdatedAt($value)
+ * @mixin \Eloquent
+ */
 class Attribute extends Model
 {
     use HasFactory;

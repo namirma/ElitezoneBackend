@@ -5,6 +5,40 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
+/**
+ * @property int $id
+ * @property string $title
+ * @property string|null $description
+ * @property string|null $code
+ * @property string $type
+ * @property string|null $value
+ * @property \Illuminate\Support\Carbon|null $start_date
+ * @property \Illuminate\Support\Carbon|null $end_date
+ * @property int $minimum_quantity
+ * @property bool $is_active
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Product> $products
+ * @property-read int|null $products_count
+ * @method static \Illuminate\Database\Eloquent\Builder|Offer active()
+ * @method static \Illuminate\Database\Eloquent\Builder|Offer current()
+ * @method static \Illuminate\Database\Eloquent\Builder|Offer newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|Offer newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|Offer query()
+ * @method static \Illuminate\Database\Eloquent\Builder|Offer whereCode($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Offer whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Offer whereDescription($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Offer whereEndDate($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Offer whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Offer whereIsActive($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Offer whereMinimumQuantity($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Offer whereStartDate($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Offer whereTitle($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Offer whereType($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Offer whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Offer whereValue($value)
+ * @mixin \Eloquent
+ */
 class Offer extends Model
 {
     public const ID = 'id';

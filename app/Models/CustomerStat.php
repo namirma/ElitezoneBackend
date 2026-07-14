@@ -6,6 +6,37 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $user_id
+ * @property int $recency_days
+ * @property int $frequency_count
+ * @property string $monetary_total
+ * @property int $r_score
+ * @property int $f_score
+ * @property int $m_score
+ * @property string|null $segment
+ * @property \Illuminate\Support\Carbon $last_calculated_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\User $user
+ * @method static \Illuminate\Database\Eloquent\Builder|CustomerStat newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|CustomerStat newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|CustomerStat query()
+ * @method static \Illuminate\Database\Eloquent\Builder|CustomerStat whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|CustomerStat whereFScore($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|CustomerStat whereFrequencyCount($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|CustomerStat whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|CustomerStat whereLastCalculatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|CustomerStat whereMScore($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|CustomerStat whereMonetaryTotal($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|CustomerStat whereRScore($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|CustomerStat whereRecencyDays($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|CustomerStat whereSegment($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|CustomerStat whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|CustomerStat whereUserId($value)
+ * @mixin \Eloquent
+ */
 class CustomerStat extends Model
 {
     use HasFactory;

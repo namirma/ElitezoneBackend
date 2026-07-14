@@ -6,6 +6,28 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property string $name
+ * @property string $display_name
+ * @property string $input_type
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Attribute> $attributes
+ * @property-read int|null $attributes_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ProductCategory> $categories
+ * @property-read int|null $categories_count
+ * @method static \Illuminate\Database\Eloquent\Builder|AttributeType newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|AttributeType newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|AttributeType query()
+ * @method static \Illuminate\Database\Eloquent\Builder|AttributeType whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|AttributeType whereDisplayName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|AttributeType whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|AttributeType whereInputType($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|AttributeType whereName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|AttributeType whereUpdatedAt($value)
+ * @mixin \Eloquent
+ */
 class AttributeType extends Model
 {
     // ثابت‌ها

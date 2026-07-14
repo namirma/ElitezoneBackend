@@ -10,6 +10,50 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * @method static updateOrCreate(array $array, array $array1)
  * @method static where(array $array)
+ * @property int $id
+ * @property int $user_id
+ * @property int $is_verified
+ * @property string|null $verified_at
+ * @property int $engineer_member
+ * @property string|null $company_name
+ * @property int $not_related
+ * @property string|null $license_number شماره پروانه اشتغال
+ * @property string|null $supervision_base پایه نظارت
+ * @property string|null $design_base پایه طراحی
+ * @property int|null $activity_history سابقه فعالیت
+ * @property string|null $activity_provinces
+ * @property string|null $project_done
+ * @property string|null $project_in_progress
+ * @property int|null $trusted_contractor
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read string|void $created_at_diff
+ * @property-read string|void $created_at_p
+ * @property-read string|void $expire_at_days
+ * @property-read string|void $updated_at_diff
+ * @property-read string|void $updated_at_p
+ * @property-read \App\Models\User $user
+ * @method static \Illuminate\Database\Eloquent\Builder|ContractorProfile newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|ContractorProfile newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|ContractorProfile query()
+ * @method static \Illuminate\Database\Eloquent\Builder|ContractorProfile whereActivityHistory($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ContractorProfile whereActivityProvinces($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ContractorProfile whereCompanyName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ContractorProfile whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ContractorProfile whereDesignBase($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ContractorProfile whereEngineerMember($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ContractorProfile whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ContractorProfile whereIsVerified($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ContractorProfile whereLicenseNumber($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ContractorProfile whereNotRelated($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ContractorProfile whereProjectDone($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ContractorProfile whereProjectInProgress($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ContractorProfile whereSupervisionBase($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ContractorProfile whereTrustedContractor($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ContractorProfile whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ContractorProfile whereUserId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ContractorProfile whereVerifiedAt($value)
+ * @mixin \Eloquent
  */
 class ContractorProfile extends Model
 {

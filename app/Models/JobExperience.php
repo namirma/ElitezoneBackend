@@ -6,6 +6,37 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $user_id
+ * @property string $title
+ * @property string|null $organization_name
+ * @property string|null $project_address
+ * @property string $file_path
+ * @property \Illuminate\Support\Carbon|null $start_date
+ * @property \Illuminate\Support\Carbon|null $end_date
+ * @property string $status
+ * @property string|null $rejection_reason
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\User $user
+ * @method static \Illuminate\Database\Eloquent\Builder|JobExperience newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|JobExperience newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|JobExperience query()
+ * @method static \Illuminate\Database\Eloquent\Builder|JobExperience whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|JobExperience whereEndDate($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|JobExperience whereFilePath($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|JobExperience whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|JobExperience whereOrganizationName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|JobExperience whereProjectAddress($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|JobExperience whereRejectionReason($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|JobExperience whereStartDate($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|JobExperience whereStatus($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|JobExperience whereTitle($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|JobExperience whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|JobExperience whereUserId($value)
+ * @mixin \Eloquent
+ */
 class JobExperience extends Model
 {
     use HasFactory;

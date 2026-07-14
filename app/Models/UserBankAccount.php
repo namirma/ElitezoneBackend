@@ -8,6 +8,37 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
+/**
+ * @property int $id
+ * @property int $user_id
+ * @property string $bank_name
+ * @property string $account_holder_name
+ * @property string|null $shaba
+ * @property string|null $card_number
+ * @property string $status
+ * @property string|null $rejection_reason
+ * @property bool $is_default
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \Spatie\Activitylog\Models\Activity> $activities
+ * @property-read int|null $activities_count
+ * @property-read \App\Models\User $user
+ * @method static \Illuminate\Database\Eloquent\Builder|UserBankAccount newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|UserBankAccount newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|UserBankAccount query()
+ * @method static \Illuminate\Database\Eloquent\Builder|UserBankAccount whereAccountHolderName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|UserBankAccount whereBankName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|UserBankAccount whereCardNumber($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|UserBankAccount whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|UserBankAccount whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|UserBankAccount whereIsDefault($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|UserBankAccount whereRejectionReason($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|UserBankAccount whereShaba($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|UserBankAccount whereStatus($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|UserBankAccount whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|UserBankAccount whereUserId($value)
+ * @mixin \Eloquent
+ */
 class UserBankAccount extends Model
 {
     use HasFactory, LogsActivity;

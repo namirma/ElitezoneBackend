@@ -14,6 +14,60 @@ use Laravel\Sanctum\HasApiTokens;
  * @method static create(array $array)
  * @method static where(array $array)
  * @method static firstOrCreate(array $array)
+ * @property int $id
+ * @property int $user_id
+ * @property string|null $name
+ * @property string|null $family
+ * @property string|null $avatar
+ * @property string|null $email
+ * @property string|null $email_verification_token
+ * @property \Illuminate\Support\Carbon|null $email_verified_at
+ * @property string $national_code
+ * @property string|null $birthday
+ * @property string|null $national_id
+ * @property string|null $company
+ * @property string|null $economic_code
+ * @property string|null $register_id
+ * @property string|null $phone
+ * @property int|null $province_id
+ * @property int|null $city_id
+ * @property string $entity
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read string|void $created_at_diff
+ * @property-read string|void $created_at_p
+ * @property-read string|void $expire_at_days
+ * @property-read string|void $updated_at_diff
+ * @property-read string|void $updated_at_p
+ * @property-read \Illuminate\Notifications\DatabaseNotificationCollection<int, \Illuminate\Notifications\DatabaseNotification> $notifications
+ * @property-read int|null $notifications_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \Laravel\Sanctum\PersonalAccessToken> $tokens
+ * @property-read int|null $tokens_count
+ * @property-read \App\Models\User $user
+ * @method static \Illuminate\Database\Eloquent\Builder|UserProfile newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|UserProfile newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|UserProfile query()
+ * @method static \Illuminate\Database\Eloquent\Builder|UserProfile whereAvatar($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|UserProfile whereBirthday($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|UserProfile whereCityId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|UserProfile whereCompany($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|UserProfile whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|UserProfile whereEconomicCode($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|UserProfile whereEmail($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|UserProfile whereEmailVerificationToken($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|UserProfile whereEmailVerifiedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|UserProfile whereEntity($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|UserProfile whereFamily($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|UserProfile whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|UserProfile whereName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|UserProfile whereNationalCode($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|UserProfile whereNationalId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|UserProfile wherePhone($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|UserProfile whereProvinceId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|UserProfile whereRegisterId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|UserProfile whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|UserProfile whereUserId($value)
+ * @mixin \Eloquent
  */
 class UserProfile extends Model
 {

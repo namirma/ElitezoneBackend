@@ -6,6 +6,27 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property int $user_id
+ * @property string $balance
+ * @property string $balance_hold
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\WalletTransaction> $transactions
+ * @property-read int|null $transactions_count
+ * @property-read \App\Models\User $user
+ * @method static \Illuminate\Database\Eloquent\Builder|Wallet newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|Wallet newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|Wallet query()
+ * @method static \Illuminate\Database\Eloquent\Builder|Wallet whereBalance($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Wallet whereBalanceHold($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Wallet whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Wallet whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Wallet whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Wallet whereUserId($value)
+ * @mixin \Eloquent
+ */
 class Wallet extends Model
 {
     public const ID = 'id';

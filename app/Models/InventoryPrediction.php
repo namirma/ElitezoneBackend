@@ -5,6 +5,33 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $product_variant_id
+ * @property int $current_stock
+ * @property string $sales_velocity_30d
+ * @property int $search_volume_7d
+ * @property string $predicted_demand_next_7d
+ * @property string $recommended_restock_amount
+ * @property string $priority
+ * @property string|null $reason
+ * @property string $calculated_at
+ * @property-read \App\Models\ProductVariant $variant
+ * @method static \Illuminate\Database\Eloquent\Builder|InventoryPrediction newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|InventoryPrediction newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|InventoryPrediction query()
+ * @method static \Illuminate\Database\Eloquent\Builder|InventoryPrediction whereCalculatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|InventoryPrediction whereCurrentStock($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|InventoryPrediction whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|InventoryPrediction wherePredictedDemandNext7d($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|InventoryPrediction wherePriority($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|InventoryPrediction whereProductVariantId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|InventoryPrediction whereReason($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|InventoryPrediction whereRecommendedRestockAmount($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|InventoryPrediction whereSalesVelocity30d($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|InventoryPrediction whereSearchVolume7d($value)
+ * @mixin \Eloquent
+ */
 class InventoryPrediction extends Model
 {
     public $timestamps = false;

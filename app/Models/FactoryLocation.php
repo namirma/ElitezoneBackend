@@ -7,6 +7,34 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property int $factory_id
+ * @property string $name
+ * @property string $type
+ * @property string|null $city
+ * @property string|null $address
+ * @property bool $is_active
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Factory $factory
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ProductPrice> $prices
+ * @property-read int|null $prices_count
+ * @method static \Illuminate\Database\Eloquent\Builder|FactoryLocation active()
+ * @method static \Illuminate\Database\Eloquent\Builder|FactoryLocation newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|FactoryLocation newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|FactoryLocation query()
+ * @method static \Illuminate\Database\Eloquent\Builder|FactoryLocation whereAddress($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|FactoryLocation whereCity($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|FactoryLocation whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|FactoryLocation whereFactoryId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|FactoryLocation whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|FactoryLocation whereIsActive($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|FactoryLocation whereName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|FactoryLocation whereType($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|FactoryLocation whereUpdatedAt($value)
+ * @mixin \Eloquent
+ */
 class FactoryLocation extends Model
 {
     use HasFactory;

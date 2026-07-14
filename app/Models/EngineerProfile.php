@@ -11,6 +11,54 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @method static create(array $array)
  * @method static updateOrCreate(array $array, array $array1)
  * @method static where(array $array)
+ * @property int $id
+ * @property int $user_id
+ * @property int $is_verified
+ * @property string|null $verified_at
+ * @property int $engineer_member
+ * @property bool $is_saze90_user
+ * @property string|null $license_number شماره پروانه اشتغال
+ * @property string|null $supervision_base پایه نظارت
+ * @property string|null $design_base پایه طراحی
+ * @property string|null $member_number شماره عضویت
+ * @property string|null $fields_of_study رشته مهندسی
+ * @property int $student
+ * @property int|null $province_id
+ * @property int|null $activity_province_id
+ * @property int|null $city_id
+ * @property int|null $activity_city_id
+ * @property string|null $university_name
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read string|void $created_at_diff
+ * @property-read string|void $created_at_p
+ * @property-read string|void $expire_at_days
+ * @property-read string|void $updated_at_diff
+ * @property-read string|void $updated_at_p
+ * @property-read \App\Models\User $user
+ * @method static \Illuminate\Database\Eloquent\Builder|EngineerProfile newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|EngineerProfile newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|EngineerProfile query()
+ * @method static \Illuminate\Database\Eloquent\Builder|EngineerProfile whereActivityCityId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|EngineerProfile whereActivityProvinceId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|EngineerProfile whereCityId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|EngineerProfile whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|EngineerProfile whereDesignBase($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|EngineerProfile whereEngineerMember($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|EngineerProfile whereFieldsOfStudy($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|EngineerProfile whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|EngineerProfile whereIsSaze90User($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|EngineerProfile whereIsVerified($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|EngineerProfile whereLicenseNumber($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|EngineerProfile whereMemberNumber($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|EngineerProfile whereProvinceId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|EngineerProfile whereStudent($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|EngineerProfile whereSupervisionBase($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|EngineerProfile whereUniversityName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|EngineerProfile whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|EngineerProfile whereUserId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|EngineerProfile whereVerifiedAt($value)
+ * @mixin \Eloquent
  */
 class EngineerProfile extends Model
 {

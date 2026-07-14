@@ -13,6 +13,27 @@ use Illuminate\Support\Facades\Cache;
  * @method static create(array $array)
  * @method static where(string $string, string $string1)
  * @method static parentStatus($null)
+ * @property int $id
+ * @property string $name
+ * @property string|null $slug
+ * @property int|null $parent_id
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, SupplierActivityCategory> $children
+ * @property-read int|null $children_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SupplierProfile> $suppliers
+ * @property-read int|null $suppliers_count
+ * @method static Builder|SupplierActivityCategory newModelQuery()
+ * @method static Builder|SupplierActivityCategory newQuery()
+ * @method static Builder|SupplierActivityCategory query()
+ * @method static Builder|SupplierActivityCategory whereCreatedAt($value)
+ * @method static Builder|SupplierActivityCategory whereId($value)
+ * @method static Builder|SupplierActivityCategory whereName($value)
+ * @method static Builder|SupplierActivityCategory whereParentId($value)
+ * @method static Builder|SupplierActivityCategory whereSlug($value)
+ * @method static Builder|SupplierActivityCategory whereUpdatedAt($value)
+ * @method static Builder|SupplierActivityCategory withoutChildren()
+ * @mixin \Eloquent
  */
 class SupplierActivityCategory extends Model
 {

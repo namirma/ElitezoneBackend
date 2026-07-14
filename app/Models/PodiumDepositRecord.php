@@ -19,6 +19,29 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $deposited_at_jalali
  * @property \Carbon\Carbon|null $processed_at
  * @property string|null $note
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\User|null $user
+ * @property-read \App\Models\WalletTransaction|null $walletTransaction
+ * @method static \Illuminate\Database\Eloquent\Builder|PodiumDepositRecord newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|PodiumDepositRecord newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|PodiumDepositRecord query()
+ * @method static \Illuminate\Database\Eloquent\Builder|PodiumDepositRecord whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|PodiumDepositRecord whereCreditorAmount($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|PodiumDepositRecord whereDepositedAtJalali($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|PodiumDepositRecord whereDocNumber($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|PodiumDepositRecord whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|PodiumDepositRecord whereMatchedBy($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|PodiumDepositRecord whereNationalCode($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|PodiumDepositRecord whereNote($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|PodiumDepositRecord whereProcessedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|PodiumDepositRecord whereSenderIban($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|PodiumDepositRecord whereSenderName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|PodiumDepositRecord whereShenasehVariz($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|PodiumDepositRecord whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|PodiumDepositRecord whereUserId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|PodiumDepositRecord whereWalletTxnId($value)
+ * @mixin \Eloquent
  */
 class PodiumDepositRecord extends Model
 {

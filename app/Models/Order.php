@@ -13,6 +13,164 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
+/**
+ * @property int $id
+ * @property int $placer_user_id
+ * @property int|null $beneficiary_user_id
+ * @property int|null $consultant_user_id الیت یار که کمیسیون CO را دریافت می‌کند
+ * @property int|null $address_id
+ * @property string $order_number
+ * @property string $status
+ * @property string $subtotal
+ * @property string $discount_amount
+ * @property string $shipping_cost
+ * @property string $vat_amount
+ * @property string $final_amount
+ * @property string|null $payment_method
+ * @property string $payment_status
+ * @property string|null $notes
+ * @property \Illuminate\Support\Carbon|null $paid_at
+ * @property \Illuminate\Support\Carbon|null $weighbridge_registered_at
+ * @property string|null $initial_invoice_ref
+ * @property string|null $final_invoice_ref
+ * @property string|null $tax_invoice_ref
+ * @property string|null $expert_fee_amount
+ * @property string|null $expert_fee_payment_status
+ * @property string|null $engineer_fee_amount
+ * @property string|null $engineer_fee_payment_status
+ * @property string|null $contractor_fee_amount
+ * @property string|null $contractor_fee_payment_status
+ * @property string|null $expert_fee_invoice_ref
+ * @property string|null $cancel_reason
+ * @property string|null $survey_status
+ * @property \Illuminate\Support\Carbon|null $prepared_at
+ * @property \Illuminate\Support\Carbon|null $shipped_at
+ * @property string|null $payment_receipt_ref
+ * @property string|null $espadana_order_ref
+ * @property string|null $waybill_ref
+ * @property \Illuminate\Support\Carbon|null $reservation_expires_at تاریخ انقضای رزرو (2 ساعته یا تمدید شده)
+ * @property string|null $partial_payment_amount مبلغ پرداخت شده برای تمدید رزرو
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property string|null $official_price OP: قیمت رسمی محصول
+ * @property string|null $weight_before_scale WBS: وزن قبل از باسکول
+ * @property string $commission_rate %TC: درصد کمیسیون
+ * @property string $owner_discount_rate %OW: درصد تخفیف خریدار
+ * @property string $saze_share_rate %SSG: درصد سهم سازه
+ * @property string $consultant_share_rate %CO: درصد سهم مشاور
+ * @property bool $trans_commission +%TC snapshot: کمیسیون روی حمل؟ (از پروفایل سوپلایر در زمان پرداخت کپی می‌شود)
+ * @property bool $trans_vat +VAT snapshot: مالیات روی حمل؟ (از پروفایل سوپلایر در زمان پرداخت کپی می‌شود)
+ * @property string $vat_rate %VAT: درصد ارزش افزوده
+ * @property string|null $payment_of_owner POO: پرداختی خریدار
+ * @property string|null $payment_to_supplier PTS: پرداختی به سوپلایر
+ * @property string|null $payment_to_consultant PTC: پرداختی به مشاور
+ * @property string|null $payment_to_reserve PTR: مبلغ پرداخت رزرو
+ * @property \Illuminate\Support\Carbon|null $validation_of_reserve VOR: تاریخ اعتبار رزرو
+ * @property string|null $weight_after_scale WAS: وزن باسکول
+ * @property \Illuminate\Support\Carbon|null $weighing_completed_at
+ * @property string|null $consultant_moadian_ref Doc Q: شماره فاکتور مودیان صادر شده توسط الیت یار
+ * @property \Illuminate\Support\Carbon|null $consultant_hold_released_at زمان آزادسازی هولد کمیسیون مشاور
+ * @property string|null $supplier_moadian_ref Doc O: شماره فاکتور مودیان صادر شده توسط سوپلایر
+ * @property \Illuminate\Support\Carbon|null $supplier_hold_released_at زمان آزادسازی هولد مالیات سوپلایر در WVAT
+ * @property bool $supplier_debt_pending آیا سوپلایر بدهی باسکول دارد که هنوز تسویه نشده؟
+ * @property string $supplier_debt_amount مبلغ بدهی سوپلایر بابت کسری باسکول (ریال)
+ * @property string|null $system_moadian_ref Doc P: شماره فاکتور مودیان صادر شده توسط سازه (پلتفرم) برای خریدار
+ * @property \Illuminate\Support\Carbon|null $system_hold_released_at زمان آزادسازی هولد مالیات پلتفرم (sazeVat) از WVAT
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \Spatie\Activitylog\Models\Activity> $activities
+ * @property-read int|null $activities_count
+ * @property-read \App\Models\Address|null $address
+ * @property-read \App\Models\User|null $beneficiary
+ * @property-read \App\Models\User|null $consultant
+ * @property-read array $consultant_progress
+ * @property-read string|void $created_at_diff
+ * @property-read string|void $created_at_p
+ * @property-read array $dashboard_progress
+ * @property-read string|void $expire_at_days
+ * @property-read array $supplier_progress
+ * @property-read string|void $updated_at_diff
+ * @property-read string|void $updated_at_p
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\OrderItem> $items
+ * @property-read int|null $items_count
+ * @property-read \App\Models\User $placer
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Shipment> $shipments
+ * @property-read int|null $shipments_count
+ * @property-read \App\Models\ShippingMethod|null $shippingMethod
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\OrderSurvey> $surveys
+ * @property-read int|null $surveys_count
+ * @method static OrderBuilder|Order cancelled()
+ * @method static OrderBuilder|Order current()
+ * @method static OrderBuilder|Order delivered()
+ * @method static OrderBuilder|Order expired()
+ * @method static OrderBuilder|Order forSupplier(int $supplierId)
+ * @method static OrderBuilder|Order forUser(int $userId)
+ * @method static OrderBuilder|Order newModelQuery()
+ * @method static OrderBuilder|Order newQuery()
+ * @method static OrderBuilder|Order paid()
+ * @method static OrderBuilder|Order query()
+ * @method static OrderBuilder|Order whereAddressId($value)
+ * @method static OrderBuilder|Order whereBeneficiaryUserId($value)
+ * @method static OrderBuilder|Order whereCancelReason($value)
+ * @method static OrderBuilder|Order whereCommissionRate($value)
+ * @method static OrderBuilder|Order whereConsultantHoldReleasedAt($value)
+ * @method static OrderBuilder|Order whereConsultantMoadianRef($value)
+ * @method static OrderBuilder|Order whereConsultantShareRate($value)
+ * @method static OrderBuilder|Order whereConsultantUserId($value)
+ * @method static OrderBuilder|Order whereContractorFeeAmount($value)
+ * @method static OrderBuilder|Order whereContractorFeePaymentStatus($value)
+ * @method static OrderBuilder|Order whereCreatedAt($value)
+ * @method static OrderBuilder|Order whereDiscountAmount($value)
+ * @method static OrderBuilder|Order whereEngineerFeeAmount($value)
+ * @method static OrderBuilder|Order whereEngineerFeePaymentStatus($value)
+ * @method static OrderBuilder|Order whereEspadanaOrderRef($value)
+ * @method static OrderBuilder|Order whereExpertFeeAmount($value)
+ * @method static OrderBuilder|Order whereExpertFeeInvoiceRef($value)
+ * @method static OrderBuilder|Order whereExpertFeePaymentStatus($value)
+ * @method static OrderBuilder|Order whereFinalAmount($value)
+ * @method static OrderBuilder|Order whereFinalInvoiceRef($value)
+ * @method static OrderBuilder|Order whereId($value)
+ * @method static OrderBuilder|Order whereInitialInvoiceRef($value)
+ * @method static OrderBuilder|Order whereNotes($value)
+ * @method static OrderBuilder|Order whereOfficialPrice($value)
+ * @method static OrderBuilder|Order whereOrderNumber($value)
+ * @method static OrderBuilder|Order whereOwnerDiscountRate($value)
+ * @method static OrderBuilder|Order wherePaidAt($value)
+ * @method static OrderBuilder|Order wherePartialPaymentAmount($value)
+ * @method static OrderBuilder|Order wherePaymentMethod($value)
+ * @method static OrderBuilder|Order wherePaymentOfOwner($value)
+ * @method static OrderBuilder|Order wherePaymentReceiptRef($value)
+ * @method static OrderBuilder|Order wherePaymentStatus($value)
+ * @method static OrderBuilder|Order wherePaymentToConsultant($value)
+ * @method static OrderBuilder|Order wherePaymentToReserve($value)
+ * @method static OrderBuilder|Order wherePaymentToSupplier($value)
+ * @method static OrderBuilder|Order wherePlacerUserId($value)
+ * @method static OrderBuilder|Order wherePreparedAt($value)
+ * @method static OrderBuilder|Order whereReservationExpiresAt($value)
+ * @method static OrderBuilder|Order whereSazeShareRate($value)
+ * @method static OrderBuilder|Order whereShippedAt($value)
+ * @method static OrderBuilder|Order whereShippingCost($value)
+ * @method static OrderBuilder|Order whereStatus($value)
+ * @method static OrderBuilder|Order whereSubtotal($value)
+ * @method static OrderBuilder|Order whereSupplierDebtAmount($value)
+ * @method static OrderBuilder|Order whereSupplierDebtPending($value)
+ * @method static OrderBuilder|Order whereSupplierHoldReleasedAt($value)
+ * @method static OrderBuilder|Order whereSupplierMoadianRef($value)
+ * @method static OrderBuilder|Order whereSurveyStatus($value)
+ * @method static OrderBuilder|Order whereSystemHoldReleasedAt($value)
+ * @method static OrderBuilder|Order whereSystemMoadianRef($value)
+ * @method static OrderBuilder|Order whereTaxInvoiceRef($value)
+ * @method static OrderBuilder|Order whereTransCommission($value)
+ * @method static OrderBuilder|Order whereTransVat($value)
+ * @method static OrderBuilder|Order whereUpdatedAt($value)
+ * @method static OrderBuilder|Order whereValidationOfReserve($value)
+ * @method static OrderBuilder|Order whereVatAmount($value)
+ * @method static OrderBuilder|Order whereVatRate($value)
+ * @method static OrderBuilder|Order whereWaybillRef($value)
+ * @method static OrderBuilder|Order whereWeighbridgeRegisteredAt($value)
+ * @method static OrderBuilder|Order whereWeighingCompletedAt($value)
+ * @method static OrderBuilder|Order whereWeightAfterScale($value)
+ * @method static OrderBuilder|Order whereWeightBeforeScale($value)
+ * @mixin \Eloquent
+ */
 class Order extends Model
 {
     use HasFactory,

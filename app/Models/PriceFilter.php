@@ -8,6 +8,36 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Facades\Cache;
 
+/**
+ * @property int $id
+ * @property int $price_filter_type_id
+ * @property string $name
+ * @property string $code
+ * @property string $amount
+ * @property bool $is_percentage
+ * @property bool $is_active
+ * @property int $sort_order
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\PriceFilterCategory> $categories
+ * @property-read int|null $categories_count
+ * @property-read \App\Models\PriceFilterType $filterType
+ * @method static \Illuminate\Database\Eloquent\Builder|PriceFilter active()
+ * @method static \Illuminate\Database\Eloquent\Builder|PriceFilter newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|PriceFilter newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|PriceFilter query()
+ * @method static \Illuminate\Database\Eloquent\Builder|PriceFilter whereAmount($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|PriceFilter whereCode($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|PriceFilter whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|PriceFilter whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|PriceFilter whereIsActive($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|PriceFilter whereIsPercentage($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|PriceFilter whereName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|PriceFilter wherePriceFilterTypeId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|PriceFilter whereSortOrder($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|PriceFilter whereUpdatedAt($value)
+ * @mixin \Eloquent
+ */
 class PriceFilter extends Model
 {
     use HasFactory;

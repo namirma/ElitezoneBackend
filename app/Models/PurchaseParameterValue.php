@@ -6,6 +6,40 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
+/**
+ * @property int $id
+ * @property int $group_id
+ * @property string $name
+ * @property string $slug
+ * @property string $code
+ * @property string|null $description
+ * @property int $order
+ * @property int $is_active
+ * @property int|null $price_filter_category_id
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\PurchaseParameterGroup $group
+ * @property-read \App\Models\PriceFilterCategory|null $priceFilterCategory
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\User> $users
+ * @property-read int|null $users_count
+ * @method static \Illuminate\Database\Eloquent\Builder|PurchaseParameterValue active()
+ * @method static \Illuminate\Database\Eloquent\Builder|PurchaseParameterValue newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|PurchaseParameterValue newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|PurchaseParameterValue ordered()
+ * @method static \Illuminate\Database\Eloquent\Builder|PurchaseParameterValue query()
+ * @method static \Illuminate\Database\Eloquent\Builder|PurchaseParameterValue whereCode($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|PurchaseParameterValue whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|PurchaseParameterValue whereDescription($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|PurchaseParameterValue whereGroupId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|PurchaseParameterValue whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|PurchaseParameterValue whereIsActive($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|PurchaseParameterValue whereName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|PurchaseParameterValue whereOrder($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|PurchaseParameterValue wherePriceFilterCategoryId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|PurchaseParameterValue whereSlug($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|PurchaseParameterValue whereUpdatedAt($value)
+ * @mixin \Eloquent
+ */
 class PurchaseParameterValue extends Model
 {
     const ID = 'id';

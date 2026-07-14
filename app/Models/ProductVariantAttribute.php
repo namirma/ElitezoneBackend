@@ -6,6 +6,23 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 
+/**
+ * @property int $id
+ * @property int $product_variant_id
+ * @property int $attribute_id
+ * @property int $attribute_value_id
+ * @property-read \App\Models\Attribute $attribute
+ * @property-read \App\Models\AttributeValue $attributeValue
+ * @property-read \App\Models\ProductVariant $productVariant
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductVariantAttribute newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductVariantAttribute newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductVariantAttribute query()
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductVariantAttribute whereAttributeId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductVariantAttribute whereAttributeValueId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductVariantAttribute whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductVariantAttribute whereProductVariantId($value)
+ * @mixin \Eloquent
+ */
 class ProductVariantAttribute extends Pivot
 {
     use HasFactory;

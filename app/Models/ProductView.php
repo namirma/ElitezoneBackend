@@ -6,6 +6,28 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $product_id
+ * @property int|null $user_id
+ * @property string|null $ip_address
+ * @property string|null $user_agent
+ * @property string|null $session_id
+ * @property \Illuminate\Support\Carbon $viewed_at
+ * @property-read \App\Models\Product $product
+ * @property-read \App\Models\User|null $user
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductView newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductView newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductView query()
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductView whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductView whereIpAddress($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductView whereProductId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductView whereSessionId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductView whereUserAgent($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductView whereUserId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductView whereViewedAt($value)
+ * @mixin \Eloquent
+ */
 class ProductView extends Model
 {
     use HasFactory;

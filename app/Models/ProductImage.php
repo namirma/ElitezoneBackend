@@ -6,6 +6,27 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $product_id
+ * @property string $image_path
+ * @property bool $is_primary
+ * @property int $sort_order
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Product $product
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductImage newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductImage newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductImage query()
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductImage whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductImage whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductImage whereImagePath($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductImage whereIsPrimary($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductImage whereProductId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductImage whereSortOrder($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductImage whereUpdatedAt($value)
+ * @mixin \Eloquent
+ */
 class ProductImage extends Model
 {
     use HasFactory;

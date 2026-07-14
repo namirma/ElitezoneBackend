@@ -8,6 +8,62 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property int $product_id
+ * @property string $name
+ * @property string $sku
+ * @property bool $is_active
+ * @property int $stock_quantity
+ * @property int $view_count
+ * @property string|null $discount_value
+ * @property string|null $discount_type
+ * @property \Illuminate\Support\Carbon|null $discount_start_date
+ * @property \Illuminate\Support\Carbon|null $discount_end_date
+ * @property string|null $min_order_value
+ * @property string|null $max_order_value
+ * @property int|null $limit_order_unit_id
+ * @property array|null $images
+ * @property array|null $videos
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\CartItem> $cartItems
+ * @property-read int|null $cart_items_count
+ * @property-read \App\Models\OrderUnit|null $limitOrderUnit
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ProductPrice> $prices
+ * @property-read int|null $prices_count
+ * @property-read \App\Models\Product $product
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\StockSubscription> $stockSubscriptions
+ * @property-read int|null $stock_subscriptions_count
+ * @property-read \App\Models\ProductVariantAttribute $details
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Attribute> $variantAttributes
+ * @property-read int|null $variant_attributes_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Wishlist> $wishlists
+ * @property-read int|null $wishlists_count
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductVariant active()
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductVariant newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductVariant newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductVariant query()
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductVariant whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductVariant whereDiscountEndDate($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductVariant whereDiscountStartDate($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductVariant whereDiscountType($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductVariant whereDiscountValue($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductVariant whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductVariant whereImages($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductVariant whereIsActive($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductVariant whereLimitOrderUnitId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductVariant whereMaxOrderValue($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductVariant whereMinOrderValue($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductVariant whereName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductVariant whereProductId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductVariant whereSku($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductVariant whereStockQuantity($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductVariant whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductVariant whereVideos($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductVariant whereViewCount($value)
+ * @mixin \Eloquent
+ */
 class ProductVariant extends Model
 {
     use HasFactory;

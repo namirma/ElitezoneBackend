@@ -6,6 +6,33 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property string $name
+ * @property string $code
+ * @property string $apply_on
+ * @property bool $is_active
+ * @property int $sort_order
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\PriceFilter> $filters
+ * @property-read int|null $filters_count
+ * @method static \Illuminate\Database\Eloquent\Builder|PriceFilterType active()
+ * @method static \Illuminate\Database\Eloquent\Builder|PriceFilterType forGeneral()
+ * @method static \Illuminate\Database\Eloquent\Builder|PriceFilterType forSpecial()
+ * @method static \Illuminate\Database\Eloquent\Builder|PriceFilterType newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|PriceFilterType newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|PriceFilterType query()
+ * @method static \Illuminate\Database\Eloquent\Builder|PriceFilterType whereApplyOn($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|PriceFilterType whereCode($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|PriceFilterType whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|PriceFilterType whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|PriceFilterType whereIsActive($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|PriceFilterType whereName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|PriceFilterType whereSortOrder($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|PriceFilterType whereUpdatedAt($value)
+ * @mixin \Eloquent
+ */
 class PriceFilterType extends Model
 {
     use HasFactory;

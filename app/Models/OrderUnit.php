@@ -8,6 +8,28 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
+/**
+ * @property int $id
+ * @property string $name
+ * @property string $code
+ * @property string $unit
+ * @property string|null $amount
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Product> $products
+ * @property-read int|null $products_count
+ * @method static \Illuminate\Database\Eloquent\Builder|OrderUnit newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|OrderUnit newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|OrderUnit query()
+ * @method static \Illuminate\Database\Eloquent\Builder|OrderUnit whereAmount($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|OrderUnit whereCode($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|OrderUnit whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|OrderUnit whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|OrderUnit whereName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|OrderUnit whereUnit($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|OrderUnit whereUpdatedAt($value)
+ * @mixin \Eloquent
+ */
 class OrderUnit extends Model
 {
     use HasFactory;

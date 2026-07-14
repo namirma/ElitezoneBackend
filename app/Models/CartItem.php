@@ -6,6 +6,54 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $cart_id
+ * @property int $product_variant_id
+ * @property int $factory_id
+ * @property int $factory_location_id
+ * @property int|null $address_id
+ * @property int $shipping_method_id
+ * @property array $quantities
+ * @property string $weight Total logistics weight in KG
+ * @property string $quantity Total quantity count
+ * @property string|null $unit_name Snapshot of the unit name (e.g., Bundle, Branch)
+ * @property string $price
+ * @property string $final_price
+ * @property string $vat_amount
+ * @property string $total_with_vat
+ * @property bool $with_vat
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Address|null $address
+ * @property-read \App\Models\Cart $cart
+ * @property-read \App\Models\Factory $factory
+ * @property-read \App\Models\FactoryLocation $factoryLocation
+ * @property-read \App\Models\ProductVariant $productVariant
+ * @property-read \App\Models\ShippingMethod $shippingMethod
+ * @method static \Illuminate\Database\Eloquent\Builder|CartItem newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|CartItem newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|CartItem query()
+ * @method static \Illuminate\Database\Eloquent\Builder|CartItem whereAddressId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|CartItem whereCartId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|CartItem whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|CartItem whereFactoryId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|CartItem whereFactoryLocationId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|CartItem whereFinalPrice($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|CartItem whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|CartItem wherePrice($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|CartItem whereProductVariantId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|CartItem whereQuantities($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|CartItem whereQuantity($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|CartItem whereShippingMethodId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|CartItem whereTotalWithVat($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|CartItem whereUnitName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|CartItem whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|CartItem whereVatAmount($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|CartItem whereWeight($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|CartItem whereWithVat($value)
+ * @mixin \Eloquent
+ */
 class CartItem extends Model
 {
     use HasFactory;
