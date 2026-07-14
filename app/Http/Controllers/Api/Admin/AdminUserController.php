@@ -169,9 +169,9 @@ class AdminUserController extends Controller
      * یکی از پروفایل مهندس یا پیمانکار کاربر را پیدا کرده و
      * is_verified = true + verified_at = now() روی آن ست می‌کند.
      *
-     * POST /admin/users/{user}/verify-consultant
+     * POST /admin/users/{user}/verify-elite-yar
      */
-    public function verifyConsultant(User $user): JsonResponse
+    public function verifyEliteYar(User $user): JsonResponse
     {
         $profile = $this->resolveConsultantProfile($user);
 
@@ -198,9 +198,9 @@ class AdminUserController extends Controller
     /**
      * لغو تأیید مدارک الیت یار توسط ادمین.
      *
-     * POST /admin/users/{user}/unverify-consultant
+     * POST /admin/users/{user}/unverify-elite-yar
      */
-    public function unverifyConsultant(User $user): JsonResponse
+    public function unverifyEliteYar(User $user): JsonResponse
     {
         $profile = $this->resolveConsultantProfile($user);
 

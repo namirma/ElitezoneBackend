@@ -143,7 +143,7 @@ class HasOrderProgressTest extends TestCase
         $this->assertSame('inactive', $progress['steps'][2]['state'],
             'Step 3 should be inactive until Doc Q is submitted');
         $this->assertSame('inactive', $progress['steps'][3]['state'],
-            'Step 4 should be inactive until hold_released_at is set by ReleaseConsultantHoldAction');
+            'Step 4 should be inactive until hold_released_at is set by ReleaseEliteYarHoldAction');
 
         // دکمه «ثبت فاکتور» باید نمایش داشته باشد — بدون آن الیت یار نمی‌تواند پولش را آزاد کند
         $step2Labels = array_column($progress['steps'][1]['actions'], 'label');

@@ -82,7 +82,7 @@ class InvoiceGeneratorRoutingTest extends TestCase
         $this->assertContains(FinancialCodes::DOC_RECEIPT_OWNER, $codes, 'Doc A missing');
         $this->assertContains(FinancialCodes::DOC_REPORT_SUPPLIER, $codes, 'Doc B missing');
         $this->assertContains(FinancialCodes::DOC_LOADING_ORDER, $codes, 'Doc C missing');
-        $this->assertNotContains(FinancialCodes::DOC_CONSULTANT_REPORT, $codes, 'Doc D must not appear without consultant');
+        $this->assertNotContains(FinancialCodes::DOC_ELITE_YAR_REPORT, $codes, 'Doc D must not appear without consultant');
         $this->assertCount(3, $codes);
     }
 
@@ -92,7 +92,7 @@ class InvoiceGeneratorRoutingTest extends TestCase
         $this->generator->generateDirectPurchaseDocs($this->order, withConsultant: true);
 
         $codes = $this->issuedCodes();
-        $this->assertContains(FinancialCodes::DOC_CONSULTANT_REPORT, $codes, 'Doc D must appear when withConsultant=true');
+        $this->assertContains(FinancialCodes::DOC_ELITE_YAR_REPORT, $codes, 'Doc D must appear when withConsultant=true');
         $this->assertCount(4, $codes);
     }
 
@@ -198,7 +198,7 @@ class InvoiceGeneratorRoutingTest extends TestCase
     {
         $this->generator->generateConsultantMoadianInvoice($this->order);
 
-        $this->assertContains(FinancialCodes::DOC_TAX_INVOICE_CONSULTANT, $this->issuedCodes());
+        $this->assertContains(FinancialCodes::DOC_TAX_INVOICE_ELITE_YAR, $this->issuedCodes());
         $this->assertCount(1, $this->issuedCodes());
     }
 

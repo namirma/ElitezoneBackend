@@ -61,7 +61,7 @@ class OrderResource extends BaseJsonResource
                     default => 'primary',
                 },
                 'progress_data' => $progress,
-                'consultant_progress_data' => $consultantUser
+                'elite_yar_progress_data' => $consultantUser
                     ? $this->consultant_progress
                     : null,
                 'supplier_progress_data' => $isSupplier
@@ -118,7 +118,7 @@ class OrderResource extends BaseJsonResource
             }, null),
 
             // --- Consultant Info (الیت یارِ سفارش — مستقیم از consultant_user_id) ---
-            'consultant' => $consultantUser ? [
+            'elite_yar' => $consultantUser ? [
                 'id' => $consultantUser->id,
                 'full_name' => $consultantUser->full_name,
                 'is_self' => $consultantUser->id === $viewerId,

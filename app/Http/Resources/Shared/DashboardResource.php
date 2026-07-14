@@ -29,7 +29,7 @@ class DashboardResource extends BaseJsonResource
                     'status_text' => __('orders.status.'.$order->status),
                     'progress' => $order->dashboard_progress,
                     // تایم‌لاین الیت یار — فقط وقتی کاربر جاری همان الیت یارِ این سفارش است
-                    'consultant_progress' => $consultantIsSelf
+                    'elite_yar_progress' => $consultantIsSelf
                         ? $order->consultant_progress
                         : null,
                     // تایم‌لاین سوپلایر — فقط برای کاربران با نقش سوپلایر
@@ -46,7 +46,7 @@ class DashboardResource extends BaseJsonResource
                         'full_name' => $order->beneficiary?->full_name,
                         'is_self' => $order->beneficiary_user_id === $viewerId,
                     ] : null,
-                    'consultant' => $consultantUser ? [
+                    'elite_yar' => $consultantUser ? [
                         'id' => $consultantUser->id,
                         'full_name' => $consultantUser->full_name,
                         'is_self' => $consultantIsSelf,

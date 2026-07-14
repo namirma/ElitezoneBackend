@@ -5,7 +5,7 @@ namespace App\Http\Requests\Profile;
 use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 
-class InviteConsultantRequest extends FormRequest
+class InviteEliteYarRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -23,7 +23,7 @@ class InviteConsultantRequest extends FormRequest
     public function messages(): array
     {
         return [
-            User::MOBILE.'.required' => __('consultant.mobile_required'),
+            User::MOBILE.'.required' => __('elite_yar.mobile_required'),
             User::MOBILE.'.regex'    => __('auth.mobile_format_invalid'),
         ];
     }

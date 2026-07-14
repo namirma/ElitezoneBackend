@@ -4,9 +4,9 @@ namespace App\Http\Controllers\Api\User;
 
 use App\Http\Controllers\Controller;
 
-use App\Http\Requests\Profile\InviteConsultantRequest;
+use App\Http\Requests\Profile\InviteEliteYarRequest;
 use App\Http\Requests\Profile\RejectInvitationRequest;
-use App\Http\Resources\Profile\ConsultantRelationResource;
+use App\Http\Resources\Profile\EliteYarRelationResource;
 use App\Jobs\Notification\SendSmsJob;
 use App\Models\ContractorProfile;
 use App\Models\EmployerConsultant;
@@ -19,16 +19,16 @@ use App\Support\PhoneNumber;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 
-class ConsultantRelationController extends Controller
+class EliteYarRelationController extends Controller
 {
-    public function listMyConsultants(): JsonResponse
+    public function listMyEliteYars(): JsonResponse
     {
         $employer = Auth::user();
         $consultants = $employer->technicalConsultants()
             ->with('profile')
             ->get();
 
-        return success(ConsultantRelationResource::collection($consultants), __('consultant.list_received'));
+        return success(EliteYarRelationResource::collection($consultants), __('elite_yar.list_received'));
     }
 
     public function listMyEmployers(): JsonResponse
@@ -44,7 +44,7 @@ class ConsultantRelationController extends Controller
             ->orderByPivot('updated_at', 'desc')
             ->get();
 
-        return success(ConsultantRelationResource::collection($employers), __('consultant.employers_list_received'));
+        return success(EliteYarRelationResource::collection($employers), __('elite_yar.employers_list_received'));
     }
 
     /**
@@ -60,7 +60,7 @@ class ConsultantRelationController extends Controller
      *
      *   ③ (موفق)           — کاربر ثبت‌نام + تأییدشده → ادامه فرایند دعوت
      */
-    public function inviteConsultant(InviteConsultantRequest $request): JsonResponse
+    public function inviteEliteYar(InviteEliteYarRequest $request): JsonResponse
     {
         $employer = Auth::user();
         $mobile = PhoneNumber::to09($request->validated(User::MOBILE));
@@ -70,7 +70,7 @@ class ConsultantRelationController extends Controller
         if (! $consultant) {
             return success(
                 ['outcome' => 'not_registered', 'mobile' => $mobile],
-                __('consultant.not_registered_mobile')
+                __('elite_yar.not_registered_mobile')
             );
         }
 
@@ -89,7 +89,7 @@ class ConsultantRelationController extends Controller
 
         // ── خروجی ② : registered ولی not_verified ──────────────────────────
         if (! $this->isConsultantVerified($consultant)) {
-            return error(__('consultant.consultant_not_verified'), [], 422);
+            return error(__('elite_yar.consultant_not_verified'), [], 422);
         }
 
         // ── خروجی ③ : registered + verified → ادامه دعوت ───────────────────
@@ -109,7 +109,7 @@ class ConsultantRelationController extends Controller
                 if ($updatedAt->diffInHours(now()) < 24) {
                     $hoursLeft = 24 - $updatedAt->diffInHours(now());
 
-                    return error(__('consultant.retry_delay', ['hours' => $hoursLeft]), [], 429);
+                    return error(__('elite_yar.retry_delay', ['hours' => $hoursLeft]), [], 429);
                 }
 
                 $employer->technicalConsultants()->updateExistingPivot($consultant->id, [
@@ -139,11 +139,11 @@ class ConsultantRelationController extends Controller
 
         return success(
             ['outcome' => 'invited'],
-            __('consultant.invitation_sent')
+            __('elite_yar.invitation_sent')
         );
     }
 
-    public function removeConsultant(User $consultant): JsonResponse
+    public function removeEliteYar(User $consultant): JsonResponse
     {
         $employer = Auth::user();
 
@@ -162,7 +162,7 @@ class ConsultantRelationController extends Controller
             ->with('profile')
             ->get();
 
-        return success(ConsultantRelationResource::collection($invitations), __('consultant.invitations_list_received'));
+        return success(EliteYarRelationResource::collection($invitations), __('elite_yar.invitations_list_received'));
     }
 
     public function acceptInvitation(User $employer): JsonResponse
@@ -178,7 +178,7 @@ class ConsultantRelationController extends Controller
             EmployerConsultant::STATUS => EmployerConsultant::STATUS_APPROVED,
         ]);
 
-        return success([], __('consultant.invitation_accepted'));
+        return success([], __('elite_yar.invitation_accepted'));
     }
 
     public function rejectInvitation(RejectInvitationRequest $request, User $employer): JsonResponse
@@ -195,12 +195,12 @@ class ConsultantRelationController extends Controller
             EmployerConsultant::REJECT_REASON => $request->validated('reject_reason'),
         ]);
 
-        return success([], __('consultant.invitation_rejected'));
+        return success([], __('elite_yar.invitation_rejected'));
     }
 
     public function getRejectionReasons(): JsonResponse
     {
-        return success(__('consultant.rejection_reasons'), __('consultant.rejection_reasons_received'));
+        return success(__('elite_yar.rejection_reasons'), __('elite_yar.rejection_reasons_received'));
     }
 
     /**
@@ -228,7 +228,7 @@ class ConsultantRelationController extends Controller
                 ];
             });
 
-        return success($clients, __('consultant.registered_clients_received'));
+        return success($clients, __('elite_yar.registered_clients_received'));
     }
 
     private function maskMobile(?string $mobile): ?string

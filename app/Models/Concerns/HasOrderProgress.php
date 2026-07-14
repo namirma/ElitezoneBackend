@@ -200,7 +200,7 @@ trait HasOrderProgress
 
         // ---------------------------------------------------------
         // ۲. تشخیص پیشرفته‌ترین مرحله فعال (از آخر به اول)
-        //    چون ReleaseConsultantHoldAction هر دو فیلد را اتمیک ست
+        //    چون ReleaseEliteYarHoldAction هر دو فیلد را اتمیک ست
         //    می‌کند، مرحله ۳ (consultant_moadian_ref) عملاً هرگز
         //    به‌عنوان «current» نمایش داده نمی‌شود — اما منطقاً
         //    پوشش داده شده است.
@@ -211,7 +211,7 @@ trait HasOrderProgress
             // مرحله ۴ فقط وقتی Doc Q ثبت و hold واقعاً آزاد شده — نه صرف تحویل کالا.
             // طبق پروسه خرید (بخش «الگوریتم وابستگی واریزها»):
             // «تا زمان صدور فاکتور سامانه مودیان توسط الیت یار در کیف پول وی هولد می‌شود».
-            // پس delivered/completed به‌تنهایی hold را آزاد نمی‌کند؛ ReleaseConsultantHoldAction لازم است.
+            // پس delivered/completed به‌تنهایی hold را آزاد نمی‌کند؛ ReleaseEliteYarHoldAction لازم است.
             if ($this->{Order::CONSULTANT_HOLD_RELEASED_AT} !== null) {
                 $currentIndex = 3; // مرحله ۴: حق مشاوره در دسترس
             } elseif ($this->{Order::CONSULTANT_MOADIAN_REF} !== null) {
@@ -280,7 +280,7 @@ trait HasOrderProgress
                         ];
                         $actions[] = [
                             'label' => 'فاکتور خدمات خود را ثبت کنید',
-                            'link' => "/api/profile/orders/{$id}/consultant-moadian-invoice",
+                            'link' => "/api/profile/orders/{$id}/elite-yar-moadian-invoice",
                             'type' => 'primary',
                         ];
                         break;
@@ -288,7 +288,7 @@ trait HasOrderProgress
                     case 'فاکتور خدمات ثبت شد':
                         $actions[] = [
                             'label' => 'فاکتور خدمات خود را ثبت کنید',
-                            'link' => "/api/profile/orders/{$id}/consultant-moadian-invoice",
+                            'link' => "/api/profile/orders/{$id}/elite-yar-moadian-invoice",
                             'type' => 'secondary',
                         ];
                         break;

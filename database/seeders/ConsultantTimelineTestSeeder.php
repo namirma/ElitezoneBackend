@@ -157,7 +157,7 @@ class ConsultantTimelineTestSeeder extends Seeder
         $this->command->info('');
         $this->command->info('  💡  دکمه‌های Stage 2:');
         $this->command->info('     • «مشاهده کیف پول»  → /profile/finance');
-        $this->command->info("     • «فاکتور خدمات خود را ثبت کنید»  → /api/profile/orders/{$order->id}/consultant-moadian-invoice");
+        $this->command->info("     • «فاکتور خدمات خود را ثبت کنید»  → /api/profile/orders/{$order->id}/elite-yar-moadian-invoice");
         $this->command->info('');
     }
 }

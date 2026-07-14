@@ -9,7 +9,7 @@ use App\Http\Controllers\Api\User\AddressController;
 use App\Http\Controllers\Api\User\BeneficiaryController;
 use App\Http\Controllers\Api\User\CartController;
 use App\Http\Controllers\Api\User\CheckoutController;
-use App\Http\Controllers\Api\User\ConsultantRelationController;
+use App\Http\Controllers\Api\User\EliteYarRelationController;
 use App\Http\Controllers\Api\User\ContractorController;
 use App\Http\Controllers\Api\User\DashboardController;
 use App\Http\Controllers\Api\User\EduixController;
@@ -216,7 +216,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
                 Route::post('/{order}/cancel', 'cancel')->whereNumber('order');
                 Route::post('/{order}/finalize-invoice', 'finalizeInvoice')->whereNumber('order');
                 // Doc Q: consultant submits Moadian invoice → releases commission hold
-                Route::post('/{order}/consultant-moadian-invoice', 'submitConsultantMoadianInvoice')->whereNumber('order');
+                Route::post('/{order}/elite-yar-moadian-invoice', 'submitEliteYarMoadianInvoice')->whereNumber('order');
             });
 
             // Invoice downloads
@@ -302,11 +302,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
         });
 
         // Consultants ↔ Employers
-        Route::prefix('consultants')->controller(ConsultantRelationController::class)->group(function () {
+        Route::prefix('elite-yars')->controller(EliteYarRelationController::class)->group(function () {
             Route::middleware('role.employer')->group(function () {
-                Route::get('/', 'listMyConsultants')->middleware('track:relations');
-                Route::post('/invite', 'inviteConsultant');
-                Route::delete('/{consultant}', 'removeConsultant');
+                Route::get('/', 'listMyEliteYars')->middleware('track:relations');
+                Route::post('/invite', 'inviteEliteYar');
+                Route::delete('/{consultant}', 'removeEliteYar');
             });
             Route::middleware('role.expert')->group(function () {
                 Route::get('/employers', 'listMyEmployers');

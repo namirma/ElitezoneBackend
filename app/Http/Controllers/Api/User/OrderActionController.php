@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Api\User;
 
-use App\Actions\Financial\ReleaseConsultantHoldAction;
+use App\Actions\Financial\ReleaseEliteYarHoldAction;
 use App\Actions\Order\CancelOrderAction;
 use App\Actions\Order\FinalizeInvoiceAction;
 use App\Http\Controllers\Controller;
@@ -18,7 +18,7 @@ class OrderActionController extends Controller
 {
     public function __construct(
         private readonly FinalizeInvoiceAction $finalizeAction,
-        private readonly ReleaseConsultantHoldAction $releaseConsultantHold,
+        private readonly ReleaseEliteYarHoldAction $releaseConsultantHold,
     ) {}
 
     /**
@@ -70,7 +70,7 @@ class OrderActionController extends Controller
      * فقط توسط الیت یارِ سفارش (beneficiary) قابل فراخوانی است.
      * پس از ثبت، هولد کمیسیون و مالیات الیت یار آزاد می‌شود.
      */
-    public function submitConsultantMoadianInvoice(SubmitMoadianInvoiceRequest $request, Order $order): JsonResponse
+    public function submitEliteYarMoadianInvoice(SubmitMoadianInvoiceRequest $request, Order $order): JsonResponse
     {
         $user = Auth::user();
 

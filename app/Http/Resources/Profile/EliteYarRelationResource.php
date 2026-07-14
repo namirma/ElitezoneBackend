@@ -14,7 +14,7 @@ use App\Http\Resources\BaseJsonResource;
 /**
  * @mixin \App\Models\EmployerConsultant
  */
-class ConsultantRelationResource extends BaseJsonResource
+class EliteYarRelationResource extends BaseJsonResource
 {
     public function toArray(Request $request): array
     {

@@ -41,7 +41,7 @@ class FinancialCodes
 
     public const DOC_LOADING_ORDER = 'C'; // دستور بارگیری (مشترک برای سوپلایر و خریدار)
 
-    public const DOC_CONSULTANT_REPORT = 'D'; // گزارش پرداخت بک‌آفیس به الیت یار
+    public const DOC_ELITE_YAR_REPORT = 'D'; // گزارش پرداخت بک‌آفیس به الیت یار
 
     // --- مرحله ۲: شروع رزرو (Reservation Start) ---
     public const DOC_RESERVE_RECEIPT = 'E'; // رسید پرداخت رزرو برای خریدار
@@ -79,7 +79,7 @@ class FinancialCodes
 
     public const DOC_TAX_INVOICE_BUYER = 'P'; // فاکتور نهایی روی سامانه مودیان (برای خریدار توسط شرکت نرم‌افزاری سازه)
 
-    public const DOC_TAX_INVOICE_CONSULTANT = 'Q'; // فاکتور نهایی روی سامانه مودیان (برای شرکت نرم‌افزاری سازه توسط الیت یار)
+    public const DOC_TAX_INVOICE_ELITE_YAR = 'Q'; // فاکتور نهایی روی سامانه مودیان (برای شرکت نرم‌افزاری سازه توسط الیت یار)
 
     // --- مرحله ۷: تسویه و نظرسنجی ---
     // R: HOLD — فرآیند تسویه حساب هزینه حمل بار؛ در انتظار تصمیم محصول با فولاد کویر
@@ -87,5 +87,5 @@ class FinancialCodes
 
     public const DOC_SURVEY = 'S'; // نظرسنجی از خریدار
 
-    public const DOC_SURVEY_CONSULTANT = 'T'; // نظرسنجی از الیت یار
+    public const DOC_SURVEY_ELITE_YAR = 'T'; // نظرسنجی از الیت یار
 }

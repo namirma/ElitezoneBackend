@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * Backfills the "مشاور فنی" → "الیت یار" rebrand into already-persisted
  * `wallet_transactions.description` rows. The source code that WRITES these
- * descriptions (WeighbridgeVatRouter, ReleaseConsultantHoldAction) was fixed
+ * descriptions (WeighbridgeVatRouter, ReleaseEliteYarHoldAction) was fixed
  * in commit 5f6747f, so this migration only needs to touch rows created
  * BEFORE that fix — new transactions already get the new text.
  *

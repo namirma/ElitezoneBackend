@@ -28,7 +28,7 @@ use Illuminate\Support\Facades\Log;
  * The moadian_ref is recorded on the order so the release is idempotent:
  * a second call for the same order is a no-op.
  */
-class ReleaseConsultantHoldAction
+class ReleaseEliteYarHoldAction
 {
     public function __construct(
         private readonly WalletTransactionEngine $walletEngine,
@@ -44,7 +44,7 @@ class ReleaseConsultantHoldAction
     {
         // ── Idempotency guard ─────────────────────────────────────────────────
         if ($order->{Order::CONSULTANT_MOADIAN_REF} !== null) {
-            Log::channel('financial')->info("ReleaseConsultantHoldAction skipped: order {$order->id} already has consultant_moadian_ref.");
+            Log::channel('financial')->info("ReleaseEliteYarHoldAction skipped: order {$order->id} already has consultant_moadian_ref.");
 
             return;
         }
@@ -57,7 +57,7 @@ class ReleaseConsultantHoldAction
         $consultantGross = (float) $order->{Order::PAYMENT_TO_CONSULTANT};
         if ($consultantGross <= 0) {
             // No consultant commission was held for this order (no consultant)
-            Log::channel('financial')->info("ReleaseConsultantHoldAction: order {$order->id} has no consultant commission — only recording ref.");
+            Log::channel('financial')->info("ReleaseEliteYarHoldAction: order {$order->id} has no consultant commission — only recording ref.");
             $order->forceFill([
                 Order::CONSULTANT_MOADIAN_REF      => $moadianRef,
                 Order::CONSULTANT_HOLD_RELEASED_AT => now(),

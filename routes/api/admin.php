@@ -112,8 +112,8 @@ Route::middleware(['auth:sanctum', 'role.admin'])->prefix('admin')->group(functi
         Route::get('/{user}', 'show');
         Route::post('/{user}/toggle-status', 'toggleStatus');
         Route::post('/{user}/note', 'addNote');
-        Route::post('/{user}/verify-consultant', 'verifyConsultant');
-        Route::post('/{user}/unverify-consultant', 'unverifyConsultant');
+        Route::post('/{user}/verify-elite-yar', 'verifyEliteYar');
+        Route::post('/{user}/unverify-elite-yar', 'unverifyEliteYar');
     });
 
     // Suppliers — مدیریت سوپلایرها

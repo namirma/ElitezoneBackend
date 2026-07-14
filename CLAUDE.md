@@ -61,7 +61,7 @@ Http/Requests/
   Product/     — ProductIndexRequest, ProductVariantFilterRequest, ProductVariantPriceRequest, SearchRequest, ToggleStockSubscriptionRequest
   Profile/     — UpdateRealProfileRequest, UpdateLegalProfileRequest, StoreUserTypeRequest, StoreEngineerProfileRequest,
                  StoreContractorProfileRequest, StoreEmployerProfileRequest, StoreSupplierProfileRequest,
-                 StoreJobExperienceRequest, StoreListopherRequest, InviteConsultantRequest, RejectInvitationRequest,
+                 StoreJobExperienceRequest, StoreListopherRequest, InviteEliteYarRequest, RejectInvitationRequest,
                  StoreUserProfileRequest, UpdateUserProfileRequest
   Financial/   — WalletDepositRequest, WalletWithdrawalRequest, StoreDepositReceiptRequest, StoreUserBankAccountRequest
   Address/     — StoreAddressRequest, UpdateAddressRequest
@@ -90,7 +90,7 @@ Http/Resources/
   Supplier/  — FactoryResource, FactoryLocationResource, SupplierProfileResource, SupplierCategoryResource
   Profile/   — UserResource, UserProfileResource, UserTypeResource, BadgeResource, CustomerTypeResource,
                EngineerProfileResourse, ContractorProfileResource, EmployerProfileResource,
-               ConsultantRelationResource, JobExperienceResource, AddressResource, EduixRecordResource
+               EliteYarRelationResource, JobExperienceResource, AddressResource, EduixRecordResource
   Financial/ — WalletResource, WalletTransactionResource, UserBankAccountResource
   Ticket/    — TicketResource, TicketReplyResource, TicketFileResource, DepartmentResource
   Wishlist/  — WishlistResource, VariantInWishlistResource
@@ -143,7 +143,7 @@ Controllers/
               OrderActionController, OrderInvoiceController, OrderSurveyController,
               WalletController, UserBankAccountController, AddressController,
               WishlistController, StockSubscriptionController, MyItemsController,
-              ConsultantRelationController, BeneficiaryController,
+              EliteYarRelationController, BeneficiaryController,
               EngineerController, ContractorController, EmployerController,
               SupplierController, SupplierOrderController, NotificationController,
               ProfileSearchController, JobExperienceController, EduixController,
@@ -182,7 +182,7 @@ Actions/
                  PayHoldFeeAction, ProcessPreScalePaymentAction,
                  ProcessReservationPaymentAction, ProcessReservationCompletionAction,
                  ProcessWeighbridgeResultAction, ProcessPaymentCallbackAction,
-                 ReleaseConsultantHoldAction,    ← Doc Q: releases WCT+WVAT holds
+                 ReleaseEliteYarHoldAction,    ← Doc Q: releases WCT+WVAT holds
                  RecordSupplierMoadianInvoiceAction, ← Doc O: releases WVAT hold
                  AttachReceiptToDepositAction, DeleteReceiptAction
   Order/       — PlaceOrderAction, RefundOrderToWalletAction, CancelOrderAction,
@@ -204,7 +204,7 @@ delegates entirely to this action; it holds no DB or financial logic itself.
 consultant fee (TYPE_FEE_HOLD WalletTransaction + balance_hold increment) inside a
 single DB::transaction. `OrderActionController::finalizeInvoice()` delegates to it.
 
-`ReleaseConsultantHoldAction` — Doc Q post-weighbridge: when the consultant submits
+`ReleaseEliteYarHoldAction` — Doc Q post-weighbridge: when the consultant submits
 their Moadian invoice, releases WCT hold→available (consultant net) and WVAT
 hold→available (consultant VAT). Idempotent via `consultant_moadian_ref` guard.
 Route: `POST /profile/orders/{order}/consultant-moadian-invoice` (OrderActionController).
@@ -520,7 +520,7 @@ documents are submitted:
 **Doc Q — Consultant Moadian Invoice** (submitted by consultant)
 - At weighbridge: `consultantNet → WCT balance_hold`, `consultantVat → WVAT balance_hold`
 - VAT split: `vatMultiplier = (vat%/100) / (1 + vat%/100)`; `consultantVat = gross × vatMultiplier`
-- On submission: `ReleaseConsultantHoldAction` releases both holds to available
+- On submission: `ReleaseEliteYarHoldAction` releases both holds to available
 - Order fields set: `consultant_moadian_ref`, `consultant_hold_released_at`
 - Authorization: only `order.beneficiary_user_id` (the consultant) can call this
 
@@ -574,7 +574,7 @@ mode (file stored on disk, `Invoice` DB record created).
 | A | `DOC_RECEIPT_OWNER` | Direct purchase | `ProcessPreScalePaymentAction` |
 | B | `DOC_REPORT_SUPPLIER` | Direct purchase | `ProcessPreScalePaymentAction` |
 | C | `DOC_LOADING_ORDER` | Direct purchase | `ProcessPreScalePaymentAction` |
-| D | `DOC_CONSULTANT_REPORT` | Direct purchase + has beneficiary | `ProcessPreScalePaymentAction` |
+| D | `DOC_ELITE_YAR_REPORT` | Direct purchase + has beneficiary | `ProcessPreScalePaymentAction` |
 | E | `DOC_RESERVE_RECEIPT` | Reservation start | `ProcessReservationPaymentAction` |
 | F | `DOC_RESERVE_REPORT` | Reservation start | `ProcessReservationPaymentAction` |
 | G | `DOC_FINAL_RECEIPT_OWNER` | Reservation completion | `ProcessReservationCompletionAction` |
@@ -589,7 +589,7 @@ mode (file stored on disk, `Invoice` DB record created).
 | M | `DOC_REFUND_REPORT_WEIGH` | Weighbridge deficit | `ProcessWeighbridgeResultAction` |
 | O | `DOC_TAX_INVOICE_SUPPLIER` | Supplier submits Moadian invoice | `RecordSupplierMoadianInvoiceAction` |
 | P | `DOC_TAX_INVOICE_BUYER` | Admin submits system Moadian invoice | `RecordSystemMoadianInvoiceAction` |
-| Q | `DOC_TAX_INVOICE_CONSULTANT` | Consultant submits Moadian invoice | `ReleaseConsultantHoldAction` |
+| Q | `DOC_TAX_INVOICE_ELITE_YAR` | Consultant submits Moadian invoice | `ReleaseEliteYarHoldAction` |
 
 **`OrderInvoiceController::download()`** serves any of the above by slug (e.g.
 `GET /profile/orders/{order}/invoices/receipt` → `DOC_RECEIPT_OWNER`). The slug→code
@@ -622,7 +622,7 @@ Payment entry points:
 1. **WalletPaymentController** — generic wallet payment for orders
 2. **OrderPaymentController::payFullOrder** — handles 3 scenarios: direct purchase, reservation (above `financial.reservation_threshold`, default 200M Tomans), and completion of reserved orders; protected by `idempotency` middleware
 3. **OrderPaymentController::payHoldFee** — hold fee extension; protected by `idempotency` middleware
-4. **OrderActionController::submitConsultantMoadianInvoice** — Doc Q; releases WCT+WVAT holds
+4. **OrderActionController::submitEliteYarMoadianInvoice** — Doc Q; releases WCT+WVAT holds
 5. **SupplierOrderController::submitSupplierMoadianInvoice** — Doc O; releases WVAT hold
 6. **AdminOrderController::submitSystemMoadianInvoice** — Doc P; releases sazeVat WVAT hold
 
@@ -878,7 +878,7 @@ Patterns to follow when adding tests:
   The system wallet user defaults to `id=1`; in a fresh test DB that user
   doesn't exist, so create one and point config at it.
 - **Set up a separate VAT user** for tests that exercise `WALLET_VAT` operations
-  (e.g. `ProcessWeighbridgeResultAction`, `ReleaseConsultantHoldAction`,
+  (e.g. `ProcessWeighbridgeResultAction`, `ReleaseEliteYarHoldAction`,
   `RecordSupplierMoadianInvoiceAction`) when `financial.vat_user_id` is distinct:
   ```php
   $vat = User::factory()->create();
@@ -1004,7 +1004,7 @@ Auth::user()->registeredClients()->syncWithoutDetaching([$beneficiaryUser->id]);
 after a successful OTP check. This records the consultant→client relationship in
 `consultant_registered_clients` (unique per pair). The link is used by:
 - `GET /api/profile/consultants/registered-clients` — lists all clients this consultant
-  has verified, via `ConsultantRelationController::listRegisteredClients()` (role.expert only)
+  has verified, via `EliteYarRelationController::listRegisteredClients()` (role.expert only)
 - `User::registeredClients()` — BelongsToMany via `consultant_registered_clients`
 
 Mobile is masked as `0910****567` (same `maskMobile()` logic as `UserResource`).
@@ -1212,7 +1212,7 @@ multiplier `1/11`); at billion-Rial magnitudes a 6-place intermediate already lo
   returns `['net' => , 'vat' => ]` using `vat = gross × VAT / (100 + VAT)` (stable form,
   no sub-unit multiplier). **Every** action that splits VAT must call `extractVat()` —
   `ProcessWeighbridgeResultAction` (which *holds* the VAT) and the three Moadian-invoice
-  actions (`ReleaseConsultantHoldAction`, `RecordSupplierMoadianInvoiceAction`,
+  actions (`ReleaseEliteYarHoldAction`, `RecordSupplierMoadianInvoiceAction`,
   `RecordSystemMoadianInvoiceAction`, which *release* it) **must** use the identical split
   so the released amount equals what was held — otherwise a sub-Rial residue is stranded
   in `balance_hold`. Never reintroduce the inline `($vat/100)/(1+$vat/100)` float formula.

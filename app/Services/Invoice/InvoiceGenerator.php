@@ -46,7 +46,7 @@ class InvoiceGenerator
         $this->generate($order, FinancialCodes::DOC_REPORT_SUPPLIER);
         $this->generate($order, FinancialCodes::DOC_LOADING_ORDER);
         if ($withConsultant) {
-            $this->generate($order, FinancialCodes::DOC_CONSULTANT_REPORT);
+            $this->generate($order, FinancialCodes::DOC_ELITE_YAR_REPORT);
         }
     }
 
@@ -99,7 +99,7 @@ class InvoiceGenerator
     /** Doc Q — consultant Moadian invoice. */
     public function generateConsultantMoadianInvoice(Order $order): void
     {
-        $this->generate($order, FinancialCodes::DOC_TAX_INVOICE_CONSULTANT);
+        $this->generate($order, FinancialCodes::DOC_TAX_INVOICE_ELITE_YAR);
     }
 
     /** Returns the raw PDF object for streaming/download to the client. */
@@ -215,7 +215,7 @@ class InvoiceGenerator
             FinancialCodes::DOC_RECEIPT_OWNER => 'pdf.receipt_owner',
             FinancialCodes::DOC_REPORT_SUPPLIER => 'pdf.report_supplier',
             FinancialCodes::DOC_LOADING_ORDER => 'pdf.loading_order',
-            FinancialCodes::DOC_CONSULTANT_REPORT => 'pdf.consultant_report',
+            FinancialCodes::DOC_ELITE_YAR_REPORT => 'pdf.elite_yar_report',
             // ── Stage 2: reservation ───────────────────────────────────────
             FinancialCodes::DOC_RESERVE_RECEIPT => 'pdf.reserve_receipt',
             FinancialCodes::DOC_RESERVE_REPORT => 'pdf.reserve_report',
@@ -233,9 +233,9 @@ class InvoiceGenerator
             // ── Stage 6: Moadian taxpayer system ──────────────────────────
             FinancialCodes::DOC_TAX_INVOICE_SUPPLIER => 'pdf.tax_invoice_supplier',
             FinancialCodes::DOC_TAX_INVOICE_BUYER => 'pdf.tax_invoice_buyer',
-            FinancialCodes::DOC_TAX_INVOICE_CONSULTANT => 'pdf.tax_invoice_consultant',
+            FinancialCodes::DOC_TAX_INVOICE_ELITE_YAR => 'pdf.tax_invoice_elite_yar',
             // ── Stage 7: surveys ───────────────────────────────────────────
-            FinancialCodes::DOC_SURVEY_CONSULTANT => 'pdf.survey_consultant',
+            FinancialCodes::DOC_SURVEY_ELITE_YAR => 'pdf.survey_elite_yar',
             default => 'pdf.invoice_default',
         };
     }
