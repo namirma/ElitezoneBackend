@@ -271,8 +271,8 @@ class ProductSeeder extends Seeder
         }
 
         $customerTypesData = [
-            [CustomerType::NAME => 'کارفرمای بدون الیت یار', CustomerType::CODE => 'employer_without_consultant', CustomerType::HAS_ELITE_YAR => false],
-            [CustomerType::NAME => 'مهندس دارای الیت یار', CustomerType::CODE => 'engineer_with_consultant', CustomerType::HAS_ELITE_YAR => true],
+            [CustomerType::NAME => 'کارفرمای بدون الیت یار', CustomerType::CODE => 'employer_without_elite_yar', CustomerType::HAS_ELITE_YAR => false],
+            [CustomerType::NAME => 'مهندس دارای الیت یار', CustomerType::CODE => 'engineer_with_elite_yar', CustomerType::HAS_ELITE_YAR => true],
         ];
         foreach ($customerTypesData as $typeDetails) {
             CustomerType::updateOrCreate([CustomerType::CODE => $typeDetails[CustomerType::CODE]], $typeDetails);
@@ -285,8 +285,8 @@ class ProductSeeder extends Seeder
         $badgeInstances = Badge::all()->keyBy(Badge::CODE);
 
         $priceAdjustmentsData = [
-            ['c_code' => 'employer_without_consultant', 'b_code' => null, 'amount' => 0],
-            ['c_code' => 'engineer_with_consultant', 'b_code' => null, 'amount' => 2000],
+            ['c_code' => 'employer_without_elite_yar', 'b_code' => null, 'amount' => 0],
+            ['c_code' => 'engineer_with_elite_yar', 'b_code' => null, 'amount' => 2000],
         ];
         foreach ($priceAdjustmentsData as $adj) {
             if (isset($customerTypeInstances[$adj['c_code']])) {
@@ -318,7 +318,7 @@ class ProductSeeder extends Seeder
             [PriceFilterType::NAME => 'سود', PriceFilterType::CODE => 'profit',             PriceFilterType::APPLY_ON => 'both',    PriceFilterType::IS_ACTIVE => true, PriceFilterType::SORT_ORDER => 1],
             [PriceFilterType::NAME => 'سیاست قیمت‌گذاری', PriceFilterType::CODE => 'policy',            PriceFilterType::APPLY_ON => 'general', PriceFilterType::IS_ACTIVE => true, PriceFilterType::SORT_ORDER => 2],
             [PriceFilterType::NAME => 'نوع مشتری',       PriceFilterType::CODE => 'customer_type',      PriceFilterType::APPLY_ON => 'special', PriceFilterType::IS_ACTIVE => true, PriceFilterType::SORT_ORDER => 3],
-            [PriceFilterType::NAME => 'وضعیت الیت یار',     PriceFilterType::CODE => 'consultant_status', PriceFilterType::APPLY_ON => 'special', PriceFilterType::IS_ACTIVE => true, PriceFilterType::SORT_ORDER => 4],
+            [PriceFilterType::NAME => 'وضعیت الیت یار',     PriceFilterType::CODE => 'elite_yar_status', PriceFilterType::APPLY_ON => 'special', PriceFilterType::IS_ACTIVE => true, PriceFilterType::SORT_ORDER => 4],
         ];
         foreach ($filterTypesData as $typeDetails) {
             PriceFilterType::updateOrCreate([PriceFilterType::CODE => $typeDetails[PriceFilterType::CODE]], $typeDetails);
@@ -339,9 +339,9 @@ class ProductSeeder extends Seeder
                 [PriceFilter::NAME => 'کارفرما',       PriceFilter::CODE => 'employer',          PriceFilter::AMOUNT => 0,     PriceFilter::IS_PERCENTAGE => false, PriceFilter::IS_ACTIVE => true, PriceFilter::SORT_ORDER => 1],
                 [PriceFilter::NAME => 'مهندس',         PriceFilter::CODE => 'engineer',          PriceFilter::AMOUNT => -1000, PriceFilter::IS_PERCENTAGE => false, PriceFilter::IS_ACTIVE => true, PriceFilter::SORT_ORDER => 2],
             ],
-            'consultant_status' => [
-                [PriceFilter::NAME => 'بدون الیت یار',    PriceFilter::CODE => 'without_consultant', PriceFilter::AMOUNT => 0,     PriceFilter::IS_PERCENTAGE => false, PriceFilter::IS_ACTIVE => true, PriceFilter::SORT_ORDER => 1],
-                [PriceFilter::NAME => 'دارای الیت یار',   PriceFilter::CODE => 'with_consultant',   PriceFilter::AMOUNT => -800,  PriceFilter::IS_PERCENTAGE => false, PriceFilter::IS_ACTIVE => true, PriceFilter::SORT_ORDER => 2],
+            'elite_yar_status' => [
+                [PriceFilter::NAME => 'بدون الیت یار',    PriceFilter::CODE => 'without_elite_yar', PriceFilter::AMOUNT => 0,     PriceFilter::IS_PERCENTAGE => false, PriceFilter::IS_ACTIVE => true, PriceFilter::SORT_ORDER => 1],
+                [PriceFilter::NAME => 'دارای الیت یار',   PriceFilter::CODE => 'with_elite_yar',   PriceFilter::AMOUNT => -800,  PriceFilter::IS_PERCENTAGE => false, PriceFilter::IS_ACTIVE => true, PriceFilter::SORT_ORDER => 2],
             ],
         ];
 
@@ -359,19 +359,19 @@ class ProductSeeder extends Seeder
         $priceFilterCategoriesData = [
             [
                 PriceFilterCategory::NAME => 'کارفرمای بدون الیت یار',
-                PriceFilterCategory::CODE => 'employer_without_consultant',
+                PriceFilterCategory::CODE => 'employer_without_elite_yar',
                 PriceFilterCategory::DESCRIPTION => 'فیلترهای قیمت برای کارفرمای بدون الیت یار',
                 PriceFilterCategory::IS_ACTIVE => true,
                 PriceFilterCategory::SORT_ORDER => 1,
-                'filters' => ['base_profit', 'regular_policy', 'employer', 'without_consultant'],
+                'filters' => ['base_profit', 'regular_policy', 'employer', 'without_elite_yar'],
             ],
             [
                 PriceFilterCategory::NAME => 'مهندس دارای الیت یار',
-                PriceFilterCategory::CODE => 'engineer_with_consultant',
+                PriceFilterCategory::CODE => 'engineer_with_elite_yar',
                 PriceFilterCategory::DESCRIPTION => 'فیلترهای قیمت برای مهندس دارای الیت یار',
                 PriceFilterCategory::IS_ACTIVE => true,
                 PriceFilterCategory::SORT_ORDER => 2,
-                'filters' => ['base_profit', 'competitive_policy', 'engineer', 'with_consultant'],
+                'filters' => ['base_profit', 'competitive_policy', 'engineer', 'with_elite_yar'],
             ],
         ];
 
@@ -388,7 +388,7 @@ class ProductSeeder extends Seeder
             $category->filters()->sync($filtersToSync);
         }
 
-        PriceFilterCategory::whereNotIn(PriceFilterCategory::CODE, ['engineer_with_consultant', 'employer_without_consultant'])
+        PriceFilterCategory::whereNotIn(PriceFilterCategory::CODE, ['engineer_with_elite_yar', 'employer_without_elite_yar'])
             ->update([PriceFilterCategory::IS_ACTIVE => false]);
 
         $settingsData = [

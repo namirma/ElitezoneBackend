@@ -74,7 +74,7 @@ class InvoiceGeneratorRoutingTest extends TestCase
     // ─── Direct purchase ───────────────────────────────────────────────────────
 
     /** @test */
-    public function direct_purchase_without_consultant_emits_three_docs(): void
+    public function direct_purchase_without_elite_yar_emits_three_docs(): void
     {
         $this->generator->generateDirectPurchaseDocs($this->order, withEliteYar: false);
 
@@ -87,7 +87,7 @@ class InvoiceGeneratorRoutingTest extends TestCase
     }
 
     /** @test */
-    public function direct_purchase_with_consultant_emits_four_docs(): void
+    public function direct_purchase_with_elite_yar_emits_four_docs(): void
     {
         $this->generator->generateDirectPurchaseDocs($this->order, withEliteYar: true);
 

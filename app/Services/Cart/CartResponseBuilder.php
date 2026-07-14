@@ -57,7 +57,7 @@ class CartResponseBuilder
 
         // Re-price each line to the CURRENT pricing role and persist it back onto the
         // cart_item snapshot. Without this, a line priced as a guest
-        // (employer_without_consultant) keeps that frozen price after the user logs in,
+        // (employer_without_elite_yar) keeps that frozen price after the user logs in,
         // so the displayed amount no longer matches the role-based per-kg price shown
         // on the product. Re-pricing here keeps the price consistent from the product
         // page through to the order, exactly as PlaceOrderAction recomputes it.

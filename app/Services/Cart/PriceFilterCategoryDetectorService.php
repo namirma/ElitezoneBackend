@@ -7,7 +7,7 @@ use App\Models\PurchaseParameterValue;
 
 /**
  * Determines which PriceFilterCategory applies given a set of purchase
- * parameter IDs selected by the user (customer_type / consultant_status /
+ * parameter IDs selected by the user (customer_type / elite_yar_status /
  * purchase_purpose).
  *
  * Extracted from ParameterDetectionController so it can be reused by
@@ -23,13 +23,13 @@ class PriceFilterCategoryDetectorService
             ->keyBy(fn ($value) => $value->group->code);
 
         $customerTypeValue    = $parameterValues['customer_type']      ?? null;
-        $eliteYarStatusValue = $parameterValues['consultant_status'] ?? null;
+        $eliteYarStatusValue = $parameterValues['elite_yar_status'] ?? null;
         $purchasePurposeValue  = $parameterValues['purchase_purpose']  ?? null;
 
         if ($customerTypeValue && $eliteYarStatusValue) {
-            if ($eliteYarStatusValue->code === 'with_consultant') {
+            if ($eliteYarStatusValue->code === 'with_elite_yar') {
                 $prefix   = strstr($customerTypeValue->code, '_', true) ?: $customerTypeValue->code;
-                $category = PriceFilterCategory::where(PriceFilterCategory::CODE, "{$prefix}_with_consultant")->first();
+                $category = PriceFilterCategory::where(PriceFilterCategory::CODE, "{$prefix}_with_elite_yar")->first();
                 if ($category) {
                     return $category;
                 }
@@ -38,7 +38,7 @@ class PriceFilterCategoryDetectorService
                     return $customerTypeValue->priceFilterCategory;
                 }
 
-                $fallbackCode = "{$customerTypeValue->code}_without_consultant";
+                $fallbackCode = "{$customerTypeValue->code}_without_elite_yar";
                 $category     = PriceFilterCategory::where(PriceFilterCategory::CODE, $fallbackCode)->first();
                 if ($category) {
                     return $category;
@@ -57,6 +57,6 @@ class PriceFilterCategoryDetectorService
             }
         }
 
-        return PriceFilterCategory::where(PriceFilterCategory::CODE, 'employer_without_consultant')->first();
+        return PriceFilterCategory::where(PriceFilterCategory::CODE, 'employer_without_elite_yar')->first();
     }
 }

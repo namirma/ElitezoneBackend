@@ -51,7 +51,7 @@ class SavePurchaseParametersRequest extends FormRequest
             $valuesByCode = $valuesCollection->keyBy(fn ($value) => $value->group->code);
 
             $customerType = $valuesByCode['customer_type'] ?? null;
-            $eliteYarStatus = $valuesByCode['consultant_status'] ?? null;
+            $eliteYarStatus = $valuesByCode['elite_yar_status'] ?? null;
 
             if (! $customerType || ! $eliteYarStatus) {
                 $v->errors()->add(
@@ -66,7 +66,7 @@ class SavePurchaseParametersRequest extends FormRequest
             $eliteYarStatusCode = $eliteYarStatus->code;
 
             $isEngineerOrContractor = in_array($customerTypeCode, ['engineer', 'contractor']);
-            $isWithoutEliteYar = $eliteYarStatusCode === 'without_consultant';
+            $isWithoutEliteYar = $eliteYarStatusCode === 'without_elite_yar';
 
             if ($isEngineerOrContractor && $isWithoutEliteYar) {
                 $v->errors()->add(

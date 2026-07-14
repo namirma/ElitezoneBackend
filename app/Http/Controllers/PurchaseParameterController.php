@@ -44,7 +44,7 @@ class PurchaseParameterController extends Controller
 
         $defaultParameterValueCodesByGroup = [
             'customer_type'     => 'employer',
-            'consultant_status' => 'without_consultant',
+            'elite_yar_status' => 'without_elite_yar',
             'purchase_purpose'  => 'for_myself',
         ];
 

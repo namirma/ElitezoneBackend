@@ -14,8 +14,8 @@ class CacheProductPrices extends Command
     protected $description = 'Calculate and cache product prices for all defined roles';
 
     const ROLES = [
-        'employer_without_consultant',
-        'engineer_with_consultant',
+        'employer_without_elite_yar',
+        'engineer_with_elite_yar',
     ];
 
     public function handle(PriceCalculationService $priceService)

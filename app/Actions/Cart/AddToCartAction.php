@@ -162,7 +162,7 @@ class AddToCartAction
     protected function calculateItemPrice(Cart $cart, ProductVariant $variant, array $data, float $totalWeight): array
     {
         $user = $cart->user;
-        $roleCode = $user ? $this->roleResolver->resolve($user) : 'employer_without_consultant';
+        $roleCode = $user ? $this->roleResolver->resolve($user) : 'employer_without_elite_yar';
 
         $customerType = $cart->customerType ?? CustomerType::where('code', $roleCode)->first();
         $activeFilter = PriceFilterCategory::where('code', $roleCode)->first();

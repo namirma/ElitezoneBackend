@@ -54,7 +54,7 @@ class CartResolver
 
         $code = Auth::check()
             ? $this->roleResolver->resolve(Auth::user())
-            : 'employer_without_consultant';
+            : 'employer_without_elite_yar';
 
         app()->instance('pricing.resolved_active_code', $code);
 
@@ -133,7 +133,7 @@ class CartResolver
             $defaultType = Cache::remember(
                 'customer_type.default',
                 3600,
-                fn () => CustomerType::where(CustomerType::CODE, 'employer_without_consultant')->first(),
+                fn () => CustomerType::where(CustomerType::CODE, 'employer_without_elite_yar')->first(),
             );
             if ($defaultType) {
                 $cart->customer_type_id = $defaultType->id;

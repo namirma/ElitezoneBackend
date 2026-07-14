@@ -44,7 +44,7 @@ class ParameterDetectionController extends Controller
         }
 
         $category = $this->detector->detectFromParameterIds($parameterIds)
-            ?? PriceFilterCategory::where(PriceFilterCategory::CODE, 'employer_without_consultant')->first();
+            ?? PriceFilterCategory::where(PriceFilterCategory::CODE, 'employer_without_elite_yar')->first();
 
         if (! $category) {
             return error('global.notFound', [], 404);
