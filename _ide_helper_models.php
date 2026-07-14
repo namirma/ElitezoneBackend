@@ -479,7 +479,7 @@ namespace App\Models{
  * @property int $id
  * @property string $name
  * @property string $code
- * @property int $has_consultant
+ * @property int $has_elite_yar
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Cart> $carts
@@ -491,7 +491,7 @@ namespace App\Models{
  * @method static \Illuminate\Database\Eloquent\Builder|CustomerType query()
  * @method static \Illuminate\Database\Eloquent\Builder|CustomerType whereCode($value)
  * @method static \Illuminate\Database\Eloquent\Builder|CustomerType whereCreatedAt($value)
- * @method static \Illuminate\Database\Eloquent\Builder|CustomerType whereHasConsultant($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|CustomerType whereHasEliteYar($value)
  * @method static \Illuminate\Database\Eloquent\Builder|CustomerType whereId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|CustomerType whereName($value)
  * @method static \Illuminate\Database\Eloquent\Builder|CustomerType whereUpdatedAt($value)
@@ -575,9 +575,23 @@ namespace App\Models{
 
 namespace App\Models{
 /**
+ * @property int $id
+ * @property int $employer_id
+ * @property int $elite_yar_id
+ * @property string $status
+ * @property string|null $reject_reason
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
  * @method static \Illuminate\Database\Eloquent\Builder|EmployerEliteYAR newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|EmployerEliteYAR newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|EmployerEliteYAR query()
+ * @method static \Illuminate\Database\Eloquent\Builder|EmployerEliteYAR whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|EmployerEliteYAR whereEliteYarId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|EmployerEliteYAR whereEmployerId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|EmployerEliteYAR whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|EmployerEliteYAR whereRejectReason($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|EmployerEliteYAR whereStatus($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|EmployerEliteYAR whereUpdatedAt($value)
  */
 	class EmployerEliteYAR extends \Eloquent {}
 }
@@ -588,7 +602,7 @@ namespace App\Models{
  * @method static where(array $array)
  * @property int $id
  * @property int $user_id
- * @property int $has_consultant
+ * @property int $has_elite_yar
  * @property string $status
  * @property string|null $project_done
  * @property string|null $project_in_progress
@@ -606,7 +620,7 @@ namespace App\Models{
  * @method static \Illuminate\Database\Eloquent\Builder|EmployerProfile query()
  * @method static \Illuminate\Database\Eloquent\Builder|EmployerProfile whereActivityProvinces($value)
  * @method static \Illuminate\Database\Eloquent\Builder|EmployerProfile whereCreatedAt($value)
- * @method static \Illuminate\Database\Eloquent\Builder|EmployerProfile whereHasConsultant($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|EmployerProfile whereHasEliteYar($value)
  * @method static \Illuminate\Database\Eloquent\Builder|EmployerProfile whereId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|EmployerProfile whereProjectDone($value)
  * @method static \Illuminate\Database\Eloquent\Builder|EmployerProfile whereProjectInProgress($value)
@@ -957,7 +971,7 @@ namespace App\Models{
  * @property int $id
  * @property int $placer_user_id
  * @property int|null $beneficiary_user_id
- * @property int|null $consultant_user_id الیت یار که کمیسیون CO را دریافت می‌کند
+ * @property int|null $elite_yar_user_id الیت یار که کمیسیون CO را دریافت می‌کند
  * @property int|null $address_id
  * @property string $order_number
  * @property string $status
@@ -997,19 +1011,19 @@ namespace App\Models{
  * @property string $commission_rate %TC: درصد کمیسیون
  * @property string $owner_discount_rate %OW: درصد تخفیف خریدار
  * @property string $saze_share_rate %SSG: درصد سهم سازه
- * @property string $consultant_share_rate %CO: درصد سهم مشاور
+ * @property string $elite_yar_share_rate %CO: درصد سهم الیت یار
  * @property bool $trans_commission +%TC snapshot: کمیسیون روی حمل؟ (از پروفایل سوپلایر در زمان پرداخت کپی می‌شود)
  * @property bool $trans_vat +VAT snapshot: مالیات روی حمل؟ (از پروفایل سوپلایر در زمان پرداخت کپی می‌شود)
  * @property string $vat_rate %VAT: درصد ارزش افزوده
  * @property string|null $payment_of_owner POO: پرداختی خریدار
  * @property string|null $payment_to_supplier PTS: پرداختی به سوپلایر
- * @property string|null $payment_to_consultant PTC: پرداختی به مشاور
+ * @property string|null $payment_to_elite_yar PTC: پرداختی به الیت یار
  * @property string|null $payment_to_reserve PTR: مبلغ پرداخت رزرو
  * @property \Illuminate\Support\Carbon|null $validation_of_reserve VOR: تاریخ اعتبار رزرو
  * @property string|null $weight_after_scale WAS: وزن باسکول
  * @property \Illuminate\Support\Carbon|null $weighing_completed_at
- * @property string|null $consultant_moadian_ref Doc Q: شماره فاکتور مودیان صادر شده توسط الیت یار
- * @property string|null $consultant_hold_released_at زمان آزادسازی هولد کمیسیون مشاور
+ * @property string|null $elite_yar_moadian_ref Doc Q: شماره فاکتور مودیان صادر شده توسط الیت یار
+ * @property \Illuminate\Support\Carbon|null $elite_yar_hold_released_at زمان آزادسازی هولد کمیسیون الیت یار
  * @property string|null $supplier_moadian_ref Doc O: شماره فاکتور مودیان صادر شده توسط سوپلایر
  * @property \Illuminate\Support\Carbon|null $supplier_hold_released_at زمان آزادسازی هولد مالیات سوپلایر در WVAT
  * @property bool $supplier_debt_pending آیا سوپلایر بدهی باسکول دارد که هنوز تسویه نشده؟
@@ -1024,7 +1038,7 @@ namespace App\Models{
  * @property-read string|void $created_at_diff
  * @property-read string|void $created_at_p
  * @property-read array $dashboard_progress
- * @property-read array $elite_yar_progress
+ * @property-read array $elite_y_a_r_progress
  * @property-read string|void $expire_at_days
  * @property-read array $supplier_progress
  * @property-read string|void $updated_at_diff
@@ -1051,14 +1065,14 @@ namespace App\Models{
  * @method static \App\Models\Builders\OrderBuilder|Order whereBeneficiaryUserId($value)
  * @method static \App\Models\Builders\OrderBuilder|Order whereCancelReason($value)
  * @method static \App\Models\Builders\OrderBuilder|Order whereCommissionRate($value)
- * @method static \App\Models\Builders\OrderBuilder|Order whereConsultantHoldReleasedAt($value)
- * @method static \App\Models\Builders\OrderBuilder|Order whereConsultantMoadianRef($value)
- * @method static \App\Models\Builders\OrderBuilder|Order whereConsultantShareRate($value)
- * @method static \App\Models\Builders\OrderBuilder|Order whereConsultantUserId($value)
  * @method static \App\Models\Builders\OrderBuilder|Order whereContractorFeeAmount($value)
  * @method static \App\Models\Builders\OrderBuilder|Order whereContractorFeePaymentStatus($value)
  * @method static \App\Models\Builders\OrderBuilder|Order whereCreatedAt($value)
  * @method static \App\Models\Builders\OrderBuilder|Order whereDiscountAmount($value)
+ * @method static \App\Models\Builders\OrderBuilder|Order whereEliteYarHoldReleasedAt($value)
+ * @method static \App\Models\Builders\OrderBuilder|Order whereEliteYarMoadianRef($value)
+ * @method static \App\Models\Builders\OrderBuilder|Order whereEliteYarShareRate($value)
+ * @method static \App\Models\Builders\OrderBuilder|Order whereEliteYarUserId($value)
  * @method static \App\Models\Builders\OrderBuilder|Order whereEngineerFeeAmount($value)
  * @method static \App\Models\Builders\OrderBuilder|Order whereEngineerFeePaymentStatus($value)
  * @method static \App\Models\Builders\OrderBuilder|Order whereEspadanaOrderRef($value)
@@ -1079,7 +1093,7 @@ namespace App\Models{
  * @method static \App\Models\Builders\OrderBuilder|Order wherePaymentOfOwner($value)
  * @method static \App\Models\Builders\OrderBuilder|Order wherePaymentReceiptRef($value)
  * @method static \App\Models\Builders\OrderBuilder|Order wherePaymentStatus($value)
- * @method static \App\Models\Builders\OrderBuilder|Order wherePaymentToConsultant($value)
+ * @method static \App\Models\Builders\OrderBuilder|Order wherePaymentToEliteYar($value)
  * @method static \App\Models\Builders\OrderBuilder|Order wherePaymentToReserve($value)
  * @method static \App\Models\Builders\OrderBuilder|Order wherePaymentToSupplier($value)
  * @method static \App\Models\Builders\OrderBuilder|Order wherePlacerUserId($value)
@@ -2358,7 +2372,7 @@ namespace App\Models{
  * @property int $id
  * @property int|null $type_id
  * @property int|null $badge_id
- * @property string|null $badge_purchase_amount Invoice amount (Rials) the consultant paid for their badge; basis for the lifetime commission cap. NULL = uncapped.
+ * @property string|null $badge_purchase_amount Invoice amount (Rials) the elite yar paid for their badge; basis for the lifetime commission cap. NULL = uncapped.
  * @property string $mobile
  * @property bool $is_active
  * @property string|null $national_code
@@ -2417,7 +2431,7 @@ namespace App\Models{
  * @property-read int|null $stock_subscriptions_count
  * @property-read \App\Models\SupplierProfile|null $supplier
  * @property-read \Illuminate\Database\Eloquent\Collection<int, User> $technicalEliteYARs
- * @property-read int|null $technical_elite_yars_count
+ * @property-read int|null $technical_elite_y_a_rs_count
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \Laravel\Sanctum\PersonalAccessToken> $tokens
  * @property-read int|null $tokens_count
  * @property-read \App\Models\UserType|null $type
