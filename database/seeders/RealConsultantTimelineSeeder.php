@@ -19,8 +19,8 @@ use Illuminate\Support\Facades\Hash;
  *
  * با شخصیت‌های واقع‌گرایانه (نام، کد ملی معتبر، موبایل، تاریخ تولد) دو سناریو می‌سازد:
  *
- *  A) کاربرِ واقعی «مشاور» سفارش است — یک کارفرما خرید کرده و کاربر را به‌عنوان
- *     مشاورِ فنی وارد کرده (placer = کارفرما، beneficiary = کاربر). نمایش: داشبورد.
+ *  A) کاربرِ واقعی «الیت یار» سفارش است — یک کارفرما خرید کرده و کاربر را به‌عنوان
+ *     الیت یارِ فنی وارد کرده (placer = کارفرما، beneficiary = کاربر). نمایش: داشبورد.
  *       A1 processing                                → مرحله ۱
  *       A2 weighbridge_done                          → مرحله ۲
  *       A3 weighbridge_done + moadian_ref            → مرحله ۳
@@ -30,7 +30,7 @@ use Illuminate\Support\Facades\Hash;
  *     (placer = کاربر، beneficiary = کارفرما). نمایش: تب «خرید برای دیگران».
  *       B1 weighbridge_done  | B2 shipped | B3 cancelled
  *
- * چون خودِ کاربر الیت یار است، مشاورِ همهٔ این سفارش‌ها خودِ اوست → «الیت یار: شما».
+ * چون خودِ کاربر الیت یار است، الیت یارِ همهٔ این سفارش‌ها خودِ اوست → «الیت یار: شما».
  *
  * ⚠️ حسابِ کاربرِ واقعی فقط خوانده می‌شود و هرگز تغییر نمی‌کند.
  */
@@ -55,20 +55,20 @@ class RealConsultantTimelineSeeder extends Seeder
         $this->command->info('  RealConsultantTimelineSeeder');
         $this->command->info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
-        // ─── مشاور واقعی (READ-ONLY) ────────────────────────────────────
+        // ─── الیت یار واقعی (READ-ONLY) ────────────────────────────────────
         $consultant = User::where(User::MOBILE, self::CONSULTANT_MOBILE)->first();
         if (! $consultant) {
             $this->command->error('  ✗ کاربر '.self::CONSULTANT_MOBILE.' یافت نشد.');
 
             return;
         }
-        $this->command->info("  ✓ مشاور واقعی: ID={$consultant->id} (دست‌نخورده)");
+        $this->command->info("  ✓ الیت یار واقعی: ID={$consultant->id} (دست‌نخورده)");
 
         // ─── پاک‌سازی دیتای تستِ قبلی (سفارش‌ها + کاربرانِ جای‌گزینِ قدیمی) ─
         $this->cleanupPreviousTestData();
 
         // ─── شخصیت‌های واقع‌گرایانه ──────────────────────────────────────
-        // دو کارفرما که کاربر را به‌عنوان مشاور معرفی کرده‌اند (سناریو A)
+        // دو کارفرما که کاربر را به‌عنوان الیت یار معرفی کرده‌اند (سناریو A)
         $employerA = $this->makePersona('بهرام', 'رستگار', '09131045820', $this->nationalCode('128400637'), '13550312', 250_000_000);
         $employerB = $this->makePersona('کیوان', 'شفیعی', '09122847391', $this->nationalCode('006273841'), '13601125', 180_000_000);
         // کارفرمایی که کاربر برایش خرید کرده (سناریو B — گیرندهٔ سفارش)
@@ -81,8 +81,8 @@ class RealConsultantTimelineSeeder extends Seeder
             : $employerA->id;
         $this->variant = ProductVariant::where('sku', self::VARIANT_SKU)->first();
 
-        // ─── سناریو A: کاربر مشاورِ سفارشِ کارفرماست (داشبورد) ──────────
-        $this->command->info('▸ سناریو A — کارفرما خرید کرده، کاربر مشاورِ آن است:');
+        // ─── سناریو A: کاربر الیت یارِ سفارشِ کارفرماست (داشبورد) ──────────
+        $this->command->info('▸ سناریو A — کارفرما خرید کرده، کاربر الیت یارِ آن است:');
         $a1 = $this->makeOrder($employerA->id, $consultant->id, 'ORD-CONS-A1', Order::STATUS_PROCESSING);
         $a2 = $this->makeOrder($employerA->id, $consultant->id, 'ORD-CONS-A2', Order::STATUS_WEIGHBRIDGE_DONE);
         $a3 = $this->makeOrder($employerB->id, $consultant->id, 'ORD-CONS-A3', Order::STATUS_WEIGHBRIDGE_DONE, [
@@ -98,7 +98,7 @@ class RealConsultantTimelineSeeder extends Seeder
         $this->makeOrder($consultant->id, $client->id, 'ORD-CONS-B1', Order::STATUS_WEIGHBRIDGE_DONE);
         $this->makeOrder($consultant->id, $client->id, 'ORD-CONS-B2', Order::STATUS_SHIPPED);
         $this->makeOrder($consultant->id, $client->id, 'ORD-CONS-B3', Order::STATUS_CANCELLED);
-        // تحویل‌شده: پورسانت آزاد شده → هر ۴ مرحلهٔ تایم‌لاین مشاور completed
+        // تحویل‌شده: پورسانت آزاد شده → هر ۴ مرحلهٔ تایم‌لاین الیت یار completed
         $this->makeOrder($consultant->id, $client->id, 'ORD-CONS-B4', Order::STATUS_DELIVERED, [
             Order::CONSULTANT_MOADIAN_REF => '1402-CON-B4-88120',
             Order::CONSULTANT_HOLD_RELEASED_AT => now()->subDay(),
@@ -107,7 +107,7 @@ class RealConsultantTimelineSeeder extends Seeder
         // ─── خلاصه ───────────────────────────────────────────────────────
         $this->command->info('');
         $this->command->info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        $this->command->info('  ✅  ساخته شد — وضعیت تایم‌لاین مشاور (سناریو A):');
+        $this->command->info('  ✅  ساخته شد — وضعیت تایم‌لاین الیت یار (سناریو A):');
         foreach ([['A1', $a1], ['A2', $a2], ['A3', $a3], ['A4', $a4]] as [$tag, $o]) {
             $cp = $o->fresh()->consultant_progress;
             $current = collect($cp['steps'])->firstWhere('state', 'current');

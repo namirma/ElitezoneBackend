@@ -25,7 +25,7 @@ class SavePurchaseParametersRequest extends FormRequest
     {
         return [
             'parameters.required' => 'انتخاب پارامترها الزامی است.',
-            'parameters.min' => 'حداقل باید پارامترهای نوع مشتری و وضعیت مشاور انتخاب شوند.',
+            'parameters.min' => 'حداقل باید پارامترهای نوع مشتری و وضعیت الیت یار انتخاب شوند.',
             'parameters.*.exists' => 'یکی از پارامترهای انتخاب شده معتبر نیست.',
         ];
     }
@@ -56,7 +56,7 @@ class SavePurchaseParametersRequest extends FormRequest
             if (! $customerType || ! $consultantStatus) {
                 $v->errors()->add(
                     'parameters',
-                    'لطفاً هم "نوع مشتری" و هم "وضعیت مشاور" را انتخاب کنید.'
+                    'لطفاً هم "نوع مشتری" و هم "وضعیت الیت یار" را انتخاب کنید.'
                 );
 
                 return;
@@ -71,7 +71,7 @@ class SavePurchaseParametersRequest extends FormRequest
             if ($isEngineerOrContractor && $isWithoutConsultant) {
                 $v->errors()->add(
                     'parameters',
-                    'مهندسان و پیمانکاران حتماً باید گزینه "دارای مشاور" را انتخاب کنند.'
+                    'مهندسان و پیمانکاران حتماً باید گزینه "دارای الیت یار" را انتخاب کنند.'
                 );
             }
         });

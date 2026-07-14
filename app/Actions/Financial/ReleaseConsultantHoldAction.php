@@ -96,21 +96,21 @@ class ReleaseConsultantHoldAction
             // WCT: release net from hold → available
             $this->walletEngine->debitConsultant(
                 $locked, $consultantNet, FinancialCodes::STATUS_HOLD, $consultantUserId,
-                "آزادسازی کمیسیون مشاور (هولد) بابت سفارش {$locked->order_number}"
+                "آزادسازی کمیسیون الیت یار (هولد) بابت سفارش {$locked->order_number}"
             );
             $this->walletEngine->creditConsultant(
                 $locked, $consultantNet, FinancialCodes::STATUS_AVAILABLE, $consultantUserId,
-                "کمیسیون مشاور آزاد شد — فاکتور مودیان: {$moadianRef}"
+                "کمیسیون الیت یار آزاد شد — فاکتور مودیان: {$moadianRef}"
             );
 
             // WVAT: release consultant VAT from hold → available
             $this->walletEngine->debitVat(
                 $locked, $consultantVat, FinancialCodes::STATUS_HOLD,
-                "آزادسازی مالیات مشاور (هولد) بابت سفارش {$locked->order_number}"
+                "آزادسازی مالیات الیت یار (هولد) بابت سفارش {$locked->order_number}"
             );
             $this->walletEngine->creditVat(
                 $locked, $consultantVat, FinancialCodes::STATUS_AVAILABLE,
-                "مالیات مشاور شناسایی شد — فاکتور مودیان: {$moadianRef}"
+                "مالیات الیت یار شناسایی شد — فاکتور مودیان: {$moadianRef}"
             );
 
             $locked->forceFill([

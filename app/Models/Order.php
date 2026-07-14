@@ -189,7 +189,7 @@ class Order extends Model
     /** Doc Q: شماره فاکتور مودیان الیت یار */
     public const CONSULTANT_MOADIAN_REF = 'consultant_moadian_ref';
 
-    /** زمان آزادسازی هولد کمیسیون مشاور */
+    /** زمان آزادسازی هولد کمیسیون الیت یار */
     public const CONSULTANT_HOLD_RELEASED_AT = 'consultant_hold_released_at';
 
     /** Doc O: شماره فاکتور مودیان سوپلایر */

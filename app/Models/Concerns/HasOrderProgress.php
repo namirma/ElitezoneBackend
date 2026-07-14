@@ -221,8 +221,8 @@ trait HasOrderProgress
                 Order::STATUS_PENDING_SURPLUS_PAYMENT,
                 Order::STATUS_WAYBILL_ISSUED,
                 Order::STATUS_SHIPPED,
-                Order::STATUS_DELIVERED,  // کالا تحویل شده ولی مشاور هنوز Doc Q ثبت نکرده
-                Order::STATUS_COMPLETED,  // → کمیسیون در کیف‌پول مشاور به‌صورت Hold؛ باید Doc Q ثبت کند
+                Order::STATUS_DELIVERED,  // کالا تحویل شده ولی الیت یار هنوز Doc Q ثبت نکرده
+                Order::STATUS_COMPLETED,  // → کمیسیون در کیف‌پول الیت یار به‌صورت Hold؛ باید Doc Q ثبت کند
             ])) {
                 $currentIndex = 1; // مرحله ۲: حق مشاوره منظور شد
             } elseif (in_array($status, [

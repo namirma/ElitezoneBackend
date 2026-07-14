@@ -106,7 +106,7 @@ class OrderResource extends BaseJsonResource
                 ];
             }),
 
-            // --- Beneficiary Info (گیرنده سفارش — فقط وقتی مشاور برای کارفرما خریداری می‌کند) ---
+            // --- Beneficiary Info (گیرنده سفارش — فقط وقتی الیت یار برای کارفرما خریداری می‌کند) ---
             'beneficiary' => $this->when($this->{Order::BENEFICIARY_USER_ID}, function () use ($viewerId) {
                 return [
                     'id' => $this->{Order::BENEFICIARY_USER_ID},

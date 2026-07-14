@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Storage;
  * پنل مدیریت — CRUD نشان‌ها (Badges).
  *
  * نشان‌ها هم در تسویه کمیسیون و هم در نمایش پروفایل استفاده می‌شوند:
- *  - کدهای gold/silver/bronze نرخ کمیسیون مشاور را تعیین می‌کنند
+ *  - کدهای gold/silver/bronze نرخ کمیسیون الیت یار را تعیین می‌کنند
  *    (SettlementCalculatorService::getCommissionRates).
  *  - pioneer/saze90 صرفاً نمایشی‌اند.
  *

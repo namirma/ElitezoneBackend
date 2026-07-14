@@ -27,7 +27,7 @@ class ConsultantRelationResource extends BaseJsonResource
             default                              => $status,
         };
 
-        // وضعیت تأیید مدارک مشاور — از پروفایل مهندس یا پیمانکار
+        // وضعیت تأیید مدارک الیت یار — از پروفایل مهندس یا پیمانکار
         $isVerified = $this->getConsultantVerifiedStatus();
 
         return [
@@ -61,7 +61,7 @@ class ConsultantRelationResource extends BaseJsonResource
     /**
      * تشخیص وضعیت تأیید مدارک از روی پروفایل مهندس یا پیمانکار.
      *
-     * مشاور می‌تواند مهندس (engineer) یا پیمانکار (contractor) باشد؛
+     * الیت یار می‌تواند مهندس (engineer) یا پیمانکار (contractor) باشد؛
      * هر دو پروفایل دارای is_verified/verified_at هستند (migration 200100).
      */
     private function getConsultantVerifiedStatus(): bool

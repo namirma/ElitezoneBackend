@@ -123,7 +123,7 @@ class ProcessPreScalePaymentAction
                 'paid_at' => now(),
             ]);
 
-            // ── صدور اسناد مالی خرید مستقیم (A + B + C، با D در صورت داشتن مشاور) ──
+            // ── صدور اسناد مالی خرید مستقیم (A + B + C، با D در صورت داشتن الیت یار) ──
             $this->invoiceGenerator->generateDirectPurchaseDocs(
                 $locked,
                 withConsultant: $locked->{Order::BENEFICIARY_USER_ID} !== null

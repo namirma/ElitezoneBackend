@@ -16,11 +16,11 @@ use Illuminate\Validation\Rule;
  * اعتبارسنجی نقش‌محور ثبت سفارش:
  *
  * مسیر کارفرما (employer):
- *   - consultant_user_id: اختیاری؛ باید مشاور approved+verified خودِ کارفرما باشد
+ *   - consultant_user_id: اختیاری؛ باید الیت یار approved+verified خودِ کارفرما باشد
  *   - beneficiary_user_id: ممنوع (کارفرما گیرنده خودش است)
  *
- * مسیر مشاور (engineer / contractor):
- *   - beneficiary_user_id: اجباری؛ باید کارفرمای approved همین مشاور باشد
+ * مسیر الیت یار (engineer / contractor):
+ *   - beneficiary_user_id: اجباری؛ باید کارفرمای approved همین الیت یار باشد
  *   - consultant_user_id: ممنوع در request؛ توسط PlaceOrderAction = self ست می‌شود
  */
 class StoreOrderRequest extends FormRequest
@@ -64,7 +64,7 @@ class StoreOrderRequest extends FormRequest
 
                     $employer = Auth::user();
 
-                    // بررسی ۱: آیا مشاور در لیست مشاوران تأییدشده این کارفرما هست؟
+                    // بررسی ۱: آیا الیت یار در لیست الیت یارها تأییدشده این کارفرما هست؟
                     $isApproved = $employer
                         ->technicalConsultants()
                         ->where('users.id', $value)
@@ -76,7 +76,7 @@ class StoreOrderRequest extends FormRequest
                         return;
                     }
 
-                    // بررسی ۲: آیا مشاور گواهی تأیید مدارک دارد (is_verified = true)؟
+                    // بررسی ۲: آیا الیت یار گواهی تأیید مدارک دارد (is_verified = true)؟
                     $consultant = User::find($value);
                     if (! $consultant) {
                         $fail(__('orders.store_consultant_not_found'));
@@ -100,17 +100,17 @@ class StoreOrderRequest extends FormRequest
         ];
     }
 
-    // ── مسیر مشاور (engineer / contractor) ────────────────────────────────────
+    // ── مسیر الیت یار (engineer / contractor) ────────────────────────────────────
 
     private function consultantRules(): array
     {
         return [
-            // ممنوع: مشاور consultant_user_id نمی‌فرستد — Action آن را = self ست می‌کند
+            // ممنوع: الیت یار consultant_user_id نمی‌فرستد — Action آن را = self ست می‌کند
             'consultant_user_id' => [
                 'prohibited',
             ],
 
-            // اجباری: کارفرمای approved این مشاور
+            // اجباری: کارفرمای approved این الیت یار
             'beneficiary_user_id' => [
                 'required',
                 'integer',
@@ -143,7 +143,7 @@ class StoreOrderRequest extends FormRequest
     // ── helpers ────────────────────────────────────────────────────────────────
 
     /**
-     * بررسی تأیید مدارک مشاور (engineer یا contractor profile).
+     * بررسی تأیید مدارک الیت یار (engineer یا contractor profile).
      */
     private function isConsultantVerified(User $consultant): bool
     {

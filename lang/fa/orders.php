@@ -100,7 +100,7 @@ return [
     'store_shipping_exists' => 'روش ارسال انتخاب شده در سیستم معتبر نیست.',
     'store_beneficiary_integer' => 'فرمت کاربر ذینفع نامعتبر است.',
     'store_beneficiary_exists' => 'کاربر ذینفع در سیستم یافت نشد.',
-    // beneficiary validation (مسیر مشاور)
+    // beneficiary validation (مسیر الیت یار)
     'store_beneficiary_not_approved_consultant'  => 'کاربر انتخاب‌شده الیت یار تأییدشدهٔ شما نیست.',
     'store_beneficiary_prohibited_for_employer'  => 'کارفرما نمی‌تواند فیلد گیرنده سفارش را مستقیم ارسال کند.',
     'store_beneficiary_required_for_consultant'  => 'الیت یار باید کارفرمای گیرنده سفارش را مشخص کند.',
@@ -109,10 +109,10 @@ return [
     // consultant_user_id validation (مسیر کارفرما)
     'store_consultant_integer'              => 'فرمت الیت یار نامعتبر است.',
     'store_consultant_exists'              => 'الیت یار در سیستم یافت نشد.',
-    'store_consultant_not_approved'        => 'الیت یار انتخاب‌شده در لیست مشاوران تأییدشده شما نیست.',
+    'store_consultant_not_approved'        => 'الیت یار انتخاب‌شده در لیست الیت یارهای تأییدشده شما نیست.',
     'store_consultant_not_found'           => 'الیت یار انتخاب‌شده در سیستم یافت نشد.',
     'store_consultant_not_verified'        => 'الیت یار انتخاب‌شده هنوز مدارک تأییدشده ندارد.',
-    'store_consultant_prohibited_for_consultant' => 'الیت یار نمی‌تواند در هنگام ثبت سفارش مشاور دیگری انتخاب کند.',
+    'store_consultant_prohibited_for_consultant' => 'الیت یار نمی‌تواند در هنگام ثبت سفارش الیت یار دیگری انتخاب کند.',
 
     'store_description_max' => 'توضیحات سفارش نمی‌تواند بیشتر از 1000 کاراکتر باشد.',
 

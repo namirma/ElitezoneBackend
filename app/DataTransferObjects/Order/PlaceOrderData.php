@@ -7,7 +7,7 @@ use App\Http\Requests\Order\StoreOrderRequest;
 class PlaceOrderData
 {
     public function __construct(
-        /** گیرنده سفارش — کارفرمایی که مشاور برایش خریداری می‌کند (nullable) */
+        /** گیرنده سفارش — کارفرمایی که الیت یار برایش خریداری می‌کند (nullable) */
         public readonly ?int $beneficiaryUserId,
         /** الیت یار که کمیسیون CO را دریافت می‌کند (nullable) */
         public readonly ?int $consultantUserId,

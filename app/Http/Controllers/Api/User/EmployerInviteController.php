@@ -51,7 +51,7 @@ class EmployerInviteController extends Controller
     }
 
     /**
-     * تعداد دعوت‌های باقی‌مانده مشاور.
+     * تعداد دعوت‌های باقی‌مانده الیت یار.
      *
      * GET /api/profile/employer-invites/remaining
      */

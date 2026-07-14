@@ -15,8 +15,8 @@ class DashboardResource extends BaseJsonResource
 
         return [
             'active_orders' => $this['active_orders']->map(function ($order) use ($currentUser, $viewerId) {
-                // مشاورِ سفارش: اگر خریدار خودش «الیت یار» (type=expert) باشد، خودِ اوست؛
-                // وگرنه مشاورِ نام‌برده‌شده = beneficiary.
+                // الیت یارِ سفارش: اگر خریدار خودش «الیت یار» (type=expert) باشد، خودِ اوست؛
+                // وگرنه الیت یارِ نام‌برده‌شده = beneficiary.
                 $placerIsConsultant = optional($order->placer?->type)->slug === 'expert';
                 $consultantUser = $placerIsConsultant
                     ? $order->placer
@@ -28,7 +28,7 @@ class DashboardResource extends BaseJsonResource
                     'order_number' => $order->order_number,
                     'status_text' => __('orders.status.'.$order->status),
                     'progress' => $order->dashboard_progress,
-                    // تایم‌لاین الیت یار — فقط وقتی کاربر جاری همان مشاورِ این سفارش است
+                    // تایم‌لاین الیت یار — فقط وقتی کاربر جاری همان الیت یارِ این سفارش است
                     'consultant_progress' => $consultantIsSelf
                         ? $order->consultant_progress
                         : null,
@@ -36,7 +36,7 @@ class DashboardResource extends BaseJsonResource
                     'supplier_progress' => $currentUser?->hasRole('supplier')
                         ? $order->supplier_progress
                         : null,
-                    // خریدار / گیرنده / مشاور — برای ساختِ عنوانِ تایم‌لاین‌ها در فرانت
+                    // خریدار / گیرنده / الیت یار — برای ساختِ عنوانِ تایم‌لاین‌ها در فرانت
                     'buyer' => [
                         'id' => $order->placer_user_id,
                         'full_name' => $order->placer?->full_name,

@@ -241,7 +241,7 @@ class ConsultantRelationController extends Controller
     }
 
     /**
-     * بررسی تأیید مدارک مشاور از روی پروفایل مهندس یا پیمانکار.
+     * بررسی تأیید مدارک الیت یار از روی پروفایل مهندس یا پیمانکار.
      */
     private function isConsultantVerified(User $consultant): bool
     {

@@ -45,7 +45,7 @@ class OrderActionController extends Controller
     }
 
     /**
-     * ثبت فاکتور نهایی و "هولد" کردن سهم مشاور
+     * ثبت فاکتور نهایی و "هولد" کردن سهم الیت یار
      */
     public function finalizeInvoice(FinalizeOrderInvoiceRequest $request, Order $order): JsonResponse
     {
@@ -68,13 +68,13 @@ class OrderActionController extends Controller
      * ثبت فاکتور مودیان الیت یار — Doc Q
      *
      * فقط توسط الیت یارِ سفارش (beneficiary) قابل فراخوانی است.
-     * پس از ثبت، هولد کمیسیون و مالیات مشاور آزاد می‌شود.
+     * پس از ثبت، هولد کمیسیون و مالیات الیت یار آزاد می‌شود.
      */
     public function submitConsultantMoadianInvoice(SubmitMoadianInvoiceRequest $request, Order $order): JsonResponse
     {
         $user = Auth::user();
 
-        // فقط مشاور این سفارش مجاز است
+        // فقط الیت یار این سفارش مجاز است
         if ((int) $order->{Order::BENEFICIARY_USER_ID} !== (int) $user->id) {
             return error(__('global.forbidden'), [], 403);
         }

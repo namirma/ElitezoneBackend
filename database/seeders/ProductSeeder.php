@@ -271,8 +271,8 @@ class ProductSeeder extends Seeder
         }
 
         $customerTypesData = [
-            [CustomerType::NAME => 'کارفرمای بدون مشاور', CustomerType::CODE => 'employer_without_consultant', CustomerType::HAS_CONSULTANT => false],
-            [CustomerType::NAME => 'مهندس دارای مشاور', CustomerType::CODE => 'engineer_with_consultant', CustomerType::HAS_CONSULTANT => true],
+            [CustomerType::NAME => 'کارفرمای بدون الیت یار', CustomerType::CODE => 'employer_without_consultant', CustomerType::HAS_CONSULTANT => false],
+            [CustomerType::NAME => 'مهندس دارای الیت یار', CustomerType::CODE => 'engineer_with_consultant', CustomerType::HAS_CONSULTANT => true],
         ];
         foreach ($customerTypesData as $typeDetails) {
             CustomerType::updateOrCreate([CustomerType::CODE => $typeDetails[CustomerType::CODE]], $typeDetails);
@@ -318,7 +318,7 @@ class ProductSeeder extends Seeder
             [PriceFilterType::NAME => 'سود', PriceFilterType::CODE => 'profit',             PriceFilterType::APPLY_ON => 'both',    PriceFilterType::IS_ACTIVE => true, PriceFilterType::SORT_ORDER => 1],
             [PriceFilterType::NAME => 'سیاست قیمت‌گذاری', PriceFilterType::CODE => 'policy',            PriceFilterType::APPLY_ON => 'general', PriceFilterType::IS_ACTIVE => true, PriceFilterType::SORT_ORDER => 2],
             [PriceFilterType::NAME => 'نوع مشتری',       PriceFilterType::CODE => 'customer_type',      PriceFilterType::APPLY_ON => 'special', PriceFilterType::IS_ACTIVE => true, PriceFilterType::SORT_ORDER => 3],
-            [PriceFilterType::NAME => 'وضعیت مشاور',     PriceFilterType::CODE => 'consultant_status', PriceFilterType::APPLY_ON => 'special', PriceFilterType::IS_ACTIVE => true, PriceFilterType::SORT_ORDER => 4],
+            [PriceFilterType::NAME => 'وضعیت الیت یار',     PriceFilterType::CODE => 'consultant_status', PriceFilterType::APPLY_ON => 'special', PriceFilterType::IS_ACTIVE => true, PriceFilterType::SORT_ORDER => 4],
         ];
         foreach ($filterTypesData as $typeDetails) {
             PriceFilterType::updateOrCreate([PriceFilterType::CODE => $typeDetails[PriceFilterType::CODE]], $typeDetails);
@@ -340,8 +340,8 @@ class ProductSeeder extends Seeder
                 [PriceFilter::NAME => 'مهندس',         PriceFilter::CODE => 'engineer',          PriceFilter::AMOUNT => -1000, PriceFilter::IS_PERCENTAGE => false, PriceFilter::IS_ACTIVE => true, PriceFilter::SORT_ORDER => 2],
             ],
             'consultant_status' => [
-                [PriceFilter::NAME => 'بدون مشاور',    PriceFilter::CODE => 'without_consultant', PriceFilter::AMOUNT => 0,     PriceFilter::IS_PERCENTAGE => false, PriceFilter::IS_ACTIVE => true, PriceFilter::SORT_ORDER => 1],
-                [PriceFilter::NAME => 'دارای مشاور',   PriceFilter::CODE => 'with_consultant',   PriceFilter::AMOUNT => -800,  PriceFilter::IS_PERCENTAGE => false, PriceFilter::IS_ACTIVE => true, PriceFilter::SORT_ORDER => 2],
+                [PriceFilter::NAME => 'بدون الیت یار',    PriceFilter::CODE => 'without_consultant', PriceFilter::AMOUNT => 0,     PriceFilter::IS_PERCENTAGE => false, PriceFilter::IS_ACTIVE => true, PriceFilter::SORT_ORDER => 1],
+                [PriceFilter::NAME => 'دارای الیت یار',   PriceFilter::CODE => 'with_consultant',   PriceFilter::AMOUNT => -800,  PriceFilter::IS_PERCENTAGE => false, PriceFilter::IS_ACTIVE => true, PriceFilter::SORT_ORDER => 2],
             ],
         ];
 
@@ -358,17 +358,17 @@ class ProductSeeder extends Seeder
 
         $priceFilterCategoriesData = [
             [
-                PriceFilterCategory::NAME => 'کارفرمای بدون مشاور',
+                PriceFilterCategory::NAME => 'کارفرمای بدون الیت یار',
                 PriceFilterCategory::CODE => 'employer_without_consultant',
-                PriceFilterCategory::DESCRIPTION => 'فیلترهای قیمت برای کارفرمای بدون مشاور',
+                PriceFilterCategory::DESCRIPTION => 'فیلترهای قیمت برای کارفرمای بدون الیت یار',
                 PriceFilterCategory::IS_ACTIVE => true,
                 PriceFilterCategory::SORT_ORDER => 1,
                 'filters' => ['base_profit', 'regular_policy', 'employer', 'without_consultant'],
             ],
             [
-                PriceFilterCategory::NAME => 'مهندس دارای مشاور',
+                PriceFilterCategory::NAME => 'مهندس دارای الیت یار',
                 PriceFilterCategory::CODE => 'engineer_with_consultant',
-                PriceFilterCategory::DESCRIPTION => 'فیلترهای قیمت برای مهندس دارای مشاور',
+                PriceFilterCategory::DESCRIPTION => 'فیلترهای قیمت برای مهندس دارای الیت یار',
                 PriceFilterCategory::IS_ACTIVE => true,
                 PriceFilterCategory::SORT_ORDER => 2,
                 'filters' => ['base_profit', 'competitive_policy', 'engineer', 'with_consultant'],

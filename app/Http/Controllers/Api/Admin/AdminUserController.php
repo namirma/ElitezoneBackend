@@ -225,7 +225,7 @@ class AdminUserController extends Controller
     }
 
     /**
-     * پیدا کردن پروفایل مشاور (مهندس یا پیمانکار) برای یک کاربر.
+     * پیدا کردن پروفایل الیت یار (مهندس یا پیمانکار) برای یک کاربر.
      * مهندس اولویت دارد؛ اگر نبود پیمانکار را برمی‌گرداند.
      */
     private function resolveConsultantProfile(User $user): EngineerProfile|ContractorProfile|null

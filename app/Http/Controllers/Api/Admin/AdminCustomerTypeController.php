@@ -12,7 +12,7 @@ use Illuminate\Validation\Rule;
 /**
  * پنل مدیریت — CRUD انواع مشتری (CustomerType).
  *
- * نوع مشتری (مثلاً «کارفرمای بدون مشاور») پایه‌ی تعدیل قیمت (PriceAdjustment) است.
+ * نوع مشتری (مثلاً «کارفرمای بدون الیت یار») پایه‌ی تعدیل قیمت (PriceAdjustment) است.
  * نوعی که تعدیل قیمت دارد قابل حذف نیست.
  */
 class AdminCustomerTypeController extends Controller

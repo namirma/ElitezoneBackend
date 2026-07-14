@@ -12,7 +12,7 @@ use Tests\TestCase;
 /**
  * Completing the employer profile (POST /api/profile/employer) must grant the
  * `employer` Laratrust role. Without it the role-gated consultant endpoints
- * (GET /api/profile/consultants) return 403 — the reported "مشاورین" tab failure.
+ * (GET /api/profile/consultants) return 403 — the reported "الیت یارها" tab failure.
  *
  * DatabaseTransactions: all writes roll back; the live DB is never mutated.
  */

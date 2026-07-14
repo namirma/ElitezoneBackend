@@ -16,7 +16,7 @@ use Tests\TestCase;
  * قرارداد:
  *   - الیت یار (type.slug = expert) با پروفایل تأییدشده → true
  *   - الیت یار با پروفایل تأییدنشده (یا بدون مدرک) → false
- *   - نقش‌های غیرمشاور (employer/supplier/customer) → null
+ *   - نقش‌های غیرالیت یار (employer/supplier/customer) → null
  */
 class ProfileVerificationBadgeTest extends TestCase
 {

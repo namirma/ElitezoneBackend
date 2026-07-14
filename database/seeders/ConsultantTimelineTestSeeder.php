@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Hash;
  * php artisan db:seed --class=ConsultantTimelineTestSeeder
  *
  * یک کاربر الیت یار + یک سفارش با وضعیت weighbridge_done می‌سازد.
- * با ورود به عنوان مشاور (09500000005 / password123) در داشبورد
+ * با ورود به عنوان الیت یار (09500000005 / password123) در داشبورد
  * Stage 2 «حق مشاوره منظور شد» به عنوان current نمایش داده می‌شود.
  *
  * نتیجه تایم‌لاین:
@@ -64,7 +64,7 @@ class ConsultantTimelineTestSeeder extends Seeder
             [
                 'user_id'       => $consultant->id,
                 'name'          => 'سارا',
-                'family'        => 'مشاورزاده',
+                'family'        => 'الیت یارزاده',
                 'national_code' => self::CONSULTANT_NC,
             ]
         );
@@ -88,7 +88,7 @@ class ConsultantTimelineTestSeeder extends Seeder
         }
 
         // ─── 3. سفارش با وضعیت weighbridge_done ─────────────────────────
-        // این وضعیت باعث می‌شود Stage 2 تایم‌لاین مشاور «current» شود.
+        // این وضعیت باعث می‌شود Stage 2 تایم‌لاین الیت یار «current» شود.
         $this->command->info('▸ سفارش تستی...');
 
         $order = Order::firstOrCreate(

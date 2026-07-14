@@ -115,7 +115,7 @@ class HasOrderProgressTest extends TestCase
      *
      * طبق پروسه خرید (بخش «الگوریتم وابستگی واریزها»):
      * «تا زمان صدور فاکتور سامانه مودیان توسط الیت یار در کیف پول وی هولد می‌شود».
-     * پس صرف تحویل کالا hold را آزاد نمی‌کند — مشاور باید خودش Doc Q ثبت کند.
+     * پس صرف تحویل کالا hold را آزاد نمی‌کند — الیت یار باید خودش Doc Q ثبت کند.
      *
      * نکته: قبل از این fix، delivered → همه مراحل completed نشان داده می‌شد (اشتباه).
      */
@@ -145,7 +145,7 @@ class HasOrderProgressTest extends TestCase
         $this->assertSame('inactive', $progress['steps'][3]['state'],
             'Step 4 should be inactive until hold_released_at is set by ReleaseConsultantHoldAction');
 
-        // دکمه «ثبت فاکتور» باید نمایش داشته باشد — بدون آن مشاور نمی‌تواند پولش را آزاد کند
+        // دکمه «ثبت فاکتور» باید نمایش داشته باشد — بدون آن الیت یار نمی‌تواند پولش را آزاد کند
         $step2Labels = array_column($progress['steps'][1]['actions'], 'label');
         $this->assertContains('فاکتور خدمات خود را ثبت کنید', $step2Labels,
             'Submit invoice button must be visible for delivered orders awaiting Doc Q');

@@ -210,8 +210,8 @@ class PlaceOrderAction
         $finalAmount = max(0, $subtotal + $totalVat + $shippingCost);
 
         // تعیین الیت یار مؤثر:
-        // — اگر خودِ خریدار مشاور است (engineer/contractor) → مشاور = placer (اجباری)
-        // — اگر کارفرما است → مشاور همانی است که در consultant_user_id فرستاده
+        // — اگر خودِ خریدار الیت یار است (engineer/contractor) → الیت یار = placer (اجباری)
+        // — اگر کارفرما است → الیت یار همانی است که در consultant_user_id فرستاده
         $isConsultantPlacer = $user->hasRole('engineer') || $user->hasRole('contractor');
         $effectiveConsultantId = $isConsultantPlacer ? $user->id : $data->consultantUserId;
 
@@ -288,7 +288,7 @@ class PlaceOrderAction
         // ۳. ثبت نهایی در دیتابیس
         return Order::create([
             Order::PLACER_USER_ID => $user->id,
-            // beneficiary = گیرنده سفارش (فقط در مسیر مشاور که برای کارفرما خریداری می‌کند)
+            // beneficiary = گیرنده سفارش (فقط در مسیر الیت یار که برای کارفرما خریداری می‌کند)
             Order::BENEFICIARY_USER_ID => $data->beneficiaryUserId,
             // consultant = الیت یار که کمیسیون CO می‌گیرد (مؤثر — computed در calculateOrderFinancials)
             Order::CONSULTANT_USER_ID => $fins['effective_consultant_id'],

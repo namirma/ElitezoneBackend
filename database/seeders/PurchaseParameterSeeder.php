@@ -15,8 +15,8 @@ class PurchaseParameterSeeder extends Seeder
     {
         DB::transaction(function () {
             $categories = [
-                ['code' => 'employer_without_consultant', 'name' => 'کارفرما بدون مشاور', 'sort_order' => 1],
-                ['code' => 'engineer_with_consultant',    'name' => 'مهندس با مشاور',     'sort_order' => 2],
+                ['code' => 'employer_without_consultant', 'name' => 'کارفرما بدون الیت یار', 'sort_order' => 1],
+                ['code' => 'engineer_with_consultant',    'name' => 'مهندس با الیت یار',     'sort_order' => 2],
             ];
 
             foreach ($categories as $cat) {
@@ -64,8 +64,8 @@ class PurchaseParameterSeeder extends Seeder
             }
 
             $customerTypes = [
-                ['code' => 'employer_without_consultant', 'name' => 'کارفرما بدون مشاور', 'has_consultant' => false],
-                ['code' => 'engineer_with_consultant',    'name' => 'مهندس با مشاور',     'has_consultant' => true],
+                ['code' => 'employer_without_consultant', 'name' => 'کارفرما بدون الیت یار', 'has_consultant' => false],
+                ['code' => 'engineer_with_consultant',    'name' => 'مهندس با الیت یار',     'has_consultant' => true],
             ];
             foreach ($customerTypes as $ct) {
                 CustomerType::updateOrCreate(
