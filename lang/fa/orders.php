@@ -109,7 +109,7 @@ return [
     // elite_yar_user_id validation (مسیر کارفرما)
     'store_elite_yar_integer'              => 'فرمت الیت یار نامعتبر است.',
     'store_elite_yar_exists'              => 'الیت یار در سیستم یافت نشد.',
-    'store_elite_yar_not_approved'        => 'الیت یار انتخاب‌شده در لیست الیت یارهای تأییدشده شما نیست.',
+    'store_elite_yar_not_approved'        => 'الیت یار انتخاب‌شده در لیست الیت یاران تأییدشده شما نیست.',
     'store_elite_yar_not_found'           => 'الیت یار انتخاب‌شده در سیستم یافت نشد.',
     'store_elite_yar_not_verified'        => 'الیت یار انتخاب‌شده هنوز مدارک تأییدشده ندارد.',
     'store_elite_yar_prohibited_for_elite_yar' => 'الیت یار نمی‌تواند در هنگام ثبت سفارش الیت یار دیگری انتخاب کند.',
