@@ -132,6 +132,11 @@ class User extends Authenticatable
         return $this->hasOne(UserProfile::class);
     }
 
+    public function isEliteYAR(): bool
+    {
+        return $this->hasRole('engineer') || $this->hasRole('contractor');
+    }
+
     public function engineer(): HasOne
     {
         return $this->hasOne(EngineerProfile::class);

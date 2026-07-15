@@ -67,7 +67,14 @@ class AdminOrderController extends Controller
 
     public function changeStatus(Request $request, Order $order, CancelOrderAction $cancelAction): JsonResponse
     {
-        $request->validate(['status' => 'required|string|in:pending,processing,shipped,delivered,cancelled']);
+        $allowedStatuses = [
+            Order::STATUS_PENDING,
+            Order::STATUS_PROCESSING,
+            Order::STATUS_SHIPPED,
+            Order::STATUS_DELIVERED,
+            Order::STATUS_CANCELLED,
+        ];
+        $request->validate(['status' => 'required|string|in:'.implode(',', $allowedStatuses)]);
 
         $newStatus = $request->input('status');
 

@@ -146,17 +146,19 @@ class PlaceOrderAction
 
             // محاسبه قیمت‌های این ردیف
             $lineTotal = $itemLogisticsWeight * $pricing->finalPrice;
+            $lineDiscount = $pricing->variantDiscountAmount * $itemLogisticsWeight;
             $lineVat = $itemLogisticsWeight * $pricing->vatAmount;
 
-            $subtotal += $lineTotal;
+            // Subtotal should be the pre-discount value for correct accounting:
+            $subtotal += ($lineTotal + $lineDiscount);
             $totalVat += $lineVat;
-            $totalDiscount += ($pricing->variantDiscountAmount * $itemLogisticsWeight);
+            $totalDiscount += $lineDiscount;
 
             $itemsData[$item->id] = [
                 'weight' => $itemLogisticsWeight,
                 'quantity' => $itemSalesQuantity,
                 'unit_name' => $primaryUnitName ?? 'واحد',
-                'unit_price' => $pricing->finalPrice,
+                'unit_price' => $pricing->finalPrice, // We keep the post-discount price per unit for the item line
                 'total_price' => $lineTotal,
             ];
         }
@@ -199,20 +201,15 @@ class PlaceOrderAction
             $itemsData[$itemId]['shipping_cost'] = (float) ($shippingQuote->perLine[$itemId] ?? 0.0);
         }
 
-        // `$subtotal` is already the post-variant-discount, ex-VAT goods value (it is
-        // Σ weight × finalPrice, and finalPrice from the pricing pipeline already has the
-        // variant discount subtracted — see ApplyVariantDiscount). `$totalVat` is VAT on
-        // that same post-discount base. So the order total is simply subtotal + VAT +
-        // freight. The variant discount is recorded in `discount_amount` for display only
-        // and must NOT be subtracted here — doing so double-counted it and understated
-        // the order total (it no longer matched the cart total the buyer saw). This mirrors
-        // CartPricingCalculator, which likewise never re-subtracts the variant discount.
-        $finalAmount = max(0, $subtotal + $totalVat + $shippingCost);
+        // Now that subtotal is pre-discount, we subtract the totalDiscount to get the actual final goods value,
+        // then add VAT and shipping. This preserves the standard accounting formula:
+        // Subtotal - Discount + Tax + Shipping = Final
+        $finalAmount = max(0, $subtotal - $totalDiscount + $totalVat + $shippingCost);
 
         // تعیین الیت یار مؤثر:
         // — اگر خودِ خریدار الیت یار است (engineer/contractor) → الیت یار = placer (اجباری)
         // — اگر کارفرما است → الیت یار همانی است که در elite_yar_user_id فرستاده
-        $isEliteYARPlacer = $user->hasRole('engineer') || $user->hasRole('contractor');
+        $isEliteYARPlacer = $user->isEliteYAR();
         $effectiveEliteYARId = $isEliteYARPlacer ? $user->id : $data->eliteYARUserId;
 
         $commissions = $this->calculateCommissions($user, $effectiveEliteYARId, $subtotal);

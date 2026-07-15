@@ -238,10 +238,11 @@ class ProcessPodiumDepositAction
             $user, $profile, $amount, $docNumber, $shenasehVariz, $senderIban,
             $senderName, $nationalCode, $depositedAt, $matchedBy
         ) {
-            $wallet = Wallet::where(Wallet::USER_ID, $user->id)->lockForUpdate()->firstOrCreate(
+            $wallet = Wallet::firstOrCreate(
                 [Wallet::USER_ID => $user->id],
                 [Wallet::BALANCE => 0, Wallet::BALANCE_HOLD => 0],
             );
+            $wallet = Wallet::where('id', $wallet->id)->lockForUpdate()->first();
 
             $descKey = $matchedBy === PodiumDepositRecord::MATCHED_BY_IBAN
                 ? 'wallet.podium_iban_deposit'
