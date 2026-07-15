@@ -43,7 +43,7 @@ class ProcessPreScalePaymentAction
                 return;
             }
 
-            $locked->load('items', 'beneficiary.badge');
+            $locked->load('items', 'eliteYAR.badge');
 
             $firstItem = $locked->items->first();
 
@@ -61,7 +61,10 @@ class ProcessPreScalePaymentAction
             $shippingCost = (float) ($locked->shipping_cost ?? 0);
             $vatRate = (float) ($locked->vat_rate ?? 10.0);
 
-            $badgeCode = $locked->beneficiary?->badge?->code ?? 'pioneer';
+            // نرخ کمیسیون بر اساس نشانِ الیت‌یارِ صاحب کمیسیون (elite_yar_user_id) خوانده می‌شود،
+            // نه beneficiary (گیرندهٔ کالا). ProcessWeighbridgeResultAction هم از همین eliteYAR.badge
+            // استفاده می‌کند؛ خواندن از beneficiary باعث ناسازگاری نرخ بین pre-scale و باسکول می‌شد.
+            $badgeCode = $locked->eliteYAR?->badge?->code ?? 'pioneer';
             $rates = $this->calculator->getCommissionRates($badgeCode);
 
             $ownerDiscountRate = $rates['ow_final_rate'];
@@ -124,9 +127,19 @@ class ProcessPreScalePaymentAction
             ]);
 
             // ── صدور اسناد مالی خرید مستقیم (A + B + C، با D در صورت داشتن الیت یار) ──
+            // Doc D (گزارش الیت‌یار) فقط وقتی صادر می‌شود که یک الیت‌یارِ صاحبِ کمیسیون
+            // روی سفارش باشد — یعنی elite_yar_user_id ست شده و با خودِ خریدار (placer)
+            // یکی نباشد. این دقیقاً همان شرطی است که WeighbridgeVatRouter::routeEliteYAR
+            // برای هولد کمیسیون استفاده می‌کند، پس سند با جریان پول هم‌راستا می‌ماند.
+            // (قبلاً روی beneficiary_user_id گیت شده بود؛ در مسیر «کارفرما با الیت‌یار»
+            //  که beneficiary=null است، Doc D اشتباهاً صادر نمی‌شد.)
+            $eliteYARId = $locked->{Order::ELITE_YAR_USER_ID};
+            $hasCommissionedEliteYAR = $eliteYARId !== null
+                && (int) $eliteYARId !== (int) $locked->{Order::PLACER_USER_ID};
+
             $this->invoiceGenerator->generateDirectPurchaseDocs(
                 $locked,
-                withEliteYAR: $locked->{Order::BENEFICIARY_USER_ID} !== null
+                withEliteYAR: $hasCommissionedEliteYAR
             );
 
             Log::channel('financial')->info("پرداخت سفارش {$locked->id} با موفقیت انجام شد. فرمول: TC={$transCommission} VAT={$transVat}");

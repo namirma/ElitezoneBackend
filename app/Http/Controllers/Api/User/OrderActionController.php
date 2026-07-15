@@ -67,15 +67,18 @@ class OrderActionController extends Controller
     /**
      * ثبت فاکتور مودیان الیت یار — Doc Q
      *
-     * فقط توسط الیت یارِ سفارش (beneficiary) قابل فراخوانی است.
+     * فقط توسط الیت یارِ سفارش (elite_yar_user_id — صاحب کمیسیون) قابل فراخوانی است.
      * پس از ثبت، هولد کمیسیون و مالیات الیت یار آزاد می‌شود.
      */
     public function submitEliteYARMoadianInvoice(SubmitMoadianInvoiceRequest $request, Order $order): JsonResponse
     {
         $user = Auth::user();
 
-        // فقط الیت یار این سفارش مجاز است
-        if ((int) $order->{Order::BENEFICIARY_USER_ID} !== (int) $user->id) {
+        // فقط الیت یارِ سفارش (کسی که کمیسیون WEY به او تعلق دارد) مجاز است.
+        // این باید elite_yar_user_id باشد، نه beneficiary_user_id (گیرندهٔ کالا) —
+        // هولد کمیسیون در WeighbridgeVatRouter/ReleaseEliteYARHoldAction روی
+        // elite_yar_user_id ثبت/آزاد می‌شود، پس گارد مجوز هم باید با همان هم‌تراز باشد.
+        if ((int) $order->{Order::ELITE_YAR_USER_ID} !== (int) $user->id) {
             return error(__('global.forbidden'), [], 403);
         }
 
