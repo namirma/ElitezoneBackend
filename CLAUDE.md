@@ -530,7 +530,7 @@ documents are submitted:
 - VAT split: `vatMultiplier = (vat%/100) / (1 + vat%/100)`; `consultantVat = gross × vatMultiplier`
 - On submission: `ReleaseConsultantHoldAction` releases both holds to available
 - Order fields set: `consultant_moadian_ref`, `consultant_hold_released_at`
-- Authorization: only `order.beneficiary_user_id` (the consultant) can call this
+- Authorization: only `order.consultant_user_id` (the consultant / commission earner) can call this
 
 **Doc O — Supplier Moadian Invoice** (submitted by supplier)
 - At weighbridge: `supplierVat = PTSM × vatMultiplier → WVAT balance_hold`
@@ -622,7 +622,7 @@ The system has a wallet-based payment model. Five wallet codes are in use:
 | `WO` | `WALLET_OWNER` | buyer (`placer_user_id`) |
 | `WS` | `WALLET_SUPPLIER` | supplier (from `order.items.first().supplier_user_id`) |
 | `WSSG` | `WALLET_SAZE` | platform system (`financial.system_user_id`) |
-| `WCT` | `WALLET_CONSULTANT` | consultant (`beneficiary_user_id`) |
+| `WCT` | `WALLET_CONSULTANT` | consultant (`consultant_user_id`) |
 | `WVAT` | `WALLET_VAT` | VAT escrow (`financial.vat_user_id`, falls back to system_user_id) |
 
 Payment entry points:
@@ -1245,13 +1245,23 @@ trigger an incomplete refund.
 the policy to allow broader states than the controller accepts, or the defense-in-depth
 is broken (another caller of the policy would allow cancellation the controller forbids).
 
-### Order `beneficiary_user_id` must be an APPROVED consultant of the placer
+### Order commission routing — `consultant_user_id` drives WCT (NOT `beneficiary_user_id`)
 
-`beneficiary_user_id` drives consultant-commission routing (`WALLET_CONSULTANT`), so
-`StoreOrderRequest` validates (via a closure rule) that it is either the placer themselves
-or an **approved** technical consultant of the placer:
-`Auth::user()->technicalConsultants()->where('users.id', $value)->wherePivot('status', 'approved')->exists()`.
-A bare `exists:users,id` is not enough — it would let anyone route commission to an arbitrary user.
+`consultant_user_id` is the commission earner and drives consultant-commission routing
+(`WALLET_CONSULTANT`); `beneficiary_user_id` is the goods recipient (the employer a
+consultant buys for). `StoreOrderRequest` validates each per role (closure rules, never a
+bare `exists:users,id`, which would let anyone route commission to an arbitrary user):
+
+- **Employer places**: `beneficiary_user_id` is **prohibited**; `consultant_user_id` is
+  optional and must be an **approved + verified** technical consultant of the employer
+  (`Auth::user()->technicalConsultants()->where('users.id', $value)->wherePivot('status', 'approved')->exists()`).
+- **Consultant places**: `consultant_user_id` is **prohibited** (the Action sets it = the
+  placer/self); `beneficiary_user_id` is required and must be an **approved** employer of
+  the consultant (`associatedEmployers()`).
+
+All commission-context code reads `consultant_user_id` (auth guard for Doc Q, badge lookup,
+`WeighbridgeVatRouter`, `ReleaseConsultantHoldAction`, `FinalizeInvoiceAction` fee hold,
+`WalletTransactionEngine::resolveUserId` WCT fallback) — **never** `beneficiary_user_id`.
 
 ### Badge codes are `gold` / `silver` / `bronze` / `pioneer`
 

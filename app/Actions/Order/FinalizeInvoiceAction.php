@@ -60,12 +60,16 @@ class FinalizeInvoiceAction
      */
     private function resolveFee(Order $order): array
     {
+        // The fee belongs to the consultant (the commission earner = consultant_user_id),
+        // NOT beneficiary_user_id (the goods recipient). Same column as the WCT hold in
+        // WeighbridgeVatRouter / ReleaseConsultantHoldAction — the rule is unchanged, only
+        // the column that carries the consultant was split out from beneficiary.
         if ($order->engineer_fee_amount > 0) {
-            return [$order->engineer_fee_amount, $order->beneficiary_user_id];
+            return [$order->engineer_fee_amount, $order->consultant_user_id];
         }
 
         if ($order->contractor_fee_amount > 0) {
-            return [$order->contractor_fee_amount, $order->beneficiary_user_id];
+            return [$order->contractor_fee_amount, $order->consultant_user_id];
         }
 
         return [null, null];
