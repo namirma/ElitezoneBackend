@@ -60,12 +60,16 @@ class FinalizeInvoiceAction
      */
     private function resolveFee(Order $order): array
     {
+        // The fee belongs to the eliteYAR (the commission earner = elite_yar_user_id),
+        // NOT beneficiary_user_id (the goods recipient). Same column as the WEY hold in
+        // WeighbridgeVatRouter / ReleaseEliteYARHoldAction — the rule is unchanged, only
+        // the column that carries the eliteYAR was split out from beneficiary.
         if ($order->engineer_fee_amount > 0) {
-            return [$order->engineer_fee_amount, $order->beneficiary_user_id];
+            return [$order->engineer_fee_amount, $order->elite_yar_user_id];
         }
 
         if ($order->contractor_fee_amount > 0) {
-            return [$order->contractor_fee_amount, $order->beneficiary_user_id];
+            return [$order->contractor_fee_amount, $order->elite_yar_user_id];
         }
 
         return [null, null];

@@ -522,7 +522,7 @@ documents are submitted:
 - VAT split: `vatMultiplier = (vat%/100) / (1 + vat%/100)`; `eliteYARVat = gross × vatMultiplier`
 - On submission: `ReleaseEliteYARHoldAction` releases both holds to available
 - Order fields set: `elite_yar_moadian_ref`, `elite_yar_hold_released_at`
-- Authorization: only `order.beneficiary_user_id` (the elite yar) can call this
+- Authorization: only `order.elite_yar_user_id` (the elite yar / commission earner) can call this
 
 **Doc O — Supplier Moadian Invoice** (submitted by supplier)
 - At weighbridge: `supplierVat = PTSM × vatMultiplier → WVAT balance_hold`
@@ -614,7 +614,7 @@ The system has a wallet-based payment model. Five wallet codes are in use:
 | `WO` | `WALLET_OWNER` | buyer (`placer_user_id`) |
 | `WS` | `WALLET_SUPPLIER` | supplier (from `order.items.first().supplier_user_id`) |
 | `WSSG` | `WALLET_SAZE` | platform system (`financial.system_user_id`) |
-| `WEY` | `WALLET_ELITE_YAR` | elite yar (`beneficiary_user_id`) |
+| `WEY` | `WALLET_ELITE_YAR` | elite yar (`elite_yar_user_id`) |
 | `WVAT` | `WALLET_VAT` | VAT escrow (`financial.vat_user_id`, falls back to system_user_id) |
 
 Payment entry points:
@@ -1181,13 +1181,23 @@ trigger an incomplete refund.
 the policy to allow broader states than the controller accepts, or the defense-in-depth
 is broken (another caller of the policy would allow cancellation the controller forbids).
 
-### Order `beneficiary_user_id` must be an APPROVED elite yar of the placer
+### Order commission routing — `elite_yar_user_id` drives WEY (NOT `beneficiary_user_id`)
 
-`beneficiary_user_id` drives elite yar-commission routing (`WALLET_ELITE_YAR`), so
-`StoreOrderRequest` validates (via a closure rule) that it is either the placer themselves
-or an **approved** technical elite yar of the placer:
-`Auth::user()->technicalEliteYARs()->where('users.id', $value)->wherePivot('status', 'approved')->exists()`.
-A bare `exists:users,id` is not enough — it would let anyone route commission to an arbitrary user.
+`elite_yar_user_id` is the commission earner and drives elite yar-commission routing
+(`WALLET_ELITE_YAR`); `beneficiary_user_id` is the goods recipient (the employer an elite
+yar buys for). `StoreOrderRequest` validates each per role (closure rules, never a bare
+`exists:users,id`, which would let anyone route commission to an arbitrary user):
+
+- **Employer places**: `beneficiary_user_id` is **prohibited**; `elite_yar_user_id` is
+  optional and must be an **approved + verified** technical elite yar of the employer
+  (`Auth::user()->technicalEliteYARs()->where('users.id', $value)->wherePivot('status', 'approved')->exists()`).
+- **Elite yar places**: `elite_yar_user_id` is **prohibited** (the Action sets it = the
+  placer/self); `beneficiary_user_id` is required and must be an **approved** employer of
+  the elite yar (`associatedEmployers()`).
+
+All commission-context code reads `elite_yar_user_id` (auth guard for Doc Q, badge lookup,
+`WeighbridgeVatRouter`, `ReleaseEliteYARHoldAction`, `FinalizeInvoiceAction` fee hold,
+`WalletTransactionEngine::resolveUserId` WEY fallback) — **never** `beneficiary_user_id`.
 
 ### Badge codes are `gold` / `silver` / `bronze` / `pioneer`
 
