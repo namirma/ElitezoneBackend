@@ -67,15 +67,18 @@ class OrderActionController extends Controller
     /**
      * ثبت فاکتور مودیان مشاور فنی — Doc Q
      *
-     * فقط توسط مشاور فنی سفارش (beneficiary) قابل فراخوانی است.
+     * فقط توسط مشاور فنی سفارش (consultant_user_id — صاحب کمیسیون) قابل فراخوانی است.
      * پس از ثبت، هولد کمیسیون و مالیات مشاور آزاد می‌شود.
      */
     public function submitConsultantMoadianInvoice(SubmitMoadianInvoiceRequest $request, Order $order): JsonResponse
     {
         $user = Auth::user();
 
-        // فقط مشاور این سفارش مجاز است
-        if ((int) $order->{Order::BENEFICIARY_USER_ID} !== (int) $user->id) {
+        // فقط مشاورِ سفارش (کسی که کمیسیون WCT به او تعلق دارد) مجاز است.
+        // این باید consultant_user_id باشد، نه beneficiary_user_id (گیرندهٔ کالا) —
+        // هولد کمیسیون در WeighbridgeVatRouter/ReleaseConsultantHoldAction روی
+        // consultant_user_id ثبت/آزاد می‌شود، پس گارد مجوز هم باید با همان هم‌تراز باشد.
+        if ((int) $order->{Order::CONSULTANT_USER_ID} !== (int) $user->id) {
             return error(__('global.forbidden'), [], 403);
         }
 

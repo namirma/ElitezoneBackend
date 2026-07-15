@@ -43,7 +43,7 @@ class ProcessPreScalePaymentAction
                 return;
             }
 
-            $locked->load('items', 'beneficiary.badge');
+            $locked->load('items', 'consultant.badge');
 
             $firstItem = $locked->items->first();
 
@@ -61,7 +61,10 @@ class ProcessPreScalePaymentAction
             $shippingCost = (float) ($locked->shipping_cost ?? 0);
             $vatRate = (float) ($locked->vat_rate ?? 10.0);
 
-            $badgeCode = $locked->beneficiary?->badge?->code ?? 'pioneer';
+            // نرخ کمیسیون بر اساس نشانِ مشاورِ صاحب کمیسیون (consultant_user_id) خوانده می‌شود،
+            // نه beneficiary (گیرندهٔ کالا). ProcessWeighbridgeResultAction هم از همین consultant.badge
+            // استفاده می‌کند؛ خواندن از beneficiary باعث ناسازگاری نرخ بین pre-scale و باسکول می‌شد.
+            $badgeCode = $locked->consultant?->badge?->code ?? 'pioneer';
             $rates = $this->calculator->getCommissionRates($badgeCode);
 
             $ownerDiscountRate = $rates['ow_final_rate'];
@@ -124,9 +127,19 @@ class ProcessPreScalePaymentAction
             ]);
 
             // ── صدور اسناد مالی خرید مستقیم (A + B + C، با D در صورت داشتن مشاور) ──
+            // Doc D (گزارش مشاور) فقط وقتی صادر می‌شود که یک مشاورِ صاحبِ کمیسیون روی
+            // سفارش باشد — یعنی consultant_user_id ست شده و با خودِ خریدار (placer) یکی
+            // نباشد. این دقیقاً همان شرطی است که WeighbridgeVatRouter::routeConsultant
+            // برای هولد کمیسیون استفاده می‌کند، پس سند با جریان پول هم‌راستا می‌ماند.
+            // (قبلاً روی beneficiary_user_id گیت شده بود؛ در مسیر «کارفرما با مشاور»
+            //  که beneficiary=null است، Doc D اشتباهاً صادر نمی‌شد.)
+            $consultantId = $locked->{Order::CONSULTANT_USER_ID};
+            $hasCommissionedConsultant = $consultantId !== null
+                && (int) $consultantId !== (int) $locked->{Order::PLACER_USER_ID};
+
             $this->invoiceGenerator->generateDirectPurchaseDocs(
                 $locked,
-                withConsultant: $locked->{Order::BENEFICIARY_USER_ID} !== null
+                withConsultant: $hasCommissionedConsultant
             );
 
             Log::channel('financial')->info("پرداخت سفارش {$locked->id} با موفقیت انجام شد. فرمول: TC={$transCommission} VAT={$transVat}");

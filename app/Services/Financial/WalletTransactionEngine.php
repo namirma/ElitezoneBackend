@@ -194,7 +194,7 @@ class WalletTransactionEngine
      * Note: callers that know the target user ID up-front should always pass
      * $targetUserId explicitly to process() — this fallback is a safety-net.
      *
-     * WALLET_CONSULTANT → beneficiary_user_id (the consultant on the order)
+     * WALLET_CONSULTANT → consultant_user_id (the consultant/commission earner on the order)
      * WALLET_VAT        → financial.vat_user_id (separate VAT escrow user; P5)
      */
     private function resolveUserId(string $code, Order $order): int
@@ -209,9 +209,12 @@ class WalletTransactionEngine
 
             FinancialCodes::WALLET_SAZE => (int) config('financial.system_user_id', 1),
 
-            // Consultant commission wallet — beneficiary_user_id is the consultant.
-            FinancialCodes::WALLET_CONSULTANT => (int) ($order->beneficiary_user_id
-                ?? throw new \RuntimeException("WALLET_CONSULTANT: order {$order->id} has no consultant (beneficiary_user_id is null)")),
+            // Consultant commission wallet — the commission earner is consultant_user_id
+            // (NOT beneficiary_user_id, which is the goods recipient). Callers normally
+            // pass $targetUserId explicitly; this fallback must still resolve the correct
+            // party or it would credit/debit the wrong wallet.
+            FinancialCodes::WALLET_CONSULTANT => (int) ($order->consultant_user_id
+                ?? throw new \RuntimeException("WALLET_CONSULTANT: order {$order->id} has no consultant (consultant_user_id is null)")),
 
             // VAT escrow wallet — uses dedicated vat_user_id when configured (P5),
             // falls back to system_user_id so the system stays correct before

@@ -47,7 +47,7 @@ class ProcessReservationCompletionAction
                 return;
             }
 
-            $locked->load('items', 'beneficiary.badge');
+            $locked->load('items', 'consultant.badge');
 
             $firstItem = $locked->items->first();
 
@@ -61,7 +61,9 @@ class ProcessReservationCompletionAction
             $trans = (float) ($locked->shipping_cost ?: 0);
             $vat = (float) ($locked->vat_rate ?: 10.0);
 
-            $badgeCode = $locked->beneficiary?->badge?->code ?? 'pioneer';
+            // نرخ کمیسیون از نشانِ مشاورِ صاحب کمیسیون (consultant_user_id) خوانده می‌شود،
+            // نه beneficiary (گیرندهٔ کالا) — هم‌راستا با ProcessWeighbridgeResultAction.
+            $badgeCode = $locked->consultant?->badge?->code ?? 'pioneer';
             $rates = $this->calculator->getCommissionRates($badgeCode);
 
             $ow = $rates['ow_final_rate'];
