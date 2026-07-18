@@ -56,14 +56,27 @@ class AdminUserController extends Controller
 
     /**
      * فعال/غیرفعال کردن حساب کاربری
+     *
+     * غیرفعال‌سازی باید فوری اثر کند: توکن‌های Sanctum کاربر حذف می‌شوند و
+     * middleware سراسری EnsureUserIsActive جلوی هر توکن/لاگین بعدی را می‌گیرد.
      */
     public function toggleStatus(User $user): JsonResponse
     {
-        $user->update([User::IS_ACTIVE => ! $user->{User::IS_ACTIVE}]);
+        // ادمین نباید بتواند حساب خودش را غیرفعال کند (خطر قفل‌شدن کامل پنل).
+        if ($user->id === Auth::id()) {
+            return error(__('admin.users.cannot_deactivate_self'), [], 422);
+        }
+
+        $newState = ! $user->{User::IS_ACTIVE};
+        $user->update([User::IS_ACTIVE => $newState]);
+
+        if (! $newState) {
+            $user->tokens()->delete();
+        }
 
         return success(
             new UserResource($user),
-            $user->{User::IS_ACTIVE} ? __('admin.users.activated') : __('admin.users.deactivated')
+            $newState ? __('admin.users.activated') : __('admin.users.deactivated')
         );
     }
 
@@ -186,8 +199,8 @@ class AdminUserController extends Controller
 
         return success(
             [
-                'user_id'     => $user->id,
-                'profile_type'=> $profile instanceof EngineerProfile ? 'engineer' : 'contractor',
+                'user_id' => $user->id,
+                'profile_type' => $profile instanceof EngineerProfile ? 'engineer' : 'contractor',
                 'is_verified' => true,
                 'verified_at' => $profile->{$profile::VERIFIED_AT}->toDateTimeString(),
             ],
@@ -215,8 +228,8 @@ class AdminUserController extends Controller
 
         return success(
             [
-                'user_id'     => $user->id,
-                'profile_type'=> $profile instanceof EngineerProfile ? 'engineer' : 'contractor',
+                'user_id' => $user->id,
+                'profile_type' => $profile instanceof EngineerProfile ? 'engineer' : 'contractor',
                 'is_verified' => false,
                 'verified_at' => null,
             ],

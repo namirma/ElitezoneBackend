@@ -57,9 +57,17 @@ class ProcessReservationCompletionAction
             }
 
             $op = (float) ($locked->official_price ?: ($firstItem->unit_price ?? 0));
-            $wbs = (float) ($locked->weight_before_scale ?: 1);
             $trans = (float) ($locked->shipping_cost ?: 0);
             $vat = (float) ($locked->vat_rate ?: 10.0);
+
+            // وزن snapshot باید معتبر باشد — fallback بی‌صدا به ۱ کیلوگرم یعنی POO/PTS
+            // روی یک کیلو محاسبه می‌شد و رزرو با مبلغ ناچیز «تکمیل» می‌شد. داده‌ی خراب
+            // باید متوقف کند، نه پول جابه‌جا کند.
+            $wbs = (float) ($locked->weight_before_scale ?? 0);
+            if ($wbs <= 0) {
+                Log::channel('financial')->critical("Order {$locked->id}: weight_before_scale is missing/zero — completion aborted.");
+                throw new \RuntimeException(__('orders.invalid_weight_snapshot'));
+            }
 
             // نرخ کمیسیون از نشانِ الیت‌یارِ صاحب کمیسیون (elite_yar_user_id) خوانده می‌شود،
             // نه beneficiary (گیرندهٔ کالا) — هم‌راستا با ProcessWeighbridgeResultAction.
@@ -132,13 +140,13 @@ class ProcessReservationCompletionAction
             $this->walletEngine->creditSupplier($locked, $PTS, FinancialCodes::STATUS_AVAILABLE, $realSupplierId, "واریز سهم فروش سفارش {$locked->order_number}");
 
             $locked->forceFill([
-                Order::STATUS              => Order::STATUS_PROCESSING,
-                Order::PAYMENT_STATUS      => Order::PAYMENT_PAID,
-                Order::PAYMENT_OF_OWNER    => $POO,
+                Order::STATUS => Order::STATUS_PROCESSING,
+                Order::PAYMENT_STATUS => Order::PAYMENT_PAID,
+                Order::PAYMENT_OF_OWNER => $POO,
                 Order::PAYMENT_TO_SUPPLIER => $PTS,
-                Order::TRANS_COMMISSION    => $transCommission,
-                Order::TRANS_VAT           => $transVat,
-                Order::PAID_AT             => now(),
+                Order::TRANS_COMMISSION => $transCommission,
+                Order::TRANS_VAT => $transVat,
+                Order::PAID_AT => now(),
             ])->save();
 
             // ── صدور اسناد تکمیل وجه (G + H + C) ────────────────────────

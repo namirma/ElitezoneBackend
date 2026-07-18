@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\FinancialFilterRequest;
+use App\Http\Resources\Financial\WalletTransactionResource;
 use App\Http\Resources\Order\OrderResource;
 use App\Models\Order;
+use App\Models\WalletTransaction;
 use App\Services\Financial\FinancialHealthService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -41,7 +43,7 @@ class AdminFinancialController extends Controller
             ->latest(Order::CREATED_AT)
             ->paginate($this->perPage());
 
-        return success($invoices, __('admin.invoices_list_success'));
+        return success(OrderResource::collection($invoices), __('admin.invoices_list_success'));
     }
 
     /**
@@ -72,7 +74,7 @@ class AdminFinancialController extends Controller
 
         $data = $shares->latest(WalletTransaction::CREATED_AT)->paginate($this->perPage());
 
-        return success($data, __('admin.expert_shares_success'));
+        return success(WalletTransactionResource::collection($data), __('admin.expert_shares_success'));
     }
 
     /**
@@ -89,7 +91,7 @@ class AdminFinancialController extends Controller
             ->latest(Order::UPDATED_AT)
             ->paginate($this->perPage());
 
-        return success($documents, __('admin.supplier_docs_success'));
+        return success(OrderResource::collection($documents), __('admin.supplier_docs_success'));
     }
 
     /**
@@ -104,7 +106,7 @@ class AdminFinancialController extends Controller
             ->latest(WalletTransaction::CREATED_AT)
             ->paginate($this->perPage());
 
-        return success($documents, __('admin.expert_docs_success'));
+        return success(WalletTransactionResource::collection($documents), __('admin.expert_docs_success'));
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -152,16 +154,16 @@ class AdminFinancialController extends Controller
             ->paginate($this->perPage(20));
 
         $enriched = $orders->through(fn (Order $order) => [
-            'id'                         => $order->id,
-            'order_number'               => $order->{Order::ORDER_NUMBER},
-            'status'                     => $order->{Order::STATUS},
-            'placer'                     => $order->placer?->profile?->name,
-            'final_amount'               => (float) $order->{Order::FINAL_AMOUNT},
-            'weighing_completed_at'      => $order->{Order::WEIGHING_COMPLETED_AT},
-            'elite_yar_moadian_done'    => $order->{Order::ELITE_YAR_MOADIAN_REF} !== null,
-            'supplier_moadian_done'      => $order->{Order::SUPPLIER_MOADIAN_REF} !== null,
-            'system_moadian_done'        => $order->{Order::SYSTEM_MOADIAN_REF} !== null,
-            'has_beneficiary'            => $order->{Order::BENEFICIARY_USER_ID} !== null,
+            'id' => $order->id,
+            'order_number' => $order->{Order::ORDER_NUMBER},
+            'status' => $order->{Order::STATUS},
+            'placer' => $order->placer?->profile?->name,
+            'final_amount' => (float) $order->{Order::FINAL_AMOUNT},
+            'weighing_completed_at' => $order->{Order::WEIGHING_COMPLETED_AT},
+            'elite_yar_moadian_done' => $order->{Order::ELITE_YAR_MOADIAN_REF} !== null,
+            'supplier_moadian_done' => $order->{Order::SUPPLIER_MOADIAN_REF} !== null,
+            'system_moadian_done' => $order->{Order::SYSTEM_MOADIAN_REF} !== null,
+            'has_beneficiary' => $order->{Order::BENEFICIARY_USER_ID} !== null,
         ]);
 
         return success($enriched, __('admin.financial.pending_moadian_received'));

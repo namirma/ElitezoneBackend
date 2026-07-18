@@ -23,20 +23,34 @@ class AdminSupplierController extends Controller
     /**
      * لیست سوپلایرها با جستجو و فیلتر وضعیت
      *
+     * شامل درخواست‌های در انتظار تأیید هم می‌شود (پروفایل دارند ولی هنوز نقش
+     * ندارند) — فیلتر فقط-نقش‌دارها آن‌ها را از دید ادمین پنهان می‌کرد.
+     *
      * Query params:
      *   search (optional) — جستجو در موبایل، نام، نام شرکت
      *   is_active (optional, boolean) — فیلتر وضعیت فعال/غیرفعال
+     *   status (optional) — فیلتر وضعیت احراز: pending | approved | rejected
      */
     public function index(Request $request): JsonResponse
     {
         $request->validate([
-            'search'    => ['nullable', 'string', 'min:2'],
+            'search' => ['nullable', 'string', 'min:2'],
             'is_active' => ['nullable', 'boolean'],
-            'per_page'  => ['nullable', 'integer', 'min:1', 'max:100'],
+            'status' => ['nullable', 'string', 'in:pending,approved,rejected'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
         $users = User::query()
-            ->whereHas('roles', fn ($r) => $r->where('name', 'supplier'))
+            ->where(fn (Builder $q) => $q
+                ->whereHas('roles', fn ($r) => $r->where('name', 'supplier'))
+                ->orWhereHas('supplier'))
+            ->when(
+                $request->filled('status'),
+                fn (Builder $q) => $q->whereHas(
+                    'supplier',
+                    fn ($s) => $s->where(SupplierProfile::STATUS, $request->input('status'))
+                )
+            )
             ->with(['profile', 'supplier', 'wallet', 'roles'])
             ->when(
                 $request->filled('search'),
@@ -64,7 +78,12 @@ class AdminSupplierController extends Controller
      */
     public function show(User $user): JsonResponse
     {
-        abort_unless($user->hasRole('supplier'), 404, __('admin.suppliers.not_found'));
+        // درخواست‌های pending هنوز نقش ندارند — وجود پروفایل هم کافی است.
+        abort_unless(
+            $user->hasRole('supplier') || $user->supplier()->exists(),
+            404,
+            __('admin.suppliers.not_found')
+        );
 
         $user->load(['profile', 'supplier', 'wallet', 'roles', 'badges']);
 
@@ -75,22 +94,23 @@ class AdminSupplierController extends Controller
             ->groupBy('status')
             ->get()
             ->map(fn ($row) => [
-                'status'       => $row->status,
-                'count'        => (int) $row->count,
+                'status' => $row->status,
+                'count' => (int) $row->count,
                 'total_amount' => (float) $row->total_amount,
             ]);
 
         $formulaFlags = $user->supplier ? [
             'trans_commission' => (bool) $user->supplier->{SupplierProfile::TRANS_COMMISSION},
-            'trans_vat'        => (bool) $user->supplier->{SupplierProfile::TRANS_VAT},
+            'trans_vat' => (bool) $user->supplier->{SupplierProfile::TRANS_VAT},
         ] : null;
 
         return success([
-            'user'          => new UserResource($user),
+            'user' => new UserResource($user),
+            'supplier_status' => $user->supplier?->{SupplierProfile::STATUS},
             'formula_flags' => $formulaFlags,
-            'order_stats'   => $orderStats,
-            'wallet'        => $user->wallet ? [
-                'balance'      => (float) $user->wallet->balance,
+            'order_stats' => $orderStats,
+            'wallet' => $user->wallet ? [
+                'balance' => (float) $user->wallet->balance,
                 'balance_hold' => (float) $user->wallet->balance_hold,
             ] : null,
         ], __('global.received_successfully'));
@@ -117,13 +137,73 @@ class AdminSupplierController extends Controller
 
         $supplier->update([
             SupplierProfile::TRANS_COMMISSION => $request->boolean('trans_commission'),
-            SupplierProfile::TRANS_VAT        => $request->boolean('trans_vat'),
+            SupplierProfile::TRANS_VAT => $request->boolean('trans_vat'),
         ]);
 
         return success([
             'trans_commission' => (bool) $supplier->fresh()->{SupplierProfile::TRANS_COMMISSION},
-            'trans_vat'        => (bool) $supplier->fresh()->{SupplierProfile::TRANS_VAT},
+            'trans_vat' => (bool) $supplier->fresh()->{SupplierProfile::TRANS_VAT},
         ], __('admin.suppliers.formula_updated'));
+    }
+
+    /**
+     * تأیید درخواست سوپلایری — تنها مسیر اتصال نقش supplier
+     *
+     * نقش supplier روی resolve قیمت‌گذاری و فلگ‌های فرمول تسویه اثر دارد،
+     * بنابراین خود-انتسابی نیست (SyncUserRolesAction فقط پروفایل pending می‌سازد).
+     */
+    public function approve(User $user): JsonResponse
+    {
+        $profile = $user->supplier;
+
+        if (! $profile) {
+            return error(__('admin.suppliers.profile_not_found'), [], 404);
+        }
+
+        if ($profile->isApproved() && $user->hasRole('supplier')) {
+            return error(__('admin.suppliers.already_approved'), [], 409);
+        }
+
+        // STATUS عمداً fillable نیست — تغییر وضعیت فقط از همین مسیر ادمین مجاز است.
+        $profile->forceFill([SupplierProfile::STATUS => SupplierProfile::STATUS_APPROVED])->save();
+
+        if (! $user->hasRole('supplier')) {
+            $user->addRole('supplier');
+        }
+
+        activity()
+            ->performedOn($profile)
+            ->causedBy(auth()->user())
+            ->withProperties(['supplier_user_id' => $user->id])
+            ->log('درخواست سوپلایری تأیید شد.');
+
+        return success(['supplier_status' => SupplierProfile::STATUS_APPROVED], __('admin.suppliers.approved'));
+    }
+
+    /**
+     * رد درخواست سوپلایری — وضعیت rejected + جداکردن نقش (اگر متصل بود)
+     */
+    public function reject(User $user): JsonResponse
+    {
+        $profile = $user->supplier;
+
+        if (! $profile) {
+            return error(__('admin.suppliers.profile_not_found'), [], 404);
+        }
+
+        $profile->forceFill([SupplierProfile::STATUS => SupplierProfile::STATUS_REJECTED])->save();
+
+        if ($user->hasRole('supplier')) {
+            $user->removeRole('supplier');
+        }
+
+        activity()
+            ->performedOn($profile)
+            ->causedBy(auth()->user())
+            ->withProperties(['supplier_user_id' => $user->id])
+            ->log('درخواست سوپلایری رد شد.');
+
+        return success(['supplier_status' => SupplierProfile::STATUS_REJECTED], __('admin.suppliers.rejected'));
     }
 
     /**
@@ -134,7 +214,7 @@ class AdminSupplierController extends Controller
         abort_unless($user->hasRole('supplier'), 404, __('admin.suppliers.not_found'));
 
         $request->validate([
-            'status'   => ['nullable', 'string'],
+            'status' => ['nullable', 'string'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 

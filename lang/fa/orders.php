@@ -150,6 +150,7 @@ return [
     'reserved_cannot_cancel_before_expiry' => 'سفارشات رزرو شده تا پیش از پایان زمان انقضا قابل لغو نیستند.',
     'reserved_expired_auto_cancel'    => 'سفارشات رزرو شده منقضی، تنها توسط سیستم به صورت خودکار لغو می‌شوند.',
     'invalid_financial_calculation'   => 'محاسبه مالی سفارش معتبر نیست.',
+    'invalid_weight_snapshot'         => 'وزن ثبت‌شده سفارش معتبر نیست؛ عملیات مالی متوقف شد. با پشتیبانی تماس بگیرید.',
     'invalid_transaction_status'      => 'وضعیت جدید تراکنش نامعتبر است.',
     'debit_amount_must_be_positive'   => 'مبلغ برداشت باید بیشتر از صفر باشد.',
     'reserve_only_on_reserved_orders' => 'تنها سفارش‌های رزرو شده قابل تمدید هستند.',

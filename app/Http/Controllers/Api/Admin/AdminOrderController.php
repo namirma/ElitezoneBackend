@@ -116,6 +116,22 @@ class AdminOrderController extends Controller
             );
         }
 
+        // PENDING یعنی هنوز پرداخت نشده. PROCESSING آغاز پایپلاین پس-از-پرداخت است
+        // (سوپلایر سفارش را می‌بیند، آماده‌سازی/باسکول ممکن می‌شود) — بدون پرداخت
+        // واقعی هیچ لگ مالی ثبت نشده و مسیر پرداخت کاربر هم بعداً بسته می‌شود.
+        // این ترنزیشن فقط برای سفارشِ پرداخت‌شده مجاز است.
+        if (
+            $currentStatus === Order::STATUS_PENDING
+            && $newStatus === Order::STATUS_PROCESSING
+            && $order->{Order::PAYMENT_STATUS} !== Order::PAYMENT_PAID
+        ) {
+            return error(
+                __('admin.orders.cannot_process_unpaid'),
+                ['payment_status' => $order->{Order::PAYMENT_STATUS}],
+                422
+            );
+        }
+
         $order->update([Order::STATUS => $newStatus]);
 
         return success(null, __('admin.orders.status_updated'));

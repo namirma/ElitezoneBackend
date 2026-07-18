@@ -55,6 +55,23 @@ class ProcessWeighbridgeResultAction
                 return $this->buildAlreadyProcessedResponse($locked);
             }
 
+            // گارد وضعیت: باسکول فقط برای سفارشِ پرداخت‌شده در پایپلاین آماده‌سازی معناست.
+            // بدون این گارد، ثبت وزن روی سفارش PENDING/لغوشده، محاسبات را روی snapshot های
+            // مالیِ ثبت‌نشده (POO/PTS صفر) اجرا می‌کرد و وضعیت را به SHIPPED می‌پراند.
+            $weighableStatuses = [
+                Order::STATUS_PROCESSING,
+                Order::STATUS_PREPARING,
+                Order::STATUS_WAYBILL_ISSUED,
+            ];
+            if (
+                $locked->{Order::PAYMENT_STATUS} !== Order::PAYMENT_PAID
+                || ! in_array($locked->{Order::STATUS}, $weighableStatuses, true)
+            ) {
+                throw new \RuntimeException(__('weighbridge.errors.not_weighable', [
+                    'status' => $locked->{Order::STATUS},
+                ]));
+            }
+
             $locked->load('items', 'eliteYAR.badge');
 
             Log::channel('financial')->info("شروع پردازش باسکول سفارش {$locked->id}.");
@@ -79,13 +96,13 @@ class ProcessWeighbridgeResultAction
             $eliteYARGross = $this->vatRouter->route($locked, $result);
 
             $locked->forceFill([
-                Order::WEIGHT_AFTER_SCALE    => $actualWeight,
+                Order::WEIGHT_AFTER_SCALE => $actualWeight,
                 Order::WEIGHING_COMPLETED_AT => now(),
-                Order::STATUS                => Order::STATUS_SHIPPED,
-                Order::PAYMENT_OF_OWNER      => $result->newPOO,
-                Order::PAYMENT_TO_SUPPLIER   => $result->newPTS,
+                Order::STATUS => Order::STATUS_SHIPPED,
+                Order::PAYMENT_OF_OWNER => $result->newPOO,
+                Order::PAYMENT_TO_SUPPLIER => $result->newPTS,
                 Order::PAYMENT_TO_ELITE_YAR => $eliteYARGross,
-                Order::FINAL_AMOUNT          => $result->newPOO,
+                Order::FINAL_AMOUNT => $result->newPOO,
             ])->save();
 
             Log::channel('financial')->info("باسکول نهایی شد. وضعیت: {$status}");

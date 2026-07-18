@@ -6,13 +6,15 @@ use App\Http\Controllers\Api\Data\InventoryController;
 use App\Http\Controllers\Api\ListopherController;
 use App\Http\Controllers\Api\User\AccountSecurityController;
 use App\Http\Controllers\Api\User\AddressController;
+use App\Http\Controllers\Api\User\AvatarController;
+use App\Http\Controllers\Api\User\BadgeController;
 use App\Http\Controllers\Api\User\BeneficiaryController;
 use App\Http\Controllers\Api\User\CartController;
 use App\Http\Controllers\Api\User\CheckoutController;
-use App\Http\Controllers\Api\User\EliteYARRelationController;
 use App\Http\Controllers\Api\User\ContractorController;
 use App\Http\Controllers\Api\User\DashboardController;
 use App\Http\Controllers\Api\User\EduixController;
+use App\Http\Controllers\Api\User\EliteYARRelationController;
 use App\Http\Controllers\Api\User\EmployerController;
 use App\Http\Controllers\Api\User\EmployerInviteController;
 use App\Http\Controllers\Api\User\EngineerController;
@@ -35,7 +37,6 @@ use App\Http\Controllers\Api\User\WishlistController;
 use App\Http\Controllers\Payment\WalletPaymentController;
 use App\Http\Controllers\ProductController;
 use App\Http\Middleware\EnsureRoleIsSelected;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -49,9 +50,9 @@ use Illuminate\Support\Facades\Route;
 // ── Wallet payment + misc auth ────────────────────────────────────────────
 Route::middleware(['auth:sanctum'])->group(function () {
 
-    // درگاه پرداخت کیف پول
+    // درگاه پرداخت کیف پول — idempotency مثل pay-full (عملیات مالی، دابل‌کلیک‌پذیر)
     Route::post('payment/wallet', [WalletPaymentController::class, 'pay'])
-        ->middleware('throttle:financial')
+        ->middleware(['idempotency', 'throttle:financial'])
         ->name('payment.wallet');
 
     // جستجوی نویگیشن پروفایل
@@ -112,7 +113,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
         // Collaboration badge (proxied server-side from saze90.com — fixes the CORS that
         // broke the old direct frontend call). Returns { badge, is_pioneer, badges }.
-        Route::get('/badge', [\App\Http\Controllers\Api\User\BadgeController::class, 'show']);
+        Route::get('/badge', [BadgeController::class, 'show']);
 
         // Basic profile data
         Route::get('/', [ProfileController::class, 'getProfile'])->middleware('track:account_info');
@@ -125,18 +126,27 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/legal/fetch', [ProfileController::class, 'fetchLegalData']);
 
         Route::get('/role-options', [ProfileController::class, 'getRoleOptions']);
+
+        // توافق‌نامه‌ها — رسید پذیرش‌ها، فهرست نیازمند پذیرش مجدد، پذیرش فعال و PDF نسخه پذیرفته‌شده
+        Route::prefix('agreements')->controller(\App\Http\Controllers\AgreementController::class)->group(function () {
+            Route::get('/', 'myAcceptances');
+            Route::get('/pending', 'pending');
+            Route::post('/{slug}/accept', 'accept')->where('slug', '[a-z_]+');
+            Route::get('/{slug}/pdf', 'acceptedPdf')->where('slug', '[a-z_]+')->middleware('throttle:10,1');
+        });
         Route::get('/user-types', [AuthController::class, 'types']);
 
         // Avatar (profile picture)
-        Route::post('/avatar', [\App\Http\Controllers\Api\User\AvatarController::class, 'store']);
-        Route::delete('/avatar', [\App\Http\Controllers\Api\User\AvatarController::class, 'destroy']);
+        Route::post('/avatar', [AvatarController::class, 'store']);
+        Route::delete('/avatar', [AvatarController::class, 'destroy']);
 
         // Account security (password / mobile / email)
-        Route::post('/verify-email', [AccountSecurityController::class, 'setEmail']);
+        Route::post('/verify-email', [AccountSecurityController::class, 'setEmail'])->middleware('throttle:3,1');
         Route::post('/check-email-token', [AccountSecurityController::class, 'checkToken']);
-        // Email management (frontend contract)
-        Route::post('/email', [AccountSecurityController::class, 'setEmail']);              // add/change email + send verify link
-        Route::post('/email/resend', [AccountSecurityController::class, 'resendEmailVerification']);
+        // Email management (frontend contract) — throttle: هر فراخوانی یک ایمیل واقعی
+        // می‌فرستد؛ بدون سقف، کاربر لاگین‌شده می‌توانست هر آدرسی را bomb کند.
+        Route::post('/email', [AccountSecurityController::class, 'setEmail'])->middleware('throttle:3,1');              // add/change email + send verify link
+        Route::post('/email/resend', [AccountSecurityController::class, 'resendEmailVerification'])->middleware('throttle:3,1');
         Route::delete('/email', [AccountSecurityController::class, 'deleteEmail']);
         Route::post('/password/otp', [AccountSecurityController::class, 'changePasswordFirstAttempt']);          // step 1: send code
         Route::post('/password/verify', [AccountSecurityController::class, 'verifyPasswordOtp'])->middleware('throttle:otp-verify'); // step 2: verify code (non-consuming)
@@ -187,18 +197,19 @@ Route::middleware(['auth:sanctum'])->group(function () {
             // List endpoints (must come BEFORE wildcard /{order})
             Route::controller(OrderController::class)->group(function () {
 
-                // خرید برای خودم
+                // خرید برای خودم — defaults() به‌جای closure: روت‌های closure دار
+                // php artisan route:cache را در deploy می‌شکنند (Uses Closure).
                 Route::prefix('buy-myself')->group(function () {
-                    Route::get('/current', fn (Request $request) => app(OrderController::class)->myOrders($request, 'current'));
-                    Route::get('/delivered', fn (Request $request) => app(OrderController::class)->myOrders($request, 'delivered'));
-                    Route::get('/cancelled', fn (Request $request) => app(OrderController::class)->myOrders($request, 'cancelled'));
+                    Route::get('/current', 'myOrders')->defaults('statusGroup', 'current');
+                    Route::get('/delivered', 'myOrders')->defaults('statusGroup', 'delivered');
+                    Route::get('/cancelled', 'myOrders')->defaults('statusGroup', 'cancelled');
                 });
 
                 // خرید برای دیگران
                 Route::prefix('buy-others')->group(function () {
-                    Route::get('/current', fn (Request $request) => app(OrderController::class)->otherOrders($request, 'current'));
-                    Route::get('/delivered', fn (Request $request) => app(OrderController::class)->otherOrders($request, 'delivered'));
-                    Route::get('/cancelled', fn (Request $request) => app(OrderController::class)->otherOrders($request, 'cancelled'));
+                    Route::get('/current', 'otherOrders')->defaults('type', 'current');
+                    Route::get('/delivered', 'otherOrders')->defaults('type', 'delivered');
+                    Route::get('/cancelled', 'otherOrders')->defaults('type', 'cancelled');
                 });
 
                 Route::get('/', 'index')->middleware('track:orders');
@@ -334,10 +345,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // ──────────────────── Top-level authenticated misc ────────────────────
     Route::post('/listophers', [ListopherController::class, 'store']);
 
-    // Beneficiaries
+    // Beneficiaries — throttle:sms روی start (پیامک به شخص ثالث می‌فرستد) و
+    // throttle:otp-verify روی confirm (کد ۶ رقمی brute-force پذیر است)
     Route::prefix('beneficiaries')->group(function () {
-        Route::post('/start-verification', [BeneficiaryController::class, 'startVerification']);
-        Route::post('/confirm-verification', [BeneficiaryController::class, 'confirmVerification']);
+        Route::post('/start-verification', [BeneficiaryController::class, 'startVerification'])
+            ->middleware('throttle:sms');
+        Route::post('/confirm-verification', [BeneficiaryController::class, 'confirmVerification'])
+            ->middleware('throttle:otp-verify');
     });
 
     // Current user info

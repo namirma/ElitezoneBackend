@@ -54,8 +54,8 @@ class OrderPaymentController extends Controller
         } catch (Exception $e) {
             Log::error('Order full payment failed', [
                 'order_id' => $order->id,
-                'user_id'  => Auth::id(),
-                'error'    => $e->getMessage(),
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
             ]);
 
             return error(__('orders.payment_processing_error'), [], 500);
@@ -73,11 +73,13 @@ class OrderPaymentController extends Controller
                 'order' => new OrderResource($order->fresh(Order::resourceRelations())),
                 'fee_amount' => PayHoldFeeAction::fee(),
             ], __('orders.hold_fee_successful'));
+        } catch (InsufficientBalanceException $e) {
+            return $this->balanceError($e->available, $e->required);
         } catch (Exception $e) {
             Log::error('Hold fee payment failed', [
                 'order_id' => $order->id,
-                'user_id'  => Auth::id(),
-                'error'    => $e->getMessage(),
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
             ]);
 
             return error(__('orders.payment_processing_error'), [], 500);

@@ -3,12 +3,12 @@
 namespace App\Http\Resources\Financial;
 
 use App\Enums\Shared\StatusTone;
-use App\Models\WalletTransaction;
 use App\Http\Resources\BaseJsonResource;
+use App\Models\WalletTransaction;
 use Illuminate\Http\Request;
 
 /**
- * @mixin \App\Models\WalletTransaction
+ * @mixin WalletTransaction
  */
 class WalletTransactionResource extends BaseJsonResource
 {
@@ -18,19 +18,19 @@ class WalletTransactionResource extends BaseJsonResource
 
         $statusLabel = match ($statusKey) {
             WalletTransaction::STATUS_CONFIRMED => 'تایید شده',
-            WalletTransaction::STATUS_PENDING   => 'در انتظار تایید',
-            WalletTransaction::STATUS_FAILED    => 'ناموفق',
-            WalletTransaction::STATUS_REJECTED  => 'رد شده',
-            'hold'                              => 'رزرو شده (امانی)',
-            default                             => $statusKey,
+            WalletTransaction::STATUS_PENDING => 'در انتظار تایید',
+            WalletTransaction::STATUS_FAILED => 'ناموفق',
+            WalletTransaction::STATUS_REJECTED => 'رد شده',
+            'hold' => 'رزرو شده (امانی)',
+            default => $statusKey,
         };
 
         $typeText = match ($this->type) {
-            WalletTransaction::TYPE_DEPOSIT     => 'افزایش موجودی',
-            WalletTransaction::TYPE_WITHDRAW    => 'برداشت از کیف پول',
-            WalletTransaction::TYPE_FEE_HOLD    => 'سهم رزرو شده',
+            WalletTransaction::TYPE_DEPOSIT => 'افزایش موجودی',
+            WalletTransaction::TYPE_WITHDRAW => 'برداشت از کیف پول',
+            WalletTransaction::TYPE_FEE_HOLD => 'سهم رزرو شده',
             WalletTransaction::TYPE_FEE_RELEASE => 'آزادسازی سهم',
-            default                             => $this->type,
+            default => $this->type,
         };
 
         $meta = $this->meta ?? [];
@@ -42,31 +42,44 @@ class WalletTransactionResource extends BaseJsonResource
             : null;
 
         return [
-            'id'     => $this->id,
+            'id' => $this->id,
             'amount' => (string) $this->amount,
-            'type'   => $typeText,
+            'type' => $typeText,
 
             // status_info — ساختار یکپارچه
             'status_info' => [
-                'key'   => $statusKey,
+                'key' => $statusKey,
                 'label' => $statusLabel,
-                'tone'  => StatusTone::fromStatus($statusKey)->value,
+                'tone' => StatusTone::fromStatus($statusKey)->value,
             ],
             // حفظ فیلد قدیمی برای سازگاری عقبگرد
             'status' => $statusLabel,
 
             'description' => $this->description,
-            'order_id'    => $this->order_id,
+            'order_id' => $this->order_id,
             'receipt_data' => [
-                'number'        => $receiptInfo['receipt_number'] ?? null,
-                'bank'          => $receiptInfo['bank_name'] ?? null,
-                'date'          => $receiptInfo['payment_date'] ?? null,
-                'file_name'     => $displayFileName,
+                'number' => $receiptInfo['receipt_number'] ?? null,
+                'bank' => $receiptInfo['bank_name'] ?? null,
+                'date' => $receiptInfo['payment_date'] ?? null,
+                'file_name' => $displayFileName,
                 'download_link' => $downloadLink,
-                'image_url'     => $displayFileName,
+                'image_url' => $displayFileName,
             ],
-            'created_at'   => $this->created_at?->format('Y-m-d H:i:s'),
+            'created_at' => $this->created_at?->format('Y-m-d H:i:s'),
             'created_at_p' => $this->created_at ? verta($this->created_at)->format('Y/m/d') : null,
+
+            // صاحب تراکنش — فقط وقتی رابطه wallet لود شده باشد (لیست‌های ادمین).
+            // endpointهای کاربر عادی wallet را eager-load نمی‌کنند، پس این فیلد
+            // برای آن‌ها اصلاً در پاسخ ظاهر نمی‌شود.
+            'user' => $this->whenLoaded('wallet', function () {
+                $user = $this->wallet->user;
+
+                return $user ? [
+                    'id' => $user->id,
+                    'name' => $user->profile?->name,
+                    'mobile' => $user->mobile,
+                ] : null;
+            }),
         ];
     }
 }

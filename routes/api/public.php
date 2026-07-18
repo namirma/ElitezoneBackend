@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AgreementController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\QuestionController;
 use App\Http\Controllers\CustomerTypeController;
@@ -27,7 +28,9 @@ Route::post('/payment/result', [PaymentController::class, 'result']);
 Route::any('/payment/callback', [PaymentController::class, 'callback'])->name('payment.callback');
 
 // ── Search / Question (public) ────────────────────────────────────────────
-Route::get('/search', [SearchController::class, 'search']);
+// throttle: هر درخواست یک ردیف در جدول searches می‌نویسد — بدون سقف، endpoint
+// عمومی قابل flood بود و «جستجوهای محبوب» دستکاری می‌شد.
+Route::get('/search', [SearchController::class, 'search'])->middleware('throttle:30,1');
 Route::post('/new-question', [QuestionController::class, 'submitQuestion']);
 
 // ── Authentication ────────────────────────────────────────────────────────
@@ -70,6 +73,13 @@ Route::prefix('price-filters')->group(function () {
     Route::get('/categories', [PriceFilterController::class, 'getCategories']);
     Route::get('/types', [PriceFilterController::class, 'getFilterTypes']);
 });
+
+// توافق‌نامه‌های آنلاین — آخرین نسخه فعال برای صفحه پذیرش (متن + چک‌باکس‌ها + PDF)
+Route::get('/agreements/{slug}', [AgreementController::class, 'show'])
+    ->where('slug', '[a-z_]+');
+Route::get('/agreements/{slug}/pdf', [AgreementController::class, 'publicPdf'])
+    ->where('slug', '[a-z_]+')
+    ->middleware('throttle:10,1');
 
 Route::prefix('purchase-parameters')->group(function () {
     Route::get('/groups', [PurchaseParameterController::class, 'groups']);

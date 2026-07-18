@@ -252,25 +252,27 @@ class User extends Authenticatable
     public function agreements(): BelongsToMany
     {
         return $this->belongsToMany(Agreement::class, 'user_agreements')
-            ->withPivot(['accepted_at', 'ip_address', 'user_agent'])
+            ->withPivot([
+                'id', 'accepted_at', 'version', 'content_sha256', 'ip_address',
+                'user_agent', 'checked_items', 'acceptance_method', 'snapshot',
+            ])
             ->withTimestamps();
     }
 
     public function hasAcceptedLatestAgreement(string $slug): bool
     {
-
-        $latestAgreement = Agreement::query()
-            ->where(Agreement::SLUG, $slug)
-            ->active()
-            ->latest(Agreement::CREATED_AT)
-            ->first();
+        // منبع واحد «آخرین نسخه فعال» — tie-break با ID برای نسخه‌هایی که در یک
+        // ثانیه ساخته شده‌اند (latest(created_at) به‌تنهایی غیرقطعی بود).
+        $latestAgreement = Agreement::latestActiveForSlug($slug);
 
         if (! $latestAgreement) {
             return true;
         }
 
+        // ستون باید qualified باشد — کوئری pivot جوین user_agreements را دارد و
+        // «id» بدون پیشوند بین دو جدول مبهم است (SQLSTATE 1052).
         return $this->agreements()
-            ->where(Agreement::ID, $latestAgreement->{Agreement::ID})
+            ->where('agreements.'.Agreement::ID, $latestAgreement->{Agreement::ID})
             ->exists();
     }
 }

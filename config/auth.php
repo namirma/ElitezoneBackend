@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\User;
+
 return [
 
     /*
@@ -62,7 +64,7 @@ return [
     'providers' => [
         'users' => [
             'driver' => 'eloquent',
-            'model' => App\Models\User::class,
+            'model' => User::class,
         ],
 
         // 'users' => [
@@ -128,6 +130,19 @@ return [
     'otp_max_attempts' => env('OTP_MAX_ATTEMPTS', 5),
 
     'otp_lockout_minutes' => env('OTP_LOCKOUT_MINUTES', 10),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Password Reset Token Lifetime
+    |--------------------------------------------------------------------------
+    |
+    | After the forget-password OTP is verified, a one-time reset token is
+    | issued in its place. The token is only valid for this many minutes —
+    | an unlimited-lifetime token could be replayed long after a leak.
+    |
+    */
+
+    'password_reset_ttl_minutes' => env('PASSWORD_RESET_TTL_MINUTES', 15),
 
     /*
     |--------------------------------------------------------------------------

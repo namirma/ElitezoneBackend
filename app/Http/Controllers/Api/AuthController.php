@@ -19,6 +19,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Laravel\Sanctum\PersonalAccessToken;
 
 class AuthController extends Controller
@@ -52,6 +53,26 @@ class AuthController extends Controller
         Cache::forget("otp_lock:{$mobile}");
     }
 
+    /**
+     * کاربر توسط ادمین غیرفعال شده؟ (is_active = false)
+     * NULL (ردیف‌های بدون backfill) فعال تلقی می‌شود.
+     */
+    private function isDisabled(User $user): bool
+    {
+        return $user->{User::IS_ACTIVE} === false;
+    }
+
+    /**
+     * نرمال‌سازی شماره موبایل قبل از validate — دیتابیس فرمت کانونیکال 09 را
+     * نگه می‌دارد، پس رول exists باید روی همان فرمت اجرا شود نه ورودی خام.
+     */
+    private function normalizeUsername(Request $request): void
+    {
+        if (is_string($request->input('username'))) {
+            $request->merge(['username' => PhoneNumber::to09($request->input('username'))]);
+        }
+    }
+
     public function me(Request $request)
     {
         return success(new UserResource($request->user()));
@@ -64,6 +85,10 @@ class AuthController extends Controller
         $birthDate = str_replace('-', '', (string) $request->validated('birth_date'));
 
         $user = User::where(User::MOBILE, $mobile)->first();
+
+        if ($user && $this->isDisabled($user)) {
+            return error(__('auth.account_disabled'), [], 403);
+        }
 
         if ($user && ! empty($user->{User::NATIONAL_CODE})) {
             if ($user->{User::PASSWORD}) {
@@ -122,6 +147,10 @@ class AuthController extends Controller
         $user = User::where(User::MOBILE, $mobile)->first();
 
         if ($user) {
+            if ($this->isDisabled($user)) {
+                return error(__('auth.account_disabled'), [], 403);
+            }
+
             if (empty($user->{User::NATIONAL_CODE}) || empty($user->{User::BIRTH_DATE})) {
                 return error(
                     __('auth.profile_incomplete'),
@@ -163,7 +192,7 @@ class AuthController extends Controller
         // timing information via DB query latency. hash_equals() runs in constant time.
         $user = User::where(User::MOBILE, $mobile)->first();
 
-        $storedSecret  = (string) ($user?->{User::SECRET} ?? '');
+        $storedSecret = (string) ($user?->{User::SECRET} ?? '');
         $submittedCode = (string) ($request->validated('code') ?? '');
 
         if (
@@ -179,14 +208,26 @@ class AuthController extends Controller
 
         $this->clearOtpFailures($mobile);
 
+        if ($this->isDisabled($user)) {
+            return error(__('auth.account_disabled'), [], 403);
+        }
+
         $createdAt = $user->created_at instanceof Carbon ? $user->created_at : Carbon::parse($user->created_at);
         $isNewUser = $user->wasRecentlyCreated || $createdAt->diffInMinutes(now()) < 2;
 
         if ($request->has('forget_password') && $request->validated('forget_password')) {
-            $user->update([User::SECRET_EXPIRES_AT => null]);
+            // کد ۶ رقمی همین‌جا مصرف می‌شود و یک توکن بازنشانی مجزا با پنجره‌ی
+            // انقضای کوتاه جایگزین آن می‌شود — reset_token نباید نامحدود معتبر بماند.
+            $resetToken = Str::random(64);
+            $user->update([
+                User::SECRET => $resetToken,
+                User::SECRET_EXPIRES_AT => now()->addMinutes(
+                    (int) config('auth.password_reset_ttl_minutes', 15)
+                ),
+            ]);
 
             return success([
-                'reset_token' => $user->{User::SECRET},
+                'reset_token' => $resetToken,
             ], __('auth.code_verified_proceed_to_password'));
         }
 
@@ -250,6 +291,9 @@ class AuthController extends Controller
 
             return error(__('auth.no_user_found'), [], 404);
         }
+        if ($this->isDisabled($user)) {
+            return error(__('auth.account_disabled'), [], 403);
+        }
         if (empty($user->{User::NATIONAL_CODE}) || empty($user->{User::BIRTH_DATE})) {
             return error(
                 __('auth.profile_incomplete'),
@@ -280,14 +324,20 @@ class AuthController extends Controller
 
     public function forgetPassword(Request $request)
     {
+        $this->normalizeUsername($request);
+
         $request->validate([
             'username' => 'required|exists:users,mobile',
         ]);
 
-        $mobile = PhoneNumber::to09($request->input('username'));
+        $mobile = $request->input('username');
 
         $user = User::where(User::MOBILE, $mobile)->where(User::PASSWORD, '!=', null)->first();
         if (! is_null($user)) {
+            if ($this->isDisabled($user)) {
+                return error(__('auth.account_disabled'), [], 403);
+            }
+
             app(RequestOtpAction::class)->execute($user, $mobile, 3);
 
             return success([], 'auth.forget_password_code_sent_successfully');
@@ -298,13 +348,17 @@ class AuthController extends Controller
 
     public function changePassword(Request $request)
     {
+        // نرمال‌سازی پیش از validate — رول exists روی ورودی خام (+98/98/0098)
+        // شکست می‌خورد در حالی که کاربر واقعاً وجود دارد.
+        $this->normalizeUsername($request);
+
         $request->validate([
             'username' => 'required|exists:users,mobile',
             'code' => 'required',
             User::PASSWORD => 'required|confirmed',
         ]);
 
-        $mobile = PhoneNumber::to09($request->input('username'));
+        $mobile = $request->input('username');
         if ($this->isOtpLocked($mobile)) {
             return error(__('auth.too_many_otp_attempts'), [], 429);
         }
@@ -321,12 +375,20 @@ class AuthController extends Controller
             return error(__('auth.invalid_reset_token'), [], 400);
         }
         $this->clearOtpFailures($mobile);
-        if ($user->{User::SECRET_EXPIRES_AT} !== null) {
-            return error(__('auth.code_not_verified_yet'), [], 400);
+
+        // توکن بازنشانی پنجره‌ی انقضای خودش را دارد (verifyCode آن را ست می‌کند)؛
+        // بعد از انقضا باید فرایند فراموشی رمز از ابتدا طی شود.
+        if (
+            $user->{User::SECRET_EXPIRES_AT} === null
+            || Carbon::parse($user->{User::SECRET_EXPIRES_AT})->isPast()
+        ) {
+            return error(__('auth.reset_token_expired'), [], 400);
         }
+
         $user->update([
             User::PASSWORD => Hash::make($request->input('password')),
             User::SECRET => null,
+            User::SECRET_EXPIRES_AT => null,
         ]);
         Auth::login($user);
         $user->tokens()->delete();
@@ -337,6 +399,8 @@ class AuthController extends Controller
 
     public function sendVerificationCode(Request $request)
     {
+        $this->normalizeUsername($request);
+
         $validated = $request->validate([
             'username' => 'required|exists:users,mobile',
         ], [
@@ -345,6 +409,9 @@ class AuthController extends Controller
         ]);
 
         $user = User::where([User::MOBILE => $validated['username']])->first();
+        if ($user && $this->isDisabled($user)) {
+            return error(__('auth.account_disabled'), [], 403);
+        }
         if (isset($user->{User::SECRET_EXPIRES_AT}) && ! Carbon::parse($user->{User::SECRET_EXPIRES_AT})->isPast()) {
             return success([], __('auth.code_sent_recently'), 202);
         }

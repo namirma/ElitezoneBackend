@@ -49,6 +49,15 @@ class SupplierProfile extends Model
     /** +VAT: مالیات بر ارزش افزوده روی هزینه حمل اعمال می‌شود؟ (پیش‌فرض: بله) */
     const TRANS_VAT = 'trans_vat';
 
+    /** وضعیت احراز سوپلایر — نقش supplier فقط پس از تأیید ادمین متصل می‌شود. */
+    const STATUS = 'status';
+
+    const STATUS_PENDING = 'pending';
+
+    const STATUS_APPROVED = 'approved';
+
+    const STATUS_REJECTED = 'rejected';
+
     const CREATED_AT = 'created_at';
 
     const UPDATED_AT = 'updated_at';
@@ -73,12 +82,19 @@ class SupplierProfile extends Model
         self::COMPANY,
         self::TRANS_COMMISSION,
         self::TRANS_VAT,
+        // STATUS عمداً fillable نیست — فقط ادمین (approve/reject با forceFill) آن را
+        // تغییر می‌دهد؛ mass-assignment از سمت کاربر نباید بتواند خودش را approved کند.
     ];
+
+    public function isApproved(): bool
+    {
+        return $this->{self::STATUS} === self::STATUS_APPROVED;
+    }
 
     /** @var array<string, string> */
     protected $casts = [
         self::TRANS_COMMISSION => 'boolean',
-        self::TRANS_VAT        => 'boolean',
+        self::TRANS_VAT => 'boolean',
     ];
 
     public function user(): BelongsTo

@@ -16,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * پنل ادمین — مدیریت واریزهای مستقیم بانکی (شناسه واریز / پادیوم)
@@ -28,7 +29,7 @@ use Illuminate\Support\Facades\DB;
 class AdminPodiumDepositController extends Controller
 {
     public function __construct(
-        protected DepositStatementService  $statementService,
+        protected DepositStatementService $statementService,
         protected ProcessPodiumDepositAction $processAction,
     ) {}
 
@@ -56,20 +57,20 @@ class AdminPodiumDepositController extends Controller
                 'walletTransaction:id,amount,status,created_at',
             ])
             // فیلتر وضعیت
-            ->when($status === 'matched',   fn ($q) => $q->whereNotNull(PodiumDepositRecord::PROCESSED_AT))
+            ->when($status === 'matched', fn ($q) => $q->whereNotNull(PodiumDepositRecord::PROCESSED_AT))
             ->when($status === 'unmatched', fn ($q) => $q->whereNull(PodiumDepositRecord::PROCESSED_AT))
             // فیلتر تاریخ
             ->when($request->filled('from'), fn ($q) => $q->whereDate('created_at', '>=', $request->input('from')))
-            ->when($request->filled('to'),   fn ($q) => $q->whereDate('created_at', '<=', $request->input('to')))
+            ->when($request->filled('to'), fn ($q) => $q->whereDate('created_at', '<=', $request->input('to')))
             // جستجو
             ->when($request->filled('search'), function ($q) use ($request) {
                 $term = $request->input('search');
                 $q->where(function ($q2) use ($term) {
-                    $q2->where(PodiumDepositRecord::NATIONAL_CODE,  'like', "%{$term}%")
+                    $q2->where(PodiumDepositRecord::NATIONAL_CODE, 'like', "%{$term}%")
                         ->orWhere(PodiumDepositRecord::SHENASEH_VARIZ, 'like', "%{$term}%")
-                        ->orWhere(PodiumDepositRecord::DOC_NUMBER,     'like', "%{$term}%")
-                        ->orWhere(PodiumDepositRecord::SENDER_IBAN,    'like', "%{$term}%")
-                        ->orWhere(PodiumDepositRecord::SENDER_NAME,    'like', "%{$term}%");
+                        ->orWhere(PodiumDepositRecord::DOC_NUMBER, 'like', "%{$term}%")
+                        ->orWhere(PodiumDepositRecord::SENDER_IBAN, 'like', "%{$term}%")
+                        ->orWhere(PodiumDepositRecord::SENDER_NAME, 'like', "%{$term}%");
                 });
             })
             ->latest()
@@ -77,13 +78,13 @@ class AdminPodiumDepositController extends Controller
 
         // آمار کلی (بدون فیلتر تاریخ)
         $stats = [
-            'total'     => PodiumDepositRecord::count(),
-            'matched'   => PodiumDepositRecord::whereNotNull(PodiumDepositRecord::PROCESSED_AT)->count(),
+            'total' => PodiumDepositRecord::count(),
+            'matched' => PodiumDepositRecord::whereNotNull(PodiumDepositRecord::PROCESSED_AT)->count(),
             'unmatched' => PodiumDepositRecord::whereNull(PodiumDepositRecord::PROCESSED_AT)->count(),
         ];
 
         return success([
-            'stats'   => $stats,
+            'stats' => $stats,
             'records' => $records,
         ], 'سوابق واریز مستقیم بانکی دریافت شد');
     }
@@ -108,32 +109,32 @@ class AdminPodiumDepositController extends Controller
         $minutes = (int) $request->input('minutes', 60);
         $minutes = max(1, min($minutes, 10080)); // بین ۱ دقیقه تا ۷ روز
 
-        $to   = Carbon::now();
+        $to = Carbon::now();
         $from = $to->copy()->subMinutes($minutes);
 
         // تبدیل به شمسی برای API پادیوم
         $fromJalali = Verta::instance($from)->format('Y/m/d');
-        $fromTime   = $from->format('H:i:s');
-        $toJalali   = Verta::instance($to)->format('Y/m/d');
-        $toTime     = $to->format('H:i:s');
+        $fromTime = $from->format('H:i:s');
+        $toJalali = Verta::instance($to)->format('Y/m/d');
+        $toTime = $to->format('H:i:s');
 
         // دریافت صورت‌حساب از پادیوم
         try {
             $deposits = $this->statementService->getIncomingDeposits(
                 fromDate: $fromJalali,
-                toDate:   $toJalali,
+                toDate: $toJalali,
                 fromTime: $fromTime,
-                toTime:   $toTime,
+                toTime: $toTime,
             );
         } catch (\Throwable $e) {
             return error(__('admin.podium.connection_error'), [], 503);
         }
 
         $totalIncoming = count($deposits);
-        $newMatched    = 0;
-        $newUnmatched  = 0;
-        $skipped       = 0;
-        $errors        = [];
+        $newMatched = 0;
+        $newUnmatched = 0;
+        $skipped = 0;
+        $errors = [];
 
         foreach ($deposits as $statement) {
             $docNumber = (string) ($statement['DocNumber'] ?? '');
@@ -155,25 +156,31 @@ class AdminPodiumDepositController extends Controller
 
                 $matched ? $newMatched++ : $newUnmatched++;
             } catch (\Throwable $e) {
+                // جزئیات کامل فقط در لاگ — پیام خام exception به کلاینت برنمی‌گردد.
+                Log::channel('financial')->error('Podium deposit statement processing failed', [
+                    'doc_number' => $docNumber ?: '-',
+                    'error' => $e->getMessage(),
+                ]);
+
                 $errors[] = [
                     'doc_number' => $docNumber ?: '-',
-                    'error'      => $e->getMessage(),
+                    'error' => __('admin.podium.statement_process_failed'),
                 ];
             }
         }
 
         return success([
             'window' => [
-                'from'    => "{$fromJalali} {$fromTime}",
-                'to'      => "{$toJalali} {$toTime}",
+                'from' => "{$fromJalali} {$fromTime}",
+                'to' => "{$toJalali} {$toTime}",
                 'minutes' => $minutes,
             ],
             'summary' => [
                 'total_incoming' => $totalIncoming,
-                'new_matched'    => $newMatched,
-                'new_unmatched'  => $newUnmatched,
-                'skipped'        => $skipped,
-                'errors'         => count($errors),
+                'new_matched' => $newMatched,
+                'new_unmatched' => $newUnmatched,
+                'skipped' => $skipped,
+                'errors' => count($errors),
             ],
             'errors' => $errors,
         ], "polling اجرا شد — {$newMatched} تراکنش جدید شارژ کیف‌پول شد");
@@ -201,7 +208,7 @@ class AdminPodiumDepositController extends Controller
      */
     public function credit(Request $request, PodiumDepositRecord $record): JsonResponse
     {
-        // ── Guard: واریز قبلاً پردازش شده ──────────────────────────────────
+        // ── Guard اولیه: واریز قبلاً پردازش شده (fail fast، بدون قفل) ─────────
         if ($record->{PodiumDepositRecord::PROCESSED_AT} !== null) {
             return error(__('admin.podium_already_credited'), [], 422);
         }
@@ -209,16 +216,29 @@ class AdminPodiumDepositController extends Controller
         // ── اعتبارسنجی ورودی ────────────────────────────────────────────────
         $validated = $request->validate([
             'user_id' => ['required', 'integer', 'exists:users,id'],
-            'note'    => ['nullable', 'string', 'max:255'],
+            'note' => ['nullable', 'string', 'max:255'],
         ]);
 
         $user = User::findOrFail($validated['user_id']);
         $adminNote = $validated['note'] ?? null;
-        $amount    = (int) $record->{PodiumDepositRecord::CREDITOR_AMOUNT};
 
         // ── شارژ کیف‌پول (transaction + lock) ──────────────────────────────
         // WalletFunded باید بعد از commit dispatch شود، پس $txn را از transaction بیرون می‌آوریم.
-        $txn = DB::transaction(function () use ($record, $user, $amount, $adminNote) {
+        $txn = DB::transaction(function () use ($record, $user, $adminNote) {
+            // Re-fetch + re-check رکورد زیر قفل ردیف. گارد بالا روی مدل قفل‌نشده و
+            // بیرون از تراکنش اجرا می‌شود؛ روت‌های ادمین idempotency middleware
+            // ندارند، پس دابل‌کلیک یا دو ادمین همزمان می‌توانستند هر دو از آن گارد
+            // عبور کنند و کیف‌پول دو بار شارژ شود (همان الگوی ProcessTransactionAction).
+            $lockedRecord = PodiumDepositRecord::whereKey($record->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $lockedRecord || $lockedRecord->{PodiumDepositRecord::PROCESSED_AT} !== null) {
+                return null; // قبلاً توسط درخواست موازی شارژ شده — هرگز دوباره credit نکن
+            }
+
+            $amount = (int) $lockedRecord->{PodiumDepositRecord::CREDITOR_AMOUNT};
+
             $wallet = Wallet::where(Wallet::USER_ID, $user->id)
                 ->lockForUpdate()
                 ->firstOrCreate(
@@ -231,40 +251,47 @@ class AdminPodiumDepositController extends Controller
             ]);
 
             $walletTxn = $wallet->transactions()->create([
-                WalletTransaction::AMOUNT      => $amount,
-                WalletTransaction::TYPE        => WalletTransaction::TYPE_DEPOSIT,
-                WalletTransaction::STATUS      => WalletTransaction::STATUS_CONFIRMED,
+                WalletTransaction::AMOUNT => $amount,
+                WalletTransaction::TYPE => WalletTransaction::TYPE_DEPOSIT,
+                WalletTransaction::STATUS => WalletTransaction::STATUS_CONFIRMED,
                 WalletTransaction::DESCRIPTION => $description,
-                WalletTransaction::META        => [
-                    'payment_method'       => WalletTransaction::METHOD_BANK_TRANSFER,
-                    'source'               => 'podium_admin_credit',
-                    'doc_number'           => $record->{PodiumDepositRecord::DOC_NUMBER},
-                    'matched_by'           => PodiumDepositRecord::MATCHED_BY_ADMIN,
+                WalletTransaction::META => [
+                    'payment_method' => WalletTransaction::METHOD_BANK_TRANSFER,
+                    'source' => 'podium_admin_credit',
+                    'doc_number' => $lockedRecord->{PodiumDepositRecord::DOC_NUMBER},
+                    'matched_by' => PodiumDepositRecord::MATCHED_BY_ADMIN,
                     'credited_by_admin_id' => Auth::id(),
-                    'admin_note'           => $adminNote,
+                    'admin_note' => $adminNote,
                 ],
             ]);
 
             $wallet->increment(Wallet::BALANCE, $amount);
 
-            $record->update([
-                PodiumDepositRecord::USER_ID       => $user->id,
+            $lockedRecord->update([
+                PodiumDepositRecord::USER_ID => $user->id,
                 PodiumDepositRecord::WALLET_TXN_ID => $walletTxn->id,
-                PodiumDepositRecord::MATCHED_BY    => PodiumDepositRecord::MATCHED_BY_ADMIN,
-                PodiumDepositRecord::PROCESSED_AT  => now(),
-                PodiumDepositRecord::NOTE          => $adminNote ?? 'شارژ دستی توسط ادمین',
+                PodiumDepositRecord::MATCHED_BY => PodiumDepositRecord::MATCHED_BY_ADMIN,
+                PodiumDepositRecord::PROCESSED_AT => now(),
+                PodiumDepositRecord::NOTE => $adminNote ?? 'شارژ دستی توسط ادمین',
             ]);
 
             return $walletTxn;
         });
 
+        // درخواست موازی زودتر شارژ کرده — idempotent، بدون credit دوم.
+        if ($txn === null) {
+            return error(__('admin.podium_already_credited'), [], 422);
+        }
+
         WalletFunded::dispatch($user, $txn);
 
+        $amount = (int) $txn->{WalletTransaction::AMOUNT};
+
         return success([
-            'user_id'        => $user->id,
-            'amount_rials'   => $amount,
-            'amount_tomans'  => (int) ($amount / 10),
-            'doc_number'     => $record->{PodiumDepositRecord::DOC_NUMBER},
+            'user_id' => $user->id,
+            'amount_rials' => $amount,
+            'amount_tomans' => (int) ($amount / 10),
+            'doc_number' => $record->{PodiumDepositRecord::DOC_NUMBER},
         ], __('admin.podium_credit_success'));
     }
 }

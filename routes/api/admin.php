@@ -116,10 +116,12 @@ Route::middleware(['auth:sanctum', 'role.admin'])->prefix('admin')->group(functi
         Route::post('/{user}/unverify-elite-yar', 'unverifyEliteYAR');
     });
 
-    // Suppliers — مدیریت سوپلایرها
+    // Suppliers — مدیریت سوپلایرها (+ صف تأیید درخواست‌های سوپلایری)
     Route::controller(AdminSupplierController::class)->prefix('suppliers')->group(function () {
         Route::get('/', 'index');
         Route::get('/{user}', 'show');
+        Route::post('/{user}/approve', 'approve'); // اتصال نقش supplier — تنها مسیر مجاز
+        Route::post('/{user}/reject', 'reject');
         Route::put('/{user}/formula', 'updateFormula');
         Route::get('/{user}/orders', 'orders');
     });
@@ -132,6 +134,9 @@ Route::middleware(['auth:sanctum', 'role.admin'])->prefix('admin')->group(functi
         Route::post('/{order}/status', 'changeStatus');
         // Doc P — فاکتور مودیان سیستم (سازه → خریدار)، آزادسازی WVAT hold
         Route::post('/{order}/system-moadian-invoice', 'submitSystemMoadianInvoice');
+        // ثبت وزن باسکول — مسیر استاندارد زیر /orders (هم‌خانواده با بقیه عملیات سفارش)
+        Route::post('/{order}/weighbridge', [OrderWeighbridgeController::class, 'submitWeight'])
+            ->name('admin.orders.weighbridge.submit');
     });
 
     // Tickets — مدیریت تیکت‌های پشتیبانی
@@ -336,7 +341,8 @@ Route::middleware(['auth:sanctum', 'role.admin'])->prefix('admin')->group(functi
         Route::delete('/{priceAdjustment}', 'destroy');
     });
 
-    // Weighbridge (note: at /admin root, not nested under /orders)
+    // Legacy alias — مسیر قدیمی باسکول در ریشه /admin؛ برای سازگاری فرانت فعلی
+    // نگه داشته شده. مسیر استاندارد: POST /admin/orders/{order}/weighbridge
     Route::post('/{order}/weighbridge', [OrderWeighbridgeController::class, 'submitWeight'])
-        ->name('admin.orders.weighbridge.submit');
+        ->whereNumber('order');
 });

@@ -8,8 +8,12 @@ use App\Http\Middleware\CanSeeTicket;
 use App\Http\Middleware\Cors;
 use App\Http\Middleware\EncryptCookies;
 use App\Http\Middleware\EnsureRoleIsSelected;
+use App\Http\Middleware\EnsureUserIsActive;
+use App\Http\Middleware\EnsureUserIsAdmin;
+use App\Http\Middleware\EnsureUserIsEmployer;
 use App\Http\Middleware\EnsureUserIsExpert;
 use App\Http\Middleware\Idempotency;
+use App\Http\Middleware\OptionalSanctum;
 use App\Http\Middleware\PreventRequestsDuringMaintenance;
 use App\Http\Middleware\RedirectIfAuthenticated;
 use App\Http\Middleware\Sanitizer;
@@ -77,6 +81,9 @@ class Kernel extends HttpKernel
             SecurityHeaders::class,
             EnsureFrontendRequestsAreStateful::class,
             ThrottleRequests::class.':api',
+            // کاربر غیرفعال‌شده (is_active=false) با هیچ توکنی نباید سرویس بگیرد —
+            // بدون این، toggleStatus ادمین صرفاً یک فلگ بی‌اثر بود.
+            EnsureUserIsActive::class,
             SubstituteBindings::class,
             // EnsureRoleIsSelected is applied per-route in routes/api.php (place/checkout
             // require it; profile/role-selection explicitly opts out). Not global.
@@ -105,13 +112,13 @@ class Kernel extends HttpKernel
         'cors' => Cors::class,
         'SecurityHeaders' => SecurityHeaders::class,
         'attach.price.category' => AttachActivePriceCategory::class,
-        'role.admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
+        'role.admin' => EnsureUserIsAdmin::class,
         'role.expert' => EnsureUserIsExpert::class,
-        'role.employer' => \App\Http\Middleware\EnsureUserIsEmployer::class,
+        'role.employer' => EnsureUserIsEmployer::class,
         'track' => TrackDashboardUsage::class,
         'idempotency' => Idempotency::class,
         'role.selected' => EnsureRoleIsSelected::class,
         'can-see-ticket' => CanSeeTicket::class,
-        'optional.sanctum' => \App\Http\Middleware\OptionalSanctum::class,
+        'optional.sanctum' => OptionalSanctum::class,
     ];
 }

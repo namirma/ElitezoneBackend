@@ -16,6 +16,13 @@ class OrderSurvey extends Model
 
     public const USER_ID = 'user_id';
 
+    /** نوع نظرسنجی — سند S (خریدار) یا سند T (الیت یار) طبق سند طراحی. */
+    public const TYPE = 'type';
+
+    public const TYPE_BUYER = 'buyer';
+
+    public const TYPE_ELITE_YAR = 'elite_yar';
+
     public const RATING = 'rating';
 
     public const COMMENT = 'comment';
@@ -27,6 +34,7 @@ class OrderSurvey extends Model
     protected $fillable = [
         self::ORDER_ID,
         self::USER_ID,
+        self::TYPE,
         self::RATING,
         self::COMMENT,
     ];

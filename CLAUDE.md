@@ -382,7 +382,7 @@ All financial constants live in `config/financial.php` — **never hardcode amou
 | `financial.hold_fee` | `HOLD_FEE_RIALS` | `50_000_000` | Fee to extend a reservation (5M Tomans). `PayHoldFeeAction` debits WO **and** credits WSSG (Saze) so the ledger stays balanced — double-entry, never a bare debit |
 | `financial.system_user_id` | `FINANCIAL_SYSTEM_USER_ID` | `1` | User ID of the platform's central "Saze" (WSSG) wallet |
 | `financial.vat_user_id` | `FINANCIAL_VAT_USER_ID` | *(falls back to system_user_id)* | User ID of the dedicated VAT escrow (WVAT) wallet; set in .env once a separate VAT user is created |
-| `financial.pending_order_ttl_hours` | `PENDING_ORDER_TTL_HOURS` | `2` | Hours before an unpaid PENDING order auto-cancels (`CheckReservationExpiryJob`) |
+| `financial.pending_order_ttl_hours` | `PENDING_ORDER_TTL_HOURS` | `2` | Hours before an unpaid PENDING order auto-cancels (`orders:cancel-expired` — `CancelExpiredOrders`) |
 | `financial.reservation_validity_hours` | `RESERVATION_VALIDITY_HOURS` | `2` | Hours a paid reservation stays valid before it must be completed/extended |
 | `financial.hold_fee_extension_hours` | `HOLD_FEE_EXTENSION_HOURS` | `24` | Hours that paying the hold fee extends a reservation (`PayHoldFeeAction::extensionHours()`) |
 | `financial.deposit_min` | `DEPOSIT_MIN_RIALS` | `10_000` | Min per wallet deposit (read by `WalletDepositRequest`) |
@@ -730,6 +730,21 @@ Dispatch flow:
 
 Users can have roles: `admin`, `engineer`, `contractor`, `employer`, `supplier`. Each role has a corresponding profile model (EngineerProfile, ContractorProfile, etc.) linked to the User. Role selection happens in `ProfileController::setUserType`.
 
+**Supplier role is admin-gated (never self-assignable).** Selecting supplier in
+`setUserType` only creates a `SupplierProfile` with `status = pending`
+(`supplier_profiles.status`: pending/approved/rejected; NOT in `$fillable` — admin
+actions change it via `forceFill()`). The Laratrust `supplier` role — which drives
+pricing resolution and the settlement formula flags — is attached **only** by
+`AdminSupplierController::approve` (`POST /admin/suppliers/{user}/approve`;
+`/reject` sets rejected + detaches the role). `SyncUserRolesAction` re-attaches the
+role without re-approval only when the profile is already `approved`. Never add an
+`addRole('supplier')` call on a user-reachable path.
+
+**Expert role removal is non-destructive for records.** `SyncUserRolesAction` no
+longer deletes `eduixRecords`/`jobExperiences` when the expert role is dropped —
+deleting them was irreversible (approved records + attached files, with the files
+orphaned on disk). They stay dormant and reappear if the user re-selects expert.
+
 **UserType slug gotcha:** the technical-elite yar `user_types` row is seeded with slug
 **`expert`** (`UserTypeSeeder`), not `consultant`. `EngineerController`/`ContractorController`
 auto-attach the engineer/contractor role only when `user.type_id` matches the `expert` type —
@@ -750,14 +765,17 @@ querying `slug = 'consultant'` (the old bug) returned null and never attached th
 Jobs/
   Analytics/    — CalculateCustomerRfm, LogProductView, PredictInventoryNeeds,
                   RollupProductViewsJob
-  Financial/    — CheckSupplierBalancesJob
-  Notification/ — SendSmsJob
-  Order/        — CheckReservationExpiryJob
+  Financial/    — CheckSupplierBalancesJob, PollPodiumDepositsJob
+  Notification/ — SendSmsJob, SendInviteSmsJob
 ```
+
+> `Order/CheckReservationExpiryJob` was DELETED — it was dead code with zero call
+> sites; expired-order cancellation actually runs via the `orders:cancel-expired`
+> artisan command (`Console/Commands/CancelExpiredOrders`, scheduled every minute).
 
 Scheduled jobs (crons, wired in `Console/Kernel.php`) — **all** use
 `withoutOverlapping()->onOneServer()`:
-- `Order/CheckReservationExpiryJob` — cancels expired reservations
+- `orders:cancel-expired` command — cancels expired pending/reserved orders
 - `Financial/CheckSupplierBalancesJob` — polls `supplier_debt_pending = true` orders;
   when supplier balance ≥ debt, reclaims it and releases buyer's HOLD refund to AVAILABLE
 - `Analytics/CalculateCustomerRfm` — customer segmentation analytics (03:00)
@@ -939,7 +957,7 @@ Performance-critical indexes added across multiple migrations:
 |---|---|---|---|
 | `orders` | `orders_status_idx` | `2026_05_23_*` | scope queries (`current`/`delivered`/`cancelled`) |
 | `orders` | `orders_payment_status_idx` | `2026_05_23_*` | admin filtering |
-| `orders` | `orders_reservation_expires_at_idx` | `2026_05_23_*` | `CheckReservationExpiryJob` cron |
+| `orders` | `orders_reservation_expires_at_idx` | `2026_05_23_*` | `orders:cancel-expired` cron |
 | `orders` | `orders_placer_status_idx` (composite) | `2026_05_23_*` | "my orders" lists |
 | `users` | `users_national_code_idx` | `2026_05_23_*` | admin back-office search |
 | `wallet_transactions` | `wt_order_type_status_idx` (composite) | `2026_06_22_000000_*` | financial report filters |
@@ -1268,6 +1286,16 @@ order-financial escrow values `FinancialCodes::STATUS_HOLD = 'hold'` /
 
 ### Security & OTP Hardening (recent)
 
+- **Password-reset tokens are rotated + short-lived.** `verifyCode` (forget-password
+  path) consumes the 6-digit OTP and replaces it with a random 64-char reset token
+  valid for `config('auth.password_reset_ttl_minutes')` (default 15). `changePassword`
+  rejects expired tokens (`auth.reset_token_expired`) and clears both `secret` and
+  `secret_expires_at` on use. Never return the raw OTP as the reset token or issue a
+  token without an expiry.
+- **Auth endpoints normalise the mobile before validation.** `forgetPassword`,
+  `changePassword`, and `sendVerificationCode` call `normalizeUsername()`
+  (`PhoneNumber::to09`) *before* the `exists:users,mobile` rule — validating the raw
+  input rejected legitimate `+98…`/`98…`/`0098…` forms.
 - **OTP is single-use + lockout-protected.** `verifyCode`, `setPassword`, and
   `confirmChangeMobile` invalidate `users.secret`/`secret_expires_at` the moment a code
   is consumed (no replay inside the expiry window) and compare with `hash_equals`. A
@@ -1293,7 +1321,26 @@ order-financial escrow values `FinancialCodes::STATUS_HOLD = 'hold'` /
   not-yet-committed row. Keep the interface when adding events.
 - **Admin order status is a state machine.** `AdminOrderController::changeStatus` only allows
   whitelisted forward transitions (no `pending → delivered` jumps); cancellation still routes
-  through `CancelOrderAction`.
+  through `CancelOrderAction`. The `pending → processing` transition additionally requires
+  `payment_status = paid` — PENDING is pre-payment and PROCESSING starts the post-payment
+  pipeline, so moving an unpaid order forward would let it reach the supplier/weighbridge
+  with zero ledger entries.
+- **`users.is_active` is enforced globally.** `EnsureUserIsActive` sits in the `api`
+  middleware group (Kernel) and 403s any request whose sanctum user has `is_active === false`
+  (NULL counts as active). `AdminUserController::toggleStatus` revokes all Sanctum tokens on
+  deactivation and refuses self-deactivation; every `AuthController` login/OTP path also
+  rejects disabled users (`auth.account_disabled`). Never remove the middleware — without it
+  the flag is decorative.
+- **Podium manual credit is race-guarded.** `AdminPodiumDepositController::credit` re-fetches
+  the `PodiumDepositRecord` with `lockForUpdate` INSIDE the `DB::transaction` and re-checks
+  `processed_at` before crediting (the pre-check outside the lock is only fail-fast). Admin
+  routes have no idempotency middleware, so this in-transaction guard is the only thing
+  preventing a double wallet credit — same pattern as `ProcessTransactionAction`. Pinned by
+  `Tests\Feature\Admin\AdminHardeningTest`.
+- **Admin list endpoints return Resources, never raw paginators.** `AdminFinancialController`
+  and `AdminSearchController::searchTransactions` wrap in `OrderResource` /
+  `WalletTransactionResource`; the transaction resource exposes the owner block only
+  `whenLoaded('wallet')` (admin lists eager-load it; user endpoints don't).
 - **Idempotency middleware** keys guests by IP (`guest:<ip>`, not a shared `guest`) and caches
   only safe response headers (never `Set-Cookie`/auth headers).
 - **`DebugController` routes are non-production only** (wrapped in `! app()->environment('production')`);
@@ -1336,6 +1383,59 @@ were created precisely to eliminate the cross-controller call that existed betwe
 ---
 
 ## Recently Added Subsystems
+
+### Order surveys — two independent documents (S / T)
+
+`order_surveys.type` (`OrderSurvey::TYPE_BUYER = 'buyer'` / `TYPE_ELITE_YAR = 'elite_yar'`,
+unique `(order_id, type)`) implements spec docs **S (buyer survey)** and **T (elite yar
+survey)** as independent records — submitting one never blocks the other.
+`OrderSurveyController::resolveSurveyType()` maps the caller: the order's
+`elite_yar_user_id` (even when they are also the placer, i.e. buy-for-others) files **T**;
+placer/beneficiary files **S**; anyone else is 403. `orders.survey_status =
+SURVEY_COMPLETED` keeps its legacy meaning — "buyer survey done" — and is set **only**
+by the buyer-type submission. Pinned by `Order/OrderSurveyTypesTest`.
+
+### Online agreements — versioned, hash-bound, append-only acceptance
+
+Implements the official «دستورالعمل پیاده‌سازی توافق‌نامه آنلاین الیت یار» (docx v1.0).
+Five canonical slugs (constants on `Agreement`): `elitezone_terms`, `privacy_policy`,
+`elite_yar_terms` (full 18-article legal text + the 8 mandatory checkboxes CHK-01..08 —
+naming is **الیت یار**, the product term for مشاور همراه خرید), `employer_terms`,
+`supplier_terms`. Seeded by `AgreementSeeder` (registered in `DatabaseSeeder`) —
+**idempotent per (slug, version)**; a published version's text must NEVER be edited:
+changing legal text means inserting a NEW version row (the old one stays for past
+acceptances).
+
+- `agreements` carries `title`, `checkboxes` (json `[{code,text}]`), `content_sha256`,
+  `effective_at`. `Agreement::latestActiveForSlug()` is the canonical "current version"
+  lookup.
+- `user_agreements` is **append-only** (never update/delete an acceptance row) and
+  snapshots `version`, `content_sha256`, `checked_items` (codes + text as-of acceptance),
+  `acceptance_method`, and a full `snapshot` json (verified mobile, IP, UA, role).
+- `SignAgreementAction` runs on role selection (`SetUserTypeAction`) and records **three**
+  documents per selection: the two general slugs + the role-specific one. Acceptance =
+  either all checkbox codes in `accepted_checkboxes[]` or `terms_accepted=true`
+  (aggregate). A mandatory, unaccepted document throws `BusinessException` (400) and
+  aborts the role change. Re-selecting a role never re-writes an existing acceptance.
+- Endpoints: `GET /api/agreements/{slug}` (public — current version text + checkboxes for
+  the acceptance page), `GET /api/agreements/{slug}/pdf` (public — PDF of the latest
+  active version, mPDF portrait/RTL via `resources/views/pdf/agreement.blade.php`),
+  `GET /api/profile/agreements` (auth — acceptance receipts), `GET
+  /api/profile/agreements/pending` (auth — documents whose latest mandatory version the
+  user has NOT accepted; the frontend must poll this after login and force active
+  re-acceptance), `POST /api/profile/agreements/{slug}/accept` (auth — active
+  re-acceptance of the latest version; rejects slugs not relevant to the user's roles),
+  and `GET /api/profile/agreements/{slug}/pdf` (auth — PDF of **the version this user
+  accepted**, with an embedded acceptance receipt block — never the latest public
+  version, per the implementation directive §9).
+- Publishing a new version = INSERT a new `agreements` row (same slug, higher version);
+  `hasAcceptedLatestAgreement()` and `pending` then flag every affected user until they
+  actively re-accept. `Agreement::latestActiveForSlug()` is the single source of truth
+  for "current version" (ID-desc tie-break — `latest(created_at)` alone was
+  non-deterministic for same-second rows).
+- Note: `LaravelMpdf::download()` echoes and returns null — build the HTTP response from
+  `$pdf->output()` manually (see `AgreementController::renderPdf`).
+- Pinned by `Profile/AgreementAcceptanceTest` (11 tests incl. re-acceptance + PDFs).
 
 ### Ticketing — helpdesk model
 
@@ -1445,8 +1545,9 @@ Podium PAYA/SATNA settlement. Flow:
   exist in this codebase (see below).
 - **`EngineerController::store` partial-update fix.** Like `EmployerController`, it now loads
   the existing profile and falls back to `$existing?->field` instead of the non-existent
-  `$this->field` controller properties (the silent-null data-loss bug). **`ContractorController`
-  and `SupplierController` still carry this bug** — fix them the same way when touched.
+  `$this->field` controller properties (the silent-null data-loss bug).
+  `ContractorController` and `SupplierController` have received the same fix — all four
+  role-profile controllers now load `$existing` and fall back per-field.
 
 ### saze90.com badge sync — server-side proxy (`GET /api/profile/badge`)
 

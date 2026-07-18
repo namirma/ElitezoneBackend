@@ -11,7 +11,6 @@ use App\Services\PodiumClient;
 use App\Support\PhoneNumber;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Throwable;
@@ -113,14 +112,14 @@ class BeneficiaryController extends Controller
         );
 
         $verifyCode = generateVerifyCode();
-        $beneficiaryUser->update([
-            User::SECRET => $verifyCode,
-            User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(3),
-        ]);
 
+        // کد تأیید در cache با کلید جفت (خریدار، ذی‌نفع) نگه‌داری می‌شود — نه در
+        // users.secret ذی‌نفع. نوشتن در secret، کد OTP لاگینِ خودِ آن شخص را باطل
+        // می‌کرد (و برعکس، لاگین او این کد را می‌سوزاند)؛ ستون secret فقط متعلق به
+        // جریان‌های احراز هویت خود کاربر است.
         Cache::put(
             $this->verificationSessionKey((int) $buyer->id, (int) $beneficiaryUser->id),
-            true,
+            (string) $verifyCode,
             now()->addMinutes(3)
         );
 
@@ -144,27 +143,20 @@ class BeneficiaryController extends Controller
 
         $beneficiaryUser = User::find($data['beneficiary_user_id']);
 
+        // کد در cache با TTL سه دقیقه‌ای است — انقضا را خودِ cache مدیریت می‌کند.
         $sessionKey = $this->verificationSessionKey((int) Auth::id(), (int) $data['beneficiary_user_id']);
-        if (! Cache::has($sessionKey)) {
+        $expectedCode = Cache::get($sessionKey);
+
+        if ($expectedCode === null) {
             return error(__('beneficiary.verification_not_initiated'), [], 403);
         }
 
-        if (
-            ! $beneficiaryUser ||
-            $beneficiaryUser->{User::SECRET} === null ||
-            $beneficiaryUser->{User::SECRET_EXPIRES_AT} === null ||
-            ! hash_equals((string) $beneficiaryUser->{User::SECRET}, (string) $data['code']) ||
-            Carbon::parse($beneficiaryUser->{User::SECRET_EXPIRES_AT})->isPast()
-        ) {
+        if (! $beneficiaryUser || ! hash_equals((string) $expectedCode, (string) $data['code'])) {
             return error(__('auth.verification_code_not_match'), [], 400);
         }
 
+        // کد یکبارمصرف است — بلافاصله پس از موفقیت باطل می‌شود.
         Cache::forget($sessionKey);
-
-        $beneficiaryUser->update([
-            User::SECRET => null,
-            User::SECRET_EXPIRES_AT => null,
-        ]);
 
         // ثبت رابطه الیت یار–مشتری برای تب «ثبت‌شدگان من»
         Auth::user()->registeredClients()->syncWithoutDetaching([$beneficiaryUser->id]);

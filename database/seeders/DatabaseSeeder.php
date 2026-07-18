@@ -14,6 +14,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call(SupplierActivityCategorySeeder::class);
+        $this->call(AgreementSeeder::class);
         // \App\Models\UserResource::factory(10)->create();
 
         // \App\Models\UserResource::factory()->create([

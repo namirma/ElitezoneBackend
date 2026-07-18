@@ -37,12 +37,18 @@ final class SyncUserRolesAction
             $user->employer()->where(EmployerProfile::USER_ID, $user->id)->delete();
         }
 
-        // --- Supplier ---
+        // --- Supplier — نقش خود-انتسابی نیست ---
+        // انتخاب کاربر فقط پروفایل را (با وضعیت pending پیش‌فرض دیتابیس) می‌سازد.
+        // نقش Laratrust روی قیمت‌گذاری (PricingRoleResolver) و فلگ‌های فرمول تسویه
+        // اثر دارد، پس تنها AdminSupplierController::approve آن را متصل می‌کند.
         if ($newDisplayRoles->contains('supplier')) {
-            if (! $currentRoles->contains('supplier')) {
+            $profile = $user->supplier()->firstOrCreate([SupplierProfile::USER_ID => $user->id]);
+
+            // سوپلایر قبلاً تأییدشده که نقشش (مثلاً با تغییر نقش موقت) جدا شده،
+            // بدون نیاز به تأیید مجدد ادمین نقش را پس می‌گیرد.
+            if ($profile->isApproved() && ! $currentRoles->contains('supplier')) {
                 $user->addRole('supplier');
             }
-            $user->supplier()->firstOrCreate([SupplierProfile::USER_ID => $user->id]);
         } else {
             $user->removeRole('supplier');
             $user->supplier()->where(SupplierProfile::USER_ID, $user->id)->delete();
@@ -53,8 +59,9 @@ final class SyncUserRolesAction
             $user->removeRoles(['engineer', 'contractor']);
             $user->engineer()->where(EngineerProfile::USER_ID, $user->id)->delete();
             $user->contractor()->where(ContractorProfile::USER_ID, $user->id)->delete();
-            $user->eduixRecords()->delete();
-            $user->jobExperiences()->delete();
+            // مدارک تحصیلی و سوابق شغلی عمداً حذف نمی‌شوند: حذفشان برگشت‌ناپذیر بود
+            // (رکوردهای تأییدشده + فایل‌های پیوست) و فایل‌های روی دیسک را orphan می‌کرد.
+            // با تغییر نقش فقط غیرفعال می‌مانند و با انتخاب دوباره‌ی expert باز می‌گردند.
         }
     }
 }

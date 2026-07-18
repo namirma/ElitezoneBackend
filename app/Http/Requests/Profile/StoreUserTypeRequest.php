@@ -18,6 +18,11 @@ class StoreUserTypeRequest extends FormRequest
             'roles.*' => 'in:employer,supplier,expert',
             'employer_has_elite_yar' => 'nullable|boolean',
             'type_id' => 'nullable|integer|exists:user_types,id',
+            // پذیرش توافق‌نامه‌ها — یا terms_accepted=true (پذیرش یکجا) یا
+            // فهرست کد چک‌باکس‌های تیک‌خورده (CHK-01..08 برای الیت یار)
+            'terms_accepted' => 'nullable|boolean',
+            'accepted_checkboxes' => 'nullable|array',
+            'accepted_checkboxes.*' => 'string|max:20',
         ];
     }
 
