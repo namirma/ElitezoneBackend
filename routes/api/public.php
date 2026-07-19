@@ -3,6 +3,7 @@
 use App\Http\Controllers\AgreementController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\QuestionController;
+use App\Http\Controllers\Api\User\ProductReviewController;
 use App\Http\Controllers\CustomerTypeController;
 use App\Http\Controllers\FactoryController;
 use App\Http\Controllers\ParameterDetectionController;
@@ -52,6 +53,8 @@ Route::prefix('products')->middleware(['attach.price.category'])->group(function
     Route::get('/{product:cuid}', [ProductController::class, 'show']);
     Route::get('/{product:cuid}/variants', [ProductController::class, 'variants']);
     Route::get('/{product:cuid}/filters', [ProductController::class, 'filters']);
+    // نظرات تأییدشده محصول (عمومی) + آمار امتیاز
+    Route::get('/{product:cuid}/reviews', [ProductReviewController::class, 'productReviews']);
     Route::post('/variant-price', [ProductController::class, 'getVariantPrice']);
 });
 

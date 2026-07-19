@@ -135,10 +135,12 @@ class AdminSupplierController extends Controller
             return error(__('admin.suppliers.profile_not_found'), [], 404);
         }
 
-        $supplier->update([
+        // TRANS_COMMISSION/TRANS_VAT عمداً fillable نیستند (SupplierProfile) — همان
+        // الگوی forceFill که برای STATUS در approve/reject استفاده می‌شود.
+        $supplier->forceFill([
             SupplierProfile::TRANS_COMMISSION => $request->boolean('trans_commission'),
             SupplierProfile::TRANS_VAT => $request->boolean('trans_vat'),
-        ]);
+        ])->save();
 
         return success([
             'trans_commission' => (bool) $supplier->fresh()->{SupplierProfile::TRANS_COMMISSION},

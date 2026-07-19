@@ -12,6 +12,7 @@ use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\EnsureUserIsEmployer;
 use App\Http\Middleware\EnsureUserIsExpert;
+use App\Http\Middleware\EnsureUserIsSupplier;
 use App\Http\Middleware\Idempotency;
 use App\Http\Middleware\OptionalSanctum;
 use App\Http\Middleware\PreventRequestsDuringMaintenance;
@@ -115,6 +116,7 @@ class Kernel extends HttpKernel
         'role.admin' => EnsureUserIsAdmin::class,
         'role.expert' => EnsureUserIsExpert::class,
         'role.employer' => EnsureUserIsEmployer::class,
+        'role.supplier' => EnsureUserIsSupplier::class,
         'track' => TrackDashboardUsage::class,
         'idempotency' => Idempotency::class,
         'role.selected' => EnsureRoleIsSelected::class,

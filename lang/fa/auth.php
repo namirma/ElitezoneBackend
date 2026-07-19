@@ -71,6 +71,7 @@ return [
         'cancel_denied' => 'شما مجوز لغو این سفارش را ندارید',
         'not_supplier' => 'شما دسترسی تامین‌کننده ندارید',
         'supplier_item_mismatch' => 'هیچ‌یک از اقلام این سفارش مربوط به شما نیست',
+        'factory_access_denied' => 'این کارخانه/انبار متعلق به شما نیست',
     ],
 
     'role_selection' => [

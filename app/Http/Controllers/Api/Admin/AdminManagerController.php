@@ -1,0 +1,164 @@
+<?php
+
+namespace App\Http\Controllers\Api\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\StoreAdminRequest;
+use App\Http\Requests\Admin\UpdateAdminRequest;
+use App\Http\Resources\Profile\UserResource;
+use App\Models\User;
+use App\Models\UserProfile;
+use App\Models\UserType;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+
+/**
+ * پنل مدیریت — مدیران سیستم (ماژول ۷ نیازمندی فرانت BackOffice).
+ *
+ * destroy کاربر را حذف نمی‌کند — فقط نقش admin را جدا می‌کند (حذف کاربر با سوابق
+ * مالی/سفارش غیرقابل برگشت است). خود-حذفی و خود-غیرفعال‌سازی مجاز نیست.
+ */
+class AdminManagerController extends Controller
+{
+    // GET /admin/admins
+    public function index(Request $request): JsonResponse
+    {
+        $query = User::query()
+            ->whereHas('roles', fn ($r) => $r->where('name', 'admin'))
+            ->with(['profile', 'roles'])
+            ->orderByDesc(User::ID);
+
+        if ($request->filled('search')) {
+            $search = $request->string('search');
+            $query->where(fn ($q) => $q
+                ->where(User::MOBILE, 'like', "%{$search}%")
+                ->orWhereHas('profile', fn ($p) => $p
+                    ->where(UserProfile::NAME, 'like', "%{$search}%")
+                    ->orWhere(UserProfile::FAMILY, 'like', "%{$search}%")));
+        }
+
+        return success(UserResource::collection($query->paginate($this->perPage())), __('admin.admins.list_received'));
+    }
+
+    // GET /admin/admins/{user}
+    public function show(User $user): JsonResponse
+    {
+        if (! $user->hasRole('admin')) {
+            return error(__('admin.admins.not_admin'), [], 404);
+        }
+
+        return success(new UserResource($user->load(['profile', 'roles'])), __('admin.admins.received'));
+    }
+
+    // POST /admin/admins
+    public function store(StoreAdminRequest $request): JsonResponse
+    {
+        $user = DB::transaction(function () use ($request) {
+            $type = UserType::firstOrCreate(
+                ['slug' => 'customer'],
+                ['name' => 'مشتری', 'icon' => 'user'],
+            );
+
+            $user = User::create([
+                User::MOBILE => $request->string(User::MOBILE),
+                User::PASSWORD => Hash::make($request->string(User::PASSWORD)),
+                User::TYPE_ID => $type->id,
+            ]);
+
+            $user->profile()->create([
+                UserProfile::NAME => $request->input('name'),
+                UserProfile::FAMILY => $request->input('family'),
+                UserProfile::EMAIL => $request->input('email'),
+            ]);
+
+            $user->addRole('admin');
+
+            return $user;
+        });
+
+        return created(new UserResource($user->load(['profile', 'roles'])), __('admin.admins.created'));
+    }
+
+    // PUT /admin/admins/{user}
+    public function update(UpdateAdminRequest $request, User $user): JsonResponse
+    {
+        if (! $user->hasRole('admin')) {
+            return error(__('admin.admins.not_admin'), [], 404);
+        }
+
+        DB::transaction(function () use ($request, $user) {
+            $userData = [];
+
+            if ($request->filled(User::MOBILE)) {
+                $userData[User::MOBILE] = $request->string(User::MOBILE);
+            }
+
+            // password اختیاری — فقط وقتی ارسال شود تغییر می‌کند
+            if ($request->filled(User::PASSWORD)) {
+                $userData[User::PASSWORD] = Hash::make($request->string(User::PASSWORD));
+            }
+
+            if ($userData !== []) {
+                $user->update($userData);
+            }
+
+            $profileData = array_filter([
+                UserProfile::NAME => $request->input('name'),
+                UserProfile::FAMILY => $request->input('family'),
+                UserProfile::EMAIL => $request->input('email'),
+            ], fn ($v) => ! is_null($v));
+
+            if ($profileData !== []) {
+                $user->profile()->updateOrCreate([UserProfile::USER_ID => $user->id], $profileData);
+            }
+        });
+
+        // تغییر رمز، سشن‌های دیگر همین کاربر را باطل می‌کند (همان الگوی AccountSecurity)
+        if ($request->filled(User::PASSWORD)) {
+            $user->tokens()->delete();
+        }
+
+        return success(new UserResource($user->refresh()->load(['profile', 'roles'])), __('admin.admins.updated'));
+    }
+
+    // POST /admin/admins/{user}/toggle
+    public function toggle(User $user): JsonResponse
+    {
+        if (! $user->hasRole('admin')) {
+            return error(__('admin.admins.not_admin'), [], 404);
+        }
+
+        if ($user->id === Auth::id()) {
+            return error(__('admin.admins.cannot_toggle_self'), [], 422);
+        }
+
+        $newState = ! $user->{User::IS_ACTIVE};
+        $user->update([User::IS_ACTIVE => $newState]);
+
+        if (! $newState) {
+            $user->tokens()->delete();
+        }
+
+        return success(new UserResource($user->refresh()->load(['profile', 'roles'])), __('admin.admins.toggled'));
+    }
+
+    // DELETE /admin/admins/{user} — فقط جداکردن نقش admin
+    public function destroy(User $user): JsonResponse
+    {
+        if (! $user->hasRole('admin')) {
+            return error(__('admin.admins.not_admin'), [], 404);
+        }
+
+        if ($user->id === Auth::id()) {
+            return error(__('admin.admins.cannot_remove_self'), [], 422);
+        }
+
+        $user->removeRole('admin');
+        $user->tokens()->delete();
+
+        return success(null, __('admin.admins.removed'));
+    }
+}

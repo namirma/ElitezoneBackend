@@ -22,7 +22,7 @@ class AdminTicketReplyRequest extends FormRequest
     {
         return [
             'message.required' => __('admin.tickets.message_required'),
-            'message.max'      => __('admin.tickets.message_too_long'),
+            'message.max' => __('admin.tickets.message_too_long'),
         ];
     }
 }

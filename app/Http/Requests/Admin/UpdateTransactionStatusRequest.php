@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Models\WalletTransaction;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateTransactionStatusRequest extends FormRequest
@@ -14,8 +15,8 @@ class UpdateTransactionStatusRequest extends FormRequest
     public function rules(): array
     {
         $allowedStatuses = [
-            \App\Models\WalletTransaction::STATUS_CONFIRMED,
-            \App\Models\WalletTransaction::STATUS_REJECTED,
+            WalletTransaction::STATUS_CONFIRMED,
+            WalletTransaction::STATUS_REJECTED,
         ];
 
         return [

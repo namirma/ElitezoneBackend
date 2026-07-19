@@ -1580,6 +1580,34 @@ The old debug stubs (`check-certificate` SOAP route + a `getProfile` one-liner, 
 both removed in `ff780e6`/`ea94207`) were never functional — do not restore them; the proxy
 above supersedes them.
 
+### Admin BackOffice content modules (`2026_07_19_*`)
+
+Ten admin-panel modules requested by the frontend team (their spec doc `BACKEND_NEEDS_FINAL.md`
+was never committed; built from the prioritized summary). All under `auth:sanctum + role.admin`
+in `routes/api/admin.php`:
+
+| Prefix | Controller | Notes |
+|---|---|---|
+| `/admin/banners` | `AdminBannerController` | CRUD + toggle; image on `public` disk, POST/multipart |
+| `/admin/articles` | `AdminArticleController` | CRUD + toggle; unique slug; cover on `public` disk |
+| `/admin/faq` | `AdminFaqController` | CRUD + toggle + `sort_order` |
+| `/admin/settings` | `AdminSettingController` | GET map / PUT upsert; `Setting::allCached()` (key `settings:all`) |
+| `/admin/notifications` | `AdminNotificationController` | list + `POST /send` (all or user_ids, chunked insert) + `/stats` |
+| `/admin/reports/{orders,financial,users}` | `AdminReportController` | CSV only (UTF-8 BOM, `cursor()` streaming); `?from/to=Y-m-d` |
+| `/admin/admins` | `AdminManagerController` | CRUD + toggle; password optional on update; **destroy = removeRole('admin') only, never deletes the user**; self-toggle/self-remove = 422 |
+| `/admin/coupons` | `AdminCouponController` | CRUD + toggle (`coupons.is_active` added); used coupon (used_at ≠ null) edit/delete = 422 |
+| `/admin/reviews` | `AdminReviewController` | moderation queue over new `product_reviews` table; approve / reject (reason required ≤1000); STATUS/REJECTION_REASON not fillable → `forceFill()` |
+| reviews (user side) | `User\ProductReviewController` | `POST /products/{product:cuid}/reviews` (auth, throttle 10/min, one per user/product — resubmission resets to pending via unique `(user_id, product_id)`), `GET /profile/reviews` (own, incl. rejection_reason), public `GET /products/{product:cuid}/reviews` (approved only + `{stats: {count, average_rating}}`). Pinned by `Product/ProductReviewTest` |
+| `/admin/pages` | `AdminPageController` | CRUD + toggle; unique slug |
+
+Models `Banner`/`Article`/`Faq`/`Page`/`Setting`/`ProductReview` follow the constants
+convention; resources live in `Http/Resources/Content/` (+ `Marketing/CouponResource`,
+`Product/ProductReviewResource`). Slug validation: `regex:/^[\pL\pN\-_]+$/u` (Persian OK) —
+never `Str::slug` server-side. `SupplierProfileResource` now exposes
+`SupplierProfile::STATUS` (pending/approved/rejected) for the supplier-approval queue UI.
+**Run `php artisan migrate`** after pulling (`banners/articles/faqs/pages/settings`,
+`product_reviews`, `coupons.is_active`).
+
 ## Key Conventions
 
 - All API responses use the `success()`/`error()` helpers — never return raw `response()->json()` from authenticated endpoints

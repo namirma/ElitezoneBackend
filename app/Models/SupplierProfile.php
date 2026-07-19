@@ -80,10 +80,9 @@ class SupplierProfile extends Model
         self::WEBSITE,
         self::WEBSITE_NOT_RELATED,
         self::COMPANY,
-        self::TRANS_COMMISSION,
-        self::TRANS_VAT,
-        // STATUS عمداً fillable نیست — فقط ادمین (approve/reject با forceFill) آن را
-        // تغییر می‌دهد؛ mass-assignment از سمت کاربر نباید بتواند خودش را approved کند.
+        // TRANS_COMMISSION/TRANS_VAT/STATUS عمداً fillable نیستند — فقط ادمین
+        // (updateFormula/approve/reject، همه با forceFill) آن‌ها را تغییر می‌دهد؛
+        // mass-assignment از سمت کاربر نباید بتواند فرمول تسویه یا وضعیت احراز را دستکاری کند.
     ];
 
     public function isApproved(): bool

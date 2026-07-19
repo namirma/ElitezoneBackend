@@ -24,7 +24,7 @@ class UpdateSupplierFormulaRequest extends FormRequest
     {
         return [
             'trans_commission' => ['required', 'boolean'],
-            'trans_vat'        => ['required', 'boolean'],
+            'trans_vat' => ['required', 'boolean'],
         ];
     }
 
@@ -32,7 +32,7 @@ class UpdateSupplierFormulaRequest extends FormRequest
     {
         return [
             'trans_commission.required' => __('admin.suppliers.trans_commission_required'),
-            'trans_vat.required'        => __('admin.suppliers.trans_vat_required'),
+            'trans_vat.required' => __('admin.suppliers.trans_vat_required'),
         ];
     }
 }

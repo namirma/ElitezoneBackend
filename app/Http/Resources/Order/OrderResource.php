@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 /**
- * @mixin \App\Models\Order
+ * @mixin Order
  */
 class OrderResource extends BaseJsonResource
 {
@@ -107,11 +107,13 @@ class OrderResource extends BaseJsonResource
             }),
 
             // --- Beneficiary Info (گیرنده سفارش — فقط وقتی الیت یار برای کارفرما خریداری می‌کند) ---
-            'beneficiary' => $this->when($this->{Order::BENEFICIARY_USER_ID}, function () use ($viewerId) {
+            // national_id از سوپلایر مخفی است — او فقط برای تحویل کالا نیاز به نام/موبایل دارد،
+            // نه هویت مالیاتی/حقوقی ذی‌نفع (همان الگوی gating بلوک buyer در بالا).
+            'beneficiary' => $this->when($this->{Order::BENEFICIARY_USER_ID}, function () use ($viewerId, $isSupplier) {
                 return [
                     'id' => $this->{Order::BENEFICIARY_USER_ID},
                     'full_name' => $this->beneficiary->full_name ?? 'نامشخص',
-                    'national_id' => $this->beneficiary->profile->national_code ?? null,
+                    'national_id' => $isSupplier ? null : ($this->beneficiary->profile->national_code ?? null),
                     'mobile' => $this->beneficiary->mobile ?? null,
                     'is_self' => $this->{Order::BENEFICIARY_USER_ID} === $viewerId,
                 ];

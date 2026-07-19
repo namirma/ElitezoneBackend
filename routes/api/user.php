@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AgreementController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\Data\AnalyticsController;
 use App\Http\Controllers\Api\Data\InventoryController;
@@ -26,11 +27,16 @@ use App\Http\Controllers\Api\User\OrderController;
 use App\Http\Controllers\Api\User\OrderInvoiceController;
 use App\Http\Controllers\Api\User\OrderPaymentController;
 use App\Http\Controllers\Api\User\OrderSurveyController;
+use App\Http\Controllers\Api\User\ProductReviewController;
 use App\Http\Controllers\Api\User\ProfileController;
 use App\Http\Controllers\Api\User\ProfileSearchController;
 use App\Http\Controllers\Api\User\StockSubscriptionController;
 use App\Http\Controllers\Api\User\SupplierController;
+use App\Http\Controllers\Api\User\SupplierFactoryController;
+use App\Http\Controllers\Api\User\SupplierFactoryLocationController;
 use App\Http\Controllers\Api\User\SupplierOrderController;
+use App\Http\Controllers\Api\User\SupplierProductPriceController;
+use App\Http\Controllers\Api\User\SupplierShippingRateController;
 use App\Http\Controllers\Api\User\UserBankAccountController;
 use App\Http\Controllers\Api\User\WalletController;
 use App\Http\Controllers\Api\User\WishlistController;
@@ -73,6 +79,13 @@ Route::prefix('data')->middleware(['auth:sanctum', 'role.admin'])->group(functio
 // ── Products (authenticated — needs pricing role) ─────────────────────────
 Route::prefix('products')->middleware(['auth:sanctum', 'attach.price.category'])->group(function () {
     Route::post('/calculate-price', [ProductController::class, 'calculateOrderPrice']);
+});
+
+// ── Product reviews — ثبت نظر (هر کاربر/محصول یک نظر؛ ارسال مجدد → pending)
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::post('/products/{product:cuid}/reviews', [ProductReviewController::class, 'store'])
+        ->middleware('throttle:10,1');
+    Route::get('/profile/reviews', [ProductReviewController::class, 'myReviews']);
 });
 
 // ── Cart — مهمان هم می‌تواند سبد داشته باشد ─────────────────────────────
@@ -128,7 +141,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/role-options', [ProfileController::class, 'getRoleOptions']);
 
         // توافق‌نامه‌ها — رسید پذیرش‌ها، فهرست نیازمند پذیرش مجدد، پذیرش فعال و PDF نسخه پذیرفته‌شده
-        Route::prefix('agreements')->controller(\App\Http\Controllers\AgreementController::class)->group(function () {
+        Route::prefix('agreements')->controller(AgreementController::class)->group(function () {
             Route::get('/', 'myAcceptances');
             Route::get('/pending', 'pending');
             Route::post('/{slug}/accept', 'accept')->where('slug', '[a-z_]+');
@@ -335,10 +348,56 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/employer', [EmployerController::class, 'store']);
         Route::delete('/employer', [EmployerController::class, 'destroy']);
         Route::prefix('supplier')->group(function () {
+            // Open to any authenticated user applying to become a supplier (pre-approval)
             Route::post('/', [SupplierController::class, 'store']);
             Route::delete('/', [SupplierController::class, 'destroy']);
             Route::get('/activity-categories', [SupplierController::class, 'getCategories']);
             Route::get('/activityCategory-getId', [SupplierController::class, 'getActivityCategoryId']);
+
+            // Self-service panel — approved suppliers only (role.supplier)
+            Route::middleware('role.supplier')->group(function () {
+                Route::get('/orders', [SupplierOrderController::class, 'index']);
+                Route::get('/orders/pending-debts', [SupplierOrderController::class, 'pendingDebts']);
+                Route::get('/orders/pending-moadian', [SupplierOrderController::class, 'pendingMoadian']);
+                Route::get('/dashboard', [SupplierOrderController::class, 'dashboard']);
+
+                // Factories — CRUD scoped to factories.supplier_user_id = خودم
+                Route::controller(SupplierFactoryController::class)->prefix('factories')->group(function () {
+                    Route::get('/', 'index');
+                    Route::get('/{factory}', 'show');
+                    Route::post('/', 'store');
+                    Route::put('/{factory}', 'update');
+                    Route::post('/{factory}', 'update'); // multipart logo replace
+                    Route::delete('/{factory}', 'destroy');
+                    Route::post('/{factory}/toggle', 'toggle');
+                });
+
+                // Factory Locations — CRUD انبارها/مبادی، فقط زیر کارخانه‌های خودم
+                Route::controller(SupplierFactoryLocationController::class)->prefix('factory-locations')->group(function () {
+                    Route::get('/', 'index');
+                    Route::post('/', 'store');
+                    Route::put('/{factoryLocation}', 'update');
+                    Route::delete('/{factoryLocation}', 'destroy');
+                    Route::post('/{factoryLocation}/toggle', 'toggle');
+                });
+
+                // Product Prices — قیمت واریانت‌های موجود، فقط در کارخانه/انبار خودم
+                Route::controller(SupplierProductPriceController::class)->prefix('prices')->group(function () {
+                    Route::get('/', 'index');
+                    Route::post('/', 'store');
+                    Route::put('/{price}', 'update');
+                    Route::delete('/{price}', 'destroy');
+                });
+
+                // Shipping Rates — نرخ‌های حمل، فقط با مبدأ = انبارهای خودم
+                Route::controller(SupplierShippingRateController::class)->prefix('shipping-rates')->group(function () {
+                    Route::get('/', 'index');
+                    Route::post('/', 'store');
+                    Route::put('/{shippingRate}', 'update');
+                    Route::delete('/{shippingRate}', 'destroy');
+                    Route::post('/{shippingRate}/toggle', 'toggle');
+                });
+            });
         });
     });
 

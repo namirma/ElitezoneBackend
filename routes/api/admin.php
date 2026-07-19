@@ -1,18 +1,25 @@
 <?php
 
 use App\Http\Controllers\Api\Admin\AdminActivityLogController;
+use App\Http\Controllers\Api\Admin\AdminArticleController;
 use App\Http\Controllers\Api\Admin\AdminAttributeController;
 use App\Http\Controllers\Api\Admin\AdminAttributeTypeController;
 use App\Http\Controllers\Api\Admin\AdminAttributeValueController;
 use App\Http\Controllers\Api\Admin\AdminBadgeController;
+use App\Http\Controllers\Api\Admin\AdminBannerController;
+use App\Http\Controllers\Api\Admin\AdminCouponController;
 use App\Http\Controllers\Api\Admin\AdminCustomerTypeController;
 use App\Http\Controllers\Api\Admin\AdminDashboardController;
 use App\Http\Controllers\Api\Admin\AdminEduixController;
 use App\Http\Controllers\Api\Admin\AdminFactoryController;
 use App\Http\Controllers\Api\Admin\AdminFactoryLocationController;
+use App\Http\Controllers\Api\Admin\AdminFaqController;
 use App\Http\Controllers\Api\Admin\AdminFinancialController;
 use App\Http\Controllers\Api\Admin\AdminJobExperienceController;
+use App\Http\Controllers\Api\Admin\AdminManagerController;
+use App\Http\Controllers\Api\Admin\AdminNotificationController;
 use App\Http\Controllers\Api\Admin\AdminOrderController;
+use App\Http\Controllers\Api\Admin\AdminPageController;
 use App\Http\Controllers\Api\Admin\AdminPodiumDepositController;
 use App\Http\Controllers\Api\Admin\AdminPriceAdjustmentController;
 use App\Http\Controllers\Api\Admin\AdminPriceFilterCategoryController;
@@ -22,7 +29,10 @@ use App\Http\Controllers\Api\Admin\AdminProductCategoryController;
 use App\Http\Controllers\Api\Admin\AdminProductController;
 use App\Http\Controllers\Api\Admin\AdminProductPriceController;
 use App\Http\Controllers\Api\Admin\AdminProductVariantController;
+use App\Http\Controllers\Api\Admin\AdminReportController;
+use App\Http\Controllers\Api\Admin\AdminReviewController;
 use App\Http\Controllers\Api\Admin\AdminSearchController;
+use App\Http\Controllers\Api\Admin\AdminSettingController;
 use App\Http\Controllers\Api\Admin\AdminShippingRateController;
 use App\Http\Controllers\Api\Admin\AdminSupplierController;
 use App\Http\Controllers\Api\Admin\AdminTicketController;
@@ -339,6 +349,100 @@ Route::middleware(['auth:sanctum', 'role.admin'])->prefix('admin')->group(functi
         Route::post('/', 'store');
         Route::put('/{priceAdjustment}', 'update');
         Route::delete('/{priceAdjustment}', 'destroy');
+    });
+
+    // ══════════════════════════════════════════════════════════════════════
+    // Content & BackOffice modules — نیازمندی‌های پنل ادمین فرانت
+    // ══════════════════════════════════════════════════════════════════════
+
+    // Banners — CRUD بنرها (آپلود تصویر با POST/multipart)
+    Route::controller(AdminBannerController::class)->prefix('banners')->group(function () {
+        Route::get('/', 'index');
+        Route::get('/{banner}', 'show');
+        Route::post('/', 'store');
+        Route::put('/{banner}', 'update');
+        Route::post('/{banner}', 'update'); // multipart image replace
+        Route::post('/{banner}/toggle', 'toggle');
+        Route::delete('/{banner}', 'destroy');
+    });
+
+    // Articles — CRUD مقالات (آپلود کاور با POST/multipart)
+    Route::controller(AdminArticleController::class)->prefix('articles')->group(function () {
+        Route::get('/', 'index');
+        Route::get('/{article}', 'show');
+        Route::post('/', 'store');
+        Route::put('/{article}', 'update');
+        Route::post('/{article}', 'update'); // multipart cover replace
+        Route::post('/{article}/toggle', 'toggle');
+        Route::delete('/{article}', 'destroy');
+    });
+
+    // FAQ — سؤالات متداول
+    Route::controller(AdminFaqController::class)->prefix('faq')->group(function () {
+        Route::get('/', 'index');
+        Route::get('/{faq}', 'show');
+        Route::post('/', 'store');
+        Route::put('/{faq}', 'update');
+        Route::post('/{faq}/toggle', 'toggle');
+        Route::delete('/{faq}', 'destroy');
+    });
+
+    // Settings — تنظیمات key-value سایت
+    Route::controller(AdminSettingController::class)->prefix('settings')->group(function () {
+        Route::get('/', 'index');
+        Route::put('/', 'update');
+    });
+
+    // Notifications — اعلان‌های درون‌برنامه‌ای (لیست + ارسال + آمار)
+    Route::controller(AdminNotificationController::class)->prefix('notifications')->group(function () {
+        Route::get('/', 'index');
+        Route::get('/stats', 'stats');
+        Route::post('/send', 'send');
+    });
+
+    // Reports — خروجی CSV گزارش‌ها
+    Route::controller(AdminReportController::class)->prefix('reports')->group(function () {
+        Route::get('/orders', 'orders');
+        Route::get('/financial', 'financial');
+        Route::get('/users', 'users');
+    });
+
+    // Admins — مدیران سیستم (destroy = فقط جداکردن نقش admin)
+    Route::controller(AdminManagerController::class)->prefix('admins')->group(function () {
+        Route::get('/', 'index');
+        Route::get('/{user}', 'show');
+        Route::post('/', 'store');
+        Route::put('/{user}', 'update');
+        Route::post('/{user}/toggle', 'toggle');
+        Route::delete('/{user}', 'destroy');
+    });
+
+    // Coupons — کدهای تخفیف (حذف/ویرایش کد استفاده‌شده = 422)
+    Route::controller(AdminCouponController::class)->prefix('coupons')->group(function () {
+        Route::get('/', 'index');
+        Route::get('/{coupon}', 'show');
+        Route::post('/', 'store');
+        Route::put('/{coupon}', 'update');
+        Route::post('/{coupon}/toggle', 'toggle');
+        Route::delete('/{coupon}', 'destroy');
+    });
+
+    // Reviews — صف تأیید نظرات محصول (الگوی صف‌های job-experiences)
+    Route::controller(AdminReviewController::class)->prefix('reviews')->group(function () {
+        Route::get('/', 'index');
+        Route::get('/{review}', 'show');
+        Route::post('/{review}/approve', 'approve');
+        Route::post('/{review}/reject', 'reject');
+    });
+
+    // Pages — صفحات استاتیک (slug یکتا)
+    Route::controller(AdminPageController::class)->prefix('pages')->group(function () {
+        Route::get('/', 'index');
+        Route::get('/{page}', 'show');
+        Route::post('/', 'store');
+        Route::put('/{page}', 'update');
+        Route::post('/{page}/toggle', 'toggle');
+        Route::delete('/{page}', 'destroy');
     });
 
     // Legacy alias — مسیر قدیمی باسکول در ریشه /admin؛ برای سازگاری فرانت فعلی
