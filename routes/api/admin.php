@@ -98,7 +98,7 @@ Route::middleware(['auth:sanctum', 'role.admin'])->prefix('admin')->group(functi
     });
 
     // Financial documents + health
-    Route::controller(AdminFinancialController::class)->prefix('financial')->group(function () {
+    Route::controller(AdminFinancialController::class)->prefix('financial')->middleware('admin.permission:manage-financial')->group(function () {
         Route::get('/company/invoices', 'getCompanyInvoices');
         Route::get('/company/expert-shares', 'getExpertShares');
         Route::get('/supplier/documents', 'getSupplierDocuments');
@@ -110,7 +110,7 @@ Route::middleware(['auth:sanctum', 'role.admin'])->prefix('admin')->group(functi
     });
 
     // واریز مستقیم بانکی — سوابق شناسه واریز + polling دستی + شارژ دستی ادمین
-    Route::controller(AdminPodiumDepositController::class)->prefix('financial/podium-deposits')->group(function () {
+    Route::controller(AdminPodiumDepositController::class)->prefix('financial/podium-deposits')->middleware('admin.permission:manage-financial')->group(function () {
         Route::get('/', 'index');  // لیست سوابق + آمار
         Route::post('/poll', 'poll');   // اجرای دستی polling (بدون cron)
         Route::post('/{record}/credit', 'credit'); // شارژ دستی برای واریز unmatched
@@ -164,7 +164,7 @@ Route::middleware(['auth:sanctum', 'role.admin'])->prefix('admin')->group(functi
     });
 
     // Wallet
-    Route::controller(AdminWalletController::class)->prefix('wallet')->group(function () {
+    Route::controller(AdminWalletController::class)->prefix('wallet')->middleware('admin.permission:manage-financial')->group(function () {
         Route::get('/transactions', 'index');
         Route::post('/transactions/{transaction}/status', 'changeStatus');
     });
@@ -356,7 +356,7 @@ Route::middleware(['auth:sanctum', 'role.admin'])->prefix('admin')->group(functi
     // ══════════════════════════════════════════════════════════════════════
 
     // Banners — CRUD بنرها (آپلود تصویر با POST/multipart)
-    Route::controller(AdminBannerController::class)->prefix('banners')->group(function () {
+    Route::controller(AdminBannerController::class)->prefix('banners')->middleware('admin.permission:manage-content')->group(function () {
         Route::get('/', 'index');
         Route::get('/{banner}', 'show');
         Route::post('/', 'store');
@@ -367,7 +367,7 @@ Route::middleware(['auth:sanctum', 'role.admin'])->prefix('admin')->group(functi
     });
 
     // Articles — CRUD مقالات (آپلود کاور با POST/multipart)
-    Route::controller(AdminArticleController::class)->prefix('articles')->group(function () {
+    Route::controller(AdminArticleController::class)->prefix('articles')->middleware('admin.permission:manage-content')->group(function () {
         Route::get('/', 'index');
         Route::get('/{article}', 'show');
         Route::post('/', 'store');
@@ -378,7 +378,7 @@ Route::middleware(['auth:sanctum', 'role.admin'])->prefix('admin')->group(functi
     });
 
     // FAQ — سؤالات متداول
-    Route::controller(AdminFaqController::class)->prefix('faq')->group(function () {
+    Route::controller(AdminFaqController::class)->prefix('faq')->middleware('admin.permission:manage-content')->group(function () {
         Route::get('/', 'index');
         Route::get('/{faq}', 'show');
         Route::post('/', 'store');
@@ -388,27 +388,28 @@ Route::middleware(['auth:sanctum', 'role.admin'])->prefix('admin')->group(functi
     });
 
     // Settings — تنظیمات key-value سایت
-    Route::controller(AdminSettingController::class)->prefix('settings')->group(function () {
+    Route::controller(AdminSettingController::class)->prefix('settings')->middleware('admin.permission:manage-content')->group(function () {
         Route::get('/', 'index');
         Route::put('/', 'update');
     });
 
     // Notifications — اعلان‌های درون‌برنامه‌ای (لیست + ارسال + آمار)
-    Route::controller(AdminNotificationController::class)->prefix('notifications')->group(function () {
+    Route::controller(AdminNotificationController::class)->prefix('notifications')->middleware('admin.permission:manage-content')->group(function () {
         Route::get('/', 'index');
         Route::get('/stats', 'stats');
         Route::post('/send', 'send');
     });
 
-    // Reports — خروجی CSV گزارش‌ها
-    Route::controller(AdminReportController::class)->prefix('reports')->group(function () {
+    // Reports — خروجی CSV گزارش‌ها (بازه بزرگ → صف + اعلان + دانلود)
+    Route::controller(AdminReportController::class)->prefix('reports')->middleware('admin.permission:manage-financial')->group(function () {
         Route::get('/orders', 'orders');
         Route::get('/financial', 'financial');
         Route::get('/users', 'users');
+        Route::get('/downloads/{filename}', 'download');
     });
 
     // Admins — مدیران سیستم (destroy = فقط جداکردن نقش admin)
-    Route::controller(AdminManagerController::class)->prefix('admins')->group(function () {
+    Route::controller(AdminManagerController::class)->prefix('admins')->middleware('admin.permission:manage-users')->group(function () {
         Route::get('/', 'index');
         Route::get('/{user}', 'show');
         Route::post('/', 'store');
@@ -436,7 +437,7 @@ Route::middleware(['auth:sanctum', 'role.admin'])->prefix('admin')->group(functi
     });
 
     // Pages — صفحات استاتیک (slug یکتا)
-    Route::controller(AdminPageController::class)->prefix('pages')->group(function () {
+    Route::controller(AdminPageController::class)->prefix('pages')->middleware('admin.permission:manage-content')->group(function () {
         Route::get('/', 'index');
         Route::get('/{page}', 'show');
         Route::post('/', 'store');

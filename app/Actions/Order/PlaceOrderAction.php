@@ -19,6 +19,7 @@ use App\Models\UserType;
 use App\Services\DocumentSequenceService;
 use App\Services\Financial\SettlementCalculatorService;
 use App\Services\InventoryService;
+use App\Services\Marketing\CouponService;
 use App\Services\PriceCalculationService;
 use App\Services\PricingRoleResolver;
 use App\Services\Shipping\CartShippingQuoteService;
@@ -36,6 +37,7 @@ class PlaceOrderAction
         private readonly DocumentSequenceService $sequenceService,
         private readonly ShippingCostCalculator $shippingCalculator,
         private readonly CartShippingQuoteService $shippingQuoteService,
+        private readonly CouponService $couponService,
     ) {}
 
     public function execute(User $user, PlaceOrderData $data): Order
@@ -48,8 +50,24 @@ class PlaceOrderAction
             // ۲. محاسبه مبالغ
             $financials = $this->calculateOrderFinancials($cart, $user, $data);
 
+            // ۲.۵ اعمال کوپن تخفیف (در صورت ارسال) — با lock تا مصرف همزمان نشود.
+            // تخفیف روی final_amount نمایش داده می‌شود؛ leg مالی آن هنگام پرداخت
+            // (WSSG→WO) ثبت می‌شود و فرمول‌های POO/PTS دست نمی‌خورند.
+            $coupon = null;
+            if ($data->couponCode) {
+                $coupon = $this->couponService->validateForCheckout($user, $data->couponCode, lock: true);
+                $couponDiscount = $this->couponService->calculateDiscount($coupon, (float) $financials['final_amount']);
+                $financials['coupon_id'] = $coupon->id;
+                $financials['coupon_discount_amount'] = $couponDiscount;
+                $financials['final_amount'] = max(0, $financials['final_amount'] - $couponDiscount);
+            }
+
             // ۳. ایجاد سفارش + مرسوله‌ها (هر مبدأ→مقصد یک مرسوله) + اقلام
             $order = $this->createOrderRecord($user, $data, $financials, $cart);
+
+            if ($coupon) {
+                $this->couponService->redeem($coupon);
+            }
             $shipmentMap = $this->createShipments($order, $financials['shipments']);
             $this->createOrderItems($order, $cart, $financials['items_data'], $shipmentMap);
 
@@ -297,6 +315,8 @@ class PlaceOrderAction
 
             Order::SUBTOTAL => $fins['subtotal'],
             Order::DISCOUNT_AMOUNT => $fins['total_discount'],
+            Order::COUPON_ID => $fins['coupon_id'] ?? null,
+            Order::COUPON_DISCOUNT_AMOUNT => $fins['coupon_discount_amount'] ?? 0,
             Order::VAT_AMOUNT => $fins['vat_amount'],
             Order::SHIPPING_COST => $fins['shipping_cost'],
             Order::FINAL_AMOUNT => $fins['final_amount'],

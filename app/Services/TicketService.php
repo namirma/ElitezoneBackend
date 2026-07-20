@@ -208,7 +208,9 @@ class TicketService
     {
         $hours = (int) config("ticketing.sla_hours.{$priority}", config('ticketing.sla_hours.normal', 24));
 
-        return now()->addHours($hours);
+        // ساعت‌های SLA فقط داخل تقویم کاری مصرف می‌شوند (BusinessHours);
+        // با business_hours.enabled=false همان wall-clock سابق است.
+        return \App\Support\BusinessHours::addWorkingHours(now(), $hours);
     }
 
     /**

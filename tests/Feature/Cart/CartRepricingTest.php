@@ -10,6 +10,7 @@ use App\Services\Cart\CartResponseBuilder;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\Feature\Pricing\CreatesPricingFixtures;
 use Tests\TestCase;
 
@@ -26,7 +27,7 @@ class CartRepricingTest extends TestCase
     use CreatesPricingFixtures;
     use DatabaseTransactions;
 
-    /** @test */
+    #[Test]
     public function building_the_cart_reprices_a_stale_line_snapshot(): void
     {
         Cache::flush();

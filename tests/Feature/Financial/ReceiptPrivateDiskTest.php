@@ -8,6 +8,7 @@ use App\Models\WalletTransaction;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -21,7 +22,7 @@ class ReceiptPrivateDiskTest extends TestCase
 {
     use DatabaseTransactions;
 
-    /** @test */
+    #[Test]
     public function deposit_receipt_is_stored_on_the_private_disk_not_public(): void
     {
         Storage::fake('financial');

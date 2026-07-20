@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\Wallet;
 use App\Services\Financial\WeighbridgeVatRouter;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -98,7 +99,7 @@ class EliteYARLifetimeCapTest extends TestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function consultant_with_no_badge_purchase_is_uncapped(): void
     {
         $this->eliteYAR->update([User::BADGE_PURCHASE_AMOUNT => null]);
@@ -109,7 +110,7 @@ class EliteYARLifetimeCapTest extends TestCase
         $this->assertEqualsWithDelta(62_500_000, $gross, 1.0);
     }
 
-    /** @test */
+    #[Test]
     public function consultant_gross_is_clamped_to_two_times_badge_purchase(): void
     {
         // Badge invoice 10M → ceiling = 2 × 10M = 20M, well below the 62.5M candidate.
@@ -120,18 +121,18 @@ class EliteYARLifetimeCapTest extends TestCase
         $this->assertEqualsWithDelta(20_000_000, $gross, 1.0);
     }
 
-    /** @test */
+    #[Test]
     public function prior_payouts_consume_the_lifetime_headroom(): void
     {
         // Ceiling 20M, but 15M already paid on a prior settled order → only 5M headroom.
         $this->eliteYAR->update([User::BADGE_PURCHASE_AMOUNT => 10_000_000]);
 
         Order::create([
-            Order::PLACER_USER_ID     => $this->order->placer_user_id,
+            Order::PLACER_USER_ID => $this->order->placer_user_id,
             Order::ELITE_YAR_USER_ID => $this->eliteYAR->id,
-            Order::ORDER_NUMBER       => 'PRIOR-'.now()->format('YmdHis').rand(100, 999),
-            Order::STATUS             => Order::STATUS_SHIPPED,
-            Order::PAYMENT_STATUS     => 'paid',
+            Order::ORDER_NUMBER => 'PRIOR-'.now()->format('YmdHis').rand(100, 999),
+            Order::STATUS => Order::STATUS_SHIPPED,
+            Order::PAYMENT_STATUS => 'paid',
         ])->forceFill([
             Order::WEIGHING_COMPLETED_AT => now()->subDay(),
             Order::PAYMENT_TO_ELITE_YAR => 15_000_000,

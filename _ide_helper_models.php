@@ -78,8 +78,12 @@ namespace App\Models{
 /**
  * @property int $id
  * @property string $slug
+ * @property string|null $title
  * @property string $version
  * @property string|null $content
+ * @property array|null $checkboxes
+ * @property string|null $content_sha256
+ * @property \Illuminate\Support\Carbon|null $effective_at
  * @property bool $is_active
  * @property bool $is_mandatory
  * @property \Illuminate\Support\Carbon|null $created_at
@@ -90,16 +94,57 @@ namespace App\Models{
  * @method static \Illuminate\Database\Eloquent\Builder|Agreement newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|Agreement newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|Agreement query()
+ * @method static \Illuminate\Database\Eloquent\Builder|Agreement whereCheckboxes($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Agreement whereContent($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Agreement whereContentSha256($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Agreement whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Agreement whereEffectiveAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Agreement whereId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Agreement whereIsActive($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Agreement whereIsMandatory($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Agreement whereSlug($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Agreement whereTitle($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Agreement whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Agreement whereVersion($value)
  */
 	class Agreement extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * @property int $id
+ * @property string $title
+ * @property string $slug
+ * @property string|null $excerpt
+ * @property string $body
+ * @property string|null $cover
+ * @property int|null $author_id
+ * @property bool $is_active
+ * @property \Illuminate\Support\Carbon|null $published_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\User|null $author
+ * @property-read string|void $created_at_diff
+ * @property-read string|void $created_at_p
+ * @property-read string|void $expire_at_days
+ * @property-read string|void $updated_at_diff
+ * @property-read string|void $updated_at_p
+ * @method static \Illuminate\Database\Eloquent\Builder|Article newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|Article newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|Article query()
+ * @method static \Illuminate\Database\Eloquent\Builder|Article whereAuthorId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Article whereBody($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Article whereCover($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Article whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Article whereExcerpt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Article whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Article whereIsActive($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Article wherePublishedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Article whereSlug($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Article whereTitle($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Article whereUpdatedAt($value)
+ */
+	class Article extends \Eloquent {}
 }
 
 namespace App\Models{
@@ -200,6 +245,38 @@ namespace App\Models{
  * @method static \Illuminate\Database\Eloquent\Builder|Badge whereUpdatedAt($value)
  */
 	class Badge extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * @property int $id
+ * @property string $title
+ * @property string $image
+ * @property string|null $link
+ * @property string|null $position
+ * @property int $sort_order
+ * @property bool $is_active
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read string|void $created_at_diff
+ * @property-read string|void $created_at_p
+ * @property-read string|void $expire_at_days
+ * @property-read string|void $updated_at_diff
+ * @property-read string|void $updated_at_p
+ * @method static \Illuminate\Database\Eloquent\Builder|Banner newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|Banner newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|Banner query()
+ * @method static \Illuminate\Database\Eloquent\Builder|Banner whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Banner whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Banner whereImage($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Banner whereIsActive($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Banner whereLink($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Banner wherePosition($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Banner whereSortOrder($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Banner whereTitle($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Banner whereUpdatedAt($value)
+ */
+	class Banner extends \Eloquent {}
 }
 
 namespace App\Models{
@@ -420,8 +497,14 @@ namespace App\Models{
  * @property \Illuminate\Support\Carbon|null $expires_at
  * @property \Illuminate\Support\Carbon|null $used_at
  * @property string|null $reason
+ * @property bool $is_active
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read string|void $created_at_diff
+ * @property-read string|void $created_at_p
+ * @property-read string|void $expire_at_days
+ * @property-read string|void $updated_at_diff
+ * @property-read string|void $updated_at_p
  * @property-read \App\Models\User|null $owner
  * @method static \Illuminate\Database\Eloquent\Builder|Coupon newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|Coupon newQuery()
@@ -431,6 +514,7 @@ namespace App\Models{
  * @method static \Illuminate\Database\Eloquent\Builder|Coupon whereCreatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Coupon whereExpiresAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Coupon whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Coupon whereIsActive($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Coupon whereReason($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Coupon whereType($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Coupon whereUpdatedAt($value)
@@ -780,6 +864,31 @@ namespace App\Models{
 namespace App\Models{
 /**
  * @property int $id
+ * @property string $question
+ * @property string $answer
+ * @property string|null $category
+ * @property int $sort_order
+ * @property bool $is_active
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @method static \Illuminate\Database\Eloquent\Builder|Faq newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|Faq newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|Faq query()
+ * @method static \Illuminate\Database\Eloquent\Builder|Faq whereAnswer($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Faq whereCategory($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Faq whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Faq whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Faq whereIsActive($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Faq whereQuestion($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Faq whereSortOrder($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Faq whereUpdatedAt($value)
+ */
+	class Faq extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * @property int $id
  * @property int $product_variant_id
  * @property int $current_stock
  * @property string $sales_velocity_30d
@@ -1034,6 +1143,7 @@ namespace App\Models{
  * @property-read int|null $activities_count
  * @property-read \App\Models\Address|null $address
  * @property-read \App\Models\User|null $beneficiary
+ * @property-read \App\Models\Coupon|null $coupon
  * @property-read \App\Models\User|null $eliteYAR
  * @property-read string|void $created_at_diff
  * @property-read string|void $created_at_p
@@ -1210,6 +1320,7 @@ namespace App\Models{
  * @property int $id
  * @property int $order_id
  * @property int $user_id
+ * @property string $type S=buyer | T=elite_yar
  * @property int $rating
  * @property string|null $comment
  * @property \Illuminate\Support\Carbon|null $created_at
@@ -1224,6 +1335,7 @@ namespace App\Models{
  * @method static \Illuminate\Database\Eloquent\Builder|OrderSurvey whereId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|OrderSurvey whereOrderId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|OrderSurvey whereRating($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|OrderSurvey whereType($value)
  * @method static \Illuminate\Database\Eloquent\Builder|OrderSurvey whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder|OrderSurvey whereUserId($value)
  */
@@ -1253,6 +1365,29 @@ namespace App\Models{
  * @method static \Illuminate\Database\Eloquent\Builder|OrderUnit whereUpdatedAt($value)
  */
 	class OrderUnit extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * @property int $id
+ * @property string $title
+ * @property string $slug
+ * @property string $body
+ * @property bool $is_active
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @method static \Illuminate\Database\Eloquent\Builder|Page newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|Page newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|Page query()
+ * @method static \Illuminate\Database\Eloquent\Builder|Page whereBody($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Page whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Page whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Page whereIsActive($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Page whereSlug($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Page whereTitle($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Page whereUpdatedAt($value)
+ */
+	class Page extends \Eloquent {}
 }
 
 namespace App\Models{
@@ -1526,6 +1661,8 @@ namespace App\Models{
  * @property-read int|null $offers_count
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\OrderUnit> $orderUnits
  * @property-read int|null $order_units_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ProductReview> $reviews
+ * @property-read int|null $reviews_count
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ProductPrice> $variantPrices
  * @property-read int|null $variant_prices_count
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ProductVariant> $variants
@@ -1667,6 +1804,40 @@ namespace App\Models{
  * @method static \Illuminate\Database\Eloquent\Builder|ProductPriceCache whereUpdatedAt($value)
  */
 	class ProductPriceCache extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * @property int $id
+ * @property int $user_id
+ * @property int $product_id
+ * @property int $rating
+ * @property string|null $comment
+ * @property string $status
+ * @property string|null $rejection_reason
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read string|void $created_at_diff
+ * @property-read string|void $created_at_p
+ * @property-read string|void $expire_at_days
+ * @property-read string|void $updated_at_diff
+ * @property-read string|void $updated_at_p
+ * @property-read \App\Models\Product $product
+ * @property-read \App\Models\User $user
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductReview newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductReview newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductReview query()
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductReview whereComment($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductReview whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductReview whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductReview whereProductId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductReview whereRating($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductReview whereRejectionReason($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductReview whereStatus($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductReview whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ProductReview whereUserId($value)
+ */
+	class ProductReview extends \Eloquent {}
 }
 
 namespace App\Models{
@@ -2002,6 +2173,25 @@ namespace App\Models{
 
 namespace App\Models{
 /**
+ * @property int $id
+ * @property string $key
+ * @property string|null $value
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @method static \Illuminate\Database\Eloquent\Builder|Setting newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|Setting newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|Setting query()
+ * @method static \Illuminate\Database\Eloquent\Builder|Setting whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Setting whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Setting whereKey($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Setting whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Setting whereValue($value)
+ */
+	class Setting extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
  * One delivery leg of an order: items from a single origin factory location to a single
  * destination address, with its own freight cost and lifecycle status.
  *
@@ -2182,6 +2372,7 @@ namespace App\Models{
  * @property string|null $company
  * @property bool $trans_commission +%TC: آیا کمیسیون روی هزینه حمل اعمال می‌شود؟
  * @property bool $trans_vat +VAT: آیا مالیات بر ارزش افزوده روی هزینه حمل اعمال می‌شود؟
+ * @property string $status وضعیت احراز سوپلایر: pending | approved | rejected
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SupplierActivityCategory> $activities
@@ -2206,6 +2397,7 @@ namespace App\Models{
  * @method static \Illuminate\Database\Eloquent\Builder|SupplierProfile whereProductionAmount($value)
  * @method static \Illuminate\Database\Eloquent\Builder|SupplierProfile whereStandards($value)
  * @method static \Illuminate\Database\Eloquent\Builder|SupplierProfile whereStandardsNotRelated($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|SupplierProfile whereStatus($value)
  * @method static \Illuminate\Database\Eloquent\Builder|SupplierProfile whereTransCommission($value)
  * @method static \Illuminate\Database\Eloquent\Builder|SupplierProfile whereTransVat($value)
  * @method static \Illuminate\Database\Eloquent\Builder|SupplierProfile whereUpdatedAt($value)

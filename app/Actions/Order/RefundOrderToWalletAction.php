@@ -88,6 +88,23 @@ final class RefundOrderToWalletAction
                 );
             }
 
+            // 3. Reverse the coupon leg: WO(−discount) → WSSG(+discount).
+            //    At payment time the buyer received the discount as a WSSG→WO credit;
+            //    the POO refund above returns the FULL POO, so without this reversal the
+            //    buyer would keep the discount credit on top — minting money from Saze.
+            $couponDiscount = (float) ($locked->{Order::COUPON_DISCOUNT_AMOUNT} ?? 0);
+            if ($couponDiscount > 0) {
+                $couponCode = $locked->coupon?->code ?? '-';
+                $this->walletEngine->debitBuyer(
+                    $locked, $couponDiscount, FinancialCodes::STATUS_AVAILABLE,
+                    __('coupons.reversed_description', ['code' => $couponCode, 'order' => $locked->order_number])
+                );
+                $this->walletEngine->creditSystem(
+                    $locked, $couponDiscount, FinancialCodes::STATUS_AVAILABLE,
+                    __('coupons.reversed_description', ['code' => $couponCode, 'order' => $locked->order_number])
+                );
+            }
+
             $locked->update([Order::PAYMENT_STATUS => Order::PAYMENT_REFUNDED]);
         });
     }

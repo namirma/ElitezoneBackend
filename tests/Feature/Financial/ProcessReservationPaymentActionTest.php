@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\Wallet;
 use App\Services\Invoice\InvoiceGenerator;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -77,7 +78,7 @@ class ProcessReservationPaymentActionTest extends TestCase
     // Happy path
     // ─────────────────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function it_sets_order_to_reserved_and_holds_the_reserve_amount(): void
     {
         $balanceBefore = $this->wallet->balance;
@@ -102,7 +103,7 @@ class ProcessReservationPaymentActionTest extends TestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function it_stores_payment_to_reserve_on_the_order(): void
     {
         $this->action->execute($this->order, $this->threshold, validityHours: 2);
@@ -119,7 +120,7 @@ class ProcessReservationPaymentActionTest extends TestCase
     // Guard: insufficient balance
     // ─────────────────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function it_throws_when_buyer_cannot_cover_the_reserve_amount(): void
     {
         $this->wallet->update([Wallet::BALANCE => $this->threshold - 1]);
@@ -129,7 +130,7 @@ class ProcessReservationPaymentActionTest extends TestCase
         $this->action->execute($this->order, $this->threshold, validityHours: 2);
     }
 
-    /** @test */
+    #[Test]
     public function order_remains_pending_when_balance_is_insufficient(): void
     {
         $this->wallet->update([Wallet::BALANCE => 0]);
@@ -149,7 +150,7 @@ class ProcessReservationPaymentActionTest extends TestCase
     // Validity window
     // ─────────────────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function it_respects_the_validity_hours_parameter(): void
     {
         $this->action->execute($this->order, $this->threshold, validityHours: 48);

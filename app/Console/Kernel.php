@@ -48,6 +48,12 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping()
             ->onOneServer();
 
+        // اسکالیشن خودکار تیکت‌های عبورکرده از SLA (یک‌بار به ازای هر تیکت)
+        $schedule->job(new \App\Jobs\Ticketing\EscalateOverdueTicketsJob)
+            ->hourly()
+            ->withoutOverlapping()
+            ->onOneServer();
+
         // تجمیع روزانه‌ی بازدید محصول در product_view_daily + حذف داده‌ی خامِ منقضی
         // (retention/حریم خصوصی). آنالیتیکس از جدول تجمیعی می‌خواند نه raw.
         $schedule->job(new RollupProductViewsJob)

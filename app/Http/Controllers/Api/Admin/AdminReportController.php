@@ -3,138 +3,91 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Order;
-use App\Models\User;
-use App\Models\WalletTransaction;
+use App\Jobs\Analytics\GenerateCsvReportJob;
+use App\Services\Reports\CsvReportBuilder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * پنل مدیریت — خروجی CSV گزارش‌ها (ماژول ۶ نیازمندی فرانت BackOffice).
  *
- * فقط CSV (JSON از data/analytics/dashboard موجود است). خروجی UTF-8 با BOM
- * تا اکسل فارسی را درست نمایش دهد؛ استریم cursor()ای تا حافظه منفجر نشود.
+ * بازه‌های کوچک مستقیم استریم می‌شوند (UTF-8 با BOM). بازه‌هایی که از
+ * config('reports.stream_max_rows') بزرگ‌ترند در صف تولید می‌شوند
+ * (GenerateCsvReportJob) و لینک دانلود با اعلان به ادمین داده می‌شود.
  * فیلتر اختیاری بازه تاریخ (میلادی): ?from=Y-m-d&to=Y-m-d
  */
 class AdminReportController extends Controller
 {
-    // GET /admin/reports/orders?format=csv
-    public function orders(Request $request): StreamedResponse
+    public function __construct(private readonly CsvReportBuilder $builder) {}
+
+    // GET /admin/reports/orders
+    public function orders(Request $request): StreamedResponse|JsonResponse
     {
-        [$from, $to] = $this->dateRange($request);
-
-        $query = Order::query()
-            ->with('placer.profile')
-            ->when($from, fn ($q) => $q->whereDate(Order::CREATED_AT, '>=', $from))
-            ->when($to, fn ($q) => $q->whereDate(Order::CREATED_AT, '<=', $to))
-            ->orderBy(Order::ID);
-
-        return $this->streamCsv('orders-report.csv',
-            ['ID', 'Status', 'Payment Status', 'Buyer Mobile', 'Buyer Name', 'Final Amount (Rials)', 'Created At'],
-            function ($writeRow) use ($query) {
-                foreach ($query->cursor() as $order) {
-                    $profile = $order->placer?->profile;
-                    $writeRow([
-                        $order->id,
-                        $order->status,
-                        $order->payment_status,
-                        $order->placer?->mobile,
-                        trim(($profile?->name ?? '').' '.($profile?->family ?? '')),
-                        $order->final_amount,
-                        (string) $order->{Order::CREATED_AT},
-                    ]);
-                }
-            });
+        return $this->export('orders', $request);
     }
 
-    // GET /admin/reports/financial?format=csv
-    public function financial(Request $request): StreamedResponse
+    // GET /admin/reports/financial
+    public function financial(Request $request): StreamedResponse|JsonResponse
     {
-        [$from, $to] = $this->dateRange($request);
-
-        $query = WalletTransaction::query()
-            ->with('wallet.user.profile')
-            ->when($from, fn ($q) => $q->whereDate(WalletTransaction::CREATED_AT, '>=', $from))
-            ->when($to, fn ($q) => $q->whereDate(WalletTransaction::CREATED_AT, '<=', $to))
-            ->orderBy(WalletTransaction::ID);
-
-        return $this->streamCsv('financial-report.csv',
-            ['ID', 'User Mobile', 'Type', 'Amount (Rials)', 'Status', 'Order ID', 'Description', 'Created At'],
-            function ($writeRow) use ($query) {
-                foreach ($query->cursor() as $tx) {
-                    $writeRow([
-                        $tx->id,
-                        $tx->wallet?->user?->mobile,
-                        $tx->type,
-                        $tx->amount,
-                        $tx->status,
-                        $tx->order_id,
-                        $tx->description,
-                        (string) $tx->{WalletTransaction::CREATED_AT},
-                    ]);
-                }
-            });
+        return $this->export('financial', $request);
     }
 
-    // GET /admin/reports/users?format=csv
-    public function users(Request $request): StreamedResponse
+    // GET /admin/reports/users
+    public function users(Request $request): StreamedResponse|JsonResponse
     {
-        [$from, $to] = $this->dateRange($request);
-
-        $query = User::query()
-            ->with(['profile', 'roles'])
-            ->when($from, fn ($q) => $q->whereDate(User::CREATED_AT, '>=', $from))
-            ->when($to, fn ($q) => $q->whereDate(User::CREATED_AT, '<=', $to))
-            ->orderBy(User::ID);
-
-        return $this->streamCsv('users-report.csv',
-            ['ID', 'Mobile', 'Name', 'Email', 'Roles', 'Active', 'Registered At'],
-            function ($writeRow) use ($query) {
-                foreach ($query->cursor() as $user) {
-                    $writeRow([
-                        $user->id,
-                        $user->mobile,
-                        trim(($user->profile?->name ?? '').' '.($user->profile?->family ?? '')),
-                        $user->profile?->email,
-                        $user->roles->pluck('name')->implode('|'),
-                        $user->{User::IS_ACTIVE} === false ? '0' : '1',
-                        (string) $user->{User::CREATED_AT},
-                    ]);
-                }
-            });
+        return $this->export('users', $request);
     }
 
-    /**
-     * @return array{0: ?string, 1: ?string}
-     */
-    private function dateRange(Request $request): array
+    // GET /admin/reports/downloads/{filename} — دانلود گزارش تولیدشده در صف
+    public function download(string $filename): StreamedResponse|JsonResponse
+    {
+        // فقط الگوی نام‌گذاری خود Job پذیرفته می‌شود — هیچ مسیر/کاراکتر دیگری
+        if (! preg_match('/^(orders|financial|users)-report-\d{8}-\d{6}\.csv$/', $filename)) {
+            return error(__('admin.reports.not_found'), [], 404);
+        }
+
+        $relativePath = 'reports/'.$filename;
+
+        if (! Storage::disk('financial')->exists($relativePath)) {
+            return error(__('admin.reports.not_found'), [], 404);
+        }
+
+        return Storage::disk('financial')->download($relativePath, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
+    }
+
+    private function export(string $type, Request $request): StreamedResponse|JsonResponse
     {
         $validated = $request->validate([
             'from' => ['nullable', 'date_format:Y-m-d'],
             'to' => ['nullable', 'date_format:Y-m-d'],
         ]);
 
-        return [$validated['from'] ?? null, $validated['to'] ?? null];
-    }
+        $from = $validated['from'] ?? null;
+        $to = $validated['to'] ?? null;
 
-    /**
-     * @param  list<string>  $headers
-     * @param  callable(callable(array<int, mixed>): void): void  $rows
-     */
-    private function streamCsv(string $filename, array $headers, callable $rows): StreamedResponse
-    {
-        return response()->streamDownload(function () use ($headers, $rows) {
+        $rowCount = $this->builder->query($type, $from, $to)->count();
+        $threshold = (int) config('reports.stream_max_rows', 50_000);
+
+        if ($rowCount > $threshold) {
+            GenerateCsvReportJob::dispatch($type, $from, $to, (int) Auth::id());
+
+            return response()->json([
+                'status' => true,
+                'message' => __('admin.reports.queued', ['rows' => $rowCount]),
+                'data' => ['queued' => true, 'rows' => $rowCount],
+            ], 202);
+        }
+
+        return response()->streamDownload(function () use ($type, $from, $to) {
             $out = fopen('php://output', 'w');
-            // BOM تا Excel خروجی UTF-8 فارسی را درست بخواند
-            fwrite($out, "\xEF\xBB\xBF");
-            fputcsv($out, $headers);
-
-            $rows(function (array $row) use ($out) {
-                fputcsv($out, $row);
-            });
-
+            $this->builder->writeTo($out, $type, $from, $to);
             fclose($out);
-        }, $filename, [
+        }, "{$type}-report.csv", [
             'Content-Type' => 'text/csv; charset=UTF-8',
         ]);
     }

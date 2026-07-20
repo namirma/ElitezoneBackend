@@ -81,7 +81,7 @@ class AccountSecurityController extends Controller
         if (
             $user->{User::SECRET} === null ||
             $user->{User::SECRET_EXPIRES_AT} === null ||
-            ! hash_equals((string) $user->{User::SECRET}, (string) $request->input('code')) ||
+            ! \App\Support\OtpSecret::matches($user->{User::SECRET}, (string) $request->input('code')) ||
             Carbon::parse($user->{User::SECRET_EXPIRES_AT})->isPast()
         ) {
             return error(__('auth.verification_code_not_match'), [], 400);
@@ -100,7 +100,7 @@ class AccountSecurityController extends Controller
         if (
             $user->{User::SECRET} === null ||
             $user->{User::SECRET_EXPIRES_AT} === null ||
-            ! hash_equals((string) $user->{User::SECRET}, (string) $request->validated()['code']) ||
+            ! \App\Support\OtpSecret::matches($user->{User::SECRET}, (string) $request->validated()['code']) ||
             Carbon::parse($user->{User::SECRET_EXPIRES_AT})->isPast()
         ) {
             return error(__('auth.verification_code_not_match'), [], 400);
@@ -196,7 +196,8 @@ class AccountSecurityController extends Controller
 
         $code = generateVerifyCode();
         $user->update([
-            User::SECRET => $code,
+            // فقط هش در DB (OtpSecret) — مقدار خام تنها در SMS
+            User::SECRET => \App\Support\OtpSecret::hash((string) $code),
             User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2),
         ]);
 
@@ -227,7 +228,7 @@ class AccountSecurityController extends Controller
         if (
             $user->{User::SECRET} === null ||
             $user->{User::SECRET_EXPIRES_AT} === null ||
-            ! hash_equals((string) $user->{User::SECRET}, (string) $request->input('code')) ||
+            ! \App\Support\OtpSecret::matches($user->{User::SECRET}, (string) $request->input('code')) ||
             Carbon::parse($user->{User::SECRET_EXPIRES_AT})->isPast()
         ) {
             return error(__('auth.verification_code_not_match'), [], 400);

@@ -6,6 +6,7 @@ use App\Models\Address;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Laravel\Sanctum\Sanctum;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -36,14 +37,14 @@ class ShippingQuoteTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function it_requires_an_address_id(): void
     {
         Sanctum::actingAs($this->user);
         $this->postJson('/api/cart/shipping-quote', [])->assertStatus(422);
     }
 
-    /** @test */
+    #[Test]
     public function it_rejects_an_address_the_user_does_not_own(): void
     {
         $stranger = User::factory()->create();
@@ -54,7 +55,7 @@ class ShippingQuoteTest extends TestCase
             ->assertStatus(403);
     }
 
-    /** @test */
+    #[Test]
     public function it_returns_zero_freight_for_an_empty_cart(): void
     {
         $address = $this->addressFor($this->user);

@@ -43,6 +43,10 @@ class Order extends Model
 
     public const DISCOUNT_AMOUNT = 'discount_amount';
 
+    public const COUPON_ID = 'coupon_id';
+
+    public const COUPON_DISCOUNT_AMOUNT = 'coupon_discount_amount';
+
     public const SHIPPING_COST = 'shipping_cost';
 
     public const VAT_AMOUNT = 'vat_amount';
@@ -222,6 +226,8 @@ class Order extends Model
         self::STATUS,
         self::SUBTOTAL,
         self::DISCOUNT_AMOUNT,
+        self::COUPON_ID,
+        self::COUPON_DISCOUNT_AMOUNT,
         self::SHIPPING_COST,
         self::VAT_AMOUNT,
         self::FINAL_AMOUNT,
@@ -334,6 +340,11 @@ class Order extends Model
     public function beneficiary(): BelongsTo
     {
         return $this->belongsTo(User::class, self::BENEFICIARY_USER_ID);
+    }
+
+    public function coupon(): BelongsTo
+    {
+        return $this->belongsTo(Coupon::class, self::COUPON_ID);
     }
 
     /** الیت یار که کمیسیون CO را دریافت می‌کند */

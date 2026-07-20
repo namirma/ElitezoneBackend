@@ -9,6 +9,7 @@ use App\Models\Wallet;
 use App\Services\Financial\SettlementCalculatorService;
 use App\Services\Financial\WeighbridgeReconciler;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -19,7 +20,8 @@ class WeighbridgeReconcilerTest extends TestCase
 {
     use DatabaseTransactions;
 
-    private const SHIPPING  = 500_000.0;
+    private const SHIPPING = 500_000.0;
+
     private const UNIT_PRICE = 500.0;
 
     private WeighbridgeReconciler $reconciler;
@@ -35,7 +37,7 @@ class WeighbridgeReconcilerTest extends TestCase
         $this->reconciler = app(WeighbridgeReconciler::class);
     }
 
-    /** @test */
+    #[Test]
     public function billing_weight_is_capped_at_wbs_on_over_delivery(): void
     {
         $order = $this->makeOrder(wbs: 10_000.0);
@@ -46,20 +48,20 @@ class WeighbridgeReconcilerTest extends TestCase
         $this->assertSame(10_000.0, $result->billingWeight);
     }
 
-    /** @test */
+    #[Test]
     public function over_delivery_does_not_change_invoice_amount(): void
     {
         $order = $this->makeOrder(wbs: 10_000.0);
 
         // oldPOO was computed for wbs; reconciling with actualWeight=wbs → same formula input → diffPOO=0
-        $exact  = $this->reconciler->reconcile($order, actualWeight: 10_000.0);
-        $over   = $this->reconciler->reconcile($order, actualWeight: 15_000.0);
+        $exact = $this->reconciler->reconcile($order, actualWeight: 10_000.0);
+        $over = $this->reconciler->reconcile($order, actualWeight: 15_000.0);
 
         $this->assertEqualsWithDelta($exact->newPOO, $over->newPOO, 1.0,
             'Over-delivery billingWeight is capped at WBS, so POOM must equal POOM(exact)');
     }
 
-    /** @test */
+    #[Test]
     public function billing_weight_equals_actual_on_under_delivery(): void
     {
         $order = $this->makeOrder(wbs: 10_000.0);
@@ -69,36 +71,36 @@ class WeighbridgeReconcilerTest extends TestCase
         $this->assertSame(8_000.0, $result->billingWeight);
     }
 
-    /** @test */
+    #[Test]
     public function diff_poo_is_negative_on_under_delivery(): void
     {
         // oldPOO = POO(wbs=10,000); reconcile with 8,000 → POOM < oldPOO → diffPOO < 0
-        $order  = $this->makeOrder(wbs: 10_000.0);
+        $order = $this->makeOrder(wbs: 10_000.0);
         $result = $this->reconciler->reconcile($order, actualWeight: 8_000.0);
 
         $this->assertLessThan(0.0, $result->diffPOO, 'Under-delivery must produce a negative diffPOO (buyer refund)');
         $this->assertLessThan(0.0, $result->diffPTS, 'Under-delivery must produce a negative diffPTS (supplier reclaim)');
     }
 
-    /** @test */
+    #[Test]
     public function diff_poo_equals_zero_on_exact_weight(): void
     {
         // oldPOO is pre-computed from the same formula for wbs, so reconciling at wbs → diff=0
-        $order  = $this->makeOrder(wbs: 10_000.0);
+        $order = $this->makeOrder(wbs: 10_000.0);
         $result = $this->reconciler->reconcile($order, actualWeight: 10_000.0);
 
         $this->assertEqualsWithDelta(0.0, $result->diffPOO, 1.0, 'Exact weight must produce zero diffPOO');
     }
 
-    /** @test */
+    #[Test]
     public function new_poo_matches_direct_calculator_call(): void
     {
-        $calc  = app(SettlementCalculatorService::class);
+        $calc = app(SettlementCalculatorService::class);
         $order = $this->makeOrder(wbs: 10_000.0);
 
         $result = $this->reconciler->reconcile($order, actualWeight: 8_000.0);
 
-        $rates       = $calc->getCommissionRates('pioneer');
+        $rates = $calc->getCommissionRates('pioneer');
         $expectedPOO = $calc->calculatePOO(
             self::SHIPPING, self::UNIT_PRICE, 8_000.0,
             $rates['ow_final_rate'], 10.0, true, true
@@ -106,10 +108,10 @@ class WeighbridgeReconcilerTest extends TestCase
         $this->assertEqualsWithDelta($expectedPOO, $result->newPOO, 1.0);
     }
 
-    /** @test */
+    #[Test]
     public function vat_from_order_is_passed_through_to_result(): void
     {
-        $order  = $this->makeOrder(wbs: 5_000.0, vatRate: 9.0);
+        $order = $this->makeOrder(wbs: 5_000.0, vatRate: 9.0);
         $result = $this->reconciler->reconcile($order, actualWeight: 5_000.0);
 
         $this->assertSame(9.0, $result->vat);
@@ -124,40 +126,40 @@ class WeighbridgeReconcilerTest extends TestCase
      */
     private function makeOrder(float $wbs, float $vatRate = 10.0): Order
     {
-        $buyer    = User::factory()->create();
+        $buyer = User::factory()->create();
         $supplier = User::factory()->create();
         Wallet::create([Wallet::USER_ID => $supplier->id, Wallet::BALANCE => 0, Wallet::BALANCE_HOLD => 0]);
 
         // Pre-compute consistent POO/PTS for the given wbs so tests are arithmetically correct
-        $calc  = app(SettlementCalculatorService::class);
+        $calc = app(SettlementCalculatorService::class);
         $rates = $calc->getCommissionRates('pioneer');
         $oldPOO = $calc->calculatePOO(self::SHIPPING, self::UNIT_PRICE, $wbs, $rates['ow_final_rate'], $vatRate, true, true);
         $oldPTS = $calc->calculatePTS(self::SHIPPING, self::UNIT_PRICE, $wbs, $rates['ow_final_rate'], $rates['ssg_final_rate'], $rates['co_final_rate'], $vatRate, true, true);
 
         $order = Order::create([
-            Order::PLACER_USER_ID      => $buyer->id,
-            Order::ORDER_NUMBER        => 'TEST-WR-'.now()->format('YmdHis').rand(100, 999),
-            Order::STATUS              => Order::STATUS_PROCESSING,
-            Order::FINAL_AMOUNT        => $oldPOO,
-            Order::PAYMENT_STATUS      => 'paid',
+            Order::PLACER_USER_ID => $buyer->id,
+            Order::ORDER_NUMBER => 'TEST-WR-'.now()->format('YmdHis').rand(100, 999),
+            Order::STATUS => Order::STATUS_PROCESSING,
+            Order::FINAL_AMOUNT => $oldPOO,
+            Order::PAYMENT_STATUS => 'paid',
             Order::WEIGHT_BEFORE_SCALE => $wbs,
-            Order::SHIPPING_COST       => self::SHIPPING,
+            Order::SHIPPING_COST => self::SHIPPING,
         ]);
         $order->forceFill([
-            Order::OFFICIAL_PRICE      => 0,
-            Order::VAT_RATE            => $vatRate,
-            Order::PAYMENT_OF_OWNER    => $oldPOO,
+            Order::OFFICIAL_PRICE => 0,
+            Order::VAT_RATE => $vatRate,
+            Order::PAYMENT_OF_OWNER => $oldPOO,
             Order::PAYMENT_TO_SUPPLIER => $oldPTS,
-            Order::TRANS_COMMISSION    => true,
-            Order::TRANS_VAT           => true,
+            Order::TRANS_COMMISSION => true,
+            Order::TRANS_VAT => true,
         ])->save();
 
         OrderItem::factory()->create([
-            OrderItem::ORDER_ID         => $order->id,
+            OrderItem::ORDER_ID => $order->id,
             OrderItem::SUPPLIER_USER_ID => $supplier->id,
-            OrderItem::UNIT_PRICE       => self::UNIT_PRICE,
-            OrderItem::TOTAL_PRICE      => $wbs * self::UNIT_PRICE,
-            OrderItem::QUANTITY         => (int) $wbs,
+            OrderItem::UNIT_PRICE => self::UNIT_PRICE,
+            OrderItem::TOTAL_PRICE => $wbs * self::UNIT_PRICE,
+            OrderItem::QUANTITY => (int) $wbs,
         ]);
 
         $order->load('items');

@@ -43,6 +43,12 @@ class ProductReviewController extends Controller
     // POST /products/{product:cuid}/reviews — auth:sanctum
     public function store(StoreProductReviewRequest $request, Product $product): JsonResponse
     {
+        // فقط خریدار واقعی (placer یا beneficiary سفارش تحویل‌شده حاوی همین محصول)
+        // می‌تواند نظر بدهد — «نظر خرید تأییدشده».
+        if (! $this->hasDeliveredPurchase($product)) {
+            return error(__('reviews.purchase_required'), [], 403);
+        }
+
         $review = ProductReview::firstOrNew([
             ProductReview::USER_ID => Auth::id(),
             ProductReview::PRODUCT_ID => $product->id,
@@ -62,6 +68,18 @@ class ProductReviewController extends Controller
             new ProductReviewResource($review->refresh()),
             $isResubmission ? __('reviews.updated_pending') : __('reviews.submitted_pending')
         );
+    }
+
+    private function hasDeliveredPurchase(Product $product): bool
+    {
+        return \App\Models\Order::query()
+            ->where(fn ($q) => $q
+                ->where(\App\Models\Order::PLACER_USER_ID, Auth::id())
+                ->orWhere(\App\Models\Order::BENEFICIARY_USER_ID, Auth::id()))
+            ->where(\App\Models\Order::STATUS, \App\Models\Order::STATUS_DELIVERED)
+            ->whereHas('items.productVariant', fn ($q) => $q
+                ->where(\App\Models\ProductVariant::PRODUCT_ID, $product->id))
+            ->exists();
     }
 
     // GET /profile/reviews — نظرات خود کاربر (با وضعیت و دلیل رد)

@@ -139,6 +139,8 @@ class OrderResource extends BaseJsonResource
                 $this->mergeWhen(! $isSupplier, [
                     Order::SUBTOTAL => (string) $this->{Order::SUBTOTAL},
                     Order::DISCOUNT_AMOUNT => (string) $this->{Order::DISCOUNT_AMOUNT},
+                    Order::COUPON_DISCOUNT_AMOUNT => (string) ($this->{Order::COUPON_DISCOUNT_AMOUNT} ?? '0'),
+                    'coupon_code' => $this->whenLoaded('coupon', fn () => $this->coupon?->code),
                     Order::VAT_AMOUNT => (string) $this->{Order::VAT_AMOUNT},
                     Order::SHIPPING_COST => (string) $this->{Order::SHIPPING_COST},
                 ]),

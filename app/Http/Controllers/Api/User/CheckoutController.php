@@ -2,10 +2,9 @@
 
 namespace App\Http\Controllers\Api\User;
 
-use App\Http\Controllers\Controller;
-
 use App\Actions\Order\PlaceOrderAction;
 use App\DataTransferObjects\Order\PlaceOrderData;
+use App\Http\Controllers\Controller;
 use App\Http\Requests\Order\StoreOrderRequest;
 use App\Http\Resources\Order\OrderResource;
 use App\Models\Cart;
@@ -20,6 +19,24 @@ class CheckoutController extends Controller
     public function __construct(
         protected PlaceOrderAction $placeOrderAction
     ) {}
+
+    /**
+     * پیش‌نمایش کد تخفیف قبل از ثبت سفارش — اعتبارسنجی + نوع و مقدار.
+     * اعمال واقعی هنگام placeOrder (با coupon_code) و پرداخت انجام می‌شود.
+     */
+    public function couponPreview(\Illuminate\Http\Request $request, \App\Services\Marketing\CouponService $couponService): JsonResponse
+    {
+        $validated = $request->validate(['code' => ['required', 'string', 'max:100']]);
+
+        $coupon = $couponService->validateForCheckout(Auth::user(), $validated['code']);
+
+        return success([
+            'code' => $coupon->code,
+            'type' => $coupon->type,
+            'amount' => $coupon->amount,
+            'expires_at' => $coupon->expires_at,
+        ], __('coupons.preview_valid'));
+    }
 
     public function paymentInfo(Order $order): JsonResponse
     {

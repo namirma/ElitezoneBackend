@@ -47,6 +47,32 @@ class ProductReviewTest extends TestCase
         return $user;
     }
 
+    /**
+     * سفارش تحویل‌شده حاوی همین محصول برای کاربر — پیش‌نیاز گیت «خرید تأییدشده».
+     */
+    private function giveDeliveredPurchase(User $user, \App\Models\Product $product): void
+    {
+        $variant = \App\Models\ProductVariant::create([
+            'product_id' => $product->id,
+            'name' => 'واریانت تست نظر',
+            'sku' => 'RVSKU_'.Str::random(6),
+        ]);
+
+        $order = \App\Models\Order::create([
+            \App\Models\Order::PLACER_USER_ID => $user->id,
+            \App\Models\Order::ORDER_NUMBER => 'TEST-REVIEW-'.uniqid(),
+            \App\Models\Order::STATUS => \App\Models\Order::STATUS_DELIVERED,
+            \App\Models\Order::PAYMENT_STATUS => \App\Models\Order::PAYMENT_PAID,
+            \App\Models\Order::FINAL_AMOUNT => 100_000,
+        ]);
+
+        \App\Models\OrderItem::factory()->create([
+            'order_id' => $order->id,
+            'product_variant_id' => $variant->id,
+            'supplier_user_id' => User::factory()->create()->id,
+        ]);
+    }
+
     // ── User submission ───────────────────────────────────────────────────
 
     #[Test]
@@ -56,6 +82,16 @@ class ProductReviewTest extends TestCase
 
         $this->postJson("/api/products/{$product->cuid}/reviews", ['rating' => 5])
             ->assertUnauthorized();
+    }
+
+    #[Test]
+    public function user_without_delivered_purchase_cannot_review(): void
+    {
+        $product = $this->makeProduct();
+        Sanctum::actingAs(User::factory()->create());
+
+        $this->postJson("/api/products/{$product->cuid}/reviews", ['rating' => 5])
+            ->assertForbidden();
     }
 
     #[Test]
@@ -74,6 +110,7 @@ class ProductReviewTest extends TestCase
     {
         $product = $this->makeProduct();
         $user = User::factory()->create();
+        $this->giveDeliveredPurchase($user, $product);
         Sanctum::actingAs($user);
 
         $this->postJson("/api/products/{$product->cuid}/reviews", [
@@ -94,6 +131,7 @@ class ProductReviewTest extends TestCase
     {
         $product = $this->makeProduct();
         $user = User::factory()->create();
+        $this->giveDeliveredPurchase($user, $product);
         Sanctum::actingAs($user);
 
         $this->postJson("/api/products/{$product->cuid}/reviews", ['rating' => 2])->assertCreated();

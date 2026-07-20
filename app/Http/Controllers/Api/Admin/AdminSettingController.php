@@ -35,6 +35,17 @@ class AdminSettingController extends Controller
             ]
         );
 
+        // فقط کلیدهای whitelist‌شده — غلط تایپی نباید کلید زامبی بسازد
+        $allowed = config('settings.allowed_keys', []);
+        $unknown = array_diff(array_keys($validated['settings']), $allowed);
+        if ($unknown !== []) {
+            return error(
+                __('admin.settings.unknown_keys', ['keys' => implode(', ', $unknown)]),
+                ['settings' => array_values($unknown)],
+                422
+            );
+        }
+
         foreach ($validated['settings'] as $key => $value) {
             Setting::updateOrCreate(
                 [Setting::KEY => (string) $key],

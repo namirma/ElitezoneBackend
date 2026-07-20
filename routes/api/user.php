@@ -107,6 +107,8 @@ Route::middleware(['auth:sanctum', 'attach.price.category'])->group(function () 
     Route::controller(CheckoutController::class)->prefix('checkout')->group(function () {
         Route::post('/', 'placeOrder')->middleware(EnsureRoleIsSelected::class);
         Route::get('/payment/{order}', 'paymentInfo');
+        // پیش‌نمایش کد تخفیف (throttle تا brute-force کد ممکن نباشد)
+        Route::post('/coupon-preview', 'couponPreview')->middleware('throttle:10,1');
     });
 });
 

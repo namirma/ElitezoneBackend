@@ -123,6 +123,17 @@ class ProcessReservationCompletionAction
                 $this->walletEngine->creditBuyer($locked, $refundAmount, FinancialCodes::STATUS_AVAILABLE, 'دریافت مابه‌التفاوت افت قیمت رزرو');
             }
 
+            // Coupon discount leg (once, at the full-payment moment): WSSG(-) → WO(+).
+            // Same pattern as ProcessPreScalePaymentAction — the buyer is charged the
+            // formula-true POO and credited the discount so POO/PTS math stays untouched.
+            $couponDiscount = min((float) ($locked->{Order::COUPON_DISCOUNT_AMOUNT} ?? 0), $POO);
+            if ($couponDiscount > 0) {
+                $couponCode = $locked->coupon?->code ?? '-';
+                $couponDesc = __('coupons.applied_description', ['code' => $couponCode, 'order' => $locked->order_number]);
+                $this->walletEngine->debitSystem($locked, $couponDiscount, FinancialCodes::STATUS_AVAILABLE, $couponDesc);
+                $this->walletEngine->creditBuyer($locked, $couponDiscount, FinancialCodes::STATUS_AVAILABLE, $couponDesc);
+            }
+
             // Release the reservation hold on the Saze (WSSG) wallet (balance_hold → balance)
             // via the append-only releaseHold() so a distinct TYPE_HOLD_RELEASE ledger row is
             // written and the placement (ProcessReservationPaymentAction) and this release can

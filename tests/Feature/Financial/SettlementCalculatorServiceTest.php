@@ -3,6 +3,8 @@
 namespace Tests\Feature\Financial;
 
 use App\Services\Financial\SettlementCalculatorService;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -24,7 +26,7 @@ class SettlementCalculatorServiceTest extends TestCase
         $this->calc = new SettlementCalculatorService;
     }
 
-    /** @test */
+    #[Test]
     public function it_calculates_commissions_for_gold_badge(): void
     {
         // TC = 1,000,000,000 × 1% = 10,000,000
@@ -37,7 +39,7 @@ class SettlementCalculatorServiceTest extends TestCase
         $this->assertSame(2_250_000.0, $c['SSG']);
     }
 
-    /** @test */
+    #[Test]
     public function it_calculates_commissions_for_pioneer_default_badge(): void
     {
         $c = $this->calc->calculateCommissions(1_000_000_000, null);
@@ -48,11 +50,8 @@ class SettlementCalculatorServiceTest extends TestCase
         $this->assertSame(3_500_000.0, $c['SSG']);
     }
 
-    /**
-     * @test
-     *
-     * @dataProvider pooVariants
-     */
+    #[Test]
+    #[DataProvider('pooVariants')]
     public function it_calculates_all_four_poo_variants(bool $tc, bool $vat, float $expected): void
     {
         // trans=5,000,000  op=28,000  weight=20,000  ow=0.4%  vat=10%
@@ -71,11 +70,8 @@ class SettlementCalculatorServiceTest extends TestCase
         ];
     }
 
-    /**
-     * @test
-     *
-     * @dataProvider ptsVariants
-     */
+    #[Test]
+    #[DataProvider('ptsVariants')]
     public function it_calculates_all_four_pts_variants(bool $tc, bool $vat, float $expected): void
     {
         // trans=5,000,000 op=28,000 weight=20,000 ow=0.4% ssg=0.225% co=0.375% vat=10%
@@ -94,7 +90,7 @@ class SettlementCalculatorServiceTest extends TestCase
         ];
     }
 
-    /** @test */
+    #[Test]
     public function vat_multiplier_is_exact_for_repeating_decimals(): void
     {
         // 10% VAT → multiplier = 0.1 / 1.1 = 1/11 = 0.0909090909...

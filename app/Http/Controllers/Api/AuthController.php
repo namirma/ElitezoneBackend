@@ -189,16 +189,16 @@ class AuthController extends Controller
         }
 
         // Load user by mobile only — comparing the OTP inside a SQL WHERE clause leaks
-        // timing information via DB query latency. hash_equals() runs in constant time.
+        // timing information via DB query latency. OtpSecret::matches (bcrypt) is
+        // constant-time and the stored value is a hash, never the raw code.
         $user = User::where(User::MOBILE, $mobile)->first();
 
-        $storedSecret = (string) ($user?->{User::SECRET} ?? '');
         $submittedCode = (string) ($request->validated('code') ?? '');
 
         if (
             ! $user
             || ! $user->{User::SECRET}
-            || ! hash_equals($storedSecret, $submittedCode)
+            || ! \App\Support\OtpSecret::matches($user->{User::SECRET}, $submittedCode)
             || Carbon::parse($user->{User::SECRET_EXPIRES_AT})->isPast()
         ) {
             $this->recordOtpFailure($mobile);
@@ -220,7 +220,8 @@ class AuthController extends Controller
             // انقضای کوتاه جایگزین آن می‌شود — reset_token نباید نامحدود معتبر بماند.
             $resetToken = Str::random(64);
             $user->update([
-                User::SECRET => $resetToken,
+                // فقط هش توکن ذخیره می‌شود؛ مقدار خام تنها در پاسخ همین درخواست است
+                User::SECRET => \App\Support\OtpSecret::hash($resetToken),
                 User::SECRET_EXPIRES_AT => now()->addMinutes(
                     (int) config('auth.password_reset_ttl_minutes', 15)
                 ),
@@ -369,7 +370,7 @@ class AuthController extends Controller
             ->where(User::PASSWORD, '!=', null)
             ->first();
 
-        if (! $user || ! hash_equals((string) ($user->{User::SECRET} ?? ''), (string) $request->input('code'))) {
+        if (! $user || ! \App\Support\OtpSecret::matches($user->{User::SECRET}, (string) $request->input('code'))) {
             $this->recordOtpFailure($mobile);
 
             return error(__('auth.invalid_reset_token'), [], 400);

@@ -1,0 +1,63 @@
+<?php
+
+namespace App\Jobs\Notification;
+
+use App\Models\User;
+use App\Models\UserNotification;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+
+/**
+ * ارسال گروهی اعلان درون‌برنامه‌ای از پنل ادمین.
+ *
+ * درخواست HTTP فقط dispatch می‌کند؛ درج chunk-شده اینجا انجام می‌شود تا با
+ * تعداد زیاد کاربر، درخواست ادمین timeout نخورد.
+ */
+class SendBulkNotificationJob implements ShouldQueue
+{
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public int $timeout = 600;
+
+    /**
+     * @param  list<int>|null  $userIds  null یعنی ارسال همگانی (همه کاربران فعال)
+     */
+    public function __construct(
+        public readonly string $subject,
+        public readonly string $body,
+        public readonly ?array $userIds,
+        public readonly ?int $senderId,
+    ) {}
+
+    public function handle(): void
+    {
+        $now = now();
+
+        $buildRows = fn (array $ids): array => array_map(fn (int $id) => [
+            UserNotification::USER_ID => $id,
+            UserNotification::SENDER_ID => $this->senderId,
+            UserNotification::SUBJECT => $this->subject,
+            UserNotification::BODY => $this->body,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ], $ids);
+
+        if (is_null($this->userIds)) {
+            User::query()
+                ->where(fn ($q) => $q->where(User::IS_ACTIVE, true)->orWhereNull(User::IS_ACTIVE))
+                ->select(User::ID)
+                ->chunkById(500, function ($users) use ($buildRows) {
+                    UserNotification::insert($buildRows($users->pluck(User::ID)->map(fn ($id) => (int) $id)->all()));
+                });
+
+            return;
+        }
+
+        foreach (array_chunk($this->userIds, 500) as $chunk) {
+            UserNotification::insert($buildRows(array_map('intval', $chunk)));
+        }
+    }
+}

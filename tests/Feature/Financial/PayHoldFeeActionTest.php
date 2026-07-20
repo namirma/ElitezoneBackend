@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -67,7 +68,7 @@ class PayHoldFeeActionTest extends TestCase
     // Happy path
     // ─────────────────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function it_extends_a_reserved_order_and_debits_the_fee(): void
     {
         $balanceBefore = $this->wallet->balance;
@@ -88,7 +89,7 @@ class PayHoldFeeActionTest extends TestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function it_records_a_wallet_transaction_for_the_fee_debit(): void
     {
         $this->action->execute($this->order);
@@ -106,7 +107,7 @@ class PayHoldFeeActionTest extends TestCase
     // Idempotency guard
     // ─────────────────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function it_is_idempotent_when_order_is_already_extended_with_live_expiry(): void
     {
         // Pre-condition: order already extended with a future expiry
@@ -136,7 +137,7 @@ class PayHoldFeeActionTest extends TestCase
     // Guard: wrong status
     // ─────────────────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function it_throws_when_order_is_not_reserved(): void
     {
         $this->order->update([Order::STATUS => Order::STATUS_PROCESSING]);
@@ -151,7 +152,7 @@ class PayHoldFeeActionTest extends TestCase
     // Guard: insufficient balance
     // ─────────────────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function it_throws_insufficient_balance_when_wallet_is_underfunded(): void
     {
         $this->wallet->update([Wallet::BALANCE => PayHoldFeeAction::fee() - 1]);
@@ -161,7 +162,7 @@ class PayHoldFeeActionTest extends TestCase
         $this->action->execute($this->order);
     }
 
-    /** @test */
+    #[Test]
     public function it_throws_insufficient_balance_when_wallet_is_missing(): void
     {
         $this->wallet->delete();
@@ -175,7 +176,7 @@ class PayHoldFeeActionTest extends TestCase
     // Config integration
     // ─────────────────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function hold_fee_is_read_from_config_not_hardcoded(): void
     {
         // Override config in this test only

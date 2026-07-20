@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\Invoice\InvoiceGenerator;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Laravel\Sanctum\Sanctum;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -62,21 +63,21 @@ class InvoiceAccessTest extends TestCase
         return "/api/profile/orders/{$this->order->id}/invoice/{$type}";
     }
 
-    /** @test */
+    #[Test]
     public function consultant_cannot_download_the_buyers_tax_invoice(): void
     {
         Sanctum::actingAs($this->eliteYAR);
         $this->get($this->url('tax'))->assertForbidden();
     }
 
-    /** @test */
+    #[Test]
     public function supplier_cannot_download_the_buyers_tax_invoice(): void
     {
         Sanctum::actingAs($this->supplier);
         $this->get($this->url('tax'))->assertForbidden();
     }
 
-    /** @test */
+    #[Test]
     public function buyer_can_download_their_own_tax_invoice(): void
     {
         // Mock the generator so no real PDF/Blade view is needed.

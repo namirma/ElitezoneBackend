@@ -3,9 +3,9 @@
 namespace App\Http\Requests\Order;
 
 use App\DataTransferObjects\Order\PlaceOrderData;
+use App\Models\ContractorProfile;
 use App\Models\EmployerEliteYAR;
 use App\Models\EngineerProfile;
-use App\Models\ContractorProfile;
 use App\Models\User;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
@@ -35,11 +35,13 @@ class StoreOrderRequest extends FormRequest
         $user = Auth::user();
         $isEliteYAR = $user?->hasRole('engineer') || $user?->hasRole('contractor');
 
-        if ($isEliteYAR) {
-            return $this->eliteYARRules();
-        }
+        $rules = $isEliteYAR ? $this->eliteYARRules() : $this->employerRules();
 
-        return $this->employerRules();
+        // کد تخفیف — اعتبارسنجی محتوایی (فعال/منقضی/مصرف‌شده/شخصی) در
+        // CouponService::validateForCheckout انجام می‌شود تا پیام دقیق برگردد.
+        $rules['coupon_code'] = ['nullable', 'string', 'max:100'];
+
+        return $rules;
     }
 
     // ── مسیر کارفرما ──────────────────────────────────────────────────────────
@@ -73,6 +75,7 @@ class StoreOrderRequest extends FormRequest
 
                     if (! $isApproved) {
                         $fail(__('orders.store_elite_yar_not_approved'));
+
                         return;
                     }
 
@@ -80,6 +83,7 @@ class StoreOrderRequest extends FormRequest
                     $eliteYAR = User::find($value);
                     if (! $eliteYAR) {
                         $fail(__('orders.store_elite_yar_not_found'));
+
                         return;
                     }
 
@@ -95,7 +99,7 @@ class StoreOrderRequest extends FormRequest
                 'integer',
                 Rule::exists('addresses', 'id')->where('user_id', Auth::id()),
             ],
-            'description'        => ['nullable', 'string', 'max:1000'],
+            'description' => ['nullable', 'string', 'max:1000'],
             'shipping_method_id' => ['required', 'integer', 'exists:shipping_methods,id'],
         ];
     }
@@ -135,7 +139,7 @@ class StoreOrderRequest extends FormRequest
                 'integer',
                 Rule::exists('addresses', 'id')->where('user_id', Auth::id()),
             ],
-            'description'        => ['nullable', 'string', 'max:1000'],
+            'description' => ['nullable', 'string', 'max:1000'],
             'shipping_method_id' => ['required', 'integer', 'exists:shipping_methods,id'],
         ];
     }
@@ -166,32 +170,32 @@ class StoreOrderRequest extends FormRequest
     {
         return [
             'beneficiary_user_id' => 'کارفرمای گیرنده',
-            'elite_yar_user_id'  => 'الیت یار',
-            'address_id'          => 'آدرس گیرنده',
-            'description'         => 'توضیحات',
-            'shipping_method_id'  => 'روش ارسال',
+            'elite_yar_user_id' => 'الیت یار',
+            'address_id' => 'آدرس گیرنده',
+            'description' => 'توضیحات',
+            'shipping_method_id' => 'روش ارسال',
         ];
     }
 
     public function messages(): array
     {
         return [
-            'address_id.required'  => __('orders.store_address_required'),
-            'address_id.integer'   => __('orders.store_address_integer'),
-            'address_id.exists'    => __('orders.store_address_exists'),
+            'address_id.required' => __('orders.store_address_required'),
+            'address_id.integer' => __('orders.store_address_integer'),
+            'address_id.exists' => __('orders.store_address_exists'),
 
             'shipping_method_id.required' => __('orders.store_shipping_required'),
-            'shipping_method_id.integer'  => __('orders.store_shipping_integer'),
-            'shipping_method_id.exists'   => __('orders.store_shipping_exists'),
+            'shipping_method_id.integer' => __('orders.store_shipping_integer'),
+            'shipping_method_id.exists' => __('orders.store_shipping_exists'),
 
             'beneficiary_user_id.prohibited' => __('orders.store_beneficiary_prohibited_for_employer'),
-            'beneficiary_user_id.required'   => __('orders.store_beneficiary_required_for_elite_yar'),
-            'beneficiary_user_id.integer'    => __('orders.store_beneficiary_integer'),
-            'beneficiary_user_id.exists'     => __('orders.store_beneficiary_exists'),
+            'beneficiary_user_id.required' => __('orders.store_beneficiary_required_for_elite_yar'),
+            'beneficiary_user_id.integer' => __('orders.store_beneficiary_integer'),
+            'beneficiary_user_id.exists' => __('orders.store_beneficiary_exists'),
 
             'elite_yar_user_id.prohibited' => __('orders.store_elite_yar_prohibited_for_elite_yar'),
-            'elite_yar_user_id.integer'    => __('orders.store_elite_yar_integer'),
-            'elite_yar_user_id.exists'     => __('orders.store_elite_yar_exists'),
+            'elite_yar_user_id.integer' => __('orders.store_elite_yar_integer'),
+            'elite_yar_user_id.exists' => __('orders.store_elite_yar_exists'),
 
             'description.max' => __('orders.store_description_max'),
         ];

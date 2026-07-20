@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
     {
         $this->call(SupplierActivityCategorySeeder::class);
         $this->call(AgreementSeeder::class);
+        $this->call(AdminPermissionSeeder::class);
         // \App\Models\UserResource::factory(10)->create();
 
         // \App\Models\UserResource::factory()->create([

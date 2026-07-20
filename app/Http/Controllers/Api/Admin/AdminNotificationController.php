@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\SendAdminNotificationRequest;
 use App\Http\Resources\Shared\UserMessageResource;
+use App\Jobs\Notification\SendBulkNotificationJob;
 use App\Models\User;
 use App\Models\UserNotification;
 use Illuminate\Http\JsonResponse;
@@ -31,44 +32,24 @@ class AdminNotificationController extends Controller
         return success(UserMessageResource::collection($query->paginate($this->perPage())), __('admin.notifications.list_received'));
     }
 
-    // POST /admin/notifications/send
+    // POST /admin/notifications/send — ارسال واقعی در صف (SendBulkNotificationJob)
     public function send(SendAdminNotificationRequest $request): JsonResponse
     {
-        $subject = $request->string('subject');
-        $body = $request->string('body');
-        $senderId = Auth::id();
-        $now = now();
-        $sentCount = 0;
+        $all = $request->boolean('all');
+        $userIds = $all ? null : array_map('intval', $request->input('user_ids', []));
 
-        $buildRows = function (array $userIds) use ($subject, $body, $senderId, $now): array {
-            return array_map(fn (int $id) => [
-                UserNotification::USER_ID => $id,
-                UserNotification::SENDER_ID => $senderId,
-                UserNotification::SUBJECT => $subject,
-                UserNotification::BODY => $body,
-                'created_at' => $now,
-                'updated_at' => $now,
-            ], $userIds);
-        };
+        $targetCount = $all
+            ? User::where(fn ($q) => $q->where(User::IS_ACTIVE, true)->orWhereNull(User::IS_ACTIVE))->count()
+            : count($userIds);
 
-        if ($request->boolean('all')) {
-            User::query()
-                ->where(fn ($q) => $q->where(User::IS_ACTIVE, true)->orWhereNull(User::IS_ACTIVE))
-                ->select(User::ID)
-                ->chunkById(500, function ($users) use ($buildRows, &$sentCount) {
-                    UserNotification::insert($buildRows($users->pluck(User::ID)->all()));
-                    $sentCount += $users->count();
-                });
-        } else {
-            $userIds = array_map('intval', $request->input('user_ids', []));
+        SendBulkNotificationJob::dispatch(
+            (string) $request->string('subject'),
+            (string) $request->string('body'),
+            $userIds,
+            Auth::id(),
+        );
 
-            foreach (array_chunk($userIds, 500) as $chunk) {
-                UserNotification::insert($buildRows($chunk));
-                $sentCount += count($chunk);
-            }
-        }
-
-        return success(['sent_count' => $sentCount], __('admin.notifications.sent'));
+        return success(['queued' => true, 'target_count' => $targetCount], __('admin.notifications.queued'));
     }
 
     // GET /admin/notifications/stats

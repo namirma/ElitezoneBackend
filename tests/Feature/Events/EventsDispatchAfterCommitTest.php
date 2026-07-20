@@ -3,6 +3,8 @@
 namespace Tests\Feature\Events;
 
 use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -29,11 +31,8 @@ class EventsDispatchAfterCommitTest extends TestCase
         ];
     }
 
-    /**
-     * @test
-     *
-     * @dataProvider domainEvents
-     */
+    #[Test]
+    #[DataProvider('domainEvents')]
     public function it_implements_the_real_after_commit_contract(string $eventClass): void
     {
         $this->assertTrue(
