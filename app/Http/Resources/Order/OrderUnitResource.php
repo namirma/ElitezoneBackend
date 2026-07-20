@@ -2,9 +2,9 @@
 
 namespace App\Http\Resources\Order;
 
+use App\Http\Resources\BaseJsonResource;
 use App\Models\OrderUnit;
 use Illuminate\Http\Request;
-use App\Http\Resources\BaseJsonResource;
 
 /**
  * @mixin \App\Models\OrderUnit

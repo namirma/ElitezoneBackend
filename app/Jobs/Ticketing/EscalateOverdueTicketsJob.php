@@ -21,6 +21,16 @@ class EscalateOverdueTicketsJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public int $tries = 3;
+
+    /** @var list<int> ثانیه تا تلاش بعدی */
+    public array $backoff = [60, 300];
+
+    public function failed(\Throwable $e): void
+    {
+        Log::error('EscalateOverdueTicketsJob failed after retries', ['error' => $e->getMessage()]);
+    }
+
     public function handle(): void
     {
         if (! config('ticketing.escalation.enabled', true)) {

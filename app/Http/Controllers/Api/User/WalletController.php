@@ -156,8 +156,8 @@ class WalletController extends Controller
 
         return success([
             'transaction_id' => $transaction->id,
-            'type'           => 'manual_payment',
-            'message'        => __('wallet.deposit_manual_info', ['amount' => number_format($data['amount'])]),
+            'type' => 'manual_payment',
+            'message' => __('wallet.deposit_manual_info', ['amount' => number_format($data['amount'])]),
         ], __('wallet.deposit_created'));
     }
 
@@ -220,7 +220,7 @@ class WalletController extends Controller
         } catch (\Exception $e) {
             Log::error('Wallet withdrawal request failed', [
                 'user_id' => Auth::id(),
-                'error'   => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
 
             return error(__('wallet.withdrawal_processing_error'), [], 500);

@@ -26,9 +26,9 @@ class SubmitMoadianInvoiceRequest extends FormRequest
     {
         return [
             'moadian_ref.required' => __('orders.errors.moadian_ref_required'),
-            'moadian_ref.string'   => __('orders.errors.moadian_ref_required'),
-            'moadian_ref.min'      => __('orders.errors.moadian_ref_required'),
-            'moadian_ref.max'      => __('orders.errors.moadian_ref_required'),
+            'moadian_ref.string' => __('orders.errors.moadian_ref_required'),
+            'moadian_ref.min' => __('orders.errors.moadian_ref_required'),
+            'moadian_ref.max' => __('orders.errors.moadian_ref_required'),
         ];
     }
 }

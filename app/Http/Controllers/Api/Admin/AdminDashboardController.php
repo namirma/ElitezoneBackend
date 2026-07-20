@@ -19,16 +19,16 @@ class AdminDashboardController extends Controller
 
     public function index(): JsonResponse
     {
-        $today      = now()->startOfDay();
-        $weekStart  = now()->startOfWeek();
+        $today = now()->startOfDay();
+        $weekStart = now()->startOfWeek();
         $monthStart = now()->startOfMonth();
 
         return success([
-            'today'            => $this->dashboard->todayStats($today),
-            'pipeline'         => $this->dashboard->orderPipeline(),
+            'today' => $this->dashboard->todayStats($today),
+            'pipeline' => $this->dashboard->orderPipeline(),
             'financial_alerts' => $this->dashboard->financialAlerts(),
-            'weekly_trend'     => $this->dashboard->weeklyOrderTrend($weekStart),
-            'month_summary'    => $this->dashboard->monthlySummary($monthStart),
+            'weekly_trend' => $this->dashboard->weeklyOrderTrend($weekStart),
+            'month_summary' => $this->dashboard->monthlySummary($monthStart),
         ], __('admin.dashboard.received'));
     }
 }

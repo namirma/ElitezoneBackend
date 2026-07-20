@@ -14,10 +14,10 @@ class TicketFileResource extends BaseJsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id'        => $this->id,
-            'name'      => $this->original_name,
-            'url'       => Storage::disk('public')->url($this->path),
-            'size'      => $this->size,
+            'id' => $this->id,
+            'name' => $this->original_name,
+            'url' => Storage::disk('public')->url($this->path),
+            'size' => $this->size,
             'mime_type' => $this->mime_type,
         ];
     }

@@ -2,9 +2,9 @@
 
 namespace App\Http\Resources\Supplier;
 
+use App\Http\Resources\BaseJsonResource;
 use App\Models\SupplierActivityCategory;
 use Illuminate\Http\Request;
-use App\Http\Resources\BaseJsonResource;
 
 /**
  * @property mixed $id

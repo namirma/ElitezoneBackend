@@ -88,7 +88,7 @@ class RecordSupplierMoadianInvoiceAction
             }
 
             $locked->forceFill([
-                Order::SUPPLIER_MOADIAN_REF      => $moadianRef,
+                Order::SUPPLIER_MOADIAN_REF => $moadianRef,
                 Order::SUPPLIER_HOLD_RELEASED_AT => now(),
             ])->save();
 
@@ -98,6 +98,4 @@ class RecordSupplierMoadianInvoiceAction
             Log::channel('financial')->info("Supplier VAT hold released for order {$locked->id}. Ref: {$moadianRef}. VAT: {$supplierVat}");
         }, 3);
     }
-
-
 }

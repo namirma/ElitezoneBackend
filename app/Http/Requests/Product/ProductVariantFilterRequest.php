@@ -24,7 +24,7 @@ class ProductVariantFilterRequest extends FormRequest
         return [
             'filter_categories' => 'nullable|array',
             'filter_categories.*' => 'integer|exists:attributes,id',
-            //'filter_categories.*' => 'exists:price_filter_categories,id',
+            // 'filter_categories.*' => 'exists:price_filter_categories,id',
             'sort' => 'nullable|in:newest,oldest,cheapest,most_expensive,best_selling',
             'page' => 'nullable|integer|min:1',
             'per_page' => 'nullable|integer|min:1|max:100',

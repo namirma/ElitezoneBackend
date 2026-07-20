@@ -104,7 +104,7 @@ class RecordSystemMoadianInvoiceAction
             }
 
             $locked->forceFill([
-                Order::SYSTEM_MOADIAN_REF      => $moadianRef,
+                Order::SYSTEM_MOADIAN_REF => $moadianRef,
                 Order::SYSTEM_HOLD_RELEASED_AT => now(),
             ])->save();
 

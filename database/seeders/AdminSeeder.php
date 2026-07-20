@@ -53,10 +53,10 @@ class AdminSeeder extends Seeder
             [User::MOBILE => self::MOBILE],
             [
                 User::NATIONAL_CODE => self::NATIONAL_CODE,
-                User::BIRTH_DATE    => '13700101',
-                User::PASSWORD      => Hash::make(self::PASSWORD),
-                User::TYPE_ID       => $type->id,
-                User::IS_ACTIVE     => true,
+                User::BIRTH_DATE => '13700101',
+                User::PASSWORD => Hash::make(self::PASSWORD),
+                User::TYPE_ID => $type->id,
+                User::IS_ACTIVE => true,
             ],
         );
 
@@ -64,8 +64,8 @@ class AdminSeeder extends Seeder
         UserProfile::firstOrCreate(
             [UserProfile::USER_ID => $admin->id],
             [
-                UserProfile::NAME          => 'مدیر',
-                UserProfile::FAMILY        => 'سیستم',
+                UserProfile::NAME => 'مدیر',
+                UserProfile::FAMILY => 'سیستم',
                 UserProfile::NATIONAL_CODE => self::NATIONAL_CODE,
             ],
         );

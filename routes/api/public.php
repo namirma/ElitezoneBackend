@@ -67,6 +67,16 @@ Route::prefix('factories')->group(function () {
 // روش‌های ارسال (lookup عمومی)
 Route::get('/shipping-methods', [ShippingMethodController::class, 'index']);
 
+// ── محتوای عمومی سایت (مدیریت‌شده در پنل ادمین، فقط رکوردهای فعال، کش‌شده) ──
+Route::controller(\App\Http\Controllers\ContentController::class)->group(function () {
+    Route::get('/banners', 'banners');
+    Route::get('/articles', 'articles');
+    Route::get('/articles/{slug}', 'article');
+    Route::get('/faq', 'faq');
+    Route::get('/pages/{slug}', 'page');
+    Route::get('/settings/public', 'publicSettings');
+});
+
 Route::prefix('customer-types')->group(function () {
     Route::get('/', [CustomerTypeController::class, 'index']);
     Route::get('/badges', [CustomerTypeController::class, 'getBadges']);

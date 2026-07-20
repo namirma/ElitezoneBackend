@@ -23,7 +23,7 @@ class PayFullOrderRequest extends FormRequest
     {
         return [
             'payment_type.required' => __('orders.payment_type_required'),
-            'payment_type.in'       => __('orders.payment_type_invalid'),
+            'payment_type.in' => __('orders.payment_type_invalid'),
         ];
     }
 }

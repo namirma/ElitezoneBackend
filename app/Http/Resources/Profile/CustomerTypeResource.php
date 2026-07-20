@@ -2,8 +2,8 @@
 
 namespace App\Http\Resources\Profile;
 
-use App\Models\CustomerType;
 use App\Http\Resources\BaseJsonResource;
+use App\Models\CustomerType;
 
 /**
  * @mixin \App\Models\CustomerType

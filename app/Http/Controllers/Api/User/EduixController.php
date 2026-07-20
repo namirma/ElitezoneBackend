@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api\User;
 
 use App\Http\Controllers\Controller;
-
 use App\Http\Resources\Profile\EduixRecordResource;
 use App\Models\EduixRecord;
 use App\Models\User;

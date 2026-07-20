@@ -50,7 +50,7 @@ class DevSeeder extends Seeder
         $userTypes = [
             ['slug' => 'customer',  'name' => 'مشتری',     'icon' => 'user'],
             ['slug' => 'engineer',  'name' => 'مهندس',     'icon' => 'hard-hat'],
-            ['slug' => 'contractor','name' => 'پیمانکار',  'icon' => 'briefcase'],
+            ['slug' => 'contractor', 'name' => 'پیمانکار',  'icon' => 'briefcase'],
             ['slug' => 'supplier',  'name' => 'سوپلایر',   'icon' => 'factory'],
             ['slug' => 'employer',  'name' => 'کارفرما',   'icon' => 'building'],
             ['slug' => 'expert',    'name' => 'الیت یار', 'icon' => 'star'],
@@ -118,17 +118,17 @@ class DevSeeder extends Seeder
         Address::firstOrCreate(
             [Address::USER_ID => $employer->id, Address::POSTAL_ADDRESS => 'تهران، خیابان ولیعصر، پلاک ۱۲'],
             [
-                Address::USER_ID         => $employer->id,
-                Address::TITLE           => 'دفتر مرکزی',
-                Address::PROVINCE_ID     => null,   // province table ممکن است خالی باشد
-                Address::CITY_ID         => null,
-                Address::POSTAL_ADDRESS  => 'تهران، خیابان ولیعصر، پلاک ۱۲',
+                Address::USER_ID => $employer->id,
+                Address::TITLE => 'دفتر مرکزی',
+                Address::PROVINCE_ID => null,   // province table ممکن است خالی باشد
+                Address::CITY_ID => null,
+                Address::POSTAL_ADDRESS => 'تهران، خیابان ولیعصر، پلاک ۱۲',
                 Address::BUILDING_NUMBER => '۱۲',
-                Address::UNIT            => '۳',
-                Address::POSTAL_CODE     => '1234567890',
-                Address::RECEIVER_NAME   => 'محمد کارفرمایی',
+                Address::UNIT => '۳',
+                Address::POSTAL_CODE => '1234567890',
+                Address::RECEIVER_NAME => 'محمد کارفرمایی',
                 Address::RECEIVER_MOBILE => '09200000002',
-                Address::IS_DEFAULT      => true,
+                Address::IS_DEFAULT => true,
             ]
         );
 
@@ -166,8 +166,8 @@ class DevSeeder extends Seeder
         // ۸-ب: سفارش reserved (بیعانه پرداخت شده)
         $reserved = $this->makeOrder($employer->id, $supplier->id, $variant, Order::STATUS_RESERVED, Order::PAYMENT_PAID, 2_500_000_000, 'ORD-DEV-002');
         $reserved->update([
-            Order::PAYMENT_TO_RESERVE      => 1_950_000_000,
-            Order::RESERVATION_EXPIRES_AT  => now()->addHours(48),
+            Order::PAYMENT_TO_RESERVE => 1_950_000_000,
+            Order::RESERVATION_EXPIRES_AT => now()->addHours(48),
         ]);
 
         // ۸-ج: سفارش processing (پرداخت کامل)
@@ -212,7 +212,7 @@ class DevSeeder extends Seeder
         string $nationalCode,
         string $name,
         string $family,
-        int    $balance,
+        int $balance,
         string $typeSug = 'customer',
     ): User {
         $typeId = UserType::firstOrCreate(
@@ -223,11 +223,11 @@ class DevSeeder extends Seeder
         $user = User::firstOrCreate(
             [User::MOBILE => $mobile],
             [
-                User::MOBILE        => $mobile,
+                User::MOBILE => $mobile,
                 User::NATIONAL_CODE => $nationalCode,
-                User::BIRTH_DATE    => '13700101',
-                User::PASSWORD      => Hash::make(self::PASSWORD),
-                User::TYPE_ID       => $typeId,
+                User::BIRTH_DATE => '13700101',
+                User::PASSWORD => Hash::make(self::PASSWORD),
+                User::TYPE_ID => $typeId,
             ]
         );
 
@@ -235,9 +235,9 @@ class DevSeeder extends Seeder
         UserProfile::firstOrCreate(
             [UserProfile::USER_ID => $user->id],
             [
-                UserProfile::USER_ID      => $user->id,
-                UserProfile::NAME         => $name,
-                UserProfile::FAMILY       => $family,
+                UserProfile::USER_ID => $user->id,
+                UserProfile::NAME => $name,
+                UserProfile::FAMILY => $family,
                 UserProfile::NATIONAL_CODE => $nationalCode,
             ]
         );
@@ -246,8 +246,8 @@ class DevSeeder extends Seeder
         Wallet::firstOrCreate(
             [Wallet::USER_ID => $user->id],
             [
-                Wallet::USER_ID      => $user->id,
-                Wallet::BALANCE      => $balance,
+                Wallet::USER_ID => $user->id,
+                Wallet::BALANCE => $balance,
                 Wallet::BALANCE_HOLD => 0,
             ]
         );
@@ -256,26 +256,26 @@ class DevSeeder extends Seeder
     }
 
     private function makeOrder(
-        int            $buyerId,
-        int            $supplierId,
+        int $buyerId,
+        int $supplierId,
         ?ProductVariant $variant,
-        string         $status,
-        string         $paymentStatus,
-        int            $amount,
-        string         $orderNumber,
+        string $status,
+        string $paymentStatus,
+        int $amount,
+        string $orderNumber,
     ): Order {
         $order = Order::firstOrCreate(
             [Order::ORDER_NUMBER => $orderNumber],
             [
-                Order::PLACER_USER_ID      => $buyerId,
-                Order::ORDER_NUMBER        => $orderNumber,
-                Order::STATUS              => $status,
-                Order::PAYMENT_STATUS      => $paymentStatus,
-                Order::FINAL_AMOUNT        => $amount,
-                Order::OFFICIAL_PRICE      => $amount,
+                Order::PLACER_USER_ID => $buyerId,
+                Order::ORDER_NUMBER => $orderNumber,
+                Order::STATUS => $status,
+                Order::PAYMENT_STATUS => $paymentStatus,
+                Order::FINAL_AMOUNT => $amount,
+                Order::OFFICIAL_PRICE => $amount,
                 Order::WEIGHT_BEFORE_SCALE => 20_000,   // ۲۰ تن
-                Order::SHIPPING_COST       => 0,
-                Order::VAT_RATE            => 10,
+                Order::SHIPPING_COST => 0,
+                Order::VAT_RATE => 10,
             ]
         );
 
@@ -284,17 +284,17 @@ class DevSeeder extends Seeder
             OrderItem::firstOrCreate(
                 [OrderItem::ORDER_ID => $order->id, OrderItem::VARIANT_SKU => $variant->sku],
                 [
-                    OrderItem::ORDER_ID          => $order->id,
+                    OrderItem::ORDER_ID => $order->id,
                     OrderItem::PRODUCT_VARIANT_ID => $variant->id,
-                    OrderItem::SUPPLIER_USER_ID  => $supplierId,
-                    OrderItem::PRODUCT_NAME      => $variant->name ?? 'میلگرد آجدار',
-                    OrderItem::VARIANT_SKU       => $variant->sku,
-                    OrderItem::QUANTITY_DETAILS  => ['5.5' => 10000],
-                    OrderItem::QUANTITY          => 20_000,
-                    OrderItem::WEIGHT            => 20_000,
-                    OrderItem::UNIT_NAME         => 'کیلوگرم',
-                    OrderItem::UNIT_PRICE        => (int) ($amount / 20_000),
-                    OrderItem::TOTAL_PRICE       => $amount,
+                    OrderItem::SUPPLIER_USER_ID => $supplierId,
+                    OrderItem::PRODUCT_NAME => $variant->name ?? 'میلگرد آجدار',
+                    OrderItem::VARIANT_SKU => $variant->sku,
+                    OrderItem::QUANTITY_DETAILS => ['5.5' => 10000],
+                    OrderItem::QUANTITY => 20_000,
+                    OrderItem::WEIGHT => 20_000,
+                    OrderItem::UNIT_NAME => 'کیلوگرم',
+                    OrderItem::UNIT_PRICE => (int) ($amount / 20_000),
+                    OrderItem::TOTAL_PRICE => $amount,
                 ]
             );
         }

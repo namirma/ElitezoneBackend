@@ -25,4 +25,29 @@ return [
         'homepage_announcement',
         'min_app_version',
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | کلیدهای قابل نمایش عمومی (GET /settings/public)
+    |--------------------------------------------------------------------------
+    | زیرمجموعه allowed_keys که بدون auth به فرانت داده می‌شود — کلید حساس
+    | هرگز اینجا اضافه نشود.
+    */
+    'public_keys' => [
+        'site_title',
+        'site_description',
+        'support_phone',
+        'support_email',
+        'support_hours',
+        'company_address',
+        'instagram_url',
+        'telegram_url',
+        'linkedin_url',
+        'whatsapp_number',
+        'about_short',
+        'footer_text',
+        'maintenance_banner',
+        'homepage_announcement',
+        'min_app_version',
+    ],
 ];

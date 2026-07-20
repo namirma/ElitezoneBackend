@@ -22,13 +22,13 @@ class PriceFilterCategoryDetectorService
             ->get()
             ->keyBy(fn ($value) => $value->group->code);
 
-        $customerTypeValue    = $parameterValues['customer_type']      ?? null;
+        $customerTypeValue = $parameterValues['customer_type'] ?? null;
         $eliteYARStatusValue = $parameterValues['elite_yar_status'] ?? null;
-        $purchasePurposeValue  = $parameterValues['purchase_purpose']  ?? null;
+        $purchasePurposeValue = $parameterValues['purchase_purpose'] ?? null;
 
         if ($customerTypeValue && $eliteYARStatusValue) {
             if ($eliteYARStatusValue->code === 'with_elite_yar') {
-                $prefix   = strstr($customerTypeValue->code, '_', true) ?: $customerTypeValue->code;
+                $prefix = strstr($customerTypeValue->code, '_', true) ?: $customerTypeValue->code;
                 $category = PriceFilterCategory::where(PriceFilterCategory::CODE, "{$prefix}_with_elite_yar")->first();
                 if ($category) {
                     return $category;
@@ -39,7 +39,7 @@ class PriceFilterCategoryDetectorService
                 }
 
                 $fallbackCode = "{$customerTypeValue->code}_without_elite_yar";
-                $category     = PriceFilterCategory::where(PriceFilterCategory::CODE, $fallbackCode)->first();
+                $category = PriceFilterCategory::where(PriceFilterCategory::CODE, $fallbackCode)->first();
                 if ($category) {
                     return $category;
                 }

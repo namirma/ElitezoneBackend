@@ -59,6 +59,9 @@ class TicketLifecycleTest extends TestCase
     #[Test]
     public function create_stamps_open_status_priority_and_sla_deadline(): void
     {
+        // wall-clock پین می‌شود؛ رفتار تقویم کاری تست جدا دارد
+        config(['ticketing.business_hours.enabled' => false]);
+
         $ticket = $this->makeTicket(Ticket::PRIORITY_HIGH);
 
         $this->assertSame(Ticket::STATUS_OPEN, $ticket->status);
@@ -68,6 +71,27 @@ class TicketLifecycleTest extends TestCase
         // high priority SLA = 8h by default → deadline is in the future, < 9h out.
         $this->assertTrue($ticket->sla_due_at->isFuture());
         $this->assertTrue($ticket->sla_due_at->lessThan(now()->addHours(9)));
+    }
+
+    #[Test]
+    public function sla_deadline_respects_the_business_hours_calendar(): void
+    {
+        config(['ticketing.business_hours' => [
+            'enabled' => true, 'start_hour' => 9, 'end_hour' => 17,
+            'weekend_days' => [\Illuminate\Support\Carbon::FRIDAY],
+        ]]);
+
+        // پنجشنبه ۱۶:۰۰ — از ۸ ساعت SLA فقط ۱ ساعت امروز جا دارد؛ جمعه تعطیل است،
+        // پس ۷ ساعت باقی‌مانده از شنبه ۰۹:۰۰ مصرف می‌شود → موعد شنبه ۱۶:۰۰.
+        \Illuminate\Support\Carbon::setTestNow('2026-07-16 16:00:00'); // پنجشنبه
+
+        try {
+            $ticket = $this->makeTicket(Ticket::PRIORITY_HIGH); // 8h
+
+            $this->assertSame('2026-07-18 16:00:00', $ticket->sla_due_at->format('Y-m-d H:i:s'));
+        } finally {
+            \Illuminate\Support\Carbon::setTestNow();
+        }
     }
 
     #[Test]

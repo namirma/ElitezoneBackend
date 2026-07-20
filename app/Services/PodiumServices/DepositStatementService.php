@@ -31,13 +31,13 @@ class DepositStatementService
     /**
      * دریافت لیست صورت‌حساب در یک بازه زمانی شمسی
      *
-     * @param  string  $fromDate   تاریخ شروع شمسی (yyyy/mm/dd)
-     * @param  string  $toDate     تاریخ پایان شمسی (yyyy/mm/dd)
-     * @param  string  $fromTime   ساعت شروع (HH:mm:ss)
-     * @param  string  $toTime     ساعت پایان (HH:mm:ss)
-     * @param  int     $firstIndex صفحه‌بندی — اولین نتیجه از صفر شروع می‌شود
-     * @param  int     $resultCount تعداد نتیجه
-     * @return array   آرایه‌ای از Statement‌ها
+     * @param  string  $fromDate  تاریخ شروع شمسی (yyyy/mm/dd)
+     * @param  string  $toDate  تاریخ پایان شمسی (yyyy/mm/dd)
+     * @param  string  $fromTime  ساعت شروع (HH:mm:ss)
+     * @param  string  $toTime  ساعت پایان (HH:mm:ss)
+     * @param  int  $firstIndex  صفحه‌بندی — اولین نتیجه از صفر شروع می‌شود
+     * @param  int  $resultCount  تعداد نتیجه
+     * @return array آرایه‌ای از Statement‌ها
      *
      * @throws RuntimeException اگر پادیوم خطا برگرداند
      */
@@ -50,17 +50,17 @@ class DepositStatementService
         int $resultCount = 50,
     ): array {
         $payload = [
-            'apiKey'          => Config::get('podium.deposit.sc_api_key'),
+            'apiKey' => Config::get('podium.deposit.sc_api_key'),
             'productEntityId' => Config::get('podium.deposit.product_entity_id'),
             'providerParameters' => [
                 'body' => [
                     'DepositNumber' => Config::get('podium.deposit.deposit_number'),
-                    'FromDate'      => $fromDate,
-                    'ToDate'        => $toDate,
-                    'FirstIndex'    => $firstIndex,
-                    'ResultCount'   => $resultCount,
-                    'FromTime'      => $fromTime,
-                    'ToTime'        => $toTime,
+                    'FromDate' => $fromDate,
+                    'ToDate' => $toDate,
+                    'FirstIndex' => $firstIndex,
+                    'ResultCount' => $resultCount,
+                    'FromTime' => $fromTime,
+                    'ToTime' => $toTime,
                 ],
             ],
         ];
@@ -69,10 +69,10 @@ class DepositStatementService
 
         if ($res['hasError'] ?? true) {
             Log::error('DepositStatementService: Podium returned error', [
-                'hasError'        => $res['hasError'] ?? null,
+                'hasError' => $res['hasError'] ?? null,
                 'referenceNumber' => $res['referenceNumber'] ?? null,
-                'errorCode'       => $res['errorCode'] ?? null,
-                'message'         => $res['message'] ?? null,
+                'errorCode' => $res['errorCode'] ?? null,
+                'message' => $res['message'] ?? null,
             ]);
 
             throw new RuntimeException(

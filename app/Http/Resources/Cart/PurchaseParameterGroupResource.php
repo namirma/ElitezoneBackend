@@ -2,10 +2,10 @@
 
 namespace App\Http\Resources\Cart;
 
+use App\Http\Resources\BaseJsonResource;
 use App\Models\PurchaseParameterGroup;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use App\Http\Resources\BaseJsonResource;
 
 /**
  * @mixin \App\Models\PurchaseParameterGroup

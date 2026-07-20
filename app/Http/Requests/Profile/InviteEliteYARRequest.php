@@ -24,7 +24,7 @@ class InviteEliteYARRequest extends FormRequest
     {
         return [
             User::MOBILE.'.required' => __('elite_yar.mobile_required'),
-            User::MOBILE.'.regex'    => __('auth.mobile_format_invalid'),
+            User::MOBILE.'.regex' => __('auth.mobile_format_invalid'),
         ];
     }
 }

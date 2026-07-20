@@ -59,7 +59,7 @@ class ReleaseEliteYARHoldAction
             // No eliteYAR commission was held for this order (no eliteYAR)
             Log::channel('financial')->info("ReleaseEliteYARHoldAction: order {$order->id} has no eliteYAR commission — only recording ref.");
             $order->forceFill([
-                Order::ELITE_YAR_MOADIAN_REF      => $moadianRef,
+                Order::ELITE_YAR_MOADIAN_REF => $moadianRef,
                 Order::ELITE_YAR_HOLD_RELEASED_AT => now(),
             ])->save();
 
@@ -114,7 +114,7 @@ class ReleaseEliteYARHoldAction
             );
 
             $locked->forceFill([
-                Order::ELITE_YAR_MOADIAN_REF      => $moadianRef,
+                Order::ELITE_YAR_MOADIAN_REF => $moadianRef,
                 Order::ELITE_YAR_HOLD_RELEASED_AT => now(),
             ])->save();
 

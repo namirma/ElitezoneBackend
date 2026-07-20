@@ -2,9 +2,8 @@
 
 namespace App\Http\Controllers\Api\User;
 
-use App\Http\Controllers\Controller;
-
 use App\Actions\Profile\ProfileNavigationAction;
+use App\Http\Controllers\Controller;
 use App\Models\ProfileSearchHistory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;

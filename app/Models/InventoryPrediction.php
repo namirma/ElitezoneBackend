@@ -10,7 +10,7 @@ class InventoryPrediction extends Model
     public $timestamps = false;
 
     /* -------------------------------------------------------------------------- */
-    /* Constants                                                                  */
+    /* Constants */
     /* -------------------------------------------------------------------------- */
     const ID = 'id';
 

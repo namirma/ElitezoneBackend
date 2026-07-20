@@ -50,7 +50,7 @@ class CartParameterSyncService
         $sessionId = $request->cookie('cart_session_id', (string) Str::uuid());
         $cart = Cart::firstOrCreate(
             [Cart::SESSION_ID => $sessionId],
-            [Cart::USER_ID    => null],
+            [Cart::USER_ID => null],
         );
         cookie()->queue('cart_session_id', $sessionId, 60 * 24 * 30);
 
@@ -59,8 +59,8 @@ class CartParameterSyncService
 
     private function syncPriceCategoryAndCustomerType(Cart $cart): void
     {
-        $paramTable        = (new PurchaseParameterValue)->getTable();
-        $currentParamIds   = $cart->purchaseParameters()
+        $paramTable = (new PurchaseParameterValue)->getTable();
+        $currentParamIds = $cart->purchaseParameters()
             ->pluck($paramTable.'.'.PurchaseParameterValue::ID)
             ->all();
 

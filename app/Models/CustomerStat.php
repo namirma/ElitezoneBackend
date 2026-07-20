@@ -11,7 +11,7 @@ class CustomerStat extends Model
     use HasFactory;
 
     /* -------------------------------------------------------------------------- */
-    /* Constants (Column Names)                                                   */
+    /* Constants (Column Names) */
     /* -------------------------------------------------------------------------- */
     const ID = 'id';
 
@@ -34,7 +34,7 @@ class CustomerStat extends Model
     const LAST_CALCULATED_AT = 'last_calculated_at';
 
     /* -------------------------------------------------------------------------- */
-    /* Constants (Segments - برچسب‌های مشتریان)                                  */
+    /* Constants (Segments - برچسب‌های مشتریان) */
     /* -------------------------------------------------------------------------- */
     const SEGMENT_CHAMPION = 'champion';
 

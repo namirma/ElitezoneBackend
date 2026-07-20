@@ -33,10 +33,10 @@ return new class extends Migration
     {
         $this->rename([
             'employer_without_consultant' => 'employer_without_elite_yar',
-            'engineer_with_consultant'    => 'engineer_with_elite_yar',
-            'with_consultant'             => 'with_elite_yar',
-            'without_consultant'          => 'without_elite_yar',
-            'consultant_status'           => 'elite_yar_status',
+            'engineer_with_consultant' => 'engineer_with_elite_yar',
+            'with_consultant' => 'with_elite_yar',
+            'without_consultant' => 'without_elite_yar',
+            'consultant_status' => 'elite_yar_status',
         ]);
     }
 
@@ -44,10 +44,10 @@ return new class extends Migration
     {
         $this->rename([
             'employer_without_elite_yar' => 'employer_without_consultant',
-            'engineer_with_elite_yar'    => 'engineer_with_consultant',
-            'with_elite_yar'             => 'with_consultant',
-            'without_elite_yar'          => 'without_consultant',
-            'elite_yar_status'           => 'consultant_status',
+            'engineer_with_elite_yar' => 'engineer_with_consultant',
+            'with_elite_yar' => 'with_consultant',
+            'without_elite_yar' => 'without_consultant',
+            'elite_yar_status' => 'consultant_status',
         ]);
     }
 

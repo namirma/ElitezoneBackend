@@ -11,8 +11,11 @@ class EmployerSmsInvite extends Model
     use HasFactory;
 
     public const ID = 'id';
+
     public const ADVISOR_ID = 'advisor_id';
+
     public const MOBILE = 'mobile';
+
     public const SENT_AT = 'sent_at';
 
     /** حداکثر تعداد کارفرمایی که هر الیت یار می‌تواند دعوت کند */

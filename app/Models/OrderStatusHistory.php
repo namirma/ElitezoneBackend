@@ -13,7 +13,7 @@ class OrderStatusHistory extends Model
     public $timestamps = false;
 
     /* -------------------------------------------------------------------------- */
-    /* Constants (Column Names)                                                   */
+    /* Constants (Column Names) */
     /* -------------------------------------------------------------------------- */
     const ID = 'id';
 
@@ -30,7 +30,7 @@ class OrderStatusHistory extends Model
     const CREATED_AT = 'created_at';
 
     /* -------------------------------------------------------------------------- */
-    /* Configuration                                                              */
+    /* Configuration */
     /* -------------------------------------------------------------------------- */
     protected $fillable = [
         self::ORDER_ID,
@@ -48,7 +48,7 @@ class OrderStatusHistory extends Model
     ];
 
     /* -------------------------------------------------------------------------- */
-    /* Relationships                                                              */
+    /* Relationships */
     /* -------------------------------------------------------------------------- */
 
     public function order(): BelongsTo

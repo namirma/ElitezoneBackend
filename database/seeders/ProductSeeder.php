@@ -3,8 +3,8 @@
 namespace Database\Seeders;
 
 use App\Models\Attribute;
-use App\Models\AttributeValue;
 use App\Models\AttributeType;
+use App\Models\AttributeValue;
 use App\Models\Badge;
 use App\Models\CategoryAttribute;
 use App\Models\CustomerType;

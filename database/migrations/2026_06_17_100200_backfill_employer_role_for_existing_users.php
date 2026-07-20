@@ -43,8 +43,8 @@ return new class extends Migration
             ->pluck('id');
 
         $rows = $toBackfill->map(fn ($userId) => [
-            'role_id'   => $roleId,
-            'user_id'   => $userId,
+            'role_id' => $roleId,
+            'user_id' => $userId,
             'user_type' => 'App\\Models\\User',
         ])->all();
 

@@ -8,7 +8,6 @@ use App\Models\OrderItem;
 use App\Models\OrderUnit;
 use App\Models\ProductVariant;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Support\Facades\Cache;
 
 class InventoryService
 {

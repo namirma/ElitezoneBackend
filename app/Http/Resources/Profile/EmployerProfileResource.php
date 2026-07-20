@@ -2,9 +2,9 @@
 
 namespace App\Http\Resources\Profile;
 
+use App\Http\Resources\BaseJsonResource;
 use App\Models\EmployerProfile;
 use Illuminate\Http\Request;
-use App\Http\Resources\BaseJsonResource;
 
 /**
  * @mixin \App\Models\EmployerProfile

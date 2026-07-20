@@ -24,6 +24,11 @@ class GenerateCsvReportJob implements ShouldQueue
 
     public int $timeout = 1800;
 
+    public int $tries = 3;
+
+    /** @var list<int> ثانیه تا تلاش بعدی */
+    public array $backoff = [120, 600];
+
     public function __construct(
         public readonly string $type,
         public readonly ?string $from,
@@ -52,6 +57,24 @@ class GenerateCsvReportJob implements ShouldQueue
                 'rows' => $rows,
                 'filename' => $filename,
             ]),
+        ]);
+    }
+
+    public function failed(\Throwable $e): void
+    {
+        \Illuminate\Support\Facades\Log::error('GenerateCsvReportJob failed after retries', [
+            'type' => $this->type,
+            'from' => $this->from,
+            'to' => $this->to,
+            'error' => $e->getMessage(),
+        ]);
+
+        // به ادمین درخواست‌دهنده اطلاع بده که گزارش ساخته نشد (وگرنه بی‌خبر منتظر می‌ماند)
+        UserNotification::create([
+            UserNotification::USER_ID => $this->adminId,
+            UserNotification::SENDER_ID => null,
+            UserNotification::SUBJECT => __('admin.reports.failed_subject'),
+            UserNotification::BODY => __('admin.reports.failed_body', ['type' => $this->type]),
         ]);
     }
 }

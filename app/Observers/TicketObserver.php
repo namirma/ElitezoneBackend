@@ -18,7 +18,7 @@ class TicketObserver
      */
     public function created(Ticket $ticket): void
     {
-        $ticket->{Ticket::CODE} = Ticket::CODE_PREFIX . str_pad((string) $ticket->id, 6, '0', STR_PAD_LEFT);
+        $ticket->{Ticket::CODE} = Ticket::CODE_PREFIX.str_pad((string) $ticket->id, 6, '0', STR_PAD_LEFT);
         $ticket->saveQuietly();
     }
 }

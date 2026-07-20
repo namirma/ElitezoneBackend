@@ -15,7 +15,6 @@ use App\Services\InventoryService;
 use App\Services\PriceCalculationService;
 use App\Services\PricingRoleResolver;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 

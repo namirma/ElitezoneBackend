@@ -15,7 +15,7 @@ class ProductView extends Model
     public $timestamps = false;
 
     /* -------------------------------------------------------------------------- */
-    /* Constants (Column Names)                                                   */
+    /* Constants (Column Names) */
     /* -------------------------------------------------------------------------- */
     const ID = 'id';
 
@@ -32,7 +32,7 @@ class ProductView extends Model
     const VIEWED_AT = 'viewed_at';
 
     /* -------------------------------------------------------------------------- */
-    /* Configuration                                                              */
+    /* Configuration */
     /* -------------------------------------------------------------------------- */
     protected $fillable = [
         self::PRODUCT_ID,
@@ -50,7 +50,7 @@ class ProductView extends Model
     ];
 
     /* -------------------------------------------------------------------------- */
-    /* Relationships                                                              */
+    /* Relationships */
     /* -------------------------------------------------------------------------- */
 
     public function product(): BelongsTo

@@ -31,8 +31,8 @@ class RouteServiceProvider extends ServiceProvider
         RateLimiter::for('sms', function (Request $request) {
             return Limit::perMinute(2)->by($request->ip())->response(function (Request $request, array $headers) {
                 $retryAfter = (int) ($headers['Retry-After'] ?? 60);
-                $minutes    = (int) ceil($retryAfter / 60);
-                $timeLabel  = $minutes > 1 ? "{$minutes} دقیقه" : '۱ دقیقه';
+                $minutes = (int) ceil($retryAfter / 60);
+                $timeLabel = $minutes > 1 ? "{$minutes} دقیقه" : '۱ دقیقه';
 
                 return error(
                     "تلاش بیش از حد مجاز است. لطفاً {$timeLabel} دیگر دوباره امتحان کنید.",
@@ -51,8 +51,8 @@ class RouteServiceProvider extends ServiceProvider
          *   - کاربر عادی کد را یک بار و درست وارد می‌کند؛ ۵ بار فرصت برای اشتباه تایپی کافی است
          */
         RateLimiter::for('otp-verify', function (Request $request) {
-            $mobile   = (string) $request->input('username', '');
-            $throttleKey = 'otp:' . $request->ip() . ':' . $mobile;
+            $mobile = (string) $request->input('username', '');
+            $throttleKey = 'otp:'.$request->ip().':'.$mobile;
 
             return Limit::perMinute(5)->by($throttleKey)->response(function () {
                 return error(__('auth.too_many_otp_attempts'), [], 429);
