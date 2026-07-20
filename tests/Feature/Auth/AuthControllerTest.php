@@ -75,7 +75,7 @@ class AuthControllerTest extends TestCase
             'mobile' => '09100000010',
             'national_code' => '1234567890',
             'birth_date' => '13800101',
-            'secret' => $secret,
+            'secret' => \App\Support\OtpSecret::hash($secret),
             'secret_expires_at' => now()->addMinutes(5),
         ]);
 
@@ -94,7 +94,7 @@ class AuthControllerTest extends TestCase
             'mobile' => '09100000011',
             'national_code' => '1234567890',
             'birth_date' => '13800101',
-            'secret' => '111111',
+            'secret' => \App\Support\OtpSecret::hash('111111'),
             'secret_expires_at' => now()->addMinutes(5),
         ]);
 
@@ -114,7 +114,7 @@ class AuthControllerTest extends TestCase
             'mobile' => '09100000012',
             'national_code' => '1234567890',
             'birth_date' => '13800101',
-            'secret' => $secret,
+            'secret' => \App\Support\OtpSecret::hash($secret),
             'secret_expires_at' => now()->subMinutes(1),
         ]);
 
@@ -133,7 +133,7 @@ class AuthControllerTest extends TestCase
             'mobile' => '09100000013',
             'national_code' => '1234567890',
             'birth_date' => '13800101',
-            'secret' => $secret,
+            'secret' => \App\Support\OtpSecret::hash($secret),
             'secret_expires_at' => now()->addMinutes(5),
         ]);
 

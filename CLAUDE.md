@@ -1608,6 +1608,45 @@ never `Str::slug` server-side. `SupplierProfileResource` now exposes
 **Run `php artisan migrate`** after pulling (`banners/articles/faqs/pages/settings`,
 `product_reviews`, `coupons.is_active`).
 
+### Hardening batch (`2026_07_20_*`)
+
+- **Coupons are wired into checkout.** `StoreOrderRequest` accepts `coupon_code`;
+  `PlaceOrderAction` validates (lock) + snapshots `orders.coupon_id`/`coupon_discount_amount`
+  + reduces `final_amount` + redeems inside the placement transaction.
+  **The discount is a separate wallet leg, never a formula change**: at payment
+  (`ProcessPreScalePaymentAction` / `ProcessReservationCompletionAction`) the buyer is charged
+  formula-true POO then credited the discount WSSG→WO (`coupons.applied_description`).
+  `RefundOrderToWalletAction` reverses that leg (WO→WSSG); `CancelOrderAction` releases the
+  coupon only for unpaid cancellations. Preview: `POST /checkout/coupon-preview`.
+  `CouponService::{validateForCheckout, calculateDiscount, redeem, releaseForOrder}` —
+  pinned by `Financial/CouponServiceTest`.
+- **Reviews are verified-purchase only.** `ProductReviewController::store` 403s unless the
+  user is placer/beneficiary of a DELIVERED order containing the product.
+- **Bulk notifications are queued** (`SendBulkNotificationJob`); `POST /admin/notifications/send`
+  returns `{queued, target_count}` with `admin.notifications.queued`.
+- **Large CSV reports are queued.** `CsvReportBuilder` is the single source of report
+  queries/columns; above `config('reports.stream_max_rows')` (50k) `GenerateCsvReportJob`
+  writes to the `financial` disk (`reports/`) + notifies the admin; download via
+  `GET /admin/reports/downloads/{filename}` (strict filename regex).
+- **Admin permission tiers.** `admin.permission:{perm}` middleware
+  (`EnsureAdminHasPermission`) gates financial/content/users route groups.
+  Permissions are **user-level** (`AdminPermissionSeeder` grants all to existing admins;
+  `AdminManagerController` accepts `permissions[]` on store/update). BC rule: an admin with
+  **zero** stored permissions has full access — granularity activates on first grant.
+- **Settings keys are whitelisted** in `config/settings.php` (`allowed_keys`); unknown → 422.
+- **Ticket SLA uses a business-hours calendar.** `App\Support\BusinessHours::addWorkingHours`
+  (config `ticketing.business_hours`, Friday weekend); disable via
+  `TICKET_BUSINESS_HOURS_ENABLED=false` for old wall-clock. `EscalateOverdueTicketsJob`
+  (hourly cron) escalates overdue open tickets once: priority→urgent + TicketNote +
+  `tickets.escalated_at`.
+- **OTP/reset-token storage is hashed.** `App\Support\OtpSecret::{hash, matches}` (bcrypt) —
+  `users.secret` never holds the raw code (column widened to 255). All writes/compares in
+  `RequestOtpAction`/`AuthController`/`AccountSecurityController` go through OtpSecret;
+  never reintroduce raw storage or `hash_equals` on the stored value. Deploy note: in-flight
+  plaintext secrets stop matching — users just request a new code.
+- **PHPUnit metadata is attribute-based** (`#[Test]`, `#[DataProvider]`) — doc-comment
+  `@test`/`@dataProvider` are gone; don't add new ones (PHPUnit 12 removes support).
+
 ## Key Conventions
 
 - All API responses use the `success()`/`error()` helpers — never return raw `response()->json()` from authenticated endpoints

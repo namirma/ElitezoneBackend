@@ -20,6 +20,24 @@ class CheckoutController extends Controller
         protected PlaceOrderAction $placeOrderAction
     ) {}
 
+    /**
+     * پیش‌نمایش کد تخفیف قبل از ثبت سفارش — اعتبارسنجی + نوع و مقدار.
+     * اعمال واقعی هنگام placeOrder (با coupon_code) و پرداخت انجام می‌شود.
+     */
+    public function couponPreview(\Illuminate\Http\Request $request, \App\Services\Marketing\CouponService $couponService): JsonResponse
+    {
+        $validated = $request->validate(['code' => ['required', 'string', 'max:100']]);
+
+        $coupon = $couponService->validateForCheckout(Auth::user(), $validated['code']);
+
+        return success([
+            'code' => $coupon->code,
+            'type' => $coupon->type,
+            'amount' => $coupon->amount,
+            'expires_at' => $coupon->expires_at,
+        ], __('coupons.preview_valid'));
+    }
+
     public function paymentInfo(Order $order): JsonResponse
     {
         Gate::authorize('view', $order);

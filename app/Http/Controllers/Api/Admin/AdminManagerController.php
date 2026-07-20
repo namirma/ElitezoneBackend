@@ -76,6 +76,9 @@ class AdminManagerController extends Controller
 
             $user->addRole('admin');
 
+            // سطح دسترسی — بدون ارسال permissions همه مجوزها داده می‌شود
+            $this->syncAdminPermissions($user, $request->input('permissions'));
+
             return $user;
         });
 
@@ -114,6 +117,11 @@ class AdminManagerController extends Controller
             if ($profileData !== []) {
                 $user->profile()->updateOrCreate([UserProfile::USER_ID => $user->id], $profileData);
             }
+
+            // فقط وقتی permissions ارسال شده باشد sync می‌شود (خالی = سلب همه دسترسی‌های سطح‌بندی‌شده)
+            if ($request->has('permissions')) {
+                $this->syncAdminPermissions($user, $request->input('permissions') ?? []);
+            }
         });
 
         // تغییر رمز، سشن‌های دیگر همین کاربر را باطل می‌کند (همان الگوی AccountSecurity)
@@ -143,6 +151,17 @@ class AdminManagerController extends Controller
         }
 
         return success(new UserResource($user->refresh()->load(['profile', 'roles'])), __('admin.admins.toggled'));
+    }
+
+    /**
+     * sync مجوزهای user-level ادمین. null یعنی «همه مجوزها» (پیش‌فرض ساخت ادمین).
+     */
+    private function syncAdminPermissions(User $user, ?array $permissionNames): void
+    {
+        $names = $permissionNames ?? array_keys(\Database\Seeders\AdminPermissionSeeder::PERMISSIONS);
+
+        $ids = \Laratrust\Models\Permission::whereIn('name', $names)->pluck('id')->all();
+        $user->syncPermissions($ids);
     }
 
     // DELETE /admin/admins/{user} — فقط جداکردن نقش admin

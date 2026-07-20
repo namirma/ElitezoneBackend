@@ -169,7 +169,7 @@ class ProfileFixesTest extends TestCase
     {
         $user = $this->expertUser();
         $user->forceFill([
-            User::SECRET => '123456',
+            User::SECRET => \App\Support\OtpSecret::hash('123456'),
             User::SECRET_EXPIRES_AT => now()->addMinutes(5),
         ])->save();
         Sanctum::actingAs($user);

@@ -38,4 +38,32 @@ return [
     | Spec: «اعلانها فقط برای تغییر وضعیت های مهم». Keep this list small.
     */
     'sms_on_status' => ['answered', 'resolved', 'closed'],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Business-hours calendar for SLA (ساعت کاری)
+    |--------------------------------------------------------------------------
+    | When enabled, SLA hours are consumed only inside working hours
+    | (App\Support\BusinessHours) — a ticket opened Thursday evening gets its
+    | deadline on Saturday. Disabled → plain wall-clock (previous behaviour).
+    | weekend_days uses Carbon dayOfWeek numbers (Friday = 5).
+    */
+    'business_hours' => [
+        'enabled' => (bool) env('TICKET_BUSINESS_HOURS_ENABLED', true),
+        'start_hour' => (int) env('TICKET_BUSINESS_START_HOUR', 9),
+        'end_hour' => (int) env('TICKET_BUSINESS_END_HOUR', 17),
+        'weekend_days' => [\Illuminate\Support\Carbon::FRIDAY],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Escalation automation
+    |--------------------------------------------------------------------------
+    | EscalateOverdueTicketsJob (hourly cron): open tickets past sla_due_at and
+    | not yet escalated get priority=urgent + an internal TicketNote, and
+    | escalated_at is stamped so the escalation fires exactly once per ticket.
+    */
+    'escalation' => [
+        'enabled' => (bool) env('TICKET_ESCALATION_ENABLED', true),
+    ],
 ];

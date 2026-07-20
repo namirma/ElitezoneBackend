@@ -79,3 +79,9 @@ Schedule::job(new PollPodiumDepositsJob)
 Schedule::command('sanctum:prune-expired --hours=168')
     ->daily()
     ->onOneServer();
+
+// اسکالیشن خودکار تیکت‌های عبورکرده از SLA (یک‌بار به ازای هر تیکت)
+Schedule::job(new \App\Jobs\Ticketing\EscalateOverdueTicketsJob)
+    ->hourly()
+    ->withoutOverlapping()
+    ->onOneServer();

@@ -91,6 +91,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role.expert' => EnsureUserIsExpert::class,
             'role.employer' => EnsureUserIsEmployer::class,
             'role.supplier' => EnsureUserIsSupplier::class,
+            'admin.permission' => \App\Http\Middleware\EnsureAdminHasPermission::class,
             'track' => TrackDashboardUsage::class,
             'idempotency' => Idempotency::class,
             'role.selected' => EnsureRoleIsSelected::class,

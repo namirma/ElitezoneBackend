@@ -4,6 +4,7 @@ namespace App\Actions\Auth;
 
 use App\Jobs\Notification\SendSmsJob;
 use App\Models\User;
+use App\Support\OtpSecret;
 use Illuminate\Support\Carbon;
 
 /**
@@ -23,8 +24,9 @@ final class RequestOtpAction
     {
         $code = generateVerifyCode();
 
+        // فقط هش در DB می‌نشیند (OtpSecret) — مقدار خام تنها در SMS می‌رود
         $user->update([
-            User::SECRET => $code,
+            User::SECRET => OtpSecret::hash((string) $code),
             User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes($ttlMinutes),
         ]);
 

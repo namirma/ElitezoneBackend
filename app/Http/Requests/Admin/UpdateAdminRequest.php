@@ -37,6 +37,9 @@ class UpdateAdminRequest extends FormRequest
             'name' => ['nullable', 'string', 'max:255'],
             'family' => ['nullable', 'string', 'max:255'],
             'email' => ['nullable', 'email', 'max:255'],
+            // سطح دسترسی — فقط وقتی ارسال شود sync می‌شود
+            'permissions' => ['nullable', 'array'],
+            'permissions.*' => ['string', \Illuminate\Validation\Rule::in(array_keys(\Database\Seeders\AdminPermissionSeeder::PERMISSIONS))],
         ];
     }
 

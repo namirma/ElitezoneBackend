@@ -9,6 +9,7 @@ use App\Models\Order;
 use App\Services\Financial\WalletTransactionEngine;
 use App\Services\InventoryService;
 use App\Services\Invoice\InvoiceGenerator;
+use App\Services\Marketing\CouponService;
 use Exception;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -20,6 +21,7 @@ class CancelOrderAction
         protected WalletTransactionEngine $walletEngine,
         protected InvoiceGenerator $invoiceGenerator,
         protected RefundOrderToWalletAction $refundAction,
+        protected CouponService $couponService,
     ) {}
 
     /**
@@ -71,6 +73,13 @@ class CancelOrderAction
             // ۲. بازگرداندن وجه به کیف پول (با هندل کردن حساب امانی)
             if ($refundWallet) {
                 $this->processRefund($locked);
+            }
+
+            // ۲.۵ کوپنِ سفارشِ پرداخت‌نشده آزاد می‌شود (پولی جابه‌جا نشده بود).
+            // برای سفارش پرداخت‌شده، کوپن مصرف‌شده می‌ماند و leg تخفیف در
+            // RefundOrderToWalletAction برگشت خورده است.
+            if (! $wasPaid) {
+                $this->couponService->releaseForOrder($locked);
             }
 
             // ۳. تعیین وضعیت جدید پرداخت
