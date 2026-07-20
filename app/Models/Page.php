@@ -25,6 +25,9 @@ class Page extends Model
 
     const UPDATED_AT = 'updated_at';
 
+    /** کش لیست فعال برای نمایش عمومی (ContentController) */
+    const CACHE_KEY = 'content:pages:active';
+
     protected $table = self::TABLE;
 
     protected $fillable = [
@@ -37,4 +40,10 @@ class Page extends Model
     protected $casts = [
         self::IS_ACTIVE => 'boolean',
     ];
+
+    protected static function booted(): void
+    {
+        static::saved(fn () => \Illuminate\Support\Facades\Cache::forget(self::CACHE_KEY));
+        static::deleted(fn () => \Illuminate\Support\Facades\Cache::forget(self::CACHE_KEY));
+    }
 }

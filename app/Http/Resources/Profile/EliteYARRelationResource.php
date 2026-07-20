@@ -3,13 +3,13 @@
 namespace App\Http\Resources\Profile;
 
 use App\Enums\Shared\StatusTone;
+use App\Http\Resources\BaseJsonResource;
 use App\Models\ContractorProfile;
 use App\Models\EmployerEliteYAR;
 use App\Models\EngineerProfile;
 use App\Models\User;
 use App\Models\UserProfile;
 use Illuminate\Http\Request;
-use App\Http\Resources\BaseJsonResource;
 
 /**
  * @mixin \App\Models\EmployerEliteYAR
@@ -21,10 +21,10 @@ class EliteYARRelationResource extends BaseJsonResource
         $status = $this->pivot->{EmployerEliteYAR::STATUS};
 
         $statusLabel = match ($status) {
-            EmployerEliteYAR::STATUS_PENDING  => 'در انتظار تایید',
+            EmployerEliteYAR::STATUS_PENDING => 'در انتظار تایید',
             EmployerEliteYAR::STATUS_APPROVED => 'تایید شده',
             EmployerEliteYAR::STATUS_REJECTED => 'رد شده',
-            default                              => $status,
+            default => $status,
         };
 
         // وضعیت تأیید مدارک الیت یار — از پروفایل مهندس یا پیمانکار
@@ -32,20 +32,20 @@ class EliteYARRelationResource extends BaseJsonResource
 
         return [
             'user_id' => $this->id,
-            'name'    => $this->whenLoaded('profile', $this->profile->{UserProfile::NAME} ?? ''),
-            'family'  => $this->whenLoaded('profile', $this->profile->{UserProfile::FAMILY} ?? ''),
+            'name' => $this->whenLoaded('profile', $this->profile->{UserProfile::NAME} ?? ''),
+            'family' => $this->whenLoaded('profile', $this->profile->{UserProfile::FAMILY} ?? ''),
 
-            User::MOBILE       => $this->{User::MOBILE},
+            User::MOBILE => $this->{User::MOBILE},
             User::NATIONAL_CODE => $this->{User::NATIONAL_CODE},
 
             // status_info — ساختار یکپارچه با بقیه Resourceها
             'status_info' => [
-                'key'   => $status,
+                'key' => $status,
                 'label' => $statusLabel,
-                'tone'  => StatusTone::fromStatus($status)->value,
+                'tone' => StatusTone::fromStatus($status)->value,
             ],
             // حفظ فیلدهای قدیمی برای سازگاری عقبگرد
-            'status'      => $statusLabel,
+            'status' => $statusLabel,
             'status_code' => $status,
 
             'reject_reason' => $this->when(

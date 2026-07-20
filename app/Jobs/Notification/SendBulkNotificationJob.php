@@ -22,6 +22,11 @@ class SendBulkNotificationJob implements ShouldQueue
 
     public int $timeout = 600;
 
+    public int $tries = 3;
+
+    /** @var list<int> ثانیه تا تلاش بعدی */
+    public array $backoff = [60, 300];
+
     /**
      * @param  list<int>|null  $userIds  null یعنی ارسال همگانی (همه کاربران فعال)
      */
@@ -59,5 +64,14 @@ class SendBulkNotificationJob implements ShouldQueue
         foreach (array_chunk($this->userIds, 500) as $chunk) {
             UserNotification::insert($buildRows(array_map('intval', $chunk)));
         }
+    }
+
+    public function failed(\Throwable $e): void
+    {
+        \Illuminate\Support\Facades\Log::error('SendBulkNotificationJob failed after retries', [
+            'subject' => $this->subject,
+            'target' => is_null($this->userIds) ? 'all' : count($this->userIds),
+            'error' => $e->getMessage(),
+        ]);
     }
 }

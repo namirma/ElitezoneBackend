@@ -29,10 +29,13 @@ use Illuminate\Support\Facades\Hash;
  */
 class EliteYARTimelineTestSeeder extends Seeder
 {
-    private const ELITE_YAR_MOBILE  = '09500000005';
-    private const ELITE_YAR_NC      = '5555555555';
-    private const PASSWORD           = 'password123';
-    private const ORDER_NUMBER       = 'ORD-CON-TEST-001';
+    private const ELITE_YAR_MOBILE = '09500000005';
+
+    private const ELITE_YAR_NC = '5555555555';
+
+    private const PASSWORD = 'password123';
+
+    private const ORDER_NUMBER = 'ORD-CON-TEST-001';
 
     public function run(): void
     {
@@ -51,20 +54,20 @@ class EliteYARTimelineTestSeeder extends Seeder
         $eliteYAR = User::firstOrCreate(
             [User::MOBILE => self::ELITE_YAR_MOBILE],
             [
-                User::MOBILE        => self::ELITE_YAR_MOBILE,
+                User::MOBILE => self::ELITE_YAR_MOBILE,
                 User::NATIONAL_CODE => self::ELITE_YAR_NC,
-                User::BIRTH_DATE    => '13700101',
-                User::PASSWORD      => Hash::make(self::PASSWORD),
-                User::TYPE_ID       => $expertType->id,
+                User::BIRTH_DATE => '13700101',
+                User::PASSWORD => Hash::make(self::PASSWORD),
+                User::TYPE_ID => $expertType->id,
             ]
         );
 
         UserProfile::firstOrCreate(
             ['user_id' => $eliteYAR->id],
             [
-                'user_id'       => $eliteYAR->id,
-                'name'          => 'سارا',
-                'family'        => 'الیت یارزاده',
+                'user_id' => $eliteYAR->id,
+                'name' => 'سارا',
+                'family' => 'الیت یارزاده',
                 'national_code' => self::ELITE_YAR_NC,
             ]
         );
@@ -72,8 +75,8 @@ class EliteYARTimelineTestSeeder extends Seeder
         Wallet::firstOrCreate(
             [Wallet::USER_ID => $eliteYAR->id],
             [
-                Wallet::USER_ID      => $eliteYAR->id,
-                Wallet::BALANCE      => 0,
+                Wallet::USER_ID => $eliteYAR->id,
+                Wallet::BALANCE => 0,
                 Wallet::BALANCE_HOLD => 0,
             ]
         );
@@ -84,6 +87,7 @@ class EliteYARTimelineTestSeeder extends Seeder
 
         if (! $employer || ! $supplier) {
             $this->command->error('کارفرما یا سوپلایر پیدا نشد — ابتدا DevSeeder را اجرا کنید.');
+
             return;
         }
 
@@ -94,17 +98,17 @@ class EliteYARTimelineTestSeeder extends Seeder
         $order = Order::firstOrCreate(
             [Order::ORDER_NUMBER => self::ORDER_NUMBER],
             [
-                Order::PLACER_USER_ID      => $employer->id,
+                Order::PLACER_USER_ID => $employer->id,
                 Order::BENEFICIARY_USER_ID => $eliteYAR->id,
-                Order::ORDER_NUMBER        => self::ORDER_NUMBER,
-                Order::STATUS              => Order::STATUS_WEIGHBRIDGE_DONE,
-                Order::PAYMENT_STATUS      => Order::PAYMENT_PAID,
-                Order::FINAL_AMOUNT        => 1_200_000_000,
-                Order::OFFICIAL_PRICE      => 1_200_000_000,
+                Order::ORDER_NUMBER => self::ORDER_NUMBER,
+                Order::STATUS => Order::STATUS_WEIGHBRIDGE_DONE,
+                Order::PAYMENT_STATUS => Order::PAYMENT_PAID,
+                Order::FINAL_AMOUNT => 1_200_000_000,
+                Order::OFFICIAL_PRICE => 1_200_000_000,
                 Order::WEIGHT_BEFORE_SCALE => 20_000,
-                Order::SHIPPING_COST       => 0,
-                Order::VAT_RATE            => 10,
-                Order::PAID_AT             => now()->subDays(3),
+                Order::SHIPPING_COST => 0,
+                Order::VAT_RATE => 10,
+                Order::PAID_AT => now()->subDays(3),
             ]
         );
 
@@ -114,21 +118,21 @@ class EliteYARTimelineTestSeeder extends Seeder
         if ($variant && $supplier) {
             OrderItem::firstOrCreate(
                 [
-                    OrderItem::ORDER_ID     => $order->id,
-                    OrderItem::VARIANT_SKU  => $variant->sku,
+                    OrderItem::ORDER_ID => $order->id,
+                    OrderItem::VARIANT_SKU => $variant->sku,
                 ],
                 [
-                    OrderItem::ORDER_ID           => $order->id,
+                    OrderItem::ORDER_ID => $order->id,
                     OrderItem::PRODUCT_VARIANT_ID => $variant->id,
-                    OrderItem::SUPPLIER_USER_ID   => $supplier->id,
-                    OrderItem::PRODUCT_NAME       => $variant->name ?? 'میلگرد آجدار',
-                    OrderItem::VARIANT_SKU        => $variant->sku,
-                    OrderItem::QUANTITY_DETAILS   => ['5.5' => 10000],
-                    OrderItem::QUANTITY           => 20_000,
-                    OrderItem::WEIGHT             => 20_000,
-                    OrderItem::UNIT_NAME          => 'کیلوگرم',
-                    OrderItem::UNIT_PRICE         => 60_000,
-                    OrderItem::TOTAL_PRICE        => 1_200_000_000,
+                    OrderItem::SUPPLIER_USER_ID => $supplier->id,
+                    OrderItem::PRODUCT_NAME => $variant->name ?? 'میلگرد آجدار',
+                    OrderItem::VARIANT_SKU => $variant->sku,
+                    OrderItem::QUANTITY_DETAILS => ['5.5' => 10000],
+                    OrderItem::QUANTITY => 20_000,
+                    OrderItem::WEIGHT => 20_000,
+                    OrderItem::UNIT_NAME => 'کیلوگرم',
+                    OrderItem::UNIT_PRICE => 60_000,
+                    OrderItem::TOTAL_PRICE => 1_200_000_000,
                 ]
             );
         }
@@ -144,7 +148,7 @@ class EliteYARTimelineTestSeeder extends Seeder
                 ['الیت یار', self::ELITE_YAR_MOBILE, self::PASSWORD, $eliteYAR->id],
             ]
         );
-        $this->command->info("  📦  سفارش تست: " . self::ORDER_NUMBER . " (ID: {$order->id})");
+        $this->command->info('  📦  سفارش تست: '.self::ORDER_NUMBER." (ID: {$order->id})");
         $this->command->info('');
         $this->command->info('  ▶  برای تست:');
         $this->command->info('     ۱. با موبایل 09500000005 / رمز password123 وارد شوید');

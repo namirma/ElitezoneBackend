@@ -48,12 +48,12 @@ return [
 
     // ── Weighbridge (SubmitWeighbridgeRequest) ─────────────────────────────
     'weighbridge_weight_required' => 'وارد کردن وزن نهایی باسکول الزامی است.',
-    'weighbridge_weight_numeric'  => 'وزن باسکول باید یک عدد معتبر باشد.',
-    'weighbridge_weight_min'      => 'وزن باسکول نمی‌تواند کمتر از ۱ کیلوگرم باشد.',
+    'weighbridge_weight_numeric' => 'وزن باسکول باید یک عدد معتبر باشد.',
+    'weighbridge_weight_min' => 'وزن باسکول نمی‌تواند کمتر از ۱ کیلوگرم باشد.',
 
     // ── PayFullOrder (PayFullOrderRequest) ─────────────────────────────────
     'payment_type_required' => 'نوع پرداخت الزامی است.',
-    'payment_type_invalid'  => 'نوع پرداخت انتخاب‌شده معتبر نیست.',
+    'payment_type_invalid' => 'نوع پرداخت انتخاب‌شده معتبر نیست.',
 
     // ── Survey ─────────────────────────────────────────────────────────────
     'survey_not_allowed_for_status' => 'ثبت نظرسنجی فقط برای سفارش‌های تحویل‌داده‌شده امکان‌پذیر است.',
@@ -92,7 +92,7 @@ return [
     'payment_success_wallet' => 'پرداخت با موفقیت از کیف پول انجام شد.',
 
     // StoreOrderRequest validation messages
-    'store_address_required'  => 'انتخاب آدرس گیرنده برای ثبت سفارش الزامی است.',
+    'store_address_required' => 'انتخاب آدرس گیرنده برای ثبت سفارش الزامی است.',
     'store_address_integer' => 'فرمت آدرس گیرنده نامعتبر است.',
     'store_address_exists' => 'آدرس انتخاب شده در سیستم یافت نشد یا متعلق به شما نیست.',
     'store_shipping_required' => 'انتخاب روش ارسال برای ثبت سفارش الزامی است.',
@@ -101,17 +101,17 @@ return [
     'store_beneficiary_integer' => 'فرمت کاربر ذینفع نامعتبر است.',
     'store_beneficiary_exists' => 'کاربر ذینفع در سیستم یافت نشد.',
     // beneficiary validation (مسیر الیت یار)
-    'store_beneficiary_not_approved_elite_yar'  => 'کاربر انتخاب‌شده الیت یار تأییدشدهٔ شما نیست.',
-    'store_beneficiary_prohibited_for_employer'  => 'کارفرما نمی‌تواند فیلد گیرنده سفارش را مستقیم ارسال کند.',
-    'store_beneficiary_required_for_elite_yar'  => 'الیت یار باید کارفرمای گیرنده سفارش را مشخص کند.',
-    'store_beneficiary_not_approved_employer'    => 'کاربر انتخاب‌شده کارفرمای تأییدشدهٔ شما نیست.',
+    'store_beneficiary_not_approved_elite_yar' => 'کاربر انتخاب‌شده الیت یار تأییدشدهٔ شما نیست.',
+    'store_beneficiary_prohibited_for_employer' => 'کارفرما نمی‌تواند فیلد گیرنده سفارش را مستقیم ارسال کند.',
+    'store_beneficiary_required_for_elite_yar' => 'الیت یار باید کارفرمای گیرنده سفارش را مشخص کند.',
+    'store_beneficiary_not_approved_employer' => 'کاربر انتخاب‌شده کارفرمای تأییدشدهٔ شما نیست.',
 
     // elite_yar_user_id validation (مسیر کارفرما)
-    'store_elite_yar_integer'              => 'فرمت الیت یار نامعتبر است.',
-    'store_elite_yar_exists'              => 'الیت یار در سیستم یافت نشد.',
-    'store_elite_yar_not_approved'        => 'الیت یار انتخاب‌شده در لیست الیت یاران تأییدشده شما نیست.',
-    'store_elite_yar_not_found'           => 'الیت یار انتخاب‌شده در سیستم یافت نشد.',
-    'store_elite_yar_not_verified'        => 'الیت یار انتخاب‌شده هنوز مدارک تأییدشده ندارد.',
+    'store_elite_yar_integer' => 'فرمت الیت یار نامعتبر است.',
+    'store_elite_yar_exists' => 'الیت یار در سیستم یافت نشد.',
+    'store_elite_yar_not_approved' => 'الیت یار انتخاب‌شده در لیست الیت یاران تأییدشده شما نیست.',
+    'store_elite_yar_not_found' => 'الیت یار انتخاب‌شده در سیستم یافت نشد.',
+    'store_elite_yar_not_verified' => 'الیت یار انتخاب‌شده هنوز مدارک تأییدشده ندارد.',
     'store_elite_yar_prohibited_for_elite_yar' => 'الیت یار نمی‌تواند در هنگام ثبت سفارش الیت یار دیگری انتخاب کند.',
 
     'store_description_max' => 'توضیحات سفارش نمی‌تواند بیشتر از 1000 کاراکتر باشد.',
@@ -143,16 +143,16 @@ return [
     ],
 
     // ── Internal action exceptions (user-visible via exception handler) ────
-    'internal_order_not_found'        => 'خطای داخلی: سفارش در فرآیند پردازش یافت نشد.',
-    'items_missing_for_payment'       => 'اقلام سفارش برای پردازش مالی تعریف نشده‌اند.',
-    'items_missing_for_completion'    => 'اقلام سفارش برای تکمیل رزرو یافت نشد.',
-    'elite_yar_not_found_internal'   => 'خطای داخلی: الیت یار این سفارش یافت نشد.',
+    'internal_order_not_found' => 'خطای داخلی: سفارش در فرآیند پردازش یافت نشد.',
+    'items_missing_for_payment' => 'اقلام سفارش برای پردازش مالی تعریف نشده‌اند.',
+    'items_missing_for_completion' => 'اقلام سفارش برای تکمیل رزرو یافت نشد.',
+    'elite_yar_not_found_internal' => 'خطای داخلی: الیت یار این سفارش یافت نشد.',
     'reserved_cannot_cancel_before_expiry' => 'سفارشات رزرو شده تا پیش از پایان زمان انقضا قابل لغو نیستند.',
-    'reserved_expired_auto_cancel'    => 'سفارشات رزرو شده منقضی، تنها توسط سیستم به صورت خودکار لغو می‌شوند.',
-    'invalid_financial_calculation'   => 'محاسبه مالی سفارش معتبر نیست.',
-    'invalid_weight_snapshot'         => 'وزن ثبت‌شده سفارش معتبر نیست؛ عملیات مالی متوقف شد. با پشتیبانی تماس بگیرید.',
-    'invalid_transaction_status'      => 'وضعیت جدید تراکنش نامعتبر است.',
-    'debit_amount_must_be_positive'   => 'مبلغ برداشت باید بیشتر از صفر باشد.',
+    'reserved_expired_auto_cancel' => 'سفارشات رزرو شده منقضی، تنها توسط سیستم به صورت خودکار لغو می‌شوند.',
+    'invalid_financial_calculation' => 'محاسبه مالی سفارش معتبر نیست.',
+    'invalid_weight_snapshot' => 'وزن ثبت‌شده سفارش معتبر نیست؛ عملیات مالی متوقف شد. با پشتیبانی تماس بگیرید.',
+    'invalid_transaction_status' => 'وضعیت جدید تراکنش نامعتبر است.',
+    'debit_amount_must_be_positive' => 'مبلغ برداشت باید بیشتر از صفر باشد.',
     'reserve_only_on_reserved_orders' => 'تنها سفارش‌های رزرو شده قابل تمدید هستند.',
 
     // ── Errors (merged — single block) ─────────────────────────────────────

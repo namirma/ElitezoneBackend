@@ -3,18 +3,18 @@
 namespace App\Providers;
 
 use App\Events\Cart\CartItemChanged;
-use App\Events\User\CustomerSegmentChanged;
+use App\Events\Financial\TransactionProcessed;
+use App\Events\Financial\WalletFunded;
 use App\Events\Order\OrderCancelled;
 use App\Events\Order\OrderPaid;
 use App\Events\Order\OrderPlaced;
-use App\Events\Financial\TransactionProcessed;
-use App\Events\Financial\WalletFunded;
+use App\Events\User\CustomerSegmentChanged;
 use App\Listeners\Cart\LogCartEvent;
+use App\Listeners\Financial\SendTransactionNotification;
+use App\Listeners\Financial\SendWalletFundingNotification;
 use App\Listeners\Order\SendOrderCancellationNotification;
 use App\Listeners\Order\SendOrderPaymentNotification;
 use App\Listeners\Order\SendOrderPlacedNotification;
-use App\Listeners\Financial\SendTransactionNotification;
-use App\Listeners\Financial\SendWalletFundingNotification;
 use App\Listeners\User\SendWinBackOffer;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;

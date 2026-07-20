@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api\User;
 
 use App\Http\Controllers\Controller;
-
 use App\Http\Requests\Profile\InviteEliteYARRequest;
 use App\Http\Requests\Profile\RejectInvitationRequest;
 use App\Http\Resources\Profile\EliteYARRelationResource;
@@ -113,9 +112,9 @@ class EliteYARRelationController extends Controller
                 }
 
                 $employer->technicalEliteYARs()->updateExistingPivot($eliteYAR->id, [
-                    EmployerEliteYAR::STATUS       => EmployerEliteYAR::STATUS_PENDING,
+                    EmployerEliteYAR::STATUS => EmployerEliteYAR::STATUS_PENDING,
                     EmployerEliteYAR::REJECT_REASON => null,
-                    'updated_at'                     => now(),
+                    'updated_at' => now(),
                 ]);
             }
         } else {
@@ -129,10 +128,10 @@ class EliteYARRelationController extends Controller
         $smsMessage = __('sms.elite_yar_invitation', ['employer_name' => $employerName]);
 
         UserNotification::create([
-            UserNotification::USER_ID  => $eliteYAR->id,
+            UserNotification::USER_ID => $eliteYAR->id,
             UserNotification::SENDER_ID => $employer->id,
-            UserNotification::SUBJECT  => __('global.eliteYARInvitationSubject'),
-            UserNotification::BODY     => $smsMessage,
+            UserNotification::SUBJECT => __('global.eliteYARInvitationSubject'),
+            UserNotification::BODY => $smsMessage,
         ]);
 
         SendSmsJob::dispatch($eliteYAR->{User::MOBILE}, $smsMessage);
@@ -218,13 +217,13 @@ class EliteYARRelationController extends Controller
                 $mobile = (string) $client->{User::MOBILE};
 
                 return [
-                    'user_id'       => $client->id,
-                    'name'          => $client->profile?->{UserProfile::NAME},
-                    'family'        => $client->profile?->{UserProfile::FAMILY},
+                    'user_id' => $client->id,
+                    'name' => $client->profile?->{UserProfile::NAME},
+                    'family' => $client->profile?->{UserProfile::FAMILY},
                     'national_code' => $client->{User::NATIONAL_CODE},
-                    'mobile'        => $this->maskMobile($mobile),
-                    'email'         => $client->profile?->email ?? null,
-                    'created_at'    => $client->pivot->created_at?->toDateTimeString(),
+                    'mobile' => $this->maskMobile($mobile),
+                    'email' => $client->profile?->email ?? null,
+                    'created_at' => $client->pivot->created_at?->toDateTimeString(),
                 ];
             });
 

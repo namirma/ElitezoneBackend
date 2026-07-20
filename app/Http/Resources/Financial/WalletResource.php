@@ -3,11 +3,10 @@
 namespace App\Http\Resources\Financial;
 
 use App\Http\Resources\BaseJsonResource;
-use App\Models\Wallet;
 use Illuminate\Http\Request;
 
 /**
- * @mixin Wallet
+ * @mixin \App\Models\Wallet
  */
 class WalletResource extends BaseJsonResource
 {

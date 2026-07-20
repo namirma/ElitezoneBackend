@@ -3,11 +3,10 @@
 namespace App\Http\Resources\Product;
 
 use App\Http\Resources\BaseJsonResource;
-use App\Models\Search;
 use Illuminate\Http\Request;
 
 /**
- * @mixin Search
+ * @mixin \App\Models\Search
  */
 class SearchResource extends BaseJsonResource
 {

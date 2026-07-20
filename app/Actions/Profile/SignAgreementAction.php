@@ -67,29 +67,29 @@ final class SignAgreementAction
         }
 
         $user->agreements()->syncWithoutDetaching([
-                $agreement->id => [
-                    'accepted_at' => now(),
-                    'version' => $agreement->{Agreement::VERSION},
-                    'content_sha256' => $agreement->{Agreement::CONTENT_SHA256},
-                    'ip_address' => $request->ip(),
+            $agreement->id => [
+                'accepted_at' => now(),
+                'version' => $agreement->{Agreement::VERSION},
+                'content_sha256' => $agreement->{Agreement::CONTENT_SHA256},
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->header('User-Agent'),
+                'checked_items' => json_encode($checkedItems, JSON_UNESCAPED_UNICODE),
+                'acceptance_method' => 'checkbox+otp_login',
+                'snapshot' => json_encode([
+                    'agreement_type' => $agreement->{Agreement::SLUG},
+                    'agreement_version' => $agreement->{Agreement::VERSION},
+                    'agreement_sha256' => $agreement->{Agreement::CONTENT_SHA256},
+                    'user_id' => $user->id,
+                    'mobile_number' => $user->{User::MOBILE},
+                    'mobile_verified' => true, // ورود فقط با OTP/رمز روی همین شماره ممکن است
+                    'accepted_at' => now()->toIso8601String(),
+                    'accepted_ip' => $request->ip(),
                     'user_agent' => $request->header('User-Agent'),
-                    'checked_items' => json_encode($checkedItems, JSON_UNESCAPED_UNICODE),
-                    'acceptance_method' => 'checkbox+otp_login',
-                    'snapshot' => json_encode([
-                        'agreement_type' => $agreement->{Agreement::SLUG},
-                        'agreement_version' => $agreement->{Agreement::VERSION},
-                        'agreement_sha256' => $agreement->{Agreement::CONTENT_SHA256},
-                        'user_id' => $user->id,
-                        'mobile_number' => $user->{User::MOBILE},
-                        'mobile_verified' => true, // ورود فقط با OTP/رمز روی همین شماره ممکن است
-                        'accepted_at' => now()->toIso8601String(),
-                        'accepted_ip' => $request->ip(),
-                        'user_agent' => $request->header('User-Agent'),
-                        'accepted_checkboxes' => array_column($checkedItems, 'code'),
-                        'role_slug' => $roleSlug,
-                    ], JSON_UNESCAPED_UNICODE),
-                ],
-            ]);
+                    'accepted_checkboxes' => array_column($checkedItems, 'code'),
+                    'role_slug' => $roleSlug,
+                ], JSON_UNESCAPED_UNICODE),
+            ],
+        ]);
 
         return true;
     }
