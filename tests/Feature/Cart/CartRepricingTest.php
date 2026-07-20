@@ -12,7 +12,6 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\Feature\Pricing\CreatesPricingFixtures;
-use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
