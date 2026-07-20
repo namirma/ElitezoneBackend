@@ -39,7 +39,7 @@ return new class extends Migration
             $table->string('engineer_fee_payment_status')->nullable()->default(Order::FEE_PAYMENT_PENDING);
             $table->decimal('contractor_fee_amount', 15, 2)->nullable();
             $table->string('contractor_fee_payment_status')->nullable()->default(Order::FEE_PAYMENT_PENDING);
-            $table->string('expert_fee_invoice_ref')->nullable(); // فاکتور مربوط به حق مشاور فنی
+            $table->string('expert_fee_invoice_ref')->nullable(); // فاکتور مربوط به حق الیت یار
             $table->text('cancel_reason')->nullable(); // دلیل لغو سفارش (برای تب لغو شده)
             $table->string('survey_status')->nullable()->default(Order::SURVEY_PENDING);
             $table->timestamp('prepared_at')->nullable();

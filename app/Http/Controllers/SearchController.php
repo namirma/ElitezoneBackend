@@ -84,6 +84,10 @@ class SearchController extends Controller
 
     /**
      * ثبت اطلاعات در دیتابیس برای تحلیل داده
+     *
+     * IP مثل LogProductView ناشناس می‌شود (اکتت/هکستت آخر صفر) — آنالیتیکس به
+     * subnet نیاز دارد نه IP دقیق، و نگه‌داری IP خام کاربرِ لاگین‌نکرده با سیاست
+     * حریم خصوصی بقیه‌ی سیستم (product_views) ناسازگار بود.
      */
     private function logSearchActivity(SearchRequest $request, string $query, int $resultsCount): void
     {
@@ -91,10 +95,19 @@ class SearchController extends Controller
             Search::QUERY => $query,
             Search::RESULTS_COUNT => $resultsCount,
             Search::USER_ID => Auth::id(),
-            Search::IP_ADDRESS => $request->ip(),
+            Search::IP_ADDRESS => $this->anonymizeIp((string) $request->ip()),
             Search::USER_AGENT => $request->userAgent(),
             Search::CREATED_AT => now(),
         ]);
+    }
+
+    private function anonymizeIp(string $ip): string
+    {
+        if (str_contains($ip, ':')) {
+            return preg_replace('/:[0-9a-fA-F]*$/', ':0', $ip) ?? $ip;
+        }
+
+        return preg_replace('/\.\d+$/', '.0', $ip) ?? $ip;
     }
 
     /**

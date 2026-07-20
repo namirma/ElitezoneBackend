@@ -18,14 +18,14 @@ use Mpdf\Mpdf;
  *  - InvoicePdfRenderer      : رندر PDF و ذخیره روی disk
  *
  * Public API — scenario methods (save mode, void):
- *   generateDirectPurchaseDocs()        — Docs A, B, C (+ D if consultant)
+ *   generateDirectPurchaseDocs()        — Docs A, B, C (+ D if eliteYAR)
  *   generateReservationDocs()           — Docs E, F
  *   generateReservationCompletionDocs() — Docs G, H, C
  *   generateWeighbridgeDocs()           — Doc I (+ LO/LS if deficit)
  *   generateCancellationDocs()          — Doc j (+ i if refund happened)
  *   generateSupplierMoadianInvoice()    — Doc O
  *   generateSystemMoadianInvoice()      — Doc P
- *   generateConsultantMoadianInvoice()  — Doc Q
+ *   generateEliteYARMoadianInvoice()  — Doc Q
  *   download()                          — any single doc as a streamed PDF
  */
 class InvoiceGenerator
@@ -40,14 +40,14 @@ class InvoiceGenerator
     // Scenario entry-points (callers express intent; routing logic stays here)
     // ─────────────────────────────────────────────────────────────────────────
 
-    /** Docs A + B + C (direct purchase). Adds Doc D when $withConsultant. */
-    public function generateDirectPurchaseDocs(Order $order, bool $withConsultant = false): void
+    /** Docs A + B + C (direct purchase). Adds Doc D when $withEliteYAR. */
+    public function generateDirectPurchaseDocs(Order $order, bool $withEliteYAR = false): void
     {
         $this->generate($order, FinancialCodes::DOC_RECEIPT_OWNER);
         $this->generate($order, FinancialCodes::DOC_REPORT_SUPPLIER);
         $this->generate($order, FinancialCodes::DOC_LOADING_ORDER);
-        if ($withConsultant) {
-            $this->generate($order, FinancialCodes::DOC_CONSULTANT_REPORT);
+        if ($withEliteYAR) {
+            $this->generate($order, FinancialCodes::DOC_ELITE_YAR_REPORT);
         }
     }
 
@@ -97,10 +97,10 @@ class InvoiceGenerator
         $this->generate($order, FinancialCodes::DOC_TAX_INVOICE_BUYER);
     }
 
-    /** Doc Q — consultant Moadian invoice. */
-    public function generateConsultantMoadianInvoice(Order $order): void
+    /** Doc Q — eliteYAR Moadian invoice. */
+    public function generateEliteYARMoadianInvoice(Order $order): void
     {
-        $this->generate($order, FinancialCodes::DOC_TAX_INVOICE_CONSULTANT);
+        $this->generate($order, FinancialCodes::DOC_TAX_INVOICE_ELITE_YAR);
     }
 
     /** Returns the raw PDF object for streaming/download to the client. */
@@ -216,7 +216,7 @@ class InvoiceGenerator
             FinancialCodes::DOC_RECEIPT_OWNER => 'pdf.receipt_owner',
             FinancialCodes::DOC_REPORT_SUPPLIER => 'pdf.report_supplier',
             FinancialCodes::DOC_LOADING_ORDER => 'pdf.loading_order',
-            FinancialCodes::DOC_CONSULTANT_REPORT => 'pdf.consultant_report',
+            FinancialCodes::DOC_ELITE_YAR_REPORT => 'pdf.elite_yar_report',
             // ── Stage 2: reservation ───────────────────────────────────────
             FinancialCodes::DOC_RESERVE_RECEIPT => 'pdf.reserve_receipt',
             FinancialCodes::DOC_RESERVE_REPORT => 'pdf.reserve_report',
@@ -234,9 +234,9 @@ class InvoiceGenerator
             // ── Stage 6: Moadian taxpayer system ──────────────────────────
             FinancialCodes::DOC_TAX_INVOICE_SUPPLIER => 'pdf.tax_invoice_supplier',
             FinancialCodes::DOC_TAX_INVOICE_BUYER => 'pdf.tax_invoice_buyer',
-            FinancialCodes::DOC_TAX_INVOICE_CONSULTANT => 'pdf.tax_invoice_consultant',
+            FinancialCodes::DOC_TAX_INVOICE_ELITE_YAR => 'pdf.tax_invoice_elite_yar',
             // ── Stage 7: surveys ───────────────────────────────────────────
-            FinancialCodes::DOC_SURVEY_CONSULTANT => 'pdf.survey_consultant',
+            FinancialCodes::DOC_SURVEY_ELITE_YAR => 'pdf.survey_elite_yar',
             default => 'pdf.invoice_default',
         };
     }

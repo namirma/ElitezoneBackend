@@ -45,7 +45,7 @@ class SettlementCalculatorService
      * Used by PlaceOrderAction / ProcessPreScalePaymentAction.
      *
      * @param  float  $subtotal  مبلغ کل بدون مالیات
-     * @param  string|null  $badgeCode  کد نشان مشاور (golden, silver, bronze, pioneer, null)
+     * @param  string|null  $badgeCode  کد نشان الیت یار (golden, silver, bronze, pioneer, null)
      * @return array{TC: float, OW: float, CO: float, SSG: float}
      */
     public function calculateCommissions(float $subtotal, ?string $badgeCode): array

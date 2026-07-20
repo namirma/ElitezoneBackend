@@ -17,7 +17,7 @@ use Illuminate\Support\Str;
  *
  * This is distinct from CartResolver, which syncs based on the user's
  * role/badge. Here the driving signal is the purchase-parameter selection
- * (customer_type, consultant_status, purchase_purpose).
+ * (customer_type, elite_yar_status, purchase_purpose).
  */
 class CartParameterSyncService
 {
@@ -65,7 +65,7 @@ class CartParameterSyncService
             ->all();
 
         $priceCategory = $this->detector->detectFromParameterIds($currentParamIds)
-            ?? PriceFilterCategory::where(PriceFilterCategory::CODE, 'employer_without_consultant')->first();
+            ?? PriceFilterCategory::where(PriceFilterCategory::CODE, 'employer_without_elite_yar')->first();
 
         if ($priceCategory) {
             $cart->priceFilterCategories()->sync([$priceCategory->id]);
@@ -75,7 +75,7 @@ class CartParameterSyncService
                 $cart->update([Cart::CUSTOMER_TYPE_ID => $customerType->id]);
             }
         } elseif (! $cart->{Cart::CUSTOMER_TYPE_ID}) {
-            $defaultType = CustomerType::where(CustomerType::CODE, 'employer_without_consultant')->firstOrFail();
+            $defaultType = CustomerType::where(CustomerType::CODE, 'employer_without_elite_yar')->firstOrFail();
             $cart->update([Cart::CUSTOMER_TYPE_ID => $defaultType->id]);
         }
     }

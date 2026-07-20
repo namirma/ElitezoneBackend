@@ -43,7 +43,7 @@ class ProcessPreScalePaymentAction
                 return;
             }
 
-            $locked->load('items', 'consultant.badge');
+            $locked->load('items', 'eliteYAR.badge');
 
             $firstItem = $locked->items->first();
 
@@ -61,15 +61,15 @@ class ProcessPreScalePaymentAction
             $shippingCost = (float) ($locked->shipping_cost ?? 0);
             $vatRate = (float) ($locked->vat_rate ?? 10.0);
 
-            // نرخ کمیسیون بر اساس نشانِ مشاورِ صاحب کمیسیون (consultant_user_id) خوانده می‌شود،
-            // نه beneficiary (گیرندهٔ کالا). ProcessWeighbridgeResultAction هم از همین consultant.badge
+            // نرخ کمیسیون بر اساس نشانِ الیت‌یارِ صاحب کمیسیون (elite_yar_user_id) خوانده می‌شود،
+            // نه beneficiary (گیرندهٔ کالا). ProcessWeighbridgeResultAction هم از همین eliteYAR.badge
             // استفاده می‌کند؛ خواندن از beneficiary باعث ناسازگاری نرخ بین pre-scale و باسکول می‌شد.
-            $badgeCode = $locked->consultant?->badge?->code ?? 'pioneer';
+            $badgeCode = $locked->eliteYAR?->badge?->code ?? 'pioneer';
             $rates = $this->calculator->getCommissionRates($badgeCode);
 
             $ownerDiscountRate = $rates['ow_final_rate'];
             $sazeShareRate = $rates['ssg_final_rate'];
-            $consultantRate = $rates['co_final_rate'];
+            $eliteYARRate = $rates['co_final_rate'];
 
             // ── Snapshot formula-variant flags from supplier contract ──────────
             $realSupplierId = $firstItem->supplier_user_id;
@@ -85,19 +85,19 @@ class ProcessPreScalePaymentAction
             );
             $PTS = $this->calculator->calculatePTS(
                 $shippingCost, $officialPrice, $weightBeforeScale,
-                $ownerDiscountRate, $sazeShareRate, $consultantRate, $vatRate,
+                $ownerDiscountRate, $sazeShareRate, $eliteYARRate, $vatRate,
                 $transCommission, $transVat
             );
 
             // ── Snapshot all financial parameters onto the order ───────────────
             $locked->forceFill([
-                Order::PAYMENT_OF_OWNER => $POO,
+                Order::PAYMENT_OF_OWNER    => $POO,
                 Order::PAYMENT_TO_SUPPLIER => $PTS,
-                Order::COMMISSION_RATE => 1.0,
-                Order::VAT_RATE => $vatRate,
+                Order::COMMISSION_RATE     => 1.0,
+                Order::VAT_RATE            => $vatRate,
                 Order::OWNER_DISCOUNT_RATE => $ownerDiscountRate,
-                Order::TRANS_COMMISSION => $transCommission,
-                Order::TRANS_VAT => $transVat,
+                Order::TRANS_COMMISSION    => $transCommission,
+                Order::TRANS_VAT           => $transVat,
             ])->save();
 
             // A — buyer pays POO: WO(-) → WSSG(+)
@@ -126,20 +126,20 @@ class ProcessPreScalePaymentAction
                 'paid_at' => now(),
             ]);
 
-            // ── صدور اسناد مالی خرید مستقیم (A + B + C، با D در صورت داشتن مشاور) ──
-            // Doc D (گزارش مشاور) فقط وقتی صادر می‌شود که یک مشاورِ صاحبِ کمیسیون روی
-            // سفارش باشد — یعنی consultant_user_id ست شده و با خودِ خریدار (placer) یکی
-            // نباشد. این دقیقاً همان شرطی است که WeighbridgeVatRouter::routeConsultant
+            // ── صدور اسناد مالی خرید مستقیم (A + B + C، با D در صورت داشتن الیت یار) ──
+            // Doc D (گزارش الیت‌یار) فقط وقتی صادر می‌شود که یک الیت‌یارِ صاحبِ کمیسیون
+            // روی سفارش باشد — یعنی elite_yar_user_id ست شده و با خودِ خریدار (placer)
+            // یکی نباشد. این دقیقاً همان شرطی است که WeighbridgeVatRouter::routeEliteYAR
             // برای هولد کمیسیون استفاده می‌کند، پس سند با جریان پول هم‌راستا می‌ماند.
-            // (قبلاً روی beneficiary_user_id گیت شده بود؛ در مسیر «کارفرما با مشاور»
+            // (قبلاً روی beneficiary_user_id گیت شده بود؛ در مسیر «کارفرما با الیت‌یار»
             //  که beneficiary=null است، Doc D اشتباهاً صادر نمی‌شد.)
-            $consultantId = $locked->{Order::CONSULTANT_USER_ID};
-            $hasCommissionedConsultant = $consultantId !== null
-                && (int) $consultantId !== (int) $locked->{Order::PLACER_USER_ID};
+            $eliteYARId = $locked->{Order::ELITE_YAR_USER_ID};
+            $hasCommissionedEliteYAR = $eliteYARId !== null
+                && (int) $eliteYARId !== (int) $locked->{Order::PLACER_USER_ID};
 
             $this->invoiceGenerator->generateDirectPurchaseDocs(
                 $locked,
-                withConsultant: $hasCommissionedConsultant
+                withEliteYAR: $hasCommissionedEliteYAR
             );
 
             Log::channel('financial')->info("پرداخت سفارش {$locked->id} با موفقیت انجام شد. فرمول: TC={$transCommission} VAT={$transVat}");

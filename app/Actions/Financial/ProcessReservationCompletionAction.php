@@ -47,7 +47,7 @@ class ProcessReservationCompletionAction
                 return;
             }
 
-            $locked->load('items', 'consultant.badge');
+            $locked->load('items', 'eliteYAR.badge');
 
             $firstItem = $locked->items->first();
 
@@ -57,13 +57,21 @@ class ProcessReservationCompletionAction
             }
 
             $op = (float) ($locked->official_price ?: ($firstItem->unit_price ?? 0));
-            $wbs = (float) ($locked->weight_before_scale ?: 1);
             $trans = (float) ($locked->shipping_cost ?: 0);
             $vat = (float) ($locked->vat_rate ?: 10.0);
 
-            // نرخ کمیسیون از نشانِ مشاورِ صاحب کمیسیون (consultant_user_id) خوانده می‌شود،
+            // وزن snapshot باید معتبر باشد — fallback بی‌صدا به ۱ کیلوگرم یعنی POO/PTS
+            // روی یک کیلو محاسبه می‌شد و رزرو با مبلغ ناچیز «تکمیل» می‌شد. داده‌ی خراب
+            // باید متوقف کند، نه پول جابه‌جا کند.
+            $wbs = (float) ($locked->weight_before_scale ?? 0);
+            if ($wbs <= 0) {
+                Log::channel('financial')->critical("Order {$locked->id}: weight_before_scale is missing/zero — completion aborted.");
+                throw new \RuntimeException(__('orders.invalid_weight_snapshot'));
+            }
+
+            // نرخ کمیسیون از نشانِ الیت‌یارِ صاحب کمیسیون (elite_yar_user_id) خوانده می‌شود،
             // نه beneficiary (گیرندهٔ کالا) — هم‌راستا با ProcessWeighbridgeResultAction.
-            $badgeCode = $locked->consultant?->badge?->code ?? 'pioneer';
+            $badgeCode = $locked->eliteYAR?->badge?->code ?? 'pioneer';
             $rates = $this->calculator->getCommissionRates($badgeCode);
 
             $ow = $rates['ow_final_rate'];

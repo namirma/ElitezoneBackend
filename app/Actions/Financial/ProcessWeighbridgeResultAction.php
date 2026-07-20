@@ -55,7 +55,24 @@ class ProcessWeighbridgeResultAction
                 return $this->buildAlreadyProcessedResponse($locked);
             }
 
-            $locked->load('items', 'consultant.badge');
+            // گارد وضعیت: باسکول فقط برای سفارشِ پرداخت‌شده در پایپلاین آماده‌سازی معناست.
+            // بدون این گارد، ثبت وزن روی سفارش PENDING/لغوشده، محاسبات را روی snapshot های
+            // مالیِ ثبت‌نشده (POO/PTS صفر) اجرا می‌کرد و وضعیت را به SHIPPED می‌پراند.
+            $weighableStatuses = [
+                Order::STATUS_PROCESSING,
+                Order::STATUS_PREPARING,
+                Order::STATUS_WAYBILL_ISSUED,
+            ];
+            if (
+                $locked->{Order::PAYMENT_STATUS} !== Order::PAYMENT_PAID
+                || ! in_array($locked->{Order::STATUS}, $weighableStatuses, true)
+            ) {
+                throw new \RuntimeException(__('weighbridge.errors.not_weighable', [
+                    'status' => $locked->{Order::STATUS},
+                ]));
+            }
+
+            $locked->load('items', 'eliteYAR.badge');
 
             Log::channel('financial')->info("شروع پردازش باسکول سفارش {$locked->id}.");
 
@@ -76,7 +93,7 @@ class ProcessWeighbridgeResultAction
             // Doc I (always) + LO/LS (only when deficit)
             $this->invoiceGenerator->generateWeighbridgeDocs($locked, $isDeficit);
 
-            $consultantGross = $this->vatRouter->route($locked, $result);
+            $eliteYARGross = $this->vatRouter->route($locked, $result);
 
             $locked->forceFill([
                 Order::WEIGHT_AFTER_SCALE => $actualWeight,
@@ -84,7 +101,7 @@ class ProcessWeighbridgeResultAction
                 Order::STATUS => Order::STATUS_SHIPPED,
                 Order::PAYMENT_OF_OWNER => $result->newPOO,
                 Order::PAYMENT_TO_SUPPLIER => $result->newPTS,
-                Order::PAYMENT_TO_CONSULTANT => $consultantGross,
+                Order::PAYMENT_TO_ELITE_YAR => $eliteYARGross,
                 Order::FINAL_AMOUNT => $result->newPOO,
             ])->save();
 

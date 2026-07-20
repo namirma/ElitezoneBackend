@@ -34,9 +34,9 @@ return [
     'finalize_invoice_success' => 'فاکتور نهایی با موفقیت ثبت شد.',
     'fee_hold_description' => 'سهم رزرو شده برای سفارش :order_number',
 
-    // ── Doc Q: Consultant Moadian invoice ──────────────────────────────────
-    'consultant_moadian_submitted' => 'فاکتور مودیان مشاور فنی ثبت شد و کمیسیون آزاد شد.',
-    'consultant_moadian_already_done' => 'فاکتور مودیان مشاور فنی این سفارش قبلاً ثبت شده است.',
+    // ── Doc Q: EliteYAR Moadian invoice ──────────────────────────────────
+    'elite_yar_moadian_submitted' => 'فاکتور مودیان الیت یار ثبت شد و کمیسیون آزاد شد.',
+    'elite_yar_moadian_already_done' => 'فاکتور مودیان الیت یار این سفارش قبلاً ثبت شده است.',
 
     // ── Doc O: Supplier Moadian invoice ────────────────────────────────────
     'supplier_moadian_submitted' => 'فاکتور مودیان سوپلایر ثبت شد و مالیات آزاد شد.',
@@ -48,12 +48,12 @@ return [
 
     // ── Weighbridge (SubmitWeighbridgeRequest) ─────────────────────────────
     'weighbridge_weight_required' => 'وارد کردن وزن نهایی باسکول الزامی است.',
-    'weighbridge_weight_numeric' => 'وزن باسکول باید یک عدد معتبر باشد.',
-    'weighbridge_weight_min' => 'وزن باسکول نمی‌تواند کمتر از ۱ کیلوگرم باشد.',
+    'weighbridge_weight_numeric'  => 'وزن باسکول باید یک عدد معتبر باشد.',
+    'weighbridge_weight_min'      => 'وزن باسکول نمی‌تواند کمتر از ۱ کیلوگرم باشد.',
 
     // ── PayFullOrder (PayFullOrderRequest) ─────────────────────────────────
     'payment_type_required' => 'نوع پرداخت الزامی است.',
-    'payment_type_invalid' => 'نوع پرداخت انتخاب‌شده معتبر نیست.',
+    'payment_type_invalid'  => 'نوع پرداخت انتخاب‌شده معتبر نیست.',
 
     // ── Survey ─────────────────────────────────────────────────────────────
     'survey_not_allowed_for_status' => 'ثبت نظرسنجی فقط برای سفارش‌های تحویل‌داده‌شده امکان‌پذیر است.',
@@ -92,7 +92,7 @@ return [
     'payment_success_wallet' => 'پرداخت با موفقیت از کیف پول انجام شد.',
 
     // StoreOrderRequest validation messages
-    'store_address_required' => 'انتخاب آدرس گیرنده برای ثبت سفارش الزامی است.',
+    'store_address_required'  => 'انتخاب آدرس گیرنده برای ثبت سفارش الزامی است.',
     'store_address_integer' => 'فرمت آدرس گیرنده نامعتبر است.',
     'store_address_exists' => 'آدرس انتخاب شده در سیستم یافت نشد یا متعلق به شما نیست.',
     'store_shipping_required' => 'انتخاب روش ارسال برای ثبت سفارش الزامی است.',
@@ -100,19 +100,19 @@ return [
     'store_shipping_exists' => 'روش ارسال انتخاب شده در سیستم معتبر نیست.',
     'store_beneficiary_integer' => 'فرمت کاربر ذینفع نامعتبر است.',
     'store_beneficiary_exists' => 'کاربر ذینفع در سیستم یافت نشد.',
-    // beneficiary validation (مسیر مشاور)
-    'store_beneficiary_not_approved_consultant' => 'کاربر انتخاب‌شده مشاور فنی تأییدشدهٔ شما نیست.',
-    'store_beneficiary_prohibited_for_employer' => 'کارفرما نمی‌تواند فیلد گیرنده سفارش را مستقیم ارسال کند.',
-    'store_beneficiary_required_for_consultant' => 'مشاور فنی باید کارفرمای گیرنده سفارش را مشخص کند.',
-    'store_beneficiary_not_approved_employer' => 'کاربر انتخاب‌شده کارفرمای تأییدشدهٔ شما نیست.',
+    // beneficiary validation (مسیر الیت یار)
+    'store_beneficiary_not_approved_elite_yar'  => 'کاربر انتخاب‌شده الیت یار تأییدشدهٔ شما نیست.',
+    'store_beneficiary_prohibited_for_employer'  => 'کارفرما نمی‌تواند فیلد گیرنده سفارش را مستقیم ارسال کند.',
+    'store_beneficiary_required_for_elite_yar'  => 'الیت یار باید کارفرمای گیرنده سفارش را مشخص کند.',
+    'store_beneficiary_not_approved_employer'    => 'کاربر انتخاب‌شده کارفرمای تأییدشدهٔ شما نیست.',
 
-    // consultant_user_id validation (مسیر کارفرما)
-    'store_consultant_integer' => 'فرمت مشاور فنی نامعتبر است.',
-    'store_consultant_exists' => 'مشاور فنی در سیستم یافت نشد.',
-    'store_consultant_not_approved' => 'مشاور فنی انتخاب‌شده در لیست مشاوران تأییدشده شما نیست.',
-    'store_consultant_not_found' => 'مشاور فنی انتخاب‌شده در سیستم یافت نشد.',
-    'store_consultant_not_verified' => 'مشاور فنی انتخاب‌شده هنوز مدارک تأییدشده ندارد.',
-    'store_consultant_prohibited_for_consultant' => 'مشاور فنی نمی‌تواند در هنگام ثبت سفارش مشاور دیگری انتخاب کند.',
+    // elite_yar_user_id validation (مسیر کارفرما)
+    'store_elite_yar_integer'              => 'فرمت الیت یار نامعتبر است.',
+    'store_elite_yar_exists'              => 'الیت یار در سیستم یافت نشد.',
+    'store_elite_yar_not_approved'        => 'الیت یار انتخاب‌شده در لیست الیت یاران تأییدشده شما نیست.',
+    'store_elite_yar_not_found'           => 'الیت یار انتخاب‌شده در سیستم یافت نشد.',
+    'store_elite_yar_not_verified'        => 'الیت یار انتخاب‌شده هنوز مدارک تأییدشده ندارد.',
+    'store_elite_yar_prohibited_for_elite_yar' => 'الیت یار نمی‌تواند در هنگام ثبت سفارش الیت یار دیگری انتخاب کند.',
 
     'store_description_max' => 'توضیحات سفارش نمی‌تواند بیشتر از 1000 کاراکتر باشد.',
 
@@ -143,15 +143,16 @@ return [
     ],
 
     // ── Internal action exceptions (user-visible via exception handler) ────
-    'internal_order_not_found' => 'خطای داخلی: سفارش در فرآیند پردازش یافت نشد.',
-    'items_missing_for_payment' => 'اقلام سفارش برای پردازش مالی تعریف نشده‌اند.',
-    'items_missing_for_completion' => 'اقلام سفارش برای تکمیل رزرو یافت نشد.',
-    'consultant_not_found_internal' => 'خطای داخلی: مشاور فنی این سفارش یافت نشد.',
+    'internal_order_not_found'        => 'خطای داخلی: سفارش در فرآیند پردازش یافت نشد.',
+    'items_missing_for_payment'       => 'اقلام سفارش برای پردازش مالی تعریف نشده‌اند.',
+    'items_missing_for_completion'    => 'اقلام سفارش برای تکمیل رزرو یافت نشد.',
+    'elite_yar_not_found_internal'   => 'خطای داخلی: الیت یار این سفارش یافت نشد.',
     'reserved_cannot_cancel_before_expiry' => 'سفارشات رزرو شده تا پیش از پایان زمان انقضا قابل لغو نیستند.',
-    'reserved_expired_auto_cancel' => 'سفارشات رزرو شده منقضی، تنها توسط سیستم به صورت خودکار لغو می‌شوند.',
-    'invalid_financial_calculation' => 'محاسبه مالی سفارش معتبر نیست.',
-    'invalid_transaction_status' => 'وضعیت جدید تراکنش نامعتبر است.',
-    'debit_amount_must_be_positive' => 'مبلغ برداشت باید بیشتر از صفر باشد.',
+    'reserved_expired_auto_cancel'    => 'سفارشات رزرو شده منقضی، تنها توسط سیستم به صورت خودکار لغو می‌شوند.',
+    'invalid_financial_calculation'   => 'محاسبه مالی سفارش معتبر نیست.',
+    'invalid_weight_snapshot'         => 'وزن ثبت‌شده سفارش معتبر نیست؛ عملیات مالی متوقف شد. با پشتیبانی تماس بگیرید.',
+    'invalid_transaction_status'      => 'وضعیت جدید تراکنش نامعتبر است.',
+    'debit_amount_must_be_positive'   => 'مبلغ برداشت باید بیشتر از صفر باشد.',
     'reserve_only_on_reserved_orders' => 'تنها سفارش‌های رزرو شده قابل تمدید هستند.',
 
     // ── Errors (merged — single block) ─────────────────────────────────────
@@ -167,7 +168,7 @@ return [
         'cart_empty' => 'سبد خرید شما خالی است.',
         // Moadian / post-weighbridge
         'weighbridge_not_completed' => 'نتیجه باسکول برای این سفارش هنوز ثبت نشده است.',
-        'no_consultant' => 'این سفارش مشاور فنی ندارد.',
+        'no_elite_yar' => 'این سفارش الیت یار ندارد.',
         'moadian_ref_required' => 'شماره فاکتور مودیان الزامی است.',
     ],
 

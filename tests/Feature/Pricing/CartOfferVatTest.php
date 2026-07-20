@@ -66,7 +66,7 @@ class CartOfferVatTest extends TestCase
         ]);
 
         $ctx = new PricingContextData(
-            activeCode: 'employer_without_consultant',
+            activeCode: 'employer_without_elite_yar',
             customerType: null,
             badge: null,
             filterCategoryIds: [],

@@ -73,6 +73,8 @@ class OrderPaymentController extends Controller
                 'order' => new OrderResource($order->fresh(Order::resourceRelations())),
                 'fee_amount' => PayHoldFeeAction::fee(),
             ], __('orders.hold_fee_successful'));
+        } catch (InsufficientBalanceException $e) {
+            return $this->balanceError($e->available, $e->required);
         } catch (Exception $e) {
             Log::error('Hold fee payment failed', [
                 'order_id' => $order->id,

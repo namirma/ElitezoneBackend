@@ -16,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * پنل ادمین — مدیریت واریزهای مستقیم بانکی (شناسه واریز / پادیوم)
@@ -155,9 +156,15 @@ class AdminPodiumDepositController extends Controller
 
                 $matched ? $newMatched++ : $newUnmatched++;
             } catch (\Throwable $e) {
-                $errors[] = [
+                // جزئیات کامل فقط در لاگ — پیام خام exception به کلاینت برنمی‌گردد.
+                Log::channel('financial')->error('Podium deposit statement processing failed', [
                     'doc_number' => $docNumber ?: '-',
                     'error' => $e->getMessage(),
+                ]);
+
+                $errors[] = [
+                    'doc_number' => $docNumber ?: '-',
+                    'error' => __('admin.podium.statement_process_failed'),
                 ];
             }
         }
@@ -201,7 +208,7 @@ class AdminPodiumDepositController extends Controller
      */
     public function credit(Request $request, PodiumDepositRecord $record): JsonResponse
     {
-        // ── Guard: واریز قبلاً پردازش شده ──────────────────────────────────
+        // ── Guard اولیه: واریز قبلاً پردازش شده (fail fast، بدون قفل) ─────────
         if ($record->{PodiumDepositRecord::PROCESSED_AT} !== null) {
             return error(__('admin.podium_already_credited'), [], 422);
         }
@@ -214,11 +221,24 @@ class AdminPodiumDepositController extends Controller
 
         $user = User::findOrFail($validated['user_id']);
         $adminNote = $validated['note'] ?? null;
-        $amount = (int) $record->{PodiumDepositRecord::CREDITOR_AMOUNT};
 
         // ── شارژ کیف‌پول (transaction + lock) ──────────────────────────────
         // WalletFunded باید بعد از commit dispatch شود، پس $txn را از transaction بیرون می‌آوریم.
-        $txn = DB::transaction(function () use ($record, $user, $amount, $adminNote) {
+        $txn = DB::transaction(function () use ($record, $user, $adminNote) {
+            // Re-fetch + re-check رکورد زیر قفل ردیف. گارد بالا روی مدل قفل‌نشده و
+            // بیرون از تراکنش اجرا می‌شود؛ روت‌های ادمین idempotency middleware
+            // ندارند، پس دابل‌کلیک یا دو ادمین همزمان می‌توانستند هر دو از آن گارد
+            // عبور کنند و کیف‌پول دو بار شارژ شود (همان الگوی ProcessTransactionAction).
+            $lockedRecord = PodiumDepositRecord::whereKey($record->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $lockedRecord || $lockedRecord->{PodiumDepositRecord::PROCESSED_AT} !== null) {
+                return null; // قبلاً توسط درخواست موازی شارژ شده — هرگز دوباره credit نکن
+            }
+
+            $amount = (int) $lockedRecord->{PodiumDepositRecord::CREDITOR_AMOUNT};
+
             $wallet = Wallet::where(Wallet::USER_ID, $user->id)
                 ->lockForUpdate()
                 ->firstOrCreate(
@@ -238,7 +258,7 @@ class AdminPodiumDepositController extends Controller
                 WalletTransaction::META => [
                     'payment_method' => WalletTransaction::METHOD_BANK_TRANSFER,
                     'source' => 'podium_admin_credit',
-                    'doc_number' => $record->{PodiumDepositRecord::DOC_NUMBER},
+                    'doc_number' => $lockedRecord->{PodiumDepositRecord::DOC_NUMBER},
                     'matched_by' => PodiumDepositRecord::MATCHED_BY_ADMIN,
                     'credited_by_admin_id' => Auth::id(),
                     'admin_note' => $adminNote,
@@ -247,7 +267,7 @@ class AdminPodiumDepositController extends Controller
 
             $wallet->increment(Wallet::BALANCE, $amount);
 
-            $record->update([
+            $lockedRecord->update([
                 PodiumDepositRecord::USER_ID => $user->id,
                 PodiumDepositRecord::WALLET_TXN_ID => $walletTxn->id,
                 PodiumDepositRecord::MATCHED_BY => PodiumDepositRecord::MATCHED_BY_ADMIN,
@@ -258,7 +278,14 @@ class AdminPodiumDepositController extends Controller
             return $walletTxn;
         });
 
+        // درخواست موازی زودتر شارژ کرده — idempotent، بدون credit دوم.
+        if ($txn === null) {
+            return error(__('admin.podium_already_credited'), [], 422);
+        }
+
         WalletFunded::dispatch($user, $txn);
+
+        $amount = (int) $txn->{WalletTransaction::AMOUNT};
 
         return success([
             'user_id' => $user->id,

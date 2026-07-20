@@ -33,6 +33,7 @@ class SupplierProfileResource extends BaseJsonResource
             SupplierProfile::WEBSITE => $this->website,
             SupplierProfile::WEBSITE_NOT_RELATED => $this->website_not_related,
             SupplierProfile::COMPANY => $this->company,
+            SupplierProfile::STATUS => $this->status,
             SupplierProfile::CREATED_AT => $this->created_at,
             'created_at_p' => $this->created_at_p,
             'created_at_diff' => $this->created_at_diff,

@@ -1,6 +1,6 @@
 # EliteZone — Admin / Back-Office API (frontend reference)
 
-> Generated from the actual backend code on branch `feature/spec-gaps-consultant-cap-ticketing`.
+> Generated from the actual backend code on branch `feature/spec-gaps-elite yar-cap-ticketing`.
 > All amounts are in **Rials**. Run `php artisan migrate` on the backend before testing.
 
 ## Auth & response envelope
@@ -71,8 +71,8 @@ Query: `subject_type` (e.g. `Order`), `subject_id`, `causer_id` — all optional
 | GET | `/api/admin/users/{user}/transactions` | — | paginated `WalletTransactionResource` |
 | POST | `/api/admin/users/{user}/toggle-status` | — | `UserResource` (is_active toggled) |
 | POST | `/api/admin/users/{user}/note` | body: `note` (required, max 1000) | null |
-| POST | `/api/admin/users/{user}/verify-consultant` | — | `{ user_id, profile_type: "engineer\|contractor", is_verified: true, verified_at }` — **422** if no consultant profile |
-| POST | `/api/admin/users/{user}/unverify-consultant` | — | `{ user_id, profile_type, is_verified: false, verified_at: null }` |
+| POST | `/api/admin/users/{user}/verify-elite yar` | — | `{ user_id, profile_type: "engineer\|contractor", is_verified: true, verified_at }` — **422** if no elite yar profile |
+| POST | `/api/admin/users/{user}/unverify-elite yar` | — | `{ user_id, profile_type, is_verified: false, verified_at: null }` |
 
 ---
 
@@ -175,7 +175,7 @@ Body: `weight_after_scale` (numeric, req, ≥ 1).
 `/financial/pending-moadian` item:
 ```jsonc
 { "id":0, "order_number":"", "status":"", "placer":"name", "final_amount":0.0,
-  "weighing_completed_at":"…", "consultant_moadian_done":false,
+  "weighing_completed_at":"…", "elite yar_moadian_done":false,
   "supplier_moadian_done":false, "system_moadian_done":false, "has_beneficiary":false }
 ```
 

@@ -14,37 +14,37 @@ use Illuminate\Support\Facades\Log;
 class FinalizeInvoiceAction
 {
     /**
-     * Record the final invoice reference and hold the consultant's fee in their wallet.
+     * Record the final invoice reference and hold the eliteYAR's fee in their wallet.
      *
      * Wraps both writes in a single DB::transaction so the order update and
      * the wallet hold are always atomic.
      *
-     * @throws Exception when the consultant user cannot be found
+     * @throws Exception when the eliteYAR user cannot be found
      */
     public function execute(Order $order, string $finalInvoiceRef): void
     {
-        [$feeAmount, $consultantUserId] = $this->resolveFee($order);
+        [$feeAmount, $eliteYARUserId] = $this->resolveFee($order);
 
-        DB::transaction(function () use ($order, $finalInvoiceRef, $feeAmount, $consultantUserId) {
+        DB::transaction(function () use ($order, $finalInvoiceRef, $feeAmount, $eliteYARUserId) {
             $order->update([
                 Order::FINAL_INVOICE_REF => $finalInvoiceRef,
             ]);
 
-            if ($feeAmount && $consultantUserId) {
-                $consultant = User::find($consultantUserId);
+            if ($feeAmount && $eliteYARUserId) {
+                $eliteYAR = User::find($eliteYARUserId);
 
-                if (! $consultant) {
-                    Log::channel('orders')->error("User not found for consultant fee hold. Order: {$order->id}");
-                    throw new Exception(__('orders.consultant_not_found_internal'));
+                if (! $eliteYAR) {
+                    Log::channel('orders')->error("User not found for eliteYAR fee hold. Order: {$order->id}");
+                    throw new Exception(__('orders.elite_yar_not_found_internal'));
                 }
 
-                $wallet = $consultant->wallet ?: $consultant->wallet()->create([]);
+                $wallet = $eliteYAR->wallet ?: $eliteYAR->wallet()->create([]);
 
                 $wallet->transactions()->create([
-                    'order_id' => $order->id,
-                    'amount' => $feeAmount,
-                    'type' => WalletTransaction::TYPE_FEE_HOLD,
-                    'status' => WalletTransaction::STATUS_PENDING,
+                    'order_id'    => $order->id,
+                    'amount'      => $feeAmount,
+                    'type'        => WalletTransaction::TYPE_FEE_HOLD,
+                    'status'      => WalletTransaction::STATUS_PENDING,
                     'description' => __('orders.fee_hold_description', ['order_number' => $order->order_number]),
                 ]);
 
@@ -54,22 +54,22 @@ class FinalizeInvoiceAction
     }
 
     /**
-     * Determine the consultant fee amount and recipient from the order.
+     * Determine the eliteYAR fee amount and recipient from the order.
      *
-     * @return array{0: int|float|null, 1: int|null} [feeAmount, consultantUserId]
+     * @return array{0: int|float|null, 1: int|null}  [feeAmount, eliteYARUserId]
      */
     private function resolveFee(Order $order): array
     {
-        // The fee belongs to the consultant (the commission earner = consultant_user_id),
-        // NOT beneficiary_user_id (the goods recipient). Same column as the WCT hold in
-        // WeighbridgeVatRouter / ReleaseConsultantHoldAction — the rule is unchanged, only
-        // the column that carries the consultant was split out from beneficiary.
+        // The fee belongs to the eliteYAR (the commission earner = elite_yar_user_id),
+        // NOT beneficiary_user_id (the goods recipient). Same column as the WEY hold in
+        // WeighbridgeVatRouter / ReleaseEliteYARHoldAction — the rule is unchanged, only
+        // the column that carries the eliteYAR was split out from beneficiary.
         if ($order->engineer_fee_amount > 0) {
-            return [$order->engineer_fee_amount, $order->consultant_user_id];
+            return [$order->engineer_fee_amount, $order->elite_yar_user_id];
         }
 
         if ($order->contractor_fee_amount > 0) {
-            return [$order->contractor_fee_amount, $order->consultant_user_id];
+            return [$order->contractor_fee_amount, $order->elite_yar_user_id];
         }
 
         return [null, null];

@@ -79,7 +79,7 @@ return [
         'password' => env('TSMS_PASSWORD'),
     ],
 
-    // نشانِ همکاریِ مشاور از سایت legacy «سازه ۹۰» (saze90.com).
+    // نشانِ همکاریِ الیت یار از سایت legacy «سازه ۹۰» (saze90.com).
     // قبلاً فرانت مستقیم `get-certificate?mobile=` را صدا می‌زد (مشکل CORS)؛ حالا از
     // بک‌اند proxy می‌شود. endpoint عمومی است و auth ندارد.
     'saze90' => [

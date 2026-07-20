@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Api\User;
 
-use App\Actions\Financial\ReleaseConsultantHoldAction;
+use App\Actions\Financial\ReleaseEliteYARHoldAction;
 use App\Actions\Order\CancelOrderAction;
 use App\Actions\Order\FinalizeInvoiceAction;
 use App\Http\Controllers\Controller;
@@ -18,7 +18,7 @@ class OrderActionController extends Controller
 {
     public function __construct(
         private readonly FinalizeInvoiceAction $finalizeAction,
-        private readonly ReleaseConsultantHoldAction $releaseConsultantHold,
+        private readonly ReleaseEliteYARHoldAction $releaseEliteYARHold,
     ) {}
 
     /**
@@ -33,7 +33,7 @@ class OrderActionController extends Controller
         // - RESERVED / RESERVED_EXTENDED orders cannot be cancelled before expiry
         //   (CancelOrderAction enforces this); the system auto-cancels them on expiry.
         // - PROCESSING and later states are paid/settled and must NOT be unwound by a
-        //   simple refund (supplier/consultant/VAT legs are involved). Those go through
+        //   simple refund (supplier/eliteYAR/VAT legs are involved). Those go through
         //   the dedicated return/dispute flow (مرجوعی/داوری), never self-cancel.
         if ($order->status !== Order::STATUS_PENDING) {
             return error(__('orders.cannot_cancel'), [], 400);
@@ -45,7 +45,7 @@ class OrderActionController extends Controller
     }
 
     /**
-     * ثبت فاکتور نهایی و "هولد" کردن سهم مشاور
+     * ثبت فاکتور نهایی و "هولد" کردن سهم الیت یار
      */
     public function finalizeInvoice(FinalizeOrderInvoiceRequest $request, Order $order): JsonResponse
     {
@@ -65,29 +65,29 @@ class OrderActionController extends Controller
     }
 
     /**
-     * ثبت فاکتور مودیان مشاور فنی — Doc Q
+     * ثبت فاکتور مودیان الیت یار — Doc Q
      *
-     * فقط توسط مشاور فنی سفارش (consultant_user_id — صاحب کمیسیون) قابل فراخوانی است.
-     * پس از ثبت، هولد کمیسیون و مالیات مشاور آزاد می‌شود.
+     * فقط توسط الیت یارِ سفارش (elite_yar_user_id — صاحب کمیسیون) قابل فراخوانی است.
+     * پس از ثبت، هولد کمیسیون و مالیات الیت یار آزاد می‌شود.
      */
-    public function submitConsultantMoadianInvoice(SubmitMoadianInvoiceRequest $request, Order $order): JsonResponse
+    public function submitEliteYARMoadianInvoice(SubmitMoadianInvoiceRequest $request, Order $order): JsonResponse
     {
         $user = Auth::user();
 
-        // فقط مشاورِ سفارش (کسی که کمیسیون WCT به او تعلق دارد) مجاز است.
-        // این باید consultant_user_id باشد، نه beneficiary_user_id (گیرندهٔ کالا) —
-        // هولد کمیسیون در WeighbridgeVatRouter/ReleaseConsultantHoldAction روی
-        // consultant_user_id ثبت/آزاد می‌شود، پس گارد مجوز هم باید با همان هم‌تراز باشد.
-        if ((int) $order->{Order::CONSULTANT_USER_ID} !== (int) $user->id) {
+        // فقط الیت یارِ سفارش (کسی که کمیسیون WEY به او تعلق دارد) مجاز است.
+        // این باید elite_yar_user_id باشد، نه beneficiary_user_id (گیرندهٔ کالا) —
+        // هولد کمیسیون در WeighbridgeVatRouter/ReleaseEliteYARHoldAction روی
+        // elite_yar_user_id ثبت/آزاد می‌شود، پس گارد مجوز هم باید با همان هم‌تراز باشد.
+        if ((int) $order->{Order::ELITE_YAR_USER_ID} !== (int) $user->id) {
             return error(__('global.forbidden'), [], 403);
         }
 
-        if ($order->{Order::CONSULTANT_MOADIAN_REF} !== null) {
-            return error(__('orders.consultant_moadian_already_done'), [], 409);
+        if ($order->{Order::ELITE_YAR_MOADIAN_REF} !== null) {
+            return error(__('orders.elite_yar_moadian_already_done'), [], 409);
         }
 
         try {
-            $this->releaseConsultantHold->execute(
+            $this->releaseEliteYARHold->execute(
                 $order,
                 $request->validated('moadian_ref')
             );
@@ -97,6 +97,6 @@ class OrderActionController extends Controller
             return error(__('orders.unknown_processing_error'), [], 500);
         }
 
-        return success([], __('orders.consultant_moadian_submitted'));
+        return success([], __('orders.elite_yar_moadian_submitted'));
     }
 }

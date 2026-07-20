@@ -42,9 +42,19 @@ class Agreement extends Model
 
     public const SLUG = 'slug';
 
+    public const TITLE = 'title';
+
     public const VERSION = 'version';
 
     public const CONTENT = 'content';
+
+    /** چک‌باکس‌های الزامی نسخه — JSON: [{code: CHK-01, text: "..."}] */
+    public const CHECKBOXES = 'checkboxes';
+
+    /** هش SHA-256 متن نسخه — پذیرش کاربر به متن دقیق گره می‌خورد. */
+    public const CONTENT_SHA256 = 'content_sha256';
+
+    public const EFFECTIVE_AT = 'effective_at';
 
     public const IS_ACTIVE = 'is_active';
 
@@ -54,28 +64,62 @@ class Agreement extends Model
 
     public const UPDATED_AT = 'updated_at';
 
+    // ── اسلاگ‌های کانونیکال (۵ توافق‌نامه طبق سند طراحی) ─────────────────────
+    public const SLUG_ELITEZONE_TERMS = 'elitezone_terms';
+
+    public const SLUG_PRIVACY_POLICY = 'privacy_policy';
+
+    public const SLUG_ELITE_YAR_TERMS = 'elite_yar_terms';
+
+    public const SLUG_EMPLOYER_TERMS = 'employer_terms';
+
+    public const SLUG_SUPPLIER_TERMS = 'supplier_terms';
+
     // =========================================================================
     //  Configurations
     // =========================================================================
     protected $fillable = [
         self::SLUG,
+        self::TITLE,
         self::VERSION,
         self::CONTENT,
+        self::CHECKBOXES,
+        self::CONTENT_SHA256,
+        self::EFFECTIVE_AT,
         self::IS_ACTIVE,
         self::IS_MANDATORY,
     ];
 
     protected $casts = [
+        self::CHECKBOXES => 'array',
+        self::EFFECTIVE_AT => 'datetime',
         self::IS_ACTIVE => 'boolean',
         self::IS_MANDATORY => 'boolean',
     ];
 
     // =========================================================================
-    //  Scopes
+    //  Scopes / helpers
     // =========================================================================
     public function scopeActive($query)
     {
         return $query->where(self::IS_ACTIVE, true);
+    }
+
+    /** آخرین نسخه‌ی فعالِ یک اسلاگ — نسخه‌ی قابل پذیرش فعلی. */
+    public static function latestActiveForSlug(string $slug): ?self
+    {
+        return static::query()
+            ->where(self::SLUG, $slug)
+            ->active()
+            ->orderByDesc(self::CREATED_AT)
+            ->orderByDesc(self::ID)
+            ->first();
+    }
+
+    /** کدهای چک‌باکس الزامی این نسخه. */
+    public function checkboxCodes(): array
+    {
+        return collect($this->{self::CHECKBOXES} ?? [])->pluck('code')->filter()->values()->all();
     }
 
     // =========================================================================
@@ -84,7 +128,10 @@ class Agreement extends Model
     public function users(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'user_agreements')
-            ->withPivot(['accepted_at', 'ip_address', 'user_agent'])
+            ->withPivot([
+                'accepted_at', 'version', 'content_sha256', 'ip_address',
+                'user_agent', 'checked_items', 'acceptance_method', 'snapshot',
+            ])
             ->withTimestamps();
     }
 }

@@ -7,7 +7,7 @@ use App\Models\PurchaseParameterValue;
 
 /**
  * Determines which PriceFilterCategory applies given a set of purchase
- * parameter IDs selected by the user (customer_type / consultant_status /
+ * parameter IDs selected by the user (customer_type / elite_yar_status /
  * purchase_purpose).
  *
  * Extracted from ParameterDetectionController so it can be reused by
@@ -22,14 +22,14 @@ class PriceFilterCategoryDetectorService
             ->get()
             ->keyBy(fn ($value) => $value->group->code);
 
-        $customerTypeValue = $parameterValues['customer_type'] ?? null;
-        $consultantStatusValue = $parameterValues['consultant_status'] ?? null;
-        $purchasePurposeValue = $parameterValues['purchase_purpose'] ?? null;
+        $customerTypeValue    = $parameterValues['customer_type']      ?? null;
+        $eliteYARStatusValue = $parameterValues['elite_yar_status'] ?? null;
+        $purchasePurposeValue  = $parameterValues['purchase_purpose']  ?? null;
 
-        if ($customerTypeValue && $consultantStatusValue) {
-            if ($consultantStatusValue->code === 'with_consultant') {
-                $prefix = strstr($customerTypeValue->code, '_', true) ?: $customerTypeValue->code;
-                $category = PriceFilterCategory::where(PriceFilterCategory::CODE, "{$prefix}_with_consultant")->first();
+        if ($customerTypeValue && $eliteYARStatusValue) {
+            if ($eliteYARStatusValue->code === 'with_elite_yar') {
+                $prefix   = strstr($customerTypeValue->code, '_', true) ?: $customerTypeValue->code;
+                $category = PriceFilterCategory::where(PriceFilterCategory::CODE, "{$prefix}_with_elite_yar")->first();
                 if ($category) {
                     return $category;
                 }
@@ -38,8 +38,8 @@ class PriceFilterCategoryDetectorService
                     return $customerTypeValue->priceFilterCategory;
                 }
 
-                $fallbackCode = "{$customerTypeValue->code}_without_consultant";
-                $category = PriceFilterCategory::where(PriceFilterCategory::CODE, $fallbackCode)->first();
+                $fallbackCode = "{$customerTypeValue->code}_without_elite_yar";
+                $category     = PriceFilterCategory::where(PriceFilterCategory::CODE, $fallbackCode)->first();
                 if ($category) {
                     return $category;
                 }
@@ -51,12 +51,12 @@ class PriceFilterCategoryDetectorService
             }
         }
 
-        foreach ([$consultantStatusValue, $customerTypeValue, $purchasePurposeValue] as $value) {
+        foreach ([$eliteYARStatusValue, $customerTypeValue, $purchasePurposeValue] as $value) {
             if ($value && $value->priceFilterCategory) {
                 return $value->priceFilterCategory;
             }
         }
 
-        return PriceFilterCategory::where(PriceFilterCategory::CODE, 'employer_without_consultant')->first();
+        return PriceFilterCategory::where(PriceFilterCategory::CODE, 'employer_without_elite_yar')->first();
     }
 }

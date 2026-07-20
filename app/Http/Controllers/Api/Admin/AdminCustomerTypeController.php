@@ -12,7 +12,7 @@ use Illuminate\Validation\Rule;
 /**
  * پنل مدیریت — CRUD انواع مشتری (CustomerType).
  *
- * نوع مشتری (مثلاً «کارفرمای بدون مشاور») پایه‌ی تعدیل قیمت (PriceAdjustment) است.
+ * نوع مشتری (مثلاً «کارفرمای بدون الیت یار») پایه‌ی تعدیل قیمت (PriceAdjustment) است.
  * نوعی که تعدیل قیمت دارد قابل حذف نیست.
  */
 class AdminCustomerTypeController extends Controller
@@ -56,7 +56,7 @@ class AdminCustomerTypeController extends Controller
         return [
             CustomerType::NAME => [$req, 'string', 'max:255'],
             CustomerType::CODE => [$req, 'string', 'max:255', Rule::unique('customer_types', 'code')->ignore($ignoreId)],
-            CustomerType::HAS_CONSULTANT => ['boolean'],
+            CustomerType::HAS_ELITE_YAR => ['boolean'],
         ];
     }
 }

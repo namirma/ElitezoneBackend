@@ -3,9 +3,9 @@
 namespace App\Http\Requests\Order;
 
 use App\DataTransferObjects\Order\PlaceOrderData;
-use App\Models\ContractorProfile;
-use App\Models\EmployerConsultant;
+use App\Models\EmployerEliteYAR;
 use App\Models\EngineerProfile;
+use App\Models\ContractorProfile;
 use App\Models\User;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
@@ -16,12 +16,12 @@ use Illuminate\Validation\Rule;
  * اعتبارسنجی نقش‌محور ثبت سفارش:
  *
  * مسیر کارفرما (employer):
- *   - consultant_user_id: اختیاری؛ باید مشاور approved+verified خودِ کارفرما باشد
+ *   - elite_yar_user_id: اختیاری؛ باید الیت یار approved+verified خودِ کارفرما باشد
  *   - beneficiary_user_id: ممنوع (کارفرما گیرنده خودش است)
  *
- * مسیر مشاور (engineer / contractor):
- *   - beneficiary_user_id: اجباری؛ باید کارفرمای approved همین مشاور باشد
- *   - consultant_user_id: ممنوع در request؛ توسط PlaceOrderAction = self ست می‌شود
+ * مسیر الیت یار (engineer / contractor):
+ *   - beneficiary_user_id: اجباری؛ باید کارفرمای approved همین الیت یار باشد
+ *   - elite_yar_user_id: ممنوع در request؛ توسط PlaceOrderAction = self ست می‌شود
  */
 class StoreOrderRequest extends FormRequest
 {
@@ -33,10 +33,10 @@ class StoreOrderRequest extends FormRequest
     public function rules(): array
     {
         $user = Auth::user();
-        $isConsultant = $user?->hasRole('engineer') || $user?->hasRole('contractor');
+        $isEliteYAR = $user?->hasRole('engineer') || $user?->hasRole('contractor');
 
-        if ($isConsultant) {
-            return $this->consultantRules();
+        if ($isEliteYAR) {
+            return $this->eliteYARRules();
         }
 
         return $this->employerRules();
@@ -52,8 +52,8 @@ class StoreOrderRequest extends FormRequest
                 'prohibited',
             ],
 
-            // اختیاری: مشاور فنی باید approved+verified باشد
-            'consultant_user_id' => [
+            // اختیاری: الیت یار باید approved+verified باشد
+            'elite_yar_user_id' => [
                 'nullable',
                 'integer',
                 'exists:users,id',
@@ -64,30 +64,28 @@ class StoreOrderRequest extends FormRequest
 
                     $employer = Auth::user();
 
-                    // بررسی ۱: آیا مشاور در لیست مشاوران تأییدشده این کارفرما هست؟
+                    // بررسی ۱: آیا الیت یار در لیست الیت یارها تأییدشده این کارفرما هست؟
                     $isApproved = $employer
-                        ->technicalConsultants()
+                        ->technicalEliteYARs()
                         ->where('users.id', $value)
-                        ->wherePivot(EmployerConsultant::STATUS, EmployerConsultant::STATUS_APPROVED)
+                        ->wherePivot(EmployerEliteYAR::STATUS, EmployerEliteYAR::STATUS_APPROVED)
                         ->exists();
 
                     if (! $isApproved) {
-                        $fail(__('orders.store_consultant_not_approved'));
-
+                        $fail(__('orders.store_elite_yar_not_approved'));
                         return;
                     }
 
-                    // بررسی ۲: آیا مشاور گواهی تأیید مدارک دارد (is_verified = true)؟
-                    $consultant = User::find($value);
-                    if (! $consultant) {
-                        $fail(__('orders.store_consultant_not_found'));
-
+                    // بررسی ۲: آیا الیت یار گواهی تأیید مدارک دارد (is_verified = true)؟
+                    $eliteYAR = User::find($value);
+                    if (! $eliteYAR) {
+                        $fail(__('orders.store_elite_yar_not_found'));
                         return;
                     }
 
-                    $isVerified = $this->isConsultantVerified($consultant);
+                    $isVerified = $this->isEliteYARVerified($eliteYAR);
                     if (! $isVerified) {
-                        $fail(__('orders.store_consultant_not_verified'));
+                        $fail(__('orders.store_elite_yar_not_verified'));
                     }
                 },
             ],
@@ -97,33 +95,33 @@ class StoreOrderRequest extends FormRequest
                 'integer',
                 Rule::exists('addresses', 'id')->where('user_id', Auth::id()),
             ],
-            'description' => ['nullable', 'string', 'max:1000'],
+            'description'        => ['nullable', 'string', 'max:1000'],
             'shipping_method_id' => ['required', 'integer', 'exists:shipping_methods,id'],
         ];
     }
 
-    // ── مسیر مشاور (engineer / contractor) ────────────────────────────────────
+    // ── مسیر الیت یار (engineer / contractor) ────────────────────────────────────
 
-    private function consultantRules(): array
+    private function eliteYARRules(): array
     {
         return [
-            // ممنوع: مشاور consultant_user_id نمی‌فرستد — Action آن را = self ست می‌کند
-            'consultant_user_id' => [
+            // ممنوع: الیت یار elite_yar_user_id نمی‌فرستد — Action آن را = self ست می‌کند
+            'elite_yar_user_id' => [
                 'prohibited',
             ],
 
-            // اجباری: کارفرمای approved این مشاور
+            // اجباری: کارفرمای approved این الیت یار
             'beneficiary_user_id' => [
                 'required',
                 'integer',
                 'exists:users,id',
                 function (string $attribute, $value, Closure $fail): void {
-                    $consultant = Auth::user();
+                    $eliteYAR = Auth::user();
 
-                    $isApprovedEmployer = $consultant
+                    $isApprovedEmployer = $eliteYAR
                         ->associatedEmployers()
                         ->where('users.id', $value)
-                        ->wherePivot(EmployerConsultant::STATUS, EmployerConsultant::STATUS_APPROVED)
+                        ->wherePivot(EmployerEliteYAR::STATUS, EmployerEliteYAR::STATUS_APPROVED)
                         ->exists();
 
                     if (! $isApprovedEmployer) {
@@ -137,7 +135,7 @@ class StoreOrderRequest extends FormRequest
                 'integer',
                 Rule::exists('addresses', 'id')->where('user_id', Auth::id()),
             ],
-            'description' => ['nullable', 'string', 'max:1000'],
+            'description'        => ['nullable', 'string', 'max:1000'],
             'shipping_method_id' => ['required', 'integer', 'exists:shipping_methods,id'],
         ];
     }
@@ -145,16 +143,16 @@ class StoreOrderRequest extends FormRequest
     // ── helpers ────────────────────────────────────────────────────────────────
 
     /**
-     * بررسی تأیید مدارک مشاور (engineer یا contractor profile).
+     * بررسی تأیید مدارک الیت یار (engineer یا contractor profile).
      */
-    private function isConsultantVerified(User $consultant): bool
+    private function isEliteYARVerified(User $eliteYAR): bool
     {
-        $engineerProfile = EngineerProfile::where(EngineerProfile::USER_ID, $consultant->id)->first();
+        $engineerProfile = EngineerProfile::where(EngineerProfile::USER_ID, $eliteYAR->id)->first();
         if ($engineerProfile) {
             return (bool) $engineerProfile->{EngineerProfile::IS_VERIFIED};
         }
 
-        $contractorProfile = ContractorProfile::where(ContractorProfile::USER_ID, $consultant->id)->first();
+        $contractorProfile = ContractorProfile::where(ContractorProfile::USER_ID, $eliteYAR->id)->first();
         if ($contractorProfile) {
             return (bool) $contractorProfile->{ContractorProfile::IS_VERIFIED};
         }
@@ -168,32 +166,32 @@ class StoreOrderRequest extends FormRequest
     {
         return [
             'beneficiary_user_id' => 'کارفرمای گیرنده',
-            'consultant_user_id' => 'مشاور فنی',
-            'address_id' => 'آدرس گیرنده',
-            'description' => 'توضیحات',
-            'shipping_method_id' => 'روش ارسال',
+            'elite_yar_user_id'  => 'الیت یار',
+            'address_id'          => 'آدرس گیرنده',
+            'description'         => 'توضیحات',
+            'shipping_method_id'  => 'روش ارسال',
         ];
     }
 
     public function messages(): array
     {
         return [
-            'address_id.required' => __('orders.store_address_required'),
-            'address_id.integer' => __('orders.store_address_integer'),
-            'address_id.exists' => __('orders.store_address_exists'),
+            'address_id.required'  => __('orders.store_address_required'),
+            'address_id.integer'   => __('orders.store_address_integer'),
+            'address_id.exists'    => __('orders.store_address_exists'),
 
             'shipping_method_id.required' => __('orders.store_shipping_required'),
-            'shipping_method_id.integer' => __('orders.store_shipping_integer'),
-            'shipping_method_id.exists' => __('orders.store_shipping_exists'),
+            'shipping_method_id.integer'  => __('orders.store_shipping_integer'),
+            'shipping_method_id.exists'   => __('orders.store_shipping_exists'),
 
             'beneficiary_user_id.prohibited' => __('orders.store_beneficiary_prohibited_for_employer'),
-            'beneficiary_user_id.required' => __('orders.store_beneficiary_required_for_consultant'),
-            'beneficiary_user_id.integer' => __('orders.store_beneficiary_integer'),
-            'beneficiary_user_id.exists' => __('orders.store_beneficiary_exists'),
+            'beneficiary_user_id.required'   => __('orders.store_beneficiary_required_for_elite_yar'),
+            'beneficiary_user_id.integer'    => __('orders.store_beneficiary_integer'),
+            'beneficiary_user_id.exists'     => __('orders.store_beneficiary_exists'),
 
-            'consultant_user_id.prohibited' => __('orders.store_consultant_prohibited_for_consultant'),
-            'consultant_user_id.integer' => __('orders.store_consultant_integer'),
-            'consultant_user_id.exists' => __('orders.store_consultant_exists'),
+            'elite_yar_user_id.prohibited' => __('orders.store_elite_yar_prohibited_for_elite_yar'),
+            'elite_yar_user_id.integer'    => __('orders.store_elite_yar_integer'),
+            'elite_yar_user_id.exists'     => __('orders.store_elite_yar_exists'),
 
             'description.max' => __('orders.store_description_max'),
         ];

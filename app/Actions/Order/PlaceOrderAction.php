@@ -3,7 +3,6 @@
 namespace App\Actions\Order;
 
 use App\DataTransferObjects\Order\PlaceOrderData;
-use App\DataTransferObjects\Shipping\ShipmentGroup;
 use App\Events\Order\OrderPlaced;
 use App\Exceptions\Order\CartIsEmptyException;
 use App\Models\Address;
@@ -207,13 +206,13 @@ class PlaceOrderAction
         // Subtotal - Discount + Tax + Shipping = Final
         $finalAmount = max(0, $subtotal - $totalDiscount + $totalVat + $shippingCost);
 
-        // تعیین مشاور فنی مؤثر:
-        // — اگر خودِ خریدار مشاور است (engineer/contractor) → مشاور = placer (اجباری)
-        // — اگر کارفرما است → مشاور همانی است که در consultant_user_id فرستاده
-        $isConsultantPlacer = $user->isConsultant();
-        $effectiveConsultantId = $isConsultantPlacer ? $user->id : $data->consultantUserId;
+        // تعیین الیت یار مؤثر:
+        // — اگر خودِ خریدار الیت یار است (engineer/contractor) → الیت یار = placer (اجباری)
+        // — اگر کارفرما است → الیت یار همانی است که در elite_yar_user_id فرستاده
+        $isEliteYARPlacer = $user->isEliteYAR();
+        $effectiveEliteYARId = $isEliteYARPlacer ? $user->id : $data->eliteYARUserId;
 
-        $commissions = $this->calculateCommissions($user, $effectiveConsultantId, $subtotal);
+        $commissions = $this->calculateCommissions($user, $effectiveEliteYARId, $subtotal);
 
         return [
             'subtotal' => $subtotal,
@@ -223,32 +222,32 @@ class PlaceOrderAction
             'final_amount' => $finalAmount,
             'total_weight' => $totalWeight,
             'commissions' => $commissions,
-            'effective_consultant_id' => $effectiveConsultantId,
+            'effective_elite_yar_id' => $effectiveEliteYARId,
             'items_data' => $itemsData,
             'shipments' => $shippingQuote->shipments,
         ];
     }
 
     /**
-     * محاسبه کمیسیون بر اساس مشاور فنی مؤثر سفارش.
+     * محاسبه کمیسیون بر اساس الیت یار مؤثر سفارش.
      *
      * @param  User  $placer  خریدار/ثبت‌کننده سفارش
-     * @param  int|null  $consultantId  consultant_user_id مؤثر (پس از تعیین نقش)
+     * @param  int|null  $eliteYARId  elite_yar_user_id مؤثر (پس از تعیین نقش)
      */
-    private function calculateCommissions(User $placer, ?int $consultantId, float $subtotal): array
+    private function calculateCommissions(User $placer, ?int $eliteYARId, float $subtotal): array
     {
         $fees = ['engineer' => 0, 'contractor' => 0];
 
-        if (! $consultantId) {
+        if (! $eliteYARId) {
             return $fees;
         }
 
-        $consultant = User::find($consultantId);
-        if (! $consultant) {
+        $eliteYAR = User::find($eliteYARId);
+        if (! $eliteYAR) {
             return $fees;
         }
 
-        $badgeCode = $consultant->badge?->code ?? 'pioneer';
+        $badgeCode = $eliteYAR->badge?->code ?? 'pioneer';
         $calculated = $this->settlementCalculator->calculateCommissions($subtotal, $badgeCode);
         $amount = $calculated['CO'] ?? 0;
 
@@ -257,9 +256,9 @@ class PlaceOrderAction
         $contractorTypeId = Cache::remember('user_type_id_contractor', 86400,
             fn () => UserType::where('slug', 'contractor')->value('id'));
 
-        if ($consultant->hasRole('engineer') || $consultant->{User::TYPE_ID} === $engineerTypeId) {
+        if ($eliteYAR->hasRole('engineer') || $eliteYAR->{User::TYPE_ID} === $engineerTypeId) {
             $fees['engineer'] = $amount;
-        } elseif ($consultant->hasRole('contractor') || $consultant->{User::TYPE_ID} === $contractorTypeId) {
+        } elseif ($eliteYAR->hasRole('contractor') || $eliteYAR->{User::TYPE_ID} === $contractorTypeId) {
             $fees['contractor'] = $amount;
         }
 
@@ -286,10 +285,10 @@ class PlaceOrderAction
         // ۳. ثبت نهایی در دیتابیس
         return Order::create([
             Order::PLACER_USER_ID => $user->id,
-            // beneficiary = گیرنده سفارش (فقط در مسیر مشاور که برای کارفرما خریداری می‌کند)
+            // beneficiary = گیرنده سفارش (فقط در مسیر الیت یار که برای کارفرما خریداری می‌کند)
             Order::BENEFICIARY_USER_ID => $data->beneficiaryUserId,
-            // consultant = مشاور فنی که کمیسیون CO می‌گیرد (مؤثر — computed در calculateOrderFinancials)
-            Order::CONSULTANT_USER_ID => $fins['effective_consultant_id'],
+            // eliteYAR = الیت یار که کمیسیون CO می‌گیرد (مؤثر — computed در calculateOrderFinancials)
+            Order::ELITE_YAR_USER_ID => $fins['effective_elite_yar_id'],
             Order::ADDRESS_ID => $data->addressId,
             'shipping_method_id' => $data->shippingMethodId ?? 1,
             Order::ORDER_NUMBER => $orderNumber, // استفاده از شماره تولید شده
@@ -317,7 +316,7 @@ class PlaceOrderAction
      * Create one Shipment per (origin → destination) leg and return a map of
      * cart item id → shipment id so order items can be linked to their shipment.
      *
-     * @param  ShipmentGroup[]  $shipments
+     * @param  \App\DataTransferObjects\Shipping\ShipmentGroup[]  $shipments
      * @return array<int|string, int>
      */
     private function createShipments(Order $order, array $shipments): array

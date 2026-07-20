@@ -53,7 +53,7 @@ class DevSeeder extends Seeder
             ['slug' => 'contractor', 'name' => 'پیمانکار',  'icon' => 'briefcase'],
             ['slug' => 'supplier',  'name' => 'سوپلایر',   'icon' => 'factory'],
             ['slug' => 'employer',  'name' => 'کارفرما',   'icon' => 'building'],
-            ['slug' => 'expert',    'name' => 'مشاور فنی', 'icon' => 'star'],
+            ['slug' => 'expert',    'name' => 'الیت یار', 'icon' => 'star'],
         ];
         foreach ($userTypes as $t) {
             UserType::updateOrCreate(['slug' => $t['slug']], $t);

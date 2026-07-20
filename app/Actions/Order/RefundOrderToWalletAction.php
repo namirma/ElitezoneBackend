@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\DB;
  * money-minting bug).
  *
  * Post-weighbridge orders are intentionally out of scope: they carry supplier /
- * consultant / VAT holds that must be unwound by the dedicated return-settlement
+ * eliteYAR / VAT holds that must be unwound by the dedicated return-settlement
  * flow, so this action refuses to touch them rather than mis-refund.
  *
  * Pessimistic locking (lockForUpdate) prevents a double-refund race.
@@ -47,7 +47,7 @@ final class RefundOrderToWalletAction
             }
 
             // Refunding a settled (post-weighbridge) order is not a simple reversal —
-            // supplier/consultant/VAT holds are involved. Force the caller to use the
+            // supplier/eliteYAR/VAT holds are involved. Force the caller to use the
             // proper return/settlement flow instead of silently mis-refunding.
             if ($locked->{Order::WEIGHING_COMPLETED_AT} !== null) {
                 throw new \RuntimeException(

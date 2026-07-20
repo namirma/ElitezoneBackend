@@ -172,13 +172,13 @@ trait HasOrderProgress
     }
 
     /**
-     * محاسبه مراحل پیشرفت سفارش از دیدِ مشاور فنی (beneficiary)
+     * محاسبه مراحل پیشرفت سفارش از دیدِ الیت یار (beneficiary)
      *
      * چهار مرحله ثابت — وضعیت مرحله بر اساس فیلدهای مدل تعیین می‌شود،
      * نه فقط ستون status، تا رویدادهایی مانند ثبت فاکتور مودیان نیز
      * به‌درستی منعکس شوند.
      */
-    public function getConsultantProgressAttribute(): array
+    public function getEliteYARProgressAttribute(): array
     {
         $status = $this->status;
         $id = $this->id;
@@ -193,15 +193,15 @@ trait HasOrderProgress
         // ---------------------------------------------------------
         $stepsBlueprint = [
             ['title' => 'کارفرما خرید کرد'],
-            ['title' => 'حق مشاوره منظور شد'],
+            ['title' => 'کارمزد الیت یار منظور شد'],
             ['title' => 'فاکتور خدمات ثبت شد'],
-            ['title' => 'حق مشاوره در دسترس است'],
+            ['title' => 'کارمزد الیت یار در دسترس است'],
         ];
 
         // ---------------------------------------------------------
         // ۲. تشخیص پیشرفته‌ترین مرحله فعال (از آخر به اول)
-        //    چون ReleaseConsultantHoldAction هر دو فیلد را اتمیک ست
-        //    می‌کند، مرحله ۳ (consultant_moadian_ref) عملاً هرگز
+        //    چون ReleaseEliteYARHoldAction هر دو فیلد را اتمیک ست
+        //    می‌کند، مرحله ۳ (elite_yar_moadian_ref) عملاً هرگز
         //    به‌عنوان «current» نمایش داده نمی‌شود — اما منطقاً
         //    پوشش داده شده است.
         // ---------------------------------------------------------
@@ -210,21 +210,21 @@ trait HasOrderProgress
         if (! $isCancelled) {
             // مرحله ۴ فقط وقتی Doc Q ثبت و hold واقعاً آزاد شده — نه صرف تحویل کالا.
             // طبق پروسه خرید (بخش «الگوریتم وابستگی واریزها»):
-            // «تا زمان صدور فاکتور سامانه مودیان توسط مشاور فنی در کیف پول وی هولد می‌شود».
-            // پس delivered/completed به‌تنهایی hold را آزاد نمی‌کند؛ ReleaseConsultantHoldAction لازم است.
-            if ($this->{Order::CONSULTANT_HOLD_RELEASED_AT} !== null) {
-                $currentIndex = 3; // مرحله ۴: حق مشاوره در دسترس
-            } elseif ($this->{Order::CONSULTANT_MOADIAN_REF} !== null) {
+            // «تا زمان صدور فاکتور سامانه مودیان توسط الیت یار در کیف پول وی هولد می‌شود».
+            // پس delivered/completed به‌تنهایی hold را آزاد نمی‌کند؛ ReleaseEliteYARHoldAction لازم است.
+            if ($this->{Order::ELITE_YAR_HOLD_RELEASED_AT} !== null) {
+                $currentIndex = 3; // مرحله ۴: کارمزد الیت یار در دسترس
+            } elseif ($this->{Order::ELITE_YAR_MOADIAN_REF} !== null) {
                 $currentIndex = 2; // مرحله ۳: فاکتور خدمات ثبت شد (حالت گذرا — atomically به ۴ می‌رسد)
             } elseif (in_array($status, [
                 Order::STATUS_WEIGHBRIDGE_DONE,
                 Order::STATUS_PENDING_SURPLUS_PAYMENT,
                 Order::STATUS_WAYBILL_ISSUED,
                 Order::STATUS_SHIPPED,
-                Order::STATUS_DELIVERED,  // کالا تحویل شده ولی مشاور هنوز Doc Q ثبت نکرده
-                Order::STATUS_COMPLETED,  // → کمیسیون در کیف‌پول مشاور به‌صورت Hold؛ باید Doc Q ثبت کند
+                Order::STATUS_DELIVERED,  // کالا تحویل شده ولی الیت یار هنوز Doc Q ثبت نکرده
+                Order::STATUS_COMPLETED,  // → کمیسیون در کیف‌پول الیت یار به‌صورت Hold؛ باید Doc Q ثبت کند
             ])) {
-                $currentIndex = 1; // مرحله ۲: حق مشاوره منظور شد
+                $currentIndex = 1; // مرحله ۲: کارمزد الیت یار منظور شد
             } elseif (in_array($status, [
                 Order::STATUS_PROCESSING,
                 Order::STATUS_PREPARING,
@@ -272,7 +272,7 @@ trait HasOrderProgress
                         ];
                         break;
 
-                    case 'حق مشاوره منظور شد':
+                    case 'کارمزد الیت یار منظور شد':
                         $actions[] = [
                             'label' => 'مشاهده کیف پول',
                             'link' => '/profile/finance',
@@ -280,7 +280,7 @@ trait HasOrderProgress
                         ];
                         $actions[] = [
                             'label' => 'فاکتور خدمات خود را ثبت کنید',
-                            'link' => "/api/profile/orders/{$id}/consultant-moadian-invoice",
+                            'link' => "/api/profile/orders/{$id}/elite-yar-moadian-invoice",
                             'type' => 'primary',
                         ];
                         break;
@@ -288,12 +288,12 @@ trait HasOrderProgress
                     case 'فاکتور خدمات ثبت شد':
                         $actions[] = [
                             'label' => 'فاکتور خدمات خود را ثبت کنید',
-                            'link' => "/api/profile/orders/{$id}/consultant-moadian-invoice",
+                            'link' => "/api/profile/orders/{$id}/elite-yar-moadian-invoice",
                             'type' => 'secondary',
                         ];
                         break;
 
-                        // مرحله ۴ (حق مشاوره در دسترس است): بدون دکمه
+                        // مرحله ۴ (کارمزد الیت یار در دسترس است): بدون دکمه
                 }
             }
 
@@ -305,9 +305,9 @@ trait HasOrderProgress
             ];
         }
 
-        // آخرین مرحله («حق مشاوره در دسترس است») فقط وقتی Doc Q ثبت و hold آزاد شده «completed» می‌شود.
+        // آخرین مرحله («کارمزد الیت یار در دسترس است») فقط وقتی Doc Q ثبت و hold آزاد شده «completed» می‌شود.
         // delivered/completed بدون Doc Q → مرحله ۲ current باقی می‌ماند (hold هنوز فعال است).
-        if ($this->{Order::CONSULTANT_HOLD_RELEASED_AT} !== null) {
+        if ($this->{Order::ELITE_YAR_HOLD_RELEASED_AT} !== null) {
             $steps[count($steps) - 1]['state'] = 'completed';
         }
 

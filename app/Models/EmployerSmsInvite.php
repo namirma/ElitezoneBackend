@@ -37,7 +37,7 @@ class EmployerSmsInvite extends Model
 
     public const SENT_AT = 'sent_at';
 
-    /** حداکثر تعداد کارفرمایی که هر مشاور می‌تواند دعوت کند */
+    /** حداکثر تعداد کارفرمایی که هر الیت یار می‌تواند دعوت کند */
     public const MAX_INVITES = 10;
 
     protected $fillable = [

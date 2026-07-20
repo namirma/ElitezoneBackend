@@ -6,9 +6,11 @@ use App\Http\Middleware\Authenticate;
 use App\Http\Middleware\CanSeeTicket;
 use App\Http\Middleware\Cors;
 use App\Http\Middleware\EnsureRoleIsSelected;
+use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\EnsureUserIsEmployer;
 use App\Http\Middleware\EnsureUserIsExpert;
+use App\Http\Middleware\EnsureUserIsSupplier;
 use App\Http\Middleware\Idempotency;
 use App\Http\Middleware\OptionalSanctum;
 use App\Http\Middleware\RedirectIfAuthenticated;
@@ -59,6 +61,9 @@ return Application::configure(basePath: dirname(__DIR__))
             EnsureFrontendRequestsAreStateful::class,
             ThrottleRequests::class.':api',
             SubstituteBindings::class,
+            // کاربر غیرفعال‌شده (is_active=false) با هیچ توکنی نباید سرویس بگیرد —
+            // بدون این، toggleStatus ادمین صرفاً یک فلگ بی‌اثر بود.
+            EnsureUserIsActive::class,
             Cors::class,
         ]);
 
@@ -85,6 +90,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role.admin' => EnsureUserIsAdmin::class,
             'role.expert' => EnsureUserIsExpert::class,
             'role.employer' => EnsureUserIsEmployer::class,
+            'role.supplier' => EnsureUserIsSupplier::class,
             'track' => TrackDashboardUsage::class,
             'idempotency' => Idempotency::class,
             'role.selected' => EnsureRoleIsSelected::class,

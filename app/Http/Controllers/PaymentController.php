@@ -62,6 +62,7 @@ class PaymentController extends Controller
     }
 
     public const STATUS_SUCCESS = 'success';
+
     public const STATUS_FAILED = 'failed';
 
     private function redirectClient(bool $success, string $message, ?string $refId = null): RedirectResponse

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\GeneralSearchRequest;
+use App\Http\Resources\Financial\WalletTransactionResource;
 use App\Http\Resources\Profile\UserResource;
 use App\Models\User;
 use App\Models\UserProfile;
@@ -51,6 +52,6 @@ class AdminSearchController extends Controller
             ->latest(WalletTransaction::CREATED_AT)
             ->paginate($this->perPage());
 
-        return success($transactions, __('admin.transaction_search_success'));
+        return success(WalletTransactionResource::collection($transactions), __('admin.transaction_search_success'));
     }
 }

@@ -1,4 +1,4 @@
-# Deploy runbook — `feature/spec-gaps-consultant-cap-ticketing`
+# Deploy runbook — `feature/spec-gaps-elite yar-cap-ticketing`
 
 Run these on the server **after** the new code is in place (after your usual pull/push-deploy
 to `89.42.210.55`). All commands run from the `api/` directory. **Take a DB backup first** —
@@ -88,5 +88,5 @@ Then deploy the previous code revision and re-run steps 5–6.
 - **New env vars** are all optional (safe defaults) — see `docs/CHANGELOG-spec-gaps.md`.
 - **Pasargad** stays inert until its credentials are set; money-in keeps working via
   شناسه‌واریز / Podium direct deposit.
-- **Consultant cap** stays dormant until `users.badge_purchase_amount` is populated
+- **EliteYAR cap** stays dormant until `users.badge_purchase_amount` is populated
   (Saze Nod import — future).

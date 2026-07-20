@@ -66,7 +66,7 @@ class ProcessFullOrderPaymentAction
                     FinancialCodes::DOC_RECEIPT_OWNER,
                     FinancialCodes::DOC_REPORT_SUPPLIER,
                     FinancialCodes::DOC_LOADING_ORDER,
-                    FinancialCodes::DOC_CONSULTANT_REPORT,
+                    FinancialCodes::DOC_ELITE_YAR_REPORT,
                 ],
                 messageKey: 'orders.full_payment_successful',
             );

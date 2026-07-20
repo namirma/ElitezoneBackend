@@ -16,7 +16,7 @@ use Tests\TestCase;
  * Per-document authorization on OrderInvoiceController::download.
  *
  * A buyer's documents (initial / final / tax) must NOT be downloadable by other
- * parties on the order (supplier, consultant) even though they pass the generic
+ * parties on the order (supplier, eliteYAR) even though they pass the generic
  * `view` policy — only the buyer (placer) or an admin may fetch them.
  *
  * DatabaseTransactions: all writes roll back; the live DB is never mutated.
@@ -27,7 +27,7 @@ class InvoiceAccessTest extends TestCase
 
     private User $buyer;
 
-    private User $consultant;
+    private User $eliteYAR;
 
     private User $supplier;
 
@@ -38,7 +38,7 @@ class InvoiceAccessTest extends TestCase
         parent::setUp();
 
         $this->buyer = User::factory()->create();
-        $this->consultant = User::factory()->create();
+        $this->eliteYAR = User::factory()->create();
 
         $supplierRole = Role::firstOrCreate(['name' => 'supplier'], ['display_name' => 'Supplier', 'description' => 'Supplier']);
         $this->supplier = User::factory()->create();
@@ -46,7 +46,7 @@ class InvoiceAccessTest extends TestCase
 
         $this->order = Order::create([
             Order::PLACER_USER_ID => $this->buyer->id,
-            Order::BENEFICIARY_USER_ID => $this->consultant->id,
+            Order::BENEFICIARY_USER_ID => $this->eliteYAR->id,
             Order::ORDER_NUMBER => 'INV-'.now()->format('YmdHis').rand(100, 999),
             Order::STATUS => Order::STATUS_PROCESSING,
             Order::PAYMENT_STATUS => 'paid',
@@ -66,7 +66,7 @@ class InvoiceAccessTest extends TestCase
     #[Test]
     public function consultant_cannot_download_the_buyers_tax_invoice(): void
     {
-        Sanctum::actingAs($this->consultant);
+        Sanctum::actingAs($this->eliteYAR);
         $this->get($this->url('tax'))->assertForbidden();
     }
 

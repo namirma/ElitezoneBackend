@@ -56,14 +56,27 @@ class AdminUserController extends Controller
 
     /**
      * فعال/غیرفعال کردن حساب کاربری
+     *
+     * غیرفعال‌سازی باید فوری اثر کند: توکن‌های Sanctum کاربر حذف می‌شوند و
+     * middleware سراسری EnsureUserIsActive جلوی هر توکن/لاگین بعدی را می‌گیرد.
      */
     public function toggleStatus(User $user): JsonResponse
     {
-        $user->update([User::IS_ACTIVE => ! $user->{User::IS_ACTIVE}]);
+        // ادمین نباید بتواند حساب خودش را غیرفعال کند (خطر قفل‌شدن کامل پنل).
+        if ($user->id === Auth::id()) {
+            return error(__('admin.users.cannot_deactivate_self'), [], 422);
+        }
+
+        $newState = ! $user->{User::IS_ACTIVE};
+        $user->update([User::IS_ACTIVE => $newState]);
+
+        if (! $newState) {
+            $user->tokens()->delete();
+        }
 
         return success(
             new UserResource($user),
-            $user->{User::IS_ACTIVE} ? __('admin.users.activated') : __('admin.users.deactivated')
+            $newState ? __('admin.users.activated') : __('admin.users.deactivated')
         );
     }
 
@@ -164,19 +177,19 @@ class AdminUserController extends Controller
     }
 
     /**
-     * تأیید مدارک مشاور فنی توسط ادمین.
+     * تأیید مدارک الیت یار توسط ادمین.
      *
      * یکی از پروفایل مهندس یا پیمانکار کاربر را پیدا کرده و
      * is_verified = true + verified_at = now() روی آن ست می‌کند.
      *
-     * POST /admin/users/{user}/verify-consultant
+     * POST /admin/users/{user}/verify-elite-yar
      */
-    public function verifyConsultant(User $user): JsonResponse
+    public function verifyEliteYAR(User $user): JsonResponse
     {
-        $profile = $this->resolveConsultantProfile($user);
+        $profile = $this->resolveEliteYARProfile($user);
 
         if (! $profile) {
-            return error(__('admin.users.no_consultant_profile'), [], 422);
+            return error(__('admin.users.no_elite_yar_profile'), [], 422);
         }
 
         $profile->update([
@@ -191,21 +204,21 @@ class AdminUserController extends Controller
                 'is_verified' => true,
                 'verified_at' => $profile->{$profile::VERIFIED_AT}->toDateTimeString(),
             ],
-            __('admin.users.consultant_verified')
+            __('admin.users.elite_yar_verified')
         );
     }
 
     /**
-     * لغو تأیید مدارک مشاور فنی توسط ادمین.
+     * لغو تأیید مدارک الیت یار توسط ادمین.
      *
-     * POST /admin/users/{user}/unverify-consultant
+     * POST /admin/users/{user}/unverify-elite-yar
      */
-    public function unverifyConsultant(User $user): JsonResponse
+    public function unverifyEliteYAR(User $user): JsonResponse
     {
-        $profile = $this->resolveConsultantProfile($user);
+        $profile = $this->resolveEliteYARProfile($user);
 
         if (! $profile) {
-            return error(__('admin.users.no_consultant_profile'), [], 422);
+            return error(__('admin.users.no_elite_yar_profile'), [], 422);
         }
 
         $profile->update([
@@ -220,15 +233,15 @@ class AdminUserController extends Controller
                 'is_verified' => false,
                 'verified_at' => null,
             ],
-            __('admin.users.consultant_unverified')
+            __('admin.users.elite_yar_unverified')
         );
     }
 
     /**
-     * پیدا کردن پروفایل مشاور (مهندس یا پیمانکار) برای یک کاربر.
+     * پیدا کردن پروفایل الیت یار (مهندس یا پیمانکار) برای یک کاربر.
      * مهندس اولویت دارد؛ اگر نبود پیمانکار را برمی‌گرداند.
      */
-    private function resolveConsultantProfile(User $user): EngineerProfile|ContractorProfile|null
+    private function resolveEliteYARProfile(User $user): EngineerProfile|ContractorProfile|null
     {
         $engineer = EngineerProfile::where(EngineerProfile::USER_ID, $user->id)->first();
         if ($engineer) {

@@ -11,7 +11,7 @@ use App\Models\Order;
  * Pure recalculation service for post-weighbridge settlement.
  *
  * No DB writes, no wallet ops, no side effects. Given an Order (with loaded
- * items + consultant.badge relations) and the scale's actual weight, produces
+ * items + eliteYAR.badge relations) and the scale's actual weight, produces
  * a WeighbridgeReconcileResult that every downstream step can read from.
  */
 class WeighbridgeReconciler
@@ -29,7 +29,7 @@ class WeighbridgeReconciler
         // but never charged — there is deliberately no "surplus" payment path.
         $billingWeight = min($actualWeight, $wbs);
 
-        $badgeCode = $order->consultant?->badge?->code ?? 'pioneer';
+        $badgeCode = $order->eliteYAR?->badge?->code ?? 'pioneer';
         $rates = $this->calculator->getCommissionRates($badgeCode);
 
         $trans = (float) $order->shipping_cost;

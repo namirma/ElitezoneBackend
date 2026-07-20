@@ -26,7 +26,7 @@ class SyncCartFiltersAction
             $cart->loadMissing(['items.productVariant', 'user', 'customerType', 'badge', 'priceFilterCategories']);
 
             $user = $cart->user;
-            $roleCode = $user ? $this->roleResolver->resolve($user) : 'employer_without_consultant';
+            $roleCode = $user ? $this->roleResolver->resolve($user) : 'employer_without_elite_yar';
             $customerType = $cart->customerType ?? CustomerType::where('code', $roleCode)->first();
             $filterIds = $cart->priceFilterCategories->pluck('id')->toArray();
 

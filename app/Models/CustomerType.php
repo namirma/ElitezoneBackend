@@ -35,12 +35,12 @@ class CustomerType extends Model
 
     const CODE = 'code';
 
-    const HAS_CONSULTANT = 'has_consultant';
+    const HAS_ELITE_YAR = 'has_elite_yar';
 
     protected $fillable = [
         self::NAME,
         self::CODE,
-        self::HAS_CONSULTANT,
+        self::HAS_ELITE_YAR,
     ];
 
     public function priceAdjustments(): HasMany

@@ -7,13 +7,12 @@ use App\Models\User;
 use App\Models\UserType;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Laravel\Sanctum\Sanctum;
-use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
  * Completing the employer profile (POST /api/profile/employer) must grant the
- * `employer` Laratrust role. Without it the role-gated consultant endpoints
- * (GET /api/profile/consultants) return 403 — the reported "مشاورین" tab failure.
+ * `employer` Laratrust role. Without it the role-gated elite-yar endpoints
+ * (GET /api/profile/elite-yars) return 403 — the reported "الیت یارها" tab failure.
  *
  * DatabaseTransactions: all writes roll back; the live DB is never mutated.
  */
@@ -26,7 +25,7 @@ class EmployerRoleAttachTest extends TestCase
         return UserType::firstOrCreate(['slug' => 'employer'], ['name' => 'کارفرما', 'icon' => 'briefcase']);
     }
 
-    #[Test]
+    /** @test */
     public function completing_the_employer_profile_attaches_the_employer_role(): void
     {
         Role::firstOrCreate(['name' => 'employer'], ['display_name' => 'کارفرما']);
@@ -43,8 +42,8 @@ class EmployerRoleAttachTest extends TestCase
         $this->assertTrue($user->fresh()->hasRole('employer'));
     }
 
-    #[Test]
-    public function an_employer_can_reach_the_consultants_endpoint_after_completing_the_profile(): void
+    /** @test */
+    public function an_employer_can_reach_the_elite_yars_endpoint_after_completing_the_profile(): void
     {
         Role::firstOrCreate(['name' => 'employer'], ['display_name' => 'کارفرما']);
 
@@ -53,12 +52,12 @@ class EmployerRoleAttachTest extends TestCase
         Sanctum::actingAs($user);
 
         // Before: role-gated endpoint is forbidden.
-        $this->getJson('/api/profile/consultants')->assertForbidden();
+        $this->getJson('/api/profile/elite-yars')->assertForbidden();
 
         // Complete the employer profile → role attached.
         $this->postJson('/api/profile/employer', [])->assertOk();
 
         // After: the same endpoint is reachable (no longer 403).
-        $this->getJson('/api/profile/consultants')->assertOk();
+        $this->getJson('/api/profile/elite-yars')->assertOk();
     }
 }

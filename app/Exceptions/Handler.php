@@ -29,7 +29,8 @@ class Handler extends ExceptionHandler
 
     /**
      * مدیریت خطاهای API — فراخوانی از bootstrap/app.php withExceptions().
-     * در لاراول ۱۳، register() و unauthenticated() دیگر لازم نیستند.
+     * در لاراول ۱۳، register() و unauthenticated() دیگر لازم نیستند؛
+     * شاخه AuthenticationException داخل همین متد 401 را برمی‌گرداند.
      */
     public function handleApiException(Throwable $e)
     {

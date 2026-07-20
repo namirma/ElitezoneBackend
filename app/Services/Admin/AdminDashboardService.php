@@ -100,7 +100,7 @@ class AdminDashboardService
         $pendingMoadianCount = Order::query()
             ->whereNotNull(Order::WEIGHING_COMPLETED_AT)
             ->where(function ($q) {
-                $q->whereNull(Order::CONSULTANT_MOADIAN_REF)
+                $q->whereNull(Order::ELITE_YAR_MOADIAN_REF)
                     ->orWhereNull(Order::SUPPLIER_MOADIAN_REF)
                     ->orWhereNull(Order::SYSTEM_MOADIAN_REF);
             })

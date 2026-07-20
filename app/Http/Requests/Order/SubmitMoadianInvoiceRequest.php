@@ -6,7 +6,7 @@ use Illuminate\Foundation\Http\FormRequest;
 
 /**
  * Validates the Moadian (taxpayer-system) invoice reference number.
- * Used for both Doc Q (consultant) and Doc O (supplier) submissions.
+ * Used for both Doc Q (eliteYAR) and Doc O (supplier) submissions.
  */
 class SubmitMoadianInvoiceRequest extends FormRequest
 {

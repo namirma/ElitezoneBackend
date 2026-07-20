@@ -158,6 +158,11 @@ class Product extends Model
         return $this->hasMany(ProductImage::class, ProductImage::PRODUCT_ID, self::ID);
     }
 
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(ProductReview::class, ProductReview::PRODUCT_ID, self::ID);
+    }
+
     public function videos(): HasMany
     {
         return $this->hasMany(ProductVideo::class, ProductVideo::PRODUCT_ID, self::ID);

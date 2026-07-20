@@ -25,14 +25,14 @@ class PricingRoleResolver
         $isEmployer = $hasRole('employer');
 
         if ($isEngineer || $isContractor) {
-            return 'engineer_with_consultant';
+            return 'engineer_with_elite_yar';
         }
         if ($isEmployer) {
-            $hasConsultant = (bool) optional($user->employer)->has_consultant;
+            $hasEliteYAR = (bool) optional($user->employer)->has_elite_yar;
 
-            return $hasConsultant ? 'engineer_with_consultant' : 'employer_without_consultant';
+            return $hasEliteYAR ? 'engineer_with_elite_yar' : 'employer_without_elite_yar';
         }
 
-        return 'employer_without_consultant';
+        return 'employer_without_elite_yar';
     }
 }

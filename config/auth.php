@@ -131,4 +131,31 @@ return [
 
     'otp_lockout_minutes' => env('OTP_LOCKOUT_MINUTES', 10),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Password Reset Token Lifetime
+    |--------------------------------------------------------------------------
+    |
+    | After the forget-password OTP is verified, a one-time reset token is
+    | issued in its place. The token is only valid for this many minutes —
+    | an unlimited-lifetime token could be replayed long after a leak.
+    |
+    */
+
+    'password_reset_ttl_minutes' => env('PASSWORD_RESET_TTL_MINUTES', 15),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Non-Production OTP Shortcut
+    |--------------------------------------------------------------------------
+    |
+    | In any non-production environment, generateVerifyCode() returns this
+    | fixed code instead of a random one, so testers can log in without a real
+    | SMS. Production ALWAYS uses a fresh CSPRNG code — this value is ignored
+    | there. Keep it a 6-digit numeric string.
+    |
+    */
+
+    'otp_debug_code' => env('OTP_DEBUG_CODE', '111111'),
+
 ];

@@ -7,10 +7,10 @@ use App\Http\Requests\Order\StoreOrderRequest;
 readonly class PlaceOrderData
 {
     public function __construct(
-        /** گیرنده سفارش — کارفرمایی که مشاور برایش خریداری می‌کند (nullable) */
+        /** گیرنده سفارش — کارفرمایی که الیت یار برایش خریداری می‌کند (nullable) */
         public readonly ?int $beneficiaryUserId,
-        /** مشاور فنی که کمیسیون CO را دریافت می‌کند (nullable) */
-        public readonly ?int $consultantUserId,
+        /** الیت یار که کمیسیون CO را دریافت می‌کند (nullable) */
+        public readonly ?int $eliteYARUserId,
         public readonly ?int $addressId,
         public readonly ?int $shippingMethodId,
         public readonly ?string $description,
@@ -28,7 +28,7 @@ readonly class PlaceOrderData
 
         return new self(
             beneficiaryUserId: isset($data['beneficiary_user_id']) ? (int) $data['beneficiary_user_id'] : null,
-            consultantUserId: isset($data['consultant_user_id']) ? (int) $data['consultant_user_id'] : null,
+            eliteYARUserId: isset($data['elite_yar_user_id']) ? (int) $data['elite_yar_user_id'] : null,
             addressId: isset($data['address_id']) ? (int) $data['address_id'] : null,
             shippingMethodId: isset($data['shipping_method_id']) ? (int) $data['shipping_method_id'] : null,
             description: $data['description'] ?? null,
@@ -42,7 +42,7 @@ readonly class PlaceOrderData
     {
         return [
             'beneficiary_user_id' => $this->beneficiaryUserId,
-            'consultant_user_id' => $this->consultantUserId,
+            'elite_yar_user_id' => $this->eliteYARUserId,
             'address_id' => $this->addressId,
             'shipping_method_id' => $this->shippingMethodId,
             'description' => $this->description,

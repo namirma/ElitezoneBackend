@@ -19,6 +19,13 @@ class AdminWalletController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
+        $request->validate([
+            'status' => ['nullable', 'string', 'max:30'],
+            'type' => ['nullable', 'string', 'max:30'],
+            'user_id' => ['nullable', 'integer'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
+
         $query = WalletTransaction::with(['wallet.user.profile', 'wallet.user'])
             ->latest();
 

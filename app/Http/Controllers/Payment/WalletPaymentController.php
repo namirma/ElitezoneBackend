@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Payment;
 
 use App\Actions\Financial\ProcessPreScalePaymentAction;
+use App\Exceptions\InsufficientBalanceException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Payment\PayWithWalletRequest;
 use App\Http\Resources\Order\OrderResource;
@@ -61,6 +62,16 @@ class WalletPaymentController extends Controller
                 'new_balance' => (float) $user->wallet->fresh()->balance,
                 'tracking_code' => $order->id,
             ], __('payment.success.payment_completed'));
+        } catch (InsufficientBalanceException $e) {
+            // pre-check بالا با final_amount است ولی Action مبلغ قطعی POO را کسر می‌کند؛
+            // اختلاف این دو نباید به 500 تبدیل شود — پاسخ ساختاریافته کمبود موجودی بده.
+            return error(__('payment.error.insufficient_balance'), [
+                'error_code' => 'INSUFFICIENT_BALANCE',
+                'required_amount' => $e->required,
+                'current_balance' => $e->available,
+                'shortage_amount' => $e->required - $e->available,
+                'action' => 'deposit_required',
+            ], Response::HTTP_PAYMENT_REQUIRED);
         } catch (Exception $e) {
             Log::error('Wallet payment failed', [
                 'order_id' => $order->id,

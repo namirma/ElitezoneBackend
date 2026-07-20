@@ -9,6 +9,7 @@ use App\Http\Resources\Order\OrderResource;
 use App\Models\Order;
 use Exception;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 
 class OrderWeighbridgeController extends Controller
 {
@@ -41,8 +42,17 @@ class OrderWeighbridgeController extends Controller
                 'message' => $message,
             ]);
 
+        } catch (\InvalidArgumentException|\RuntimeException $e) {
+            // خطاهای business (پیام‌های ترجمه‌شده‌ی خود Action) — نمایش برای اپراتور مجاز است.
+            return error(__('weighbridge.errors.process_failed', ['message' => $e->getMessage()]), [], 422);
         } catch (Exception $e) {
-            return error(__('weighbridge.errors.process_failed', ['message' => $e->getMessage()]), [], 400);
+            // خطای غیرمنتظره — پیام خام exception هرگز به کلاینت برنمی‌گردد (کانونشن پروژه).
+            Log::channel('financial')->error('Weighbridge processing failed', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return error(__('weighbridge.errors.unexpected'), [], 500);
         }
     }
 }

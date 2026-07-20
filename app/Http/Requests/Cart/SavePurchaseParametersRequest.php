@@ -25,7 +25,7 @@ class SavePurchaseParametersRequest extends FormRequest
     {
         return [
             'parameters.required' => 'انتخاب پارامترها الزامی است.',
-            'parameters.min' => 'حداقل باید پارامترهای نوع مشتری و وضعیت مشاور انتخاب شوند.',
+            'parameters.min' => 'حداقل باید پارامترهای نوع مشتری و وضعیت الیت یار انتخاب شوند.',
             'parameters.*.exists' => 'یکی از پارامترهای انتخاب شده معتبر نیست.',
         ];
     }
@@ -51,27 +51,27 @@ class SavePurchaseParametersRequest extends FormRequest
             $valuesByCode = $valuesCollection->keyBy(fn ($value) => $value->group->code);
 
             $customerType = $valuesByCode['customer_type'] ?? null;
-            $consultantStatus = $valuesByCode['consultant_status'] ?? null;
+            $eliteYARStatus = $valuesByCode['elite_yar_status'] ?? null;
 
-            if (! $customerType || ! $consultantStatus) {
+            if (! $customerType || ! $eliteYARStatus) {
                 $v->errors()->add(
                     'parameters',
-                    'لطفاً هم "نوع مشتری" و هم "وضعیت مشاور" را انتخاب کنید.'
+                    'لطفاً هم "نوع مشتری" و هم "وضعیت الیت یار" را انتخاب کنید.'
                 );
 
                 return;
             }
 
             $customerTypeCode = $customerType->code;
-            $consultantStatusCode = $consultantStatus->code;
+            $eliteYARStatusCode = $eliteYARStatus->code;
 
             $isEngineerOrContractor = in_array($customerTypeCode, ['engineer', 'contractor']);
-            $isWithoutConsultant = $consultantStatusCode === 'without_consultant';
+            $isWithoutEliteYAR = $eliteYARStatusCode === 'without_elite_yar';
 
-            if ($isEngineerOrContractor && $isWithoutConsultant) {
+            if ($isEngineerOrContractor && $isWithoutEliteYAR) {
                 $v->errors()->add(
                     'parameters',
-                    'مهندسان و پیمانکاران حتماً باید گزینه "دارای مشاور" را انتخاب کنند.'
+                    'مهندسان و پیمانکاران حتماً باید گزینه "دارای الیت یار" را انتخاب کنند.'
                 );
             }
         });

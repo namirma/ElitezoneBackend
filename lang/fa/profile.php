@@ -21,7 +21,7 @@ return [
     'employer_deleted' => '.اطلاعات کارفرما با موفقیت حذف شد',
     'employer_not_found' => '.پروفایل کارفرما یافت نشد',
 
-    'supplier_deleted' => 'اطلاعات تأمین‌کننده با موفقیت حذف شد.',
+    'supplier_deleted'   => 'اطلاعات تأمین‌کننده با موفقیت حذف شد.',
     'supplier_not_found' => 'پروفایل تأمین‌کننده یافت نشد.',
 
     // Employer SMS invite (expert/advisor only)
@@ -45,10 +45,10 @@ return [
     'avatar_max' => 'حداکثر حجم تصویر ۵ مگابایت است.',
 
     // Roles (StoreUserTypeRequest)
-    'roles_required' => 'انتخاب حداقل یک نقش الزامی است.',
-    'roles_invalid' => 'نقش نامعتبر است. نقش‌های مجاز: employer, supplier, expert.',
-    'roles_array' => 'فیلد roles باید آرایه باشد.',
-    'roles_supplier_conflict' => 'نقش سوپلایر نمی‌تواند همزمان با کارفرما یا مشاور فنی انتخاب شود.',
+    'roles_required'          => 'انتخاب حداقل یک نقش الزامی است.',
+    'roles_invalid'           => 'نقش نامعتبر است. نقش‌های مجاز: employer, supplier, expert.',
+    'roles_array'             => 'فیلد roles باید آرایه باشد.',
+    'roles_supplier_conflict' => 'نقش سوپلایر نمی‌تواند همزمان با کارفرما یا الیت یار انتخاب شود.',
 
     // Email management
     'email_required' => 'وارد کردن ایمیل الزامی است.',

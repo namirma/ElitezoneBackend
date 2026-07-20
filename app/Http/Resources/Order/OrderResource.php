@@ -19,9 +19,9 @@ class OrderResource extends BaseJsonResource
         $viewerId = Auth::id();
         $isSupplier = $user ? $user->hasRole('supplier') : false;
 
-        // مشاور فنی سفارش — مستقیماً از consultant_user_id خوانده می‌شود.
+        // الیت یارِ سفارش — مستقیماً از elite_yar_user_id خوانده می‌شود.
         // (قبلاً از placer.type یا beneficiary_user_id استنتاج می‌شد — حالا ستون جداست)
-        $consultantUser = $this->{Order::CONSULTANT_USER_ID} ? $this->consultant : null;
+        $eliteYARUser = $this->{Order::ELITE_YAR_USER_ID} ? $this->eliteYAR : null;
 
         $progress = $this->dashboard_progress ?? [];
 
@@ -61,8 +61,8 @@ class OrderResource extends BaseJsonResource
                     default => 'primary',
                 },
                 'progress_data' => $progress,
-                'consultant_progress_data' => $consultantUser
-                    ? $this->consultant_progress
+                'elite_yar_progress_data' => $eliteYARUser
+                    ? $this->elite_yar_progress
                     : null,
                 'supplier_progress_data' => $isSupplier
                     ? $this->supplier_progress
@@ -106,22 +106,24 @@ class OrderResource extends BaseJsonResource
                 ];
             }),
 
-            // --- Beneficiary Info (گیرنده سفارش — فقط وقتی مشاور برای کارفرما خریداری می‌کند) ---
-            'beneficiary' => $this->when($this->{Order::BENEFICIARY_USER_ID}, function () use ($viewerId) {
+            // --- Beneficiary Info (گیرنده سفارش — فقط وقتی الیت یار برای کارفرما خریداری می‌کند) ---
+            // national_id از سوپلایر مخفی است — او فقط برای تحویل کالا نیاز به نام/موبایل دارد،
+            // نه هویت مالیاتی/حقوقی ذی‌نفع (همان الگوی gating بلوک buyer در بالا).
+            'beneficiary' => $this->when($this->{Order::BENEFICIARY_USER_ID}, function () use ($viewerId, $isSupplier) {
                 return [
                     'id' => $this->{Order::BENEFICIARY_USER_ID},
                     'full_name' => $this->beneficiary->full_name ?? 'نامشخص',
-                    'national_id' => $this->beneficiary->profile->national_code ?? null,
+                    'national_id' => $isSupplier ? null : ($this->beneficiary->profile->national_code ?? null),
                     'mobile' => $this->beneficiary->mobile ?? null,
                     'is_self' => $this->{Order::BENEFICIARY_USER_ID} === $viewerId,
                 ];
             }, null),
 
-            // --- Consultant Info (مشاور فنی سفارش — مستقیم از consultant_user_id) ---
-            'consultant' => $consultantUser ? [
-                'id' => $consultantUser->id,
-                'full_name' => $consultantUser->full_name,
-                'is_self' => $consultantUser->id === $viewerId,
+            // --- EliteYAR Info (الیت یارِ سفارش — مستقیم از elite_yar_user_id) ---
+            'elite_yar' => $eliteYARUser ? [
+                'id' => $eliteYARUser->id,
+                'full_name' => $eliteYARUser->full_name,
+                'is_self' => $eliteYARUser->id === $viewerId,
             ] : null,
 
             // --- Financial Info ---

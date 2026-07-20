@@ -74,7 +74,7 @@ class AdminOrderController extends Controller
             Order::STATUS_DELIVERED,
             Order::STATUS_CANCELLED,
         ];
-        $request->validate(['status' => 'required|string|in:' . implode(',', $allowedStatuses)]);
+        $request->validate(['status' => 'required|string|in:'.implode(',', $allowedStatuses)]);
 
         $newStatus = $request->input('status');
 
@@ -112,6 +112,22 @@ class AdminOrderController extends Controller
             return error(
                 __('admin.orders.invalid_status_transition'),
                 ['current' => $currentStatus, 'requested' => $newStatus],
+                422
+            );
+        }
+
+        // PENDING یعنی هنوز پرداخت نشده. PROCESSING آغاز پایپلاین پس-از-پرداخت است
+        // (سوپلایر سفارش را می‌بیند، آماده‌سازی/باسکول ممکن می‌شود) — بدون پرداخت
+        // واقعی هیچ لگ مالی ثبت نشده و مسیر پرداخت کاربر هم بعداً بسته می‌شود.
+        // این ترنزیشن فقط برای سفارشِ پرداخت‌شده مجاز است.
+        if (
+            $currentStatus === Order::STATUS_PENDING
+            && $newStatus === Order::STATUS_PROCESSING
+            && $order->{Order::PAYMENT_STATUS} !== Order::PAYMENT_PAID
+        ) {
+            return error(
+                __('admin.orders.cannot_process_unpaid'),
+                ['payment_status' => $order->{Order::PAYMENT_STATUS}],
                 422
             );
         }

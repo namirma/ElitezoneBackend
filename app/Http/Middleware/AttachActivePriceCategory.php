@@ -18,7 +18,7 @@ class AttachActivePriceCategory
             Auth::setUser($user);
             $code = $this->resolver->resolve($user);
         } else {
-            $code = 'employer_without_consultant';
+            $code = 'employer_without_elite_yar';
         }
 
         app()->instance('active_price_filter_category_code', $code);

@@ -117,10 +117,10 @@ class DashboardAlertsService
     {
         $alerts = [];
         foreach ($user->associatedEmployers()->wherePivot('status', 'pending')->get() as $employer) {
-            $alerts[] = $this->makeAlert('invite_received', 'info', 'user-group', '/profile/consultants', ['name' => $employer->profile->name], $employer->id);
+            $alerts[] = $this->makeAlert('invite_received', 'info', 'user-group', '/profile/eliteYARs', ['name' => $employer->profile->name], $employer->id);
         }
-        foreach ($user->technicalConsultants()->wherePivot('status', 'rejected')->where('employer_consultant.updated_at', '>=', now()->subDays(3))->get() as $consultant) {
-            $alerts[] = $this->makeAlert('invite_rejected', 'warning', 'user-minus', '/profile/consultants', ['name' => $consultant->profile->name], $consultant->id);
+        foreach ($user->technicalEliteYARs()->wherePivot('status', 'rejected')->where('employer_elite_yar.updated_at', '>=', now()->subDays(3))->get() as $eliteYAR) {
+            $alerts[] = $this->makeAlert('invite_rejected', 'warning', 'user-minus', '/profile/eliteYARs', ['name' => $eliteYAR->profile->name], $eliteYAR->id);
         }
 
         return $alerts;

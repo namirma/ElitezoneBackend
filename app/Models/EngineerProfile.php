@@ -68,7 +68,7 @@ class EngineerProfile extends Model
 
     const USER_ID = 'user_id';
 
-    /** true وقتی ادمین مدارک مشاور را تأیید کرد */
+    /** true وقتی ادمین مدارک الیت یار را تأیید کرد */
     const IS_VERIFIED = 'is_verified';
 
     const VERIFIED_AT = 'verified_at';

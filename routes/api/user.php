@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AgreementController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\Data\AnalyticsController;
 use App\Http\Controllers\Api\Data\InventoryController;
@@ -11,10 +12,10 @@ use App\Http\Controllers\Api\User\BadgeController;
 use App\Http\Controllers\Api\User\BeneficiaryController;
 use App\Http\Controllers\Api\User\CartController;
 use App\Http\Controllers\Api\User\CheckoutController;
-use App\Http\Controllers\Api\User\ConsultantRelationController;
 use App\Http\Controllers\Api\User\ContractorController;
 use App\Http\Controllers\Api\User\DashboardController;
 use App\Http\Controllers\Api\User\EduixController;
+use App\Http\Controllers\Api\User\EliteYARRelationController;
 use App\Http\Controllers\Api\User\EmployerController;
 use App\Http\Controllers\Api\User\EmployerInviteController;
 use App\Http\Controllers\Api\User\EngineerController;
@@ -26,18 +27,22 @@ use App\Http\Controllers\Api\User\OrderController;
 use App\Http\Controllers\Api\User\OrderInvoiceController;
 use App\Http\Controllers\Api\User\OrderPaymentController;
 use App\Http\Controllers\Api\User\OrderSurveyController;
+use App\Http\Controllers\Api\User\ProductReviewController;
 use App\Http\Controllers\Api\User\ProfileController;
 use App\Http\Controllers\Api\User\ProfileSearchController;
 use App\Http\Controllers\Api\User\StockSubscriptionController;
 use App\Http\Controllers\Api\User\SupplierController;
+use App\Http\Controllers\Api\User\SupplierFactoryController;
+use App\Http\Controllers\Api\User\SupplierFactoryLocationController;
 use App\Http\Controllers\Api\User\SupplierOrderController;
+use App\Http\Controllers\Api\User\SupplierProductPriceController;
+use App\Http\Controllers\Api\User\SupplierShippingRateController;
 use App\Http\Controllers\Api\User\UserBankAccountController;
 use App\Http\Controllers\Api\User\WalletController;
 use App\Http\Controllers\Api\User\WishlistController;
 use App\Http\Controllers\Payment\WalletPaymentController;
 use App\Http\Controllers\ProductController;
 use App\Http\Middleware\EnsureRoleIsSelected;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -51,9 +56,9 @@ use Illuminate\Support\Facades\Route;
 // ── Wallet payment + misc auth ────────────────────────────────────────────
 Route::middleware(['auth:sanctum'])->group(function () {
 
-    // درگاه پرداخت کیف پول
+    // درگاه پرداخت کیف پول — idempotency مثل pay-full (عملیات مالی، دابل‌کلیک‌پذیر)
     Route::post('payment/wallet', [WalletPaymentController::class, 'pay'])
-        ->middleware('throttle:financial')
+        ->middleware(['idempotency', 'throttle:financial'])
         ->name('payment.wallet');
 
     // جستجوی نویگیشن پروفایل
@@ -74,6 +79,13 @@ Route::prefix('data')->middleware(['auth:sanctum', 'role.admin'])->group(functio
 // ── Products (authenticated — needs pricing role) ─────────────────────────
 Route::prefix('products')->middleware(['auth:sanctum', 'attach.price.category'])->group(function () {
     Route::post('/calculate-price', [ProductController::class, 'calculateOrderPrice']);
+});
+
+// ── Product reviews — ثبت نظر (هر کاربر/محصول یک نظر؛ ارسال مجدد → pending)
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::post('/products/{product:cuid}/reviews', [ProductReviewController::class, 'store'])
+        ->middleware('throttle:10,1');
+    Route::get('/profile/reviews', [ProductReviewController::class, 'myReviews']);
 });
 
 // ── Cart — مهمان هم می‌تواند سبد داشته باشد ─────────────────────────────
@@ -127,6 +139,14 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/legal/fetch', [ProfileController::class, 'fetchLegalData']);
 
         Route::get('/role-options', [ProfileController::class, 'getRoleOptions']);
+
+        // توافق‌نامه‌ها — رسید پذیرش‌ها، فهرست نیازمند پذیرش مجدد، پذیرش فعال و PDF نسخه پذیرفته‌شده
+        Route::prefix('agreements')->controller(AgreementController::class)->group(function () {
+            Route::get('/', 'myAcceptances');
+            Route::get('/pending', 'pending');
+            Route::post('/{slug}/accept', 'accept')->where('slug', '[a-z_]+');
+            Route::get('/{slug}/pdf', 'acceptedPdf')->where('slug', '[a-z_]+')->middleware('throttle:10,1');
+        });
         Route::get('/user-types', [AuthController::class, 'types']);
 
         // Avatar (profile picture)
@@ -134,11 +154,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::delete('/avatar', [AvatarController::class, 'destroy']);
 
         // Account security (password / mobile / email)
-        Route::post('/verify-email', [AccountSecurityController::class, 'setEmail']);
+        Route::post('/verify-email', [AccountSecurityController::class, 'setEmail'])->middleware('throttle:3,1');
         Route::post('/check-email-token', [AccountSecurityController::class, 'checkToken']);
-        // Email management (frontend contract)
-        Route::post('/email', [AccountSecurityController::class, 'setEmail']);              // add/change email + send verify link
-        Route::post('/email/resend', [AccountSecurityController::class, 'resendEmailVerification']);
+        // Email management (frontend contract) — throttle: هر فراخوانی یک ایمیل واقعی
+        // می‌فرستد؛ بدون سقف، کاربر لاگین‌شده می‌توانست هر آدرسی را bomb کند.
+        Route::post('/email', [AccountSecurityController::class, 'setEmail'])->middleware('throttle:3,1');              // add/change email + send verify link
+        Route::post('/email/resend', [AccountSecurityController::class, 'resendEmailVerification'])->middleware('throttle:3,1');
         Route::delete('/email', [AccountSecurityController::class, 'deleteEmail']);
         Route::post('/password/otp', [AccountSecurityController::class, 'changePasswordFirstAttempt']);          // step 1: send code
         Route::post('/password/verify', [AccountSecurityController::class, 'verifyPasswordOtp'])->middleware('throttle:otp-verify'); // step 2: verify code (non-consuming)
@@ -189,18 +210,19 @@ Route::middleware(['auth:sanctum'])->group(function () {
             // List endpoints (must come BEFORE wildcard /{order})
             Route::controller(OrderController::class)->group(function () {
 
-                // خرید برای خودم
+                // خرید برای خودم — defaults() به‌جای closure: روت‌های closure دار
+                // php artisan route:cache را در deploy می‌شکنند (Uses Closure).
                 Route::prefix('buy-myself')->group(function () {
-                    Route::get('/current', fn (Request $request) => app(OrderController::class)->myOrders($request, 'current'));
-                    Route::get('/delivered', fn (Request $request) => app(OrderController::class)->myOrders($request, 'delivered'));
-                    Route::get('/cancelled', fn (Request $request) => app(OrderController::class)->myOrders($request, 'cancelled'));
+                    Route::get('/current', 'myOrders')->defaults('statusGroup', 'current');
+                    Route::get('/delivered', 'myOrders')->defaults('statusGroup', 'delivered');
+                    Route::get('/cancelled', 'myOrders')->defaults('statusGroup', 'cancelled');
                 });
 
                 // خرید برای دیگران
                 Route::prefix('buy-others')->group(function () {
-                    Route::get('/current', fn (Request $request) => app(OrderController::class)->otherOrders($request, 'current'));
-                    Route::get('/delivered', fn (Request $request) => app(OrderController::class)->otherOrders($request, 'delivered'));
-                    Route::get('/cancelled', fn (Request $request) => app(OrderController::class)->otherOrders($request, 'cancelled'));
+                    Route::get('/current', 'otherOrders')->defaults('type', 'current');
+                    Route::get('/delivered', 'otherOrders')->defaults('type', 'delivered');
+                    Route::get('/cancelled', 'otherOrders')->defaults('type', 'cancelled');
                 });
 
                 Route::get('/', 'index')->middleware('track:orders');
@@ -217,8 +239,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::controller(OrderActionController::class)->group(function () {
                 Route::post('/{order}/cancel', 'cancel')->whereNumber('order');
                 Route::post('/{order}/finalize-invoice', 'finalizeInvoice')->whereNumber('order');
-                // Doc Q: consultant submits Moadian invoice → releases commission hold
-                Route::post('/{order}/consultant-moadian-invoice', 'submitConsultantMoadianInvoice')->whereNumber('order');
+                // Doc Q: eliteYAR submits Moadian invoice → releases commission hold
+                Route::post('/{order}/elite-yar-moadian-invoice', 'submitEliteYARMoadianInvoice')->whereNumber('order');
             });
 
             // Invoice downloads
@@ -303,12 +325,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::get('/surveys', 'surveys');
         });
 
-        // Consultants ↔ Employers
-        Route::prefix('consultants')->controller(ConsultantRelationController::class)->group(function () {
+        // EliteYARs ↔ Employers
+        Route::prefix('elite-yars')->controller(EliteYARRelationController::class)->group(function () {
             Route::middleware('role.employer')->group(function () {
-                Route::get('/', 'listMyConsultants')->middleware('track:relations');
-                Route::post('/invite', 'inviteConsultant');
-                Route::delete('/{consultant}', 'removeConsultant');
+                Route::get('/', 'listMyEliteYARs')->middleware('track:relations');
+                Route::post('/invite', 'inviteEliteYAR');
+                Route::delete('/{eliteYAR}', 'removeEliteYAR');
             });
             Route::middleware('role.expert')->group(function () {
                 Route::get('/employers', 'listMyEmployers');
@@ -326,20 +348,69 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/employer', [EmployerController::class, 'store']);
         Route::delete('/employer', [EmployerController::class, 'destroy']);
         Route::prefix('supplier')->group(function () {
+            // Open to any authenticated user applying to become a supplier (pre-approval)
             Route::post('/', [SupplierController::class, 'store']);
             Route::delete('/', [SupplierController::class, 'destroy']);
             Route::get('/activity-categories', [SupplierController::class, 'getCategories']);
             Route::get('/activityCategory-getId', [SupplierController::class, 'getActivityCategoryId']);
+
+            // Self-service panel — approved suppliers only (role.supplier)
+            Route::middleware('role.supplier')->group(function () {
+                Route::get('/orders', [SupplierOrderController::class, 'index']);
+                Route::get('/orders/pending-debts', [SupplierOrderController::class, 'pendingDebts']);
+                Route::get('/orders/pending-moadian', [SupplierOrderController::class, 'pendingMoadian']);
+                Route::get('/dashboard', [SupplierOrderController::class, 'dashboard']);
+
+                // Factories — CRUD scoped to factories.supplier_user_id = خودم
+                Route::controller(SupplierFactoryController::class)->prefix('factories')->group(function () {
+                    Route::get('/', 'index');
+                    Route::get('/{factory}', 'show');
+                    Route::post('/', 'store');
+                    Route::put('/{factory}', 'update');
+                    Route::post('/{factory}', 'update'); // multipart logo replace
+                    Route::delete('/{factory}', 'destroy');
+                    Route::post('/{factory}/toggle', 'toggle');
+                });
+
+                // Factory Locations — CRUD انبارها/مبادی، فقط زیر کارخانه‌های خودم
+                Route::controller(SupplierFactoryLocationController::class)->prefix('factory-locations')->group(function () {
+                    Route::get('/', 'index');
+                    Route::post('/', 'store');
+                    Route::put('/{factoryLocation}', 'update');
+                    Route::delete('/{factoryLocation}', 'destroy');
+                    Route::post('/{factoryLocation}/toggle', 'toggle');
+                });
+
+                // Product Prices — قیمت واریانت‌های موجود، فقط در کارخانه/انبار خودم
+                Route::controller(SupplierProductPriceController::class)->prefix('prices')->group(function () {
+                    Route::get('/', 'index');
+                    Route::post('/', 'store');
+                    Route::put('/{price}', 'update');
+                    Route::delete('/{price}', 'destroy');
+                });
+
+                // Shipping Rates — نرخ‌های حمل، فقط با مبدأ = انبارهای خودم
+                Route::controller(SupplierShippingRateController::class)->prefix('shipping-rates')->group(function () {
+                    Route::get('/', 'index');
+                    Route::post('/', 'store');
+                    Route::put('/{shippingRate}', 'update');
+                    Route::delete('/{shippingRate}', 'destroy');
+                    Route::post('/{shippingRate}/toggle', 'toggle');
+                });
+            });
         });
     });
 
     // ──────────────────── Top-level authenticated misc ────────────────────
     Route::post('/listophers', [ListopherController::class, 'store']);
 
-    // Beneficiaries
+    // Beneficiaries — throttle:sms روی start (پیامک به شخص ثالث می‌فرستد) و
+    // throttle:otp-verify روی confirm (کد ۶ رقمی brute-force پذیر است)
     Route::prefix('beneficiaries')->group(function () {
-        Route::post('/start-verification', [BeneficiaryController::class, 'startVerification']);
-        Route::post('/confirm-verification', [BeneficiaryController::class, 'confirmVerification']);
+        Route::post('/start-verification', [BeneficiaryController::class, 'startVerification'])
+            ->middleware('throttle:sms');
+        Route::post('/confirm-verification', [BeneficiaryController::class, 'confirmVerification'])
+            ->middleware('throttle:otp-verify');
     });
 
     // Current user info

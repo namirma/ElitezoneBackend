@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\PersianDate;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -36,6 +37,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Coupon extends Model
 {
     use HasFactory;
+    use PersianDate;
 
     /* -------------------------------------------------------------------------- */
     /* Constants (Column Names) */
@@ -58,6 +60,8 @@ class Coupon extends Model
 
     const REASON = 'reason';
 
+    const IS_ACTIVE = 'is_active';
+
     const CREATED_AT = 'created_at';
 
     const UPDATED_AT = 'updated_at';
@@ -79,10 +83,12 @@ class Coupon extends Model
         self::EXPIRES_AT,
         self::USED_AT,
         self::REASON,
+        self::IS_ACTIVE,
     ];
 
     protected $casts = [
         self::AMOUNT => 'decimal:2',
+        self::IS_ACTIVE => 'boolean',
         self::EXPIRES_AT => 'datetime',
         self::USED_AT => 'datetime',
     ];
@@ -104,6 +110,11 @@ class Coupon extends Model
      */
     public function isValid(): bool
     {
+        // ۰. بررسی فعال بودن (غیرفعال‌شده توسط ادمین)
+        if (! $this->{self::IS_ACTIVE}) {
+            return false;
+        }
+
         // ۱. بررسی استفاده شدن
         if (! is_null($this->{self::USED_AT})) {
             return false;

@@ -15,102 +15,6 @@ use Illuminate\Notifications\Notifiable;
 use Laratrust\Traits\HasRolesAndPermissions;
 use Laravel\Sanctum\HasApiTokens;
 
-/**
- * @property int $id
- * @property int|null $type_id
- * @property int|null $badge_id
- * @property numeric|null $badge_purchase_amount Invoice amount (Rials) the consultant paid for their badge; basis for the lifetime commission cap. NULL = uncapped.
- * @property string $mobile
- * @property bool $is_active
- * @property string|null $national_code
- * @property string|null $birth_date
- * @property string|null $secret
- * @property string|null $secret_expires_at
- * @property string|null $password
- * @property string|null $remember_token
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Address> $addresses
- * @property-read int|null $addresses_count
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Agreement> $agreements
- * @property-read int|null $agreements_count
- * @property-read \App\Models\EmployerConsultant|null $pivot
- * @property-read \Illuminate\Database\Eloquent\Collection<int, User> $associatedEmployers
- * @property-read int|null $associated_employers_count
- * @property-read \App\Models\Badge|null $badge
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Badge> $badges
- * @property-read int|null $badges_count
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\UserBankAccount> $bankAccounts
- * @property-read int|null $bank_accounts_count
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Order> $beneficiaryOrders
- * @property-read int|null $beneficiary_orders_count
- * @property-read \App\Models\Cart|null $cart
- * @property-read \App\Models\ContractorProfile|null $contractor
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\EduixRecord> $eduixRecords
- * @property-read int|null $eduix_records_count
- * @property-read \App\Models\EmployerProfile|null $employer
- * @property-read \App\Models\EngineerProfile|null $engineer
- * @property-read float $balance
- * @property-read string|void $created_at_diff
- * @property-read string|void $created_at_p
- * @property-read string|void $expire_at_days
- * @property-read string $full_name
- * @property-read string|void $updated_at_diff
- * @property-read string|void $updated_at_p
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\JobExperience> $jobExperiences
- * @property-read int|null $job_experiences_count
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\UserNote> $notes
- * @property-read int|null $notes_count
- * @property-read \Illuminate\Notifications\DatabaseNotificationCollection<int, \Illuminate\Notifications\DatabaseNotification> $notifications
- * @property-read int|null $notifications_count
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Permission> $permissions
- * @property-read int|null $permissions_count
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Order> $placedOrders
- * @property-read int|null $placed_orders_count
- * @property-read \App\Models\UserProfile|null $profile
- * @property-read \Illuminate\Database\Eloquent\Collection<int, User> $registeredClients
- * @property-read int|null $registered_clients_count
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Role> $roles
- * @property-read int|null $roles_count
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Search> $searches
- * @property-read int|null $searches_count
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\StockSubscription> $stockSubscriptions
- * @property-read int|null $stock_subscriptions_count
- * @property-read \App\Models\SupplierProfile|null $supplier
- * @property-read \Illuminate\Database\Eloquent\Collection<int, User> $technicalConsultants
- * @property-read int|null $technical_consultants_count
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \Laravel\Sanctum\PersonalAccessToken> $tokens
- * @property-read int|null $tokens_count
- * @property-read \App\Models\UserType|null $type
- * @property-read \App\Models\Wallet|null $wallet
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Wishlist> $wishlists
- * @property-read int|null $wishlists_count
- * @method static \Database\Factories\UserFactory factory($count = null, $state = [])
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User newModelQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User newQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User orWhereHasPermission(\BackedEnum|array|string $permission = '', ?mixed $team = null)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User orWhereHasRole(\BackedEnum|array|string $role = '', ?mixed $team = null)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User query()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereBadgeId($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereBadgePurchaseAmount($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereBirthDate($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereCreatedAt($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereDoesntHavePermissions()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereDoesntHaveRoles()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereHasPermission(\BackedEnum|array|string $permission = '', ?mixed $team = null, string $boolean = 'and')
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereHasRole(\BackedEnum|array|string $role = '', ?mixed $team = null, string $boolean = 'and')
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereId($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereIsActive($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereMobile($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereNationalCode($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User wherePassword($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereRememberToken($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereSecret($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereSecretExpiresAt($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereTypeId($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereUpdatedAt($value)
- * @mixin \Eloquent
- */
 class User extends Authenticatable
 {
     use HasApiTokens,
@@ -131,9 +35,9 @@ class User extends Authenticatable
     public const BADGE_ID = 'badge_id';
 
     /**
-     * Invoice amount (Rials) the consultant paid when purchasing their badge.
+     * Invoice amount (Rials) the eliteYAR paid when purchasing their badge.
      * Basis for the lifetime commission cap (cap_multiplier × this amount).
-     * NULL = no paid badge on record → the consultant is uncapped.
+     * NULL = no paid badge on record → the eliteYAR is uncapped.
      */
     public const BADGE_PURCHASE_AMOUNT = 'badge_purchase_amount';
 
@@ -228,7 +132,7 @@ class User extends Authenticatable
         return $this->hasOne(UserProfile::class);
     }
 
-    public function isConsultant(): bool
+    public function isEliteYAR(): bool
     {
         return $this->hasRole('engineer') || $this->hasRole('contractor');
     }
@@ -322,51 +226,53 @@ class User extends Authenticatable
         return $this->hasMany(UserNote::class, UserNote::USER_ID);
     }
 
-    public function technicalConsultants(): BelongsToMany
+    public function technicalEliteYARs(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, 'employer_consultant', EmployerConsultant::EMPLOYER_ID, EmployerConsultant::CONSULTANT_ID)
-            ->using(EmployerConsultant::class)
-            ->withPivot([EmployerConsultant::STATUS, EmployerConsultant::REJECT_REASON])
+        return $this->belongsToMany(User::class, 'employer_elite_yar', EmployerEliteYAR::EMPLOYER_ID, EmployerEliteYAR::ELITE_YAR_ID)
+            ->using(EmployerEliteYAR::class)
+            ->withPivot([EmployerEliteYAR::STATUS, EmployerEliteYAR::REJECT_REASON])
             ->withTimestamps();
     }
 
     public function associatedEmployers(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, 'employer_consultant', EmployerConsultant::CONSULTANT_ID, EmployerConsultant::EMPLOYER_ID)
-            ->using(EmployerConsultant::class)
-            ->withPivot([EmployerConsultant::STATUS, EmployerConsultant::REJECT_REASON])
+        return $this->belongsToMany(User::class, 'employer_elite_yar', EmployerEliteYAR::ELITE_YAR_ID, EmployerEliteYAR::EMPLOYER_ID)
+            ->using(EmployerEliteYAR::class)
+            ->withPivot([EmployerEliteYAR::STATUS, EmployerEliteYAR::REJECT_REASON])
             ->withTimestamps();
     }
 
-    /** مشتریانی که این مشاور فنی از طریق جریان «خرید برای دیگری» احراز هویت کرده */
+    /** مشتریانی که این الیت یار از طریق جریان «خرید برای دیگری» احراز هویت کرده */
     public function registeredClients(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, 'consultant_registered_clients', 'consultant_user_id', 'client_user_id')
+        return $this->belongsToMany(User::class, 'elite_yar_registered_clients', 'elite_yar_user_id', 'client_user_id')
             ->withTimestamps();
     }
 
     public function agreements(): BelongsToMany
     {
         return $this->belongsToMany(Agreement::class, 'user_agreements')
-            ->withPivot(['accepted_at', 'ip_address', 'user_agent'])
+            ->withPivot([
+                'id', 'accepted_at', 'version', 'content_sha256', 'ip_address',
+                'user_agent', 'checked_items', 'acceptance_method', 'snapshot',
+            ])
             ->withTimestamps();
     }
 
     public function hasAcceptedLatestAgreement(string $slug): bool
     {
-
-        $latestAgreement = Agreement::query()
-            ->where(Agreement::SLUG, $slug)
-            ->active()
-            ->latest(Agreement::CREATED_AT)
-            ->first();
+        // منبع واحد «آخرین نسخه فعال» — tie-break با ID برای نسخه‌هایی که در یک
+        // ثانیه ساخته شده‌اند (latest(created_at) به‌تنهایی غیرقطعی بود).
+        $latestAgreement = Agreement::latestActiveForSlug($slug);
 
         if (! $latestAgreement) {
             return true;
         }
 
+        // ستون باید qualified باشد — کوئری pivot جوین user_agreements را دارد و
+        // «id» بدون پیشوند بین دو جدول مبهم است (SQLSTATE 1052).
         return $this->agreements()
-            ->where(Agreement::ID, $latestAgreement->{Agreement::ID})
+            ->where('agreements.'.Agreement::ID, $latestAgreement->{Agreement::ID})
             ->exists();
     }
 }

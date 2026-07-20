@@ -17,7 +17,7 @@ class OrderInvoiceController extends Controller
      * passes the generic `view` check could pull another party's invoices/receipts
      * (e.g. a supplier downloading the buyer's tax invoice).
      *
-     * Audiences: 'buyer' (placer) | 'supplier' (item supplier) | 'consultant' (beneficiary).
+     * Audiences: 'buyer' (placer) | 'supplier' (item supplier) | 'elite_yar' (beneficiary).
      */
     private const DOCUMENT_AUDIENCES = [
         'initial' => ['buyer'],
@@ -35,9 +35,9 @@ class OrderInvoiceController extends Controller
         'cancel_report' => ['supplier'],
         'modified_supplier' => ['supplier'],
         'tax_supplier' => ['supplier'],
-        'consultant_report' => ['consultant'],
-        'tax_consultant' => ['consultant'],
-        'survey_consultant' => ['consultant'],
+        'elite_yar_report' => ['elite_yar'],
+        'tax_elite_yar' => ['elite_yar'],
+        'survey_elite_yar' => ['elite_yar'],
     ];
 
     public function download(Order $order, string $type, InvoiceGenerator $generator)
@@ -55,7 +55,7 @@ class OrderInvoiceController extends Controller
             'receipt' => FinancialCodes::DOC_RECEIPT_OWNER,
             'supplier_report' => FinancialCodes::DOC_REPORT_SUPPLIER,
             'loading' => FinancialCodes::DOC_LOADING_ORDER,
-            'consultant_report' => FinancialCodes::DOC_CONSULTANT_REPORT,
+            'elite_yar_report' => FinancialCodes::DOC_ELITE_YAR_REPORT,
             // Stage 2 — reservation
             'reserve_receipt' => FinancialCodes::DOC_RESERVE_RECEIPT,
             'reserve_report' => FinancialCodes::DOC_RESERVE_REPORT,
@@ -72,9 +72,9 @@ class OrderInvoiceController extends Controller
             // Stage 6 — Moadian taxpayer system
             'tax' => FinancialCodes::DOC_TAX_INVOICE_BUYER,
             'tax_supplier' => FinancialCodes::DOC_TAX_INVOICE_SUPPLIER,
-            'tax_consultant' => FinancialCodes::DOC_TAX_INVOICE_CONSULTANT,
+            'tax_elite_yar' => FinancialCodes::DOC_TAX_INVOICE_ELITE_YAR,
             // Stage 7 — surveys
-            'survey_consultant' => FinancialCodes::DOC_SURVEY_CONSULTANT,
+            'survey_elite_yar' => FinancialCodes::DOC_SURVEY_ELITE_YAR,
         ];
 
         if (! array_key_exists($type, $typeMap)) {
@@ -113,9 +113,9 @@ class OrderInvoiceController extends Controller
         foreach ($allowed as $audience) {
             $matches = match ($audience) {
                 'buyer' => (int) $order->{Order::PLACER_USER_ID} === $userId,
-                'consultant' => in_array($userId, array_filter([
+                'elite_yar' => in_array($userId, array_filter([
                     (int) $order->{Order::BENEFICIARY_USER_ID},
-                    (int) $order->{Order::CONSULTANT_USER_ID},
+                    (int) $order->{Order::ELITE_YAR_USER_ID},
                 ]), true),
                 'supplier' => $order->items()->where(OrderItem::SUPPLIER_USER_ID, $userId)->exists(),
                 default => false,

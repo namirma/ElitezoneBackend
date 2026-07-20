@@ -130,6 +130,8 @@ class ProductSeeder extends Seeder
         $kgUnit = OrderUnit::where(OrderUnit::CODE, 'retail')->first();
 
         if (! $rebarCategory || ! $kgUnit) {
+            $this->command?->warn('ProductSeeder: rebar category or retail OrderUnit missing — stopping before creating any product/price data.');
+
             return;
         }
 
@@ -186,9 +188,15 @@ class ProductSeeder extends Seeder
                 [ProductVariant::SKU => 'RBR-A1-8-KL', ProductVariant::NAME => 'میلگرد کلاف A1 سایز 8', 'attrs_ids' => [$kalafAttr?->id, $gradeA1Attr?->id, $size8Attr?->id], ProductVariant::STOCK_QUANTITY => 300000, ProductVariant::MIN_ORDER_VALUE => 2000, ProductVariant::MAX_ORDER_VALUE => 2000000, ProductVariant::DISCOUNT_VALUE => null, ProductVariant::DISCOUNT_TYPE => null, ProductVariant::DISCOUNT_START_DATE => null, ProductVariant::DISCOUNT_END_DATE => null],
             ];
             foreach ($variantsSeedData as $data) {
+                // Lookup key must be `sku` ALONE — product_variants.sku has a global unique
+                // index (not composite with product_id). Including product_id here made
+                // updateOrCreate attempt an INSERT (not an UPDATE) whenever a row with this
+                // sku already existed under a different product_id, crashing with a
+                // duplicate-key SQL error instead of re-linking/updating the existing row.
                 $variant = ProductVariant::updateOrCreate(
-                    [ProductVariant::PRODUCT_ID => $rebarProduct->id, ProductVariant::SKU => $data[ProductVariant::SKU]],
+                    [ProductVariant::SKU => $data[ProductVariant::SKU]],
                     [
+                        ProductVariant::PRODUCT_ID => $rebarProduct->id,
                         ProductVariant::NAME => $data[ProductVariant::NAME],
                         ProductVariant::IS_ACTIVE => true,
                         ProductVariant::STOCK_QUANTITY => $data[ProductVariant::STOCK_QUANTITY],
@@ -263,8 +271,8 @@ class ProductSeeder extends Seeder
         }
 
         $customerTypesData = [
-            [CustomerType::NAME => 'کارفرمای بدون مشاور', CustomerType::CODE => 'employer_without_consultant', CustomerType::HAS_CONSULTANT => false],
-            [CustomerType::NAME => 'مهندس دارای مشاور', CustomerType::CODE => 'engineer_with_consultant', CustomerType::HAS_CONSULTANT => true],
+            [CustomerType::NAME => 'کارفرمای بدون الیت یار', CustomerType::CODE => 'employer_without_elite_yar', CustomerType::HAS_ELITE_YAR => false],
+            [CustomerType::NAME => 'مهندس دارای الیت یار', CustomerType::CODE => 'engineer_with_elite_yar', CustomerType::HAS_ELITE_YAR => true],
         ];
         foreach ($customerTypesData as $typeDetails) {
             CustomerType::updateOrCreate([CustomerType::CODE => $typeDetails[CustomerType::CODE]], $typeDetails);
@@ -277,8 +285,8 @@ class ProductSeeder extends Seeder
         $badgeInstances = Badge::all()->keyBy(Badge::CODE);
 
         $priceAdjustmentsData = [
-            ['c_code' => 'employer_without_consultant', 'b_code' => null, 'amount' => 0],
-            ['c_code' => 'engineer_with_consultant', 'b_code' => null, 'amount' => 2000],
+            ['c_code' => 'employer_without_elite_yar', 'b_code' => null, 'amount' => 0],
+            ['c_code' => 'engineer_with_elite_yar', 'b_code' => null, 'amount' => 2000],
         ];
         foreach ($priceAdjustmentsData as $adj) {
             if (isset($customerTypeInstances[$adj['c_code']])) {
@@ -310,7 +318,7 @@ class ProductSeeder extends Seeder
             [PriceFilterType::NAME => 'سود', PriceFilterType::CODE => 'profit',             PriceFilterType::APPLY_ON => 'both',    PriceFilterType::IS_ACTIVE => true, PriceFilterType::SORT_ORDER => 1],
             [PriceFilterType::NAME => 'سیاست قیمت‌گذاری', PriceFilterType::CODE => 'policy',            PriceFilterType::APPLY_ON => 'general', PriceFilterType::IS_ACTIVE => true, PriceFilterType::SORT_ORDER => 2],
             [PriceFilterType::NAME => 'نوع مشتری',       PriceFilterType::CODE => 'customer_type',      PriceFilterType::APPLY_ON => 'special', PriceFilterType::IS_ACTIVE => true, PriceFilterType::SORT_ORDER => 3],
-            [PriceFilterType::NAME => 'وضعیت مشاور',     PriceFilterType::CODE => 'consultant_status', PriceFilterType::APPLY_ON => 'special', PriceFilterType::IS_ACTIVE => true, PriceFilterType::SORT_ORDER => 4],
+            [PriceFilterType::NAME => 'وضعیت الیت یار',     PriceFilterType::CODE => 'elite_yar_status', PriceFilterType::APPLY_ON => 'special', PriceFilterType::IS_ACTIVE => true, PriceFilterType::SORT_ORDER => 4],
         ];
         foreach ($filterTypesData as $typeDetails) {
             PriceFilterType::updateOrCreate([PriceFilterType::CODE => $typeDetails[PriceFilterType::CODE]], $typeDetails);
@@ -331,9 +339,9 @@ class ProductSeeder extends Seeder
                 [PriceFilter::NAME => 'کارفرما',       PriceFilter::CODE => 'employer',          PriceFilter::AMOUNT => 0,     PriceFilter::IS_PERCENTAGE => false, PriceFilter::IS_ACTIVE => true, PriceFilter::SORT_ORDER => 1],
                 [PriceFilter::NAME => 'مهندس',         PriceFilter::CODE => 'engineer',          PriceFilter::AMOUNT => -1000, PriceFilter::IS_PERCENTAGE => false, PriceFilter::IS_ACTIVE => true, PriceFilter::SORT_ORDER => 2],
             ],
-            'consultant_status' => [
-                [PriceFilter::NAME => 'بدون مشاور',    PriceFilter::CODE => 'without_consultant', PriceFilter::AMOUNT => 0,     PriceFilter::IS_PERCENTAGE => false, PriceFilter::IS_ACTIVE => true, PriceFilter::SORT_ORDER => 1],
-                [PriceFilter::NAME => 'دارای مشاور',   PriceFilter::CODE => 'with_consultant',   PriceFilter::AMOUNT => -800,  PriceFilter::IS_PERCENTAGE => false, PriceFilter::IS_ACTIVE => true, PriceFilter::SORT_ORDER => 2],
+            'elite_yar_status' => [
+                [PriceFilter::NAME => 'بدون الیت یار',    PriceFilter::CODE => 'without_elite_yar', PriceFilter::AMOUNT => 0,     PriceFilter::IS_PERCENTAGE => false, PriceFilter::IS_ACTIVE => true, PriceFilter::SORT_ORDER => 1],
+                [PriceFilter::NAME => 'دارای الیت یار',   PriceFilter::CODE => 'with_elite_yar',   PriceFilter::AMOUNT => -800,  PriceFilter::IS_PERCENTAGE => false, PriceFilter::IS_ACTIVE => true, PriceFilter::SORT_ORDER => 2],
             ],
         ];
 
@@ -350,20 +358,20 @@ class ProductSeeder extends Seeder
 
         $priceFilterCategoriesData = [
             [
-                PriceFilterCategory::NAME => 'کارفرمای بدون مشاور',
-                PriceFilterCategory::CODE => 'employer_without_consultant',
-                PriceFilterCategory::DESCRIPTION => 'فیلترهای قیمت برای کارفرمای بدون مشاور',
+                PriceFilterCategory::NAME => 'کارفرمای بدون الیت یار',
+                PriceFilterCategory::CODE => 'employer_without_elite_yar',
+                PriceFilterCategory::DESCRIPTION => 'فیلترهای قیمت برای کارفرمای بدون الیت یار',
                 PriceFilterCategory::IS_ACTIVE => true,
                 PriceFilterCategory::SORT_ORDER => 1,
-                'filters' => ['base_profit', 'regular_policy', 'employer', 'without_consultant'],
+                'filters' => ['base_profit', 'regular_policy', 'employer', 'without_elite_yar'],
             ],
             [
-                PriceFilterCategory::NAME => 'مهندس دارای مشاور',
-                PriceFilterCategory::CODE => 'engineer_with_consultant',
-                PriceFilterCategory::DESCRIPTION => 'فیلترهای قیمت برای مهندس دارای مشاور',
+                PriceFilterCategory::NAME => 'مهندس دارای الیت یار',
+                PriceFilterCategory::CODE => 'engineer_with_elite_yar',
+                PriceFilterCategory::DESCRIPTION => 'فیلترهای قیمت برای مهندس دارای الیت یار',
                 PriceFilterCategory::IS_ACTIVE => true,
                 PriceFilterCategory::SORT_ORDER => 2,
-                'filters' => ['base_profit', 'competitive_policy', 'engineer', 'with_consultant'],
+                'filters' => ['base_profit', 'competitive_policy', 'engineer', 'with_elite_yar'],
             ],
         ];
 
@@ -380,7 +388,7 @@ class ProductSeeder extends Seeder
             $category->filters()->sync($filtersToSync);
         }
 
-        PriceFilterCategory::whereNotIn(PriceFilterCategory::CODE, ['engineer_with_consultant', 'employer_without_consultant'])
+        PriceFilterCategory::whereNotIn(PriceFilterCategory::CODE, ['engineer_with_elite_yar', 'employer_without_elite_yar'])
             ->update([PriceFilterCategory::IS_ACTIVE => false]);
 
         $settingsData = [
@@ -408,6 +416,8 @@ class ProductSeeder extends Seeder
         }
 
         if (! $kavirFactory) {
+            $this->command?->warn('ProductSeeder: kavir-steel Factory missing — stopping before creating ProductPrice rows.');
+
             return;
         }
 
@@ -417,6 +427,8 @@ class ProductSeeder extends Seeder
         $shirazWarehouseKavir = FactoryLocation::where(FactoryLocation::FACTORY_ID, $kavirFactory->id)->where(FactoryLocation::TYPE, 'warehouse')->where(FactoryLocation::CITY, 'شیراز')->first();
 
         if (! $factoryDoorKavir || ! $isfahanWarehouseKavir || ! $tehranWarehouseKavir || ! $shirazWarehouseKavir) {
+            $this->command?->warn('ProductSeeder: one or more kavir-steel FactoryLocation rows missing — stopping before creating ProductPrice rows.');
+
             return;
         }
 
@@ -425,6 +437,8 @@ class ProductSeeder extends Seeder
         $variantA1_8 = ProductVariant::where(ProductVariant::SKU, 'RBR-A1-8-KL')->first();
 
         if (! $variantA2_12 || ! $variantA3_16 || ! $variantA1_8) {
+            $this->command?->warn('ProductSeeder: one or more rebar ProductVariant rows missing — stopping before creating ProductPrice rows.');
+
             return;
         }
 
@@ -450,5 +464,11 @@ class ProductSeeder extends Seeder
                 );
             }
         }
+
+        $this->command?->info(sprintf(
+            'ProductSeeder: done — %d rebar variant(s), %d ProductPrice row(s) for kavir-steel.',
+            count($variantBasePrices),
+            count($variantBasePrices) * count($locationPriceAdjustments)
+        ));
     }
 }

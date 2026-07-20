@@ -10,7 +10,7 @@ use Tests\TestCase;
 /**
  * Tests for HasOrderProgress trait accessors.
  *
- * Covers getDashboardProgressAttribute (buyer), getConsultantProgressAttribute,
+ * Covers getDashboardProgressAttribute (buyer), getEliteYARProgressAttribute,
  * and getSupplierProgressAttribute.
  *
  * DatabaseTransactions: all DB writes are rolled back after each test;
@@ -50,15 +50,15 @@ class HasOrderProgressTest extends TestCase
     }
 
     // =========================================================================
-    //  Consultant Progress
+    //  EliteYAR Progress
     // =========================================================================
 
     /** مرحله ۱ باید current باشد وقتی status = PROCESSING و فیلدهای مودیان null است */
-    public function test_consultant_progress_step1_current_on_processing(): void
+    public function test_elite_yar_progress_step1_current_on_processing(): void
     {
         $order = $this->makeOrder([Order::STATUS => Order::STATUS_PROCESSING]);
 
-        $progress = $order->consultant_progress;
+        $progress = $order->elite_yar_progress;
 
         $this->assertFalse($progress['is_cancelled']);
         $this->assertCount(4, $progress['steps']);
@@ -76,11 +76,11 @@ class HasOrderProgressTest extends TestCase
     }
 
     /** WEIGHBRIDGE_DONE → مرحله ۲ current، مرحله ۱ completed */
-    public function test_consultant_progress_step2_current_on_weighbridge_done(): void
+    public function test_elite_yar_progress_step2_current_on_weighbridge_done(): void
     {
         $order = $this->makeOrder([Order::STATUS => Order::STATUS_WEIGHBRIDGE_DONE]);
 
-        $progress = $order->consultant_progress;
+        $progress = $order->elite_yar_progress;
 
         $this->assertSame('completed', $progress['steps'][0]['state']);
         $this->assertSame('current', $progress['steps'][1]['state']);
@@ -94,15 +94,15 @@ class HasOrderProgressTest extends TestCase
     }
 
     /** وقتی هر دو فیلد مودیان پر شده → همه مراحل completed */
-    public function test_consultant_progress_all_completed_when_hold_released(): void
+    public function test_elite_yar_progress_all_completed_when_hold_released(): void
     {
         $order = $this->makeOrder([
             Order::STATUS => Order::STATUS_DELIVERED,
-            Order::CONSULTANT_MOADIAN_REF => 'TAX-REF-001',
-            Order::CONSULTANT_HOLD_RELEASED_AT => now(),
+            Order::ELITE_YAR_MOADIAN_REF => 'TAX-REF-001',
+            Order::ELITE_YAR_HOLD_RELEASED_AT => now(),
         ]);
 
-        $progress = $order->consultant_progress;
+        $progress = $order->elite_yar_progress;
 
         foreach ($progress['steps'] as $step) {
             $this->assertSame('completed', $step['state'],
@@ -114,20 +114,20 @@ class HasOrderProgressTest extends TestCase
      * رفتار صحیح: سفارش delivered بدون Doc Q (بدون hold_released_at) → مرحله ۲ current
      *
      * طبق پروسه خرید (بخش «الگوریتم وابستگی واریزها»):
-     * «تا زمان صدور فاکتور سامانه مودیان توسط مشاور فنی در کیف پول وی هولد می‌شود».
-     * پس صرف تحویل کالا hold را آزاد نمی‌کند — مشاور باید خودش Doc Q ثبت کند.
+     * «تا زمان صدور فاکتور سامانه مودیان توسط الیت یار در کیف پول وی هولد می‌شود».
+     * پس صرف تحویل کالا hold را آزاد نمی‌کند — الیت یار باید خودش Doc Q ثبت کند.
      *
      * نکته: قبل از این fix، delivered → همه مراحل completed نشان داده می‌شد (اشتباه).
      */
-    public function test_consultant_progress_delivered_without_hold_release_stays_at_step2(): void
+    public function test_elite_yar_progress_delivered_without_hold_release_stays_at_step2(): void
     {
         $order = $this->makeOrder([
             Order::STATUS => Order::STATUS_DELIVERED,
-            Order::CONSULTANT_MOADIAN_REF => null,
-            Order::CONSULTANT_HOLD_RELEASED_AT => null,
+            Order::ELITE_YAR_MOADIAN_REF => null,
+            Order::ELITE_YAR_HOLD_RELEASED_AT => null,
         ]);
 
-        $progress = $order->consultant_progress;
+        $progress = $order->elite_yar_progress;
 
         $this->assertFalse($progress['is_cancelled']);
 
@@ -135,32 +135,32 @@ class HasOrderProgressTest extends TestCase
         $this->assertSame('completed', $progress['steps'][0]['state'],
             'Step 1 should be completed (purchase happened)');
 
-        // مرحله ۲: حق مشاوره منظور شده ولی Hold است → current (منتظر Doc Q)
+        // مرحله ۲: کارمزد الیت یار منظور شده ولی Hold است → current (منتظر Doc Q)
         $this->assertSame('current', $progress['steps'][1]['state'],
-            'Step 2 must be current: commission is in hold, waiting for consultant to submit Doc Q');
+            'Step 2 must be current: commission is in hold, waiting for eliteYAR to submit Doc Q');
 
         // مراحل ۳ و ۴ هنوز inactive
         $this->assertSame('inactive', $progress['steps'][2]['state'],
             'Step 3 should be inactive until Doc Q is submitted');
         $this->assertSame('inactive', $progress['steps'][3]['state'],
-            'Step 4 should be inactive until hold_released_at is set by ReleaseConsultantHoldAction');
+            'Step 4 should be inactive until hold_released_at is set by ReleaseEliteYARHoldAction');
 
-        // دکمه «ثبت فاکتور» باید نمایش داشته باشد — بدون آن مشاور نمی‌تواند پولش را آزاد کند
+        // دکمه «ثبت فاکتور» باید نمایش داشته باشد — بدون آن الیت یار نمی‌تواند پولش را آزاد کند
         $step2Labels = array_column($progress['steps'][1]['actions'], 'label');
         $this->assertContains('فاکتور خدمات خود را ثبت کنید', $step2Labels,
             'Submit invoice button must be visible for delivered orders awaiting Doc Q');
     }
 
     /** completed (مانند delivered) بدون Doc Q → همان رفتار delivered: مرحله ۲ current */
-    public function test_consultant_progress_completed_without_hold_release_stays_at_step2(): void
+    public function test_elite_yar_progress_completed_without_hold_release_stays_at_step2(): void
     {
         $order = $this->makeOrder([
             Order::STATUS => Order::STATUS_COMPLETED,
-            Order::CONSULTANT_MOADIAN_REF => null,
-            Order::CONSULTANT_HOLD_RELEASED_AT => null,
+            Order::ELITE_YAR_MOADIAN_REF => null,
+            Order::ELITE_YAR_HOLD_RELEASED_AT => null,
         ]);
 
-        $progress = $order->consultant_progress;
+        $progress = $order->elite_yar_progress;
 
         $this->assertSame('completed', $progress['steps'][0]['state']);
         $this->assertSame('current', $progress['steps'][1]['state'],
@@ -173,11 +173,11 @@ class HasOrderProgressTest extends TestCase
      * باگ ۲ (رفع‌شده): waybill_issued → مرحله ۲ باید current باشد، نه مرحله ۱
      * قبلاً waybill_issued در elseif مرحله ۱ بود و به ۱ برمی‌گشت.
      */
-    public function test_consultant_progress_waybill_issued_stays_at_step2(): void
+    public function test_elite_yar_progress_waybill_issued_stays_at_step2(): void
     {
         $order = $this->makeOrder([Order::STATUS => Order::STATUS_WAYBILL_ISSUED]);
 
-        $progress = $order->consultant_progress;
+        $progress = $order->elite_yar_progress;
 
         $this->assertSame('completed', $progress['steps'][0]['state'],
             'Bug 2 regression: step 1 should be completed when waybill_issued');
@@ -188,11 +188,11 @@ class HasOrderProgressTest extends TestCase
     }
 
     /** shipped → همان رفتار waybill_issued — مرحله ۲ current */
-    public function test_consultant_progress_shipped_stays_at_step2(): void
+    public function test_elite_yar_progress_shipped_stays_at_step2(): void
     {
         $order = $this->makeOrder([Order::STATUS => Order::STATUS_SHIPPED]);
 
-        $progress = $order->consultant_progress;
+        $progress = $order->elite_yar_progress;
 
         $this->assertSame('completed', $progress['steps'][0]['state']);
         $this->assertSame('current', $progress['steps'][1]['state']);
@@ -202,11 +202,11 @@ class HasOrderProgressTest extends TestCase
      * مرحله ۲ — دکمه «ثبت فاکتور» همیشه نشان داده می‌شود
      * (اندپوینت idempotent است، ثبت مجدد بی‌خطر است)
      */
-    public function test_consultant_progress_step2_always_shows_submit_button(): void
+    public function test_elite_yar_progress_step2_always_shows_submit_button(): void
     {
         $order = $this->makeOrder([Order::STATUS => Order::STATUS_WEIGHBRIDGE_DONE]);
 
-        $progress = $order->consultant_progress;
+        $progress = $order->elite_yar_progress;
 
         $step2Labels = array_column($progress['steps'][1]['actions'], 'label');
         $this->assertContains('مشاهده کیف پول', $step2Labels);
@@ -214,11 +214,11 @@ class HasOrderProgressTest extends TestCase
     }
 
     /** سفارش لغو شده → مرحله اول cancelled، بقیه inactive */
-    public function test_consultant_progress_cancelled_order(): void
+    public function test_elite_yar_progress_cancelled_order(): void
     {
         $order = $this->makeOrder([Order::STATUS => Order::STATUS_CANCELLED]);
 
-        $progress = $order->consultant_progress;
+        $progress = $order->elite_yar_progress;
 
         $this->assertTrue($progress['is_cancelled']);
         $this->assertSame('cancelled', $progress['steps'][0]['state']);

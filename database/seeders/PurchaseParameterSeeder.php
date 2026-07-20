@@ -15,8 +15,8 @@ class PurchaseParameterSeeder extends Seeder
     {
         DB::transaction(function () {
             $categories = [
-                ['code' => 'employer_without_consultant', 'name' => 'کارفرما بدون مشاور', 'sort_order' => 1],
-                ['code' => 'engineer_with_consultant',    'name' => 'مهندس با مشاور',     'sort_order' => 2],
+                ['code' => 'employer_without_elite_yar', 'name' => 'کارفرما بدون الیت یار', 'sort_order' => 1],
+                ['code' => 'engineer_with_elite_yar',    'name' => 'مهندس با الیت یار',     'sort_order' => 2],
             ];
 
             foreach ($categories as $cat) {
@@ -42,7 +42,7 @@ class PurchaseParameterSeeder extends Seeder
                 ['name' => 'هدف خرید', 'description' => 'هدف خرید شما چیست؟', 'order' => 1, 'is_active' => true]
             );
 
-            PurchaseParameterGroup::whereIn('code', ['customer_type', 'consultant_status'])->update(['is_active' => false]);
+            PurchaseParameterGroup::whereIn('code', ['customer_type', 'elite_yar_status'])->update(['is_active' => false]);
 
             $purposeValues = [
                 ['code' => 'for_myself', 'name' => 'برای خودم',  'order' => 1],
@@ -64,13 +64,13 @@ class PurchaseParameterSeeder extends Seeder
             }
 
             $customerTypes = [
-                ['code' => 'employer_without_consultant', 'name' => 'کارفرما بدون مشاور', 'has_consultant' => false],
-                ['code' => 'engineer_with_consultant',    'name' => 'مهندس با مشاور',     'has_consultant' => true],
+                ['code' => 'employer_without_elite_yar', 'name' => 'کارفرما بدون الیت یار', 'has_elite_yar' => false],
+                ['code' => 'engineer_with_elite_yar',    'name' => 'مهندس با الیت یار',     'has_elite_yar' => true],
             ];
             foreach ($customerTypes as $ct) {
                 CustomerType::updateOrCreate(
                     ['code' => $ct['code']],
-                    ['name' => $ct['name'], 'has_consultant' => $ct['has_consultant']]
+                    ['name' => $ct['name'], 'has_elite_yar' => $ct['has_elite_yar']]
                 );
             }
             CustomerType::whereNotIn('code', collect($customerTypes)->pluck('code'))->delete();

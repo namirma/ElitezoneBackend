@@ -48,10 +48,10 @@ class ProfileController extends Controller
         $roleNames = $user->roles->pluck('name')->map(fn ($n) => strtolower($n))->unique()->values();
         $relationsToLoad = [];
 
-        // «مشاور فنی» دو حالت دارد:
+        // «الیت یار» دو حالت دارد:
         //   ۱) نقشِ دقیقِ engineer/contractor دارد (بعد از آپلود مدارک تعیین می‌شود)
         //   ۲) فقط type.slug = expert دارد (نقش را انتخاب کرده ولی هنوز مدرکی آپلود نکرده)
-        // در هر دو حالت کاربر «مشاور فنی» است و باید وضعیت تأیید (is_verified) ارزیابی شود.
+        // در هر دو حالت کاربر «الیت یار» است و باید وضعیت تأیید (is_verified) ارزیابی شود.
         $typeSlug = strtolower((string) optional($user->{User::RELATION_TYPE})->{UserType::SLUG});
         $isExpert = $roleNames->contains('engineer')
             || $roleNames->contains('contractor')

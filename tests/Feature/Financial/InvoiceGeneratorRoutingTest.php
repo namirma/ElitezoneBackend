@@ -12,7 +12,6 @@ use App\Services\Invoice\InvoiceDataBuilder;
 use App\Services\Invoice\InvoiceGenerator;
 use App\Services\Invoice\InvoicePdfRenderer;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
-use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -27,7 +26,6 @@ class InvoiceGeneratorRoutingTest extends TestCase
     use DatabaseTransactions;
 
     private InvoiceGenerator $generator;
-
     private Order $order;
 
     protected function setUp(): void
@@ -37,7 +35,7 @@ class InvoiceGeneratorRoutingTest extends TestCase
         // Stub infrastructure so no file I/O or DB sequence calls occur.
         $this->mock(DocumentSequenceService::class)
             ->shouldReceive('generate')
-            ->andReturnUsing(fn () => 'TEST-'.uniqid());
+            ->andReturnUsing(fn () => 'TEST-' . uniqid());
 
         $this->mock(InvoiceDataBuilder::class)
             ->shouldReceive('build')
@@ -49,58 +47,58 @@ class InvoiceGeneratorRoutingTest extends TestCase
 
         $this->generator = app(InvoiceGenerator::class);
 
-        $buyer = User::factory()->create();
+        $buyer    = User::factory()->create();
         $supplier = User::factory()->create();
 
         $this->order = Order::create([
             Order::PLACER_USER_ID => $buyer->id,
-            Order::ORDER_NUMBER => 'TEST-GEN-'.uniqid(),
-            Order::STATUS => Order::STATUS_PROCESSING,
+            Order::ORDER_NUMBER   => 'TEST-GEN-' . uniqid(),
+            Order::STATUS         => Order::STATUS_PROCESSING,
             Order::PAYMENT_STATUS => Order::PAYMENT_PAID,
-            Order::FINAL_AMOUNT => 10_000_000,
+            Order::FINAL_AMOUNT   => 10_000_000,
         ]);
         $this->order->forceFill([
-            Order::OFFICIAL_PRICE => 0,
+            Order::OFFICIAL_PRICE     => 0,
             Order::PAYMENT_TO_RESERVE => 2_000_000,
         ])->save();
 
         OrderItem::factory()->create([
-            OrderItem::ORDER_ID => $this->order->id,
+            OrderItem::ORDER_ID         => $this->order->id,
             OrderItem::SUPPLIER_USER_ID => $supplier->id,
-            OrderItem::UNIT_PRICE => 500.0,
-            OrderItem::TOTAL_PRICE => 10_000_000,
-            OrderItem::QUANTITY => 20_000,
+            OrderItem::UNIT_PRICE       => 500.0,
+            OrderItem::TOTAL_PRICE      => 10_000_000,
+            OrderItem::QUANTITY         => 20_000,
         ]);
     }
 
     // ─── Direct purchase ───────────────────────────────────────────────────────
 
-    #[Test]
-    public function direct_purchase_without_consultant_emits_three_docs(): void
+    /** @test */
+    public function direct_purchase_without_elite_yar_emits_three_docs(): void
     {
-        $this->generator->generateDirectPurchaseDocs($this->order, withConsultant: false);
+        $this->generator->generateDirectPurchaseDocs($this->order, withEliteYAR: false);
 
         $codes = $this->issuedCodes();
         $this->assertContains(FinancialCodes::DOC_RECEIPT_OWNER, $codes, 'Doc A missing');
         $this->assertContains(FinancialCodes::DOC_REPORT_SUPPLIER, $codes, 'Doc B missing');
         $this->assertContains(FinancialCodes::DOC_LOADING_ORDER, $codes, 'Doc C missing');
-        $this->assertNotContains(FinancialCodes::DOC_CONSULTANT_REPORT, $codes, 'Doc D must not appear without consultant');
+        $this->assertNotContains(FinancialCodes::DOC_ELITE_YAR_REPORT, $codes, 'Doc D must not appear without eliteYAR');
         $this->assertCount(3, $codes);
     }
 
-    #[Test]
-    public function direct_purchase_with_consultant_emits_four_docs(): void
+    /** @test */
+    public function direct_purchase_with_elite_yar_emits_four_docs(): void
     {
-        $this->generator->generateDirectPurchaseDocs($this->order, withConsultant: true);
+        $this->generator->generateDirectPurchaseDocs($this->order, withEliteYAR: true);
 
         $codes = $this->issuedCodes();
-        $this->assertContains(FinancialCodes::DOC_CONSULTANT_REPORT, $codes, 'Doc D must appear when withConsultant=true');
+        $this->assertContains(FinancialCodes::DOC_ELITE_YAR_REPORT, $codes, 'Doc D must appear when withEliteYAR=true');
         $this->assertCount(4, $codes);
     }
 
     // ─── Reservation ──────────────────────────────────────────────────────────
 
-    #[Test]
+    /** @test */
     public function reservation_emits_two_docs(): void
     {
         $this->generator->generateReservationDocs($this->order);
@@ -113,7 +111,7 @@ class InvoiceGeneratorRoutingTest extends TestCase
 
     // ─── Reservation completion ───────────────────────────────────────────────
 
-    #[Test]
+    /** @test */
     public function reservation_completion_emits_three_docs(): void
     {
         $this->generator->generateReservationCompletionDocs($this->order);
@@ -127,7 +125,7 @@ class InvoiceGeneratorRoutingTest extends TestCase
 
     // ─── Weighbridge ──────────────────────────────────────────────────────────
 
-    #[Test]
+    /** @test */
     public function weighbridge_equal_emits_only_bill_of_lading(): void
     {
         $this->generator->generateWeighbridgeDocs($this->order, isDeficit: false);
@@ -139,7 +137,7 @@ class InvoiceGeneratorRoutingTest extends TestCase
         $this->assertCount(1, $codes);
     }
 
-    #[Test]
+    /** @test */
     public function weighbridge_deficit_emits_three_docs(): void
     {
         $this->generator->generateWeighbridgeDocs($this->order, isDeficit: true);
@@ -153,7 +151,7 @@ class InvoiceGeneratorRoutingTest extends TestCase
 
     // ─── Cancellation ─────────────────────────────────────────────────────────
 
-    #[Test]
+    /** @test */
     public function cancellation_without_refund_emits_only_cancel_report(): void
     {
         $this->generator->generateCancellationDocs($this->order, withRefundReceipt: false);
@@ -164,7 +162,7 @@ class InvoiceGeneratorRoutingTest extends TestCase
         $this->assertCount(1, $codes);
     }
 
-    #[Test]
+    /** @test */
     public function cancellation_with_refund_emits_two_docs(): void
     {
         $this->generator->generateCancellationDocs($this->order, withRefundReceipt: true);
@@ -177,7 +175,7 @@ class InvoiceGeneratorRoutingTest extends TestCase
 
     // ─── Moadian (tax) invoices ───────────────────────────────────────────────
 
-    #[Test]
+    /** @test */
     public function supplier_moadian_invoice_emits_doc_o(): void
     {
         $this->generator->generateSupplierMoadianInvoice($this->order);
@@ -186,7 +184,7 @@ class InvoiceGeneratorRoutingTest extends TestCase
         $this->assertCount(1, $this->issuedCodes());
     }
 
-    #[Test]
+    /** @test */
     public function system_moadian_invoice_emits_doc_p(): void
     {
         $this->generator->generateSystemMoadianInvoice($this->order);
@@ -195,12 +193,12 @@ class InvoiceGeneratorRoutingTest extends TestCase
         $this->assertCount(1, $this->issuedCodes());
     }
 
-    #[Test]
+    /** @test */
     public function consultant_moadian_invoice_emits_doc_q(): void
     {
-        $this->generator->generateConsultantMoadianInvoice($this->order);
+        $this->generator->generateEliteYARMoadianInvoice($this->order);
 
-        $this->assertContains(FinancialCodes::DOC_TAX_INVOICE_CONSULTANT, $this->issuedCodes());
+        $this->assertContains(FinancialCodes::DOC_TAX_INVOICE_ELITE_YAR, $this->issuedCodes());
         $this->assertCount(1, $this->issuedCodes());
     }
 

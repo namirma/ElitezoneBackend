@@ -63,7 +63,7 @@ class OrderEstimateVatTest extends TestCase
                 'quantities' => [(string) $unit->id => 1],
                 'with_vat' => true,
             ],
-            'employer_without_consultant',
+            'employer_without_elite_yar',
             null,
         );
 

@@ -67,6 +67,19 @@ class WalletTransactionResource extends BaseJsonResource
             ],
             'created_at' => $this->created_at?->format('Y-m-d H:i:s'),
             'created_at_p' => $this->created_at ? verta($this->created_at)->format('Y/m/d') : null,
+
+            // صاحب تراکنش — فقط وقتی رابطه wallet لود شده باشد (لیست‌های ادمین).
+            // endpointهای کاربر عادی wallet را eager-load نمی‌کنند، پس این فیلد
+            // برای آن‌ها اصلاً در پاسخ ظاهر نمی‌شود.
+            'user' => $this->whenLoaded('wallet', function () {
+                $user = $this->wallet->user;
+
+                return $user ? [
+                    'id' => $user->id,
+                    'name' => $user->profile?->name,
+                    'mobile' => $user->mobile,
+                ] : null;
+            }),
         ];
     }
 }
