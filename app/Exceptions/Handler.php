@@ -25,6 +25,14 @@ class Handler extends ExceptionHandler
 
     public function register(): void
     {
+        // Sentry — فقط وقتی DSN ست باشد فعال است (بدون DSN کاملاً بی‌اثر).
+        // خطاهای گزارش‌شدنی (بعد از dontReport) به error-tracker می‌روند.
+        $this->reportable(function (Throwable $e) {
+            if (app()->bound('sentry')) {
+                app('sentry')->captureException($e);
+            }
+        });
+
         $this->renderable(function (Throwable $e, $request) {
             if ($request->expectsJson() || $request->is('api/*')) {
                 return $this->handleApiException($e);

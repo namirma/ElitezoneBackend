@@ -35,6 +35,11 @@ class AdminArticleController extends Controller
                 ->orWhere(Article::SLUG, 'like', "%{$search}%"));
         }
 
+        // سطل بازیافت: ?trashed=1 فقط حذف‌شده‌های نرم را برمی‌گرداند
+        if ($request->boolean('trashed')) {
+            $query->onlyTrashed();
+        }
+
         return success(ArticleResource::collection($query->paginate($this->perPage())), __('admin.articles.list_received'));
     }
 
@@ -82,13 +87,21 @@ class AdminArticleController extends Controller
         return success(new ArticleResource($article->refresh()), __('admin.articles.toggled'));
     }
 
-    // DELETE /admin/articles/{article}
+    // DELETE /admin/articles/{article} — حذف نرم (کاور تا restore حفظ می‌شود)
     public function destroy(Article $article): JsonResponse
     {
-        $this->deleteCoverIfOwned($article);
         $article->delete();
 
         return success(null, __('admin.articles.deleted'));
+    }
+
+    // POST /admin/articles/{id}/restore
+    public function restore(int $id): JsonResponse
+    {
+        $article = Article::onlyTrashed()->findOrFail($id);
+        $article->restore();
+
+        return success(new ArticleResource($article->refresh()), __('admin.articles.restored'));
     }
 
     private function deleteCoverIfOwned(Article $article): void

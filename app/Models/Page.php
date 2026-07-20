@@ -4,10 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Page extends Model
 {
     use HasFactory;
+    use SoftDeletes;
 
     const TABLE = 'pages';
 
@@ -45,5 +47,6 @@ class Page extends Model
     {
         static::saved(fn () => \Illuminate\Support\Facades\Cache::forget(self::CACHE_KEY));
         static::deleted(fn () => \Illuminate\Support\Facades\Cache::forget(self::CACHE_KEY));
+        static::restored(fn () => \Illuminate\Support\Facades\Cache::forget(self::CACHE_KEY));
     }
 }

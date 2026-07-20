@@ -1647,6 +1647,28 @@ never `Str::slug` server-side. `SupplierProfileResource` now exposes
 - **PHPUnit metadata is attribute-based** (`#[Test]`, `#[DataProvider]`) — doc-comment
   `@test`/`@dataProvider` are gone; don't add new ones (PHPUnit 12 removes support).
 
+### Hardening round 2 (`2026_07_20_13*`)
+
+- **Sentry** (`sentry/sentry-laravel`) is wired via `Handler::register` reportable
+  (L13: same hook works through `handleApiException` flow) — **inactive without
+  `SENTRY_LARAVEL_DSN`**; never remove the `app()->bound('sentry')` guard.
+- **Content soft deletes.** Banner/Article/Faq/Page use `SoftDeletes`; admin delete is
+  recoverable: `?trashed=1` on index = recycle bin, `POST /{id}/restore` restores
+  (route uses `{id}` + `onlyTrashed()->findOrFail` because implicit binding hides
+  trashed rows). Content caches also flush on `restored`. Slug uniqueness counts
+  trashed rows (intentional — restore would otherwise collide).
+- **Audit trail** via spatie activity(): settings update (changed keys+values),
+  coupon create/update/delete, admin manager create/update/toggle/role-removal
+  (including which permissions were granted). Follow the AdminSupplierController
+  activity() pattern for any new sensitive admin action.
+- **Admin IP allowlist** — `admin.ip` middleware (`RestrictAdminByIp`) on the whole
+  `/admin` + `/v1/podium` groups; list from `config('security.admin_ip_whitelist')`
+  (env `ADMIN_IP_WHITELIST`, comma-separated IP/CIDR via Symfony IpUtils).
+  **Empty list = disabled** (default) — enabling is an explicit env change.
+- **OpenAPI export** — `api.json` (Scramble) is committed at repo root; regenerate
+  with `php artisan scramble:export` after route/request changes.
+- Pinned by `Admin/AdminHardeningRound2Test` (8 tests).
+
 ## Key Conventions
 
 - All API responses use the `success()`/`error()` helpers — never return raw `response()->json()` from authenticated endpoints

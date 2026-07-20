@@ -5,11 +5,13 @@ namespace App\Models;
 use App\Traits\PersianDate;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Banner extends Model
 {
     use HasFactory;
     use PersianDate;
+    use SoftDeletes;
 
     const TABLE = 'banners';
 
@@ -54,5 +56,6 @@ class Banner extends Model
     {
         static::saved(fn () => \Illuminate\Support\Facades\Cache::forget(self::CACHE_KEY));
         static::deleted(fn () => \Illuminate\Support\Facades\Cache::forget(self::CACHE_KEY));
+        static::restored(fn () => \Illuminate\Support\Facades\Cache::forget(self::CACHE_KEY));
     }
 }

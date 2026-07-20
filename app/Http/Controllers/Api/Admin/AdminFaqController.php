@@ -30,6 +30,11 @@ class AdminFaqController extends Controller
             $query->where(Faq::CATEGORY, $request->string('category'));
         }
 
+        // سطل بازیافت: ?trashed=1 فقط حذف‌شده‌های نرم را برمی‌گرداند
+        if ($request->boolean('trashed')) {
+            $query->onlyTrashed();
+        }
+
         return success(FaqResource::collection($query->paginate($this->perPage(50))), __('admin.faq.list_received'));
     }
 
@@ -63,11 +68,20 @@ class AdminFaqController extends Controller
         return success(new FaqResource($faq->refresh()), __('admin.faq.toggled'));
     }
 
-    // DELETE /admin/faq/{faq}
+    // DELETE /admin/faq/{faq} — حذف نرم
     public function destroy(Faq $faq): JsonResponse
     {
         $faq->delete();
 
         return success(null, __('admin.faq.deleted'));
+    }
+
+    // POST /admin/faq/{id}/restore
+    public function restore(int $id): JsonResponse
+    {
+        $faq = Faq::onlyTrashed()->findOrFail($id);
+        $faq->restore();
+
+        return success(new FaqResource($faq->refresh()), __('admin.faq.restored'));
     }
 }

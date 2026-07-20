@@ -34,6 +34,11 @@ class AdminBannerController extends Controller
             $query->where(Banner::IS_ACTIVE, $request->boolean('is_active'));
         }
 
+        // سطل بازیافت: ?trashed=1 فقط حذف‌شده‌های نرم را برمی‌گرداند
+        if ($request->boolean('trashed')) {
+            $query->onlyTrashed();
+        }
+
         return success(BannerResource::collection($query->paginate($this->perPage())), __('admin.banners.list_received'));
     }
 
@@ -77,13 +82,21 @@ class AdminBannerController extends Controller
         return success(new BannerResource($banner->refresh()), __('admin.banners.toggled'));
     }
 
-    // DELETE /admin/banners/{banner}
+    // DELETE /admin/banners/{banner} — حذف نرم (فایل تصویر تا restore حفظ می‌شود)
     public function destroy(Banner $banner): JsonResponse
     {
-        $this->deleteImageIfOwned($banner);
         $banner->delete();
 
         return success(null, __('admin.banners.deleted'));
+    }
+
+    // POST /admin/banners/{id}/restore
+    public function restore(int $id): JsonResponse
+    {
+        $banner = Banner::onlyTrashed()->findOrFail($id);
+        $banner->restore();
+
+        return success(new BannerResource($banner->refresh()), __('admin.banners.restored'));
     }
 
     private function deleteImageIfOwned(Banner $banner): void

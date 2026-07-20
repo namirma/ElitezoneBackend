@@ -17,6 +17,7 @@
         "laravel/tinker": "^2.8",
         "league/flysystem-aws-s3-v3": "^3.35",
         "santigarcor/laratrust": "^8.2",
+        "sentry/sentry-laravel": "^4.27",
         "spatie/laravel-activitylog": "^4.10",
         "symfony/css-selector": "^7.2",
         "symfony/dom-crawler": "^7.2",

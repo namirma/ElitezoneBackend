@@ -59,7 +59,7 @@ use Illuminate\Support\Facades\Route;
 
 // ── Podium services (admin-only proxy) ────────────────────────────────────
 Route::prefix('v1/podium')
-    ->middleware(['auth:sanctum', 'role.admin'])
+    ->middleware(['auth:sanctum', 'role.admin', 'admin.ip'])
     ->group(function () {
         Route::post('/settlements/single', [PodiumSettlementController::class, 'single']);
         Route::get('/balances', [PodiumBalanceController::class, 'index']);
@@ -70,7 +70,7 @@ Route::prefix('v1/podium')
     });
 
 // ── Admin panel (auth + role:admin) ───────────────────────────────────────
-Route::middleware(['auth:sanctum', 'role.admin'])->prefix('admin')->group(function () {
+Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->group(function () {
 
     // Dashboard — KPI اجرایی
     Route::get('/dashboard', [AdminDashboardController::class, 'index']);
@@ -363,6 +363,7 @@ Route::middleware(['auth:sanctum', 'role.admin'])->prefix('admin')->group(functi
         Route::put('/{banner}', 'update');
         Route::post('/{banner}', 'update'); // multipart image replace
         Route::post('/{banner}/toggle', 'toggle');
+        Route::post('/{id}/restore', 'restore')->whereNumber('id');
         Route::delete('/{banner}', 'destroy');
     });
 
@@ -374,6 +375,7 @@ Route::middleware(['auth:sanctum', 'role.admin'])->prefix('admin')->group(functi
         Route::put('/{article}', 'update');
         Route::post('/{article}', 'update'); // multipart cover replace
         Route::post('/{article}/toggle', 'toggle');
+        Route::post('/{id}/restore', 'restore')->whereNumber('id');
         Route::delete('/{article}', 'destroy');
     });
 
@@ -384,6 +386,7 @@ Route::middleware(['auth:sanctum', 'role.admin'])->prefix('admin')->group(functi
         Route::post('/', 'store');
         Route::put('/{faq}', 'update');
         Route::post('/{faq}/toggle', 'toggle');
+        Route::post('/{id}/restore', 'restore')->whereNumber('id');
         Route::delete('/{faq}', 'destroy');
     });
 
@@ -443,6 +446,7 @@ Route::middleware(['auth:sanctum', 'role.admin'])->prefix('admin')->group(functi
         Route::post('/', 'store');
         Route::put('/{page}', 'update');
         Route::post('/{page}/toggle', 'toggle');
+        Route::post('/{id}/restore', 'restore')->whereNumber('id');
         Route::delete('/{page}', 'destroy');
     });
 
