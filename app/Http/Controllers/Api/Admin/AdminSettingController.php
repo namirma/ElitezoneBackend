@@ -53,6 +53,12 @@ class AdminSettingController extends Controller
             );
         }
 
+        // Audit: چه کسی کدام کلیدها را تغییر داد (مقادیر هم برای بازسازی ثبت می‌شود)
+        activity()
+            ->causedBy(auth()->user())
+            ->withProperties(['keys' => array_keys($validated['settings']), 'values' => $validated['settings']])
+            ->log('تنظیمات سایت بروزرسانی شد.');
+
         return success(Setting::allCached(), __('admin.settings.updated'));
     }
 }

@@ -82,6 +82,10 @@ class AdminManagerController extends Controller
             return $user;
         });
 
+        activity()->performedOn($user)->causedBy(auth()->user())
+            ->withProperties(['mobile' => $user->mobile, 'permissions' => $request->input('permissions')])
+            ->log('مدیر سیستم جدید ساخته شد.');
+
         return created(new UserResource($user->load(['profile', 'roles'])), __('admin.admins.created'));
     }
 
@@ -129,6 +133,13 @@ class AdminManagerController extends Controller
             $user->tokens()->delete();
         }
 
+        activity()->performedOn($user)->causedBy(auth()->user())
+            ->withProperties([
+                'password_changed' => $request->filled(User::PASSWORD),
+                'permissions' => $request->has('permissions') ? $request->input('permissions') : null,
+            ])
+            ->log('اطلاعات مدیر سیستم ویرایش شد.');
+
         return success(new UserResource($user->refresh()->load(['profile', 'roles'])), __('admin.admins.updated'));
     }
 
@@ -149,6 +160,10 @@ class AdminManagerController extends Controller
         if (! $newState) {
             $user->tokens()->delete();
         }
+
+        activity()->performedOn($user)->causedBy(auth()->user())
+            ->withProperties(['is_active' => $newState])
+            ->log($newState ? 'حساب مدیر فعال شد.' : 'حساب مدیر غیرفعال شد.');
 
         return success(new UserResource($user->refresh()->load(['profile', 'roles'])), __('admin.admins.toggled'));
     }
@@ -177,6 +192,10 @@ class AdminManagerController extends Controller
 
         $user->removeRole('admin');
         $user->tokens()->delete();
+
+        activity()->performedOn($user)->causedBy(auth()->user())
+            ->withProperties(['mobile' => $user->mobile])
+            ->log('نقش مدیر از کاربر جدا شد.');
 
         return success(null, __('admin.admins.removed'));
     }

@@ -24,6 +24,11 @@ class AdminPageController extends Controller
             $query->where(Page::IS_ACTIVE, $request->boolean('is_active'));
         }
 
+        // سطل بازیافت: ?trashed=1 فقط حذف‌شده‌های نرم را برمی‌گرداند
+        if ($request->boolean('trashed')) {
+            $query->onlyTrashed();
+        }
+
         return success(PageResource::collection($query->paginate($this->perPage(50))), __('admin.pages.list_received'));
     }
 
@@ -57,11 +62,20 @@ class AdminPageController extends Controller
         return success(new PageResource($page->refresh()), __('admin.pages.toggled'));
     }
 
-    // DELETE /admin/pages/{page}
+    // DELETE /admin/pages/{page} — حذف نرم
     public function destroy(Page $page): JsonResponse
     {
         $page->delete();
 
         return success(null, __('admin.pages.deleted'));
+    }
+
+    // POST /admin/pages/{id}/restore
+    public function restore(int $id): JsonResponse
+    {
+        $page = Page::onlyTrashed()->findOrFail($id);
+        $page->restore();
+
+        return success(new PageResource($page->refresh()), __('admin.pages.restored'));
     }
 }

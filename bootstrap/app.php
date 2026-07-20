@@ -92,6 +92,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role.employer' => EnsureUserIsEmployer::class,
             'role.supplier' => EnsureUserIsSupplier::class,
             'admin.permission' => \App\Http\Middleware\EnsureAdminHasPermission::class,
+            'admin.ip' => \App\Http\Middleware\RestrictAdminByIp::class,
             'track' => TrackDashboardUsage::class,
             'idempotency' => Idempotency::class,
             'role.selected' => EnsureRoleIsSelected::class,
@@ -116,6 +117,13 @@ return Application::configure(basePath: dirname(__DIR__))
             'password',
             'password_confirmation',
         ]);
+
+        // Sentry — فقط وقتی DSN ست باشد فعال است (بدون DSN کاملاً بی‌اثر).
+        $exceptions->report(function (Throwable $e) {
+            if (app()->bound('sentry')) {
+                app('sentry')->captureException($e);
+            }
+        });
 
         /*
         |----------------------------------------------------------------------

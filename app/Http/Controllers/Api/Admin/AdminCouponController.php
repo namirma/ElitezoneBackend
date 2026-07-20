@@ -44,6 +44,10 @@ class AdminCouponController extends Controller
     {
         $coupon = Coupon::create($request->validated());
 
+        activity()->performedOn($coupon)->causedBy(auth()->user())
+            ->withProperties(['code' => $coupon->code, 'type' => $coupon->type, 'amount' => $coupon->amount])
+            ->log('کد تخفیف ساخته شد.');
+
         return created(new CouponResource($coupon), __('admin.coupons.created'));
     }
 
@@ -56,6 +60,10 @@ class AdminCouponController extends Controller
         }
 
         $coupon->update($request->validated());
+
+        activity()->performedOn($coupon)->causedBy(auth()->user())
+            ->withProperties($request->validated())
+            ->log('کد تخفیف ویرایش شد.');
 
         return success(new CouponResource($coupon->refresh()), __('admin.coupons.updated'));
     }
@@ -74,6 +82,10 @@ class AdminCouponController extends Controller
         if (! is_null($coupon->{Coupon::USED_AT})) {
             return error(__('admin.coupons.used_not_deletable'), [], 422);
         }
+
+        activity()->causedBy(auth()->user())
+            ->withProperties(['code' => $coupon->code])
+            ->log('کد تخفیف حذف شد.');
 
         $coupon->delete();
 

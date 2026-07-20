@@ -17,6 +17,7 @@
         "league/flysystem-aws-s3-v3": "3.0",
         "mpdf/mpdf": "^8.2",
         "santigarcor/laratrust": "^8.5",
+        "sentry/sentry-laravel": "^4.27",
         "spatie/laravel-activitylog": "^4.10",
         "symfony/css-selector": "^7.2",
         "symfony/dom-crawler": "^7.2",
