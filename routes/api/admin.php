@@ -136,8 +136,9 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
         Route::get('/{user}/orders', 'orders');
     });
 
-    // Orders
-    Route::controller(AdminOrderController::class)->prefix('orders')->group(function () {
+    // Orders — پشتِ مجوزِ granular «manage-orders» (قبلاً این slug به هیچ روتی وصل نبود،
+    // پس ادمینِ محدودشده هم می‌توانست وضعیت سفارش/فاکتور مودیان را تغییر دهد).
+    Route::controller(AdminOrderController::class)->prefix('orders')->middleware('admin.permission:manage-orders')->group(function () {
         Route::get('/', 'index');
         Route::get('/{order}/history', 'history');
         Route::get('/{order}', 'show');
@@ -149,8 +150,8 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
             ->name('admin.orders.weighbridge.submit');
     });
 
-    // Tickets — مدیریت تیکت‌های پشتیبانی
-    Route::controller(AdminTicketController::class)->prefix('tickets')->group(function () {
+    // Tickets — مدیریت تیکت‌های پشتیبانی — پشتِ مجوزِ granular «manage-tickets».
+    Route::controller(AdminTicketController::class)->prefix('tickets')->middleware('admin.permission:manage-tickets')->group(function () {
         Route::get('/', 'index');
         Route::get('/kpis', 'kpis'); // باید پیش از wildcard /{ticket} باشد
         Route::get('/departments', 'departments'); // باید پیش از wildcard /{ticket} باشد

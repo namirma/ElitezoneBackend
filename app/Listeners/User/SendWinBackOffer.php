@@ -3,6 +3,7 @@
 namespace App\Listeners\User;
 
 use App\Events\User\CustomerSegmentChanged;
+use App\Models\Coupon;
 use App\Models\CustomerStat;
 use App\Models\UserProfile;
 use App\Services\Marketing\CouponService;
@@ -13,6 +14,8 @@ use Illuminate\Support\Facades\Log;
 class SendWinBackOffer implements ShouldQueue
 {
     use InteractsWithQueue;
+
+    private const WIN_BACK_REASON = 'Win-Back Offer (System Auto)';
 
     protected CouponService $couponService;
 
@@ -43,13 +46,25 @@ class SendWinBackOffer implements ShouldQueue
 
     private function sendWinBackSms($user)
     {
-        // ۱. ساخت کوپن (همان کد قبلی)
-        $coupon = $this->couponService->createPersonalCoupon(
-            $user,
-            10,
-            2,
-            'Win-Back Offer (System Auto)'
-        );
+        // گاردِ ایدمپوتنسی: این لیسنر ShouldQueue است و در صورت شکستِ گذرا (مثلاً
+        // throw شدنِ Log در ادامه) دوباره تلاش می‌شود. بدون این گارد هر retry یک کوپنِ
+        // تخفیفِ واقعیِ جدید می‌ساخت (نشتِ درآمد). اگر کوپنِ win-backِ استفاده‌نشده و
+        // منقضی‌نشده‌ای برای این کاربر باشد، همان را استفاده کن و کوپن جدید نساز.
+        $coupon = Coupon::where(Coupon::USER_ID, $user->id)
+            ->where(Coupon::REASON, self::WIN_BACK_REASON)
+            ->whereNull(Coupon::USED_AT)
+            ->where(Coupon::EXPIRES_AT, '>', now())
+            ->latest(Coupon::ID)
+            ->first();
+
+        if (! $coupon) {
+            $coupon = $this->couponService->createPersonalCoupon(
+                $user,
+                10,
+                2,
+                self::WIN_BACK_REASON
+            );
+        }
 
         // ۲. پیدا کردن نام کاربر از پروفایل
         // با استفاده از null-safe operator (علامت سوال) چک میکنیم پروفایل وجود داشته باشه
