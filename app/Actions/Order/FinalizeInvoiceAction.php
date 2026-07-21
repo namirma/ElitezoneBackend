@@ -23,10 +23,25 @@ class FinalizeInvoiceAction
      */
     public function execute(Order $order, string $finalInvoiceRef): void
     {
-        [$feeAmount, $eliteYARUserId] = $this->resolveFee($order);
+        DB::transaction(function () use ($order, $finalInvoiceRef) {
+            // قفل کردن ردیف سفارش و بازخوانی زیر قفل — مثل بقیهٔ اکشن‌های مالی —
+            // تا هم race و هم دابل‌ارسال (double-click / retry) بی‌اثر شود.
+            $locked = Order::where(Order::ID, $order->id)->lockForUpdate()->first();
 
-        DB::transaction(function () use ($order, $finalInvoiceRef, $feeAmount, $eliteYARUserId) {
-            $order->update([
+            if (! $locked) {
+                throw new Exception(__('orders.elite_yar_not_found_internal'));
+            }
+
+            // ایدمپوتنسی: اگر فاکتور نهایی قبلاً ثبت شده، هیچ کاری نکن. بدون این گارد،
+            // فراخوانی دوباره یک TYPE_FEE_HOLD دوم می‌ساخت و balance_hold الیت‌یار
+            // دوباره افزایش می‌یافت (نشتِ کمیسیون).
+            if (! empty($locked->{Order::FINAL_INVOICE_REF})) {
+                return;
+            }
+
+            [$feeAmount, $eliteYARUserId] = $this->resolveFee($locked);
+
+            $locked->update([
                 Order::FINAL_INVOICE_REF => $finalInvoiceRef,
             ]);
 
@@ -34,22 +49,25 @@ class FinalizeInvoiceAction
                 $eliteYAR = User::find($eliteYARUserId);
 
                 if (! $eliteYAR) {
-                    Log::channel('orders')->error("User not found for eliteYAR fee hold. Order: {$order->id}");
+                    Log::channel('orders')->error("User not found for eliteYAR fee hold. Order: {$locked->id}");
                     throw new Exception(__('orders.elite_yar_not_found_internal'));
                 }
 
                 $wallet = $eliteYAR->wallet ?: $eliteYAR->wallet()->create([]);
 
                 $wallet->transactions()->create([
-                    'order_id' => $order->id,
+                    'order_id' => $locked->id,
                     'amount' => $feeAmount,
                     'type' => WalletTransaction::TYPE_FEE_HOLD,
                     'status' => WalletTransaction::STATUS_PENDING,
-                    'description' => __('orders.fee_hold_description', ['order_number' => $order->order_number]),
+                    'description' => __('orders.fee_hold_description', ['order_number' => $locked->order_number]),
                 ]);
 
                 $wallet->increment('balance_hold', $feeAmount);
             }
+
+            // نگه‌داشتن مدلِ ورودی هم‌گام با وضعیت جدید.
+            $order->setAttribute(Order::FINAL_INVOICE_REF, $finalInvoiceRef);
         });
     }
 

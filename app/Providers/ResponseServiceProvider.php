@@ -31,6 +31,10 @@ class ResponseServiceProvider extends ServiceProvider
             return new SzResponse([
                 'status' => false,
                 'message' => $message,
+                // «data» به‌صورت افزایشی اضافه شد تا قراردادِ مستندِ {status,message,data}
+                // در تمام مسیرها (از جمله خطاها) برقرار بماند؛ «errors» برای سازگاری با
+                // کلاینت‌های فعلی حفظ شده تا چیزی نشکند.
+                'data' => null,
                 'errors' => $errors,
             ], $status, array_merge(
                 [

@@ -45,12 +45,14 @@ class FilterProductsAction
 
         $query->when($filters->availability === 'in_stock', function ($q) {
             $q->whereHas('variants', function ($variantQuery) {
-                $variantQuery->where('stock', '>', 0);
+                // ستون واقعی «stock_quantity» است؛ «stock» وجود ندارد و باعث کرشِ
+                // «Unknown column 'stock'» (خطای ۵۰۰) روی فیلتر موجودی می‌شد.
+                $variantQuery->where(ProductVariant::STOCK_QUANTITY, '>', 0);
             });
         });
         $query->when($filters->availability === 'out_of_stock', function ($q) {
             $q->whereDoesntHave('variants', function ($variantQuery) {
-                $variantQuery->where('stock', '>', 0);
+                $variantQuery->where(ProductVariant::STOCK_QUANTITY, '>', 0);
             });
         });
 
