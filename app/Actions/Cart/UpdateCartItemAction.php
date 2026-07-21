@@ -37,6 +37,10 @@ class UpdateCartItemAction
 
         return DB::transaction(function () use ($cartItem, $variant, $cart, $data, $orderUnitsMap) {
 
+            // قفلِ ردیفِ سبد — هم‌سو با AddToCartAction — تا افزودن/به‌روزرسانیِ هم‌زمان
+            // روی یک سبد، محدودیت‌های تجمیعی (aggregate) را روی snapshotِ کهنه محاسبه نکنند.
+            Cart::where('id', $cart->id)->lockForUpdate()->first();
+
             $newQuantities = $cartItem->quantities;
             if (is_string($newQuantities)) {
                 $newQuantities = json_decode($newQuantities, true);

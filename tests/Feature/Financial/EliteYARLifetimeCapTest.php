@@ -53,7 +53,9 @@ class EliteYARLifetimeCapTest extends TestCase
         Wallet::create([Wallet::USER_ID => $vat->id, Wallet::BALANCE => 0, Wallet::BALANCE_HOLD => 0]);
 
         // Ensure the cap multiplier is the spec default (2×) regardless of env.
-        config(['financial.consultant_lifetime_cap_multiplier' => 2.0]);
+        // (کلید واقعی elite_yar_lifetime_cap_multiplier است؛ کلید قدیمیِ consultant_*
+        //  دیگر وجود ندارد و این override را بی‌اثر می‌کرد.)
+        config(['financial.elite_yar_lifetime_cap_multiplier' => 2.0]);
 
         $buyer = User::factory()->create();
         Wallet::create([Wallet::USER_ID => $buyer->id, Wallet::BALANCE => 0, Wallet::BALANCE_HOLD => 0]);

@@ -34,6 +34,16 @@ class UpdateCouponRequest extends FormRequest
         ];
     }
 
+    /**
+     * برای کوپنِ درصدی، مبلغ نباید از ۱۰۰ بیشتر باشد.
+     */
+    public function withValidator($validator): void
+    {
+        $validator->sometimes(Coupon::AMOUNT, 'max:100', function ($input) {
+            return $input->{Coupon::TYPE} === Coupon::TYPE_PERCENT;
+        });
+    }
+
     public function messages(): array
     {
         return [
