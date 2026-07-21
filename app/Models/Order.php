@@ -326,6 +326,10 @@ class Order extends Model
             'shipments.originFactoryLocation',
             'shipments.destinationAddress.city',
             'shipments.destinationAddress.province',
+            // بدون این، OrderResource::coupon_code همیشه silently غایب بود چون
+            // whenLoaded('coupon') هرگز true نمی‌شد (نه فقط در چک‌اوت — همه کنترلرهای
+            // سفارش که این متد را صدا می‌زنند).
+            'coupon',
         ];
     }
 

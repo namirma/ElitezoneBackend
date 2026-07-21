@@ -28,7 +28,9 @@ class AdminManagerController extends Controller
     {
         $query = User::query()
             ->whereHas('roles', fn ($r) => $r->where('name', 'admin'))
-            ->with(['profile', 'roles'])
+            // permissions هم لود می‌شود چون UserResource برای هر ردیف (همه admin) آن را
+            // می‌خواند — بدون این، هر ردیف یک کوئری جدا می‌زد (N+1).
+            ->with(['profile', 'roles', 'permissions'])
             ->orderByDesc(User::ID);
 
         if ($request->filled('search')) {
@@ -50,7 +52,7 @@ class AdminManagerController extends Controller
             return error(__('admin.admins.not_admin'), [], 404);
         }
 
-        return success(new UserResource($user->load(['profile', 'roles'])), __('admin.admins.received'));
+        return success(new UserResource($user->load(['profile', 'roles', 'permissions'])), __('admin.admins.received'));
     }
 
     // POST /admin/admins
@@ -72,6 +74,8 @@ class AdminManagerController extends Controller
                 UserProfile::NAME => $request->input('name'),
                 UserProfile::FAMILY => $request->input('family'),
                 UserProfile::EMAIL => $request->input('email'),
+                // ستون NOT NULL بدون default است؛ مدیر داخلی نیازی به کد ملی ندارد.
+                UserProfile::NATIONAL_CODE => '',
             ]);
 
             $user->addRole('admin');

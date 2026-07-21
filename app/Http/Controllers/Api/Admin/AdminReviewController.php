@@ -52,7 +52,9 @@ class AdminReviewController extends Controller
             ProductReview::REJECTION_REASON => null,
         ])->save();
 
-        return success(new ProductReviewResource($review->refresh()), __('admin.reviews.approved'));
+        // refresh() به‌تنهایی relation های هرگز-لودنشده (route model binding عریان) را
+        // لود نمی‌کند؛ بدون load صریح، user/product در پاسخ whenLoaded خالی می‌ماندند.
+        return success(new ProductReviewResource($review->refresh()->load(['user.profile', 'product'])), __('admin.reviews.approved'));
     }
 
     // POST /admin/reviews/{review}/reject
@@ -68,6 +70,6 @@ class AdminReviewController extends Controller
             ProductReview::REJECTION_REASON => $validated['rejection_reason'],
         ])->save();
 
-        return success(new ProductReviewResource($review->refresh()), __('admin.reviews.rejected'));
+        return success(new ProductReviewResource($review->refresh()->load(['user.profile', 'product'])), __('admin.reviews.rejected'));
     }
 }

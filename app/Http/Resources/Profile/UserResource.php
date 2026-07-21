@@ -24,8 +24,8 @@ class UserResource extends BaseJsonResource
             $selectedBadge = $this->badges->last();
         }
 
-        // موبایل فقط برای خود شخص و ادمین کامل برمی‌گردد — در نمایش به دیگران
-        // (مثل تأمین‌کننده در آیتم سفارش) mask می‌شود.
+        // موبایل/وضعیت فعال‌بودن فقط برای خود شخص و ادمین کامل برمی‌گردد — در نمایش
+        // به دیگران (مثل تأمین‌کننده در آیتم سفارش) mask/مخفی می‌شود.
         $viewer = $request->user();
         $canSeeMobile = $viewer && ((int) $viewer->id === (int) $this->{User::ID} || $viewer->hasRole('admin'));
 
@@ -35,6 +35,17 @@ class UserResource extends BaseJsonResource
             User::MOBILE => $canSeeMobile
                 ? $this->{User::MOBILE}
                 : $this->maskMobile($this->{User::MOBILE}),
+            // بک‌آفیس (لیست/جزئیات کاربران) به این فیلد نیاز دارد؛ قبلاً اصلاً برنمی‌گشت.
+            User::IS_ACTIVE => $canSeeMobile ? (bool) $this->{User::IS_ACTIVE} : null,
+            // دو مصرف: (۱) GET api/profile خودِ ادمین → پنل بتواند منوهای غیرمجاز را از
+            // ابتدا مخفی کند، نه فقط بعد از اولین ۴۰۳. (۲) GET api/admin/admins[/{id}] →
+            // فرم ویرایش بتواند مجوزهای فعلی را pre-fill کند. آرایه‌ی خالی یعنی «بدون
+            // مجوز ثبت‌شده» که طبق قرارداد یعنی دسترسی کامل (BC) — فرانت این تفسیر را
+            // می‌داند، این‌جا صرفاً وضعیت خام پایگاه‌داده برمی‌گردد.
+            'permissions' => $this->when(
+                $canSeeMobile && $this->hasRole('admin'),
+                fn () => $this->permissions->pluck('name')->all()
+            ),
             User::CREATED_AT => $this->{User::CREATED_AT},
             User::PASSWORD => (bool) $this->{User::PASSWORD},
             User::RELATION_PROFILE => new UserProfileResource($this->whenLoaded(User::RELATION_PROFILE)),

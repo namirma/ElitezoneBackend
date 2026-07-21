@@ -74,6 +74,8 @@ class TicketResource extends BaseJsonResource
             'first_responded_at' => $this->first_responded_at?->toDateTimeString(),
             'resolved_at' => $this->resolved_at?->toDateTimeString(),
             'closed_at' => $this->closed_at?->toDateTimeString(),
+            // EscalateOverdueTicketsJob این را پر می‌کند؛ قبلاً serialize نمی‌شد.
+            'escalated_at' => $this->escalated_at?->toDateTimeString(),
             'reopened_count' => (int) $this->reopened_count,
 
             'created_at' => $this->created_at?->toDateTimeString(),

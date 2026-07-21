@@ -65,7 +65,9 @@ class ProductReviewController extends Controller
         ])->save();
 
         return created(
-            new ProductReviewResource($review->refresh()),
+            // refresh() به‌تنهایی relation هرگز-لودنشده را لود نمی‌کند؛ بدون load صریح،
+            // user/product در پاسخ (whenLoaded) خالی می‌ماندند.
+            new ProductReviewResource($review->refresh()->load(['user.profile', 'product'])),
             $isResubmission ? __('reviews.updated_pending') : __('reviews.submitted_pending')
         );
     }

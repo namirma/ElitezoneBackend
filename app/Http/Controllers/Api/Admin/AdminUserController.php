@@ -25,7 +25,9 @@ class AdminUserController extends Controller
     public function index(UserSearchRequest $request): JsonResponse
     {
         $users = User::query()
-            ->with(['profile', 'roles'])
+            // type لود می‌شود تا UserResource بتواند «نوع کاربر» (مثلاً مشتری) را برای
+            // کاربرانی که هنوز نقش Laratrust خاصی انتخاب نکرده‌اند نمایش دهد.
+            ->with(['profile', 'roles', User::RELATION_TYPE])
             ->when(
                 $request->filled('role'),
                 fn (Builder $q) => $q->whereHas('roles', fn ($r) => $r->where('name', $request->role))

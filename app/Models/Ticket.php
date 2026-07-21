@@ -49,6 +49,8 @@ class Ticket extends Model
 
     public const SLA_DUE_AT = 'sla_due_at';
 
+    public const ESCALATED_AT = 'escalated_at';
+
     public const REOPENED_COUNT = 'reopened_count';
 
     // ── Status values (full helpdesk state machine) ───────────────────────
@@ -126,6 +128,7 @@ class Ticket extends Model
         self::RESOLVED_AT => 'datetime',
         self::CLOSED_AT => 'datetime',
         self::SLA_DUE_AT => 'datetime',
+        self::ESCALATED_AT => 'datetime',
         self::REOPENED_COUNT => 'integer',
     ];
 
