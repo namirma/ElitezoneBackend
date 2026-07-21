@@ -12,7 +12,6 @@ use App\Models\WalletTransaction;
 use App\Services\SmsService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Mockery;
 use Tests\TestCase;
 
