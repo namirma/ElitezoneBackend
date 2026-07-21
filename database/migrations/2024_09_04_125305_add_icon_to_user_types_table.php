@@ -22,7 +22,9 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('user_types', function (Blueprint $table) {
-            //
+            if (Schema::hasColumn('user_types', 'icon')) {
+                $table->dropColumn('icon');
+            }
         });
     }
 };
