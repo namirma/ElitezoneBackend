@@ -41,6 +41,8 @@ class UserNotification extends Model
 
     const SENDER_ID = 'sender_id';
 
+    const BATCH_ID = 'batch_id';
+
     const SUBJECT = 'subject';
 
     const BODY = 'body';
@@ -59,6 +61,7 @@ class UserNotification extends Model
     protected $fillable = [
         self::USER_ID,
         self::SENDER_ID,
+        self::BATCH_ID,
         self::SUBJECT,
         self::BODY,
         self::READ_AT,

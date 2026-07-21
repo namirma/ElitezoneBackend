@@ -26,9 +26,21 @@ class Idempotency
         }
 
         $key = $request->header(self::HEADER_KEY);
+        $isFingerprint = false;
 
+        // اگر کلاینت هدرِ Idempotency-Key نفرستد، به‌جای رهاکردنِ درخواست (که دابل‌کلیک/
+        // retryِ کلاینت را روی مسیر مالی بی‌محافظت می‌گذاشت) یک «اثرانگشتِ» کوتاه‌عمر از
+        // خودِ درخواست می‌سازیم: (متد + مسیر + هشِ بدنه). این درخواست را الزامی نمی‌کند
+        // (هرگز ۴۲۲ نمی‌دهیم و فرانت نمی‌شکند) اما ارسال‌های تکراریِ لحظه‌ایِ یکسان را
+        // در یک پنجرهٔ کوتاه حذف می‌کند. پنجره کوتاه است تا دو درخواستِ واقعاً مجزا با
+        // فاصله بلاک نشوند.
         if (empty($key)) {
-            return $next($request);
+            $key = 'fp:'.sha1(implode('|', [
+                $request->method(),
+                $request->path(),
+                (string) $request->getContent(),
+            ]));
+            $isFingerprint = true;
         }
 
         // مهمان‌ها با IP از هم جدا می‌شوند — کلید مشترک 'guest' باعث می‌شد دو
@@ -78,7 +90,13 @@ class Idempotency
                             'headers' => $safeHeaders,
                         ];
 
-                        Cache::put($cacheKey, $responseData, now()->addHours(self::CACHE_TTL_HOURS));
+                        // کلیدِ صریحِ کلاینت ۲۴ ساعت نگه داشته می‌شود (idempotencyِ کامل)،
+                        // اما کلیدِ اثرانگشتیِ خودکار فقط چند ثانیه (صرفاً ضدِ دابل‌سابمیت).
+                        $ttl = $isFingerprint
+                            ? now()->addSeconds((int) config('idempotency.fingerprint_window_seconds', 10))
+                            : now()->addHours(self::CACHE_TTL_HOURS);
+
+                        Cache::put($cacheKey, $responseData, $ttl);
                     }
                 }
             }
