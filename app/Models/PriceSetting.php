@@ -68,13 +68,23 @@ class PriceSetting extends Model
 
     public static function getValueAsFloat(string $code, float $default = 0.0): float
     {
-        $setting = self::where(self::CODE, $code)->first();
+        // از همان کشِ getValue استفاده می‌کنیم؛ قبلاً این متد روی هر محاسبهٔ VAT-inclusive
+        // یک کوئری مستقیم و بدون‌کش می‌زد، در حالی‌که یک مقدارِ تنظیماتیِ کم‌تغییر است.
+        return (float) self::getValue($code, $default);
+    }
 
-        if (! $setting) {
-            return $default;
-        }
+    /**
+     * ابطالِ کش هنگام تغییر/حذفِ تنظیمات تا مقادیر جدید (مثل نرخ VAT) فوراً اعمال شوند
+     * و روی مقدارِ کش‌شده تا ۲۴ ساعت گیر نکنند.
+     */
+    protected static function booted(): void
+    {
+        $flush = function (self $setting): void {
+            Cache::forget("price_setting_{$setting->{self::CODE}}");
+        };
 
-        return (float) $setting->value;
+        static::saved($flush);
+        static::deleted($flush);
     }
 
     public static function getValueAsInt($code, $default = 0)
