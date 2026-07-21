@@ -57,11 +57,13 @@ class AdminWalletController extends Controller
     ): JsonResponse {
         try {
             // اجرای اکشن پردازش
+            $verifiedAmount = $request->validated('verified_amount');
             $updatedTransaction = $processAction->execute(
                 $transaction,
                 $request->validated('status'),
                 $request->validated('note'),
-                Auth::user()
+                Auth::user(),
+                $verifiedAmount !== null ? (float) $verifiedAmount : null
             );
 
             return success(
