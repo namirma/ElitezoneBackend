@@ -25,8 +25,13 @@ use Illuminate\Support\Facades\Route;
 */
 
 // ── Payment gateway callbacks (public) ────────────────────────────────────
-Route::post('/payment/result', [PaymentController::class, 'result']);
-Route::any('/payment/callback', [PaymentController::class, 'callback'])->name('payment.callback');
+// throttle: این endpointهای عمومی‌اند و بدون سقف قابل flood/forge بودند؛ verbها هم
+// به POST/GET محدود شد (Route::any قبلاً PUT/PATCH/DELETE را هم می‌پذیرفت). امنیت
+// نهایی همچنان به راستی‌آزماییِ امضای درگاه در PaymentController وابسته است.
+Route::post('/payment/result', [PaymentController::class, 'result'])->middleware('throttle:30,1');
+Route::match(['get', 'post'], '/payment/callback', [PaymentController::class, 'callback'])
+    ->middleware('throttle:30,1')
+    ->name('payment.callback');
 
 // ── Search / Question (public) ────────────────────────────────────────────
 // throttle: هر درخواست یک ردیف در جدول searches می‌نویسد — بدون سقف، endpoint
