@@ -68,6 +68,9 @@ jobs:
       - name: Pint (code style, no changes)
         run: ./vendor/bin/pint --test
 
+      - name: PHPStan (static analysis, level 5 + baseline)
+        run: ./vendor/bin/phpstan analyse --memory-limit=1G --no-progress
+
       - name: PHPUnit
         env:
           DB_HOST: 127.0.0.1

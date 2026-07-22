@@ -480,8 +480,10 @@ class ProcessPodiumDepositAction
             ->with('user')
             ->first();
 
-        if ($account && $account->user && (string) $account->user->national_code === (string) $nationalCode) {
-            return $account->user;
+        $user = $account?->user;
+
+        if ($user !== null && (string) $user->national_code === (string) $nationalCode) {
+            return $user;
         }
 
         return null;

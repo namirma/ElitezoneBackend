@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Audit;
 
+use App\Jobs\Notification\SendInviteSmsJob;
+use App\Jobs\Notification\SendSmsJob;
 use App\Services\SmsService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
@@ -47,7 +49,7 @@ class ReAuditFixesTest extends TestCase
      */
     public function test_sms_jobs_allow_full_retries(): void
     {
-        foreach ([\App\Jobs\Notification\SendSmsJob::class, \App\Jobs\Notification\SendInviteSmsJob::class] as $jobClass) {
+        foreach ([SendSmsJob::class, SendInviteSmsJob::class] as $jobClass) {
             $this->assertFalse(
                 property_exists($jobClass, 'maxExceptions'),
                 "{$jobClass} should not declare maxExceptions (it neutralises tries)"

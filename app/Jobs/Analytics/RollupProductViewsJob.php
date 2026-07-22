@@ -11,6 +11,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * بازدیدهای خام را روزانه در product_view_daily تجمیع می‌کند و سپس داده‌ی خامِ
@@ -35,7 +36,7 @@ class RollupProductViewsJob implements ShouldQueue
 
     public function failed(\Throwable $e): void
     {
-        \Illuminate\Support\Facades\Log::error('RollupProductViewsJob failed after retries', [
+        Log::error('RollupProductViewsJob failed after retries', [
             'error' => $e->getMessage(),
         ]);
     }
