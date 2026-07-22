@@ -1,7 +1,9 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use League\Flysystem\FilesystemException;
 
 /**
  * Data migration: move archived invoice PDFs off the web-exposed `public` disk onto the
@@ -35,19 +37,26 @@ return new class extends Migration
         $from = Storage::disk($fromDisk);
         $to = Storage::disk($toDisk);
 
-        if (! $from->exists($this->dir)) {
-            return;
-        }
-
-        foreach ($from->allFiles($this->dir) as $path) {
-            if ($to->exists($path)) {
-                $from->delete($path); // already relocated on a prior run
-
-                continue;
+        // Best-effort data migration: an unreachable disk (e.g. an s3 driver with
+        // unset credentials on CI / fresh installs) must not block the schema
+        // migration chain — the files can always be relocated by re-running later.
+        try {
+            if (! $from->exists($this->dir)) {
+                return;
             }
 
-            $to->put($path, $from->get($path));
-            $from->delete($path);
+            foreach ($from->allFiles($this->dir) as $path) {
+                if ($to->exists($path)) {
+                    $from->delete($path); // already relocated on a prior run
+
+                    continue;
+                }
+
+                $to->put($path, $from->get($path));
+                $from->delete($path);
+            }
+        } catch (FilesystemException $e) {
+            Log::warning("Invoice relocation skipped ({$fromDisk} → {$toDisk}): ".$e->getMessage());
         }
     }
 };
