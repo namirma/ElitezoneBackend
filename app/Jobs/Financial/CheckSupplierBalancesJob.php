@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\Wallet;
 use App\Services\Financial\WalletTransactionEngine;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
@@ -30,8 +31,19 @@ use Illuminate\Support\Facades\Log;
  *     - If balance >= supplier_debt_amount: reclaims the debt, releases the
  *       buyer hold to AVAILABLE, and notifies the buyer via SMS
  */
-class CheckSupplierBalancesJob implements ShouldQueue
+class CheckSupplierBalancesJob implements ShouldBeUnique, ShouldQueue
 {
+    /**
+     * جابِ زمان‌بندی‌شدهٔ singleton — قفلِ سراسری تا دو نمونه (به‌دلیل backlog صف یا
+     * cadenceِ هر-دقیقه) هم‌زمان اجرا نشوند. ۱۰ دقیقه سقفِ نگه‌داریِ قفل است.
+     */
+    public int $uniqueFor = 600;
+
+    public function uniqueId(): string
+    {
+        return 'check-supplier-balances';
+    }
+
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     /**

@@ -2,13 +2,11 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -20,29 +18,28 @@ use Illuminate\Support\Carbon;
  * @property int $view_count
  * @property numeric|null $discount_value
  * @property string|null $discount_type
- * @property Carbon|null $discount_start_date
- * @property Carbon|null $discount_end_date
+ * @property \Illuminate\Support\Carbon|null $discount_start_date
+ * @property \Illuminate\Support\Carbon|null $discount_end_date
  * @property numeric|null $min_order_value
  * @property numeric|null $max_order_value
  * @property int|null $limit_order_unit_id
  * @property array<array-key, mixed>|null $images
  * @property array<array-key, mixed>|null $videos
- * @property Carbon|null $created_at
- * @property Carbon|null $updated_at
- * @property-read Collection<int, CartItem> $cartItems
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\CartItem> $cartItems
  * @property-read int|null $cart_items_count
- * @property-read OrderUnit|null $limitOrderUnit
- * @property-read Collection<int, ProductPrice> $prices
+ * @property-read \App\Models\OrderUnit|null $limitOrderUnit
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ProductPrice> $prices
  * @property-read int|null $prices_count
- * @property-read Product $product
- * @property-read Collection<int, StockSubscription> $stockSubscriptions
+ * @property-read \App\Models\Product $product
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\StockSubscription> $stockSubscriptions
  * @property-read int|null $stock_subscriptions_count
- * @property-read ProductVariantAttribute|null $details
- * @property-read Collection<int, Attribute> $variantAttributes
+ * @property-read \App\Models\ProductVariantAttribute|null $details
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Attribute> $variantAttributes
  * @property-read int|null $variant_attributes_count
- * @property-read Collection<int, Wishlist> $wishlists
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Wishlist> $wishlists
  * @property-read int|null $wishlists_count
- *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|ProductVariant active()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|ProductVariant newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|ProductVariant newQuery()
@@ -65,7 +62,6 @@ use Illuminate\Support\Carbon;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|ProductVariant whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|ProductVariant whereVideos($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|ProductVariant whereViewCount($value)
- *
  * @mixin \Eloquent
  */
 class ProductVariant extends Model
@@ -128,7 +124,9 @@ class ProductVariant extends Model
 
     protected $casts = [
         self::IS_ACTIVE => 'boolean',
-        self::STOCK_QUANTITY => 'integer',
+        // موجودی می‌تواند کسری باشد (وزن کیلوگرم در باسکول/افت وزن)؛ decimal:3 هم‌سو با
+        // ستونِ decimal(12,3) دیتابیس و کست‌های decimal سایر ستون‌های همین مدل.
+        self::STOCK_QUANTITY => 'decimal:3',
         self::VIEW_COUNT => 'integer',
         self::IMAGES => 'array',
         self::VIDEOS => 'array',
