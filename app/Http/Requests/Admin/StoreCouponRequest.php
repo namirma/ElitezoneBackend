@@ -29,6 +29,17 @@ class StoreCouponRequest extends FormRequest
         ];
     }
 
+    /**
+     * برای کوپنِ درصدی، مبلغ نباید از ۱۰۰ بیشتر باشد (کوپنِ «۵۰۰٪» داده‌ی بی‌معناست).
+     * هرچند CouponService در محاسبه کلمپ می‌کند، ورودِ داده‌ی نامعتبر را همین‌جا می‌بندیم.
+     */
+    public function withValidator($validator): void
+    {
+        $validator->sometimes(Coupon::AMOUNT, 'max:100', function ($input) {
+            return $input->{Coupon::TYPE} === Coupon::TYPE_PERCENT;
+        });
+    }
+
     public function messages(): array
     {
         return [

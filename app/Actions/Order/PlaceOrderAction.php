@@ -26,6 +26,7 @@ use App\Services\Shipping\CartShippingQuoteService;
 use App\Services\Shipping\ShippingCostCalculator;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class PlaceOrderAction
 {
@@ -152,6 +153,17 @@ class PlaceOrderAction
                 withVAT: true,
                 filterCategoryCode: $roleCode
             );
+
+            // گاردِ قیمتِ صفر در مرزِ ثبت سفارش: اگر ردیف قیمتی برای این
+            // (واریانت، کارخانه، محل تحویل) وجود نداشته باشد، پایپ‌لاین 0 برمی‌گرداند.
+            // این گارد از تسویهٔ سفارش با مبلغ صفر (checkout رایگان) جلوگیری می‌کند.
+            if ($pricing->finalPrice <= 0) {
+                throw ValidationException::withMessages([
+                    'items' => __('cart.limits.price_unavailable', [
+                        'name' => $item->productVariant->product->name ?? '',
+                    ]),
+                ]);
+            }
 
             // Logistics weight + sales count — shared with the pre-checkout shipping
             // quote (CartShippingQuoteService) so the quoted freight equals the charge.

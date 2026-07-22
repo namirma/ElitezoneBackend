@@ -24,7 +24,12 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('contractor_profiles', function (Blueprint $table) {
-            //
+            if (Schema::hasColumn('contractor_profiles', 'not_related')) {
+                $table->dropColumn('not_related');
+            }
+            if (Schema::hasColumn('contractor_profiles', 'activity_provinces')) {
+                $table->dropColumn('activity_provinces');
+            }
         });
     }
 };

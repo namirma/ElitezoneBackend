@@ -5,6 +5,7 @@ namespace App\Actions\Product;
 use App\DataTransferObjects\Product\ProductFilterData;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\ProductVariantAttribute;
 use App\Repositories\Contracts\ProductRepositoryInterface;
 use App\Services\PriceCalculationService;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -43,14 +44,34 @@ class FilterProductsAction
 
         $query->when($filters->categoryId, fn ($q) => $q->where('category_id', $filters->categoryId));
 
+        // جستجوی محصول روی نام و SKU — قبلاً پارامتر search اعتبارسنجی و حمل می‌شد
+        // اما در کوئری هرگز استفاده نمی‌شد (سرچ عملاً بی‌اثر بود و کل لیست برمی‌گشت).
+        $query->when($filters->search, function ($q) use ($filters) {
+            $term = '%'.$filters->search.'%';
+            $q->where(function ($sub) use ($term) {
+                $sub->where(Product::NAME, 'like', $term)
+                    ->orWhere(Product::SKU, 'like', $term);
+            });
+        });
+
+        // فیلترِ دسته‌های ویژگی (filter_categories) — محصولاتی که واریانتی با این
+        // attributeها دارند. قبلاً این پارامتر هم بی‌اثر بود (فقط در لیستِ واریانت‌ها اعمال می‌شد).
+        $query->when(! empty($filters->filterCategories), function ($q) use ($filters) {
+            $q->whereHas('variants.variantAttributes', function ($sub) use ($filters) {
+                $sub->whereIn(ProductVariantAttribute::ATTRIBUTE_ID, $filters->filterCategories);
+            });
+        });
+
         $query->when($filters->availability === 'in_stock', function ($q) {
             $q->whereHas('variants', function ($variantQuery) {
-                $variantQuery->where('stock', '>', 0);
+                // ستون واقعی «stock_quantity» است؛ «stock» وجود ندارد و باعث کرشِ
+                // «Unknown column 'stock'» (خطای ۵۰۰) روی فیلتر موجودی می‌شد.
+                $variantQuery->where(ProductVariant::STOCK_QUANTITY, '>', 0);
             });
         });
         $query->when($filters->availability === 'out_of_stock', function ($q) {
             $q->whereDoesntHave('variants', function ($variantQuery) {
-                $variantQuery->where('stock', '>', 0);
+                $variantQuery->where(ProductVariant::STOCK_QUANTITY, '>', 0);
             });
         });
 

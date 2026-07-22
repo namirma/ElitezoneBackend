@@ -25,14 +25,21 @@ use Illuminate\Support\Facades\Route;
 */
 
 // ── Payment gateway callbacks (public) ────────────────────────────────────
-Route::post('/payment/result', [PaymentController::class, 'result']);
-Route::any('/payment/callback', [PaymentController::class, 'callback'])->name('payment.callback');
+// throttle: این endpointهای عمومی‌اند و بدون سقف قابل flood/forge بودند؛ verbها هم
+// به POST/GET محدود شد (Route::any قبلاً PUT/PATCH/DELETE را هم می‌پذیرفت). امنیت
+// نهایی همچنان به راستی‌آزماییِ امضای درگاه در PaymentController وابسته است.
+Route::post('/payment/result', [PaymentController::class, 'result'])->middleware('throttle:30,1');
+Route::match(['get', 'post'], '/payment/callback', [PaymentController::class, 'callback'])
+    ->middleware('throttle:30,1')
+    ->name('payment.callback');
 
 // ── Search / Question (public) ────────────────────────────────────────────
 // throttle: هر درخواست یک ردیف در جدول searches می‌نویسد — بدون سقف، endpoint
 // عمومی قابل flood بود و «جستجوهای محبوب» دستکاری می‌شد.
 Route::get('/search', [SearchController::class, 'search'])->middleware('throttle:30,1');
-Route::post('/new-question', [QuestionController::class, 'submitQuestion']);
+// throttle: endpoint عمومیِ ثبتِ سوال بدونِ سقف قابلِ اسپم/flood بود (هر درخواست یک
+// رکورد می‌سازد). مثلِ بقیهٔ endpointهای عمومی محدود شد.
+Route::post('/new-question', [QuestionController::class, 'submitQuestion'])->middleware('throttle:10,1');
 
 // ── Authentication ────────────────────────────────────────────────────────
 Route::controller(AuthController::class)->prefix('authenticate')->group(function () {

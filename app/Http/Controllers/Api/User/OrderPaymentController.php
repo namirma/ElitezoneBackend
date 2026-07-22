@@ -27,8 +27,8 @@ class OrderPaymentController extends Controller
     {
         $this->authorize('pay', $order);
 
-        $payableStatuses = [Order::STATUS_PENDING, Order::STATUS_RESERVED, Order::STATUS_RESERVED_EXTENDED];
-        if (! in_array($order->status, $payableStatuses)) {
+        // منبعِ واحدِ حقیقت — هم‌تراز با مسیرِ درگاه (PayOrderAction).
+        if (! in_array($order->status, Order::PAYABLE_STATUSES, true)) {
             return error(__('orders.cannot_pay_order'), [], 400);
         }
 
