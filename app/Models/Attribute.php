@@ -2,24 +2,27 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
  * @property int $attribute_type_id
  * @property string $name
  * @property string $display_name
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\AttributeType $attributeType
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ProductVariant> $productVariants
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read AttributeType $attributeType
+ * @property-read Collection<int, ProductVariant> $productVariants
  * @property-read int|null $product_variants_count
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\AttributeValue> $values
+ * @property-read Collection<int, AttributeValue> $values
  * @property-read int|null $values_count
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Attribute newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Attribute newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Attribute query()
@@ -29,6 +32,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Attribute whereId($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Attribute whereName($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Attribute whereUpdatedAt($value)
+ *
  * @mixin \Eloquent
  */
 class Attribute extends Model

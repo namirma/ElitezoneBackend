@@ -22,6 +22,10 @@ class UpdateTransactionStatusRequest extends FormRequest
         return [
             'status' => 'required|in:'.implode(',', $allowedStatuses),
             'note' => 'nullable|string|max:255',
+            // مبلغِ تأییدشده توسط ادمین (اختیاری). فقط برای «تأیید واریز» معنا دارد:
+            // اگر ارسال شود، همین مبلغ به کیف پول واریز و روی تراکنش ثبت می‌شود (به‌جای
+            // مبلغِ خوداظهارِ کاربر). نبودِ آن = رفتار قبلی (سازگاریِ عقب‌رو).
+            'verified_amount' => 'nullable|numeric|min:0',
         ];
     }
 
@@ -30,6 +34,7 @@ class UpdateTransactionStatusRequest extends FormRequest
         return [
             'status.required' => __('admin.wallet.status_required'),
             'status.in' => __('admin.wallet.status_invalid'),
+            'verified_amount.numeric' => __('admin.wallet.status_invalid'),
         ];
     }
 }

@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class SupplierOrderController extends Controller
 {
@@ -155,18 +156,24 @@ class SupplierOrderController extends Controller
     {
         $this->authorize('manageAsSupplier', $order);
 
-        if ($order->status === Order::STATUS_PROCESSING) {
-            $order->update([
+        // قفل ردیف و بازبینی وضعیت زیر قفل (TOCTOU-safe): بدون این، دو درخواستِ
+        // هم‌زمان می‌توانند هر دو از شرطِ وضعیت عبور کنند یا گذارِ یکدیگر را بازنویسی کنند.
+        return DB::transaction(function () use ($order) {
+            $locked = Order::where(Order::ID, $order->id)->lockForUpdate()->first();
+
+            if ($locked->status !== Order::STATUS_PROCESSING) {
+                return error(__('orders.cannot_prepare_in_current_state'), [], 400);
+            }
+
+            $locked->update([
                 Order::STATUS => Order::STATUS_PREPARING,
                 Order::PREPARED_AT => now(),
             ]);
 
-            $order->loadMissing(Order::resourceRelations());
+            $locked->loadMissing(Order::resourceRelations());
 
-            return success(new OrderResource($order), __('orders.marked_as_prepared'));
-        }
-
-        return error(__('orders.cannot_prepare_in_current_state'), [], 400);
+            return success(new OrderResource($locked), __('orders.marked_as_prepared'));
+        });
     }
 
     /**
@@ -194,43 +201,57 @@ class SupplierOrderController extends Controller
     {
         $this->authorize('manageAsSupplier', $order);
 
-        if (in_array($order->status, [Order::STATUS_PREPARING, Order::STATUS_WEIGHBRIDGE_DONE])) {
-            $order->update([
+        return DB::transaction(function () use ($order, $request) {
+            $locked = Order::where(Order::ID, $order->id)->lockForUpdate()->first();
+
+            if (! in_array($locked->status, [Order::STATUS_PREPARING, Order::STATUS_WEIGHBRIDGE_DONE])) {
+                return error(__('orders.cannot_add_waybill'), [], 400);
+            }
+
+            $locked->update([
                 Order::STATUS => Order::STATUS_WAYBILL_ISSUED,
                 Order::WAYBILL_REF => $request->validated('waybill_ref'),
                 Order::SHIPPED_AT => now(),
             ]);
 
-            $order->loadMissing(Order::resourceRelations());
+            $locked->loadMissing(Order::resourceRelations());
 
-            return success(new OrderResource($order), __('orders.waybill_added'));
-        }
-
-        return error(__('orders.cannot_add_waybill'), [], 400);
+            return success(new OrderResource($locked), __('orders.waybill_added'));
+        });
     }
 
     public function issueEspadanaCommand(Order $order): JsonResponse
     {
         $this->authorize('manageAsSupplier', $order);
 
-        $order->update([Order::ESPADANA_ORDER_REF => 'ESPADANA_'.$order->id.'_'.time()]);
+        return DB::transaction(function () use ($order) {
+            $locked = Order::where(Order::ID, $order->id)->lockForUpdate()->first();
 
-        $order->loadMissing(Order::resourceRelations());
+            $locked->update([Order::ESPADANA_ORDER_REF => 'ESPADANA_'.$locked->id.'_'.time()]);
 
-        return success(new OrderResource($order), __('orders.espadana_command_issued'));
+            $locked->loadMissing(Order::resourceRelations());
+
+            return success(new OrderResource($locked), __('orders.espadana_command_issued'));
+        });
     }
 
     public function attachPaymentReceipt(UploadOrderReceiptRequest $request, Order $order): JsonResponse
     {
         $this->authorize('manageAsSupplier', $order);
 
+        // آپلود فایل خارج از تراکنش انجام می‌شود تا قفل DB روی I/O دیسک نگه داشته نشود.
         // Private disk — supplier payment receipts must not be reachable via a public URL.
         $path = $request->file('receipt')->store('supplier_receipts', 'financial');
-        $order->update([Order::PAYMENT_RECEIPT_REF => $path]);
 
-        $order->loadMissing(Order::resourceRelations());
+        return DB::transaction(function () use ($order, $path) {
+            $locked = Order::where(Order::ID, $order->id)->lockForUpdate()->first();
 
-        return success(new OrderResource($order), __('orders.receipt_attached'));
+            $locked->update([Order::PAYMENT_RECEIPT_REF => $path]);
+
+            $locked->loadMissing(Order::resourceRelations());
+
+            return success(new OrderResource($locked), __('orders.receipt_attached'));
+        });
     }
 
     /**

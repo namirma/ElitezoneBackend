@@ -2,21 +2,24 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
  * @property int $user_id
  * @property string $name
  * @property bool $is_default
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\User $user
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ProductVariant> $variants
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read User $user
+ * @property-read Collection<int, ProductVariant> $variants
  * @property-read int|null $variants_count
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Wishlist newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Wishlist newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Wishlist query()
@@ -26,6 +29,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Wishlist whereName($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Wishlist whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Wishlist whereUserId($value)
+ *
  * @mixin \Eloquent
  */
 class Wishlist extends Model

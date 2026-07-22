@@ -4,16 +4,18 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
  * @property int $user_id
  * @property int $product_variant_id
  * @property string|null $notified_at
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\ProductVariant $productVariant
- * @property-read \App\Models\User $user
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read ProductVariant $productVariant
+ * @property-read User $user
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|StockSubscription newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|StockSubscription newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|StockSubscription query()
@@ -23,6 +25,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|StockSubscription whereProductVariantId($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|StockSubscription whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|StockSubscription whereUserId($value)
+ *
  * @mixin \Eloquent
  */
 class StockSubscription extends Model

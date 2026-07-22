@@ -34,6 +34,23 @@ class UpdateCouponRequest extends FormRequest
         ];
     }
 
+    /**
+     * برای کوپنِ درصدی، مبلغ نباید از ۱۰۰ بیشتر باشد.
+     */
+    public function withValidator($validator): void
+    {
+        $coupon = $this->route('coupon');
+
+        $validator->sometimes(Coupon::AMOUNT, 'max:100', function ($input) use ($coupon) {
+            // در PUTِ جزئی که فقط amount می‌آید (type ارسال نمی‌شود)، به typeِ ذخیره‌شدهٔ
+            // کوپن fallback می‌کنیم؛ وگرنه گاردِ max:100 برای کوپنِ درصدی دور زده می‌شد.
+            $type = $input->{Coupon::TYPE}
+                ?? ($coupon instanceof Coupon ? $coupon->{Coupon::TYPE} : null);
+
+            return $type === Coupon::TYPE_PERCENT;
+        });
+    }
+
     public function messages(): array
     {
         return [

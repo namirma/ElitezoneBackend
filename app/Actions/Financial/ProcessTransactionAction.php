@@ -20,7 +20,7 @@ class ProcessTransactionAction
      * @param  string|null  $note  یادداشت ادمین
      * @param  User  $admin  کاربری که عملیات را انجام می‌دهد
      */
-    public function execute(WalletTransaction $transaction, string $newStatus, ?string $note, User $admin): WalletTransaction
+    public function execute(WalletTransaction $transaction, string $newStatus, ?string $note, User $admin, ?float $verifiedAmount = null): WalletTransaction
     {
         // ۱. اعتبارسنجی اولیه: تراکنش باید در وضعیت "انتظار" باشد
         if ($transaction->status !== WalletTransaction::STATUS_PENDING) {
@@ -43,7 +43,7 @@ class ProcessTransactionAction
         }
 
         // ۳. اجرای عملیات در یک تراکنش دیتابیس (اتمیک)
-        return DB::transaction(function () use ($transaction, $newStatus, $note, $admin) {
+        return DB::transaction(function () use ($transaction, $newStatus, $note, $admin, $verifiedAmount) {
 
             // Re-fetch + re-check the transaction status UNDER a row lock. The pre-check
             // above runs on a possibly-stale model outside any lock, so two concurrent or
@@ -59,9 +59,19 @@ class ProcessTransactionAction
             // قفل کردن کیف پول کاربر برای جلوگیری از تداخل (Race Condition)
             $wallet = Wallet::where('id', $locked->wallet_id)->lockForUpdate()->first();
 
-            // الف) سناریوی تایید واریز: پول به حساب کاربر اضافه می‌شود
+            $amountAdjusted = false;
+
+            // الف) سناریوی تایید واریز: پول به حساب کاربر اضافه می‌شود.
             if ($locked->type === WalletTransaction::TYPE_DEPOSIT && $newStatus === WalletTransaction::STATUS_CONFIRMED) {
-                $wallet->increment(Wallet::BALANCE, $locked->amount);
+                // اگر ادمین مبلغِ واقعیِ رسید را تأیید کرده (verified_amount)، همان ملاک است —
+                // نه مبلغِ خوداظهارِ کاربر. در نبودِ آن، رفتارِ قبلی حفظ می‌شود.
+                $creditAmount = $locked->amount;
+                if ($verifiedAmount !== null && $verifiedAmount > 0) {
+                    $amountAdjusted = ((float) $verifiedAmount !== (float) $locked->amount);
+                    $creditAmount = $verifiedAmount;
+                }
+
+                $wallet->increment(Wallet::BALANCE, $creditAmount);
             }
 
             // ب) سناریوی رد برداشت: پول مسدود شده باید به حساب کاربر برگردد
@@ -72,11 +82,17 @@ class ProcessTransactionAction
 
             // ج) سایر حالات: نیاز به تغییر موجودی نیست (فقط تغییر وضعیت)
 
-            // ۴. بروزرسانی تراکنش
-            $locked->update([
+            // ۴. بروزرسانی تراکنش — اگر مبلغ توسط ادمین اصلاح شده، همان را هم ثبت کن.
+            $updatePayload = [
                 WalletTransaction::STATUS => $newStatus,
                 WalletTransaction::DESCRIPTION => $locked->description.($note ? " | یادداشت ادمین: {$note}" : ''),
-            ]);
+            ];
+            if ($amountAdjusted) {
+                $original = $locked->amount;
+                $updatePayload[WalletTransaction::AMOUNT] = $verifiedAmount;
+                $updatePayload[WalletTransaction::DESCRIPTION] .= " | مبلغ توسط ادمین از {$original} به {$verifiedAmount} اصلاح شد";
+            }
+            $locked->update($updatePayload);
 
             // ۵. ثبت لاگ مدیریتی (برای پیگیری اینکه کدام ادمین این کار را کرد)
             activity()

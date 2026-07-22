@@ -10,6 +10,7 @@ use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use App\Services\Payment\PaymentGatewayFactory;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ProcessPaymentCallbackAction
 {
@@ -36,11 +37,22 @@ class ProcessPaymentCallbackAction
         if (! ($receipt && $receipt->isSuccessful())) {
             $transaction->update(['status' => WalletTransaction::STATUS_FAILED]);
 
+            Log::channel('financial')->warning('Payment verification failed; transaction marked FAILED', [
+                'transaction_id' => $transaction->id,
+                'gateway' => $gatewayName,
+            ]);
+
             return null;
         }
 
         $refId = $receipt->getReferenceId();
         $this->settle($transaction, $refId);
+
+        Log::channel('financial')->info('Payment verified and wallet settled', [
+            'transaction_id' => $transaction->id,
+            'gateway' => $gatewayName,
+            'ref_id' => $refId,
+        ]);
 
         return $refId;
     }

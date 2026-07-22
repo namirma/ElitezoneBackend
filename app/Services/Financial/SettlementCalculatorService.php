@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Financial;
 
+use App\Models\PriceSetting;
 use App\Support\Money;
 
 /**
@@ -33,8 +34,18 @@ use App\Support\Money;
  */
 class SettlementCalculatorService
 {
-    /** کل درصد کارمزد (فعلاً ۱ درصد — قابل تنظیم از پروفایل سوپلایر) */
+    /** نرخِ پیش‌فرضِ کارمزدِ تراکنش (٪) — وقتی تنظیمِ سراسری ست نشده باشد. */
     private const TC_PERCENTAGE = 1.0;
+
+    /**
+     * نرخِ مؤثرِ %TC: از تنظیمِ سراسریِ قابل‌ویرایش (PriceSetting: tc_percentage) خوانده
+     * می‌شود و در نبودِ آن به پیش‌فرضِ ۱٪ برمی‌گردد. static است تا از متدهای static و
+     * instanceِ این سرویس یکسان قابل‌فراخوانی باشد. مقدار کش‌شده است (کشِ PriceSetting).
+     */
+    private static function tcPercentage(): float
+    {
+        return PriceSetting::getValueAsFloat(PriceSetting::CODE_TC_PERCENTAGE, self::TC_PERCENTAGE);
+    }
 
     // =========================================================================
     // Public API
@@ -54,7 +65,7 @@ class SettlementCalculatorService
 
         // bcmath throughout — no intermediate float accumulation. Commissions are
         // whole Rials, so the boundary rounds to 0 decimals (preserves prior round()).
-        $TC = Money::mul($subtotal, Money::div(self::TC_PERCENTAGE, '100'));
+        $TC = Money::mul($subtotal, Money::div(self::tcPercentage(), '100'));
         $OW = Money::mul($TC, Money::div($rates['ow_percent_of_tc'], '100'));
         $CO = Money::mul($TC, Money::div($rates['co_percent_of_tc'], '100'));
         $SSG = Money::mul($TC, Money::div($rates['ssg_percent_of_tc'], '100'));
@@ -223,9 +234,9 @@ class SettlementCalculatorService
 
             // Absolute percentages of invoice total (for POO / PTS formula inputs)
             // Example: TC=1 %, OW=40 % of TC → ow_final_rate = 0.4 %
-            'ow_final_rate' => (float) Money::mul(self::TC_PERCENTAGE, Money::div($shares['ow'], '100')),
-            'co_final_rate' => (float) Money::mul(self::TC_PERCENTAGE, Money::div($shares['co'], '100')),
-            'ssg_final_rate' => (float) Money::mul(self::TC_PERCENTAGE, Money::div($shares['ssg'], '100')),
+            'ow_final_rate' => (float) Money::mul(self::tcPercentage(), Money::div($shares['ow'], '100')),
+            'co_final_rate' => (float) Money::mul(self::tcPercentage(), Money::div($shares['co'], '100')),
+            'ssg_final_rate' => (float) Money::mul(self::tcPercentage(), Money::div($shares['ssg'], '100')),
         ];
     }
 

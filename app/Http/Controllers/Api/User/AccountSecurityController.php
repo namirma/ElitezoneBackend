@@ -13,6 +13,7 @@ use App\Mail\VerifyEmail;
 use App\Models\User;
 use App\Models\UserProfile;
 use App\Services\PodiumClient;
+use App\Support\OtpSecret;
 use App\Support\PhoneNumber;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -81,7 +82,7 @@ class AccountSecurityController extends Controller
         if (
             $user->{User::SECRET} === null ||
             $user->{User::SECRET_EXPIRES_AT} === null ||
-            ! \App\Support\OtpSecret::matches($user->{User::SECRET}, (string) $request->input('code')) ||
+            ! OtpSecret::matches($user->{User::SECRET}, (string) $request->input('code')) ||
             Carbon::parse($user->{User::SECRET_EXPIRES_AT})->isPast()
         ) {
             return error(__('auth.verification_code_not_match'), [], 400);
@@ -100,7 +101,7 @@ class AccountSecurityController extends Controller
         if (
             $user->{User::SECRET} === null ||
             $user->{User::SECRET_EXPIRES_AT} === null ||
-            ! \App\Support\OtpSecret::matches($user->{User::SECRET}, (string) $request->validated()['code']) ||
+            ! OtpSecret::matches($user->{User::SECRET}, (string) $request->validated()['code']) ||
             Carbon::parse($user->{User::SECRET_EXPIRES_AT})->isPast()
         ) {
             return error(__('auth.verification_code_not_match'), [], 400);
@@ -197,7 +198,7 @@ class AccountSecurityController extends Controller
         $code = generateVerifyCode();
         $user->update([
             // فقط هش در DB (OtpSecret) — مقدار خام تنها در SMS
-            User::SECRET => \App\Support\OtpSecret::hash((string) $code),
+            User::SECRET => OtpSecret::hash((string) $code),
             User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes(2),
         ]);
 
@@ -228,7 +229,7 @@ class AccountSecurityController extends Controller
         if (
             $user->{User::SECRET} === null ||
             $user->{User::SECRET_EXPIRES_AT} === null ||
-            ! \App\Support\OtpSecret::matches($user->{User::SECRET}, (string) $request->input('code')) ||
+            ! OtpSecret::matches($user->{User::SECRET}, (string) $request->input('code')) ||
             Carbon::parse($user->{User::SECRET_EXPIRES_AT})->isPast()
         ) {
             return error(__('auth.verification_code_not_match'), [], 400);

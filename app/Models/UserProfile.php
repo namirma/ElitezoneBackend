@@ -3,17 +3,23 @@
 namespace App\Models;
 
 use App\Traits\PersianDate;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Notifications\DatabaseNotification;
+use Illuminate\Notifications\DatabaseNotificationCollection;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Carbon;
 use Laravel\Sanctum\HasApiTokens;
+use Laravel\Sanctum\PersonalAccessToken;
 
 /**
  * @method static updateOrCreate(array $array, array $array1)
  * @method static create(array $array)
  * @method static where(array $array)
  * @method static firstOrCreate(array $array)
+ *
  * @property int $id
  * @property int $user_id
  * @property string|null $name
@@ -21,7 +27,7 @@ use Laravel\Sanctum\HasApiTokens;
  * @property string|null $avatar
  * @property string|null $email
  * @property string|null $email_verification_token
- * @property \Illuminate\Support\Carbon|null $email_verified_at
+ * @property Carbon|null $email_verified_at
  * @property string $national_code
  * @property string|null $birthday
  * @property string|null $national_id
@@ -32,18 +38,19 @@ use Laravel\Sanctum\HasApiTokens;
  * @property int|null $province_id
  * @property int|null $city_id
  * @property string $entity
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
  * @property-read string|void $created_at_diff
  * @property-read string|void $created_at_p
  * @property-read string|void $expire_at_days
  * @property-read string|void $updated_at_diff
  * @property-read string|void $updated_at_p
- * @property-read \Illuminate\Notifications\DatabaseNotificationCollection<int, \Illuminate\Notifications\DatabaseNotification> $notifications
+ * @property-read DatabaseNotificationCollection<int, DatabaseNotification> $notifications
  * @property-read int|null $notifications_count
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \Laravel\Sanctum\PersonalAccessToken> $tokens
+ * @property-read Collection<int, PersonalAccessToken> $tokens
  * @property-read int|null $tokens_count
- * @property-read \App\Models\User $user
+ * @property-read User $user
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|UserProfile newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|UserProfile newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|UserProfile query()
@@ -67,6 +74,7 @@ use Laravel\Sanctum\HasApiTokens;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|UserProfile whereRegisterId($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|UserProfile whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|UserProfile whereUserId($value)
+ *
  * @mixin \Eloquent
  */
 class UserProfile extends Model

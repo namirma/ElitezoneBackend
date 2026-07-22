@@ -2,21 +2,24 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
  * @property string $name
  * @property string $display_name
  * @property string $input_type
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Attribute> $attributes
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read Collection<int, Attribute> $attributes
  * @property-read int|null $attributes_count
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ProductCategory> $categories
+ * @property-read Collection<int, ProductCategory> $categories
  * @property-read int|null $categories_count
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|AttributeType newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|AttributeType newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|AttributeType query()
@@ -26,6 +29,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|AttributeType whereInputType($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|AttributeType whereName($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|AttributeType whereUpdatedAt($value)
+ *
  * @mixin \Eloquent
  */
 class AttributeType extends Model

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -12,8 +13,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int|null $parent_id
  * @property string|null $description
  * @property int $is_available_for_ticket
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Ticket> $tickets
+ * @property-read Collection<int, Ticket> $tickets
  * @property-read int|null $tickets_count
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Department isAvailableForTicket()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Department newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Department newQuery()
@@ -24,6 +26,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Department whereName($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Department whereParentId($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Department whereSlug($value)
+ *
  * @mixin \Eloquent
  */
 class Department extends Model

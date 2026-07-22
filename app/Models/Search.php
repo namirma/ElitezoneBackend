@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -13,9 +14,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int|null $user_id
  * @property string|null $ip_address
  * @property string|null $user_agent
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\User|null $user
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read User|null $user
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Search newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Search newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Search query()
@@ -27,6 +29,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Search whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Search whereUserAgent($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Search whereUserId($value)
+ *
  * @mixin \Eloquent
  */
 class Search extends Model

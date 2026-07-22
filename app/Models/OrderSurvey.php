@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -12,10 +13,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $user_id
  * @property int $rating
  * @property string|null $comment
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\Order $order
- * @property-read \App\Models\User $user
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read Order $order
+ * @property-read User $user
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|OrderSurvey newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|OrderSurvey newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|OrderSurvey query()
@@ -26,6 +28,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|OrderSurvey whereRating($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|OrderSurvey whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|OrderSurvey whereUserId($value)
+ *
  * @mixin \Eloquent
  */
 class OrderSurvey extends Model

@@ -19,8 +19,6 @@ class SendInviteSmsJob implements ShouldQueue
 
     public array $backoff = [30, 60, 120];
 
-    public int $maxExceptions = 1;
-
     public function __construct(
         protected int $inviteId,
         protected string $mobile,

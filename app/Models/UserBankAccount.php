@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Models\Activity;
 use Spatie\Activitylog\Traits\LogsActivity;
 
 /**
@@ -18,11 +21,12 @@ use Spatie\Activitylog\Traits\LogsActivity;
  * @property string $status
  * @property string|null $rejection_reason
  * @property bool $is_default
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \Spatie\Activitylog\Models\Activity> $activities
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read Collection<int, Activity> $activities
  * @property-read int|null $activities_count
- * @property-read \App\Models\User $user
+ * @property-read User $user
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|UserBankAccount newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|UserBankAccount newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|UserBankAccount query()
@@ -37,6 +41,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|UserBankAccount whereStatus($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|UserBankAccount whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|UserBankAccount whereUserId($value)
+ *
  * @mixin \Eloquent
  */
 class UserBankAccount extends Model

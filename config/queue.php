@@ -38,7 +38,10 @@ return [
             'driver' => 'database',
             'table' => 'jobs',
             'queue' => 'default',
-            'retry_after' => 180,
+            // باید بزرگ‌تر از طولانی‌ترین timeoutِ جاب باشد (GenerateCsvReportJob=1800s)
+            // وگرنه یک جابِ طولانی پیش از پایان، به workerِ دوم تحویل داده و هم‌زمان
+            // دو بار اجرا می‌شود. ۲۰۰۰ثانیه حاشیهٔ امن بالای ۱۸۰۰ می‌دهد.
+            'retry_after' => 2000,
             'after_commit' => false,
         ],
 

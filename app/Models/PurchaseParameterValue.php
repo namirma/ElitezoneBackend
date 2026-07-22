@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -16,12 +18,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  * @property int $order
  * @property int $is_active
  * @property int|null $price_filter_category_id
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\PurchaseParameterGroup $group
- * @property-read \App\Models\PriceFilterCategory|null $priceFilterCategory
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\User> $users
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read PurchaseParameterGroup $group
+ * @property-read PriceFilterCategory|null $priceFilterCategory
+ * @property-read Collection<int, User> $users
  * @property-read int|null $users_count
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PurchaseParameterValue active()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PurchaseParameterValue newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PurchaseParameterValue newQuery()
@@ -38,6 +41,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PurchaseParameterValue wherePriceFilterCategoryId($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PurchaseParameterValue whereSlug($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PurchaseParameterValue whereUpdatedAt($value)
+ *
  * @mixin \Eloquent
  */
 class PurchaseParameterValue extends Model

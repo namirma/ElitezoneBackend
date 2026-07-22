@@ -2,7 +2,6 @@
 
 namespace App\Actions\Order;
 
-use App\Actions\Order\RefundOrderToWalletAction;
 use App\Constants\FinancialCodes;
 use App\Events\Order\OrderCancelled;
 use App\Models\Order;

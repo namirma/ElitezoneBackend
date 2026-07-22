@@ -19,7 +19,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property numeric|null $length_total
  * @property numeric|null $b
  * @property numeric|null $h
- * @property-read \App\Models\Listopher $listopher
+ * @property-read Listopher $listopher
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|ListopherItem newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|ListopherItem newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|ListopherItem query()
@@ -35,6 +36,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|ListopherItem whereQuantity($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|ListopherItem whereShape($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|ListopherItem whereSize($value)
+ *
  * @mixin \Eloquent
  */
 class ListopherItem extends Model

@@ -5,6 +5,7 @@ use App\Http\Middleware\AttachActivePriceCategory;
 use App\Http\Middleware\Authenticate;
 use App\Http\Middleware\CanSeeTicket;
 use App\Http\Middleware\Cors;
+use App\Http\Middleware\EnsureAdminHasPermission;
 use App\Http\Middleware\EnsureRoleIsSelected;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\EnsureUserIsAdmin;
@@ -14,6 +15,7 @@ use App\Http\Middleware\EnsureUserIsSupplier;
 use App\Http\Middleware\Idempotency;
 use App\Http\Middleware\OptionalSanctum;
 use App\Http\Middleware\RedirectIfAuthenticated;
+use App\Http\Middleware\RestrictAdminByIp;
 use App\Http\Middleware\Sanitizer;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\TrackDashboardUsage;
@@ -91,8 +93,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'role.expert' => EnsureUserIsExpert::class,
             'role.employer' => EnsureUserIsEmployer::class,
             'role.supplier' => EnsureUserIsSupplier::class,
-            'admin.permission' => \App\Http\Middleware\EnsureAdminHasPermission::class,
-            'admin.ip' => \App\Http\Middleware\RestrictAdminByIp::class,
+            'admin.permission' => EnsureAdminHasPermission::class,
+            'admin.ip' => RestrictAdminByIp::class,
             'track' => TrackDashboardUsage::class,
             'idempotency' => Idempotency::class,
             'role.selected' => EnsureRoleIsSelected::class,

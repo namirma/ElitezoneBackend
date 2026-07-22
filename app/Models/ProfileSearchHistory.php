@@ -5,14 +5,16 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
  * @property int $user_id
  * @property string $keyword
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\User $user
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read User $user
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|ProfileSearchHistory newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|ProfileSearchHistory newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|ProfileSearchHistory query()
@@ -21,6 +23,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|ProfileSearchHistory whereKeyword($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|ProfileSearchHistory whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|ProfileSearchHistory whereUserId($value)
+ *
  * @mixin \Eloquent
  */
 class ProfileSearchHistory extends Model

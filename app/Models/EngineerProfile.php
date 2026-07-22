@@ -6,11 +6,13 @@ use App\Traits\PersianDate;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * @method static create(array $array)
  * @method static updateOrCreate(array $array, array $array1)
  * @method static where(array $array)
+ *
  * @property int $id
  * @property int $user_id
  * @property int $is_verified
@@ -28,14 +30,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int|null $city_id
  * @property int|null $activity_city_id
  * @property string|null $university_name
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
  * @property-read string|void $created_at_diff
  * @property-read string|void $created_at_p
  * @property-read string|void $expire_at_days
  * @property-read string|void $updated_at_diff
  * @property-read string|void $updated_at_p
- * @property-read \App\Models\User $user
+ * @property-read User $user
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|EngineerProfile newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|EngineerProfile newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|EngineerProfile query()
@@ -58,6 +61,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|EngineerProfile whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|EngineerProfile whereUserId($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|EngineerProfile whereVerifiedAt($value)
+ *
  * @mixin \Eloquent
  */
 class EngineerProfile extends Model

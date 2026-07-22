@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
@@ -14,10 +15,11 @@ use Illuminate\Support\Facades\Cache;
  * @property string $code
  * @property string $unit
  * @property numeric|null $amount
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Product> $products
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, Product> $products
  * @property-read int|null $products_count
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|OrderUnit newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|OrderUnit newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|OrderUnit query()
@@ -28,6 +30,7 @@ use Illuminate\Support\Facades\Cache;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|OrderUnit whereName($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|OrderUnit whereUnit($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|OrderUnit whereUpdatedAt($value)
+ *
  * @mixin \Eloquent
  */
 class OrderUnit extends Model

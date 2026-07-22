@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -13,9 +14,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $thumbnail_path
  * @property string|null $title
  * @property int $sort_order
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\Product $product
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read Product $product
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|ProductVideo newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|ProductVideo newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|ProductVideo query()
@@ -27,6 +29,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|ProductVideo whereTitle($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|ProductVideo whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|ProductVideo whereVideoPath($value)
+ *
  * @mixin \Eloquent
  */
 class ProductVideo extends Model

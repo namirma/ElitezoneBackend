@@ -9,6 +9,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -62,7 +63,7 @@ class GenerateCsvReportJob implements ShouldQueue
 
     public function failed(\Throwable $e): void
     {
-        \Illuminate\Support\Facades\Log::error('GenerateCsvReportJob failed after retries', [
+        Log::error('GenerateCsvReportJob failed after retries', [
             'type' => $this->type,
             'from' => $this->from,
             'to' => $this->to,

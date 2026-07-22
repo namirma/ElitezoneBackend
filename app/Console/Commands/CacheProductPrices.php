@@ -45,7 +45,9 @@ class CacheProductPrices extends Command
                         $roleCode
                     );
 
-                    $final = (float) $calculated['final_price'];
+                    // calculatePrice یک DTO (PriceCalculationResult) برمی‌گرداند، نه آرایه؛
+                    // دسترسی آرایه‌ای باعث fatal می‌شد. از پراپرتی finalPrice استفاده می‌کنیم.
+                    $final = (float) $calculated->finalPrice;
 
                     if (is_null($minPrice) || $final < $minPrice) {
                         $minPrice = $final;

@@ -15,6 +15,9 @@ class RemoveCartItemAction
         return DB::transaction(function () use ($cartItem) {
             $cart = $cartItem->cart;
 
+            // قفلِ ردیفِ سبد — هم‌سو با AddToCartAction — برای جلوگیری از race با افزودن/به‌روزرسانی.
+            Cart::where('id', $cart->id)->lockForUpdate()->first();
+
             /* -----------------------------------------------------------------
              * گام ۱: استخراج اطلاعات برای دیتاساینس (قبل از حذف)
              * ----------------------------------------------------------------- */

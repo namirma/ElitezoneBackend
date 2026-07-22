@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -13,10 +14,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $original_name
  * @property string $mime_type
  * @property int $size
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\Ticket|null $ticket
- * @property-read \App\Models\TicketReply|null $ticketReply
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read Ticket|null $ticket
+ * @property-read TicketReply|null $ticketReply
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|TicketFile newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|TicketFile newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|TicketFile query()
@@ -29,6 +31,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|TicketFile whereTicketId($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|TicketFile whereTicketReplyId($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|TicketFile whereUpdatedAt($value)
+ *
  * @mixin \Eloquent
  */
 class TicketFile extends Model

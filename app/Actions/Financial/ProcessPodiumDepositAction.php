@@ -95,7 +95,15 @@ class ProcessPodiumDepositAction
         // ══════════════════════════════════════════════════════════════════════
         if (! empty($shenasehVariz) && $this->shenasehService->validate($shenasehVariz)) {
             $nationalCode = $this->shenasehService->extractNationalCode($shenasehVariz);
-            $user = User::where('national_code', $nationalCode)->first();
+
+            // یک کد ملی می‌تواند چند حسابِ بانکیِ ثبت‌شده داشته باشد؛ پس وقتی IBANِ فرستنده
+            // موجود است، ابتدا کاربر را از روی همان IBAN (شبا سراسراً یکتا) پیدا می‌کنیم تا
+            // در حالتِ اشتراکِ کد ملی، واریز قطعاً به صاحبِ همان حساب بنشیند. سپس تطابقِ
+            // کد ملیِ صاحبِ حساب با کد ملیِ شناسهٔ واریز به‌عنوان لایهٔ امنیتی بررسی می‌شود.
+            // در نبودِ IBAN، به جستجوی کد ملی برمی‌گردیم (رفتار قبلی).
+            $user = ! empty($senderIban)
+                ? $this->resolveDepositUserByIban($nationalCode, $senderIban)
+                : User::where('national_code', $nationalCode)->first();
 
             if ($user) {
                 // اگر IBAN فرستنده قابل استخراج است، باید با حساب ثبت‌شده تطبیق داشته باشد
@@ -453,6 +461,34 @@ class ProcessPodiumDepositAction
      * با حساب ثبت‌شده همان کاربری که شناسه واریز داد مطابقت دارد.
      * این لایه دوم تأیید هویت از سوءاستفاده شناسه واریز جلوگیری می‌کند.
      */
+    /**
+     * کاربر را از روی IBANِ فرستنده (شبا سراسراً یکتا در user_bank_accounts) پیدا می‌کند
+     * و فقط زمانی برمی‌گرداند که کد ملیِ صاحبِ حساب با کد ملیِ شناسهٔ واریز یکی باشد
+     * (رفعِ ابهامِ چند-حسابیِ یک کد ملی + حفظِ لایهٔ امنیتیِ تطابقِ هویت).
+     */
+    private function resolveDepositUserByIban(?string $nationalCode, string $senderIban): ?User
+    {
+        $normalizedIban = strtoupper(preg_replace('/\s+/', '', $senderIban));
+        $ibanWithoutIR = preg_replace('/^IR/i', '', $normalizedIban);
+
+        $account = UserBankAccount::query()
+            ->where(UserBankAccount::STATUS, UserBankAccount::STATUS_APPROVED)
+            ->where(function ($q) use ($normalizedIban, $ibanWithoutIR) {
+                $q->whereRaw('UPPER(REPLACE(shaba, " ", "")) = ?', [$normalizedIban])
+                    ->orWhereRaw('UPPER(REPLACE(shaba, " ", "")) = ?', [$ibanWithoutIR]);
+            })
+            ->with('user')
+            ->first();
+
+        $user = $account?->user;
+
+        if ($user !== null && (string) $user->national_code === (string) $nationalCode) {
+            return $user;
+        }
+
+        return null;
+    }
+
     private function userHasRegisteredIban(User $user, string $senderIban): bool
     {
         $normalizedIban = strtoupper(preg_replace('/\s+/', '', $senderIban));

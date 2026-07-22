@@ -18,7 +18,10 @@ class AdminActivityLogController extends Controller
         $query = Activity::query()->with('causer.profile');
 
         if ($request->filled('subject_type')) {
-            $allowed = ['Order', 'User', 'WalletTransaction', 'Ticket', 'Wallet'];
+            // allowlist باید با مدل‌هایی که واقعاً activity()->performedOn روی آن‌ها صدا
+            // زده می‌شود هم‌گام بماند؛ Coupon و SupplierProfile بعداً لاگ‌دار شدند اما در
+            // این لیست نبودند و قابلِ فیلتر نبودند.
+            $allowed = ['Order', 'User', 'WalletTransaction', 'Ticket', 'Wallet', 'Coupon', 'SupplierProfile'];
             $type = ucfirst($request->subject_type);
             if (! in_array($type, $allowed, true)) {
                 return error(__('admin.invalid_subject_type'), [], 422);

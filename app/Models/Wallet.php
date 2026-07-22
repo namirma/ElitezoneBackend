@@ -2,20 +2,24 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
  * @property int $user_id
  * @property numeric $balance
  * @property numeric $balance_hold
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\WalletTransaction> $transactions
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read Collection<int, WalletTransaction> $transactions
  * @property-read int|null $transactions_count
- * @property-read \App\Models\User $user
+ * @property-read User $user
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Wallet newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Wallet newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Wallet query()
@@ -25,10 +29,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Wallet whereId($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Wallet whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Wallet whereUserId($value)
+ *
  * @mixin \Eloquent
  */
 class Wallet extends Model
 {
+    use HasFactory;
+
     public const ID = 'id';
 
     public const USER_ID = 'user_id';

@@ -3,10 +3,11 @@
 namespace App\Http\Resources\Product;
 
 use App\Http\Resources\BaseJsonResource;
+use App\Models\AttributeValue;
 use Illuminate\Http\Request;
 
 /**
- * @mixin \App\Models\AttributeValue
+ * @mixin AttributeValue
  */
 class AttributeValueResource extends BaseJsonResource
 {

@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -15,11 +17,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null $city
  * @property string|null $address
  * @property bool $is_active
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\Factory $factory
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ProductPrice> $prices
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read Factory $factory
+ * @property-read Collection<int, ProductPrice> $prices
  * @property-read int|null $prices_count
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|FactoryLocation active()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|FactoryLocation newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|FactoryLocation newQuery()
@@ -33,6 +36,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|FactoryLocation whereName($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|FactoryLocation whereType($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|FactoryLocation whereUpdatedAt($value)
+ *
  * @mixin \Eloquent
  */
 class FactoryLocation extends Model

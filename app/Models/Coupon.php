@@ -6,6 +6,7 @@ use App\Traits\PersianDate;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -13,12 +14,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $type
  * @property numeric $amount
  * @property int|null $user_id
- * @property \Illuminate\Support\Carbon|null $expires_at
- * @property \Illuminate\Support\Carbon|null $used_at
+ * @property Carbon|null $expires_at
+ * @property Carbon|null $used_at
  * @property string|null $reason
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\User|null $owner
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read User|null $owner
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Coupon newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Coupon newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Coupon query()
@@ -32,6 +34,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Coupon whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Coupon whereUsedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Coupon whereUserId($value)
+ *
  * @mixin \Eloquent
  */
 class Coupon extends Model

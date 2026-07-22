@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -13,10 +15,11 @@ use Illuminate\Support\Facades\Cache;
  * @property string|null $description
  * @property int $is_active
  * @property int $sort_order
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\PriceFilter> $filters
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read Collection<int, PriceFilter> $filters
  * @property-read int|null $filters_count
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceFilterCategory active()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceFilterCategory newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceFilterCategory newQuery()
@@ -29,6 +32,7 @@ use Illuminate\Support\Facades\Cache;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceFilterCategory whereName($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceFilterCategory whereSortOrder($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceFilterCategory whereUpdatedAt($value)
+ *
  * @mixin \Eloquent
  */
 class PriceFilterCategory extends Model

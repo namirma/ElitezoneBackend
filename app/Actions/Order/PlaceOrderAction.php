@@ -3,6 +3,7 @@
 namespace App\Actions\Order;
 
 use App\DataTransferObjects\Order\PlaceOrderData;
+use App\DataTransferObjects\Shipping\ShipmentGroup;
 use App\Events\Order\OrderPlaced;
 use App\Exceptions\Order\CartIsEmptyException;
 use App\Models\Address;
@@ -26,6 +27,7 @@ use App\Services\Shipping\CartShippingQuoteService;
 use App\Services\Shipping\ShippingCostCalculator;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class PlaceOrderAction
 {
@@ -152,6 +154,17 @@ class PlaceOrderAction
                 withVAT: true,
                 filterCategoryCode: $roleCode
             );
+
+            // گاردِ قیمتِ صفر در مرزِ ثبت سفارش: اگر ردیف قیمتی برای این
+            // (واریانت، کارخانه، محل تحویل) وجود نداشته باشد، پایپ‌لاین 0 برمی‌گرداند.
+            // این گارد از تسویهٔ سفارش با مبلغ صفر (checkout رایگان) جلوگیری می‌کند.
+            if ($pricing->finalPrice <= 0) {
+                throw ValidationException::withMessages([
+                    'items' => __('cart.limits.price_unavailable', [
+                        'name' => $item->productVariant->product->name ?? '',
+                    ]),
+                ]);
+            }
 
             // Logistics weight + sales count — shared with the pre-checkout shipping
             // quote (CartShippingQuoteService) so the quoted freight equals the charge.
@@ -336,7 +349,7 @@ class PlaceOrderAction
      * Create one Shipment per (origin → destination) leg and return a map of
      * cart item id → shipment id so order items can be linked to their shipment.
      *
-     * @param  \App\DataTransferObjects\Shipping\ShipmentGroup[]  $shipments
+     * @param  ShipmentGroup[]  $shipments
      * @return array<int|string, int>
      */
     private function createShipments(Order $order, array $shipments): array
