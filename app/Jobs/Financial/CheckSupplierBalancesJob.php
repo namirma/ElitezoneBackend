@@ -3,10 +3,10 @@
 namespace App\Jobs\Financial;
 
 use App\Constants\FinancialCodes;
+use App\Jobs\Notification\SendSmsJob;
 use App\Models\Order;
 use App\Models\Wallet;
 use App\Services\Financial\WalletTransactionEngine;
-use App\Services\SmsService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -42,16 +42,16 @@ class CheckSupplierBalancesJob implements ShouldQueue
 
     public array $backoff = [120];
 
-    public function handle(SmsService $smsService, WalletTransactionEngine $walletEngine): void
+    public function handle(WalletTransactionEngine $walletEngine): void
     {
         // chunkById() processes one batch at a time (memory-safe at scale) while
         // still supporting eager loading — unlike cursor() which can't eager-load.
         Order::where(Order::SUPPLIER_DEBT_PENDING, true)
             ->with(['items.supplier.wallet'])
-            ->chunkById(100, function ($pendingOrders) use ($smsService, $walletEngine) {
+            ->chunkById(100, function ($pendingOrders) use ($walletEngine) {
                 foreach ($pendingOrders as $order) {
                     try {
-                        $this->processOrder($order, $smsService, $walletEngine);
+                        $this->processOrder($order, $walletEngine);
                     } catch (\Exception $e) {
                         Log::channel('financial')->error("CheckSupplierBalancesJob error for order {$order->id}: ".$e->getMessage());
                     }
@@ -59,7 +59,7 @@ class CheckSupplierBalancesJob implements ShouldQueue
             });
     }
 
-    private function processOrder(Order $order, SmsService $smsService, WalletTransactionEngine $walletEngine): void
+    private function processOrder(Order $order, WalletTransactionEngine $walletEngine): void
     {
         $firstItem = $order->items->first();
         if (! $firstItem) {
@@ -87,7 +87,7 @@ class CheckSupplierBalancesJob implements ShouldQueue
         }
 
         // Supplier now has enough — process the reclaim and release the buyer hold
-        DB::transaction(function () use ($order, $debtAmount, $supplierUser, $smsService, $walletEngine) {
+        DB::transaction(function () use ($order, $debtAmount, $supplierUser, $walletEngine) {
 
             // Re-lock the order and supplier wallet
             $lockedOrder = Order::where('id', $order->id)->lockForUpdate()->first();
@@ -143,16 +143,19 @@ class CheckSupplierBalancesJob implements ShouldQueue
                     // outstanding hold (the release row above is the audit event).
                     $holdTx->update(['status' => FinancialCodes::STATUS_AVAILABLE]);
 
-                    // Notify buyer
+                    // Notify buyer — dispatched AFTER the transaction commits (afterCommit)
+                    // so the blocking SMS HTTP call never runs while this job holds the
+                    // order + both wallet row locks, and no "refund released" SMS is sent
+                    // if the transaction later rolls back.
                     $buyer = $buyerWallet->user;
                     if ($buyer?->mobile) {
-                        $smsService->send(
+                        SendSmsJob::dispatch(
                             $buyer->mobile,
                             __('sms.buyer_refund_released', [
                                 'amount' => number_format((int) $holdTx->amount),
                                 'order_number' => $lockedOrder->order_number,
                             ])
-                        );
+                        )->afterCommit();
                     }
                 }
             }

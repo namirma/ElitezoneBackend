@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -13,9 +12,8 @@ use Illuminate\Support\Facades\Cache;
  * @property string $code
  * @property string $value
  * @property string|null $description
- * @property Carbon|null $created_at
- * @property Carbon|null $updated_at
- *
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceSetting newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceSetting newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceSetting query()
@@ -26,7 +24,6 @@ use Illuminate\Support\Facades\Cache;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceSetting whereName($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceSetting whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceSetting whereValue($value)
- *
  * @mixin \Eloquent
  */
 class PriceSetting extends Model
@@ -62,7 +59,9 @@ class PriceSetting extends Model
     {
         $cacheKey = "price_setting_{$code}";
 
-        return Cache::remember($cacheKey, 60 * 24, function () use ($code, $default) {
+        // TTL: ۲۴ ساعت (قبلاً 60*24 = ۱۴۴۰ ثانیه ≈ ۲۴ دقیقه بود که با کامنتِ «۲۴ ساعت»
+        // نمی‌خواند). چون booted() روی saved/deleted کش را باطل می‌کند، TTLِ بلند امن است.
+        return Cache::remember($cacheKey, 60 * 60 * 24, function () use ($code, $default) {
             $setting = self::where(self::CODE, $code)->first();
 
             return $setting ? $setting->{self::VALUE} : $default;

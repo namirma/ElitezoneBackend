@@ -40,7 +40,11 @@ class UpdateCouponRequest extends FormRequest
     public function withValidator($validator): void
     {
         $validator->sometimes(Coupon::AMOUNT, 'max:100', function ($input) {
-            return $input->{Coupon::TYPE} === Coupon::TYPE_PERCENT;
+            // در PUTِ جزئی که فقط amount می‌آید (type ارسال نمی‌شود)، به typeِ ذخیره‌شدهٔ
+            // کوپن fallback می‌کنیم؛ وگرنه گاردِ max:100 برای کوپنِ درصدی دور زده می‌شد.
+            $type = $input->{Coupon::TYPE} ?? $this->route('coupon')?->{Coupon::TYPE};
+
+            return $type === Coupon::TYPE_PERCENT;
         });
     }
 
