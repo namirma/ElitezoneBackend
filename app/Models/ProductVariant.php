@@ -68,7 +68,9 @@ class ProductVariant extends Model
 
     protected $casts = [
         self::IS_ACTIVE => 'boolean',
-        self::STOCK_QUANTITY => 'integer',
+        // موجودی می‌تواند کسری باشد (وزن کیلوگرم در باسکول/افت وزن)؛ decimal:3 هم‌سو با
+        // ستونِ decimal(12,3) دیتابیس و کست‌های decimal سایر ستون‌های همین مدل.
+        self::STOCK_QUANTITY => 'decimal:3',
         self::VIEW_COUNT => 'integer',
         self::IMAGES => 'array',
         self::VIDEOS => 'array',
