@@ -63,10 +63,9 @@ class PollPodiumDepositsJob implements ShouldQueue
             Log::error('PollPodiumDepositsJob: خطا در دریافت صورت‌حساب از پادیوم', [
                 'error' => $e->getMessage(),
             ]);
-            // job را fail می‌کنیم تا retry انجام شود
-            $this->fail($e);
-
-            return;
+            // throw می‌کنیم (نه fail) تا tries/backoff واقعاً اجرا شود؛ fail() جاب را فوراً
+            // شکست‌خورده علامت می‌زد و retryها را دور می‌زد.
+            throw $e;
         }
 
         $total = count($deposits);

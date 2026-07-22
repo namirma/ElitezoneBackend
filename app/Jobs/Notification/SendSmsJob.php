@@ -28,11 +28,6 @@ class SendSmsJob implements ShouldQueue
      */
     public array $backoff = [30, 60, 120];
 
-    /**
-     * حداکثر یک exception ثبت‌نشده مجاز است (از infinite retry loop جلوگیری می‌کند).
-     */
-    public int $maxExceptions = 1;
-
     public function __construct(protected string $mobile, protected string $message) {}
 
     public function handle(SmsService $smsService): void
@@ -53,8 +48,14 @@ class SendSmsJob implements ShouldQueue
         }
 
         try {
-            $smsService->send($this->mobile, $this->message);
-        } catch (\Exception $e) {
+            // مقدار بازگشتی باید بررسی شود: send() روی شکستِ گیت‌وی false می‌دهد (نه exception)؛
+            // نادیده‌گرفتنِ آن باعث می‌شد پیامکِ گم‌شده «موفق» تلقی شود و tries/backoff هرگز اجرا نشود.
+            $result = $smsService->send($this->mobile, $this->message);
+
+            if ($result === false) {
+                throw new \RuntimeException("SMS gateway returned failure for {$this->mobile}");
+            }
+        } catch (\Throwable $e) {
             // شکستِ واقعی: کلیدِ dedupe را آزاد کن تا retry بتواند دوباره تلاش کند.
             Cache::forget($dedupeKey);
             Log::error("SMS Job Failed for {$this->mobile}: ".$e->getMessage());

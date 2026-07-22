@@ -22,10 +22,22 @@ class RollupProductViewsJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public int $tries = 3;
+
+    /** @var array<int,int> */
+    public array $backoff = [60, 300];
+
     public function handle(): void
     {
         $this->rollupPendingDays();
         $this->pruneRawViews();
+    }
+
+    public function failed(\Throwable $e): void
+    {
+        \Illuminate\Support\Facades\Log::error('RollupProductViewsJob failed after retries', [
+            'error' => $e->getMessage(),
+        ]);
     }
 
     /**

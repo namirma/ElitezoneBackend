@@ -39,7 +39,9 @@ class PriceSetting extends Model
     {
         $cacheKey = "price_setting_{$code}";
 
-        return Cache::remember($cacheKey, 60 * 24, function () use ($code, $default) {
+        // TTL: ۲۴ ساعت (قبلاً 60*24 = ۱۴۴۰ ثانیه ≈ ۲۴ دقیقه بود که با کامنتِ «۲۴ ساعت»
+        // نمی‌خواند). چون booted() روی saved/deleted کش را باطل می‌کند، TTLِ بلند امن است.
+        return Cache::remember($cacheKey, 60 * 60 * 24, function () use ($code, $default) {
             $setting = self::where(self::CODE, $code)->first();
 
             return $setting ? $setting->{self::VALUE} : $default;

@@ -124,11 +124,14 @@ class SyncKavirProducts extends Command
                 $variant->fill([
                     'product_id' => $parentProduct->id,
                     'name' => $item['Sales_Store_Code_Name'],
-                    'stock_quantity' => 0,
                 ]);
 
+                // stock_quantity و is_active فقط روی رکوردِ تازه ست می‌شوند. قبلاً
+                // stock_quantity=0 روی هر سینک (ساعتی) اجرا می‌شد و موجودیِ زندهٔ واریانت‌های
+                // موجود (که ادمین/سفارش/باسکول تنظیم کرده‌اند) را صفر می‌کرد و فروش را می‌بست.
                 if ($isNewVariant) {
                     $variant->is_active = false;
+                    $variant->stock_quantity = 0;
                 }
 
                 $variant->save();
