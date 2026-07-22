@@ -48,6 +48,9 @@ class PriceSetting extends Model
 
     const CODE_SHOW_PRICES_WITH_VAT = 'show_prices_with_vat';
 
+    // نرخِ کارمزدِ تراکنش (%TC) — تنظیمِ سراسریِ قابل‌ویرایش (به‌جای هاردکد در سرویس تسویه).
+    const CODE_TC_PERCENTAGE = 'tc_percentage';
+
     protected $fillable = [
         self::NAME,
         self::CODE,
