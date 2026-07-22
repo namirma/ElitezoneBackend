@@ -38,7 +38,9 @@ final class TicketDTO
             'order_id' => ['nullable', 'integer', 'exists:orders,id'],
             'province_id' => ['nullable', 'integer'],
             'city_id' => ['nullable', 'integer'],
-            'file.*' => ['nullable', 'file', 'max:5000'],
+            // allowlistِ نوع فایل — قبلاً هر نوعی (svg/html با اسکریپت) پذیرفته و روی دیسکِ
+            // public ذخیره می‌شد → XSS ذخیره‌شده. هم‌راستا با TicketReplyDTO و بدونِ svg.
+            'file.*' => ['nullable', 'file', 'mimes:jpeg,jpg,png,gif,webp,pdf,doc,docx,xls,xlsx,txt,zip', 'max:5000'],
         ]);
 
         return new self(

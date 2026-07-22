@@ -29,8 +29,9 @@ class PayOrderAction
                 throw new OrderNotPayableException(__('orders.errors.not_owner'));
             }
 
-            $payableStatuses = [Order::STATUS_PENDING, Order::STATUS_RESERVED_EXTENDED];
-            if (! in_array($lockedOrder->status, $payableStatuses, true)) {
+            // منبعِ واحدِ حقیقت (شاملِ RESERVED) — هم‌تراز با مسیرِ پرداختِ کیف‌پول
+            // (OrderPaymentController) تا هر دو مسیرِ پرداخت یکسان رفتار کنند و drift نکنند.
+            if (! in_array($lockedOrder->status, Order::PAYABLE_STATUSES, true)) {
                 throw new OrderNotPayableException(__("orders.status.{$lockedOrder->status}"));
             }
 

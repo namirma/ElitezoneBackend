@@ -13,6 +13,7 @@ use App\Models\Order;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class OrderActionController extends Controller
 {
@@ -58,6 +59,13 @@ class OrderActionController extends Controller
         try {
             $this->finalizeAction->execute($order, $request->validated('final_invoice_ref'));
         } catch (Exception $e) {
+            // بدون این لاگ، شکستِ finalizeِ فاکتور (که سهم مالیِ الیت‌یار را هولد می‌کند)
+            // هیچ ردِ عملیاتی نداشت و دیباگ‌ناپذیر بود.
+            Log::channel('orders')->error('finalizeInvoice failed', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+            ]);
+
             return error(__('orders.unknown_processing_error'), [], 500);
         }
 
@@ -94,6 +102,12 @@ class OrderActionController extends Controller
         } catch (\RuntimeException $e) {
             return error($e->getMessage(), [], 422);
         } catch (Exception $e) {
+            Log::channel('orders')->error('submitEliteYARMoadianInvoice failed', [
+                'order_id' => $order->id,
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+
             return error(__('orders.unknown_processing_error'), [], 500);
         }
 

@@ -134,6 +134,17 @@ class Order extends Model
 
     public const STATUS_PENDING_SURPLUS_PAYMENT = 'pending_surplus_payment';
 
+    /**
+     * وضعیت‌هایی که یک سفارش در آن‌ها قابل‌پرداخت است — منبعِ واحدِ حقیقت تا مسیرِ
+     * پرداختِ کیف‌پول (OrderPaymentController) و مسیرِ درگاه (PayOrderAction) هرگز
+     * از هم drift نکنند. RESERVED هم شامل است تا «تکمیلِ رزرو» از هر دو مسیر ممکن باشد.
+     */
+    public const PAYABLE_STATUSES = [
+        self::STATUS_PENDING,
+        self::STATUS_RESERVED,
+        self::STATUS_RESERVED_EXTENDED,
+    ];
+
     public const PAYMENT_PENDING = 'pending';
 
     public const PAYMENT_PAID = 'paid';

@@ -47,6 +47,7 @@ class Handler extends ExceptionHandler
             return response()->json([
                 'status' => false,
                 'message' => __('global.errors.unauthenticated'),
+                'data' => null,
                 'errors' => [],
             ], 401);
         }
@@ -119,6 +120,7 @@ class Handler extends ExceptionHandler
             return response()->json([
                 'status' => false,
                 'message' => __('global.errors.validation_failed'), // پیام کلی
+                'data' => null,
                 'errors' => $e->errors(), // جزئیات فیلدها
             ], 422);
         }
@@ -128,8 +130,11 @@ class Handler extends ExceptionHandler
             // لاگ کردن خطای اصلی برای برنامه‌نویس
             Log::error('Database Error: '.$e->getMessage());
 
-            // در حالت پروداکشن نباید خطای SQL را به کاربر نشان داد
-            $message = config('app.debug') ? $e->getMessage() : __('global.errors.database_error');
+            // در حالت پروداکشن نباید خطای SQL را به کاربر نشان داد. گاردِ دولایه:
+            // حتی اگر به‌اشتباه APP_DEBUG=true روی پروداکشن بماند، پیام SQL لو نمی‌رود.
+            $message = (config('app.debug') && ! app()->environment('production'))
+                ? $e->getMessage()
+                : __('global.errors.database_error');
 
             return $this->jsonResponse($message, 500);
         }
@@ -137,7 +142,9 @@ class Handler extends ExceptionHandler
         // 9. سایر خطاهای سرور (500)
         Log::error('Server Error: '.$e->getMessage(), ['exception' => $e]);
 
-        $message = config('app.debug') ? $e->getMessage() : __('global.errors.internal_server_error');
+        $message = (config('app.debug') && ! app()->environment('production'))
+            ? $e->getMessage()
+            : __('global.errors.internal_server_error');
 
         return $this->jsonResponse($message, 500);
     }
@@ -148,6 +155,7 @@ class Handler extends ExceptionHandler
         return response()->json([
             'status' => false,
             'message' => $message,
+            'data' => null,
             'errors' => [],
         ], $code);
     }

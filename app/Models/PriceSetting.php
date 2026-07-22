@@ -28,6 +28,9 @@ class PriceSetting extends Model
 
     const CODE_SHOW_PRICES_WITH_VAT = 'show_prices_with_vat';
 
+    // نرخِ کارمزدِ تراکنش (%TC) — تنظیمِ سراسریِ قابل‌ویرایش (به‌جای هاردکد در سرویس تسویه).
+    const CODE_TC_PERCENTAGE = 'tc_percentage';
+
     protected $fillable = [
         self::NAME,
         self::CODE,
@@ -39,7 +42,9 @@ class PriceSetting extends Model
     {
         $cacheKey = "price_setting_{$code}";
 
-        return Cache::remember($cacheKey, 60 * 24, function () use ($code, $default) {
+        // TTL: ۲۴ ساعت (قبلاً 60*24 = ۱۴۴۰ ثانیه ≈ ۲۴ دقیقه بود که با کامنتِ «۲۴ ساعت»
+        // نمی‌خواند). چون booted() روی saved/deleted کش را باطل می‌کند، TTLِ بلند امن است.
+        return Cache::remember($cacheKey, 60 * 60 * 24, function () use ($code, $default) {
             $setting = self::where(self::CODE, $code)->first();
 
             return $setting ? $setting->{self::VALUE} : $default;
@@ -48,13 +53,23 @@ class PriceSetting extends Model
 
     public static function getValueAsFloat(string $code, float $default = 0.0): float
     {
-        $setting = self::where(self::CODE, $code)->first();
+        // از همان کشِ getValue استفاده می‌کنیم؛ قبلاً این متد روی هر محاسبهٔ VAT-inclusive
+        // یک کوئری مستقیم و بدون‌کش می‌زد، در حالی‌که یک مقدارِ تنظیماتیِ کم‌تغییر است.
+        return (float) self::getValue($code, $default);
+    }
 
-        if (! $setting) {
-            return $default;
-        }
+    /**
+     * ابطالِ کش هنگام تغییر/حذفِ تنظیمات تا مقادیر جدید (مثل نرخ VAT) فوراً اعمال شوند
+     * و روی مقدارِ کش‌شده تا ۲۴ ساعت گیر نکنند.
+     */
+    protected static function booted(): void
+    {
+        $flush = function (self $setting): void {
+            Cache::forget("price_setting_{$setting->{self::CODE}}");
+        };
 
-        return (float) $setting->value;
+        static::saved($flush);
+        static::deleted($flush);
     }
 
     public static function getValueAsInt($code, $default = 0)

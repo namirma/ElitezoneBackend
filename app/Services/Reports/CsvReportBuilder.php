@@ -96,10 +96,29 @@ class CsvReportBuilder
 
         $rows = 0;
         foreach ($this->query($type, $from, $to)->cursor() as $model) {
-            fputcsv($stream, $this->row($type, $model));
+            fputcsv($stream, array_map([$this, 'sanitizeCell'], $this->row($type, $model)));
             $rows++;
         }
 
         return $rows;
+    }
+
+    /**
+     * خنثی‌سازی CSV/Formula Injection: سلول‌هایی که با = + - @ (یا tab/CR) شروع
+     * می‌شوند در اکسل/گوگل‌شیت به‌عنوان فرمول اجرا می‌شوند. طبق راهنمای OWASP، با
+     * افزودن یک ' در ابتدا آن‌ها را به متنِ ساده تبدیل می‌کنیم. روی همهٔ فیلدهای
+     * متنیِ کاربرمحور (نام، توضیحات و …) اعمال می‌شود، نه فقط فیلدهای «مشکوک».
+     */
+    public function sanitizeCell(mixed $value): mixed
+    {
+        if (! is_string($value) || $value === '') {
+            return $value;
+        }
+
+        if (in_array($value[0], ['=', '+', '-', '@', "\t", "\r"], true)) {
+            return "'".$value;
+        }
+
+        return $value;
     }
 }

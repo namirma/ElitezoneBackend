@@ -1,0 +1,11 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+    - phpstan-baseline.neon
+
+parameters:
+    level: 5
+    paths:
+        - app
+    # حذفِ تدریجیِ خطاهای موجود از طریق baseline انجام می‌شود؛ این پیکربندی فقط
+    # رگرسیون‌های جدید (کدِ تازه) را در CI می‌گیرد. سطح را به‌مرور می‌توان بالا برد.
+    reportUnmatchedIgnoredErrors: false

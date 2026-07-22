@@ -194,6 +194,17 @@ class AddToCartAction
             filterCategoryCode: $roleCode
         );
 
+        // گاردِ قیمتِ صفر: اگر برای این (واریانت، کارخانه، محل تحویل) ردیف قیمتی وجود
+        // نداشته باشد، پایپ‌لاینِ قیمت مقدار 0 برمی‌گرداند. بدون این گارد کاربر می‌توانست
+        // یک واریانتِ واقعی را با کارخانه/محلِ بدون‌قیمت به سبد افزوده و با مبلغ صفر تسویه کند.
+        if ($pricing->finalPrice <= 0) {
+            throw ValidationException::withMessages([
+                'product_variant_id' => __('cart.limits.price_unavailable', [
+                    'name' => $variant->product->name ?? '',
+                ]),
+            ]);
+        }
+
         $lineTotal = $totalWeight * $pricing->finalPrice;
         $lineVat = $totalWeight * $pricing->vatAmount;
 

@@ -21,10 +21,13 @@ return [
         'http://localhost:5173',
         'http://localhost:5174',
 
-        // استیجینگ هنوز SSL ندارد و روی http سرو می‌شود. این اوریجینِ http فقط در حالت
-        // دیباگ مجاز می‌شود تا پروداکشن همچنان https-only بماند (طبق نظر تیم سرور).
-        // وقتی SSL نصب شد، همان خطِ https بالا پوشش‌اش می‌دهد و این خط خود‌به‌خود بی‌اثر است.
-        env('APP_DEBUG') ? 'http://staging.elitezone.me' : null,
+        // استیجینگ هنوز SSL ندارد و روی http سرو می‌شود. این اوریجینِ http باید همیشه
+        // مجاز باشد؛ قبلاً به APP_DEBUG گِیت شده بود و چون روی استیجینگ APP_DEBUG=false
+        // است، preflightِ ورود با خطای CORS رد می‌شد (Redirect is not allowed for a
+        // preflight request). اجازهٔ این اوریجینِ استیجینگ هیچ اثری روی امنیت پروداکشن
+        // ندارد (پروداکشن دامنهٔ https خودش را دارد). با نصب SSL روی استیجینگ، خطِ https
+        // بالا هم پوشش می‌دهد و این خط عملاً بی‌اثر می‌شود.
+        'http://staging.elitezone.me',
     ])),
 
     'allowed_origins_patterns' => [],

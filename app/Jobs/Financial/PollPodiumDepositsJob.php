@@ -6,6 +6,7 @@ use App\Actions\Financial\ProcessPodiumDepositAction;
 use App\Services\PodiumServices\DepositStatementService;
 use Hekmatinasser\Verta\Verta;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
@@ -24,9 +25,17 @@ use Illuminate\Support\Facades\Log;
  * - ProcessPodiumDepositAction هر DocNumber را فقط یک‌بار پردازش می‌کند (idempotent)
  * - خطای هر statement به صورت isolated log می‌شود — statement‌های بعدی پردازش می‌شوند
  */
-class PollPodiumDepositsJob implements ShouldQueue
+class PollPodiumDepositsJob implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    /** جابِ singleton — جلوگیری از اجرای هم‌زمانِ دو poll (backlog/cadence). */
+    public int $uniqueFor = 600;
+
+    public function uniqueId(): string
+    {
+        return 'poll-podium-deposits';
+    }
 
     /** تعداد دفعات retry در صورت خطا */
     public int $tries = 3;
@@ -63,10 +72,9 @@ class PollPodiumDepositsJob implements ShouldQueue
             Log::error('PollPodiumDepositsJob: خطا در دریافت صورت‌حساب از پادیوم', [
                 'error' => $e->getMessage(),
             ]);
-            // job را fail می‌کنیم تا retry انجام شود
-            $this->fail($e);
-
-            return;
+            // throw می‌کنیم (نه fail) تا tries/backoff واقعاً اجرا شود؛ fail() جاب را فوراً
+            // شکست‌خورده علامت می‌زد و retryها را دور می‌زد.
+            throw $e;
         }
 
         $total = count($deposits);
