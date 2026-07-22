@@ -89,7 +89,7 @@ class InventoryService
                 __('inventory.errors.insufficient_stock', [
                     'name' => $variant->name,
                     'requested' => number_format($amountToDeduct),
-                    'available' => number_format($variant->stock_quantity),
+                    'available' => number_format((float) $variant->stock_quantity),
                 ])
             );
         }
