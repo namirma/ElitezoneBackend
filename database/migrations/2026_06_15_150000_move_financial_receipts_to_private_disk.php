@@ -1,7 +1,9 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use League\Flysystem\FilesystemException;
 
 /**
  * Data migration: move already-uploaded financial receipts off the web-exposed
@@ -37,19 +39,26 @@ return new class extends Migration
         $to = Storage::disk($toDisk);
 
         foreach ($this->dirs as $dir) {
-            if (! $from->exists($dir)) {
-                continue;
-            }
-
-            foreach ($from->allFiles($dir) as $path) {
-                if ($to->exists($path)) {
-                    $from->delete($path); // already relocated on a prior run
-
+            // Best-effort data migration: an unreachable disk (e.g. an s3 driver with
+            // unset credentials on CI / fresh installs) must not block the schema
+            // migration chain — the files can always be relocated by re-running later.
+            try {
+                if (! $from->exists($dir)) {
                     continue;
                 }
 
-                $to->put($path, $from->get($path));
-                $from->delete($path);
+                foreach ($from->allFiles($dir) as $path) {
+                    if ($to->exists($path)) {
+                        $from->delete($path); // already relocated on a prior run
+
+                        continue;
+                    }
+
+                    $to->put($path, $from->get($path));
+                    $from->delete($path);
+                }
+            } catch (FilesystemException $e) {
+                Log::warning("Receipt relocation skipped for '{$dir}' ({$fromDisk} → {$toDisk}): ".$e->getMessage());
             }
         }
     }
