@@ -10,7 +10,9 @@ use App\Http\Resources\Order\OrderResource;
 use App\Models\Cart;
 use App\Models\Order;
 use App\Models\WalletTransaction;
+use App\Services\Marketing\CouponService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 
@@ -24,7 +26,7 @@ class CheckoutController extends Controller
      * پیش‌نمایش کد تخفیف قبل از ثبت سفارش — اعتبارسنجی + نوع و مقدار.
      * اعمال واقعی هنگام placeOrder (با coupon_code) و پرداخت انجام می‌شود.
      */
-    public function couponPreview(\Illuminate\Http\Request $request, \App\Services\Marketing\CouponService $couponService): JsonResponse
+    public function couponPreview(Request $request, CouponService $couponService): JsonResponse
     {
         $validated = $request->validate(['code' => ['required', 'string', 'max:100']]);
 

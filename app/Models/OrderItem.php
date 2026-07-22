@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -24,14 +25,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property numeric $unit_price
  * @property numeric $total_price
  * @property numeric $shipping_cost
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\Order $order
- * @property-read \App\Models\Factory|null $originFactory
- * @property-read \App\Models\FactoryLocation|null $originFactoryLocation
- * @property-read \App\Models\ProductVariant|null $productVariant
- * @property-read \App\Models\Shipment|null $shipment
- * @property-read \App\Models\User|null $supplier
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read Order $order
+ * @property-read Factory|null $originFactory
+ * @property-read FactoryLocation|null $originFactoryLocation
+ * @property-read ProductVariant|null $productVariant
+ * @property-read Shipment|null $shipment
+ * @property-read User|null $supplier
+ *
  * @method static \Database\Factories\OrderItemFactory factory($count = null, $state = [])
  * @method static Builder<static>|OrderItem newModelQuery()
  * @method static Builder<static>|OrderItem newQuery()
@@ -55,6 +57,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @method static Builder<static>|OrderItem whereUpdatedAt($value)
  * @method static Builder<static>|OrderItem whereVariantSku($value)
  * @method static Builder<static>|OrderItem whereWeight($value)
+ *
  * @mixin \Eloquent
  */
 class OrderItem extends Model

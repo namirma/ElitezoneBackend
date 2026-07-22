@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -14,18 +16,19 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null $session_id
  * @property int|null $customer_type_id
  * @property int|null $badge_id
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\Badge|null $badge
- * @property-read \App\Models\CustomerType|null $customerType
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\CartItem> $items
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read Badge|null $badge
+ * @property-read CustomerType|null $customerType
+ * @property-read Collection<int, CartItem> $items
  * @property-read int|null $items_count
- * @property-read \App\Models\CartPriceFilterCategory|null $pivot
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\PriceFilterCategory> $priceFilterCategories
+ * @property-read CartPriceFilterCategory|null $pivot
+ * @property-read Collection<int, PriceFilterCategory> $priceFilterCategories
  * @property-read int|null $price_filter_categories_count
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\PurchaseParameterValue> $purchaseParameters
+ * @property-read Collection<int, PurchaseParameterValue> $purchaseParameters
  * @property-read int|null $purchase_parameters_count
- * @property-read \App\Models\User|null $user
+ * @property-read User|null $user
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Cart newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Cart newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Cart query()
@@ -36,6 +39,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Cart whereSessionId($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Cart whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Cart whereUserId($value)
+ *
  * @mixin \Eloquent
  */
 class Cart extends Model

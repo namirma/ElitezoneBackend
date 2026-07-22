@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * Freight rate for an origin (factory location) → destination (province / optional city).
@@ -16,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * per_count_cost × sales-count (e.g. brick / wall-mesh). Each route picks its own basis.
  *
  * @see ShippingCostCalculator
+ *
  * @property int $id
  * @property int $factory_location_id
  * @property int $destination_province_id
@@ -25,9 +27,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property ShippingCostBasis $cost_basis
  * @property numeric $per_count_cost
  * @property bool $is_active
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\FactoryLocation $factoryLocation
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read FactoryLocation $factoryLocation
+ *
  * @method static Builder<static>|ShippingRate active()
  * @method static Builder<static>|ShippingRate newModelQuery()
  * @method static Builder<static>|ShippingRate newQuery()
@@ -43,6 +46,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @method static Builder<static>|ShippingRate wherePerCountCost($value)
  * @method static Builder<static>|ShippingRate wherePerKgCost($value)
  * @method static Builder<static>|ShippingRate whereUpdatedAt($value)
+ *
  * @mixin \Eloquent
  */
 class ShippingRate extends Model

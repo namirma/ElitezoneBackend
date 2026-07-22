@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -13,9 +14,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $to_status
  * @property int|null $user_id
  * @property int|null $duration_minutes
- * @property \Illuminate\Support\Carbon $created_at
- * @property-read \App\Models\Order $order
- * @property-read \App\Models\User|null $user
+ * @property Carbon $created_at
+ * @property-read Order $order
+ * @property-read User|null $user
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|OrderStatusHistory newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|OrderStatusHistory newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|OrderStatusHistory query()
@@ -26,6 +28,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|OrderStatusHistory whereOrderId($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|OrderStatusHistory whereToStatus($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|OrderStatusHistory whereUserId($value)
+ *
  * @mixin \Eloquent
  */
 class OrderStatusHistory extends Model

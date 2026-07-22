@@ -2,7 +2,9 @@
 
 namespace Tests\Feature\Audit;
 
+use App\Http\Middleware\Cors;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
@@ -76,9 +78,9 @@ class CriticalFixesTest extends TestCase
      */
     public function test_cors_preflight_short_circuits_with_headers(): void
     {
-        $middleware = new \App\Http\Middleware\Cors;
+        $middleware = new Cors;
 
-        $request = \Illuminate\Http\Request::create('/api/authenticate/check-user', 'OPTIONS');
+        $request = Request::create('/api/authenticate/check-user', 'OPTIONS');
         $request->headers->set('Origin', 'http://staging.elitezone.me');
 
         $response = $middleware->handle($request, function () {

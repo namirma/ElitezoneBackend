@@ -5,15 +5,17 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
  * @property int $advisor_id
  * @property string $mobile
- * @property \Illuminate\Support\Carbon|null $sent_at
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\User $advisor
+ * @property Carbon|null $sent_at
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read User $advisor
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|EmployerSmsInvite newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|EmployerSmsInvite newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|EmployerSmsInvite query()
@@ -23,6 +25,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|EmployerSmsInvite whereMobile($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|EmployerSmsInvite whereSentAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|EmployerSmsInvite whereUpdatedAt($value)
+ *
  * @mixin \Eloquent
  */
 class EmployerSmsInvite extends Model

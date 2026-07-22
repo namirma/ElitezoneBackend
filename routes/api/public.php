@@ -4,6 +4,7 @@ use App\Http\Controllers\AgreementController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\QuestionController;
 use App\Http\Controllers\Api\User\ProductReviewController;
+use App\Http\Controllers\ContentController;
 use App\Http\Controllers\CustomerTypeController;
 use App\Http\Controllers\FactoryController;
 use App\Http\Controllers\ParameterDetectionController;
@@ -75,7 +76,7 @@ Route::prefix('factories')->group(function () {
 Route::get('/shipping-methods', [ShippingMethodController::class, 'index']);
 
 // ── محتوای عمومی سایت (مدیریت‌شده در پنل ادمین، فقط رکوردهای فعال، کش‌شده) ──
-Route::controller(\App\Http\Controllers\ContentController::class)->group(function () {
+Route::controller(ContentController::class)->group(function () {
     Route::get('/banners', 'banners');
     Route::get('/articles', 'articles');
     Route::get('/articles/{slug}', 'article');

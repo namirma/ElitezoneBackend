@@ -3,12 +3,14 @@
 namespace App\Models;
 
 use App\Traits\PersianDate;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Support\Carbon;
 use Visus\Cuid2\Cuid2;
 
 /**
@@ -27,27 +29,28 @@ use Visus\Cuid2\Cuid2;
  * @property numeric|null $aggregate_min_order_value
  * @property numeric|null $aggregate_max_order_value
  * @property int|null $aggregate_limit_order_unit_id
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\OrderUnit|null $aggregateLimitOrderUnit
- * @property-read \App\Models\ProductCategory $category
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read OrderUnit|null $aggregateLimitOrderUnit
+ * @property-read ProductCategory $category
  * @property-read string|void $created_at_diff
  * @property-read string|void $created_at_p
  * @property-read string|void $expire_at_days
  * @property-read string|void $updated_at_diff
  * @property-read string|void $updated_at_p
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ProductImage> $images
+ * @property-read Collection<int, ProductImage> $images
  * @property-read int|null $images_count
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Offer> $offers
+ * @property-read Collection<int, Offer> $offers
  * @property-read int|null $offers_count
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\OrderUnit> $orderUnits
+ * @property-read Collection<int, OrderUnit> $orderUnits
  * @property-read int|null $order_units_count
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ProductPrice> $variantPrices
+ * @property-read Collection<int, ProductPrice> $variantPrices
  * @property-read int|null $variant_prices_count
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ProductVariant> $variants
+ * @property-read Collection<int, ProductVariant> $variants
  * @property-read int|null $variants_count
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ProductVideo> $videos
+ * @property-read Collection<int, ProductVideo> $videos
  * @property-read int|null $videos_count
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Product active()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Product featured()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Product newModelQuery()
@@ -70,6 +73,7 @@ use Visus\Cuid2\Cuid2;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereSlug($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereViewCount($value)
+ *
  * @mixin \Eloquent
  */
 class Product extends Model

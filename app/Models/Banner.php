@@ -6,6 +6,7 @@ use App\Traits\PersianDate;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Cache;
 
 class Banner extends Model
 {
@@ -54,8 +55,8 @@ class Banner extends Model
 
     protected static function booted(): void
     {
-        static::saved(fn () => \Illuminate\Support\Facades\Cache::forget(self::CACHE_KEY));
-        static::deleted(fn () => \Illuminate\Support\Facades\Cache::forget(self::CACHE_KEY));
-        static::restored(fn () => \Illuminate\Support\Facades\Cache::forget(self::CACHE_KEY));
+        static::saved(fn () => Cache::forget(self::CACHE_KEY));
+        static::deleted(fn () => Cache::forget(self::CACHE_KEY));
+        static::restored(fn () => Cache::forget(self::CACHE_KEY));
     }
 }

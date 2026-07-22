@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -16,13 +18,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null $api_key
  * @property string|null $api_url
  * @property int $is_active
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\FactoryLocation> $locations
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read Collection<int, FactoryLocation> $locations
  * @property-read int|null $locations_count
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ProductPrice> $prices
+ * @property-read Collection<int, ProductPrice> $prices
  * @property-read int|null $prices_count
- * @property-read \App\Models\User|null $supplier
+ * @property-read User|null $supplier
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Factory active()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Factory newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Factory newQuery()
@@ -38,6 +41,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Factory whereSlug($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Factory whereSupplierUserId($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Factory whereUpdatedAt($value)
+ *
  * @mixin \Eloquent
  */
 class Factory extends Model

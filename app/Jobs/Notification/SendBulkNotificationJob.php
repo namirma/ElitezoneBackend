@@ -9,6 +9,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 /**
@@ -81,7 +82,7 @@ class SendBulkNotificationJob implements ShouldQueue
 
     public function failed(\Throwable $e): void
     {
-        \Illuminate\Support\Facades\Log::error('SendBulkNotificationJob failed after retries', [
+        Log::error('SendBulkNotificationJob failed after retries', [
             'subject' => $this->subject,
             'target' => is_null($this->userIds) ? 'all' : count($this->userIds),
             'error' => $e->getMessage(),

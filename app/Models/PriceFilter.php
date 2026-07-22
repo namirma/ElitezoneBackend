@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -17,11 +19,12 @@ use Illuminate\Support\Facades\Cache;
  * @property bool $is_percentage
  * @property bool $is_active
  * @property int $sort_order
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\PriceFilterCategory> $categories
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read Collection<int, PriceFilterCategory> $categories
  * @property-read int|null $categories_count
- * @property-read \App\Models\PriceFilterType $filterType
+ * @property-read PriceFilterType $filterType
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceFilter active()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceFilter newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceFilter newQuery()
@@ -36,6 +39,7 @@ use Illuminate\Support\Facades\Cache;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceFilter wherePriceFilterTypeId($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceFilter whereSortOrder($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceFilter whereUpdatedAt($value)
+ *
  * @mixin \Eloquent
  */
 class PriceFilter extends Model

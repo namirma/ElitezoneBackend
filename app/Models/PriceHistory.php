@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -16,12 +17,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property numeric|null $special_price
  * @property numeric|null $golden_figure
  * @property int|null $user_id
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\Factory|null $factory
- * @property-read \App\Models\ProductPrice|null $productPrice
- * @property-read \App\Models\ProductVariant $productVariant
- * @property-read \App\Models\User|null $user
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read Factory|null $factory
+ * @property-read ProductPrice|null $productPrice
+ * @property-read ProductVariant $productVariant
+ * @property-read User|null $user
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceHistory newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceHistory newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceHistory query()
@@ -36,6 +38,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceHistory whereSpecialPrice($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceHistory whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceHistory whereUserId($value)
+ *
  * @mixin \Eloquent
  */
 class PriceHistory extends Model

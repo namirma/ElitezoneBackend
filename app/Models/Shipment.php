@@ -3,16 +3,19 @@
 namespace App\Models;
 
 use App\Enums\Shipping\ShippingCostBasis;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 /**
  * One delivery leg of an order: items from a single origin factory location to a single
  * destination address, with its own freight cost and lifecycle status.
  *
  * @see ShippingCostCalculator
+ *
  * @property int $id
  * @property int $order_id
  * @property int|null $factory_id
@@ -25,14 +28,15 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property ShippingCostBasis $cost_basis
  * @property numeric $shipping_cost
  * @property string $status
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\Address|null $destinationAddress
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\OrderItem> $items
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read Address|null $destinationAddress
+ * @property-read Collection<int, OrderItem> $items
  * @property-read int|null $items_count
- * @property-read \App\Models\Order $order
- * @property-read \App\Models\Factory|null $originFactory
- * @property-read \App\Models\FactoryLocation|null $originFactoryLocation
+ * @property-read Order $order
+ * @property-read Factory|null $originFactory
+ * @property-read FactoryLocation|null $originFactoryLocation
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Shipment newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Shipment newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Shipment query()
@@ -50,6 +54,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Shipment whereStatus($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Shipment whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Shipment whereWeight($value)
+ *
  * @mixin \Eloquent
  */
 class Shipment extends Model

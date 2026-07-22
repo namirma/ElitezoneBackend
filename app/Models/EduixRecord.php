@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -25,9 +26,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $status
  * @property string $admin_status
  * @property string|null $rejection_reason
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\User|null $user
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read User|null $user
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|EduixRecord newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|EduixRecord newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|EduixRecord query()
@@ -51,6 +53,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|EduixRecord whereUniversity($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|EduixRecord whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|EduixRecord whereUserId($value)
+ *
  * @mixin \Eloquent
  */
 class EduixRecord extends Model

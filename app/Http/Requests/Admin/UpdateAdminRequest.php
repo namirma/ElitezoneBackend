@@ -4,6 +4,7 @@ namespace App\Http\Requests\Admin;
 
 use App\Models\User;
 use App\Support\PhoneNumber;
+use Database\Seeders\AdminPermissionSeeder;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -39,7 +40,7 @@ class UpdateAdminRequest extends FormRequest
             'email' => ['nullable', 'email', 'max:255'],
             // سطح دسترسی — فقط وقتی ارسال شود sync می‌شود
             'permissions' => ['nullable', 'array'],
-            'permissions.*' => ['string', \Illuminate\Validation\Rule::in(array_keys(\Database\Seeders\AdminPermissionSeeder::PERMISSIONS))],
+            'permissions.*' => ['string', Rule::in(array_keys(AdminPermissionSeeder::PERMISSIONS))],
         ];
     }
 

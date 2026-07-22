@@ -22,8 +22,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $note
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\User|null $user
- * @property-read \App\Models\WalletTransaction|null $walletTransaction
+ * @property-read User|null $user
+ * @property-read WalletTransaction|null $walletTransaction
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PodiumDepositRecord newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PodiumDepositRecord newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PodiumDepositRecord query()
@@ -42,6 +43,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PodiumDepositRecord whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PodiumDepositRecord whereUserId($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PodiumDepositRecord whereWalletTxnId($value)
+ *
  * @mixin \Eloquent
  */
 class PodiumDepositRecord extends Model

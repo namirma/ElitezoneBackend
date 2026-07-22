@@ -5,6 +5,7 @@ use App\Jobs\Analytics\PredictInventoryNeeds;
 use App\Jobs\Analytics\RollupProductViewsJob;
 use App\Jobs\Financial\CheckSupplierBalancesJob;
 use App\Jobs\Financial\PollPodiumDepositsJob;
+use App\Jobs\Ticketing\EscalateOverdueTicketsJob;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -81,7 +82,7 @@ Schedule::command('sanctum:prune-expired --hours=168')
     ->onOneServer();
 
 // اسکالیشن خودکار تیکت‌های عبورکرده از SLA (یک‌بار به ازای هر تیکت)
-Schedule::job(new \App\Jobs\Ticketing\EscalateOverdueTicketsJob)
+Schedule::job(new EscalateOverdueTicketsJob)
     ->hourly()
     ->withoutOverlapping()
     ->onOneServer();

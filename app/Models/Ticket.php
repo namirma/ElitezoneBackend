@@ -3,10 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -18,29 +20,30 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property int $department_id
  * @property int|null $previous_department_id
  * @property int|null $admin_id
- * @property \Illuminate\Support\Carbon|null $assigned_at
- * @property \Illuminate\Support\Carbon|null $first_responded_at
- * @property \Illuminate\Support\Carbon|null $resolved_at
- * @property \Illuminate\Support\Carbon|null $closed_at
- * @property \Illuminate\Support\Carbon|null $sla_due_at
+ * @property Carbon|null $assigned_at
+ * @property Carbon|null $first_responded_at
+ * @property Carbon|null $resolved_at
+ * @property Carbon|null $closed_at
+ * @property Carbon|null $sla_due_at
  * @property int $reopened_count
  * @property string $subject
  * @property string $message
  * @property string $status
  * @property string $priority
- * @property \Illuminate\Support\Carbon|null $deleted_at
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\User|null $admin
- * @property-read \App\Models\Department $department
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\TicketFile> $files
+ * @property Carbon|null $deleted_at
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read User|null $admin
+ * @property-read Department $department
+ * @property-read Collection<int, TicketFile> $files
  * @property-read int|null $files_count
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\TicketNote> $notes
+ * @property-read Collection<int, TicketNote> $notes
  * @property-read int|null $notes_count
- * @property-read \App\Models\Order|null $order
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\TicketReply> $replies
+ * @property-read Order|null $order
+ * @property-read Collection<int, TicketReply> $replies
  * @property-read int|null $replies_count
- * @property-read \App\Models\User $user
+ * @property-read User $user
+ *
  * @method static Builder<static>|Ticket breachingSla()
  * @method static Builder<static>|Ticket newModelQuery()
  * @method static Builder<static>|Ticket newQuery()
@@ -71,6 +74,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @method static Builder<static>|Ticket whereUserId($value)
  * @method static Builder<static>|Ticket withTrashed(bool $withTrashed = true)
  * @method static Builder<static>|Ticket withoutTrashed()
+ *
  * @mixin \Eloquent
  */
 class Ticket extends Model

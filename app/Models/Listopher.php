@@ -2,20 +2,24 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 /**
  * @method static create(array $array)
  * @method static updateOrCreate(array $array, array $array1)
+ *
  * @property int $id
  * @property string $project_code
  * @property string $type
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ListopherItem> $items
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read Collection<int, ListopherItem> $items
  * @property-read int|null $items_count
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Listopher newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Listopher newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Listopher query()
@@ -24,6 +28,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Listopher whereProjectCode($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Listopher whereType($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Listopher whereUpdatedAt($value)
+ *
  * @mixin \Eloquent
  */
 class Listopher extends Model

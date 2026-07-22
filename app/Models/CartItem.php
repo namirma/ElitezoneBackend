@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -23,14 +24,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property numeric $vat_amount
  * @property numeric $total_with_vat
  * @property bool $with_vat
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\Address|null $address
- * @property-read \App\Models\Cart $cart
- * @property-read \App\Models\Factory $factory
- * @property-read \App\Models\FactoryLocation $factoryLocation
- * @property-read \App\Models\ProductVariant $productVariant
- * @property-read \App\Models\ShippingMethod $shippingMethod
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read Address|null $address
+ * @property-read Cart $cart
+ * @property-read Factory $factory
+ * @property-read FactoryLocation $factoryLocation
+ * @property-read ProductVariant $productVariant
+ * @property-read ShippingMethod $shippingMethod
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|CartItem newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|CartItem newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|CartItem query()
@@ -52,6 +54,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|CartItem whereVatAmount($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|CartItem whereWeight($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|CartItem whereWithVat($value)
+ *
  * @mixin \Eloquent
  */
 class CartItem extends Model

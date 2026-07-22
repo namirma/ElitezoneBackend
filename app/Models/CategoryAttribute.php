@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -13,10 +14,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property bool $is_required
  * @property bool $is_filterable
  * @property int $sort_order
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\AttributeType $attributeType
- * @property-read \App\Models\ProductCategory $category
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read AttributeType $attributeType
+ * @property-read ProductCategory $category
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|CategoryAttribute newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|CategoryAttribute newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|CategoryAttribute query()
@@ -28,6 +30,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|CategoryAttribute whereIsRequired($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|CategoryAttribute whereSortOrder($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|CategoryAttribute whereUpdatedAt($value)
+ *
  * @mixin \Eloquent
  */
 class CategoryAttribute extends Model

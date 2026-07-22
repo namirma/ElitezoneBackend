@@ -8,6 +8,7 @@ use App\Models\Ticket;
 use App\Models\TicketFile;
 use App\Models\TicketNote;
 use App\Repositories\Contracts\TicketRepositoryInterface;
+use App\Support\BusinessHours;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -211,7 +212,7 @@ class TicketService
 
         // ساعت‌های SLA فقط داخل تقویم کاری مصرف می‌شوند (BusinessHours);
         // با business_hours.enabled=false همان wall-clock سابق است.
-        return \App\Support\BusinessHours::addWorkingHours(now(), $hours);
+        return BusinessHours::addWorkingHours(now(), $hours);
     }
 
     /**

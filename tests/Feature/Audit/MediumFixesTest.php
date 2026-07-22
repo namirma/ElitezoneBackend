@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Audit;
 
+use App\Http\Controllers\Api\Admin\AdminActivityLogController;
 use App\Models\PriceSetting;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Cache;
@@ -64,7 +65,7 @@ class MediumFixesTest extends TestCase
      */
     public function test_activity_log_allowlist_includes_coupon_and_supplier_profile(): void
     {
-        $ref = new \ReflectionMethod(\App\Http\Controllers\Api\Admin\AdminActivityLogController::class, 'index');
+        $ref = new \ReflectionMethod(AdminActivityLogController::class, 'index');
         // The allowlist lives inline; assert via a request would need an admin user.
         // Instead, assert the source contains the new entries (lightweight guard).
         $source = file_get_contents($ref->getFileName());

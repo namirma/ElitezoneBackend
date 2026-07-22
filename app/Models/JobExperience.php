@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -13,13 +14,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $organization_name
  * @property string|null $project_address
  * @property string $file_path
- * @property \Illuminate\Support\Carbon|null $start_date
- * @property \Illuminate\Support\Carbon|null $end_date
+ * @property Carbon|null $start_date
+ * @property Carbon|null $end_date
  * @property string $status
  * @property string|null $rejection_reason
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\User $user
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read User $user
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|JobExperience newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|JobExperience newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|JobExperience query()
@@ -35,6 +37,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|JobExperience whereTitle($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|JobExperience whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|JobExperience whereUserId($value)
+ *
  * @mixin \Eloquent
  */
 class JobExperience extends Model

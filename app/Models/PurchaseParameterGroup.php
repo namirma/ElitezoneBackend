@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -12,10 +14,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null $description
  * @property int $order
  * @property int $is_active
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\PurchaseParameterValue> $values
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read Collection<int, PurchaseParameterValue> $values
  * @property-read int|null $values_count
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PurchaseParameterGroup active()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PurchaseParameterGroup newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PurchaseParameterGroup newQuery()
@@ -29,6 +32,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PurchaseParameterGroup whereName($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PurchaseParameterGroup whereOrder($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PurchaseParameterGroup whereUpdatedAt($value)
+ *
  * @mixin \Eloquent
  */
 class PurchaseParameterGroup extends Model

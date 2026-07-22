@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -12,10 +13,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int|null $badge_id
  * @property float $adjustment_amount
  * @property bool $is_active
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\Badge|null $badge
- * @property-read \App\Models\CustomerType $customerType
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read Badge|null $badge
+ * @property-read CustomerType $customerType
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceAdjustment active()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceAdjustment newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceAdjustment newQuery()
@@ -27,6 +29,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceAdjustment whereId($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceAdjustment whereIsActive($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PriceAdjustment whereUpdatedAt($value)
+ *
  * @mixin \Eloquent
  */
 class PriceAdjustment extends Model

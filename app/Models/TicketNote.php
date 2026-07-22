@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * Internal staff note attached to a single ticket ("یادداشت های تیکت").
@@ -14,10 +15,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $ticket_id
  * @property int|null $admin_id
  * @property string $note
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\User|null $admin
- * @property-read \App\Models\Ticket|null $ticket
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read User|null $admin
+ * @property-read Ticket|null $ticket
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|TicketNote newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|TicketNote newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|TicketNote query()
@@ -27,6 +29,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|TicketNote whereNote($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|TicketNote whereTicketId($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|TicketNote whereUpdatedAt($value)
+ *
  * @mixin \Eloquent
  */
 class TicketNote extends Model

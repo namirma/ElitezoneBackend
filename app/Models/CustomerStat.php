@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -16,10 +17,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $f_score
  * @property int $m_score
  * @property string|null $segment
- * @property \Illuminate\Support\Carbon $last_calculated_at
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\User $user
+ * @property Carbon $last_calculated_at
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read User $user
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|CustomerStat newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|CustomerStat newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|CustomerStat query()
@@ -35,6 +37,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|CustomerStat whereSegment($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|CustomerStat whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|CustomerStat whereUserId($value)
+ *
  * @mixin \Eloquent
  */
 class CustomerStat extends Model

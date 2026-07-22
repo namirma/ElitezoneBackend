@@ -3,10 +3,11 @@
 namespace App\Http\Resources\Ticket;
 
 use App\Http\Resources\BaseJsonResource;
+use App\Models\TicketReply;
 use Illuminate\Http\Request;
 
 /**
- * @mixin \App\Models\TicketReply
+ * @mixin TicketReply
  */
 class TicketReplyResource extends BaseJsonResource
 {

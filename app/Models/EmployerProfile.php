@@ -6,10 +6,12 @@ use App\Traits\PersianDate;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * @method static updateOrCreate(array $array, array $array1)
  * @method static where(array $array)
+ *
  * @property int $id
  * @property int $user_id
  * @property int $has_consultant
@@ -17,14 +19,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $project_done
  * @property string|null $project_in_progress
  * @property string|null $activity_provinces
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
  * @property-read string|void $created_at_diff
  * @property-read string|void $created_at_p
  * @property-read string|void $expire_at_days
  * @property-read string|void $updated_at_diff
  * @property-read string|void $updated_at_p
- * @property-read \App\Models\User $user
+ * @property-read User $user
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|EmployerProfile newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|EmployerProfile newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|EmployerProfile query()
@@ -37,6 +40,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|EmployerProfile whereStatus($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|EmployerProfile whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|EmployerProfile whereUserId($value)
+ *
  * @mixin \Eloquent
  */
 class EmployerProfile extends Model

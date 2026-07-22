@@ -3,6 +3,7 @@
 namespace App\Actions\Order;
 
 use App\DataTransferObjects\Order\PlaceOrderData;
+use App\DataTransferObjects\Shipping\ShipmentGroup;
 use App\Events\Order\OrderPlaced;
 use App\Exceptions\Order\CartIsEmptyException;
 use App\Models\Address;
@@ -348,7 +349,7 @@ class PlaceOrderAction
      * Create one Shipment per (origin → destination) leg and return a map of
      * cart item id → shipment id so order items can be linked to their shipment.
      *
-     * @param  \App\DataTransferObjects\Shipping\ShipmentGroup[]  $shipments
+     * @param  ShipmentGroup[]  $shipments
      * @return array<int|string, int>
      */
     private function createShipments(Order $order, array $shipments): array

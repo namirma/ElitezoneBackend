@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -12,14 +14,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  * @property string|null $code
  * @property string $type
  * @property numeric|null $value
- * @property \Illuminate\Support\Carbon|null $start_date
- * @property \Illuminate\Support\Carbon|null $end_date
+ * @property Carbon|null $start_date
+ * @property Carbon|null $end_date
  * @property int $minimum_quantity
  * @property bool $is_active
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Product> $products
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read Collection<int, Product> $products
  * @property-read int|null $products_count
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Offer active()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Offer current()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Offer newModelQuery()
@@ -37,6 +40,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Offer whereType($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Offer whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Offer whereValue($value)
+ *
  * @mixin \Eloquent
  */
 class Offer extends Model

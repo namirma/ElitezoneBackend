@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Models\Activity;
 use Spatie\Activitylog\Traits\LogsActivity;
 
 /**
@@ -17,15 +20,16 @@ use Spatie\Activitylog\Traits\LogsActivity;
  * @property string $status
  * @property string|null $description
  * @property array<array-key, mixed>|null $meta
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \Spatie\Activitylog\Models\Activity> $activities
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read Collection<int, Activity> $activities
  * @property-read int|null $activities_count
  * @property-read mixed $receipt_details
  * @property-read string $status_color
  * @property-read string $status_label
- * @property-read \App\Models\Order|null $order
- * @property-read \App\Models\Wallet $wallet
+ * @property-read Order|null $order
+ * @property-read Wallet $wallet
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|WalletTransaction newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|WalletTransaction newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|WalletTransaction query()
@@ -39,6 +43,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|WalletTransaction whereType($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|WalletTransaction whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|WalletTransaction whereWalletId($value)
+ *
  * @mixin \Eloquent
  */
 class WalletTransaction extends Model

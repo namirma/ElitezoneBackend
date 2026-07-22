@@ -16,7 +16,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $priority
  * @property string|null $reason
  * @property string $calculated_at
- * @property-read \App\Models\ProductVariant $variant
+ * @property-read ProductVariant $variant
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryPrediction newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryPrediction newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryPrediction query()
@@ -30,6 +31,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryPrediction whereRecommendedRestockAmount($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryPrediction whereSalesVelocity30d($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryPrediction whereSearchVolume7d($value)
+ *
  * @mixin \Eloquent
  */
 class InventoryPrediction extends Model
