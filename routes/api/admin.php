@@ -59,7 +59,7 @@ use Illuminate\Support\Facades\Route;
 
 // ── Podium services (admin-only proxy) ────────────────────────────────────
 Route::prefix('v1/podium')
-    ->middleware(['auth:sanctum', 'role.admin', 'admin.ip'])
+    ->middleware(['auth:sanctum', 'role.admin', 'admin.ip', 'admin.permission:manage-financial'])
     ->group(function () {
         Route::post('/settlements/single', [PodiumSettlementController::class, 'single']);
         Route::get('/balances', [PodiumBalanceController::class, 'index']);
@@ -117,7 +117,7 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
     });
 
     // Users — CRUD (group 2)
-    Route::controller(AdminUserController::class)->prefix('users')->group(function () {
+    Route::controller(AdminUserController::class)->prefix('users')->middleware('admin.permission:manage-users')->group(function () {
         Route::get('/', 'index');
         Route::get('/{user}', 'show');
         Route::post('/{user}/toggle-status', 'toggleStatus');
@@ -127,7 +127,7 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
     });
 
     // Suppliers — مدیریت سوپلایرها (+ صف تأیید درخواست‌های سوپلایری)
-    Route::controller(AdminSupplierController::class)->prefix('suppliers')->group(function () {
+    Route::controller(AdminSupplierController::class)->prefix('suppliers')->middleware('admin.permission:manage-users')->group(function () {
         Route::get('/', 'index');
         Route::get('/{user}', 'show');
         Route::post('/{user}/approve', 'approve'); // اتصال نقش supplier — تنها مسیر مجاز
@@ -171,7 +171,7 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
     });
 
     // Shipping Rates — CRUD نرخ‌های حمل‌ونقل
-    Route::controller(AdminShippingRateController::class)->prefix('shipping-rates')->group(function () {
+    Route::controller(AdminShippingRateController::class)->prefix('shipping-rates')->middleware('admin.permission:manage-catalog')->group(function () {
         Route::get('/', 'index');
         Route::post('/', 'store');
         Route::put('/{shippingRate}', 'update');
@@ -184,7 +184,7 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
     // ══════════════════════════════════════════════════════════════════════
 
     // Job experiences — صفِ تأیید اطلاعات شغلی (لیست منتظرها + دیدن مدرک + تأیید/رد)
-    Route::controller(AdminJobExperienceController::class)->prefix('job-experiences')->group(function () {
+    Route::controller(AdminJobExperienceController::class)->prefix('job-experiences')->middleware('admin.permission:manage-users')->group(function () {
         Route::get('/', 'index');
         Route::get('/{jobExperience}', 'show');
         Route::get('/{jobExperience}/file', 'download')->name('admin.job-experiences.file');
@@ -193,7 +193,7 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
     });
 
     // Education records (Eduix) — صفِ تأیید مدارک تحصیلی
-    Route::controller(AdminEduixController::class)->prefix('education-records')->group(function () {
+    Route::controller(AdminEduixController::class)->prefix('education-records')->middleware('admin.permission:manage-users')->group(function () {
         Route::get('/', 'index');
         Route::get('/{eduixRecord}', 'show');
         Route::post('/{eduixRecord}/approve', 'approve');
@@ -205,7 +205,7 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
     // ══════════════════════════════════════════════════════════════════════
 
     // Badges — CRUD نشان‌ها (آپلود آیکون با POST/multipart)
-    Route::controller(AdminBadgeController::class)->prefix('badges')->group(function () {
+    Route::controller(AdminBadgeController::class)->prefix('badges')->middleware('admin.permission:manage-catalog')->group(function () {
         Route::get('/', 'index');
         Route::get('/{badge}', 'show');
         Route::post('/', 'store');
@@ -215,7 +215,7 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
     });
 
     // Product Categories — CRUD دسته‌بندی‌ها (آپلود تصویر با POST/multipart)
-    Route::controller(AdminProductCategoryController::class)->prefix('categories')->group(function () {
+    Route::controller(AdminProductCategoryController::class)->prefix('categories')->middleware('admin.permission:manage-catalog')->group(function () {
         Route::get('/', 'index');
         Route::get('/{category}', 'show');
         Route::post('/', 'store');
@@ -226,7 +226,7 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
     });
 
     // Attribute Types — CRUD نوع ویژگی
-    Route::controller(AdminAttributeTypeController::class)->prefix('attribute-types')->group(function () {
+    Route::controller(AdminAttributeTypeController::class)->prefix('attribute-types')->middleware('admin.permission:manage-catalog')->group(function () {
         Route::get('/', 'index');
         Route::post('/', 'store');
         Route::put('/{attributeType}', 'update');
@@ -234,7 +234,7 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
     });
 
     // Attributes — CRUD ویژگی‌ها
-    Route::controller(AdminAttributeController::class)->prefix('attributes')->group(function () {
+    Route::controller(AdminAttributeController::class)->prefix('attributes')->middleware('admin.permission:manage-catalog')->group(function () {
         Route::get('/', 'index');
         Route::post('/', 'store');
         Route::put('/{attribute}', 'update');
@@ -242,7 +242,7 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
     });
 
     // Attribute Values — CRUD مقادیر ویژگی
-    Route::controller(AdminAttributeValueController::class)->prefix('attribute-values')->group(function () {
+    Route::controller(AdminAttributeValueController::class)->prefix('attribute-values')->middleware('admin.permission:manage-catalog')->group(function () {
         Route::get('/', 'index');
         Route::post('/', 'store');
         Route::put('/{attributeValue}', 'update');
@@ -250,7 +250,7 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
     });
 
     // Factories — CRUD کارخانه‌ها (آپلود لوگو با POST/multipart)
-    Route::controller(AdminFactoryController::class)->prefix('factories')->group(function () {
+    Route::controller(AdminFactoryController::class)->prefix('factories')->middleware('admin.permission:manage-catalog')->group(function () {
         Route::get('/', 'index');
         Route::get('/{factory}', 'show');
         Route::post('/', 'store');
@@ -261,7 +261,7 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
     });
 
     // Factory Locations — CRUD انبارها/مبادی کارخانه
-    Route::controller(AdminFactoryLocationController::class)->prefix('factory-locations')->group(function () {
+    Route::controller(AdminFactoryLocationController::class)->prefix('factory-locations')->middleware('admin.permission:manage-catalog')->group(function () {
         Route::get('/', 'index');
         Route::post('/', 'store');
         Route::put('/{factoryLocation}', 'update');
@@ -270,7 +270,7 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
     });
 
     // Products — CRUD محصولات + رسانه (مسیر با cuid؛ آپلود با POST/multipart)
-    Route::controller(AdminProductController::class)->prefix('products')->group(function () {
+    Route::controller(AdminProductController::class)->prefix('products')->middleware('admin.permission:manage-catalog')->group(function () {
         Route::get('/', 'index');
         Route::post('/', 'store');
         Route::get('/{product}', 'show');
@@ -300,7 +300,7 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
     });
 
     // Product Prices — قیمت محصول per (واریانت × کارخانه × انبار)
-    Route::controller(AdminProductPriceController::class)->prefix('product-prices')->group(function () {
+    Route::controller(AdminProductPriceController::class)->prefix('product-prices')->middleware('admin.permission:manage-catalog')->group(function () {
         Route::get('/', 'index');
         Route::post('/', 'store');
         Route::put('/{price}', 'update');
@@ -308,7 +308,7 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
     });
 
     // Price Filter Types — نوع فیلتر قیمت
-    Route::controller(AdminPriceFilterTypeController::class)->prefix('price-filter-types')->group(function () {
+    Route::controller(AdminPriceFilterTypeController::class)->prefix('price-filter-types')->middleware('admin.permission:manage-catalog')->group(function () {
         Route::get('/', 'index');
         Route::post('/', 'store');
         Route::put('/{filterType}', 'update');
@@ -317,7 +317,7 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
     });
 
     // Price Filters — فیلترهای قیمت
-    Route::controller(AdminPriceFilterController::class)->prefix('price-filters')->group(function () {
+    Route::controller(AdminPriceFilterController::class)->prefix('price-filters')->middleware('admin.permission:manage-catalog')->group(function () {
         Route::get('/', 'index');
         Route::post('/', 'store');
         Route::put('/{filter}', 'update');
@@ -326,7 +326,7 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
     });
 
     // Price Filter Categories — دسته‌های فیلتر قیمت (+ اتصال فیلترها)
-    Route::controller(AdminPriceFilterCategoryController::class)->prefix('price-filter-categories')->group(function () {
+    Route::controller(AdminPriceFilterCategoryController::class)->prefix('price-filter-categories')->middleware('admin.permission:manage-catalog')->group(function () {
         Route::get('/', 'index');
         Route::get('/{filterCategory}', 'show');
         Route::post('/', 'store');
@@ -337,7 +337,7 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
     });
 
     // Customer Types — انواع مشتری
-    Route::controller(AdminCustomerTypeController::class)->prefix('customer-types')->group(function () {
+    Route::controller(AdminCustomerTypeController::class)->prefix('customer-types')->middleware('admin.permission:manage-catalog')->group(function () {
         Route::get('/', 'index');
         Route::post('/', 'store');
         Route::put('/{customerType}', 'update');
@@ -345,7 +345,7 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
     });
 
     // Price Adjustments — تعدیل قیمت (نوع مشتری × نشان)
-    Route::controller(AdminPriceAdjustmentController::class)->prefix('price-adjustments')->group(function () {
+    Route::controller(AdminPriceAdjustmentController::class)->prefix('price-adjustments')->middleware('admin.permission:manage-catalog')->group(function () {
         Route::get('/', 'index');
         Route::post('/', 'store');
         Route::put('/{priceAdjustment}', 'update');
@@ -423,7 +423,7 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
     });
 
     // Coupons — کدهای تخفیف (حذف/ویرایش کد استفاده‌شده = 422)
-    Route::controller(AdminCouponController::class)->prefix('coupons')->group(function () {
+    Route::controller(AdminCouponController::class)->prefix('coupons')->middleware('admin.permission:manage-catalog')->group(function () {
         Route::get('/', 'index');
         Route::get('/{coupon}', 'show');
         Route::post('/', 'store');
@@ -433,7 +433,7 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
     });
 
     // Reviews — صف تأیید نظرات محصول (الگوی صف‌های job-experiences)
-    Route::controller(AdminReviewController::class)->prefix('reviews')->group(function () {
+    Route::controller(AdminReviewController::class)->prefix('reviews')->middleware('admin.permission:manage-content')->group(function () {
         Route::get('/', 'index');
         Route::get('/{review}', 'show');
         Route::post('/{review}/approve', 'approve');
