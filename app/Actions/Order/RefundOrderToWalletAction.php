@@ -89,10 +89,14 @@ final class RefundOrderToWalletAction
             }
 
             // 3. Reverse the coupon leg: WO(−discount) → WSSG(+discount).
-            //    At payment time the buyer received the discount as a WSSG→WO credit;
-            //    the POO refund above returns the FULL POO, so without this reversal the
-            //    buyer would keep the discount credit on top — minting money from Saze.
-            $couponDiscount = (float) ($locked->{Order::COUPON_DISCOUNT_AMOUNT} ?? 0);
+            //    At payment time the buyer received the discount as a WSSG→WO credit,
+            //    but that credit was CAPPED at POO (see ProcessPreScalePaymentAction /
+            //    ProcessReservationCompletionAction: min(discount, POO)). The reversal must
+            //    claw back exactly what was credited — capping here too. Using the raw
+            //    (uncapped) discount over-debited the buyer by (discount − POO) whenever the
+            //    coupon exceeded POO, either blocking the refund (InsufficientBalance) or
+            //    minting money from the buyer.
+            $couponDiscount = min((float) ($locked->{Order::COUPON_DISCOUNT_AMOUNT} ?? 0), $poo);
             if ($couponDiscount > 0) {
                 $couponCode = $locked->coupon?->code ?? '-';
                 $this->walletEngine->debitBuyer(

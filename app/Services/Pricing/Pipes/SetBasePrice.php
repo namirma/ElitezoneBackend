@@ -27,11 +27,25 @@ class SetBasePrice implements PricingPipe
         $ttl = now()->addMinutes(60);
 
         $fetchPriceLogic = function () use ($context) {
-            $priceModel = $context->variant->prices()
-                ->where('factory_id', $context->factory->id)
-                ->where('factory_location_id', $context->location->id)
-                ->latest('updated_at')
-                ->first();
+            $factoryId = $context->factory->id;
+            $locationId = $context->location->id;
+
+            // اگر رابطهٔ prices از قبل eager-load شده (کاری که لیستِ محصولات/واریانت انجام
+            // می‌دهد)، به‌جای یک کوئریِ per-row روی cache-miss، از همان مجموعهٔ لودشده فیلتر
+            // می‌کنیم (رفعِ N+1 روی مسیرِ داغِ قیمت‌گذاری). در نبودِ رابطهٔ لودشده، کوئری می‌زنیم.
+            if ($context->variant->relationLoaded('prices')) {
+                $priceModel = $context->variant->prices
+                    ->where('factory_id', $factoryId)
+                    ->where('factory_location_id', $locationId)
+                    ->sortByDesc('updated_at')
+                    ->first();
+            } else {
+                $priceModel = $context->variant->prices()
+                    ->where('factory_id', $factoryId)
+                    ->where('factory_location_id', $locationId)
+                    ->latest('updated_at')
+                    ->first();
+            }
 
             if ($priceModel) {
                 return [
