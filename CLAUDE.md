@@ -616,6 +616,21 @@ exist. Both survey views now exist (`pdf.survey_buyer`, `pdf.survey_elite_yar`).
 reflects over every `FinancialCodes::DOC_*` constant and asserts the mapped view
 resolves — adding a new doc code without its Blade fails the suite.
 
+**Five Blades under `resources/views/pdf/` are intentionally unreferenced** —
+`invoice_default`, `invoice`, `refund_report`, `supplementary_receipt`,
+`supplementary_report`. They are *not* rot to be cleaned up on sight: each maps to a
+document flow that was parked, not cancelled (`invoice_default` was the old silent
+fallback removed above; the `supplementary_*` and `refund_report` pair belong to the
+surplus/over-delivery path that `FinancialCodes` documents as removed per spec — docs
+J/K/M). They are formatted Persian invoice templates and are the starting point if any
+of those flows returns. Leave them, and don't "fix" the missing references.
+
+**The survey document slugs stay out of the route whitelist.** `pdf.survey_buyer`
+(Doc S) and `pdf.survey_elite_yar` (Doc T) exist and are wired into `getViewName()` +
+`DOCUMENT_AUDIENCES`, but `routes/api/user.php` still constrains the download route to
+`whereIn('type', ['initial', 'final', 'tax'])`. That is deliberate — surveys are out of
+product scope (2026-07-25). Widening the whitelist is a one-line change if that reverses.
+
 **Per-document authorization (do not weaken).** After the generic `authorize('view',
 $order)`, `download()` also enforces `mayAccessDocument($order, $type)` against a
 `DOCUMENT_AUDIENCES` map: buyer-docs (initial/receipt/final/refund/tax/…) → placer only;
@@ -1662,6 +1677,17 @@ never `Str::slug` server-side. `SupplierProfileResource` now exposes
   ceiling. Never reorder the ceiling read after the sum, and never drop the lock — an
   uncapped elite yar (`badge_purchase_amount` NULL) is unaffected either way. Pinned by
   `Financial/EliteYARLifetimeCapTest::the_lifetime_ceiling_is_read_under_a_row_lock`.
+- **Product reviews are FEATURE-FLAGGED OFF** (`config/features.php` →
+  `features.product_reviews`, env `FEATURE_PRODUCT_REVIEWS`, default `false`). The product
+  team confirmed on 2026-07-25 that EliteZone has **no product-review feature**, so all four
+  route groups (public listing, user submit, `GET /profile/reviews`, `/admin/reviews/*`) are
+  wrapped in `if (config('features.product_reviews'))` and are simply **not registered** —
+  the response is 404, not 403. The module itself (table, model, controllers, resources,
+  `Product/ProductReviewTest`) is deliberately **kept intact** so re-enabling is a one-line,
+  known-good change. `phpunit.xml` sets the env to `true` so the module stays verified;
+  routes are registered at boot, so a `config()` call inside a test is too late — that is why
+  `Product/ProductReviewRoutesAreGatedTest` pins the gate at source level instead.
+  **Do not delete the module and do not flip the default without product sign-off.**
 - **Reviews are verified-purchase only.** `ProductReviewController::store` 403s unless the
   user is placer/beneficiary of a DELIVERED order containing the product.
 - **Bulk notifications are queued** (`SendBulkNotificationJob`); `POST /admin/notifications/send`

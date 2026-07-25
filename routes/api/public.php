@@ -61,8 +61,11 @@ Route::prefix('products')->middleware(['attach.price.category'])->group(function
     Route::get('/{product:cuid}', [ProductController::class, 'show']);
     Route::get('/{product:cuid}/variants', [ProductController::class, 'variants']);
     Route::get('/{product:cuid}/filters', [ProductController::class, 'filters']);
-    // نظرات تأییدشده محصول (عمومی) + آمار امتیاز
-    Route::get('/{product:cuid}/reviews', [ProductReviewController::class, 'productReviews']);
+    // نظرات تأییدشده محصول (عمومی) + آمار امتیاز — پشت فلگ features.product_reviews
+    // (پیش‌فرض خاموش: این قابلیت در محصولِ فعلی وجود ندارد؛ config/features.php)
+    if (config('features.product_reviews')) {
+        Route::get('/{product:cuid}/reviews', [ProductReviewController::class, 'productReviews']);
+    }
     Route::post('/variant-price', [ProductController::class, 'getVariantPrice']);
 });
 

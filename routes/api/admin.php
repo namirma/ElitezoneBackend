@@ -433,12 +433,15 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
     });
 
     // Reviews — صف تأیید نظرات محصول (الگوی صف‌های job-experiences)
-    Route::controller(AdminReviewController::class)->prefix('reviews')->middleware('admin.permission:manage-content')->group(function () {
-        Route::get('/', 'index');
-        Route::get('/{review}', 'show');
-        Route::post('/{review}/approve', 'approve');
-        Route::post('/{review}/reject', 'reject');
-    });
+    // پشت فلگ features.product_reviews — پیش‌فرض خاموش (config/features.php)
+    if (config('features.product_reviews')) {
+        Route::controller(AdminReviewController::class)->prefix('reviews')->middleware('admin.permission:manage-content')->group(function () {
+            Route::get('/', 'index');
+            Route::get('/{review}', 'show');
+            Route::post('/{review}/approve', 'approve');
+            Route::post('/{review}/reject', 'reject');
+        });
+    }
 
     // Pages — صفحات استاتیک (slug یکتا)
     Route::controller(AdminPageController::class)->prefix('pages')->middleware('admin.permission:manage-content')->group(function () {
