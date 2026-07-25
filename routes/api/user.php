@@ -256,8 +256,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
                 ->whereIn('type', ['initial', 'final', 'tax'])
                 ->name('api.user.orders.invoice');
 
-            // Survey
-            Route::post('/{order}/survey', [OrderSurveyController::class, 'store'])->whereNumber('order');
+            // Survey — پشت فلگ features.order_surveys، پیش‌فرض خاموش
+            // (این قابلیت در محصولِ فعلی وجود ندارد؛ config/features.php)
+            if (config('features.order_surveys')) {
+                Route::post('/{order}/survey', [OrderSurveyController::class, 'store'])->whereNumber('order');
+            }
 
             // Supplier operations
             Route::controller(SupplierOrderController::class)->group(function () {
@@ -329,7 +332,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
         Route::prefix('my-items')->controller(MyItemsController::class)->group(function () {
             Route::get('/badges', 'badges');
-            Route::get('/surveys', 'surveys');
+            // پشت فلگ features.order_surveys — پیش‌فرض خاموش (config/features.php)
+            if (config('features.order_surveys')) {
+                Route::get('/surveys', 'surveys');
+            }
         });
 
         // EliteYARs ↔ Employers
