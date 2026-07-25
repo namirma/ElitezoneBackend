@@ -2,7 +2,11 @@
 
 namespace Tests\Feature\Product;
 
+use App\Http\Controllers\Api\Admin\AdminReviewController;
+use App\Http\Controllers\Api\User\ProductReviewController;
+use App\Models\ProductReview;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Facades\Schema;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -69,9 +73,9 @@ class ProductReviewRoutesAreGatedTest extends TestCase
     public function the_module_itself_is_still_intact(): void
     {
         // حذف نشده — فقط خاموش. اگر روزی روشن شد باید همه‌چیز سر جایش باشد.
-        $this->assertTrue(class_exists(\App\Models\ProductReview::class));
-        $this->assertTrue(class_exists(\App\Http\Controllers\Api\User\ProductReviewController::class));
-        $this->assertTrue(class_exists(\App\Http\Controllers\Api\Admin\AdminReviewController::class));
-        $this->assertTrue(\Illuminate\Support\Facades\Schema::hasTable('product_reviews'));
+        $this->assertTrue(class_exists(ProductReview::class));
+        $this->assertTrue(class_exists(ProductReviewController::class));
+        $this->assertTrue(class_exists(AdminReviewController::class));
+        $this->assertTrue(Schema::hasTable('product_reviews'));
     }
 }
