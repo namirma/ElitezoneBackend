@@ -80,6 +80,10 @@ Route::controller(\App\Http\Controllers\ContentController::class)->group(functio
     Route::get('/articles', 'articles');
     Route::get('/articles/{slug}', 'article');
     Route::get('/faq', 'faq');
+    // دسته‌ها + سوالاتشان (درختی) — کشوی پشتیبانیِ سایت اصلی از این می‌خواند
+    Route::get('/faq-categories', 'faqCategories');
+    // مگامنوی نوار بالای سایت
+    Route::get('/menu', 'menu');
     Route::get('/pages/{slug}', 'page');
     Route::get('/settings/public', 'publicSettings');
 });

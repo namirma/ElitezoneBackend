@@ -26,6 +26,11 @@ class AdminFaqController extends Controller
             $query->where(Faq::IS_ACTIVE, $request->boolean('is_active'));
         }
 
+        if ($request->filled('faq_category_id')) {
+            $query->where(Faq::FAQ_CATEGORY_ID, $request->integer('faq_category_id'));
+        }
+
+        // فیلترِ قدیمیِ رشته‌ای — برای سازگاری با مصرف‌کننده‌های قبل از جدولِ دسته‌ها
         if ($request->filled('category')) {
             $query->where(Faq::CATEGORY, $request->string('category'));
         }

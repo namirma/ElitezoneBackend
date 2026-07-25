@@ -24,6 +24,12 @@ return [
         'maintenance_banner',
         'homepage_announcement',
         'min_app_version',
+        // نمادهای اعتماد فوتر — تصویر + لینکِ مرجع. تا وقتی پر نشوند، فوتر آن
+        // نماد را اصلاً نشان نمی‌دهد (به‌جای کادرِ placeholder).
+        'enamad_image_url',
+        'enamad_link',
+        'samandehi_image_url',
+        'samandehi_link',
     ],
 
     /*
@@ -49,5 +55,11 @@ return [
         'maintenance_banner',
         'homepage_announcement',
         'min_app_version',
+        // نمادهای اعتماد فوتر — تصویر + لینکِ مرجع. تا وقتی پر نشوند، فوتر آن
+        // نماد را اصلاً نشان نمی‌دهد (به‌جای کادرِ placeholder).
+        'enamad_image_url',
+        'enamad_link',
+        'samandehi_image_url',
+        'samandehi_link',
     ],
 ];

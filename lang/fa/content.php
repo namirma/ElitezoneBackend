@@ -9,4 +9,5 @@ return [
     'page_received' => 'صفحه دریافت شد.',
     'page_not_found' => 'صفحه موردنظر یافت نشد.',
     'settings_received' => 'تنظیمات عمومی دریافت شد.',
+    'menu_received' => 'منوی سایت دریافت شد.',
 ];

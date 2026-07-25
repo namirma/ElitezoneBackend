@@ -18,6 +18,7 @@ class StoreFaqRequest extends FormRequest
     public function rules(): array
     {
         return [
+            Faq::FAQ_CATEGORY_ID => ['nullable', 'integer', 'exists:faq_categories,id'],
             Faq::QUESTION => ['required', 'string', 'max:500'],
             Faq::ANSWER => ['required', 'string'],
             Faq::CATEGORY => ['nullable', 'string', 'max:100'],

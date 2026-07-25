@@ -1699,6 +1699,57 @@ never `Str::slug` server-side. `SupplierProfileResource` now exposes
 - **PHPUnit metadata is attribute-based** (`#[Test]`, `#[DataProvider]`) — doc-comment
   `@test`/`@dataProvider` are gone; don't add new ones (PHPUnit 12 removes support).
 
+### Site content that the main frontend actually renders (`2026_07_26_*`)
+
+Two tables added so that **nothing on the customer site is hardcoded**. Both are consumed
+by real pages in `EliteZone_FrontEnd_Phase2` — if you change their contracts, that repo
+breaks visibly.
+
+**`faq_categories`** — `(title, slug unique, subtitle, sort_order, is_active, softDeletes)`
+plus `faqs.faq_category_id` (nullable FK, `nullOnDelete`). The site's support drawer renders
+each category's **title + subtitle + order**, so a free-string `faqs.category` could not
+express it; that legacy column is kept for BC and still filterable, but new writes should
+set `faq_category_id`. `AdminFaqCategoryController::destroy` **422s a category that still
+has FAQs** (deleting it would silently orphan them out of the site menu).
+Public: `GET /faq-categories` → nested `category → faqs` in ONE query
+(`ContentController::faqCategories`), consumed by the support drawer, `/faq`, and the
+product-page FAQ accordion (category slug **`purchase`** — that slug is a contract with
+the frontend, don't rename it).
+
+**`menu_items`** — self-referencing `parent_id` (cascadeOnDelete) + **`location`**
+(`MenuItem::LOCATION_HEADER` / `LOCATION_FOOTER`). ONE table drives both the top-bar
+megamenu and the footer link columns — they are the same concept and two tables would mean
+two places to maintain it. `url = NULL` means **"a title, not a link"**; the frontend
+renders it as non-clickable text, which is why the old `action: ''` dead links are gone.
+Invariants enforced in the FormRequests (`withValidator`, not `rules`):
+- depth ≤ `MenuItem::MAX_DEPTH` (3) — the megamenu design renders no deeper
+- no cycles — an item may not become its own descendant (infinite render otherwise)
+- `url` is either an internal path starting `/` or an absolute http(s) URL
+- `destroy` 422s an item that has children (the FK cascades, so a hard delete would take a
+  whole branch of the site menu down without the admin noticing)
+
+**Caching is per-location**: `MenuItem::cacheKeyFor($location)`, and `booted()` flushes
+**every** location key on save/delete/restore. Never cache the menu under the bare
+`CACHE_KEY` — an admin edit would then not show up on the site.
+
+**Route-parameter gotcha (this bit us):** the admin routes declare `{menuItem}` /
+`{faqCategory}` (camelCase). `UpdateMenuItemRequest` read `$this->route('menu_item')`,
+which returned `null`, so the cycle guard **silently never ran**. When a FormRequest needs
+the bound model, match the parameter name in `routes/api/admin.php` exactly.
+
+**`SiteContentSeeder`** (registered in `DatabaseSeeder`) is an idempotent `firstOrCreate`
+port of the content that used to be hardcoded in the frontend (`supportData.js`,
+`Questions2.jsx`, `NavMenu.jsx`, `Footer.jsx`'s `NAV_COLUMNS`) so that wiring the frontend
+to the API produced **zero visual regression**. Its menu key is
+`(location, parent_id, title)` — `location` is part of it because e.g. "راهنما" exists in
+both the megamenu and the footer and they must not overwrite each other.
+
+Settings gained four public keys for the footer trust badges (`enamad_image_url`,
+`enamad_link`, `samandehi_image_url`, `samandehi_link`) — unset means the frontend renders
+nothing at all, never a placeholder.
+
+Pinned by `tests/Feature/Content/SiteContentTest.php` (11 tests).
+
 ### Hardening round 2 (`2026_07_20_13*`)
 
 - **Sentry** (`sentry/sentry-laravel`) is wired via `Handler::register` reportable

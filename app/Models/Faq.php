@@ -15,6 +15,8 @@ class Faq extends Model
 
     const ID = 'id';
 
+    const FAQ_CATEGORY_ID = 'faq_category_id';
+
     const QUESTION = 'question';
 
     const ANSWER = 'answer';
@@ -35,6 +37,7 @@ class Faq extends Model
     protected $table = self::TABLE;
 
     protected $fillable = [
+        self::FAQ_CATEGORY_ID,
         self::QUESTION,
         self::ANSWER,
         self::CATEGORY,
@@ -43,14 +46,31 @@ class Faq extends Model
     ];
 
     protected $casts = [
+        self::FAQ_CATEGORY_ID => 'integer',
         self::SORT_ORDER => 'integer',
         self::IS_ACTIVE => 'boolean',
     ];
 
+    /**
+     * دسته‌ی سوال. ⚠️ ستون قدیمیِ رشته‌ایِ `category` هنوز برای سازگاری عقب‌رو
+     * (فیلترِ `GET /faq?category=`) وجود دارد؛ برای رکوردهای جدید از این رابطه
+     * استفاده کنید، نه آن رشته.
+     */
+    public function faqCategory(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(FaqCategory::class, self::FAQ_CATEGORY_ID);
+    }
+
     protected static function booted(): void
     {
-        static::saved(fn () => \Illuminate\Support\Facades\Cache::forget(self::CACHE_KEY));
-        static::deleted(fn () => \Illuminate\Support\Facades\Cache::forget(self::CACHE_KEY));
-        static::restored(fn () => \Illuminate\Support\Facades\Cache::forget(self::CACHE_KEY));
+        // سوال که عوض شود، درختِ کش‌شده‌ی دسته‌ها هم باید باطل شود
+        $flush = function () {
+            \Illuminate\Support\Facades\Cache::forget(self::CACHE_KEY);
+            \Illuminate\Support\Facades\Cache::forget(FaqCategory::CACHE_KEY);
+        };
+
+        static::saved($flush);
+        static::deleted($flush);
+        static::restored($flush);
     }
 }
