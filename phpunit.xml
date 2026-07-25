@@ -47,5 +47,6 @@
              registered at boot, so this has to be an env var — config() inside a test is
              too late. ProductReviewRoutesAreGatedTest asserts the gating itself. -->
         <env name="FEATURE_PRODUCT_REVIEWS" value="true"/>
+        <env name="FEATURE_ORDER_SURVEYS" value="true"/>
     </php>
 </phpunit>

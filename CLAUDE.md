@@ -1446,7 +1446,21 @@ were created precisely to eliminate the cross-controller call that existed betwe
 
 ## Recently Added Subsystems
 
-### Order surveys — two independent documents (S / T)
+### Order surveys — two independent documents (S / T) — FEATURE-FLAGGED OFF
+
+> **The whole surveys feature is disabled** (`config/features.php` →
+> `features.order_surveys`, env `FEATURE_ORDER_SURVEYS`, default `false`). Product
+> confirmed on 2026-07-25 that EliteZone has no survey feature — same call as
+> `features.product_reviews`, and for the same reason. Both route registrations
+> (`POST /profile/orders/{order}/survey` and `GET /profile/my-items/surveys`) are wrapped
+> in `if (config('features.order_surveys'))`, so they are **not registered at all** — 404,
+> not 403. The `order_surveys` table, model, controller, request, resource, the two PDF
+> Blades and `Order/OrderSurveyTypesTest` are all **kept intact**; re-enabling is one env
+> var. The S/T download slugs were already outside the `OrderInvoiceController` route
+> whitelist, so nothing changed there. `phpunit.xml` sets the env to `true` so the module
+> stays verified; `Order/OrderSurveyRoutesAreGatedTest` pins the gate at source level
+> because routes register at boot. **Do not delete the module or flip the default without
+> product sign-off.** The rest of this section describes the behaviour when it is enabled.
 
 `order_surveys.type` (`OrderSurvey::TYPE_BUYER = 'buyer'` / `TYPE_ELITE_YAR = 'elite_yar'`,
 unique `(order_id, type)`) implements spec docs **S (buyer survey)** and **T (elite yar
