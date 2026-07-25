@@ -4,6 +4,7 @@ namespace Tests\Feature\Auth;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Laratrust\Models\Permission;
 use Laratrust\Models\Role;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
@@ -45,7 +46,7 @@ class MeEndpointPermissionsTest extends TestCase
         $admin->addRole(Role::firstOrCreate(['name' => 'admin'], ['display_name' => 'Admin']));
         $this->grantAllAdminPermissions($admin);
         $admin->syncPermissions(
-            \Laratrust\Models\Permission::where('name', 'manage-content')->pluck('id')->all()
+            Permission::where('name', 'manage-content')->pluck('id')->all()
         );
 
         Sanctum::actingAs($admin);
