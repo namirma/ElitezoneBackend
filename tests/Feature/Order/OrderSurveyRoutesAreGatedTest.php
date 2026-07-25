@@ -2,6 +2,9 @@
 
 namespace Tests\Feature\Order;
 
+use App\Http\Controllers\Api\User\OrderSurveyController;
+use App\Http\Resources\Order\OrderSurveyResource;
+use App\Models\OrderSurvey;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Schema;
 use PHPUnit\Framework\Attributes\Test;
@@ -60,9 +63,9 @@ class OrderSurveyRoutesAreGatedTest extends TestCase
     public function the_module_itself_is_still_intact(): void
     {
         // حذف نشد — فقط خاموش. اگر روزی روشن شد باید همه‌چیز سر جایش باشد.
-        $this->assertTrue(class_exists(\App\Models\OrderSurvey::class));
-        $this->assertTrue(class_exists(\App\Http\Controllers\Api\User\OrderSurveyController::class));
-        $this->assertTrue(class_exists(\App\Http\Resources\Order\OrderSurveyResource::class));
+        $this->assertTrue(class_exists(OrderSurvey::class));
+        $this->assertTrue(class_exists(OrderSurveyController::class));
+        $this->assertTrue(class_exists(OrderSurveyResource::class));
         $this->assertTrue(Schema::hasTable('order_surveys'));
     }
 }
