@@ -2,12 +2,20 @@
 
 namespace App\Services\PodiumServices;
 
+use App\Services\PodiumServices\Concerns\TranslatesPodiumFailures;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class PodiumBalanceService
 {
+    use TranslatesPodiumFailures;
+
     public function getBusinessBalances(?string $guildCode = null): array
+    {
+        return $this->guardPodiumCall('balances', fn () => $this->fetchBalances($guildCode));
+    }
+
+    private function fetchBalances(?string $guildCode): array
     {
         $url = rtrim(config('podium.base_url'), '/').config('podium.endpoints.do_service_call');
 

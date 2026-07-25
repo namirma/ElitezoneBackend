@@ -23,8 +23,12 @@ class AnalyticsService
             $startDate = now()->subDays($days)->startOfDay();
 
             // دریافت مجموع فروش روزانه
+            // ⚠️ فقط STATUS_COMPLETED غلط بود: ماشین وضعیت سفارش هرگز به «completed»
+            // نمی‌رسد (وضعیت پایانیِ واقعی «delivered» است — AdminOrderController)، پس
+            // نمودار روند فروش همیشه خالی می‌ماند. مثل CalculateCustomerRfm و
+            // HasOrderProgress، هر دو وضعیتِ «سفارشِ به‌سرانجام‌رسیده» شمرده می‌شوند.
             $rawData = Order::query()
-                ->where(Order::STATUS, Order::STATUS_COMPLETED) // فقط سفارش‌های موفق
+                ->whereIn(Order::STATUS, [Order::STATUS_DELIVERED, Order::STATUS_COMPLETED])
                 ->where(Order::CREATED_AT, '>=', $startDate)
                 ->select([
                     DB::raw('DATE(created_at) as date'),

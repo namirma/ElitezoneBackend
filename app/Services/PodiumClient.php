@@ -3,11 +3,14 @@
 namespace App\Services;
 
 use App\Traits\Resilience\HasCircuitBreaker;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
 
 class PodiumClient
 {
@@ -45,7 +48,7 @@ class PodiumClient
 
     public function call(array $payload): array
     {
-        return $this->executeProtected('podium_core', function () use ($payload) {
+        return $this->guardTransport('podium_core', function () use ($payload) {
 
             $endpoint = $this->baseUrl.Config::get('podium.endpoints.do_service_call');
             $response = $this->http()->post($endpoint, $payload);
@@ -62,6 +65,34 @@ class PodiumClient
         });
     }
 
+    /**
+     * لایه‌ی ترجمه‌ی خطاهای انتقال (TLS/DNS/timeout/۵xx سرویس) به یک خطای HTTP تمیز.
+     *
+     * بدون این، استثنای خام Guzzle تا هندلر سراسری بالا می‌رفت و کاربر پیامی مثل
+     * «cURL error 35: TLS connect error … for https://api.pod.ir/…» می‌دید — هم
+     * ناخوانا و هم ناقضِ قاعده‌ی «هرگز پیام خام سرویس بیرونی را برنگردان»
+     * (جزئیات فنی فقط لاگ می‌شود).
+     */
+    protected function guardTransport(string $serviceKey, callable $callback): array
+    {
+        try {
+            return $this->executeProtected($serviceKey, $callback);
+        } catch (ConnectionException $e) {
+            Log::error('Podium connection failed', [
+                'service' => $serviceKey,
+                'message' => $e->getMessage(),
+            ]);
+            throw new ServiceUnavailableHttpException(null, __('podium.service_unavailable'));
+        } catch (RequestException $e) {
+            Log::error('Podium request failed', [
+                'service' => $serviceKey,
+                'status' => $e->response?->status(),
+                'message' => $e->getMessage(),
+            ]);
+            throw new ServiceUnavailableHttpException(null, __('podium.service_error'));
+        }
+    }
+
     protected function httpSc2(): PendingRequest
     {
         return Http::timeout($this->timeout)
@@ -73,7 +104,7 @@ class PodiumClient
 
     public function callSc2(array $payload): array
     {
-        return $this->executeProtected('podium_sc2', function () use ($payload) {
+        return $this->guardTransport('podium_sc2', function () use ($payload) {
 
             $endpoint = $this->baseUrl.Config::get('podium.sc2.endpoints.do');
             $response = $this->httpSc2()->post($endpoint, $payload);

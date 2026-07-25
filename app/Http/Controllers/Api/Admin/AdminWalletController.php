@@ -48,6 +48,16 @@ class AdminWalletController extends Controller
     }
 
     /**
+     * جزئیات یک تراکنش برای صفحه‌ی اختصاصیِ بک‌آفیس (تأیید/رد از همان‌جا).
+     */
+    public function show(WalletTransaction $transaction): JsonResponse
+    {
+        $transaction->load(['wallet.user.profile', 'order']);
+
+        return success(new WalletTransactionResource($transaction), __('global.received_successfully'));
+    }
+
+    /**
      * تغییر وضعیت تراکنش (تایید یا رد فیش/برداشت)
      */
     public function changeStatus(

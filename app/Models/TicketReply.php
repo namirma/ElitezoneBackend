@@ -28,6 +28,18 @@ class TicketReply extends Model
         return $this->belongsTo(User::class);
     }
 
+    /**
+     * ادمینی که این پاسخ را نوشته (null یعنی پاسخِ خودِ کاربر).
+     *
+     * ⚠️ این relation قبلاً وجود نداشت در حالی که TicketReplyResource آن را
+     * سریالایز می‌کرد؛ نتیجه: `admin` همیشه null بود و هر پاسخِ پشتیبانی در
+     * پنل و در چتِ کاربر به‌اسم خودِ کاربر نمایش داده می‌شد.
+     */
+    public function admin(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'admin_id');
+    }
+
     public function files(): HasMany
     {
         return $this->hasMany(TicketFile::class, TicketFile::TICKET_REPLY_ID);

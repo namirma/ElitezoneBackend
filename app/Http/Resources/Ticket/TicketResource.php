@@ -81,9 +81,19 @@ class TicketResource extends BaseJsonResource
             'created_at' => $this->created_at?->toDateTimeString(),
             'user' => $this->user,
 
+            // کارشناسِ اختصاص‌یافته (assign) — پنل باید بداند تیکت الان دست کیست.
+            'admin_id' => $this->admin_id,
+
             'department' => new DepartmentResource($this->whenLoaded('department')),
             'attachments' => TicketFileResource::collection($this->whenLoaded('files')),
             'replies' => TicketReplyResource::collection($this->whenLoaded('replies')),
+
+            // یادداشت‌های داخلی — فقط ادمین. صاحبِ تیکت هرگز نباید ببیندشان، پس
+            // علاوه بر eager-load نشدن در روت‌های کاربر، اینجا هم گیتِ نقش هست.
+            'notes' => $this->when(
+                (bool) $request->user()?->hasRole('admin'),
+                fn () => TicketNoteResource::collection($this->whenLoaded('notes'))
+            ),
         ];
     }
 }
