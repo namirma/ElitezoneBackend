@@ -313,6 +313,25 @@ class Order extends Model
     // =========================================================================
 
     /**
+     * مبلغی که تصمیمِ «رزرو یا پرداخت یکجا» بر اساس آن گرفته می‌شود — یعنی
+     * اندازهٔ واقعیِ سفارش، *پیش از* تخفیف کوپن.
+     *
+     * آستانهٔ رزرو (`financial.reservation_threshold`) یک سقفِ اندازهٔ سفارش است
+     * (هم‌تراز با سقفِ هر تراکنشِ درگاه پاسارگاد در سند)، نه سقفِ مبلغِ قابل
+     * پرداخت. مقایسه با `final_amount` — که PlaceOrderAction تخفیف کوپن را از آن
+     * کم می‌کند — باعث می‌شد یک سفارشِ کمی بالای آستانه با یک کوپن به زیر آستانه
+     * بیفتد و گزینهٔ رزرو خاموش از خریدار گرفته شود (اجبار به پرداخت کامل).
+     *
+     * هر جایی که با آستانه مقایسه می‌شود باید از این متد استفاده کند:
+     * ProcessFullOrderPaymentAction و هر دو مسیرِ progress در HasOrderProgress.
+     */
+    public function reservationBasisAmount(): float
+    {
+        return (float) $this->final_amount
+            + (float) ($this->{self::COUPON_DISCOUNT_AMOUNT} ?? 0);
+    }
+
+    /**
      * Relations required by OrderResource::toArray().
      *
      * Use this whenever constructing an OrderResource or OrderResource::collection()

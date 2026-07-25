@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\Wallet;
 use App\Services\Financial\WeighbridgeVatRouter;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -143,5 +144,58 @@ class EliteYARLifetimeCapTest extends TestCase
         $gross = $this->router->route($this->order->fresh(), $this->resultWithPool());
 
         $this->assertEqualsWithDelta(5_000_000, $gross, 1.0);
+    }
+
+    /**
+     * سقف باید سریال‌سازی شود.
+     *
+     * هر تسویهٔ باسکول فقط ردیفِ Order خودش را قفل می‌کند، پس دو سفارشِ هم‌زمانِ
+     * یک الیت‌یار هر دو همان `alreadyPaid` را می‌خواندند و هر دو از سقف عبور
+     * می‌کردند. رفع: قفلِ ردیفِ users پیش از جمع‌زدنِ پرداخت‌های قبلی.
+     *
+     * تستِ هم‌زمانیِ واقعی در یک پروسه ممکن نیست، پس خودِ قرارداد را pin می‌کنیم:
+     * کوئریِ سقف باید FOR UPDATE داشته باشد و *پیش از* کوئریِ جمع اجرا شود.
+     */
+    #[Test]
+    public function the_lifetime_ceiling_is_read_under_a_row_lock(): void
+    {
+        $this->eliteYAR->update([User::BADGE_PURCHASE_AMOUNT => 10_000_000]);
+
+        DB::enableQueryLog();
+        DB::flushQueryLog();
+
+        $this->router->route($this->order->fresh(), $this->resultWithPool());
+
+        $queries = array_column(DB::getQueryLog(), 'query');
+        DB::disableQueryLog();
+
+        $lockIndex = null;
+        $sumIndex = null;
+
+        foreach ($queries as $i => $sql) {
+            $normalized = strtolower($sql);
+
+            if ($lockIndex === null
+                && str_contains($normalized, 'badge_purchase_amount')
+                && str_contains($normalized, 'for update')) {
+                $lockIndex = $i;
+            }
+
+            if ($sumIndex === null && str_contains($normalized, 'sum("payment_to_elite_yar")')) {
+                $sumIndex = $i;
+            }
+
+            if ($sumIndex === null && str_contains($normalized, 'sum(`payment_to_elite_yar`)')) {
+                $sumIndex = $i;
+            }
+        }
+
+        $this->assertNotNull($lockIndex, 'کوئریِ badge_purchase_amount باید FOR UPDATE داشته باشد.');
+        $this->assertNotNull($sumIndex, 'کوئریِ جمعِ payment_to_elite_yar پیدا نشد.');
+        $this->assertLessThan(
+            $sumIndex,
+            $lockIndex,
+            'قفل باید پیش از جمع‌زدنِ پرداخت‌های قبلی گرفته شود، وگرنه سریال‌سازی نمی‌کند.',
+        );
     }
 }

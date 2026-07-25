@@ -146,6 +146,28 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Role-Selection Gate (EnsureRoleIsSelected)
+    |--------------------------------------------------------------------------
+    |
+    | The spec requires checkout to be blocked until the user has picked a role
+    | (کارفرما / الیت یار / سوپلایر), with a grace window measured from
+    | registration. The middleware existed but was dead code: its guard tested
+    | `type_id !== null`, and register() always stamps the placeholder `customer`
+    | type, so the gate never fired.
+    |
+    | The guard is fixed, but the gate stays OPT-IN: switching it on turns
+    | checkout into a 403 for role-less users, which the frontend must handle
+    | (codes ROLE_NOT_SELECTED / REGISTRATION_WINDOW_EXPIRED). Enable it only
+    | once the client implements that flow.
+    |
+    */
+
+    'role_selection_gate_enabled' => (bool) env('ROLE_SELECTION_GATE_ENABLED', false),
+
+    'role_selection_window_hours' => (int) env('ROLE_SELECTION_WINDOW_HOURS', 2),
+
+    /*
+    |--------------------------------------------------------------------------
     | Non-Production OTP Shortcut
     |--------------------------------------------------------------------------
     |

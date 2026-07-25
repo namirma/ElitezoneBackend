@@ -7,6 +7,7 @@ return [
     'already_used' => 'این کد تخفیف قبلاً استفاده شده است.',
     'not_yours' => 'این کد تخفیف مخصوص حساب دیگری است.',
     'preview_valid' => 'کد تخفیف معتبر است.',
+    'code_generation_failed' => 'ساخت کد تخفیف اختصاصی ممکن نشد. لطفاً دوباره تلاش کنید.',
     'applied_description' => 'اعمال کوپن تخفیف :code برای سفارش :order',
     'reversed_description' => 'برگشت کوپن تخفیف :code بابت استرداد سفارش :order',
 ];
