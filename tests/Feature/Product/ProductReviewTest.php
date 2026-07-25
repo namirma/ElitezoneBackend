@@ -14,6 +14,7 @@ use Illuminate\Support\Str;
 use Laratrust\Models\Role;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Concerns\GrantsAdminPermissions;
 use Tests\TestCase;
 
 /**
@@ -25,6 +26,7 @@ use Tests\TestCase;
 class ProductReviewTest extends TestCase
 {
     use DatabaseTransactions;
+    use GrantsAdminPermissions;
 
     private function makeProduct(): Product
     {
@@ -47,7 +49,7 @@ class ProductReviewTest extends TestCase
         $user = User::factory()->create();
         $user->addRole(Role::firstOrCreate(['name' => 'admin'], ['display_name' => 'Admin']));
 
-        return $user;
+        return $this->grantAllAdminPermissions($user);
     }
 
     /**

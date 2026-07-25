@@ -12,7 +12,11 @@ use App\Services\Invoice\InvoiceDataBuilder;
 use App\Services\Invoice\InvoiceGenerator;
 use App\Services\Invoice\InvoicePdfRenderer;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Facades\View;
+use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\Test;
+use ReflectionClass;
+use ReflectionMethod;
 use Tests\TestCase;
 
 /**
@@ -202,6 +206,59 @@ class InvoiceGeneratorRoutingTest extends TestCase
 
         $this->assertContains(FinancialCodes::DOC_TAX_INVOICE_ELITE_YAR, $this->issuedCodes());
         $this->assertCount(1, $this->issuedCodes());
+    }
+
+    // ─── View mapping contract ────────────────────────────────────────────────
+
+    /**
+     * هر کدِ سندی که FinancialCodes تعریف می‌کند باید به یک Blade *موجود* نگاشت
+     * شود. سند T (survey_elite_yar) در typeMapِ کنترلر بود ولی بلیدش وجود نداشت
+     * و سند S اصلاً case نداشت و خاموش به invoice_default سقوط می‌کرد.
+     */
+    #[Test]
+    public function every_document_code_maps_to_an_existing_blade_view(): void
+    {
+        $missing = [];
+
+        foreach ($this->allDocumentCodes() as $constant => $code) {
+            $view = $this->viewNameFor($code);
+
+            if (! View::exists($view)) {
+                $missing[] = "{$constant} ({$code}) → {$view}";
+            }
+        }
+
+        $this->assertSame([], $missing, 'Document codes without a Blade view: '.implode(', ', $missing));
+    }
+
+    #[Test]
+    public function an_unknown_document_code_throws_instead_of_falling_back(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        $this->viewNameFor('THIS_CODE_DOES_NOT_EXIST');
+    }
+
+    /** @return array<string, string> constant name => code */
+    private function allDocumentCodes(): array
+    {
+        $codes = [];
+
+        foreach ((new ReflectionClass(FinancialCodes::class))->getConstants() as $name => $value) {
+            if (str_starts_with($name, 'DOC_') && is_string($value)) {
+                $codes[$name] = $value;
+            }
+        }
+
+        return $codes;
+    }
+
+    private function viewNameFor(string $docType): string
+    {
+        $method = new ReflectionMethod(InvoiceGenerator::class, 'getViewName');
+        $method->setAccessible(true);
+
+        return $method->invoke($this->generator, $docType);
     }
 
     // ─── Helper ───────────────────────────────────────────────────────────────

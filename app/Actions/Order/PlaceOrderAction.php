@@ -91,10 +91,13 @@ class PlaceOrderAction
 
     private function getCartOrFail(User $user): Cart
     {
-        // گام یک: قفل گرفتن روی سبد
-        $cart = Cart::where(Cart::USER_ID, $user->id)
+        // گام یک: قفل گرفتن روی سبد.
+        // ترتیب باید دقیقاً همان Cart::queryForUser باشد که CartResolver با آن سبد
+        // را به کاربر نشان می‌دهد؛ قبلاً اینجا latest('updated_at') بود و در حالتِ
+        // دو-سبدی (پیش از ایندکس یکتای user_id) سفارش از سبدی غیر از سبدِ نمایش‌داده‌شده
+        // ثبت می‌شد.
+        $cart = Cart::queryForUser($user->id)
             ->lockForUpdate()
-            ->latest('updated_at')
             ->first();
 
         if (! $cart) {

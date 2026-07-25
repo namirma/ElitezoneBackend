@@ -10,18 +10,20 @@ use Illuminate\Support\Facades\Storage;
 use Laratrust\Models\Role;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Concerns\GrantsAdminPermissions;
 use Tests\TestCase;
 
 class AdminBadgeTest extends TestCase
 {
     use DatabaseTransactions;
+    use GrantsAdminPermissions;
 
     private function admin(): User
     {
         $user = User::factory()->create();
         $user->addRole(Role::firstOrCreate(['name' => 'admin'], ['display_name' => 'Admin']));
 
-        return $user;
+        return $this->grantAllAdminPermissions($user);
     }
 
     #[Test]

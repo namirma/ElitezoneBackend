@@ -70,7 +70,10 @@ class CartResolver
         $userId = Auth::id();
 
         if ($userId) {
-            $cart = Cart::firstOrCreate([Cart::USER_ID => $userId]);
+            // Cart::resolveForUser تنها راهِ انتخابِ سبدِ کاربر است — PlaceOrderAction
+            // هم از همان استفاده می‌کند تا سبدی که نمایش داده می‌شود همان سبدی باشد
+            // که سفارش از رویش ثبت می‌شود.
+            $cart = Cart::resolveForUser($userId);
             $this->mergeGuestCart($request, $cart);
 
             return $cart;

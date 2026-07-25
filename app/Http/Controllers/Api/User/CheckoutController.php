@@ -94,10 +94,9 @@ class CheckoutController extends Controller
         $orderData = PlaceOrderData::fromRequest($request);
         $user = Auth::user();
 
-        $cart = Cart::with('items')
-            ->where(Cart::USER_ID, $user->id)
-            ->latest('updated_at')
-            ->first();
+        // همان انتخابِ PlaceOrderAction — پیش‌بررسیِ «سبد خالی» نباید سبدی غیر از
+        // سبدی که واقعاً سفارش از رویش ثبت می‌شود را نگاه کند.
+        $cart = Cart::queryForUser($user->id)->with('items')->first();
 
         if (! $cart || $cart->items->isEmpty()) {
             return error(__('checkout.cart_is_empty'), [], 400);

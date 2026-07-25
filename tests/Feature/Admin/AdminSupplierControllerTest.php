@@ -7,6 +7,7 @@ use App\Models\SupplierProfile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\GrantsAdminPermissions;
 use Tests\TestCase;
 
 /**
@@ -18,6 +19,7 @@ use Tests\TestCase;
 class AdminSupplierControllerTest extends TestCase
 {
     use DatabaseTransactions;
+    use GrantsAdminPermissions;
 
     private User $admin;
 
@@ -35,6 +37,7 @@ class AdminSupplierControllerTest extends TestCase
         ]);
         $this->admin = User::factory()->create();
         $this->admin->addRole($adminRole);
+        $this->grantAllAdminPermissions($this->admin);
 
         $supplierRole = Role::firstOrCreate(['name' => 'supplier'], [
             'display_name' => 'Supplier',

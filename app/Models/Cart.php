@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
 
 /**
@@ -66,6 +67,45 @@ class Cart extends Model
         self::CUSTOMER_TYPE_ID,
         self::BADGE_ID,
     ];
+
+    /**
+     * تنها راهِ انتخابِ سبدِ یک کاربر — قدیمی‌ترین ردیف (کوچک‌ترین id).
+     *
+     * `carts.user_id` از مایگریشن 2026_07_25_110000 یکتاست، پس عملاً همیشه یک
+     * ردیف بیشتر نیست؛ ترتیبِ صریح برای این است که هر مسیرِ خواننده (نمایش سبد،
+     * ثبت سفارش) قطعاً *همان* ردیف را ببیند و واگراییِ قبلی
+     * (firstOrCreate در برابر latest('updated_at')) دوباره برنگردد.
+     *
+     * @return \Illuminate\Database\Eloquent\Builder<static>
+     */
+    public static function queryForUser(int $userId)
+    {
+        return static::query()
+            ->where(self::USER_ID, $userId)
+            ->orderBy(self::ID);
+    }
+
+    /**
+     * سبدِ کاربر را برمی‌گرداند و در نبودش می‌سازد.
+     *
+     * ایندکسِ یکتای user_id باعث می‌شود دو درخواستِ همزمان به‌جای ساختِ دو سبد،
+     * یکی‌شان UniqueConstraintViolation بگیرد؛ در آن حالت سبدی که رقیب ساخته
+     * خوانده می‌شود.
+     */
+    public static function resolveForUser(int $userId): self
+    {
+        $cart = self::queryForUser($userId)->first();
+
+        if ($cart) {
+            return $cart;
+        }
+
+        try {
+            return self::create([self::USER_ID => $userId]);
+        } catch (UniqueConstraintViolationException) {
+            return self::queryForUser($userId)->firstOrFail();
+        }
+    }
 
     public function items(): HasMany
     {

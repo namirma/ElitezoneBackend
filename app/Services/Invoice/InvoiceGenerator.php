@@ -7,6 +7,7 @@ use App\Models\Invoice;
 use App\Models\Order;
 use App\Services\DocumentSequenceService;
 use Illuminate\Support\Facades\Log;
+use InvalidArgumentException;
 use Mpdf\Mpdf;
 
 /**
@@ -245,8 +246,12 @@ class InvoiceGenerator
             FinancialCodes::DOC_TAX_INVOICE_BUYER => 'pdf.tax_invoice_buyer',
             FinancialCodes::DOC_TAX_INVOICE_ELITE_YAR => 'pdf.tax_invoice_elite_yar',
             // ── Stage 7: surveys ───────────────────────────────────────────
+            FinancialCodes::DOC_SURVEY => 'pdf.survey_buyer',
             FinancialCodes::DOC_SURVEY_ELITE_YAR => 'pdf.survey_elite_yar',
-            default => 'pdf.invoice_default',
+            // بدونِ default — سقوط به invoice_default یعنی تحویلِ خاموشِ «سندِ
+            // اشتباه» به کاربر. کدِ ناشناخته باید سر و صدا کند، نه یک فاکتور
+            // بی‌ربط تولید کند.
+            default => throw new InvalidArgumentException("Unknown invoice document type [{$docType}]."),
         };
     }
 }
