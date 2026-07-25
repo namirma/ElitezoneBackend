@@ -76,7 +76,13 @@ class AuthController extends Controller
 
     public function me(Request $request)
     {
-        return success(new UserResource($request->user()));
+        // roles پشتِ whenLoaded است و permissions هم برای پنلِ ادمین لازم است —
+        // بدون این eager load، /user نه نقش برمی‌گرداند نه مجوز، و پنل از وقتی
+        // EnsureAdminHasPermission به fail-closed تغییر کرد راهی برای تصمیم‌گیری
+        // دربارهٔ نمایشِ تب‌ها نداشت جز خوردنِ ۴۰۳.
+        return success(new UserResource(
+            $request->user()->load(['profile', 'type', 'roles', 'permissions'])
+        ));
     }
 
     public function register(StoreUserRequest $request): JsonResponse
