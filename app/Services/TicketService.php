@@ -46,7 +46,7 @@ class TicketService
         // Opening-message attachments (پیوست‌ها). Previously the DTO validated these
         // but they were silently dropped — they now persist against the ticket.
         foreach ($dto->file ?? [] as $file) {
-            $path = $file->store('ticket-files', 'public');
+            $path = $file->store(TicketFile::DIRECTORY, TicketFile::DISK);
             $ticket->files()->create([
                 TicketFile::PATH => $path,
                 TicketFile::ORIGINAL_NAME => $file->getClientOriginalName(),

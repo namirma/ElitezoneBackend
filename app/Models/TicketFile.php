@@ -7,6 +7,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 
 /**
+ * پیوستِ تیکت.
+ *
+ * فایل‌ها روی دیسکِ خصوصیِ `local` ذخیره می‌شوند، نه `public`. تیکت پشتیبانی
+ * جایی است که کاربر فاکتور، تصویر کارت ملی و مدارک بانکی آپلود می‌کند؛ تا پیش
+ * از این روی دیسکِ public می‌نشستند و Resource یک URLِ مستقیم و بدونِ احراز
+ * هویت برمی‌گرداند. تنها راهِ خواندنشان حالا روتِ دانلودِ محافظت‌شده است
+ * (`TicketFileController::download`).
+ *
  * @property int $id
  * @property int|null $ticket_id
  * @property int|null $ticket_reply_id
@@ -36,6 +44,14 @@ use Illuminate\Support\Carbon;
  */
 class TicketFile extends Model
 {
+    /** دیسکِ خصوصیِ نگهداریِ پیوست‌ها — هرگز 'public' نشود. */
+    public const DISK = 'local';
+
+    /** پوشهٔ ذخیره روی دیسکِ خصوصی. */
+    public const DIRECTORY = 'ticket-files';
+
+    public const ID = 'id';
+
     public const TICKET_ID = 'ticket_id';
 
     public const TICKET_REPLY_ID = 'ticket_reply_id';
@@ -67,5 +83,18 @@ class TicketFile extends Model
     public function ticketReply(): BelongsTo
     {
         return $this->belongsTo(TicketReply::class);
+    }
+
+    /**
+     * تیکتی که این پیوست به آن تعلق دارد — چه مستقیم (پیام اول) و چه از طریق
+     * پاسخ. مبنای بررسیِ دسترسی در روتِ دانلود است.
+     */
+    public function resolveTicket(): ?Ticket
+    {
+        if ($this->{self::TICKET_ID}) {
+            return $this->ticket;
+        }
+
+        return $this->ticketReply?->ticket;
     }
 }

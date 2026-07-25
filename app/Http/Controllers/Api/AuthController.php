@@ -363,7 +363,12 @@ class AuthController extends Controller
         $request->validate([
             'username' => 'required|exists:users,mobile',
             'code' => 'required',
-            User::PASSWORD => 'required|confirmed',
+            // min:8 هم‌تراز با StorePasswordRequest و StoreAdminRequest — مسیر
+            // بازیابی رمز نباید سیاستی ضعیف‌تر از مسیر تغییر رمز داشته باشد.
+            User::PASSWORD => ['required', 'string', 'min:8', 'confirmed'],
+        ], [
+            'password.min' => __('auth.password_min'),
+            'password.confirmed' => __('auth.password_confirmed'),
         ]);
 
         $mobile = $request->input('username');

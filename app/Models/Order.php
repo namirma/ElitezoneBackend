@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Models\Builders\OrderBuilder;
-use App\Models\Concerns\HasOrderActions;
 use App\Models\Concerns\HasOrderProgress;
 use App\Traits\PersianDate;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -15,8 +14,12 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 class Order extends Model
 {
+    // HasOrderActions حذف شد: تنها متدش ($order->restoreStock()) هیچ فراخوانی
+    // نداشت و InventoryService::restoreStock را بدون قفل، بدون بررسی وضعیت و
+    // بدون گاردِ idempotency صدا می‌زد — یعنی هر بار صدا زدن، موجودی را دوباره
+    // برمی‌گرداند. مسیرِ درست CancelOrderAction است که lockForUpdate دارد و
+    // سفارشِ از قبل لغو‌شده را زودهنگام رد می‌کند.
     use HasFactory,
-        HasOrderActions,
         HasOrderProgress,
         LogsActivity,
         PersianDate;
