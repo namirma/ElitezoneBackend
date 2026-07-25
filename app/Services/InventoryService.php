@@ -52,7 +52,10 @@ class InventoryService
         }
 
         if ($weightDifference > 0) {
-            $variant->decrement('stock_quantity', $weightDifference);
+            // کف‌بندی روی صفر — deductItemStock گاردِ موجودی دارد ولی این متد نداشت،
+            // پس یک اختلافِ باسکولِ بزرگ‌تر از موجودیِ باقی‌مانده می‌توانست
+            // stock_quantity را منفی کند و از آن به بعد هر checkStock را بشکند.
+            $variant->decrement('stock_quantity', min($weightDifference, (float) $variant->stock_quantity));
         } else {
             $variant->increment('stock_quantity', abs($weightDifference));
         }

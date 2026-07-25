@@ -4,7 +4,6 @@ namespace App\Http\Resources\Ticket;
 
 use App\Http\Resources\BaseJsonResource;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * @mixin \App\Models\TicketFile
@@ -16,7 +15,10 @@ class TicketFileResource extends BaseJsonResource
         return [
             'id' => $this->id,
             'name' => $this->original_name,
-            'url' => Storage::disk('public')->url($this->path),
+            // URLِ نامحافظت‌شدهٔ دیسک public جایش را به روتِ دانلودِ احراز
+            // هویت‌شده داد — پیوست تیکت داده‌ی خصوصیِ کاربر است و نباید با
+            // داشتنِ صرفِ لینک قابل دریافت باشد.
+            'url' => route('ticket.file.download', ['ticketFile' => $this->id], false),
             'size' => $this->size,
             'mime_type' => $this->mime_type,
         ];

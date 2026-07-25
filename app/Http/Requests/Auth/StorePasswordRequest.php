@@ -24,7 +24,10 @@ class StorePasswordRequest extends FormRequest
     public function rules(): array
     {
         return [
-            User::PASSWORD => 'required|confirmed',
+            // حداقل طول ۸ — هم‌تراز با StoreAdminRequest. قبلاً فقط
+            // 'required|confirmed' بود، یعنی کاربر عادی می‌توانست رمز تک‌کاراکتری
+            // بگذارد در حالی که ادمین min:8 داشت.
+            User::PASSWORD => ['required', 'string', 'min:8', 'confirmed'],
             // کد OTP مرحله اول (changePasswordFirstAttempt) — بدون آن، یک توکن
             // دزدیده‌شده برای تصاحب کامل حساب (تغییر رمز) کافی بود.
             'code' => 'required|digits:6',
@@ -34,6 +37,9 @@ class StorePasswordRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'password.required' => __('auth.password_required'),
+            'password.min' => __('auth.password_min'),
+            'password.confirmed' => __('auth.password_confirmed'),
             'code.required' => __('auth.code_exists'),
             'code.digits' => __('auth.code_digits'),
         ];

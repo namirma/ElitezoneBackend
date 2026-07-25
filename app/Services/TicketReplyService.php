@@ -22,7 +22,7 @@ class TicketReplyService
         $reply = $this->repository->create($data);
 
         foreach ($dto->files ?? [] as $file) {
-            $path = $file->store('ticket-files', 'public');
+            $path = $file->store(TicketFile::DIRECTORY, TicketFile::DISK);
             $reply->files()->create([
                 TicketFile::PATH => $path,
                 TicketFile::ORIGINAL_NAME => $file->getClientOriginalName(),

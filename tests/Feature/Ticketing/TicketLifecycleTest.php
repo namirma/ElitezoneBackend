@@ -5,6 +5,7 @@ namespace Tests\Feature\Ticketing;
 use App\DataTransferObjects\Ticket\TicketDTO;
 use App\Models\Department;
 use App\Models\Ticket;
+use App\Models\TicketFile;
 use App\Models\User;
 use App\Services\TicketService;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -164,6 +165,9 @@ class TicketLifecycleTest extends TestCase
     #[Test]
     public function opening_message_attachments_are_persisted_against_the_ticket(): void
     {
+        // پیوست‌ها روی دیسک خصوصی می‌نشینند، نه public — پیوستِ تیکت دادهٔ
+        // محرمانهٔ کاربر است (TicketAttachmentPrivacyTest قرارداد کامل را pin می‌کند).
+        Storage::fake(TicketFile::DISK);
         Storage::fake('public');
         Sanctum::actingAs($this->user);
 
@@ -177,7 +181,8 @@ class TicketLifecycleTest extends TestCase
         $files = $ticket->fresh()->files;
         $this->assertCount(1, $files);
         $this->assertSame('doc.pdf', $files->first()->original_name);
-        Storage::disk('public')->assertExists($files->first()->path);
+        Storage::disk(TicketFile::DISK)->assertExists($files->first()->path);
+        Storage::disk('public')->assertMissing($files->first()->path);
     }
 
     #[Test]
