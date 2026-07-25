@@ -103,16 +103,39 @@ class ProcessReservationCompletionAction
             $buyerId = $locked->placer_user_id;
             $realSupplierId = $firstItem->supplier_user_id;
 
+            // Coupon discount leg (once, at the full-payment moment): WSSG(-) → WO(+).
+            // Same pattern as ProcessPreScalePaymentAction — the buyer is charged the
+            // formula-true POO and credited the discount so POO/PTS math stays untouched.
+            $couponDiscount = min((float) ($locked->{Order::COUPON_DISCOUNT_AMOUNT} ?? 0), $POO);
+            $couponDesc = null;
+
+            if ($couponDiscount > 0) {
+                $couponCode = $locked->coupon?->code ?? '-';
+                $couponDesc = __('coupons.applied_description', ['code' => $couponCode, 'order' => $locked->order_number]);
+            }
+
             // Guard: check buyer balance against the actual debit amount (POO - PTR),
             // not final_amount - PTR which the controller used as an approximation.
+            //
+            // تخفیف کوپن از آستانه کسر می‌شود: خریدار «POO − PTR» را می‌پردازد و
+            // بلافاصله تخفیف را پس می‌گیرد، پس موجودیِ لازمِ واقعی
+            // «POO − PTR − تخفیف» است. قبلاً گارد روی مبلغ بدونِ تخفیف بود و
+            // کاربری که دقیقاً مبلغِ نمایش‌داده‌شده را داشت رد می‌شد.
             if ($remainingAmount > 0) {
+                $requiredBalance = max(0.0, $remainingAmount - $couponDiscount);
                 $buyerWallet = Wallet::where('user_id', $buyerId)->lockForUpdate()->first();
-                if (! $buyerWallet || $buyerWallet->balance < $remainingAmount) {
-                    throw new InsufficientBalanceException($remainingAmount, (float) ($buyerWallet?->balance ?? 0));
+                if (! $buyerWallet || $buyerWallet->balance < $requiredBalance) {
+                    throw new InsufficientBalanceException($requiredBalance, (float) ($buyerWallet?->balance ?? 0));
                 }
             }
 
-            Log::channel('financial')->info("Order {$locked->id}: POO={$POO}, PTR={$PTR}, Remaining={$remainingAmount}");
+            Log::channel('financial')->info("Order {$locked->id}: POO={$POO}, PTR={$PTR}, Remaining={$remainingAmount}, Coupon={$couponDiscount}");
+
+            // اعتبارِ تخفیف قبل از برداشت به کیف خریدار می‌نشیند تا کسرِ
+            // «POO − PTR» با موجودیِ تخفیف‌خورده هم ممکن باشد.
+            if ($couponDiscount > 0) {
+                $this->walletEngine->creditBuyer($locked, $couponDiscount, FinancialCodes::STATUS_AVAILABLE, $couponDesc);
+            }
 
             if ($remainingAmount > 0) {
                 $this->walletEngine->debitBuyer($locked, $remainingAmount, FinancialCodes::STATUS_AVAILABLE, "تکمیل وجه سفارش {$locked->order_number}");
@@ -123,15 +146,10 @@ class ProcessReservationCompletionAction
                 $this->walletEngine->creditBuyer($locked, $refundAmount, FinancialCodes::STATUS_AVAILABLE, 'دریافت مابه‌التفاوت افت قیمت رزرو');
             }
 
-            // Coupon discount leg (once, at the full-payment moment): WSSG(-) → WO(+).
-            // Same pattern as ProcessPreScalePaymentAction — the buyer is charged the
-            // formula-true POO and credited the discount so POO/PTS math stays untouched.
-            $couponDiscount = min((float) ($locked->{Order::COUPON_DISCOUNT_AMOUNT} ?? 0), $POO);
+            // برداشتِ تخفیف از کیف سازه بعد از دریافتِ وجه تکمیلی، تا WSSG در
+            // هیچ لحظه‌ای منفی نشود.
             if ($couponDiscount > 0) {
-                $couponCode = $locked->coupon?->code ?? '-';
-                $couponDesc = __('coupons.applied_description', ['code' => $couponCode, 'order' => $locked->order_number]);
                 $this->walletEngine->debitSystem($locked, $couponDiscount, FinancialCodes::STATUS_AVAILABLE, $couponDesc);
-                $this->walletEngine->creditBuyer($locked, $couponDiscount, FinancialCodes::STATUS_AVAILABLE, $couponDesc);
             }
 
             // Release the reservation hold on the Saze (WSSG) wallet (balance_hold → balance)

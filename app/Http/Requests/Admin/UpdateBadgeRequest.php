@@ -25,7 +25,11 @@ class UpdateBadgeRequest extends FormRequest
         return [
             Badge::NAME => ['sometimes', 'required', 'string', 'max:255'],
             Badge::CODE => ['sometimes', 'required', 'string', 'max:255', Rule::unique('badges', 'code')->ignore($id)],
-            Badge::ICON => ['nullable', 'file', 'mimes:png,jpg,jpeg,webp,svg', 'max:2048'],
+            // svg عمداً مجاز نیست: آیکون روی دیسک public می‌نشیند و از همان origin
+            // سرو می‌شود، پس یک SVG حاوی <script> برابر است با XSS ذخیره‌شده
+            // (CSP فعلی با script-src 'self' جلوی اسکریپتِ هم‌مبدأ را نمی‌گیرد).
+            // StoreBadgeRequest هم همین لیست را دارد — این دو باید یکی بمانند.
+            Badge::ICON => ['nullable', 'file', 'mimes:png,jpg,jpeg,webp', 'max:2048'],
         ];
     }
 

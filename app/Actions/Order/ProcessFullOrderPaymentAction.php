@@ -48,7 +48,8 @@ class ProcessFullOrderPaymentAction
             );
         }
 
-        $totalAmount = (float) $order->final_amount;
+        // اندازهٔ سفارش پیش از تخفیف کوپن — تخفیف نباید گزینهٔ رزرو را حذف کند.
+        $totalAmount = $order->reservationBasisAmount();
 
         // ── Scenario 2: direct purchase ─────────────────────────────────────────
         // `final_amount` only decides reservation-vs-direct (an order-size check).

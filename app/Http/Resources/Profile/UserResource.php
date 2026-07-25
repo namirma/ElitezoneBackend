@@ -38,15 +38,6 @@ class UserResource extends BaseJsonResource
                 : $this->maskMobile($this->{User::MOBILE}),
             // بک‌آفیس (لیست/جزئیات کاربران) به این فیلد نیاز دارد؛ قبلاً اصلاً برنمی‌گشت.
             User::IS_ACTIVE => $canSeeMobile ? (bool) $this->{User::IS_ACTIVE} : null,
-            // دو مصرف: (۱) GET api/profile خودِ ادمین → پنل بتواند منوهای غیرمجاز را از
-            // ابتدا مخفی کند، نه فقط بعد از اولین ۴۰۳. (۲) GET api/admin/admins[/{id}] →
-            // فرم ویرایش بتواند مجوزهای فعلی را pre-fill کند. آرایه‌ی خالی یعنی «بدون
-            // مجوز ثبت‌شده» که طبق قرارداد یعنی دسترسی کامل (BC) — فرانت این تفسیر را
-            // می‌داند، این‌جا صرفاً وضعیت خام پایگاه‌داده برمی‌گردد.
-            'permissions' => $this->when(
-                $canSeeMobile && $this->hasRole('admin'),
-                fn () => $this->permissions->pluck('name')->all()
-            ),
             User::CREATED_AT => $this->{User::CREATED_AT},
             User::PASSWORD => (bool) $this->{User::PASSWORD},
             User::RELATION_PROFILE => new UserProfileResource($this->whenLoaded(User::RELATION_PROFILE)),
@@ -58,6 +49,14 @@ class UserResource extends BaseJsonResource
             User::RELATION_ROLES => $this->whenLoaded(User::RELATION_ROLES, function () {
                 return $this->roles->pluck('name');
             }),
+            // مجوزهای سطح‌بندیِ پنل ادمین — فقط برای خودِ ادمین روی پروفایلِ خودش (هرگز
+            // برای ادمینی که پروفایل ادمین دیگری را می‌بیند — AdminManagerController مسیر
+            // اختصاصی خودش را دارد). بدون این، از وقتی EnsureAdminHasPermission به
+            // fail-closed تغییر کرد، پنل هیچ راهی نداشت بفهمد کدام تب را نشان دهد جز
+            // اینکه endpointها را صدا بزند و ۴۰۳ بگیرد.
+            $this->mergeWhen($this->shouldExposePermissions($viewer), fn () => [
+                'permissions' => $this->permissions->pluck('name')->values(),
+            ]),
             User::RELATION_BADGE => $selectedBadge ? new BadgeResource($selectedBadge) : null,
             User::RELATION_EDUIX_RECORDS => EduixRecordResource::collection($this->whenLoaded(User::RELATION_EDUIX_RECORDS)),
             User::RELATION_JOB_EXPERIENCES => JobExperienceResource::collection($this->whenLoaded(User::RELATION_JOB_EXPERIENCES)),
@@ -77,6 +76,20 @@ class UserResource extends BaseJsonResource
             'created_at_diff' => $this->created_at_diff,
             'is_verified' => $this->getIsVerified(),
         ];
+    }
+
+    /**
+     * مجوزها فقط وقتی برگردانده می‌شوند که بیننده، خودِ همان ادمین باشد.
+     *
+     * مجوزهای یک ادمینِ دیگر اطلاعاتِ ساختارِ دسترسیِ داخلی است و روی
+     * endpointهای عمومیِ پروفایل جایی ندارد؛ برای مدیریتِ ادمین‌ها،
+     * AdminManagerController مسیر اختصاصی خودش را دارد.
+     */
+    private function shouldExposePermissions(?User $viewer): bool
+    {
+        return $viewer !== null
+            && (int) $viewer->id === (int) $this->{User::ID}
+            && $viewer->hasRole('admin');
     }
 
     private function maskMobile(?string $mobile): ?string

@@ -11,6 +11,7 @@ use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Laratrust\Models\Role;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Concerns\GrantsAdminPermissions;
 use Tests\TestCase;
 
 /**
@@ -21,13 +22,14 @@ use Tests\TestCase;
 class AdminTicketActionsTest extends TestCase
 {
     use DatabaseTransactions;
+    use GrantsAdminPermissions;
 
     private function admin(): User
     {
         $user = User::factory()->create();
         $user->addRole(Role::firstOrCreate(['name' => 'admin'], ['display_name' => 'Admin']));
 
-        return $user;
+        return $this->grantAllAdminPermissions($user);
     }
 
     private function department(string $name = 'پشتیبانی'): Department

@@ -162,11 +162,21 @@ class WeighbridgeVatRouter
      * amount is NULL or non-positive (e.g. pioneer/normal eliteYARs who never bought a
      * paid badge) there is no cap and we return null so applyEliteYARLifetimeCap() leaves
      * the allocation untouched.
+     *
+     * قفلِ ردیفِ کاربر اینجا گرفته می‌شود و همین قفل، سریال‌سازیِ سقف را تأمین
+     * می‌کند: هر تسویهٔ باسکول در تراکنشِ خودش فقط ردیفِ Order خودش را قفل
+     * می‌کرد، پس دو سفارشِ هم‌زمانِ یک الیت‌یار هر دو یک `alreadyPaid` یکسان
+     * می‌خواندند و هر دو از سقف عبور می‌کردند. حالا دومی تا commit شدنِ اولی
+     * پشتِ این قفل می‌ماند و مجموعِ به‌روز را می‌بیند.
+     *
+     * برای الیت‌یارِ بدون سقف (badge_purchase_amount خالی) قفل بی‌اثر است چون
+     * هیچ سقفی برای رقابت وجود ندارد.
      */
     private function eliteYARLifetimeCeiling(int $eliteYARUserId): ?float
     {
         $badgePurchaseAmount = User::query()
             ->whereKey($eliteYARUserId)
+            ->lockForUpdate()
             ->value(User::BADGE_PURCHASE_AMOUNT);
 
         if ($badgePurchaseAmount === null || (float) $badgePurchaseAmount <= 0.0) {

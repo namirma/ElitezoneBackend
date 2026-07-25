@@ -270,6 +270,17 @@ Services/
 When a controller method grows past ~30 lines of business logic, extract it
 into an Action (write side-effects) or a Service (read/composition).
 
+**One user = one cart — always select it via `Cart::queryForUser()` / `Cart::resolveForUser()`.**
+`carts.user_id` is uniquely indexed (`2026_07_25_110000_add_unique_user_id_to_carts_table`;
+guest carts keep `user_id = NULL` and are keyed by `session_id`, and MySQL allows many
+NULLs in a unique index). Before that index the readers disagreed — `CartResolver` used
+`firstOrCreate` (lowest id) while `PlaceOrderAction` used `latest('updated_at')` — so a
+user could see cart A and place an order from cart B. Every reader now goes through the
+model helpers: `CartResolver`, `CartParameterSyncService`, `CheckoutController::placeOrder`,
+`PlaceOrderAction` (which adds `lockForUpdate()`), and `User::cart()` (explicitly
+`orderBy(id)`). **Never** reintroduce a bare `Cart::firstOrCreate([user_id])` or an
+ad-hoc ordering. Pinned by `Cart/SingleCartPerUserTest`.
+
 **`CartResolver::activeCode()`** is the canonical way to get the active pricing
 code anywhere in the codebase. It checks (in order): middleware-bound container
 value → authenticated user's role via `PricingRoleResolver` → `'employer_without_elite_yar'`
@@ -596,6 +607,15 @@ mode (file stored on disk, `Invoice` DB record created).
 map is an explicit `$typeMap` array; unknown slugs return 422. Never add a
 `default` fallback that silently returns a different document.
 
+`InvoiceGenerator::getViewName()` has the same rule and **throws
+`InvalidArgumentException` on an unknown doc code** — it used to fall through to
+`default => 'pdf.invoice_default'`, which meant Doc S (buyer survey) silently rendered
+an unrelated invoice and Doc T (`pdf.survey_elite_yar`) pointed at a Blade that did not
+exist. Both survey views now exist (`pdf.survey_buyer`, `pdf.survey_elite_yar`).
+`InvoiceGeneratorRoutingTest::every_document_code_maps_to_an_existing_blade_view`
+reflects over every `FinancialCodes::DOC_*` constant and asserts the mapped view
+resolves — adding a new doc code without its Blade fails the suite.
+
 **Per-document authorization (do not weaken).** After the generic `authorize('view',
 $order)`, `download()` also enforces `mayAccessDocument($order, $type)` against a
 `DOCUMENT_AUDIENCES` map: buyer-docs (initial/receipt/final/refund/tax/…) → placer only;
@@ -620,7 +640,7 @@ The system has a wallet-based payment model. Five wallet codes are in use:
 Payment entry points:
 
 1. **WalletPaymentController** — generic wallet payment for orders
-2. **OrderPaymentController::payFullOrder** — handles 3 scenarios: direct purchase, reservation (above `financial.reservation_threshold`, default 200M Tomans), and completion of reserved orders; protected by `idempotency` middleware
+2. **OrderPaymentController::payFullOrder** — handles 3 scenarios: direct purchase, reservation (above `financial.reservation_threshold`, default 200M Tomans), and completion of reserved orders; protected by `idempotency` middleware. **Compare the threshold against `Order::reservationBasisAmount()`, never `final_amount`** — the threshold is an order-*size* cap (it mirrors the Pasargad per-payment limit), and `final_amount` is net of the coupon discount, so a coupon could push a large order under the line and silently strip the buyer's reservation option. Both `HasOrderProgress` timelines use the same method so the progress UI can never disagree with the payment router.
 3. **OrderPaymentController::payHoldFee** — hold fee extension; protected by `idempotency` middleware
 4. **OrderActionController::submitEliteYARMoadianInvoice** — Doc Q; releases WEY+WVAT holds
 5. **SupplierOrderController::submitSupplierMoadianInvoice** — Doc O; releases WVAT hold
@@ -1620,6 +1640,28 @@ never `Str::slug` server-side. `SupplierProfileResource` now exposes
   coupon only for unpaid cancellations. Preview: `POST /checkout/coupon-preview`.
   `CouponService::{validateForCheckout, calculateDiscount, redeem, releaseForOrder}` —
   pinned by `Financial/CouponServiceTest`.
+  **Leg order is load-bearing, don't shuffle it:** `creditBuyer(discount)` runs *before*
+  `debitBuyer(POO)` so the buyer only needs `POO − discount` in their wallet (charging
+  gross first made every coupon unusable unless the buyer held the undiscounted amount),
+  and `debitSystem(discount)` runs *after* `creditSystem(POO)` so WSSG can never dip
+  negative. In `ProcessReservationCompletionAction` the explicit balance guard subtracts
+  the discount too (`max(0, remaining − discount)`). Pinned by
+  `Financial/CouponBalanceGuardTest`.
+  **A coupon must not change the order's *size*:** the reservation decision reads
+  `Order::reservationBasisAmount()` (pre-discount), never `final_amount` — see the
+  Financial Flow section. **Code generation retries:** `coupons.code` is unique and
+  `createPersonalCoupon` had no retry, so a collision threw `QueryException` and killed
+  the queued `SendWinBackOffer`. It now tries up to 5 times with a progressively longer
+  random suffix and raises `BusinessException` instead of a raw DB error.
+  Pinned by `Financial/CouponSideEffectsTest`.
+- **The EliteYAR lifetime cap is serialised by a `users` row lock.**
+  `WeighbridgeVatRouter::eliteYARLifetimeCeiling()` reads `badge_purchase_amount` with
+  `lockForUpdate()` **before** `applyEliteYARLifetimeCap()` sums prior payouts. Each
+  weighbridge settlement only locks its own `Order` row, so without this two concurrent
+  settlements for the same elite yar both read the same `alreadyPaid` and both cleared the
+  ceiling. Never reorder the ceiling read after the sum, and never drop the lock — an
+  uncapped elite yar (`badge_purchase_amount` NULL) is unaffected either way. Pinned by
+  `Financial/EliteYARLifetimeCapTest::the_lifetime_ceiling_is_read_under_a_row_lock`.
 - **Reviews are verified-purchase only.** `ProductReviewController::store` 403s unless the
   user is placer/beneficiary of a DELIVERED order containing the product.
 - **Bulk notifications are queued** (`SendBulkNotificationJob`); `POST /admin/notifications/send`
@@ -1631,8 +1673,18 @@ never `Str::slug` server-side. `SupplierProfileResource` now exposes
 - **Admin permission tiers.** `admin.permission:{perm}` middleware
   (`EnsureAdminHasPermission`) gates financial/content/users route groups.
   Permissions are **user-level** (`AdminPermissionSeeder` grants all to existing admins;
-  `AdminManagerController` accepts `permissions[]` on store/update). BC rule: an admin with
-  **zero** stored permissions has full access — granularity activates on first grant.
+  `AdminManagerController` accepts `permissions[]` on store/update). The middleware is
+  **fail-closed**: no permission ⇒ 403, full stop. The old BC rule ("zero stored
+  permissions = full access") was removed — it inverted the intent of
+  `AdminManagerController::update`, where `permissions: []` means *revoke everything*, so
+  restricting an admin actually promoted them to super-admin on every gated group
+  including `manage-financial` (Podium settlements + manual wallet credit). Backward
+  compatibility is handled once, as data, by
+  `2026_07_25_100000_backfill_admin_permissions` (grants all permissions to admins that
+  had none). **Never** reintroduce a "no permissions means allow" branch. Tests that
+  create an admin by hand must call `Tests\Concerns\GrantsAdminPermissions::grantAllAdminPermissions()`
+  — otherwise they exercise a state no real admin is ever in. Pinned by
+  `Admin/AdminPermissionGateTest`.
 - **Settings keys are whitelisted** in `config/settings.php` (`allowed_keys`); unknown → 422.
 - **Ticket SLA uses a business-hours calendar.** `App\Support\BusinessHours::addWorkingHours`
   (config `ticketing.business_hours`, Friday weekend); disable via
@@ -1686,3 +1738,24 @@ never `Str::slug` server-side. `SupplierProfileResource` now exposes
 - **Never call `env()` outside config files** — `env()` returns `null` in production once `php artisan config:cache` is run. All `env()` calls belong exclusively in `config/*.php` files; application code must use `config('key')`.
 - The front-end SPA base URL is `config('app.front_url')` (env `FRONT_APP_URL`) — used in transactional emails
 - API-docs authorised emails are `config('app.api_docs_emails')` (env `APP_API_DOCS_EMAILS`, comma-separated)
+- **Uploads that land on the `public` disk must never accept `svg`** — the file is served from the app's own origin, so an SVG carrying `<script>` is stored XSS and `script-src 'self'` does not stop it. Keep the `mimes:` list identical between the Store*/Update* request pair for the same resource (they drifted once on `Badge::ICON`; pinned by `Admin/AdminBadgeTest`).
+
+### Role-selection gate — opt-in, off by default
+
+`EnsureRoleIsSelected` (on `POST /checkout`) blocks users who have not picked a
+role. It was **dead code** until this fix: the guard tested `type_id !== null`
+while `AuthController::register` always stamps the placeholder `customer`
+`UserType`, so it never fired. "Selected" now means an actual Laratrust role
+(`engineer`/`contractor`/`employer`/`supplier`) **or** a `type_id` pointing at
+one of `expert`/`employer`/`supplier` — exactly what `SetUserTypeAction` writes.
+The role check runs first so a user who finished onboarding is never locked out
+by a lagging `type_id`.
+
+Because switching it on turns checkout into a 403 for role-less users, the gate
+is gated on `config('auth.role_selection_gate_enabled')`, **default `false`**.
+Enable it (`ROLE_SELECTION_GATE_ENABLED=true`) only once the client handles the
+`ROLE_NOT_SELECTED` / `REGISTRATION_WINDOW_EXPIRED` response contract. Window
+length is `config('auth.role_selection_window_hours')` (default 2). Never
+hardcode the 2h literal, and keep `meta.hours_passed` cast to `int` — Carbon 3
+on the L13 branch returns a float from `diffInHours` and the payload must be
+identical on both branches. Pinned by `Auth/RoleSelectionGateTest`.

@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Storage;
 use Laratrust\Models\Role;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Concerns\GrantsAdminPermissions;
 use Tests\TestCase;
 
 /**
@@ -20,13 +21,14 @@ use Tests\TestCase;
 class AdminVerificationQueueTest extends TestCase
 {
     use DatabaseTransactions;
+    use GrantsAdminPermissions;
 
     private function admin(): User
     {
         $user = User::factory()->create();
         $user->addRole(Role::firstOrCreate(['name' => 'admin'], ['display_name' => 'Admin']));
 
-        return $user;
+        return $this->grantAllAdminPermissions($user);
     }
 
     private function jobExperience(string $status = JobExperience::STATUS_PENDING): JobExperience

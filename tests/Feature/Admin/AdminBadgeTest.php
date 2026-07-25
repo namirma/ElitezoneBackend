@@ -10,18 +10,20 @@ use Illuminate\Support\Facades\Storage;
 use Laratrust\Models\Role;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Concerns\GrantsAdminPermissions;
 use Tests\TestCase;
 
 class AdminBadgeTest extends TestCase
 {
     use DatabaseTransactions;
+    use GrantsAdminPermissions;
 
     private function admin(): User
     {
         $user = User::factory()->create();
         $user->addRole(Role::firstOrCreate(['name' => 'admin'], ['display_name' => 'Admin']));
 
-        return $user;
+        return $this->grantAllAdminPermissions($user);
     }
 
     #[Test]
@@ -80,5 +82,38 @@ class AdminBadgeTest extends TestCase
 
         $this->deleteJson("/api/admin/badges/{$badge->id}")->assertOk();
         $this->assertDatabaseMissing('badges', ['id' => $badge->id]);
+    }
+
+    /**
+     * آیکون‌ها روی دیسک public می‌نشینند و از همان origin سرو می‌شوند، پس یک SVG
+     * حاوی <script> برابر است با XSS ذخیره‌شده. UpdateBadgeRequest اشتباهاً svg
+     * را مجاز کرده بود در حالی که StoreBadgeRequest نکرده بود؛ هر دو مسیر باید
+     * ردش کنند و لیست mimeها باید یکی بماند.
+     */
+    #[Test]
+    public function svg_icons_are_rejected_on_both_create_and_update(): void
+    {
+        Storage::fake('public');
+        Sanctum::actingAs($this->admin());
+
+        $svg = UploadedFile::fake()->createWithContent(
+            'x.svg',
+            '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>',
+        );
+
+        $this->postJson('/api/admin/badges', [
+            'name' => 'نشان تست',
+            'code' => 'svg_'.uniqid(),
+            'icon' => $svg,
+        ])->assertStatus(422)->assertJsonValidationErrors('icon');
+
+        $badge = Badge::create(['name' => 'قدیمی', 'code' => 'svg2_'.uniqid()]);
+
+        $this->postJson("/api/admin/badges/{$badge->id}", [
+            'name' => 'جدید',
+            'icon' => $svg,
+        ])->assertStatus(422)->assertJsonValidationErrors('icon');
+
+        $this->assertNull($badge->fresh()->icon);
     }
 }

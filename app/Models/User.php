@@ -202,7 +202,9 @@ class User extends Authenticatable
 
     public function cart(): HasOne
     {
-        return $this->hasOne(Cart::class);
+        // ترتیب صریح = همان ردیفی که Cart::queryForUser/resolveForUser برمی‌گردانند.
+        // بدون آن، انتخابِ ردیف به ترتیبِ دلخواهِ دیتابیس واگذار می‌شد.
+        return $this->hasOne(Cart::class)->orderBy(Cart::ID);
     }
 
     public function eduixRecords(): HasMany
