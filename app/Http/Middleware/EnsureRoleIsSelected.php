@@ -97,14 +97,12 @@ class EnsureRoleIsSelected
             return true;
         }
 
-        $typeId = $user->{User::TYPE_ID};
-
-        if ($typeId === null) {
-            return false;
-        }
-
+        // `users.type_id` NOT NULL است (create_users_table، بدون nullable) — پس
+        // گاردِ قدیمیِ `type_id !== null` دوبار مرده بود: هم register همیشه
+        // مقدارش را می‌گذاشت و هم ستون اصلاً null نمی‌پذیرد. تنها پرسشِ معنادار
+        // این است که type_id به کدام slug اشاره می‌کند.
         return UserType::query()
-            ->whereKey($typeId)
+            ->whereKey($user->{User::TYPE_ID})
             ->whereIn(UserType::SLUG, self::ONBOARDING_TYPE_SLUGS)
             ->exists();
     }
