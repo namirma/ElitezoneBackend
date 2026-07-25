@@ -7,10 +7,18 @@ use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class CouponService
 {
+    /** طول بخشِ رندومِ کدِ کوپن در اولین تلاش (هر تلاش یک واحد بلندتر می‌شود). */
+    private const CODE_RANDOM_LENGTH = 5;
+
+    /** حداکثر تلاش برای یافتن یک کدِ بلااستفاده پیش از خطا. */
+    private const CODE_MAX_ATTEMPTS = 5;
+
     /**
      * اعتبارسنجی کد تخفیف برای استفاده در checkout.
      *
@@ -98,19 +106,36 @@ class CouponService
      */
     public function createPersonalCoupon(User $user, int $percent, int $expireDays, string $reason): Coupon
     {
-        // تولید کد: ۳ حرف اول اسم + خط تیره + ۴ حرف رندوم
+        // تولید کد: ۳ حرف اول اسم + خط تیره + بخش رندوم
         // مثال: ALIREZA -> ALI-X9Y2
+        //
+        // `coupons.code` یکتاست و هیچ retry ای وجود نداشت، پس یک برخورد
+        // QueryException می‌داد و jobِ SendWinBackOffer را می‌کشت. حالا چند بار
+        // تلاش می‌شود و در هر تلاش طولِ بخشِ رندوم یک واحد زیاد می‌شود تا
+        // احتمالِ برخوردِ بعدی به‌شکل نمایی افت کند.
         $namePart = Str::upper(Str::substr($user->name ?? 'USR', 0, 3));
-        $randomPart = Str::upper(Str::random(4));
-        $finalCode = "{$namePart}-{$randomPart}";
 
-        return Coupon::create([
-            Coupon::CODE => $finalCode,
-            Coupon::USER_ID => $user->id,
-            Coupon::TYPE => Coupon::TYPE_PERCENT,
-            Coupon::AMOUNT => $percent,
-            Coupon::EXPIRES_AT => Carbon::now()->addDays($expireDays),
-            Coupon::REASON => $reason,
-        ]);
+        for ($attempt = 0; $attempt < self::CODE_MAX_ATTEMPTS; $attempt++) {
+            $finalCode = $namePart.'-'.Str::upper(Str::random(self::CODE_RANDOM_LENGTH + $attempt));
+
+            try {
+                return Coupon::create([
+                    Coupon::CODE => $finalCode,
+                    Coupon::USER_ID => $user->id,
+                    Coupon::TYPE => Coupon::TYPE_PERCENT,
+                    Coupon::AMOUNT => $percent,
+                    Coupon::EXPIRES_AT => Carbon::now()->addDays($expireDays),
+                    Coupon::REASON => $reason,
+                ]);
+            } catch (UniqueConstraintViolationException) {
+                Log::warning('Coupon code collision, retrying', [
+                    'user_id' => $user->id,
+                    'code' => $finalCode,
+                    'attempt' => $attempt + 1,
+                ]);
+            }
+        }
+
+        throw new BusinessException(__('coupons.code_generation_failed'), 500);
     }
 }

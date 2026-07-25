@@ -20,7 +20,9 @@ trait HasOrderProgress
         // تشخیص پرداخت یکجا: کمتر از سقف رزرو یا پرداخت کل مبلغ در رزرو
         // سقف از config/financial.php خوانده می‌شود (نه hardcode)
         $threshold = (float) config('financial.reservation_threshold', 2_000_000_000);
-        $isFullPayment = (float) $this->final_amount < $threshold
+        // مبنا پیش از تخفیف کوپن است — هم‌تراز با ProcessFullOrderPaymentAction،
+        // وگرنه یک سفارشِ رزروی با کوپن در تایم‌لاین «پرداخت یکجا» نشان داده می‌شد.
+        $isFullPayment = $this->reservationBasisAmount() < $threshold
             || $this->payment_to_reserve == $this->final_amount;
 
         // ترجمه وضعیت فعلی برای نمایش در هدر کارت
@@ -333,7 +335,9 @@ trait HasOrderProgress
         $isCancelled = in_array($status, [Order::STATUS_CANCELLED, Order::STATUS_FAILED]);
 
         $threshold = (float) config('financial.reservation_threshold', 2_000_000_000);
-        $isFullPayment = (float) $this->final_amount < $threshold
+        // مبنا پیش از تخفیف کوپن است — هم‌تراز با ProcessFullOrderPaymentAction،
+        // وگرنه یک سفارشِ رزروی با کوپن در تایم‌لاین «پرداخت یکجا» نشان داده می‌شد.
+        $isFullPayment = $this->reservationBasisAmount() < $threshold
             || $this->payment_to_reserve == $this->final_amount;
 
         $transKey = "orders.status.{$status}";
