@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -76,7 +77,7 @@ class Cart extends Model
      * ثبت سفارش) قطعاً *همان* ردیف را ببیند و واگراییِ قبلی
      * (firstOrCreate در برابر latest('updated_at')) دوباره برنگردد.
      *
-     * @return \Illuminate\Database\Eloquent\Builder<static>
+     * @return Builder<static>
      */
     public static function queryForUser(int $userId)
     {
