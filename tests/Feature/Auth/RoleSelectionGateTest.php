@@ -5,6 +5,7 @@ namespace Tests\Feature\Auth;
 use App\Models\User;
 use App\Models\UserType;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Testing\TestResponse;
 use Laratrust\Models\Role;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
@@ -32,7 +33,7 @@ class RoleSelectionGateTest extends TestCase
         return User::factory()->create([User::TYPE_ID => $type->id]);
     }
 
-    private function placeOrder(): \Illuminate\Testing\TestResponse
+    private function placeOrder(): TestResponse
     {
         // بدنه عمداً خالی است — گیت باید *قبل* از اعتبارسنجی بزند.
         return $this->postJson('/api/checkout', []);
