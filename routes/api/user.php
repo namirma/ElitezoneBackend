@@ -82,11 +82,14 @@ Route::prefix('products')->middleware(['auth:sanctum', 'attach.price.category'])
 });
 
 // ── Product reviews — ثبت نظر (هر کاربر/محصول یک نظر؛ ارسال مجدد → pending)
-Route::middleware(['auth:sanctum'])->group(function () {
-    Route::post('/products/{product:cuid}/reviews', [ProductReviewController::class, 'store'])
-        ->middleware('throttle:10,1');
-    Route::get('/profile/reviews', [ProductReviewController::class, 'myReviews']);
-});
+// پشت فلگ features.product_reviews — پیش‌فرض خاموش (config/features.php)
+if (config('features.product_reviews')) {
+    Route::middleware(['auth:sanctum'])->group(function () {
+        Route::post('/products/{product:cuid}/reviews', [ProductReviewController::class, 'store'])
+            ->middleware('throttle:10,1');
+        Route::get('/profile/reviews', [ProductReviewController::class, 'myReviews']);
+    });
+}
 
 // ── Cart — مهمان هم می‌تواند سبد داشته باشد ─────────────────────────────
 Route::middleware(['optional.sanctum', 'attach.price.category'])->group(function () {
