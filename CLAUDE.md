@@ -640,7 +640,7 @@ The system has a wallet-based payment model. Five wallet codes are in use:
 Payment entry points:
 
 1. **WalletPaymentController** — generic wallet payment for orders
-2. **OrderPaymentController::payFullOrder** — handles 3 scenarios: direct purchase, reservation (above `financial.reservation_threshold`, default 200M Tomans), and completion of reserved orders; protected by `idempotency` middleware
+2. **OrderPaymentController::payFullOrder** — handles 3 scenarios: direct purchase, reservation (above `financial.reservation_threshold`, default 200M Tomans), and completion of reserved orders; protected by `idempotency` middleware. **Compare the threshold against `Order::reservationBasisAmount()`, never `final_amount`** — the threshold is an order-*size* cap (it mirrors the Pasargad per-payment limit), and `final_amount` is net of the coupon discount, so a coupon could push a large order under the line and silently strip the buyer's reservation option. Both `HasOrderProgress` timelines use the same method so the progress UI can never disagree with the payment router.
 3. **OrderPaymentController::payHoldFee** — hold fee extension; protected by `idempotency` middleware
 4. **OrderActionController::submitEliteYARMoadianInvoice** — Doc Q; releases WEY+WVAT holds
 5. **SupplierOrderController::submitSupplierMoadianInvoice** — Doc O; releases WVAT hold
@@ -1647,6 +1647,21 @@ never `Str::slug` server-side. `SupplierProfileResource` now exposes
   negative. In `ProcessReservationCompletionAction` the explicit balance guard subtracts
   the discount too (`max(0, remaining − discount)`). Pinned by
   `Financial/CouponBalanceGuardTest`.
+  **A coupon must not change the order's *size*:** the reservation decision reads
+  `Order::reservationBasisAmount()` (pre-discount), never `final_amount` — see the
+  Financial Flow section. **Code generation retries:** `coupons.code` is unique and
+  `createPersonalCoupon` had no retry, so a collision threw `QueryException` and killed
+  the queued `SendWinBackOffer`. It now tries up to 5 times with a progressively longer
+  random suffix and raises `BusinessException` instead of a raw DB error.
+  Pinned by `Financial/CouponSideEffectsTest`.
+- **The EliteYAR lifetime cap is serialised by a `users` row lock.**
+  `WeighbridgeVatRouter::eliteYARLifetimeCeiling()` reads `badge_purchase_amount` with
+  `lockForUpdate()` **before** `applyEliteYARLifetimeCap()` sums prior payouts. Each
+  weighbridge settlement only locks its own `Order` row, so without this two concurrent
+  settlements for the same elite yar both read the same `alreadyPaid` and both cleared the
+  ceiling. Never reorder the ceiling read after the sum, and never drop the lock — an
+  uncapped elite yar (`badge_purchase_amount` NULL) is unaffected either way. Pinned by
+  `Financial/EliteYARLifetimeCapTest::the_lifetime_ceiling_is_read_under_a_row_lock`.
 - **Reviews are verified-purchase only.** `ProductReviewController::store` 403s unless the
   user is placer/beneficiary of a DELIVERED order containing the product.
 - **Bulk notifications are queued** (`SendBulkNotificationJob`); `POST /admin/notifications/send`
@@ -1723,3 +1738,24 @@ never `Str::slug` server-side. `SupplierProfileResource` now exposes
 - **Never call `env()` outside config files** — `env()` returns `null` in production once `php artisan config:cache` is run. All `env()` calls belong exclusively in `config/*.php` files; application code must use `config('key')`.
 - The front-end SPA base URL is `config('app.front_url')` (env `FRONT_APP_URL`) — used in transactional emails
 - API-docs authorised emails are `config('app.api_docs_emails')` (env `APP_API_DOCS_EMAILS`, comma-separated)
+- **Uploads that land on the `public` disk must never accept `svg`** — the file is served from the app's own origin, so an SVG carrying `<script>` is stored XSS and `script-src 'self'` does not stop it. Keep the `mimes:` list identical between the Store*/Update* request pair for the same resource (they drifted once on `Badge::ICON`; pinned by `Admin/AdminBadgeTest`).
+
+### Role-selection gate — opt-in, off by default
+
+`EnsureRoleIsSelected` (on `POST /checkout`) blocks users who have not picked a
+role. It was **dead code** until this fix: the guard tested `type_id !== null`
+while `AuthController::register` always stamps the placeholder `customer`
+`UserType`, so it never fired. "Selected" now means an actual Laratrust role
+(`engineer`/`contractor`/`employer`/`supplier`) **or** a `type_id` pointing at
+one of `expert`/`employer`/`supplier` — exactly what `SetUserTypeAction` writes.
+The role check runs first so a user who finished onboarding is never locked out
+by a lagging `type_id`.
+
+Because switching it on turns checkout into a 403 for role-less users, the gate
+is gated on `config('auth.role_selection_gate_enabled')`, **default `false`**.
+Enable it (`ROLE_SELECTION_GATE_ENABLED=true`) only once the client handles the
+`ROLE_NOT_SELECTED` / `REGISTRATION_WINDOW_EXPIRED` response contract. Window
+length is `config('auth.role_selection_window_hours')` (default 2). Never
+hardcode the 2h literal, and keep `meta.hours_passed` cast to `int` — Carbon 3
+on the L13 branch returns a float from `diffInHours` and the payload must be
+identical on both branches. Pinned by `Auth/RoleSelectionGateTest`.
