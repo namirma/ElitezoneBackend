@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Jobs\Auth\SyncIdentityToProfileJob;
 use App\Models\User;
 use App\Support\OtpSecret;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
@@ -161,7 +162,7 @@ class LockoutScopeIsolationTest extends TestCase
         ])->assertOk();
 
         Queue::assertPushed(
-            \App\Jobs\Auth\SyncIdentityToProfileJob::class,
+            SyncIdentityToProfileJob::class,
             fn ($job) => $job->userId === $user->id,
         );
     }
