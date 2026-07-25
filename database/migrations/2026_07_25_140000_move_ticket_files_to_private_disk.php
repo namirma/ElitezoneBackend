@@ -68,7 +68,7 @@ return new class extends Migration
                         }
 
                         $moved++;
-                    } catch (\Throwable $e) {
+                    } catch (Throwable $e) {
                         $skipped++;
                         Log::warning('Ticket attachment relocation failed', [
                             'ticket_file_id' => $row->id,
