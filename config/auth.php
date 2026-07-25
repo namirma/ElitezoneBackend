@@ -133,6 +133,26 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Password-Login Lockout
+    |--------------------------------------------------------------------------
+    |
+    | Same mechanism as the OTP lockout but in its own namespace. Both paths
+    | used to share one `otp_lock:{mobile}` key, so anyone who merely knew a
+    | mobile number could spam wrong OTPs and lock that user out of password
+    | login too — a denial-of-service needing no other information.
+    |
+    | Defaults intentionally match the OTP values: this change is about
+    | isolating the two counters, not about retuning the thresholds. Tune them
+    | separately here if password attempts should be more (or less) forgiving.
+    |
+    */
+
+    'password_max_attempts' => env('PASSWORD_MAX_ATTEMPTS', 5),
+
+    'password_lockout_minutes' => env('PASSWORD_LOCKOUT_MINUTES', 10),
+
+    /*
+    |--------------------------------------------------------------------------
     | Password Reset Token Lifetime
     |--------------------------------------------------------------------------
     |

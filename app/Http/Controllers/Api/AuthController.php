@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Actions\Auth\RequestOtpAction;
-use App\Actions\Auth\SyncIdentityToProfileAction;
 use App\Actions\Auth\VerifyIdentityWithPodiumAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\StoreUserRequest;
 use App\Http\Resources\Profile\UserResource;
+use App\Jobs\Auth\SyncIdentityToProfileJob;
 use App\Jobs\Notification\SendSmsJob;
 use App\Models\User;
 use App\Models\UserNotification;
@@ -24,33 +24,81 @@ use Laravel\Sanctum\PersonalAccessToken;
 
 class AuthController extends Controller
 {
+    /** قفل تجمعیِ کدِ یک‌بارمصرف (ثبت‌نام، ورود با کد، بازیابی رمز). */
+    private const SCOPE_OTP = 'otp';
+
+    /** قفل تجمعیِ ورود با رمز عبور — فضای نامِ جدا از OTP. */
+    private const SCOPE_PASSWORD = 'password';
+
     /**
-     * قفل تجمعی تأیید کد — مکمل throttle دقیقه‌ای روت، چون کد ۶ رقمی
-     * با IPهای متعدد قابل brute-force است.
+     * قفل تجمعی — مکمل throttle دقیقه‌ای روت، چون هم کد ۶ رقمی و هم رمز عبور
+     * با IPهای متعدد قابل brute-force اند.
+     *
+     * دو اسکوپ عمداً از هم جدا شده‌اند: تا پیش از این هر دو مسیر یک کلیدِ
+     * `otp_lock:{mobile}` مشترک داشتند، یعنی کسی که فقط شمارهٔ موبایلِ قربانی را
+     * می‌دانست می‌توانست با چند کدِ اشتباه، *ورود با رمزِ* او را هم قفل کند —
+     * یک بردار DoS بدون نیاز به هیچ اطلاعات دیگری. حالا شکستِ OTP فقط OTP را
+     * قفل می‌کند و شکستِ رمز فقط رمز را.
      */
-    private function isOtpLocked(string $mobile): bool
+    private function isLocked(string $mobile, string $scope): bool
     {
-        return Cache::has("otp_lock:{$mobile}");
+        return Cache::has($this->lockKey($mobile, $scope));
     }
 
-    private function recordOtpFailure(string $mobile): void
+    private function recordFailure(string $mobile, string $scope): void
     {
-        $failKey = "otp_fails:{$mobile}";
-        $lockMinutes = (int) config('auth.otp_lockout_minutes', 10);
+        $failKey = $this->failKey($mobile, $scope);
+        $lockMinutes = $this->lockoutMinutes($scope);
 
         $fails = Cache::get($failKey, 0) + 1;
         Cache::put($failKey, $fails, now()->addMinutes($lockMinutes));
 
-        if ($fails >= (int) config('auth.otp_max_attempts', 5)) {
-            Cache::put("otp_lock:{$mobile}", true, now()->addMinutes($lockMinutes));
+        if ($fails >= $this->maxAttempts($scope)) {
+            Cache::put($this->lockKey($mobile, $scope), true, now()->addMinutes($lockMinutes));
             Cache::forget($failKey);
         }
     }
 
-    private function clearOtpFailures(string $mobile): void
+    private function clearFailures(string $mobile, string $scope): void
     {
-        Cache::forget("otp_fails:{$mobile}");
-        Cache::forget("otp_lock:{$mobile}");
+        Cache::forget($this->failKey($mobile, $scope));
+        Cache::forget($this->lockKey($mobile, $scope));
+    }
+
+    private function lockKey(string $mobile, string $scope): string
+    {
+        return "auth_lock:{$scope}:{$mobile}";
+    }
+
+    private function failKey(string $mobile, string $scope): string
+    {
+        return "auth_fails:{$scope}:{$mobile}";
+    }
+
+    private function maxAttempts(string $scope): int
+    {
+        return $scope === self::SCOPE_PASSWORD
+            ? (int) config('auth.password_max_attempts', 5)
+            : (int) config('auth.otp_max_attempts', 5);
+    }
+
+    private function lockoutMinutes(string $scope): int
+    {
+        return $scope === self::SCOPE_PASSWORD
+            ? (int) config('auth.password_lockout_minutes', 10)
+            : (int) config('auth.otp_lockout_minutes', 10);
+    }
+
+    /** پیام ۴۲۹ متناسب با اسکوپ — «کد» و «رمز» دو تجربهٔ متفاوت‌اند. */
+    private function tooManyAttempts(string $scope): JsonResponse
+    {
+        return error(
+            $scope === self::SCOPE_PASSWORD
+                ? __('auth.too_many_password_attempts')
+                : __('auth.too_many_otp_attempts'),
+            [],
+            429
+        );
     }
 
     /**
@@ -190,8 +238,8 @@ class AuthController extends Controller
     {
         $mobile = PhoneNumber::to09($request->validated('username'));
 
-        if ($this->isOtpLocked($mobile)) {
-            return error(__('auth.too_many_otp_attempts'), [], 429);
+        if ($this->isLocked($mobile, self::SCOPE_OTP)) {
+            return $this->tooManyAttempts(self::SCOPE_OTP);
         }
 
         // Load user by mobile only — comparing the OTP inside a SQL WHERE clause leaks
@@ -207,12 +255,12 @@ class AuthController extends Controller
             || ! \App\Support\OtpSecret::matches($user->{User::SECRET}, $submittedCode)
             || Carbon::parse($user->{User::SECRET_EXPIRES_AT})->isPast()
         ) {
-            $this->recordOtpFailure($mobile);
+            $this->recordFailure($mobile, self::SCOPE_OTP);
 
             return error(__('auth.verification_code_not_match'), [], 404);
         }
 
-        $this->clearOtpFailures($mobile);
+        $this->clearFailures($mobile, self::SCOPE_OTP);
 
         if ($this->isDisabled($user)) {
             return error(__('auth.account_disabled'), [], 403);
@@ -257,7 +305,11 @@ class AuthController extends Controller
             };
         }
 
-        app(SyncIdentityToProfileAction::class)->execute($user);
+        // صف، نه همزمان: این استعلام یک درخواست HTTP به پودیوم با timeout ۳۰
+        // ثانیه است و برای موفقیتِ ورود لازم نیست. اجرای همزمانش یعنی وقتی
+        // پودیوم کند باشد، ورودِ همهٔ کاربران هم کند می‌شود.
+        SyncIdentityToProfileJob::dispatch($user->id);
+
         $user->tokens()->delete();
         $token = $user->createToken('auth')->plainTextToken;
 
@@ -287,14 +339,14 @@ class AuthController extends Controller
     {
         $mobile = PhoneNumber::to09($request->input('username'));
 
-        if ($this->isOtpLocked($mobile)) {
-            return error(__('auth.too_many_otp_attempts'), [], 429);
+        if ($this->isLocked($mobile, self::SCOPE_PASSWORD)) {
+            return $this->tooManyAttempts(self::SCOPE_PASSWORD);
         }
 
         $user = User::where(User::MOBILE, $mobile)->first();
 
         if (! $user) {
-            $this->recordOtpFailure($mobile);
+            $this->recordFailure($mobile, self::SCOPE_PASSWORD);
 
             return error(__('auth.no_user_found'), [], 404);
         }
@@ -309,12 +361,12 @@ class AuthController extends Controller
             );
         }
         if (! Hash::check($request->input('password'), $user->password)) {
-            $this->recordOtpFailure($mobile);
+            $this->recordFailure($mobile, self::SCOPE_PASSWORD);
 
             return error(__('auth.password_error'), [], 404);
         }
 
-        $this->clearOtpFailures($mobile);
+        $this->clearFailures($mobile, self::SCOPE_PASSWORD);
         Auth::login($user);
         $user->tokens()->delete();
         $token = $user->createToken('auth')->plainTextToken;
@@ -371,8 +423,8 @@ class AuthController extends Controller
         ]);
 
         $mobile = $request->input('username');
-        if ($this->isOtpLocked($mobile)) {
-            return error(__('auth.too_many_otp_attempts'), [], 429);
+        if ($this->isLocked($mobile, self::SCOPE_OTP)) {
+            return $this->tooManyAttempts(self::SCOPE_OTP);
         }
 
         // Load user by mobile only — comparing the code inside a SQL WHERE clause leaks
@@ -382,11 +434,11 @@ class AuthController extends Controller
             ->first();
 
         if (! $user || ! \App\Support\OtpSecret::matches($user->{User::SECRET}, (string) $request->input('code'))) {
-            $this->recordOtpFailure($mobile);
+            $this->recordFailure($mobile, self::SCOPE_OTP);
 
             return error(__('auth.invalid_reset_token'), [], 400);
         }
-        $this->clearOtpFailures($mobile);
+        $this->clearFailures($mobile, self::SCOPE_OTP);
 
         // توکن بازنشانی پنجره‌ی انقضای خودش را دارد (verifyCode آن را ست می‌کند)؛
         // بعد از انقضا باید فرایند فراموشی رمز از ابتدا طی شود.

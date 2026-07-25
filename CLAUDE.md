@@ -37,13 +37,24 @@ php artisan optimize:clear
 # Generate API docs (Scramble)
 php artisan scramble:export
 
-# Regenerate IDE helper files (after adding models or migrations)
+# Regenerate IDE helper files — run once after cloning, and again after
+# adding models or migrations. The three outputs are gitignored (see below).
 composer ide-helper
 # This runs three artisan commands:
 #   ide-helper:generate  → _ide_helper.php       (facade type hints)
 #   ide-helper:models    → _ide_helper_models.php (Eloquent @property docblocks)
 #   ide-helper:meta      → .phpstorm.meta.php     (container resolution)
 ```
+
+> **The IDE-helper outputs are gitignored, not committed.** They used to be
+> tracked and it cost real time: they drift per branch (the L13 branch carried
+> dozens of stale `consultant` entries after the elite-yar rename, which a
+> previous audit had to report as a finding), they conflict on nearly every
+> cherry-pick between the L10/L13 branch pair, and they bury real changes under
+> machine-written noise. Nothing at runtime or in CI reads them — verified by
+> running PHPStan and the full suite with all three deleted: both stay green.
+> They exist only so the IDE resolves facades and Eloquent magic properties, so
+> each developer generates their own. **Do not re-commit them.**
 
 ## Directory Structure
 
@@ -1337,6 +1348,22 @@ order-financial escrow values `FinancialCodes::STATUS_HOLD = 'hold'` /
   cumulative lockout (`config('auth.otp_max_attempts')` / `otp_lockout_minutes`, cache-keyed
   by mobile) backs the per-minute route throttle against distributed brute-force. **Never**
   loosen these back to a bare `==` compare or remove the secret-clear.
+- **The OTP and password lockouts are separate scopes — keep them that way.**
+  `AuthController` locks through `isLocked/recordFailure/clearFailures($mobile, $scope)`
+  with `SCOPE_OTP` and `SCOPE_PASSWORD`, keyed `auth_lock:{scope}:{mobile}`. They used to
+  share one `otp_lock:{mobile}` key, which meant anyone who merely knew a mobile number
+  could spam wrong OTPs and lock that user out of **password** login too — denial of
+  service requiring no other information. Password thresholds live in
+  `auth.password_max_attempts` / `password_lockout_minutes` (defaults deliberately equal to
+  the OTP ones — the fix isolates the counters, it does not retune them). Pinned by
+  `Auth/LockoutScopeIsolationTest`.
+- **Nothing on the login path may block on an external service.**
+  `verifyCode` used to call `SyncIdentityToProfileAction` synchronously, which issues a
+  Podium HTTP request with a 30 s default timeout (`podium.defaults.timeout`). The action
+  swallows its own errors so login never *failed* — but whenever Podium was slow, every
+  OTP login was slow with it. It now dispatches `Jobs\Auth\SyncIdentityToProfileJob`.
+  Profile pre-fill is not a precondition of a successful login; if you add anything else
+  to this path, queue it.
 - **`POST /profile/password` requires the OTP `code`** (final step of the change). Without
   it a stolen token could take over the account. `StorePasswordRequest` validates `code`;
   `AccountSecurityController::setPassword` re-verifies it before writing the new hash.
