@@ -44,7 +44,7 @@ class CartParameterSyncService
     private function loadOrCreateCart(Request $request): Cart
     {
         if (Auth::id()) {
-            return Cart::firstOrCreate([Cart::USER_ID => Auth::id()]);
+            return Cart::resolveForUser((int) Auth::id());
         }
 
         $sessionId = $request->cookie('cart_session_id', (string) Str::uuid());

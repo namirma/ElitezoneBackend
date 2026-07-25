@@ -100,7 +100,29 @@ class ProcessPreScalePaymentAction
                 Order::TRANS_VAT => $transVat,
             ])->save();
 
-            // A — buyer pays POO: WO(-) → WSSG(+)
+            // A + A.5 — buyer pays POO (WO→WSSG) و تخفیف کوپن (WSSG→WO).
+            //
+            // ترتیبِ چهار لِگ عمدی است: creditBuyer(تخفیف) *قبل* از debitBuyer(POO)
+            // اجرا می‌شود تا خریدار فقط به «POO − تخفیف» موجودی نیاز داشته باشد؛
+            // پیش از این، debit اول اجرا می‌شد و کاربری که دقیقاً مبلغِ
+            // تخفیف‌خوردهٔ نمایش‌داده‌شده را داشت InsufficientBalanceException می‌گرفت.
+            // متقابلاً debitSystem(تخفیف) *بعد* از creditSystem(POO) می‌آید تا کیف
+            // پول سازه در هیچ لحظه‌ای منفی نشود (POO > تخفیف همیشه برقرار است).
+            //
+            // مبالغ، لِگ‌ها و شرحِ تراکنش‌ها تغییری نکرده‌اند: تخفیف همچنان یک
+            // هزینهٔ بازاریابیِ صریح و قابل‌ممیزیِ سازه است و POO/PTS دست‌نخورده
+            // می‌مانند — پس RefundOrderToWalletAction هم که همین لِگ را برعکس
+            // می‌کند بدون تغییر درست کار می‌کند.
+            $couponDiscount = min((float) ($locked->{Order::COUPON_DISCOUNT_AMOUNT} ?? 0), $POO);
+            $couponDesc = null;
+
+            if ($couponDiscount > 0) {
+                $couponCode = $locked->coupon?->code ?? '-';
+                $couponDesc = __('coupons.applied_description', ['code' => $couponCode, 'order' => $locked->order_number]);
+
+                $this->walletEngine->creditBuyer($locked, $couponDiscount, FinancialCodes::STATUS_AVAILABLE, $couponDesc);
+            }
+
             $this->walletEngine->debitBuyer(
                 $locked, $POO, FinancialCodes::STATUS_AVAILABLE,
                 "پرداخت وجه سفارش {$locked->order_number}"
@@ -110,16 +132,8 @@ class ProcessPreScalePaymentAction
                 "دریافت وجه از خریدار برای سفارش {$locked->order_number}"
             );
 
-            // A.5 — coupon discount leg: WSSG(-) → WO(+). The buyer is charged the
-            // formula-true POO above and immediately credited the coupon discount, so
-            // the net charge is POO − discount while POO/PTS math stays untouched and
-            // the discount is an explicit, auditable marketing expense of Saze.
-            $couponDiscount = min((float) ($locked->{Order::COUPON_DISCOUNT_AMOUNT} ?? 0), $POO);
             if ($couponDiscount > 0) {
-                $couponCode = $locked->coupon?->code ?? '-';
-                $couponDesc = __('coupons.applied_description', ['code' => $couponCode, 'order' => $locked->order_number]);
                 $this->walletEngine->debitSystem($locked, $couponDiscount, FinancialCodes::STATUS_AVAILABLE, $couponDesc);
-                $this->walletEngine->creditBuyer($locked, $couponDiscount, FinancialCodes::STATUS_AVAILABLE, $couponDesc);
             }
 
             // B — Saze pays supplier PTS: WSSG(-) → WS(+)

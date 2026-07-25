@@ -270,6 +270,17 @@ Services/
 When a controller method grows past ~30 lines of business logic, extract it
 into an Action (write side-effects) or a Service (read/composition).
 
+**One user = one cart — always select it via `Cart::queryForUser()` / `Cart::resolveForUser()`.**
+`carts.user_id` is uniquely indexed (`2026_07_25_110000_add_unique_user_id_to_carts_table`;
+guest carts keep `user_id = NULL` and are keyed by `session_id`, and MySQL allows many
+NULLs in a unique index). Before that index the readers disagreed — `CartResolver` used
+`firstOrCreate` (lowest id) while `PlaceOrderAction` used `latest('updated_at')` — so a
+user could see cart A and place an order from cart B. Every reader now goes through the
+model helpers: `CartResolver`, `CartParameterSyncService`, `CheckoutController::placeOrder`,
+`PlaceOrderAction` (which adds `lockForUpdate()`), and `User::cart()` (explicitly
+`orderBy(id)`). **Never** reintroduce a bare `Cart::firstOrCreate([user_id])` or an
+ad-hoc ordering. Pinned by `Cart/SingleCartPerUserTest`.
+
 **`CartResolver::activeCode()`** is the canonical way to get the active pricing
 code anywhere in the codebase. It checks (in order): middleware-bound container
 value → authenticated user's role via `PricingRoleResolver` → `'employer_without_elite_yar'`
@@ -595,6 +606,15 @@ mode (file stored on disk, `Invoice` DB record created).
 `GET /profile/orders/{order}/invoices/receipt` → `DOC_RECEIPT_OWNER`). The slug→code
 map is an explicit `$typeMap` array; unknown slugs return 422. Never add a
 `default` fallback that silently returns a different document.
+
+`InvoiceGenerator::getViewName()` has the same rule and **throws
+`InvalidArgumentException` on an unknown doc code** — it used to fall through to
+`default => 'pdf.invoice_default'`, which meant Doc S (buyer survey) silently rendered
+an unrelated invoice and Doc T (`pdf.survey_elite_yar`) pointed at a Blade that did not
+exist. Both survey views now exist (`pdf.survey_buyer`, `pdf.survey_elite_yar`).
+`InvoiceGeneratorRoutingTest::every_document_code_maps_to_an_existing_blade_view`
+reflects over every `FinancialCodes::DOC_*` constant and asserts the mapped view
+resolves — adding a new doc code without its Blade fails the suite.
 
 **Per-document authorization (do not weaken).** After the generic `authorize('view',
 $order)`, `download()` also enforces `mayAccessDocument($order, $type)` against a
@@ -1620,6 +1640,13 @@ never `Str::slug` server-side. `SupplierProfileResource` now exposes
   coupon only for unpaid cancellations. Preview: `POST /checkout/coupon-preview`.
   `CouponService::{validateForCheckout, calculateDiscount, redeem, releaseForOrder}` —
   pinned by `Financial/CouponServiceTest`.
+  **Leg order is load-bearing, don't shuffle it:** `creditBuyer(discount)` runs *before*
+  `debitBuyer(POO)` so the buyer only needs `POO − discount` in their wallet (charging
+  gross first made every coupon unusable unless the buyer held the undiscounted amount),
+  and `debitSystem(discount)` runs *after* `creditSystem(POO)` so WSSG can never dip
+  negative. In `ProcessReservationCompletionAction` the explicit balance guard subtracts
+  the discount too (`max(0, remaining − discount)`). Pinned by
+  `Financial/CouponBalanceGuardTest`.
 - **Reviews are verified-purchase only.** `ProductReviewController::store` 403s unless the
   user is placer/beneficiary of a DELIVERED order containing the product.
 - **Bulk notifications are queued** (`SendBulkNotificationJob`); `POST /admin/notifications/send`
@@ -1631,8 +1658,18 @@ never `Str::slug` server-side. `SupplierProfileResource` now exposes
 - **Admin permission tiers.** `admin.permission:{perm}` middleware
   (`EnsureAdminHasPermission`) gates financial/content/users route groups.
   Permissions are **user-level** (`AdminPermissionSeeder` grants all to existing admins;
-  `AdminManagerController` accepts `permissions[]` on store/update). BC rule: an admin with
-  **zero** stored permissions has full access — granularity activates on first grant.
+  `AdminManagerController` accepts `permissions[]` on store/update). The middleware is
+  **fail-closed**: no permission ⇒ 403, full stop. The old BC rule ("zero stored
+  permissions = full access") was removed — it inverted the intent of
+  `AdminManagerController::update`, where `permissions: []` means *revoke everything*, so
+  restricting an admin actually promoted them to super-admin on every gated group
+  including `manage-financial` (Podium settlements + manual wallet credit). Backward
+  compatibility is handled once, as data, by
+  `2026_07_25_100000_backfill_admin_permissions` (grants all permissions to admins that
+  had none). **Never** reintroduce a "no permissions means allow" branch. Tests that
+  create an admin by hand must call `Tests\Concerns\GrantsAdminPermissions::grantAllAdminPermissions()`
+  — otherwise they exercise a state no real admin is ever in. Pinned by
+  `Admin/AdminPermissionGateTest`.
 - **Settings keys are whitelisted** in `config/settings.php` (`allowed_keys`); unknown → 422.
 - **Ticket SLA uses a business-hours calendar.** `App\Support\BusinessHours::addWorkingHours`
   (config `ticketing.business_hours`, Friday weekend); disable via

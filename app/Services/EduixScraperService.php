@@ -50,7 +50,12 @@ class EduixScraperService
 
             return $this->executeProtected('eduix_scraper', function () use ($nationalCode, $traceCode) {
 
-                $url = "https://inquiry.eduix.msrt.ir/show?nationalCode={$nationalCode}&traceCode={$traceCode}";
+                // پارامترها باید encode شوند — درج خامِ ورودی کاربر داخل query
+                // اجازه می‌داد با یک & پارامترِ دلخواه به استعلام اضافه شود.
+                $url = 'https://inquiry.eduix.msrt.ir/show?'.http_build_query([
+                    'nationalCode' => $nationalCode,
+                    'traceCode' => $traceCode,
+                ]);
 
                 $html = $this->client->request('GET', $url)->getContent();
 

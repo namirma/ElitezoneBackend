@@ -37,6 +37,7 @@ class OrderInvoiceController extends Controller
         'elite_yar_report' => ['elite_yar'],
         'tax_elite_yar' => ['elite_yar'],
         'survey_elite_yar' => ['elite_yar'],
+        'survey_buyer' => ['buyer'],
     ];
 
     public function download(Order $order, string $type, InvoiceGenerator $generator)
@@ -73,6 +74,7 @@ class OrderInvoiceController extends Controller
             'tax_supplier' => FinancialCodes::DOC_TAX_INVOICE_SUPPLIER,
             'tax_elite_yar' => FinancialCodes::DOC_TAX_INVOICE_ELITE_YAR,
             // Stage 7 — surveys
+            'survey_buyer' => FinancialCodes::DOC_SURVEY,
             'survey_elite_yar' => FinancialCodes::DOC_SURVEY_ELITE_YAR,
         ];
 

@@ -12,6 +12,12 @@ use Symfony\Component\HttpFoundation\Response;
  * مجوزها به صورت user-level به هر ادمین داده می‌شوند (AdminPermissionSeeder همه
  * مجوزها را به ادمین‌های موجود می‌دهد؛ AdminManagerController هنگام ساخت/ویرایش
  * ادمین لیست مجوزها را sync می‌کند). استفاده: middleware('admin.permission:manage-financial')
+ *
+ * fail-closed: نبودِ مجوز = ۴۰۳. قبلاً «صفر مجوز = دسترسی کامل» بود که دقیقاً
+ * وارونهٔ نیتِ AdminManagerController::update بود — فرستادن permissions=[] برای
+ * سلبِ دسترسی، به ادمین دسترسیِ کامل (از جمله manage-financial) می‌داد.
+ * سازگاری عقب‌رو حالا یک‌بار و برای همیشه در مایگریشنِ
+ * 2026_07_25_100000_backfill_admin_permissions انجام می‌شود.
  */
 class EnsureAdminHasPermission
 {
@@ -19,18 +25,7 @@ class EnsureAdminHasPermission
     {
         $user = $request->user();
 
-        if (! $user) {
-            return $this->forbidden();
-        }
-
-        // سازگاری عقب‌رو: ادمینی که هیچ مجوز user-level ثبت‌شده‌ای ندارد
-        // (seeder اجرا نشده / ادمین قدیمی) = دسترسی کامل قدیمی. به محض
-        // تخصیص اولین مجوز، سطح‌بندی برای او فعال می‌شود.
-        if ($user->permissions()->count() === 0) {
-            return $next($request);
-        }
-
-        if (! $user->hasPermission($permission)) {
+        if (! $user || ! $user->hasPermission($permission)) {
             return $this->forbidden();
         }
 

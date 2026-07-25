@@ -185,7 +185,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
         // Education (expert only)
         Route::prefix('education')->middleware('role.expert')->controller(EduixController::class)->group(function () {
             Route::get('/', 'index')->middleware('track:education');
-            Route::post('/fetch', 'fetch');
+            // throttle: هر فراخوانی یک scrape واقعی روی سامانهٔ msrt.ir است؛
+            // بدون سقف، endpoint به یک پروکسیِ استعلامِ نامحدود تبدیل می‌شد.
+            Route::post('/fetch', 'fetch')->middleware('throttle:5,1');
             Route::delete('/{record}', 'destroy');
         });
 

@@ -28,10 +28,21 @@ class EduixController extends Controller
             return error(__('education.already_has_active_request'), [], 403);
         }
         $validated = $request->validate([
-            'national_code' => 'required|string',
-            'trace_code' => 'required|string',
+            'national_code' => ['required', 'digits:10'],
+            'trace_code' => ['required', 'string', 'max:64', 'regex:/^[A-Za-z0-9-]+$/'],
         ]);
-        if ($user->{User::NATIONAL_CODE} && $user->{User::NATIONAL_CODE} !== $validated['national_code']) {
+
+        // گاردِ هویتی: استعلام فقط برای کد ملیِ *خودِ* کاربر مجاز است.
+        // قبلاً شرط `if ($user->national_code && ...)` بود، یعنی کاربری که هنوز
+        // احراز هویت نکرده (national_code = null) می‌توانست کد ملیِ هر شخص دیگری
+        // را استعلام کند و سابقهٔ تحصیلیِ او را زیر پروفایل خودش ثبت کند.
+        $ownNationalCode = $user->{User::NATIONAL_CODE};
+
+        if (! $ownNationalCode) {
+            return error(__('education.national_code_required'), [], 422);
+        }
+
+        if ((string) $ownNationalCode !== $validated['national_code']) {
             return error(__('education.national_code_mismatch'), [], 422);
         }
 
@@ -45,6 +56,10 @@ class EduixController extends Controller
                 ],
                 array_merge($data, [
                     EduixRecord::USER_ID => $user->id,
+                    // کد ملیِ *تأییدشدهٔ* پروفایل، نه هرچه از صفحهٔ scrape شده درآمده.
+                    // هم منبع را معتبر می‌کند و هم ستون NOT NULL را تضمین می‌کند
+                    // (اگر سامانه فیلد کدملی را برنگرداند، insert می‌شکست).
+                    EduixRecord::NATIONAL_CODE => $ownNationalCode,
                     EduixRecord::ADMIN_STATUS => EduixRecord::STATUS_PENDING,
                 ])
             );
