@@ -109,6 +109,15 @@ class Kernel extends ConsoleKernel
         $schedule->command('backup:monitor')
             ->dailyAt('02:00')
             ->onOneServer();
+
+        // پایشِ سلامتِ صف — هر ۱۵ دقیقه. همهٔ listenerها ShouldQueue هستند، پس
+        // خوابیدنِ worker هیچ خطایی تولید نمی‌کند و فقط پیامکِ OTP کاربر نمی‌رسد.
+        // این دستور آن خرابیِ خاموش را به یک لاگِ error (و در نتیجه یک رویداد
+        // Sentry، اگر DSN ست باشد) تبدیل می‌کند.
+        $schedule->command('queue:health')
+            ->everyFifteenMinutes()
+            ->withoutOverlapping()
+            ->onOneServer();
     }
 
     /**

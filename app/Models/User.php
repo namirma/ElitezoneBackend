@@ -152,7 +152,9 @@ class User extends Authenticatable
         return $this->hasOne(SupplierProfile::class);
     }
 
-    public function wallet()
+    // return type لازم است تا larastan این را relation بشناسد؛ بدونش هر
+    // `$user->wallet` یک خطای «خاصیت تعریف‌نشده» می‌شد و ۱۰ ورودی در baseline داشت.
+    public function wallet(): HasOne
     {
         return $this->hasOne(Wallet::class);
     }

@@ -310,7 +310,17 @@ Enums/
   Survey/  — SurveyStatus
 ```
 
-Backed PHP 8.1 enums for all status/type values. **Note:** the codebase currently uses Model string constants (`Order::STATUS_CANCELLED`) rather than these enum values — future refactoring should switch to enum references for type safety.
+Backed PHP 8.1 enums for all status/type values. **Note:** the codebase currently uses Model string constants (`Order::STATUS_CANCELLED`) rather than these enum values.
+
+> **Do not migrate to enums piecemeal.** Measured scope (2026-07-26): `Order::STATUS_*`
+> alone has **210 usages across 52 files**, plus 55 `Order::PAYMENT_*` and 87
+> `WalletTransaction::STATUS_*`/`TYPE_*` — ~352 sites, most of them on the financial
+> critical path. Adding `'status' => OrderStatus::class` to `$casts` makes `$order->status`
+> return an enum, so **every** `=== Order::STATUS_PENDING` comparison silently becomes
+> false. A half-migrated codebase carries both conventions at once, which is worse than
+> either end state. Do it as one dedicated change with its own review+test pass, or leave
+> it consistent. `Enums/EnumModelConstantParityTest` is the safety net that keeps the two
+> vocabularies from drifting until then.
 
 **Enum ↔ model-constant parity is pinned** by `Tests\Feature\Enums\EnumModelConstantParityTest`
 (OrderStatus ↔ `Order::STATUS_*`, PaymentStatus ↔ `Order::PAYMENT_{PENDING,PAID,FAILED,REFUND_PENDING,REFUNDED}`,
@@ -860,6 +870,25 @@ Jobs/
 > sites; expired-order cancellation actually runs via the `orders:cancel-expired`
 > artisan command (`Console/Commands/CancelExpiredOrders`, scheduled every minute).
 
+### Queue worker is a silent single point of failure — `queue:health` watches it
+
+**Every** listener is `ShouldQueue` and `QUEUE_CONNECTION=database`, so a stopped worker
+throws nothing: OTP SMS, order notifications and mail just pile up in `jobs`. Since login
+depends on OTP SMS, a dead worker is effectively a login outage with no trace in any log.
+
+Not hypothetical — the audit found **7 `SendSmsJob` rows with `attempts=0`, aged 29–47
+days** on the dev database. No worker had ever picked them up and nothing had surfaced it.
+
+`queue:health` (scheduled every 15 min) checks oldest-pending age, pending depth, recent
+failures and total `failed_jobs` against `config/ops.php`, logs `error` on breach (so a
+configured Sentry DSN turns it into an alert) and exits non-zero for external monitors.
+`--json` gives a machine-readable payload. It no-ops on non-`database` queue drivers.
+
+Worker + scheduler supervision: `deploy/supervisor/elitezone-worker.conf`.
+Full runbook (incl. the backup restore drill and the deploy checklist):
+[`docs/OPERATIONS.md`](docs/OPERATIONS.md). **Run `php artisan queue:restart` after every
+deploy** or workers keep executing the old code.
+
 ### Database backups (`spatie/laravel-backup`)
 
 The package was installed with **no `config/backup.php` and no schedule** — a wallet/ledger
@@ -1146,6 +1175,29 @@ processing to the event bus (hard to test, hard to ensure atomicity). Financial 
 now happens directly inside the payment Actions. `OrderPaid` is now notifications-only →
 `SendOrderPaymentNotification`. `EventServiceProvider` has been updated accordingly.
 **Do not re-add** any financial Action call inside an event listener.
+
+## Static analysis — PHPStan level 5 + baseline
+
+`phpstan.neon`: level 5, `app/` only, larastan extension, `phpstan-baseline.neon`.
+CI runs it (`--memory-limit=1G`), so **a new error fails the build**.
+
+Measured on 2026-07-26 before touching anything:
+
+- **Level 6 adds 816 errors** on top of the level-5 baseline (mostly missing iterable
+  value types / param+return typehints). That is a dedicated typing project, not a config
+  bump — baselining them instead would just hide 816 issues and defeat the point.
+- **PHPStan 2.x is blocked**, and not by us: it needs larastan 3.x, which requires
+  Laravel 11+. This app is Laravel 10 with `larastan/larastan ^2.11`. It becomes available
+  after the framework upgrade (see the `upgrade/laravel-13` branch) — until then the
+  1.12 line is the correct pin, so ignore the phar's own upgrade nag.
+- Local runs need `--memory-limit=2G`; the default 128 M crashes the parallel workers.
+
+**Relation methods must declare a return type.** `User::wallet()` and
+`ProductVariant::variantAttributes()` had none, so larastan could not see them as
+relations and every `$user->wallet` became an "undefined property" error — 16 baseline
+entries from two missing typehints. Adding `: HasOne` / `: BelongsToMany` removed them.
+Combined with purging stale entries, the baseline went **298 → 275 entries (397 → 381
+errors)**. When you add a relation, type it.
 
 ## Known Architectural Gotchas
 
