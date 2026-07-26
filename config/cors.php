@@ -32,13 +32,17 @@ return [
 
         ...array_map('trim', array_filter(explode(',', (string) env('CORS_EXTRA_ORIGINS', '')))),
 
-        // استیجینگ هنوز SSL ندارد و روی http سرو می‌شود. این اوریجینِ http باید همیشه
-        // مجاز باشد؛ قبلاً به APP_DEBUG گِیت شده بود و چون روی استیجینگ APP_DEBUG=false
-        // است، preflightِ ورود با خطای CORS رد می‌شد (Redirect is not allowed for a
-        // preflight request). اجازهٔ این اوریجینِ استیجینگ هیچ اثری روی امنیت پروداکشن
-        // ندارد (پروداکشن دامنهٔ https خودش را دارد). با نصب SSL روی استیجینگ، خطِ https
-        // بالا هم پوشش می‌دهد و این خط عملاً بی‌اثر می‌شود.
-        'http://staging.elitezone.me',
+        // استیجینگ هنوز SSL ندارد و روی http سرو می‌شود، پس این اوریجینِ http لازم است
+        // وگرنه preflightِ ورود با خطای CORS رد می‌شود.
+        //
+        // اما با supports_credentials=true یک اوریجینِ http در allowlistِ *پروداکشن*
+        // یعنی: هر مهاجمی که بتواند ترافیکِ سادهٔ http://staging را MITM کند، می‌تواند
+        // اسکریپت تزریق کند و از آن اوریجین درخواستِ credentialed به APIِ پروداکشن بزند
+        // و پاسخ را بخواند. پس فقط در محیط‌های غیرپروداکشن مجاز است. برای استیجینگ،
+        // APP_ENV=staging بگذارید (یا پس از نصب SSL، خطِ https بالا خودش پوشش می‌دهد).
+        ...(env('APP_ENV', 'production') !== 'production' ? [
+            'http://staging.elitezone.me',
+        ] : []),
     ])),
 
     'allowed_origins_patterns' => [],

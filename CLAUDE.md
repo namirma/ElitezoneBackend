@@ -312,6 +312,33 @@ Enums/
 
 Backed PHP 8.1 enums for all status/type values. **Note:** the codebase currently uses Model string constants (`Order::STATUS_CANCELLED`) rather than these enum values — future refactoring should switch to enum references for type safety.
 
+**Enum ↔ model-constant parity is pinned** by `Tests\Feature\Enums\EnumModelConstantParityTest`
+(OrderStatus ↔ `Order::STATUS_*`, PaymentStatus ↔ `Order::PAYMENT_{PENDING,PAID,FAILED,REFUND_PENDING,REFUNDED}`,
+WalletTransactionStatus ↔ `WalletTransaction::STATUS_*`, WalletTransactionType ↔ `WalletTransaction::TYPE_*`).
+Adding a status/type constant to a model without its enum case (or vice versa) fails the
+suite — this caught a real drift where `TYPE_HOLD_RELEASE` existed on the model but
+`WalletTransactionType` had no `HoldRelease` case. **When adding a constant, add the enum
+case (and its `label()` arm) in the same commit.**
+
+### Repositories — read-side query layer (Order / Product / Ticket only)
+
+`app/Repositories/` is a deliberate, *bounded* layer — not vestigial, not to be expanded
+by default. Interfaces live in `Repositories/Contracts/`, Eloquent implementations in
+`Repositories/Eloquent/` (+ two flat ticket repositories), all bound in
+`RepositoryServiceProvider`. Consumers: `OrderController` (user order lists),
+`ProductController` / `FilterProductsAction` (catalog filtering), `TicketService` /
+`TicketReplyService`.
+
+The division of labour with Actions/Services:
+- **Repositories** = complex *read-side* list/filter queries behind an interface
+  (pagination, status-group scoping, catalog filters).
+- **Actions** = write side-effects and DB transactions (the financial rule — never put
+  money movement in a repository).
+- **Services** = read/composition helpers that don't need an interface.
+
+Don't introduce a repository for a new domain unless it has genuinely complex,
+reused list queries; a query scope or Service is the default.
+
 ### Support
 
 `app/Support/PhoneNumber` — centralized Iranian mobile normalizer. Use `PhoneNumber::to09($mobile)` everywhere. **Never** write a local `mobileTo09()` helper.
@@ -742,6 +769,16 @@ directly in `routes/api.php` — it must stay a thin glue file.
 - `track` — logs dashboard page visits for analytics
 - `can-see-ticket` — ticket ownership check
 
+**Global stack is API-lean (2026-07-26).** `Sanitizer` was **deleted** — it duplicated
+`TrimStrings` (both recursively trimmed every string input; one full extra payload walk
+per request). `StartSession` + `ShareErrorsFromSession` moved from the global stack into
+the `web` group only: API auth is token-based Sanctum and needs no session, while
+stateful SPA (cookie) requests get their session stack injected by
+`EnsureFrontendRequestsAreStateful` itself. In the `web` group `StartSession` must stay
+**before** `VerifyCsrfToken` (the CSRF token lives in the session).
+`AuthController::logout`'s web-guard branch guards `$request->hasSession()` before
+invalidating. **Never re-add session middleware to the global stack.**
+
 ### Event-Driven Side Effects — Domain Subfolders
 
 `app/Events/` and `app/Listeners/` are organized into domain subfolders (commit `7f0ca9f`):
@@ -822,6 +859,21 @@ Jobs/
 > `Order/CheckReservationExpiryJob` was DELETED — it was dead code with zero call
 > sites; expired-order cancellation actually runs via the `orders:cancel-expired`
 > artisan command (`Console/Commands/CancelExpiredOrders`, scheduled every minute).
+
+### Database backups (`spatie/laravel-backup`)
+
+The package was installed with **no `config/backup.php` and no schedule** — a wallet/ledger
+system with no backups at all. Now wired:
+
+- `backup:run --only-db` daily 01:00 → gzipped MySQL dump
+- `backup:clean` daily 01:45 → retention policy
+- `backup:monitor` daily 02:00 → alerts on a stale/oversized archive (a silently broken
+  dump otherwise stays invisible until the day you need to restore)
+
+The dump lands on the **private `financial` disk**, never `public` — it contains national
+codes, IBANs and card numbers. Set `BACKUP_DISKS=financial,s3` for a real off-site copy.
+Retention and the notification email are env-driven (see `.env.example`). Files are
+deliberately excluded (`--only-db`); the uploaded receipts/invoices need their own cycle.
 
 Scheduled jobs (crons, wired in `Console/Kernel.php`) — **all** use
 `withoutOverlapping()->onOneServer()`:
@@ -1281,6 +1333,54 @@ code is **`gold`** (not `golden`). `SettlementCalculatorService::getCommissionRa
 matches `'gold', 'golden'` (alias) so a legacy value never silently falls through to the
 default rate and underpays a gold-tier elite yar.
 
+### `%TC` commission rate is snapshotted per order — read the snapshot, never the live setting
+
+`tc_percentage` lives in `PriceSetting` (a globally editable row), so it is **not** a
+constant. Both payment actions now snapshot the effective rate onto
+`orders.commission_rate` (plus `owner_discount_rate` / `saze_share_rate` /
+`elite_yar_share_rate`) via `SettlementCalculatorService::currentTcPercentage()`, and
+`WeighbridgeReconciler` reads that snapshot through
+`getCommissionRatesForTc($badgeCode, $snapshotTc)`.
+
+Before this, `ProcessPreScalePaymentAction` wrote a hardcoded `COMMISSION_RATE => 1.0`
+(never read back), `ProcessReservationCompletionAction` wrote **no** rate columns at all,
+and `WeighbridgeReconciler` re-read the live `PriceSetting`. Editing that one setting
+between payment and weighbridge therefore moved POOM away from POO **at identical
+weight**, tripping the deficit branch — a real refund to the buyer and a real debt
+recorded against the supplier with not one kilogram changed.
+
+- `getCommissionRates($badgeCode)` — live rate; use only **before/at** payment.
+- `getCommissionRatesForTc($badgeCode, $tc)` — explicit rate; use for **everything after**
+  payment. Orders with no snapshot (legacy rows, `commission_rate` null/0) fall back to the
+  live rate for backward compatibility.
+- `SAZE_SHARE_RATE` / `ELITE_YAR_SHARE_RATE` are no longer dead columns — keep writing them.
+
+Pinned by `Financial/CommissionRateSnapshotTest`. Note the badge itself is safe to change
+mid-flight: `%OW` is 40 % for every badge and `ow+co+ssg` always totals 100 % of TC, so
+POO/PTS are badge-independent — only the WEY/WSSG split shifts.
+
+### `extractVat()` — `net` is derived from the rounded `vat`
+
+`net = gross − round(vat)`, so `net + vat === gross` exactly. Rounding the two
+independently let their sum drift up to 0.01 Rial from `gross`, and since
+`WeighbridgeVatRouter` debits WSSG by `gross` while crediting WEY/WVAT by `net`+`vat`,
+that drift landed as a sub-Rial imbalance in a double-entry ledger. Pinned by
+`CommissionRateSnapshotTest::extract_vat_net_and_vat_sum_exactly_to_gross`.
+
+> `vatMultiplier()` was **deleted** — zero production callers, and it embodied the exact
+> inline `(vat/100)/(1+vat/100)` form forbidden below. Do not reintroduce it; call
+> `extractVat()`.
+
+### `WalletTransactionEngine` rejects non-positive amounts
+
+`process()` and `releaseHold()` both throw `InvalidArgumentException` unless `$amount` is
+a positive finite number. The sufficient-balance guards compare with `<`, so a negative
+amount slipped straight through them and **inverted the operation**: a `credit*` call with
+a negative amount decremented the balance with no balance check at all, and a `debit*`
+call with one minted money. Every current caller filters `<= 0` itself, but the invariant
+belongs in the engine. Balance mutations also use `Money::add/sub` + `Money::lt` (bcmath)
+rather than raw float `+=` on the decimal columns.
+
 ### Money math is bcmath — never chain raw floats
 
 All settlement arithmetic (POO/PTS, commissions, VAT splits) goes through
@@ -1416,6 +1516,14 @@ order-financial escrow values `FinancialCodes::STATUS_HOLD = 'hold'` /
   `whenLoaded('wallet')` (admin lists eager-load it; user endpoints don't).
 - **Idempotency middleware** keys guests by IP (`guest:<ip>`, not a shared `guest`) and caches
   only safe response headers (never `Set-Cookie`/auth headers).
+- **The idempotency cache key is scoped to `method + path`, and the stored entry carries a
+  request fingerprint.** It used to be keyed on `(user, key)` alone, so one client-reused
+  UUID replayed the first response across *different* endpoints — a second `pay-full` on a
+  different order came back "paid" with not a Rial moved. Reusing a key on the same
+  endpoint with a different body now returns **422 `IDEMPOTENCY_KEY_REUSED`** instead of a
+  cached response (accepting a cached success for an operation that never ran is the worse
+  failure). Pinned by `Security/IdempotencyScopeTest` — the middleware had **no** tests
+  before. Never drop the scope or the fingerprint check.
 - **`DebugController` routes are non-production only** (wrapped in `! app()->environment('production')`);
   the analytics/inventory `data/*` routes sit behind `auth:sanctum + role.admin`.
 - **Admin deposit-confirm is double-credit safe.** `ProcessTransactionAction` re-fetches the
@@ -1799,6 +1907,16 @@ never `Str::slug` server-side. `SupplierProfileResource` now exposes
   with `php artisan scramble:export` after route/request changes.
 - Pinned by `Admin/AdminHardeningRound2Test` (8 tests).
 
+### `predis/predis` is present but unused today
+
+Nothing in `app/` references Redis; `CACHE_DRIVER=file` and `QUEUE_CONNECTION=database`.
+It is kept in `composer.json` deliberately as the driver for a production Redis switch
+(`CACHE_DRIVER=redis`, `QUEUE_CONNECTION=redis`) — Laravel needs the client library
+installed before the env flip, not after. **If you flip either driver to `redis`, note that
+`Idempotency` relies on `Cache::lock()`; on the `file` driver locks are per-server, so a
+multi-server deployment needs the Redis (or database) lock driver for the financial
+idempotency guard to actually hold.**
+
 ## Key Conventions
 
 - All API responses use the `success()`/`error()` helpers — never return raw `response()->json()` from authenticated endpoints
@@ -1832,6 +1950,12 @@ never `Str::slug` server-side. `SupplierProfileResource` now exposes
   routes register as `Route::middleware('api')`. `config.max_age` is now `86400` so
   dropping it costs no extra preflights. **Never add a route-level CORS middleware
   again** — add origins to `CORS_EXTRA_ORIGINS`. Pinned by `Security/CorsAllowlistTest`.
+  **`http://staging.elitezone.me` is now gated to `APP_ENV !== 'production'`.** With
+  `supports_credentials: true`, a plain-HTTP origin sitting in the *production* allowlist
+  means anyone who can MITM that unencrypted traffic can inject script, call the production
+  API with credentials from that origin, and read the responses. Staging still needs the
+  origin (its preflight fails without it) — so run staging with `APP_ENV=staging`, or
+  install SSL and let the existing `https://staging…` entry cover it.
 - **Every `/admin` + `/v1/podium` route must carry an `admin.permission`.**
   `Admin/AdminPermissionCoverageTest` walks the whole route table and fails on any
   ungated one. The **only** exemptions are the two `debug/*` routes, which are already

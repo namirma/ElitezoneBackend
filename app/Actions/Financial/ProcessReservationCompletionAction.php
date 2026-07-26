@@ -58,7 +58,7 @@ class ProcessReservationCompletionAction
 
             $op = (float) ($locked->official_price ?: ($firstItem->unit_price ?? 0));
             $trans = (float) ($locked->shipping_cost ?: 0);
-            $vat = (float) ($locked->vat_rate ?: 10.0);
+            $vat = (float) ($locked->vat_rate ?: config('financial.default_vat_rate'));
 
             // وزن snapshot باید معتبر باشد — fallback بی‌صدا به ۱ کیلوگرم یعنی POO/PTS
             // روی یک کیلو محاسبه می‌شد و رزرو با مبلغ ناچیز «تکمیل» می‌شد. داده‌ی خراب
@@ -72,7 +72,12 @@ class ProcessReservationCompletionAction
             // نرخ کمیسیون از نشانِ الیت‌یارِ صاحب کمیسیون (elite_yar_user_id) خوانده می‌شود،
             // نه beneficiary (گیرندهٔ کالا) — هم‌راستا با ProcessWeighbridgeResultAction.
             $badgeCode = $locked->eliteYAR?->badge?->code ?? 'pioneer';
-            $rates = $this->calculator->getCommissionRates($badgeCode);
+
+            // %TC اسنپ‌شات می‌شود (هم‌الگو با ProcessPreScalePaymentAction) — این مسیر
+            // تا امروز هیچ‌کدام از ستون‌های نرخ را نمی‌نوشت، پس باسکول مجبور بود نرخ را
+            // زنده بخواند و با هر تغییرِ tc_percentage یک کسریِ کاذب می‌ساخت.
+            $tcPercentage = $this->calculator->currentTcPercentage();
+            $rates = $this->calculator->getCommissionRatesForTc($badgeCode, $tcPercentage);
 
             $ow = $rates['ow_final_rate'];
             $ssg = $rates['ssg_final_rate'];
@@ -173,6 +178,11 @@ class ProcessReservationCompletionAction
                 Order::PAYMENT_STATUS => Order::PAYMENT_PAID,
                 Order::PAYMENT_OF_OWNER => $POO,
                 Order::PAYMENT_TO_SUPPLIER => $PTS,
+                Order::COMMISSION_RATE => $tcPercentage,
+                Order::VAT_RATE => $vat,
+                Order::OWNER_DISCOUNT_RATE => $ow,
+                Order::SAZE_SHARE_RATE => $ssg,
+                Order::ELITE_YAR_SHARE_RATE => $co,
                 Order::TRANS_COMMISSION => $transCommission,
                 Order::TRANS_VAT => $transVat,
                 Order::PAID_AT => now(),

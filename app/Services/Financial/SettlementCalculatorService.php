@@ -47,6 +47,45 @@ class SettlementCalculatorService
         return PriceSetting::getValueAsFloat(PriceSetting::CODE_TC_PERCENTAGE, self::TC_PERCENTAGE);
     }
 
+    /**
+     * نرخِ مؤثرِ %TC برای اسنپ‌شات روی سفارش.
+     *
+     * پرداخت باید همین مقدار را در `orders.commission_rate` ثبت کند و باسکول باید
+     * همان را بخواند — نه اینکه دوباره از PriceSetting زنده بخواند. پیش از این
+     * ProcessPreScalePaymentAction عددِ هاردکدِ `1.0` را ثبت می‌کرد و
+     * WeighbridgeReconciler نرخ را زنده می‌خواند؛ اگر tc_percentage بین پرداخت و
+     * باسکول تغییر می‌کرد، POOM با وزنِ کاملاً یکسان از POO فاصله می‌گرفت و یک
+     * «کسری» کاذب می‌ساخت که واقعاً به خریدار عودت می‌داد و برای تأمین‌کننده بدهی
+     * ثبت می‌کرد.
+     */
+    public function currentTcPercentage(): float
+    {
+        return self::tcPercentage();
+    }
+
+    /**
+     * همان نرخ‌های getCommissionRates اما با یک %TC مشخص (اسنپ‌شاتِ سفارش) به‌جای
+     * مقدارِ زندهٔ PriceSetting. هر محاسبهٔ *بعد از* پرداخت باید از این استفاده کند.
+     *
+     * @return array{
+     *   ow_percent_of_tc: float, co_percent_of_tc: float, ssg_percent_of_tc: float,
+     *   ow_final_rate: float, co_final_rate: float, ssg_final_rate: float,
+     * }
+     */
+    public function getCommissionRatesForTc(?string $badgeCode, float $tcPercentage): array
+    {
+        $shares = $this->badgeShares($badgeCode);
+
+        return [
+            'ow_percent_of_tc' => $shares['ow'],
+            'co_percent_of_tc' => $shares['co'],
+            'ssg_percent_of_tc' => $shares['ssg'],
+            'ow_final_rate' => (float) Money::mul($tcPercentage, Money::div($shares['ow'], '100')),
+            'co_final_rate' => (float) Money::mul($tcPercentage, Money::div($shares['co'], '100')),
+            'ssg_final_rate' => (float) Money::mul($tcPercentage, Money::div($shares['ssg'], '100')),
+        ];
+    }
+
     // =========================================================================
     // Public API
     // =========================================================================
@@ -213,18 +252,7 @@ class SettlementCalculatorService
      */
     public function getCommissionRates(?string $badgeCode): array
     {
-        $badge = strtolower(trim($badgeCode ?? ''));
-
-        // Share-of-TC percentages (always sum to 100 %).
-        // NOTE: the canonical badge codes seeded in the DB are gold / silver / bronze
-        // (see database/seeders/ProductSeeder.php). 'golden' is accepted as an alias
-        // so a legacy value never silently falls through to the default rate.
-        $shares = match ($badge) {
-            'gold', 'golden' => ['ow' => 40.0, 'co' => 37.5, 'ssg' => 22.5],
-            'silver' => ['ow' => 40.0, 'co' => 32.5, 'ssg' => 27.5],
-            'bronze' => ['ow' => 40.0, 'co' => 30.0, 'ssg' => 30.0],
-            default => ['ow' => 40.0, 'co' => 25.0, 'ssg' => 35.0], // normal / pioneer
-        };
+        $shares = $this->badgeShares($badgeCode);
 
         return [
             // Percentages relative to TC (for commission-amount calculations)
@@ -241,18 +269,22 @@ class SettlementCalculatorService
     }
 
     /**
-     * VAT-extraction multiplier for a VAT-inclusive amount:
-     *   vatMultiplier = (VAT/100) / (1 + VAT/100)
+     * Share-of-TC percentages per badge (always sum to 100 %).
      *
-     * For a gross (VAT-inclusive) amount G, the embedded VAT is G × vatMultiplier
-     * and the net is G − VAT. Computed with bcmath so repeating decimals
-     * (e.g. 10% → 1/11) don't accumulate float error across the settlement legs.
+     * NOTE: the canonical badge codes seeded in the DB are gold / silver / bronze
+     * (see database/seeders/ProductSeeder.php). 'golden' is accepted as an alias
+     * so a legacy value never silently falls through to the default rate.
+     *
+     * @return array{ow: float, co: float, ssg: float}
      */
-    public function vatMultiplier(float $vatPercent): float
+    private function badgeShares(?string $badgeCode): array
     {
-        // Algebraically (VAT/100)/(1+VAT/100) == VAT/(100+VAT) — the latter avoids a
-        // tiny truncated intermediate, staying numerically stable.
-        return (float) Money::div($vatPercent, Money::add('100', $vatPercent));
+        return match (strtolower(trim($badgeCode ?? ''))) {
+            'gold', 'golden' => ['ow' => 40.0, 'co' => 37.5, 'ssg' => 22.5],
+            'silver' => ['ow' => 40.0, 'co' => 32.5, 'ssg' => 27.5],
+            'bronze' => ['ow' => 40.0, 'co' => 30.0, 'ssg' => 30.0],
+            default => ['ow' => 40.0, 'co' => 25.0, 'ssg' => 35.0], // normal / pioneer
+        };
     }
 
     /**
@@ -266,12 +298,20 @@ class SettlementCalculatorService
      */
     public function extractVat(float $gross, float $vatPercent): array
     {
-        $vat = Money::div(Money::mul($gross, $vatPercent), Money::add('100', $vatPercent));
-        $net = Money::sub($gross, $vat);
+        $vat = Money::toFloat(
+            Money::div(Money::mul($gross, $vatPercent), Money::add('100', $vatPercent))
+        );
+
+        // net از vatِ *گردشده* مشتق می‌شود تا `net + vat === gross` دقیقاً برقرار باشد.
+        // پیش از این هر دو مستقل گرد می‌شدند و مجموعشان می‌توانست تا ۰٫۰۱ ریال از
+        // gross فاصله بگیرد — و چون WeighbridgeVatRouter کیف پول سازه را به اندازهٔ
+        // gross بدهکار و WEY/WVAT را به اندازهٔ net و vat بستانکار می‌کند، همان
+        // اختلاف به‌صورت یک عدم‌توازنِ زیرریالی در لجر دوطرفه می‌نشست.
+        $net = Money::toFloat(Money::sub($gross, $vat));
 
         return [
-            'net' => Money::toFloat($net),
-            'vat' => Money::toFloat($vat),
+            'net' => $net,
+            'vat' => $vat,
         ];
     }
 }

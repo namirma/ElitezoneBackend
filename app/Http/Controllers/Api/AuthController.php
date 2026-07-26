@@ -496,9 +496,13 @@ class AuthController extends Controller
         if ($token instanceof PersonalAccessToken) {
             $token->delete();
         } else {
+            // شاخهٔ stateful (کوکی SPA) — session را استک Sanctum ست کرده است؛ گارد
+            // hasSession برای وقتی است که این شاخه بدون session فراخوانی شود (دفاعی).
             Auth::guard('web')->logout();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
+            if ($request->hasSession()) {
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+            }
         }
 
         return success([], __('auth.logout_success'));

@@ -30,10 +30,20 @@ class WeighbridgeReconciler
         $billingWeight = min($actualWeight, $wbs);
 
         $badgeCode = $order->eliteYAR?->badge?->code ?? 'pioneer';
-        $rates = $this->calculator->getCommissionRates($badgeCode);
+
+        // %TC از اسنپ‌شاتِ سفارش خوانده می‌شود، نه از تنظیمِ زندهٔ PriceSetting.
+        // tc_percentage یک مقدارِ سراسریِ قابل‌تغییر است؛ خواندنِ زندهٔ آن یعنی یک
+        // ویرایشِ تنظیمات بین پرداخت و باسکول، POOM را با وزنِ کاملاً یکسان از POO
+        // دور می‌کرد و شاخهٔ «کسری» را فعال می‌کرد — یعنی عودتِ واقعی به خریدار و
+        // ثبتِ بدهیِ واقعی برای تأمین‌کننده، بدون آنکه هیچ کیلوگرمی جابه‌جا شده باشد.
+        // سفارش‌های قدیمی که این ستون را ندارند به مقدارِ زنده برمی‌گردند (سازگاری).
+        $snapshotTc = (float) ($order->{Order::COMMISSION_RATE} ?? 0);
+        $rates = $snapshotTc > 0
+            ? $this->calculator->getCommissionRatesForTc($badgeCode, $snapshotTc)
+            : $this->calculator->getCommissionRates($badgeCode);
 
         $trans = (float) $order->shipping_cost;
-        $vat = (float) ($order->vat_rate ?? 10.0);
+        $vat = (float) ($order->vat_rate ?? config('financial.default_vat_rate'));
         $op = ((float) $order->official_price > 0)
             ? (float) $order->official_price
             : (float) ($order->items->first()?->unit_price ?? 0);

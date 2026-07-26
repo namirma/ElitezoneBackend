@@ -41,13 +41,32 @@ final class Money
         return bcmul(self::s($a), self::s($b), self::SCALE);
     }
 
+    /**
+     * @throws \InvalidArgumentException on a zero divisor — a silent '0' here would
+     *                                   turn a broken input into a plausible-looking money value (e.g. a zero VAT
+     *                                   split, making net == gross) and hide the real bug behind correct-looking
+     *                                   ledger rows. Every current caller divides by a non-zero constant
+     *                                   ('100') or by (100 + vat%), so this can only fire on genuinely bad data.
+     */
     public static function div(int|float|string $a, int|float|string $b): string
     {
         if (bccomp(self::s($b), '0', self::SCALE) === 0) {
-            return '0';
+            throw new \InvalidArgumentException('Money::div — division by zero.');
         }
 
         return bcdiv(self::s($a), self::s($b), self::SCALE);
+    }
+
+    /** Compare two amounts: -1 if $a < $b, 0 if equal, 1 if $a > $b. */
+    public static function cmp(int|float|string $a, int|float|string $b): int
+    {
+        return bccomp(self::s($a), self::s($b), self::SCALE);
+    }
+
+    /** True when $a is strictly less than $b (exact, no float comparison). */
+    public static function lt(int|float|string $a, int|float|string $b): bool
+    {
+        return self::cmp($a, $b) === -1;
     }
 
     /**
@@ -78,8 +97,12 @@ final class Money
     /**
      * Normalise any numeric to a plain decimal string (no scientific notation),
      * which bcmath requires. Floats are rendered at full needed precision.
+     *
+     * Public so callers that hold a decimal column value (Eloquent returns those
+     * as strings) can normalise it before handing it to add/sub — e.g.
+     * WalletTransactionEngine's balance mutations.
      */
-    private static function s(int|float|string $v): string
+    public static function s(int|float|string $v): string
     {
         if (is_string($v)) {
             return $v === '' ? '0' : $v;

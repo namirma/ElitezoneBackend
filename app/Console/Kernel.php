@@ -88,6 +88,27 @@ class Kernel extends ConsoleKernel
             ->dailyAt('01:30')
             ->withoutOverlapping()
             ->onOneServer();
+
+        // ── پشتیبان‌گیری دیتابیس ────────────────────────────────────────────
+        // spatie/laravel-backup نصب بود ولی نه کانفیگ داشت نه زمان‌بندی: یعنی سیستمی
+        // با کیف پول و لجر مالی، هیچ نسخهٔ پشتیبانی نداشت. دامپ روی دیسک خصوصی
+        // `financial` نوشته می‌شود (config/backup.php) چون شامل کدملی/شبا/شمارهٔ کارت است.
+        $schedule->command('backup:run --only-db')
+            ->dailyAt('01:00')
+            ->withoutOverlapping()
+            ->onOneServer();
+
+        // اعمال سیاست نگهداشت — بعد از دامپ اجرا می‌شود تا نسخهٔ تازه لحاظ شود.
+        $schedule->command('backup:clean')
+            ->dailyAt('01:45')
+            ->withoutOverlapping()
+            ->onOneServer();
+
+        // پایشِ سلامت نسخه‌های پشتیبان — اگر آخرین نسخه کهنه یا حجم از سقف رد شده
+        // باشد اعلان می‌دهد. بدون این، خرابیِ بی‌صدای دامپ تا روزِ بازگردانی معلوم نمی‌شد.
+        $schedule->command('backup:monitor')
+            ->dailyAt('02:00')
+            ->onOneServer();
     }
 
     /**

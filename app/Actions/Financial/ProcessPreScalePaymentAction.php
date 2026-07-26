@@ -59,13 +59,19 @@ class ProcessPreScalePaymentAction
 
             $weightBeforeScale = (float) ($locked->getAttribute(Order::WEIGHT_BEFORE_SCALE) ?? 0);
             $shippingCost = (float) ($locked->shipping_cost ?? 0);
-            $vatRate = (float) ($locked->vat_rate ?? 10.0);
+            $vatRate = (float) ($locked->vat_rate ?? config('financial.default_vat_rate'));
 
             // نرخ کمیسیون بر اساس نشانِ الیت‌یارِ صاحب کمیسیون (elite_yar_user_id) خوانده می‌شود،
             // نه beneficiary (گیرندهٔ کالا). ProcessWeighbridgeResultAction هم از همین eliteYAR.badge
             // استفاده می‌کند؛ خواندن از beneficiary باعث ناسازگاری نرخ بین pre-scale و باسکول می‌شد.
             $badgeCode = $locked->eliteYAR?->badge?->code ?? 'pioneer';
-            $rates = $this->calculator->getCommissionRates($badgeCode);
+
+            // نرخِ %TC همین‌جا قطعی و اسنپ‌شات می‌شود. tc_percentage یک تنظیمِ سراسریِ
+            // قابل‌تغییر است؛ اگر باسکول دوباره مقدارِ زنده را بخواند، تغییرِ آن بین
+            // پرداخت و باسکول باعث می‌شود POOM با وزنِ یکسان از POO فاصله بگیرد و یک
+            // کسریِ کاذب (عودت واقعی به خریدار + بدهی واقعی تأمین‌کننده) بسازد.
+            $tcPercentage = $this->calculator->currentTcPercentage();
+            $rates = $this->calculator->getCommissionRatesForTc($badgeCode, $tcPercentage);
 
             $ownerDiscountRate = $rates['ow_final_rate'];
             $sazeShareRate = $rates['ssg_final_rate'];
@@ -93,9 +99,14 @@ class ProcessPreScalePaymentAction
             $locked->forceFill([
                 Order::PAYMENT_OF_OWNER => $POO,
                 Order::PAYMENT_TO_SUPPLIER => $PTS,
-                Order::COMMISSION_RATE => 1.0,
+                // نرخِ واقعیِ مؤثر، نه عددِ هاردکدِ 1.0 — باسکول از همین ستون می‌خواند.
+                Order::COMMISSION_RATE => $tcPercentage,
                 Order::VAT_RATE => $vatRate,
                 Order::OWNER_DISCOUNT_RATE => $ownerDiscountRate,
+                // این دو ستون تا امروز هرگز نوشته نمی‌شدند (ستون‌های مرده) در حالی که
+                // در CLAUDE.md جزو فیلدهای اسنپ‌شات مستند شده‌اند.
+                Order::SAZE_SHARE_RATE => $sazeShareRate,
+                Order::ELITE_YAR_SHARE_RATE => $eliteYARRate,
                 Order::TRANS_COMMISSION => $transCommission,
                 Order::TRANS_VAT => $transVat,
             ])->save();

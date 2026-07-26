@@ -28,7 +28,15 @@ class WeighbridgeVatRouter
 
     public function route(Order $order, WeighbridgeReconcileResult $result): float
     {
-        $supplierId = (int) $order->items->first()->supplier_user_id;
+        // ?-> و گاردِ صریح: orchestrator در همان نقطه null-safe بود ولی اینجا نبود، پس
+        // سفارشِ بی‌آیتم به‌جای یک خطای معنادار، fatal داخلِ تراکنشِ مالی می‌داد.
+        $supplierId = (int) ($order->items->first()?->supplier_user_id ?? 0);
+
+        if ($supplierId <= 0) {
+            throw new \RuntimeException(
+                "WeighbridgeVatRouter: order {$order->id} has no item with a supplier_user_id — cannot route settlement legs."
+            );
+        }
 
         $eliteYARGross = $this->routeEliteYAR($order, $result);
         $this->routeSupplierVat($order, $result, $supplierId);
