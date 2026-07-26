@@ -31,9 +31,14 @@
                     <!-- Content -->
                     <tr>
                         <td style="padding: 24px; text-align: right;">
-                            <h1 style="font-size: 16px; margin-bottom: 15px; line-height: 2; text-align: center;">عرض سلام و ادب،<br>با تشکر از پشتیبانی شما در الیت زون</h1>
-                            <p style="font-size: 14px; margin-bottom: 20px; line-height: 2;">پیام درج شده کاربر در وبسایت با مشخصات زیر دریافت گردید. لطفا با کاربر تماس بگیرید و موضوع مربوطه را پیگیری نمائید.</p>
-                            <p style="font-size: 12px; margin-bottom: 20px; line-height: 2; text-align: center;">با تشکر،<br>مدیریت الیت زون</p>
+                            {{--
+                                این ایمیل به تیم پشتیبانی می‌رسد، نه به مشتری. متن قبلی
+                                («عرض سلام و ادب / با تشکر از پشتیبانی شما / …دریافت گردید /
+                                با تشکر، مدیریت الیت زون») تعارفِ اداری بود و مهم‌ترین چیز
+                                را نمی‌گفت: چه کسی، چه خواسته، و چه کاری باید انجام شود.
+                            --}}
+                            <h1 style="font-size: 16px; margin-bottom: 15px; line-height: 2; text-align: center;">یک پیام تازه از فرم تماس سایت</h1>
+                            <p style="font-size: 14px; margin-bottom: 20px; line-height: 2;">کاربری با مشخصات زیر پیامی ثبت کرده و منتظر پاسخ است. لطفاً با او تماس بگیرید و موضوع را تا حل شدن پیگیری کنید.</p>
                             <table style="width: 100%; margin: 0 auto; text-align: center;">
                                 <tr>
                                     <td style="padding: 8px 0; border-bottom: 1px solid #ddd; word-wrap: break-word; overflow-wrap: break-word; text-align: right;">
@@ -71,7 +76,7 @@
                     <!-- Footer -->
                     <tr>
                         <td style="background-color: #99BFED; padding: 15px; text-align: center; font-size: 12px; color: #ffffff; border-radius: 0 0 8px 8px;">
-                            <p style="margin: 5px 0;">شماره تماس: 34005000-031</p>
+                            <p style="margin: 5px 0;">شماره تماس: <span dir="ltr">۰۳۱-۳۴۰۰۵۰۰۰</span></p>
                             <p style="margin: 5px 0;">ایمیل: Info@EliteZone.me</p>
                             <div style="margin: 10px 0;">
                                 <a href="https://www.instagram.com/sazesoftwaregroup" target="_blank" style="text-decoration: none;">

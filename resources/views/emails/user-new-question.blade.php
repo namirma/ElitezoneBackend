@@ -47,16 +47,27 @@
                     <!-- Content -->
                     <tr>
                         <td style="padding: 24px; text-align: right;">
-                            <h1 style="font-size: 16px; margin-bottom: 15px; line-height: 2;   text-align: center;">
-                                عرض سلام و ادب،
-                                <br>
-                                با تشکر از تماس با الیت زون.
+                            {{--
+                                متن قبلی («عرض سلام و ادب / با تشکر از تماس / پیام … دریافت
+                                گردید.به زودی تماس می گیریم») تعارفِ اداری بود، یک نقطه‌ی
+                                بدون فاصله داشت و «می گیریم» را جدا نوشته بود. حالا کوتاه،
+                                گرم و مشخص است — و پایینِ همین ایمیل خودِ متنِ پیام کاربر
+                                نشان داده می‌شود، پس «مشخصات زیر» معنی دارد.
+                            --}}
+                            <h1 style="font-size: 16px; margin-bottom: 15px; line-height: 2; text-align: center;">
+                                پیام شما به دست ما رسید
                             </h1>
-                            <p style="font-size: 14px; margin-bottom: 20px; line-height: 2;  ">
-                                پیام درج شده شما در وبسایت با مشخصات زیر دریافت گردید.به زودی با شما تماس می گیریم.
+                            <p style="font-size: 14px; margin-bottom: 20px; line-height: 2;">
+                                ممنون که وقت گذاشتید و برای ما نوشتید. همکاران ما پیام شما را
+                                می‌خوانند و در نخستین فرصت — در ساعات کاری، شنبه تا چهارشنبه
+                                ۸ تا ۱۷ — با شما تماس می‌گیرند.
                             </p>
-                            <p style="font-size: 12px; margin-bottom: 20px; line-height: 2;   text-align: center;">
-                                تیم پشتیبانی الیت زون
+                            <p style="font-size: 14px; margin-bottom: 20px; line-height: 2;">
+                                اگر موضوع فوری است، می‌توانید همین حالا با شماره
+                                <span dir="ltr">۰۳۱-۳۴۰۰۵۰۰۰</span> تماس بگیرید.
+                            </p>
+                            <p style="font-size: 12px; margin-bottom: 20px; line-height: 2; text-align: center; color: #6c757d;">
+                                آنچه برای ما فرستادید:
                             </p>
                             <table style="width: 100%; margin: 0 auto; text-align: center;">
                                 <tr>
@@ -110,7 +121,7 @@
                     <tr>
                         <td
                             style="background-color: #99BFED; padding: 15px; text-align: center; font-size: 12px; color: #ffffff; border-radius: 0 0 8px 8px;">
-                            <p style="margin: 5px 0;">شماره تماس: 34005000-031</p>
+                            <p style="margin: 5px 0;">شماره تماس: <span dir="ltr">۰۳۱-۳۴۰۰۵۰۰۰</span></p>
                             <p style="margin: 5px 0;">ایمیل: Info@EliteZone.me</p>
                             <div style="margin: 10px 0;">
                                 <a href="https://www.instagram.com/sazesoftwaregroup" target="_blank"

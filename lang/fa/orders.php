@@ -60,8 +60,27 @@ return [
     'survey_already_submitted' => 'نظرسنجی این سفارش قبلاً ثبت شده است.',
     'survey_submitted_successfully' => 'نظرسنجی شما با موفقیت ثبت شد.',
 
+    /*
+    |--------------------------------------------------------------------------
+    | وضعیت‌ها — سه واژگانِ مستقل، سه آرایه‌ی مستقل
+    |--------------------------------------------------------------------------
+    |
+    | ⚠️ این‌ها قبلاً همه در یک آرایه‌ی `status` بودند و چون هر سه خانواده از
+    | رشته‌های 'pending' و 'paid' استفاده می‌کنند، **کلیدها در PHP روی هم
+    | می‌افتادند و آخری برنده می‌شد**: آرایه ۱۶ ورودی داشت ولی ۱۳ تا resolve
+    | می‌شد. نتیجه‌اش این بود که برچسبِ سهمِ الیت‌یار روی وضعیتِ خودِ سفارش و
+    | وضعیتِ پرداخت هم می‌نشست — یک سفارشِ `pending` در همه‌ی کلاینت‌ها
+    | «در انتظار پرداخت سهم» نشان داده می‌شد و صفحه‌ی جزئیات سفارش خودمتناقض
+    | به‌نظر می‌رسید («سهم پرداخت شده» بالای صفحه، «در انتظار پرداخت سهم» در
+    | کارت مالی).
+    |
+    | هر آرایه فقط مقادیرِ ستونِ خودش را دارد. کلیدها را با هم قاطی نکنید.
+    */
+
+    // ستون `orders.status` — چرخه‌ی عمر سفارش
     'status' => [
         Order::STATUS_PENDING => 'در انتظار تایید (رزرو شده)',
+        Order::STATUS_RESERVED => 'رزرو شده',
         Order::STATUS_RESERVED_EXTENDED => 'رزرو تمدید شده',
         Order::STATUS_PROCESSING => 'در حال پردازش (ثبت اولیه)',
         Order::STATUS_PREPARING => 'در حال آماده‌سازی',
@@ -69,15 +88,34 @@ return [
         Order::STATUS_WAYBILL_ISSUED => 'بارنامه صادر شد',
         Order::STATUS_SHIPPED => 'در حال حمل',
         Order::STATUS_DELIVERED => 'تحویل شده',
+        Order::STATUS_COMPLETED => 'تکمیل شده',
+        Order::STATUS_PENDING_SURPLUS_PAYMENT => 'در انتظار پرداخت مابه‌التفاوت',
         Order::STATUS_CANCELLED => 'لغو شده',
         Order::STATUS_FAILED => 'ناموفق',
-        Order::PAYMENT_PENDING => 'در انتظار پرداخت',
-        Order::PAYMENT_PAID => 'پرداخت شده',
-        Order::FEE_PAYMENT_PENDING => 'در انتظار پرداخت سهم',
-        Order::FEE_PAYMENT_PAID => 'سهم پرداخت شده',
-        'reserved' => 'رزرو شده',
         'unknown' => 'نامشخص',
     ],
+
+    // ستون `orders.payment_status`
+    // (سه مقدارِ failed/refund_pending/refunded تا امروز هیچ برچسبی نداشتند و
+    //  خودِ کلیدِ انگلیسی به کاربر نشان داده می‌شد.)
+    'payment_status' => [
+        Order::PAYMENT_PENDING => 'در انتظار پرداخت',
+        Order::PAYMENT_PAID => 'پرداخت شده',
+        Order::PAYMENT_FAILED => 'پرداخت ناموفق',
+        Order::PAYMENT_REFUND_PENDING => 'در انتظار بازگشت وجه',
+        Order::PAYMENT_REFUNDED => 'وجه بازگردانده شد',
+        'unknown' => 'نامشخص',
+    ],
+
+    // ستون‌های `expert_/engineer_/contractor_fee_payment_status` — سهم کمیسیون
+    'fee_payment_status' => [
+        Order::FEE_PAYMENT_PENDING => 'در انتظار پرداخت سهم',
+        Order::FEE_PAYMENT_PAID => 'سهم پرداخت شده',
+        'unknown' => 'نامشخص',
+    ],
+
+    // فونت‌های فارسیِ تولید PDF نصب نیستند (فایل‌های storage/fonts در gitignore هستند)
+    'invoice_fonts_missing' => 'صدور سند در حال حاضر امکان‌پذیر نیست. لطفاً چند دقیقه بعد دوباره تلاش کنید یا با پشتیبانی تماس بگیرید.',
 
     'receipt_required' => 'آپلود فایل رسید الزامی است.',
     'receipt_mimes' => 'فرمت فایل باید jpg، jpeg، png یا pdf باشد.',

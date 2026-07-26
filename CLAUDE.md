@@ -6,6 +6,26 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 EliteZone Backend — a Laravel 10 API for a B2B construction materials marketplace (rebar, brick, etc.). The codebase lives entirely inside the `api/` directory. It handles user authentication (OTP-based), product catalog with dynamic pricing, shopping cart, order lifecycle (including reservation flow), wallet/financial operations, ticketing, and an admin panel.
 
+## ⚠️ Required local setup — Persian PDF fonts
+
+`storage/fonts/YekanBakh-Regular.ttf` and `storage/fonts/YekanBakh-Bold.ttf` are in
+`.gitignore`, so **a fresh clone does not have them** — and without them *no invoice PDF
+can be generated at all*. Because every `InvoiceGenerator::generate()` call runs inside the
+payment `DB::transaction`, a missing font used to roll back the whole payment while showing
+the raw mPDF message ("Cannot find TTF TrueType font file ...").
+
+Copy them from a sibling repo before running anything financial:
+
+```bash
+mkdir -p storage/fonts
+cp ../../BackOffice/public/fonts/YekanBakh/ttf/YekanBakh-Regular.ttf storage/fonts/
+cp ../../BackOffice/public/fonts/YekanBakh/ttf/YekanBakh-Bold.ttf    storage/fonts/
+```
+
+`InvoicePdfRenderer::assertFontsInstalled()` now preflights this and throws a
+`BusinessException` (503, Persian message) plus a `critical` entry on the `financial` log
+channel, so the cause is obvious instead of surfacing as a mysterious payment failure.
+
 ## Common Commands
 
 All commands must be run from the `api/` directory:
