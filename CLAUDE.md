@@ -1834,9 +1834,14 @@ never `Str::slug` server-side. `SupplierProfileResource` now exposes
   again** — add origins to `CORS_EXTRA_ORIGINS`. Pinned by `Security/CorsAllowlistTest`.
 - **Every `/admin` + `/v1/podium` route must carry an `admin.permission`.**
   `Admin/AdminPermissionCoverageTest` walks the whole route table and fails on any
-  ungated one, with a short allowlist of documented exemptions (`/admin/dashboard` —
-  the panel home; the two `debug/*` routes — non-production only). Three real gaps
-  were closed:
+  ungated one. The **only** exemptions are the two `debug/*` routes, which are already
+  registered solely outside production. Four real gaps were closed:
+  - `GET /admin/dashboard` → `manage-financial`. It was left ungated at first (panel
+    home), but product chose to gate it: all five response blocks are financial/order
+    data, so it takes the same permission as `/admin/financial/*`. **Client consequence:
+    an admin without `manage-financial` gets 403 on the panel home** — the panel must
+    land the user on the first tab they can actually access rather than assuming the
+    dashboard is a universal landing page.
   - `POST /admin/{order}/weighbridge` (the **legacy alias**) had no permission while the
     canonical `/admin/orders/{order}/weighbridge` had `manage-orders` — a restricted
     admin could run the heaviest financial operation in the system (POO/PTS recompute,
