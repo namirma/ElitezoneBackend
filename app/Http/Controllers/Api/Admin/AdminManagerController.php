@@ -68,14 +68,21 @@ class AdminManagerController extends Controller
                 User::MOBILE => $request->string(User::MOBILE),
                 User::PASSWORD => Hash::make($request->string(User::PASSWORD)),
                 User::TYPE_ID => $type->id,
+                // هر دو برای ورود با رمز الزامی‌اند (`AuthController::checkPassword`
+                // حسابِ بدون آن‌ها را با `auth.profile_incomplete` رد می‌کند).
+                User::NATIONAL_CODE => $request->string(User::NATIONAL_CODE),
+                User::BIRTH_DATE => $request->string(User::BIRTH_DATE),
             ]);
 
             $user->profile()->create([
                 UserProfile::NAME => $request->input('name'),
                 UserProfile::FAMILY => $request->input('family'),
                 UserProfile::EMAIL => $request->input('email'),
-                // ستون NOT NULL بدون default است؛ مدیر داخلی نیازی به کد ملی ندارد.
-                UserProfile::NATIONAL_CODE => '',
+                // همان کد ملیِ `users` — پروفایل و کاربر نباید از هم واگرا شوند.
+                // (ستون UNIQUE است و قبلاً `''` نوشته می‌شد؛ چون رشته‌ی خالی یک
+                // مقدارِ واقعی حساب می‌شود، ساختنِ مدیرِ دوم `Duplicate entry ''`
+                // می‌گرفت. مایگریشن `2026_07_26_120000_*` ستون را nullable کرد.)
+                UserProfile::NATIONAL_CODE => $request->string(User::NATIONAL_CODE),
             ]);
 
             $user->addRole('admin');
