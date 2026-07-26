@@ -57,6 +57,14 @@ class ProcessReservationCompletionAction
             }
 
             $op = (float) ($locked->official_price ?: ($firstItem->unit_price ?? 0));
+
+            // قیمت صفر = دادهٔ خراب (هم‌الگو با گاردِ weight_before_scale پایین‌تر).
+            if ($op <= 0) {
+                Log::channel('financial')->critical(
+                    "Order {$order->id}: official_price and item unit_price are both zero — completion aborted."
+                );
+                throw new \RuntimeException(__('orders.invalid_official_price'));
+            }
             $trans = (float) ($locked->shipping_cost ?: 0);
             $vat = (float) ($locked->vat_rate ?: config('financial.default_vat_rate'));
 

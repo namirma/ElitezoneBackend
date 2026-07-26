@@ -48,6 +48,13 @@ class WeighbridgeReconciler
             ? (float) $order->official_price
             : (float) ($order->items->first()?->unit_price ?? 0);
 
+        // قیمت صفر یعنی دادهٔ خراب. بدونِ این گارد، POOM روی op=0 تقریباً صفر
+        // می‌شد و diffPOO به‌شدت منفی → شاخهٔ «کسری» → عودتِ کلِ مبلغ به خریدار و
+        // ثبتِ بدهی برای تأمین‌کننده، فقط به‌خاطر یک ردیفِ ناقص.
+        if ($op <= 0) {
+            throw new \RuntimeException(__('orders.invalid_official_price'));
+        }
+
         // Formula-variant flags are snapshotted onto the order at payment time
         // so they are immutable for the life of the order.
         $transCommission = (bool) ($order->{Order::TRANS_COMMISSION} ?? true);

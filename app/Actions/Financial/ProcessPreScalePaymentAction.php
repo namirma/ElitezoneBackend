@@ -57,6 +57,17 @@ class ProcessPreScalePaymentAction
                 $officialPrice = (float) $firstItem->unit_price;
             }
 
+            // قیمت صفر یعنی دادهٔ خراب، نه «رایگان». هم‌الگو با گاردِ
+            // weight_before_scale پایین‌تر: POO/PTS روی قیمتِ صفر تقریباً صفر
+            // می‌شوند و بعداً در باسکول یک «کسریِ» بزرگ می‌سازند که کلِ مبلغ را به
+            // خریدار عودت می‌دهد. باید متوقف کند، نه پول جابه‌جا کند.
+            if ($officialPrice <= 0) {
+                Log::channel('financial')->critical(
+                    "Order {$order->id}: official_price and item unit_price are both zero — payment aborted."
+                );
+                throw new \RuntimeException(__('orders.invalid_official_price'));
+            }
+
             $weightBeforeScale = (float) ($locked->getAttribute(Order::WEIGHT_BEFORE_SCALE) ?? 0);
             $shippingCost = (float) ($locked->shipping_cost ?? 0);
             $vatRate = (float) ($locked->vat_rate ?? config('financial.default_vat_rate'));

@@ -59,8 +59,14 @@ class Idempotency
         $cacheKey = "idempotency_response:{$userId}:{$scope}:{$key}";
         $lockKey = "idempotency_lock:{$userId}:{$scope}:{$key}";
 
-        if (Cache::has($cacheKey)) {
-            $cachedResponse = Cache::get($cacheKey);
+        // storeِ *مشترک بین سرورها* — نه درایورِ پیش‌فرض. با درایورِ `file` هم قفل و هم
+        // پاسخِ کش‌شده per-server می‌شدند، پس روی استقرارِ چندسروری دو درخواستِ هم‌زمانِ
+        // پرداخت روی دو سرور هر دو قفل را می‌گرفتند و هر دو اجرا می‌شدند — گاردِ مالی
+        // عملاً بی‌اثر بود. جزئیات در config/idempotency.php.
+        $cache = Cache::store(config('idempotency.store'));
+
+        if ($cache->has($cacheKey)) {
+            $cachedResponse = $cache->get($cacheKey);
 
             // همان کلید روی همان endpoint ولی با بدنهٔ متفاوت = خطای کلاینت، نه تکرار.
             // برگرداندنِ پاسخِ کش‌شده اینجا یعنی پذیرفتنِ عملیاتی که هرگز اجرا نشده؛
@@ -84,7 +90,14 @@ class Idempotency
             );
         }
 
-        $lock = Cache::lock($lockKey, 10);
+        // قفل از خودِ store گرفته می‌شود، نه از Repository — `lock()` روی قرارداد
+        // Repository اعلام نشده و فقط از طریق __call پروکسی می‌شود. این annotation هم
+        // شرطِ لازم را صریح می‌کند: storeِ انتخاب‌شده باید LockProvider باشد
+        // (database / redis / array همه هستند؛ file نیست — و اصلاً به همین دلیل
+        // پیش‌فرض عوض شد).
+        /** @var \Illuminate\Contracts\Cache\LockProvider $lockProvider */
+        $lockProvider = $cache->getStore();
+        $lock = $lockProvider->lock($lockKey, 10);
 
         if (! $lock->get()) {
             return error(__('global.system_busy_try_again'), ['code' => 'DUPLICATE_REQUEST_PROCESSING'], 409);
@@ -123,7 +136,7 @@ class Idempotency
                             ? now()->addSeconds((int) config('idempotency.fingerprint_window_seconds', 10))
                             : now()->addHours(self::CACHE_TTL_HOURS);
 
-                        Cache::put($cacheKey, $responseData, $ttl);
+                        $cache->put($cacheKey, $responseData, $ttl);
                     }
                 }
             }

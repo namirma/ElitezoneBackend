@@ -1333,6 +1333,37 @@ code is **`gold`** (not `golden`). `SettlementCalculatorService::getCommissionRa
 matches `'gold', 'golden'` (alias) so a legacy value never silently falls through to the
 default rate and underpays a gold-tier elite yar.
 
+### One order = one supplier (enforced at placement)
+
+`PlaceOrderAction::assertSingleSupplier()` refuses a cart whose lines resolve to more than
+one `factories.supplier_user_id`, **before any write**. `BusinessException` → 400,
+`orders.multiple_suppliers_not_supported`.
+
+This closes a live money bug, not a hypothetical one. The cart is deliberately
+multi-origin (the whole `Shipment` subsystem exists for it, and `AddToCartAction` accepts
+any `factory_id`), and placement correctly stamps a per-item `supplier_user_id` — but
+**settlement is single-line**: `ProcessPreScalePaymentAction`,
+`ProcessReservationCompletionAction`, `WeighbridgeVatRouter`, `SupplierDebtHandler` and
+`WeighbridgeReconciler` all read `items->first()`. A two-supplier order therefore paid the
+whole PTS to the first supplier and **nothing** to the second, held VAT and booked deficit
+debt against the first only, and even billed the buyer wrong (`POO = first item's unit
+price × total weight`, so a rebar+brick cart charged the whole tonnage at the rebar rate).
+
+Multi-line settlement is a large change; until it lands the guard stops the order. Same
+principle as the `weight_before_scale` guard: **invalid data must halt, not move money.**
+When multi-line settlement ships, remove the guard and *change* (don't delete)
+`Checkout/SingleSupplierPerOrderTest` to assert correct multi-supplier distribution.
+
+### Zero price halts settlement
+
+`official_price` falls back to `items->first()->unit_price`; if both are 0, `$op = 0` made
+POO/PTS ≈ 0, then the weighbridge saw a hugely negative `diffPOO`, took the deficit branch
+and refunded the buyer the entire amount while booking a supplier debt — from one
+incomplete row, with no weight shortfall at all. All three sites now throw
+`orders.invalid_official_price`: `ProcessPreScalePaymentAction`,
+`ProcessReservationCompletionAction` (both also log `financial` critical) and
+`WeighbridgeReconciler`. Pinned by `Financial/SettlementDataGuardsTest`.
+
 ### `%TC` commission rate is snapshotted per order — read the snapshot, never the live setting
 
 `tc_percentage` lives in `PriceSetting` (a globally editable row), so it is **not** a
@@ -1907,15 +1938,27 @@ never `Str::slug` server-side. `SupplierProfileResource` now exposes
   with `php artisan scramble:export` after route/request changes.
 - Pinned by `Admin/AdminHardeningRound2Test` (8 tests).
 
-### `predis/predis` is present but unused today
+### Idempotency uses a **shared** cache store — never the `file` driver
 
-Nothing in `app/` references Redis; `CACHE_DRIVER=file` and `QUEUE_CONNECTION=database`.
-It is kept in `composer.json` deliberately as the driver for a production Redis switch
-(`CACHE_DRIVER=redis`, `QUEUE_CONNECTION=redis`) — Laravel needs the client library
-installed before the env flip, not after. **If you flip either driver to `redis`, note that
-`Idempotency` relies on `Cache::lock()`; on the `file` driver locks are per-server, so a
-multi-server deployment needs the Redis (or database) lock driver for the financial
-idempotency guard to actually hold.**
+`config('idempotency.store')` (env `IDEMPOTENCY_CACHE_STORE`, default **`database`**) backs
+both the `Cache::lock()` and the cached response in `Idempotency`. It must be shared by
+every app server.
+
+With the project's `CACHE_DRIVER=file`, both were per-server, so on a multi-server
+deployment the financial guard silently did nothing: two concurrent `pay-full` requests
+landing on different servers each acquired "the" lock and both executed, and a client retry
+routed elsewhere missed the cached response and re-ran the operation. The database is
+shared by definition and needs no new infrastructure — hence the default. Requires the
+`cache` + `cache_locks` tables (migration `2026_07_26_120000_create_cache_tables`);
+**run `php artisan migrate`**. `redis` is faster if you have it.
+
+The lock is taken from `$cache->getStore()`, not the `Repository` (which only proxies
+`lock()` via `__call`), and is annotated `LockProvider` — that annotation *is* the
+constraint: `database`/`redis`/`array` all qualify, `file` does not. `phpunit.xml` pins the
+test env to `array`. Pinned by `Security/IdempotencyScopeTest`.
+
+`predis/predis` is in `composer.json` but nothing in `app/` uses Redis yet; it is kept
+deliberately so the client exists *before* an env flip to `redis`, not after.
 
 ## Key Conventions
 
