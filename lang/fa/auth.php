@@ -7,6 +7,9 @@ return [
     'verification_code_not_match' => '.کد ورود اشتباه است',
     'password_changed_successfully' => '.رمز عبور با موفقیت تغییر یافت',
     'password_error' => '.رمز عبور اشتباه است',
+    'password_required' => 'رمز عبور الزامی است.',
+    'password_min' => 'رمز عبور باید حداقل ۸ کاراکتر باشد.',
+    'password_confirmed' => 'تکرار رمز عبور با رمز عبور مطابقت ندارد.',
     'code_sent_recently' => '.کد برای شما ارسال شده است',
     'change_password_first_attempt' => '.درخواست تغییر رمز عبور با موفقیت ارسال شد',
     'forget_password_code_sent_successfully' => '.کد یکبار مصرف جهت تغییر رمز عبور با موفقیت ارسال شد',
@@ -70,6 +73,7 @@ return [
         'only_owner_can_cancel' => 'فقط ثبت‌کننده سفارش مجاز به لغو آن است',
         'cancel_denied' => 'شما مجوز لغو این سفارش را ندارید',
         'not_supplier' => 'شما دسترسی تامین‌کننده ندارید',
+        'finalize_invoice_denied' => 'شما مجوز نهایی‌کردن فاکتور این سفارش را ندارید',
         'supplier_item_mismatch' => 'هیچ‌یک از اقلام این سفارش مربوط به شما نیست',
         'factory_access_denied' => 'این کارخانه/انبار متعلق به شما نیست',
     ],
@@ -89,6 +93,14 @@ return [
 
     // OTP verify brute-force protection
     'too_many_otp_attempts' => 'تعداد تلاش‌های تأیید کد بیش از حد مجاز است. لطفاً دقایقی دیگر دوباره امتحان کنید.',
+    'too_many_password_attempts' => 'تعداد تلاش‌های ورود با رمز عبور بیش از حد مجاز است. لطفاً دقایقی دیگر دوباره امتحان کنید یا با کد یک‌بارمصرف وارد شوید.',
     'account_disabled' => 'حساب کاربری شما غیرفعال شده است. برای پیگیری با پشتیبانی تماس بگیرید.',
     'profile_incomplete' => '.اطلاعات کاربری شما ناقص است. لطفاً جهت تکمیل ثبت‌نام اقدام کنید',
+    'code_invalid' => 'کد وارد شده نامعتبر است.',
+    'mobile_format_invalid' => 'فرمت شماره موبایل وارد شده صحیح نیست.',
+
+    // سقف/کف مبلغ شارژ کیف پول — مقادیر از config/financial.php می‌آیند
+    'deposit_amount_min' => 'حداقل مبلغ شارژ کیف پول :min ریال است.',
+    'deposit_amount_max_shaparak' => 'حداکثر مبلغ هر تراکنش از درگاه شاپرک :max ریال است.',
+    'deposit_amount_max_podium' => 'حداکثر مبلغ هر واریز مستقیم :max ریال است.',
 ];

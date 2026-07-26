@@ -94,10 +94,29 @@ class AdminPermissionGateTest extends TestCase
     #[Test]
     public function a_route_without_a_permission_gate_stays_reachable(): void
     {
-        // /admin/dashboard فقط role.admin دارد و عمداً سطح‌بندی نشده — fail-closed
-        // شدنِ میدل‌ور نباید مسیرهای بدونِ گیت را ببندد.
+        // fail-closed شدنِ میدل‌ور نباید مسیرهایی را که اصلاً گیت ندارند ببندد.
+        // تنها روت‌های بدونِ گیتِ باقی‌مانده، debugهای غیرِپروداکشن‌اند.
         Sanctum::actingAs($this->admin());
 
+        $this->getJson('/api/admin/debug/test-cache')->assertOk();
+    }
+
+    #[Test]
+    public function the_dashboard_requires_manage_financial(): void
+    {
+        // داشبورد تا دور پنجم تنها روتِ /admin بود که سطح‌بندی نشده بود. هر پنج بلوکِ
+        // پاسخش مالی/سفارشی است (فروش امروز، pipeline، هشدارهای مالی، روند هفتگی،
+        // خلاصهٔ ماه)، پس همان مجوزِ /admin/financial/* را می‌گیرد.
+        $restricted = $this->admin();
+        $restricted->syncPermissions([$this->permissionId('manage-content')]);
+
+        Sanctum::actingAs($restricted);
+        $this->getJson('/api/admin/dashboard')->assertForbidden();
+
+        $allowed = $this->admin();
+        $allowed->syncPermissions([$this->permissionId('manage-financial')]);
+
+        Sanctum::actingAs($allowed);
         $this->getJson('/api/admin/dashboard')->assertOk();
     }
 }

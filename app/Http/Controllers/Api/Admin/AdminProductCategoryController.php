@@ -101,7 +101,8 @@ class AdminProductCategoryController extends Controller
             ProductCategory::SLUG => [$req, 'string', 'max:255', Rule::unique('product_categories', 'slug')->ignore($ignoreId)],
             ProductCategory::DESCRIPTION => ['nullable', 'string'],
             ProductCategory::IS_ACTIVE => ['boolean'],
-            ProductCategory::IMAGE => ['nullable', 'file', 'mimes:png,jpg,jpeg,webp,svg', 'max:2048'],
+            // svg عمداً نیست — آپلود روی دیسک public نباید SVG بپذیرد (XSS ذخیره‌شده).
+            ProductCategory::IMAGE => ['nullable', 'file', 'mimes:png,jpg,jpeg,webp', 'max:2048'],
         ];
     }
 

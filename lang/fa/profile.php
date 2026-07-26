@@ -58,4 +58,5 @@ return [
     'email_deleted' => 'ایمیل با موفقیت حذف شد.',
     'email_none_to_resend' => 'ایمیلی برای ارسال مجدد لینک وجود ندارد.',
     'email_already_verified' => 'ایمیل شما قبلاً تأیید شده است.',
+    'mobile_updated_successfully' => 'شماره موبایل شما با موفقیت تغییر کرد.',
 ];

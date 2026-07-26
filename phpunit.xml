@@ -41,5 +41,12 @@
              (no real SMS HTTP). Tests that need SMS behaviour mock SmsService directly. -->
         <env name="TSMS_LINK" value=""/>
         <env name="TSMS_NUMBER" value=""/>
+        <!-- Product reviews are OFF in the real product (config/features.php), so their
+             routes are not registered in production. Tests turn the flag ON so the module
+             stays verified and re-enabling it is a one-line, known-good change. Routes are
+             registered at boot, so this has to be an env var — config() inside a test is
+             too late. ProductReviewRoutesAreGatedTest asserts the gating itself. -->
+        <env name="FEATURE_PRODUCT_REVIEWS" value="true"/>
+        <env name="FEATURE_ORDER_SURVEYS" value="true"/>
     </php>
 </phpunit>

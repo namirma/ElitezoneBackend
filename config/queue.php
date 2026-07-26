@@ -69,10 +69,13 @@ return [
             'driver' => 'redis',
             'connection' => 'default',
             'queue' => env('REDIS_QUEUE', 'default'),
-            // retry_after must be > max job execution time.
-            // Financial jobs (ProcessWeighbridgeResultAction) can take ~10 s with PDF rendering.
-            // Set 180 s so a slow but valid run never triggers a duplicate worker pickup.
-            'retry_after' => 180,
+            // retry_after must be > the LONGEST job timeout on this connection, not just
+            // the typical one. GenerateCsvReportJob::$timeout is 1800 s and
+            // SendBulkNotificationJob::$timeout is 600 s — at 180 s a large CSV export was
+            // handed to a second worker while the first was still running (duplicate report
+            // + duplicate admin notification). Kept identical to the `database` connection
+            // so switching QUEUE_CONNECTION does not silently change the safety margin.
+            'retry_after' => 2000,
             'block_for' => null,
             'after_commit' => false,
         ],

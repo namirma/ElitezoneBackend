@@ -37,13 +37,24 @@ php artisan optimize:clear
 # Generate API docs (Scramble)
 php artisan scramble:export
 
-# Regenerate IDE helper files (after adding models or migrations)
+# Regenerate IDE helper files — run once after cloning, and again after
+# adding models or migrations. The three outputs are gitignored (see below).
 composer ide-helper
 # This runs three artisan commands:
 #   ide-helper:generate  → _ide_helper.php       (facade type hints)
 #   ide-helper:models    → _ide_helper_models.php (Eloquent @property docblocks)
 #   ide-helper:meta      → .phpstorm.meta.php     (container resolution)
 ```
+
+> **The IDE-helper outputs are gitignored, not committed.** They used to be
+> tracked and it cost real time: they drift per branch (the L13 branch carried
+> dozens of stale `consultant` entries after the elite-yar rename, which a
+> previous audit had to report as a finding), they conflict on nearly every
+> cherry-pick between the L10/L13 branch pair, and they bury real changes under
+> machine-written noise. Nothing at runtime or in CI reads them — verified by
+> running PHPStan and the full suite with all three deleted: both stay green.
+> They exist only so the IDE resolves facades and Eloquent magic properties, so
+> each developer generates their own. **Do not re-commit them.**
 
 ## Directory Structure
 
@@ -616,6 +627,21 @@ exist. Both survey views now exist (`pdf.survey_buyer`, `pdf.survey_elite_yar`).
 reflects over every `FinancialCodes::DOC_*` constant and asserts the mapped view
 resolves — adding a new doc code without its Blade fails the suite.
 
+**Five Blades under `resources/views/pdf/` are intentionally unreferenced** —
+`invoice_default`, `invoice`, `refund_report`, `supplementary_receipt`,
+`supplementary_report`. They are *not* rot to be cleaned up on sight: each maps to a
+document flow that was parked, not cancelled (`invoice_default` was the old silent
+fallback removed above; the `supplementary_*` and `refund_report` pair belong to the
+surplus/over-delivery path that `FinancialCodes` documents as removed per spec — docs
+J/K/M). They are formatted Persian invoice templates and are the starting point if any
+of those flows returns. Leave them, and don't "fix" the missing references.
+
+**The survey document slugs stay out of the route whitelist.** `pdf.survey_buyer`
+(Doc S) and `pdf.survey_elite_yar` (Doc T) exist and are wired into `getViewName()` +
+`DOCUMENT_AUDIENCES`, but `routes/api/user.php` still constrains the download route to
+`whereIn('type', ['initial', 'final', 'tax'])`. That is deliberate — surveys are out of
+product scope (2026-07-25). Widening the whitelist is a one-line change if that reverses.
+
 **Per-document authorization (do not weaken).** After the generic `authorize('view',
 $order)`, `download()` also enforces `mayAccessDocument($order, $type)` against a
 `DOCUMENT_AUDIENCES` map: buyer-docs (initial/receipt/final/refund/tax/…) → placer only;
@@ -740,7 +766,11 @@ Event → Listener wiring is registered in `app/Providers/EventServiceProvider.p
 **All listeners implement `ShouldQueue`** (commit `26b2c66`). The last synchronous listener (`SendWinBackOffer`) was queued in Sprint 1. Never add a new listener without `ShouldQueue` + `InteractsWithQueue`.
 
 Dispatch flow:
-- `OrderPlaced` → inventory deduction, notifications
+- `OrderPlaced` → notifications only (`SendOrderPlacedNotification`). **Inventory
+  deduction is NOT here** — it happens synchronously inside `PlaceOrderAction`
+  (`InventoryService::deductStockForOrder`, within the placement transaction and under
+  `lockForUpdate`). This doc used to claim the listener deducted stock; adding a
+  deduction to the listener would double-deduct every order.
 - `OrderPaid` → payment notifications (SendOrderPaymentNotification)
 - `OrderCancelled` → stock restoration, wallet refund
 - `CartItemChanged` → analytics tracking (LogCartEvent)
@@ -894,7 +924,14 @@ tests/
   Unit/          — (empty placeholder dir — kept so phpunit.xml works)
 ```
 
-**Total: 232 tests, ~525 assertions — all green. ✅**
+**Total: 498 tests, 1215 assertions — all green. ✅**
+
+Round-5 audit additions: `Security/CorsAllowlistTest`,
+`Security/PublicDiskUploadRulesTest`, `Admin/AdminPermissionCoverageTest`,
+`Localization/TranslationKeysResolveTest`, `Cart/PruneGuestCartsTest`. The first
+three are **sweep** tests — they walk the whole route table / every upload rule
+rather than asserting one case, so a newly added ungated admin route or a new
+`mimes:...,svg` fails the suite on its own.
 
 Newer test files: `Auth/AuthControllerTest`, `Financial/EliteYARLifetimeCapTest`,
 `Financial/ReceiptPrivateDiskTest`, `Financial/ProcessTransactionRaceTest`,
@@ -1322,6 +1359,22 @@ order-financial escrow values `FinancialCodes::STATUS_HOLD = 'hold'` /
   cumulative lockout (`config('auth.otp_max_attempts')` / `otp_lockout_minutes`, cache-keyed
   by mobile) backs the per-minute route throttle against distributed brute-force. **Never**
   loosen these back to a bare `==` compare or remove the secret-clear.
+- **The OTP and password lockouts are separate scopes — keep them that way.**
+  `AuthController` locks through `isLocked/recordFailure/clearFailures($mobile, $scope)`
+  with `SCOPE_OTP` and `SCOPE_PASSWORD`, keyed `auth_lock:{scope}:{mobile}`. They used to
+  share one `otp_lock:{mobile}` key, which meant anyone who merely knew a mobile number
+  could spam wrong OTPs and lock that user out of **password** login too — denial of
+  service requiring no other information. Password thresholds live in
+  `auth.password_max_attempts` / `password_lockout_minutes` (defaults deliberately equal to
+  the OTP ones — the fix isolates the counters, it does not retune them). Pinned by
+  `Auth/LockoutScopeIsolationTest`.
+- **Nothing on the login path may block on an external service.**
+  `verifyCode` used to call `SyncIdentityToProfileAction` synchronously, which issues a
+  Podium HTTP request with a 30 s default timeout (`podium.defaults.timeout`). The action
+  swallows its own errors so login never *failed* — but whenever Podium was slow, every
+  OTP login was slow with it. It now dispatches `Jobs\Auth\SyncIdentityToProfileJob`.
+  Profile pre-fill is not a precondition of a successful login; if you add anything else
+  to this path, queue it.
 - **`POST /profile/password` requires the OTP `code`** (final step of the change). Without
   it a stolen token could take over the account. `StorePasswordRequest` validates `code`;
   `AccountSecurityController::setPassword` re-verifies it before writing the new hash.
@@ -1404,7 +1457,21 @@ were created precisely to eliminate the cross-controller call that existed betwe
 
 ## Recently Added Subsystems
 
-### Order surveys — two independent documents (S / T)
+### Order surveys — two independent documents (S / T) — FEATURE-FLAGGED OFF
+
+> **The whole surveys feature is disabled** (`config/features.php` →
+> `features.order_surveys`, env `FEATURE_ORDER_SURVEYS`, default `false`). Product
+> confirmed on 2026-07-25 that EliteZone has no survey feature — same call as
+> `features.product_reviews`, and for the same reason. Both route registrations
+> (`POST /profile/orders/{order}/survey` and `GET /profile/my-items/surveys`) are wrapped
+> in `if (config('features.order_surveys'))`, so they are **not registered at all** — 404,
+> not 403. The `order_surveys` table, model, controller, request, resource, the two PDF
+> Blades and `Order/OrderSurveyTypesTest` are all **kept intact**; re-enabling is one env
+> var. The S/T download slugs were already outside the `OrderInvoiceController` route
+> whitelist, so nothing changed there. `phpunit.xml` sets the env to `true` so the module
+> stays verified; `Order/OrderSurveyRoutesAreGatedTest` pins the gate at source level
+> because routes register at boot. **Do not delete the module or flip the default without
+> product sign-off.** The rest of this section describes the behaviour when it is enabled.
 
 `order_surveys.type` (`OrderSurvey::TYPE_BUYER = 'buyer'` / `TYPE_ELITE_YAR = 'elite_yar'`,
 unique `(order_id, type)`) implements spec docs **S (buyer survey)** and **T (elite yar
@@ -1662,6 +1729,17 @@ never `Str::slug` server-side. `SupplierProfileResource` now exposes
   ceiling. Never reorder the ceiling read after the sum, and never drop the lock — an
   uncapped elite yar (`badge_purchase_amount` NULL) is unaffected either way. Pinned by
   `Financial/EliteYARLifetimeCapTest::the_lifetime_ceiling_is_read_under_a_row_lock`.
+- **Product reviews are FEATURE-FLAGGED OFF** (`config/features.php` →
+  `features.product_reviews`, env `FEATURE_PRODUCT_REVIEWS`, default `false`). The product
+  team confirmed on 2026-07-25 that EliteZone has **no product-review feature**, so all four
+  route groups (public listing, user submit, `GET /profile/reviews`, `/admin/reviews/*`) are
+  wrapped in `if (config('features.product_reviews'))` and are simply **not registered** —
+  the response is 404, not 403. The module itself (table, model, controllers, resources,
+  `Product/ProductReviewTest`) is deliberately **kept intact** so re-enabling is a one-line,
+  known-good change. `phpunit.xml` sets the env to `true` so the module stays verified;
+  routes are registered at boot, so a `config()` call inside a test is too late — that is why
+  `Product/ProductReviewRoutesAreGatedTest` pins the gate at source level instead.
+  **Do not delete the module and do not flip the default without product sign-off.**
 - **Reviews are verified-purchase only.** `ProductReviewController::store` 403s unless the
   user is placer/beneficiary of a DELIVERED order containing the product.
 - **Bulk notifications are queued** (`SendBulkNotificationJob`); `POST /admin/notifications/send`
@@ -1790,6 +1868,82 @@ Pinned by `tests/Feature/Content/SiteContentTest.php` (11 tests).
 - The front-end SPA base URL is `config('app.front_url')` (env `FRONT_APP_URL`) — used in transactional emails
 - API-docs authorised emails are `config('app.api_docs_emails')` (env `APP_API_DOCS_EMAILS`, comma-separated)
 - **Uploads that land on the `public` disk must never accept `svg`** — the file is served from the app's own origin, so an SVG carrying `<script>` is stored XSS and `script-src 'self'` does not stop it. Keep the `mimes:` list identical between the Store*/Update* request pair for the same resource (they drifted once on `Badge::ICON`; pinned by `Admin/AdminBadgeTest`).
+
+### Hardening round 3 (audit round 5)
+
+- **CORS has exactly one source of truth: `config/cors.php`.** A second, hand-rolled
+  `App\Http\Middleware\Cors` used to be stacked on every API route by
+  `RouteServiceProvider` (`['api', 'cors']`). It carried its own **hardcoded**
+  origin list including `http://localhost:3000/8000/5173/5174` and wrote
+  `Access-Control-Allow-Origin` + `Allow-Credentials: true` unconditionally on the way
+  out — overriding Laravel's `HandleCors` and defeating the `APP_ENV === 'local'` gate in
+  the config. On production that let any page served from those local ports make
+  credentialed cross-origin calls and read the responses (simple requests skip preflight
+  entirely). The class is **deleted**, the `cors` alias is **removed** from `Kernel`, and
+  routes register as `Route::middleware('api')`. `config.max_age` is now `86400` so
+  dropping it costs no extra preflights. **Never add a route-level CORS middleware
+  again** — add origins to `CORS_EXTRA_ORIGINS`. Pinned by `Security/CorsAllowlistTest`.
+- **Every `/admin` + `/v1/podium` route must carry an `admin.permission`.**
+  `Admin/AdminPermissionCoverageTest` walks the whole route table and fails on any
+  ungated one. The **only** exemptions are the two `debug/*` routes, which are already
+  registered solely outside production. Four real gaps were closed:
+  - `GET /admin/dashboard` → `manage-financial`. It was left ungated at first (panel
+    home), but product chose to gate it: all five response blocks are financial/order
+    data, so it takes the same permission as `/admin/financial/*`. **Client consequence:
+    an admin without `manage-financial` gets 403 on the panel home** — the panel must
+    land the user on the first tab they can actually access rather than assuming the
+    dashboard is a universal landing page.
+  - `POST /admin/{order}/weighbridge` (the **legacy alias**) had no permission while the
+    canonical `/admin/orders/{order}/weighbridge` had `manage-orders` — a restricted
+    admin could run the heaviest financial operation in the system (POO/PTS recompute,
+    buyer refund, supplier debt, VAT holds). `OrderWeighbridgeController` has no internal
+    check and relies entirely on route middleware.
+  - All 8 product-variant routes → `manage-catalog` (every sibling catalog group had it).
+  - `users/fetch-profile`, `users/{user}/orders`, `users/{user}/transactions`,
+    `search/users` → `manage-users`; `search/transactions` → `manage-financial`;
+    `activities` → `manage-users`. These returned the same PII/financial data as the
+    already-gated group.
+- **`lang/fa/validation.php` now exists.** `app.locale=fa` with `fallback_locale=en` and
+  no Persian validation file meant every rule without an explicit `messages()` override
+  rendered in English — and there are **95 inline `$request->validate()` calls across 43
+  controllers** with none (the whole supplier self-service panel, most of the admin
+  panel). The file also carries an `attributes` map for the field names those inline
+  calls use. FormRequest `messages()`/`attributes()` still win over it.
+- **A missing translation key is a user-visible bug, not a no-op.** `success()`/`error()`
+  run the key through `__()`, and `__()` returns the key verbatim when it is missing — so
+  the response body literally read `global.forbidden`. 13 such keys were added/fixed
+  (incl. every document-download 403, the whole address form, and the wallet deposit
+  min/max). `StoreAddressRequest` was building `address.receiver_name.required` while
+  `lang/fa/address.php` is flat (`receiver_name_required`). `Localization/TranslationKeysResolveTest`
+  pins them. **When adding a `__()` call, add the key in the same commit.**
+- **No `public`-disk upload may accept `svg`** — enforced by
+  `Security/PublicDiskUploadRulesTest`, which greps every known upload rule. Three sites
+  still allowed it (`SupplierFactoryController` — reachable by any approved **supplier**,
+  not just admins — plus `AdminFactoryController` and `AdminProductCategoryController`).
+  With `FILESYSTEM_PUBLIC_DRIVER=local` (the `.env.example` default) those files are
+  served from the app's own origin, so an SVG carrying `<script>` is stored XSS and
+  `script-src 'self'` does not stop it.
+- **`carts:prune-guests`** (daily 01:30) deletes guest carts (`user_id = NULL`) untouched
+  for `config('cart.guest_retention_days')`, 30 by default. `GET /api/cart` is public and
+  mints a `carts` row for every cookie-less visit, so crawler traffic grew the table with
+  no retention policy at all. It keys on `updated_at` (never interrupt a live guest
+  session) and never touches a logged-in user's cart.
+- **`CartResolver` guest lookup is `whereNull(user_id)`-scoped.** `cart_session_id` is a
+  client-controlled cookie and must never be able to resolve to a logged-in user's cart.
+  User carts have `session_id = NULL` today so it was not exploitable — the guard makes
+  that an enforced invariant instead of an implicit assumption.
+- **`throttle` on the mobile-change flow.** `POST /profile/change-mobile/request` fires a
+  **paid** Podium NID↔mobile inquiry plus an SMS and had no limit (`throttle:sms` now) —
+  the same unbounded-paid-proxy shape already fixed for `/education/fetch`.
+  `POST /profile/change-mobile/confirm` brute-forces a 6-digit OTP and had no limit
+  (`throttle:otp-verify` now), unlike every sibling OTP-confirm route.
+- **The `otp-verify` limiter keys on `user()->id` when authenticated**, falling back to
+  the `username` input for guest paths. It used to always use `username`, so on
+  authenticated routes (which send none) the key collapsed to `IP + ''` and every user
+  behind one NAT shared a single bucket.
+- **`PlaceOrderAction` no longer defaults `shipping_method_id` to `1`.**
+  `StoreOrderRequest` makes it `required|exists`, so a null here means a non-HTTP caller
+  broke the contract; the old `?? 1` hid that behind an arbitrary row.
 
 ### Role-selection gate — opt-in, off by default
 

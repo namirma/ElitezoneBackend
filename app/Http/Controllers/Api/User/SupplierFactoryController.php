@@ -114,7 +114,12 @@ class SupplierFactoryController extends Controller
             Factory::API_KEY => ['nullable', 'string', 'max:255'],
             Factory::API_URL => ['nullable', 'string', 'max:255'],
             Factory::IS_ACTIVE => ['boolean'],
-            Factory::LOGO => ['nullable', 'file', 'mimes:png,jpg,jpeg,webp,svg', 'max:2048'],
+            // svg عمداً نیست: فایل روی دیسک public می‌نشیند و یک SVG حاوی <script>
+            // تبدیل به XSS ذخیره‌شده می‌شود (با FILESYSTEM_PUBLIC_DRIVER=local — که
+            // پیش‌فرضِ .env.example است — همان مبدأِ خودِ اپ سرو می‌شود و CSP هم
+            // script-src 'self' دارد، پس جلویش را نمی‌گیرد). این مسیر از همه بدتر بود
+            // چون کاربرِ عادی (تأمین‌کنندهٔ تأییدشده) به آن دسترسی دارد، نه فقط ادمین.
+            Factory::LOGO => ['nullable', 'file', 'mimes:png,jpg,jpeg,webp', 'max:2048'],
         ];
     }
 

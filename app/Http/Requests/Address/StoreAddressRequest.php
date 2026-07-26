@@ -29,16 +29,21 @@ class StoreAddressRequest extends FormRequest
     }
 
     // 🚀 خواندن پیام‌ها از lang
+    //
+    // کلیدها با «_» جدا می‌شوند نه «.» — lang/fa/address.php صاف است
+    // (`receiver_name_required`). قبلاً اینجا `address.receiver_name.required`
+    // ساخته می‌شد که در فایل وجود نداشت، و چون __() کلیدِ پیدانشده را عیناً
+    // برمی‌گرداند، کاربر به‌جای پیام فارسی رشتهٔ خامِ کلید را می‌دید.
     public function messages(): array
     {
         return [
-            Address::POSTAL_ADDRESS.'.required' => __('address.postal_address.required'),
-            Address::RECEIVER_NAME.'.required' => __('address.receiver_name.required'),
-            Address::RECEIVER_MOBILE.'.required' => __('address.receiver_mobile.required'),
-            Address::RECEIVER_MOBILE.'.regex' => __('address.receiver_mobile.regex'),
-            Address::POSTAL_CODE.'.regex' => __('address.postal_code.regex'),
-            Address::PROVINCE_ID.'.exists' => __('address.province_id.exists'),
-            Address::CITY_ID.'.exists' => __('address.city_id.exists'),
+            Address::POSTAL_ADDRESS.'.required' => __('address.postal_address_required'),
+            Address::RECEIVER_NAME.'.required' => __('address.receiver_name_required'),
+            Address::RECEIVER_MOBILE.'.required' => __('address.receiver_mobile_required'),
+            Address::RECEIVER_MOBILE.'.regex' => __('address.receiver_mobile_regex'),
+            Address::POSTAL_CODE.'.regex' => __('address.postal_code_regex'),
+            Address::PROVINCE_ID.'.exists' => __('address.province_id_exists'),
+            Address::CITY_ID.'.exists' => __('address.city_id_exists'),
         ];
     }
 }

@@ -2,6 +2,11 @@
 
 return [
     'received_successfully' => 'اطلاعات با موفقیت دریافت شد.',
+    // ۴۰۳های عمومی — قبلاً این دو کلید وجود نداشتند و چون __() کلیدِ پیدانشده را
+    // عیناً برمی‌گرداند، بدنهٔ پاسخ واقعاً «global.forbidden» بود.
+    'forbidden' => 'شما به این بخش دسترسی ندارید.',
+    'unauthorized' => 'شما مجاز به انجام این عملیات نیستید.',
+    'information_received_successfully' => 'اطلاعات با موفقیت دریافت شد.',
     'verifyEmailSubject' => 'تایید پست الکترونیکی',
     'verificationEmailSentSuccessfully' => 'ایمیل تایید با موفقیت ارسال شد.',
     'emailVerifiedSuccessfully' => 'پست الکترونیکی با موفقیت تایید شد.',

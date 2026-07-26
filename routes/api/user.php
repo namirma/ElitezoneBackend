@@ -82,11 +82,14 @@ Route::prefix('products')->middleware(['auth:sanctum', 'attach.price.category'])
 });
 
 // ── Product reviews — ثبت نظر (هر کاربر/محصول یک نظر؛ ارسال مجدد → pending)
-Route::middleware(['auth:sanctum'])->group(function () {
-    Route::post('/products/{product:cuid}/reviews', [ProductReviewController::class, 'store'])
-        ->middleware('throttle:10,1');
-    Route::get('/profile/reviews', [ProductReviewController::class, 'myReviews']);
-});
+// پشت فلگ features.product_reviews — پیش‌فرض خاموش (config/features.php)
+if (config('features.product_reviews')) {
+    Route::middleware(['auth:sanctum'])->group(function () {
+        Route::post('/products/{product:cuid}/reviews', [ProductReviewController::class, 'store'])
+            ->middleware('throttle:10,1');
+        Route::get('/profile/reviews', [ProductReviewController::class, 'myReviews']);
+    });
+}
 
 // ── Cart — مهمان هم می‌تواند سبد داشته باشد ─────────────────────────────
 Route::middleware(['optional.sanctum', 'attach.price.category'])->group(function () {
@@ -169,8 +172,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
         Route::prefix('change-mobile')->controller(AccountSecurityController::class)->group(function () {
             Route::get('/', 'updateMobile');
-            Route::post('/request', 'requestChangeMobile');
-            Route::post('/confirm', 'confirmChangeMobile');
+            // throttle:sms — هر فراخوانی یک استعلامِ *پولیِ* Podium (تطبیق کدملی/موبایل)
+            // می‌زند و بعدش یک پیامک. بدون سقف، همان چیزی می‌شد که برای /education/fetch
+            // بسته شد: یک پروکسیِ استعلامِ نامحدود روی سرویسِ پولی.
+            Route::post('/request', 'requestChangeMobile')->middleware('throttle:sms');
+            // throttle:otp-verify — کدِ ۶ رقمی brute-force پذیر است؛ هم‌ردیفِ
+            // verify-code / password/verify / beneficiaries/confirm که همگی داشتند.
+            Route::post('/confirm', 'confirmChangeMobile')->middleware('throttle:otp-verify');
         });
 
         // Notifications
@@ -253,8 +261,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
                 ->whereIn('type', ['initial', 'final', 'tax'])
                 ->name('api.user.orders.invoice');
 
-            // Survey
-            Route::post('/{order}/survey', [OrderSurveyController::class, 'store'])->whereNumber('order');
+            // Survey — پشت فلگ features.order_surveys، پیش‌فرض خاموش
+            // (این قابلیت در محصولِ فعلی وجود ندارد؛ config/features.php)
+            if (config('features.order_surveys')) {
+                Route::post('/{order}/survey', [OrderSurveyController::class, 'store'])->whereNumber('order');
+            }
 
             // Supplier operations
             Route::controller(SupplierOrderController::class)->group(function () {
@@ -326,7 +337,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
         Route::prefix('my-items')->controller(MyItemsController::class)->group(function () {
             Route::get('/badges', 'badges');
-            Route::get('/surveys', 'surveys');
+            // پشت فلگ features.order_surveys — پیش‌فرض خاموش (config/features.php)
+            if (config('features.order_surveys')) {
+                Route::get('/surveys', 'surveys');
+            }
         });
 
         // EliteYARs ↔ Employers

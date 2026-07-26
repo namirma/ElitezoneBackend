@@ -81,10 +81,19 @@ class CartResolver
 
         $sessionId = $request->cookie('cart_session_id', (string) Str::uuid());
 
-        return Cart::firstOrCreate(
-            [Cart::SESSION_ID => $sessionId],
-            [Cart::USER_ID => null],
-        );
+        // whereNull(user_id) در شرطِ جستجو: cart_session_id یک کوکیِ کاملاً تحتِ کنترلِ
+        // کلاینت است، پس هرگز نباید بتواند به سبدِ یک کاربرِ لاگین‌شده resolve شود.
+        // امروز سبدِ کاربر session_id = NULL دارد و عملاً قابل تطبیق نیست، ولی این
+        // ثابت‌ماندن یک فرضِ ضمنی بود نه یک گارد — حالا صریح است.
+        $guestCart = Cart::query()
+            ->where(Cart::SESSION_ID, $sessionId)
+            ->whereNull(Cart::USER_ID)
+            ->first();
+
+        return $guestCart ?? Cart::create([
+            Cart::SESSION_ID => $sessionId,
+            Cart::USER_ID => null,
+        ]);
     }
 
     /**
