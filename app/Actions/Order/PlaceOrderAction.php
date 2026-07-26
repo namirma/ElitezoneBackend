@@ -4,6 +4,7 @@ namespace App\Actions\Order;
 
 use App\DataTransferObjects\Order\PlaceOrderData;
 use App\Events\Order\OrderPlaced;
+use App\Exceptions\BusinessException;
 use App\Exceptions\Order\CartIsEmptyException;
 use App\Models\Address;
 use App\Models\Cart;
@@ -26,6 +27,7 @@ use App\Services\Shipping\CartShippingQuoteService;
 use App\Services\Shipping\ShippingCostCalculator;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class PlaceOrderAction
@@ -393,8 +395,20 @@ class PlaceOrderAction
             // misattribute payouts, so surface the data problem instead of hiding it.
             $supplierId = $item->factory?->supplier_user_id;
             if (! $supplierId) {
-                throw new \RuntimeException(
-                    "Cart item {$item->id} has no factory supplier_user_id; cannot place order."
+                // پیام کاربر باید فارسی و از lang بیاید (قانون: هیچ رشته‌ی
+                // کاربرپسندی در PHP هاردکد نشود). جزئیات فنی فقط در لاگ می‌رود —
+                // خریدار نباید نام ستون دیتابیس را در پاسخ چک‌اوت ببیند.
+                Log::error('Checkout blocked: factory has no supplier_user_id', [
+                    'cart_item_id' => $item->id,
+                    'factory_id' => $item->factory_id,
+                    'variant_id' => $item->product_variant_id,
+                ]);
+
+                throw new BusinessException(
+                    __('checkout.supplier_not_found_for_factory', [
+                        'factory' => $item->factory?->name ?? '—',
+                    ]),
+                    422
                 );
             }
 

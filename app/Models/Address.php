@@ -71,7 +71,13 @@ class Address extends Model
 
     public function province(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\ActivityProvince::class, self::PROVINCE_ID);
+        // ⚠️ قبلاً به `ActivityProvince` وصل بود — آن جدولِ pivotِ «استان‌های
+        // فعالیتِ سوپلایر» است (user_id + province_id) و لیست مرجع استان‌ها
+        // نیست، پس `province_id` با `activity_provinces.id` تطبیق می‌شد و
+        // همیشه null می‌داد: نام استان در جزئیات سفارشِ پنل ادمین، در
+        // ShipmentResource و در آدرس خریدارِ فاکتورهای PDF خالی می‌ماند.
+        // جدول درست `province` است — همان که `getProvince()` می‌خواند.
+        return $this->belongsTo(Province::class, self::PROVINCE_ID);
     }
 
     public function city(): BelongsTo
