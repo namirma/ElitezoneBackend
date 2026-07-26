@@ -30,6 +30,35 @@ class AuthController extends Controller
     /** قفل تجمعیِ ورود با رمز عبور — فضای نامِ جدا از OTP. */
     private const SCOPE_PASSWORD = 'password';
 
+    /** نام پیش‌فرض توکن، وقتی کلاینت `device_name` نمی‌فرستد (سازگاری عقب‌رو). */
+    private const DEFAULT_DEVICE = 'auth';
+
+    /**
+     * توکن تازه می‌سازد و **فقط توکنِ قبلیِ همان کلاینت** را باطل می‌کند.
+     *
+     * ⚠️ قبلاً اینجا `$user->tokens()->delete()` بود — یعنی هر ورود، تمامِ
+     * نشست‌های آن کاربر را می‌کشت. چون ادمین با یک حساب هم در بک‌آفیس
+     * (پورت 5174) و هم در سایت اصلی (5173) وارد می‌شود، ورود به یکی
+     * دیگری را با «نشست شما به پایان رسید» بیرون می‌انداخت — و برعکس؛
+     * عملاً فقط یکی از دو برنامه هم‌زمان قابل استفاده بود.
+     *
+     * خاصیتِ امنیتیِ «یک نشستِ فعال به‌ازای هر کلاینت» حفظ می‌شود: ورودِ دوباره
+     * در همان برنامه، نشستِ قبلیِ همان برنامه را باطل می‌کند. کلاینتی که
+     * `device_name` نفرستد نامِ پیش‌فرض `auth` می‌گیرد، پس رفتار قدیمی نمی‌شکند.
+     *
+     * (تغییر رمز عبور جداست و عمداً **همه‌ی** توکن‌ها را باطل می‌کند —
+     *  اعتبارنامه عوض شده، پس هر نشستی باید بیرون بیفتد.)
+     */
+    private function issueTokenForDevice(User $user, Request $request): string
+    {
+        $device = trim((string) $request->input('device_name')) ?: self::DEFAULT_DEVICE;
+        $device = mb_substr($device, 0, 60);
+
+        $user->tokens()->where('name', $device)->delete();
+
+        return $user->createToken($device)->plainTextToken;
+    }
+
     /**
      * قفل تجمعی — مکمل throttle دقیقه‌ای روت، چون هم کد ۶ رقمی و هم رمز عبور
      * با IPهای متعدد قابل brute-force اند.
@@ -310,8 +339,8 @@ class AuthController extends Controller
         // پودیوم کند باشد، ورودِ همهٔ کاربران هم کند می‌شود.
         SyncIdentityToProfileJob::dispatch($user->id);
 
-        $user->tokens()->delete();
-        $token = $user->createToken('auth')->plainTextToken;
+        // ورود با کد یک‌بارمصرف — فقط نشستِ همین کلاینت جایگزین می‌شود
+        $token = $this->issueTokenForDevice($user, $request);
 
         if ($isNewUser) {
             SendSmsJob::dispatch($mobile, __('sms.newRegisterUser'));
@@ -368,8 +397,8 @@ class AuthController extends Controller
 
         $this->clearFailures($mobile, self::SCOPE_PASSWORD);
         Auth::login($user);
-        $user->tokens()->delete();
-        $token = $user->createToken('auth')->plainTextToken;
+        // ورود با رمز عبور — فقط نشستِ همین کلاینت جایگزین می‌شود، نه همه‌ی برنامه‌ها
+        $token = $this->issueTokenForDevice($user, $request);
 
         $userWithRelations = $user->fresh([
             User::RELATION_PROFILE,
@@ -455,8 +484,11 @@ class AuthController extends Controller
             User::SECRET_EXPIRES_AT => null,
         ]);
         Auth::login($user);
+        // ⚠️ اینجا عمداً **همه‌ی** توکن‌ها باطل می‌شوند و به issueTokenForDevice
+        // سپرده نمی‌شود: رمز عبور عوض شده، پس هر نشستی روی هر دستگاهی — از جمله
+        // نشستِ کسی که رمز قدیمی را داشته — باید بیرون بیفتد.
         $user->tokens()->delete();
-        $token = $user->createToken('auth')->plainTextToken;
+        $token = $user->createToken(self::DEFAULT_DEVICE)->plainTextToken;
 
         return success(['user' => new UserResource($user), 'token' => $token], __('auth.password_changed_successfully'));
     }
