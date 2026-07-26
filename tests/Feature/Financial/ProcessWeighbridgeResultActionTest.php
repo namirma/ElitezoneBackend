@@ -12,6 +12,7 @@ use App\Services\Financial\SettlementCalculatorService;
 use App\Services\Invoice\InvoiceGenerator;
 use App\Services\SmsService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -76,17 +77,24 @@ class ProcessWeighbridgeResultActionTest extends TestCase
         $supplier = User::factory()->create();
         Wallet::create([Wallet::USER_ID => $supplier->id, Wallet::BALANCE => 1_000_000, Wallet::BALANCE_HOLD => 0]);
 
-        // Pre-weighbridge snapshot for WBS = 10, OP = 1000, no VAT, no shipping.
+        // Pre-weighbridge snapshot for WBS = 10, OP = 1000, VAT 10%, no shipping.
         // Computed via the same calculator so the test isn't coupled to the rate table.
         $calc = app(SettlementCalculatorService::class);
         $rates = $calc->getCommissionRates('pioneer');
-        $this->oldPOO = $calc->calculatePOO(0, 1000, 10, $rates['ow_final_rate'], 0, true, true);
-        $oldPTS = $calc->calculatePTS(0, 1000, 10, $rates['ow_final_rate'], $rates['ssg_final_rate'], $rates['co_final_rate'], 0, true, true);
+
+        // ⚠️ نرخ مالیات صریح است و صفر نیست. قبلاً این تست انتظاراتش را با
+        // `$vat = 0` می‌ساخت و روی سفارش هم `VAT_RATE => 0` می‌گذاشت — یعنی
+        // دقیقاً همان حالتی که باگِ `$order->vat_rate ?? 10.0` تولید می‌کرد
+        // (ستون `NOT NULL DEFAULT 0.00` پس `??` هیچ‌وقت فعال نمی‌شد). تست روی
+        // خودِ باگ بنا شده بود و نمی‌توانست آن را بگیرد.
+        $vatPercent = 10.0;
+        $this->oldPOO = $calc->calculatePOO(0, 1000, 10, $rates['ow_final_rate'], $vatPercent, true, true);
+        $oldPTS = $calc->calculatePTS(0, 1000, 10, $rates['ow_final_rate'], $rates['ssg_final_rate'], $rates['co_final_rate'], $vatPercent, true, true);
 
         $this->order = Order::create([
             Order::PLACER_USER_ID => $this->buyer->id,
             Order::BENEFICIARY_USER_ID => $this->buyer->id, // self → no eliteYAR payout
-            Order::ORDER_NUMBER => 'TEST-WB-'.now()->format('YmdHis').rand(100, 999),
+            Order::ORDER_NUMBER => 'TEST-WB-'.Str::random(12),
             Order::STATUS => Order::STATUS_PROCESSING,
             Order::PAYMENT_STATUS => Order::PAYMENT_PAID,
             Order::WEIGHT_BEFORE_SCALE => 10,
@@ -94,7 +102,7 @@ class ProcessWeighbridgeResultActionTest extends TestCase
         ]);
         $this->order->forceFill([
             Order::OFFICIAL_PRICE => 1000,
-            Order::VAT_RATE => 0,
+            Order::VAT_RATE => $vatPercent,
             Order::PAYMENT_OF_OWNER => $this->oldPOO,
             Order::PAYMENT_TO_SUPPLIER => $oldPTS,
             Order::TRANS_COMMISSION => true,

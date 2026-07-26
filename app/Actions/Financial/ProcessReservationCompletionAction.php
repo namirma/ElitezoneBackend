@@ -58,7 +58,10 @@ class ProcessReservationCompletionAction
 
             $op = (float) ($locked->official_price ?: ($firstItem->unit_price ?? 0));
             $trans = (float) ($locked->shipping_cost ?: 0);
-            $vat = (float) ($locked->vat_rate ?: 10.0);
+            // این مسیر با `?:` نوشته شده بود و درست کار می‌کرد، ولی نرخ ۱۰ را
+            // هاردکد داشت — با تغییر نرخ در تنظیمات، تسویه از سبد خرید واگرا
+            // می‌شد. حالا هر سه مسیر پرداخت از یک منبع می‌خوانند.
+            $vat = $this->calculator->resolveVatRate($locked);
 
             // وزن snapshot باید معتبر باشد — fallback بی‌صدا به ۱ کیلوگرم یعنی POO/PTS
             // روی یک کیلو محاسبه می‌شد و رزرو با مبلغ ناچیز «تکمیل» می‌شد. داده‌ی خراب

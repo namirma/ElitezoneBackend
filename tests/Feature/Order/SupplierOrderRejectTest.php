@@ -6,6 +6,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Str;
 use Laratrust\Models\Role;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
@@ -29,7 +30,7 @@ class SupplierOrderRejectTest extends TestCase
 
         $order = Order::create([
             Order::PLACER_USER_ID => $buyer->id,
-            Order::ORDER_NUMBER => 'REJ-'.now()->format('YmdHis').rand(100, 999),
+            Order::ORDER_NUMBER => 'REJ-'.Str::random(12),
             Order::STATUS => $status,
             Order::FINAL_AMOUNT => 1_000_000,
             Order::PAYMENT_STATUS => Order::PAYMENT_PENDING,

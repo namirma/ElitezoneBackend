@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Financial;
 
+use App\Models\Order;
 use App\Models\PriceSetting;
 use App\Support\Money;
 
@@ -253,6 +254,38 @@ class SettlementCalculatorService
         // Algebraically (VAT/100)/(1+VAT/100) == VAT/(100+VAT) — the latter avoids a
         // tiny truncated intermediate, staying numerically stable.
         return (float) Money::div($vatPercent, Money::add('100', $vatPercent));
+    }
+
+    /**
+     * درصد مالیات مؤثر برای یک سفارش — **تنها منبع مجاز**.
+     *
+     * ⚠️ سه محل (`ProcessPreScalePaymentAction`, `ProcessReservationCompletionAction`,
+     * `WeighbridgeReconciler`) هر کدام جداگانه `$order->vat_rate ?? 10.0` می‌نوشتند و
+     * دو مشکل داشت:
+     *
+     * ۱. **`??` هیچ‌وقت کار نمی‌کرد.** ستون `orders.vat_rate` از نوع
+     *    `decimal(5,2) NOT NULL DEFAULT 0.00` است و هیچ‌کس پیش از پرداخت پرش
+     *    نمی‌کند، پس مقدارش `0.00` بود — نه `null`. یعنی مسیر خرید مستقیم و
+     *    بازمحاسبهٔ باسکول POO/PTS را با **مالیات صفر** حساب می‌کردند، در حالی که
+     *    سبد خرید از خریدار مالیات ۱۰٪ گرفته بود؛ و چون `sazeVat = gross × 0`
+     *    می‌شد، هولد امانیِ مالیات (WVAT) هرگز ثبت نمی‌شد و اسناد O/P/Q عملاً
+     *    صفر آزاد می‌کردند. (مسیر تکمیل رزرو `?:` نوشته بود و درست کار می‌کرد —
+     *    یعنی یک سفارش بسته به مسیر پرداخت، مالیات متفاوتی می‌خورد.)
+     *
+     * ۲. **عدد ۱۰ هاردکد بود** در سه جا، در حالی که نرخ واقعی در
+     *    `price_settings.vat_rate` است و همان چیزی است که پایپ‌لاین قیمت‌گذاری
+     *    (`ApplyVat`) استفاده می‌کند. با تغییر نرخ، تسویه از سبد خرید واگرا می‌شد.
+     *
+     * اسنپ‌شاتِ واقعیِ روی سفارش (مقدار مثبت) مقدم است تا بازاجرای یک عملیات،
+     * نرخِ لحظهٔ پرداخت را عوض نکند؛ در نبودش نرخ زندهٔ تنظیمات خوانده می‌شود.
+     */
+    public function resolveVatRate(Order $order): float
+    {
+        $snapshot = (float) ($order->{Order::VAT_RATE} ?? 0);
+
+        return $snapshot > 0
+            ? $snapshot
+            : PriceSetting::getValueAsFloat(PriceSetting::CODE_VAT_RATE, 10.0);
     }
 
     /**

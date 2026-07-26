@@ -6,6 +6,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Str;
 use Laratrust\Models\Role;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -52,7 +53,7 @@ class OrderPolicyTest extends TestCase
         $this->order = Order::create([
             Order::PLACER_USER_ID => $this->owner->id,
             Order::BENEFICIARY_USER_ID => $this->beneficiary->id,
-            Order::ORDER_NUMBER => 'POLICY-TEST-'.now()->format('YmdHis').rand(100, 999),
+            Order::ORDER_NUMBER => 'POLICY-TEST-'.Str::random(12),
             Order::STATUS => Order::STATUS_PENDING,
             Order::FINAL_AMOUNT => 1_000_000,
             Order::PAYMENT_STATUS => Order::PAYMENT_PENDING,

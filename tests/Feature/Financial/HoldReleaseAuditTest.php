@@ -10,6 +10,7 @@ use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use App\Services\Financial\WalletTransactionEngine;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -48,7 +49,7 @@ class HoldReleaseAuditTest extends TestCase
 
         $this->order = Order::create([
             Order::PLACER_USER_ID => $this->buyer->id,
-            Order::ORDER_NUMBER => 'TEST-'.now()->format('YmdHis').rand(100, 999),
+            Order::ORDER_NUMBER => 'TEST-'.Str::random(12),
             Order::STATUS => Order::STATUS_SHIPPED,
             Order::FINAL_AMOUNT => 100_000_000,
             Order::PAYMENT_STATUS => 'paid',

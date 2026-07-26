@@ -9,6 +9,7 @@ use App\Models\Wallet;
 use App\Services\Financial\SettlementCalculatorService;
 use App\Services\Financial\WeighbridgeReconciler;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -138,7 +139,7 @@ class WeighbridgeReconcilerTest extends TestCase
 
         $order = Order::create([
             Order::PLACER_USER_ID => $buyer->id,
-            Order::ORDER_NUMBER => 'TEST-WR-'.now()->format('YmdHis').rand(100, 999),
+            Order::ORDER_NUMBER => 'TEST-WR-'.Str::random(12),
             Order::STATUS => Order::STATUS_PROCESSING,
             Order::FINAL_AMOUNT => $oldPOO,
             Order::PAYMENT_STATUS => 'paid',

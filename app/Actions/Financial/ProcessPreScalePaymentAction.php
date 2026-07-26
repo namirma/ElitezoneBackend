@@ -59,7 +59,10 @@ class ProcessPreScalePaymentAction
 
             $weightBeforeScale = (float) ($locked->getAttribute(Order::WEIGHT_BEFORE_SCALE) ?? 0);
             $shippingCost = (float) ($locked->shipping_cost ?? 0);
-            $vatRate = (float) ($locked->vat_rate ?? 10.0);
+            // منبع واحد — ستون سفارش پیش از پرداخت `0.00` است و `?? 10.0` آن را
+            // نمی‌گرفت، پس POO/PTS با مالیات صفر حساب می‌شد. توضیح کامل در
+            // SettlementCalculatorService::resolveVatRate().
+            $vatRate = $this->calculator->resolveVatRate($locked);
 
             // نرخ کمیسیون بر اساس نشانِ الیت‌یارِ صاحب کمیسیون (elite_yar_user_id) خوانده می‌شود،
             // نه beneficiary (گیرندهٔ کالا). ProcessWeighbridgeResultAction هم از همین eliteYAR.badge

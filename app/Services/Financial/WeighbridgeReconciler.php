@@ -33,7 +33,9 @@ class WeighbridgeReconciler
         $rates = $this->calculator->getCommissionRates($badgeCode);
 
         $trans = (float) $order->shipping_cost;
-        $vat = (float) ($order->vat_rate ?? 10.0);
+        // منبع واحد؛ `?? 10.0` روی ستونِ NOT NULL DEFAULT 0.00 هرگز کار نمی‌کرد
+        // و بازمحاسبهٔ باسکول با مالیات صفر انجام می‌شد.
+        $vat = $this->calculator->resolveVatRate($order);
         $op = ((float) $order->official_price > 0)
             ? (float) $order->official_price
             : (float) ($order->items->first()?->unit_price ?? 0);

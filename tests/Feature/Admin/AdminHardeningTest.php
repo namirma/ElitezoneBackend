@@ -8,6 +8,7 @@ use App\Models\Role;
 use App\Models\User;
 use App\Models\Wallet;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
 use Tests\Concerns\GrantsAdminPermissions;
 use Tests\TestCase;
@@ -166,7 +167,7 @@ class AdminHardeningTest extends TestCase
 
         return Order::create([
             Order::PLACER_USER_ID => $buyer->id,
-            Order::ORDER_NUMBER => 'ADM-'.now()->format('YmdHis').rand(100, 999),
+            Order::ORDER_NUMBER => 'ADM-'.Str::random(12),
             Order::STATUS => $status,
             Order::PAYMENT_STATUS => $paymentStatus,
             Order::FINAL_AMOUNT => 100_000_000,

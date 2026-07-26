@@ -8,6 +8,7 @@ use App\Models\Role;
 use App\Models\User;
 use App\Services\Invoice\InvoiceGenerator;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -47,7 +48,7 @@ class InvoiceAccessTest extends TestCase
         $this->order = Order::create([
             Order::PLACER_USER_ID => $this->buyer->id,
             Order::BENEFICIARY_USER_ID => $this->eliteYAR->id,
-            Order::ORDER_NUMBER => 'INV-'.now()->format('YmdHis').rand(100, 999),
+            Order::ORDER_NUMBER => 'INV-'.Str::random(12),
             Order::STATUS => Order::STATUS_PROCESSING,
             Order::PAYMENT_STATUS => 'paid',
         ]);

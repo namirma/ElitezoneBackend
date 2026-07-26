@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -57,7 +58,7 @@ class PayHoldFeeActionTest extends TestCase
         // Create a reserved order for this buyer
         $this->order = Order::create([
             Order::PLACER_USER_ID => $this->buyer->id,
-            Order::ORDER_NUMBER => 'TEST-'.now()->format('YmdHis').rand(100, 999),
+            Order::ORDER_NUMBER => 'TEST-'.Str::random(12),
             Order::STATUS => Order::STATUS_RESERVED,
             Order::FINAL_AMOUNT => 5_000_000_000,
             Order::PAYMENT_STATUS => 'unpaid',
