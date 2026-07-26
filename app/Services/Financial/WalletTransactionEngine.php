@@ -7,9 +7,11 @@ namespace App\Services\Financial;
 use App\Constants\FinancialCodes;
 use App\Exceptions\InsufficientBalanceException;
 use App\Models\Order;
+use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class WalletTransactionEngine
 {
@@ -97,6 +99,7 @@ class WalletTransactionEngine
 
             // 1. تعیین کاربر هدف
             $userId = $targetUserId ?? $this->resolveUserId($walletCode, $order);
+            $this->assertWalletOwnerExists($walletCode, $userId);
 
             $wallet = Wallet::firstOrCreate(['user_id' => $userId]);
             $wallet = Wallet::where('id', $wallet->id)->lockForUpdate()->first();
@@ -197,6 +200,46 @@ class WalletTransactionEngine
      * WALLET_ELITE_YAR → elite_yar_user_id (the eliteYAR/commission earner on the order)
      * WALLET_VAT        → financial.vat_user_id (separate VAT escrow user; P5)
      */
+    /**
+     * مالکِ کیف پول باید واقعاً وجود داشته باشد، وگرنه اینجا متوقف شو.
+     *
+     * چرا لازم است: `Wallet::firstOrCreate(['user_id' => $id])` کورکورانه به
+     * شناسه‌ی تنظیم‌شده اعتماد می‌کرد. اگر `financial.system_user_id` (یا
+     * `vat_user_id`) به کاربری اشاره کند که وجود ندارد — که پیش می‌آید، چون
+     * `.env` شناسه‌ی عددی نگه می‌دارد و با هر بار seed شدنِ دیتابیس شناسه‌ها
+     * جابه‌جا می‌شوند — insert با نقض کلید خارجی می‌شکست، آن هم **در وسط
+     * تراکنشِ پرداخت**. نتیجه برای مشتری: «خطا در پردازش پرداخت» و برای
+     * توسعه‌دهنده: یک FK violation خام در لاگ. عملاً هیچ پرداختی در سیستم
+     * انجام نمی‌شد و هیچ‌کس نمی‌دانست چرا.
+     *
+     * حالا پیام می‌گوید کدام کلیدِ کانفیگ خراب است و چه باید کرد.
+     */
+    private function assertWalletOwnerExists(string $code, int $userId): void
+    {
+        if ($userId > 0 && User::whereKey($userId)->exists()) {
+            return;
+        }
+
+        $configKey = match ($code) {
+            FinancialCodes::WALLET_SAZE => 'financial.system_user_id (env FINANCIAL_SYSTEM_USER_ID)',
+            FinancialCodes::WALLET_VAT => 'financial.vat_user_id (env FINANCIAL_VAT_USER_ID)',
+            default => null,
+        };
+
+        $detail = $configKey !== null
+            ? "wallet {$code} points at user #{$userId} via {$configKey}, but that user does not exist. "
+              .'Run `php artisan db:seed --class=PlatformWalletUserSeeder` or fix the env value.'
+            : "wallet {$code} resolved to user #{$userId}, which does not exist.";
+
+        Log::channel('financial')->critical('Wallet owner does not exist — financial operation aborted', [
+            'wallet_code' => $code,
+            'user_id' => $userId,
+            'config_key' => $configKey,
+        ]);
+
+        throw new \RuntimeException($detail);
+    }
+
     private function resolveUserId(string $code, Order $order): int
     {
         return match ($code) {

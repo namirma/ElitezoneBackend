@@ -34,12 +34,6 @@ class SupplierDebtHandler
     {
         $supplierId = (int) $order->items->first()->supplier_user_id;
 
-        // Saze already received POO at payment time; it pays back the over-paid portion.
-        $this->walletEngine->debitSystem(
-            $order, $refundAmount, FinancialCodes::STATUS_AVAILABLE,
-            "پرداخت وجه کسری باسکول سفارش {$order->order_number} به خریدار"
-        );
-
         // Pessimistic lock on the supplier wallet to avoid a race with other jobs.
         $supplierWallet = Wallet::where('user_id', $supplierId)->lockForUpdate()->first();
         $supplierCanCover = $supplierWallet && ((float) $supplierWallet->balance >= $reclaimAmount);
@@ -51,21 +45,48 @@ class SupplierDebtHandler
         return $this->parkDebtAndNotify($order, $refundAmount, $reclaimAmount);
     }
 
+    /**
+     * ⚠️ ترتیب legها باربر است — تغییرش ندهید.
+     *
+     * پول باید **سوپلایر ← سازه ← خریدار** حرکت کند، به همین ترتیب.
+     *
+     * قبلاً `debitSystem($refundAmount)` بالای `handle()` و پیش از هر انشعابی صدا
+     * زده می‌شد، یعنی سازه اول پول می‌داد و بعد از سوپلایر پس می‌گرفت. ولی سازه در
+     * لحظه‌ی پرداخت POO را گرفته و بلافاصله PTS را پرداخته، پس تنها چیزی که نگه
+     * می‌دارد کمیسیون است (`POO − PTS`) — مبلغی کوچک‌تر از عودتِ کسری در حالت
+     * معمول. نتیجه: `InsufficientBalanceException` و rollback شدنِ **کلِ باسکول**،
+     * یعنی هیچ کم‌تحویلی‌ای در سیستم قابل ثبت نبود؛ آن هم با پیام
+     * «موجودی کیف پول کافی نیست» که انگار مشکلِ خریدار است.
+     *
+     * (تست `ProcessWeighbridgeResultActionTest` این را نمی‌گرفت چون کیف پول سازه را
+     *  دستی شارژ می‌کرد — همان کاری که در محیط واقعی هیچ‌کس نمی‌کند.)
+     *
+     * همین قاعده در مسیر کوپن هم مستند است: هیچ legی نباید WSSG را منفی کند.
+     */
     private function settleImmediately(
         Order $order,
         float $refundAmount,
         float $reclaimAmount,
         int $supplierId,
     ): string {
-        $this->walletEngine->creditBuyer(
-            $order, $refundAmount, FinancialCodes::STATUS_AVAILABLE, 'بازگشت وجه ناشی از کسری باسکول'
-        );
+        // ۱) اول از سوپلایر پس بگیر — منبعِ واقعیِ این پول، اضافه‌دریافتیِ اوست.
         $this->walletEngine->debitSupplier(
             $order, $reclaimAmount, FinancialCodes::STATUS_AVAILABLE, $supplierId, 'کسر بابت کسری باسکول'
         );
         $this->walletEngine->creditSystem(
             $order, $reclaimAmount, FinancialCodes::STATUS_AVAILABLE,
             "بازپس‌گیری از تامین‌کننده بابت کسری باسکول سفارش {$order->order_number}"
+        );
+
+        // ۲) حالا که سازه تأمین شده، به خریدار برگردان. مابه‌التفاوتِ
+        //    `refundAmount − reclaimAmount` همان کمیسیونی است که سازه باید از
+        //    سهم خودش برگرداند و در لحظه‌ی پرداخت نگه داشته است.
+        $this->walletEngine->debitSystem(
+            $order, $refundAmount, FinancialCodes::STATUS_AVAILABLE,
+            "پرداخت وجه کسری باسکول سفارش {$order->order_number} به خریدار"
+        );
+        $this->walletEngine->creditBuyer(
+            $order, $refundAmount, FinancialCodes::STATUS_AVAILABLE, 'بازگشت وجه ناشی از کسری باسکول'
         );
 
         return 'deficit';
@@ -76,6 +97,16 @@ class SupplierDebtHandler
         float $refundAmount,
         float $reclaimAmount,
     ): string {
+        // سوپلایر الان نمی‌تواند بپردازد، پس سازه پول را **جلو می‌اندازد** و بعداً
+        // `CheckSupplierBalancesJob` آن را از سوپلایر پس می‌گیرد (WS → WSSG) و
+        // همین هولد را آزاد می‌کند. این legِ سازه پیش‌تر بالای `handle()` و برای
+        // هر دو مسیر اجرا می‌شد؛ حالا فقط اینجا لازم است — در مسیرِ تسویه‌ی فوری
+        // پس از تأمین‌شدنِ سازه انجام می‌شود.
+        $this->walletEngine->debitSystem(
+            $order, $refundAmount, FinancialCodes::STATUS_AVAILABLE,
+            "پرداخت وجه کسری باسکول سفارش {$order->order_number} به خریدار"
+        );
+
         // Buyer refund parks in HOLD until the supplier tops up their wallet.
         $this->walletEngine->creditBuyer(
             $order, $refundAmount, FinancialCodes::STATUS_HOLD,

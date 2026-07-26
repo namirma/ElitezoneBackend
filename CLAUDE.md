@@ -623,12 +623,15 @@ mode (file stored on disk, `Invoice` DB record created).
 | H | `DOC_FINAL_REPORT_SUPPLIER` | Reservation completion | `ProcessReservationCompletionAction` |
 | i | `DOC_REFUND_RECEIPT` | Cancellation (paid/reserved) | `CancelOrderAction` |
 | j | `DOC_CANCEL_REPORT` | Cancellation (paid/reserved) | `CancelOrderAction` |
-| I | `DOC_EXIT_PERMIT` | Weighbridge (equal/deficit) | `ProcessWeighbridgeResultAction` |
-| J | `DOC_SUPPLEMENTARY_RECEIPT` | *(not emitted — surplus path removed per spec)* | — |
-| K | `DOC_SUPPLEMENTARY_REPORT` | *(not emitted — surplus path removed per spec)* | — |
+| K | `DOC_BILL_OF_LADING` | Weighbridge (always) — بارنامه / مجوز خروج | `ProcessWeighbridgeResultAction` |
 | LO | `DOC_MODIFIED_INVOICE_OWNER` | Weighbridge deficit | `ProcessWeighbridgeResultAction` |
 | LS | `DOC_MODIFIED_INVOICE_SUPPLIER` | Weighbridge deficit | `ProcessWeighbridgeResultAction` |
-| M | `DOC_REFUND_REPORT_WEIGH` | Weighbridge deficit | `ProcessWeighbridgeResultAction` |
+
+> **Codes I, J, M, N no longer exist.** `app/Constants/FinancialCodes.php` is the
+> authority: the post-weighbridge stage of the «پروسه خرید» design doc defines only
+> **K, LO, LS**. `I` (exit permit) was folded into `K`, `J` into `LO`, and `M`/`N` were
+> never in the spec. This table previously still listed them, which sends anyone
+> verifying a real weighbridge hunting for documents that are correctly absent.
 | O | `DOC_TAX_INVOICE_SUPPLIER` | Supplier submits Moadian invoice | `RecordSupplierMoadianInvoiceAction` |
 | P | `DOC_TAX_INVOICE_BUYER` | Admin submits system Moadian invoice | `RecordSystemMoadianInvoiceAction` |
 | Q | `DOC_TAX_INVOICE_ELITE_YAR` | EliteYAR submits Moadian invoice | `ReleaseEliteYARHoldAction` |

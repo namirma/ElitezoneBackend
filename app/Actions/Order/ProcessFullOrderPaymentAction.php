@@ -61,14 +61,24 @@ class ProcessFullOrderPaymentAction
         if ($totalAmount < $this->threshold() || ! $isReserveRequested) {
             $this->purchaseAction->execute($order);
 
+            // ⚠️ Doc D (گزارش الیت‌یار) قبلاً بی‌قید در این لیست بود، ولی
+            // `ProcessPreScalePaymentAction` آن را فقط وقتی صادر می‌کند که سفارش
+            // یک الیت‌یارِ صاحبِ کمیسیون داشته باشد. نتیجه: پاسخِ پرداختِ هر سفارشِ
+            // بدون الیت‌یار سندی را وعده می‌داد که هرگز ساخته نشده بود — و کلاینت
+            // از همین لیست لینک دانلود می‌سازد، یعنی یک لینکِ مرده.
+            // شرط اینجا **عیناً** همان شرطِ تولید است تا این دو هرگز واگرا نشوند.
+            $eliteYARId = $order->{Order::ELITE_YAR_USER_ID};
+            $hasCommissionedEliteYAR = $eliteYARId !== null
+                && (int) $eliteYARId !== (int) $order->{Order::PLACER_USER_ID};
+
             return new PayOrderResult(
                 scenario: 'direct_purchase',
-                documents: [
+                documents: array_values(array_filter([
                     FinancialCodes::DOC_RECEIPT_OWNER,
                     FinancialCodes::DOC_REPORT_SUPPLIER,
                     FinancialCodes::DOC_LOADING_ORDER,
-                    FinancialCodes::DOC_ELITE_YAR_REPORT,
-                ],
+                    $hasCommissionedEliteYAR ? FinancialCodes::DOC_ELITE_YAR_REPORT : null,
+                ])),
                 messageKey: 'orders.full_payment_successful',
             );
         }

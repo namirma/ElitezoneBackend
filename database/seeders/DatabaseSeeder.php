@@ -13,6 +13,11 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        // اول از همه: حساب‌های کیف‌پولیِ پلتفرم (WSSG/WVAT). بدون این‌ها هیچ
+        // پرداختی انجام نمی‌شود — `wallets.user_id` کلید خارجی دارد و شناسه‌ای
+        // که `financial.system_user_id` می‌گوید باید واقعاً وجود داشته باشد.
+        $this->call(PlatformWalletUserSeeder::class);
+
         $this->call(SupplierActivityCategorySeeder::class);
         $this->call(AgreementSeeder::class);
         $this->call(AdminPermissionSeeder::class);

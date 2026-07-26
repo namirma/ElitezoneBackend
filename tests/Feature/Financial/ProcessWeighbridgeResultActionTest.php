@@ -34,6 +34,8 @@ class ProcessWeighbridgeResultActionTest extends TestCase
 
     private Wallet $buyerWallet;
 
+    private Wallet $systemWallet;
+
     private Order $order;
 
     private float $oldPOO;
@@ -57,11 +59,12 @@ class ProcessWeighbridgeResultActionTest extends TestCase
 
         $this->action = app(ProcessWeighbridgeResultAction::class);
 
-        // System (Saze) + VAT escrow wallets — funded so deficit settlement can run.
         $systemUser = User::factory()->create();
         config(['financial.system_user_id' => $systemUser->id]);
         config(['financial.vat_user_id' => $systemUser->id]);
-        Wallet::create([Wallet::USER_ID => $systemUser->id, Wallet::BALANCE => 1_000_000, Wallet::BALANCE_HOLD => 0]);
+        // موجودی این کیف پول پایین‌تر در setUp و **دقیقاً برابر کمیسیونِ همین
+        // سفارش** ست می‌شود (نه یک عدد دلبخواه) — توضیح کامل کنار همان خط.
+        $this->systemWallet = Wallet::create([Wallet::USER_ID => $systemUser->id, Wallet::BALANCE => 0, Wallet::BALANCE_HOLD => 0]);
 
         // Pioneer badge on the buyer so beneficiary.badge->code resolves without a null read.
         // firstOrCreate: the 'pioneer' badge is now also seeded by a migration.
@@ -105,6 +108,19 @@ class ProcessWeighbridgeResultActionTest extends TestCase
             OrderItem::TOTAL_PRICE => 10000,
             OrderItem::QUANTITY => 10,
         ]);
+
+        // ⚠️ کیف پول سازه **دقیقاً** کمیسیونِ همین سفارش را دارد (POO − PTS) —
+        // یعنی همان چیزی که در تولید پس از پرداخت برایش می‌ماند: POO را گرفته و
+        // بلافاصله PTS را پرداخته است.
+        //
+        // پیش‌تر اینجا یک ۱٬۰۰۰٬۰۰۰ ریالِ دلبخواه شارژ می‌شد «تا تسویه‌ی کسری
+        // بتواند اجرا شود». آن عددِ سخاوتمندانه یک باگ واقعی را پنهان می‌کرد:
+        // `SupplierDebtHandler` اول از سازه برداشت می‌کرد و بعد از سوپلایر پس
+        // می‌گرفت، پس در محیط واقعی — که سازه فقط کمیسیون را دارد —
+        // هر کم‌تحویلی با `InsufficientBalanceException` کلِ باسکول را rollback
+        // می‌کرد. با این مقدارِ واقع‌بینانه، اگر کسی ترتیب legها را برگرداند
+        // (عودت به خریدار پیش از بازپس‌گیری از سوپلایر) تست فوراً می‌شکند.
+        $this->systemWallet->update([Wallet::BALANCE => $this->oldPOO - $oldPTS]);
     }
 
     #[Test]
