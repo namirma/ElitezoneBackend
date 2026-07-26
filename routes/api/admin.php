@@ -72,13 +72,16 @@ Route::prefix('v1/podium')
 // ── Admin panel (auth + role:admin) ───────────────────────────────────────
 Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->group(function () {
 
-    // Dashboard — KPI اجرایی.
-    // عمداً بدون admin.permission: این صفحهٔ خانهٔ پنل است و هر ادمینی، در هر سطحی،
-    // باید بتواند واردش شود. گِیت کردنش یک ادمینِ محدودشده را از صفحهٔ اولِ پنل ۴۰۳
-    // می‌کند بدون آنکه چیزی امن‌تر شود (داده‌های ریزِ مالی پشت /admin/financial/* هستند
-    // که manage-financial دارد). اگر روزی KPIهای مالی از داشبورد جدا شد، همان بخش را
-    // گِیت کنید نه کلِ روت را.
-    Route::get('/dashboard', [AdminDashboardController::class, 'index']);
+    // Dashboard — KPI اجرایی، پشتِ manage-financial.
+    // هر پنج بلوکِ پاسخ مالی/سفارشی‌اند (فروش امروز، pipeline سفارش‌ها، هشدارهای مالی،
+    // روند هفتگی، خلاصهٔ ماه) — هیچ‌چیزی در آن نیست که ادمینِ محتوا لازم داشته باشد،
+    // پس همان مجوزی را می‌گیرد که /admin/financial/* می‌گیرد.
+    //
+    // پیامد سمت کلاینت: ادمینی که manage-financial ندارد روی صفحهٔ خانهٔ پنل ۴۰۳
+    // می‌گیرد. پنل باید کاربر را به اولین تبی که مجوزش را دارد بفرستد، نه اینکه
+    // داشبورد را صفحهٔ فرود ثابت فرض کند.
+    Route::get('/dashboard', [AdminDashboardController::class, 'index'])
+        ->middleware('admin.permission:manage-financial');
 
     // Debug helpers — هرگز در پروداکشن در دسترس نباشند
     if (! app()->environment('production')) {

@@ -31,7 +31,6 @@ class AdminPermissionCoverageTest extends TestCase
      * @var array<string, string>
      */
     private const INTENTIONALLY_UNGATED = [
-        'api/admin/dashboard' => 'صفحهٔ خانهٔ پنل — گِیت کردنش ادمینِ محدودشده را از صفحهٔ اول ۴۰۳ می‌کند بدون آنکه چیزی امن‌تر شود؛ داده‌های ریز مالی پشت /admin/financial/* هستند.',
         'api/admin/debug/test-cache' => 'فقط خارج از production ثبت می‌شود (شرطِ ! app()->environment("production") در routes/api/admin.php).',
         'api/admin/debug/kavir-products' => 'فقط خارج از production ثبت می‌شود (همان شرط).',
     ];
