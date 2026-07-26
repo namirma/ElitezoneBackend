@@ -59,10 +59,42 @@ class CorsAllowlistTest extends TestCase
             'App\Http\Middleware\Cors باید حذف بماند — allowlist دوم باعث دور زدن config/cors.php می‌شود.'
         );
 
-        $this->assertStringNotContainsString(
-            "'cors'",
-            file_get_contents(app_path('Providers/RouteServiceProvider.php')),
-            'روت‌های API نباید هیچ میدل‌ورِ cors سطح-روت داشته باشند.'
-        );
+        // جاییکه میدل‌ور ثبت می‌شود بین دو برنچ فرق دارد: روی L10 در
+        // RouteServiceProvider و Http/Kernel، روی L13 در bootstrap/app.php.
+        // هرکدام که وجود داشت نباید هیچ ارجاعی به cors داشته باشد.
+        $wiringFiles = array_filter([
+            app_path('Providers/RouteServiceProvider.php'),
+            app_path('Http/Kernel.php'),
+            base_path('bootstrap/app.php'),
+        ], 'file_exists');
+
+        $this->assertNotEmpty($wiringFiles, 'هیچ فایلِ ثبتِ میدل‌ور پیدا نشد.');
+
+        foreach ($wiringFiles as $file) {
+            $this->assertDoesNotMatchRegularExpression(
+                "/'cors'|Middleware\\\\Cors|\bCors::class/",
+                $this->codeWithoutComments($file),
+                basename($file).' هنوز به میدل‌ورِ cors ارجاع می‌دهد — CORS فقط باید از config/cors.php بیاید.'
+            );
+        }
+    }
+
+    /**
+     * سورس بدونِ کامنت — این فایل‌ها کامنت‌های توضیحی دارند که *چرا* میدل‌ورِ
+     * cors حذف شد، و همان توضیح شاملِ نامِ کلاس است. تست باید کد را ببیند نه متن.
+     */
+    private function codeWithoutComments(string $path): string
+    {
+        $code = '';
+
+        foreach (token_get_all(file_get_contents($path)) as $token) {
+            if (is_array($token) && in_array($token[0], [T_COMMENT, T_DOC_COMMENT], true)) {
+                continue;
+            }
+
+            $code .= is_array($token) ? $token[1] : $token;
+        }
+
+        return $code;
     }
 }

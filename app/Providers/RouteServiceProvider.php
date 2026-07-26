@@ -56,8 +56,10 @@ class RouteServiceProvider extends ServiceProvider
             // قبلاً همیشه username بود؛ روی مسیرهای احرازشده که username ندارند کلید
             // به «IP + رشتهٔ خالی» می‌رسید و همهٔ کاربرانِ پشتِ یک NAT یک سطل مشترک
             // می‌گرفتند — هم نشتِ throttle بین کاربران، هم ضعیف‌ترشدنِ گاردِ brute-force.
-            $discriminator = $request->user()?->id
-                ?? (string) $request->input('username', '');
+            $user = $request->user();
+            $discriminator = $user !== null
+                ? (string) $user->id
+                : (string) $request->input('username', '');
 
             $throttleKey = 'otp:'.$request->ip().':'.$discriminator;
 
