@@ -3,6 +3,7 @@
 namespace App\Console;
 
 use App\Console\Commands\CancelExpiredOrders;
+use App\Console\Commands\PruneGuestCarts;
 use App\Jobs\Analytics\CalculateCustomerRfm;
 use App\Jobs\Analytics\PredictInventoryNeeds;
 use App\Jobs\Analytics\RollupProductViewsJob;
@@ -15,6 +16,7 @@ class Kernel extends ConsoleKernel
 {
     protected $commands = [
         CancelExpiredOrders::class,
+        PruneGuestCarts::class,
     ];
 
     /**
@@ -78,6 +80,13 @@ class Kernel extends ConsoleKernel
         // حذف توکن‌های منقضی‌شده — با 168 ساعت تطابق با SANCTUM_TOKEN_EXPIRY_MINUTES=10080
         $schedule->command('sanctum:prune-expired --hours=168')
             ->daily()
+            ->onOneServer();
+
+        // حذف سبدهای مهمانِ رهاشده — /api/cart عمومی است و بازدیدِ بدونِ کوکی
+        // (خزنده/ربات) هر بار یک ردیف carts می‌سازد که هیچ سیاست نگهداشتی نداشت.
+        $schedule->command('carts:prune-guests')
+            ->dailyAt('01:30')
+            ->withoutOverlapping()
             ->onOneServer();
     }
 

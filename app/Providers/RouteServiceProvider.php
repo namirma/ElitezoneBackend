@@ -51,8 +51,15 @@ class RouteServiceProvider extends ServiceProvider
          *   - کاربر عادی کد را یک بار و درست وارد می‌کند؛ ۵ بار فرصت برای اشتباه تایپی کافی است
          */
         RateLimiter::for('otp-verify', function (Request $request) {
-            $mobile = (string) $request->input('username', '');
-            $throttleKey = 'otp:'.$request->ip().':'.$mobile;
+            // تفکیک‌کننده: برای مسیرهای مهمان (ورود/بازیابی رمز) شمارهٔ موبایلِ ورودی،
+            // و برای مسیرهای احرازشده (تأیید تغییر موبایل، تأیید رمز) شناسهٔ کاربر.
+            // قبلاً همیشه username بود؛ روی مسیرهای احرازشده که username ندارند کلید
+            // به «IP + رشتهٔ خالی» می‌رسید و همهٔ کاربرانِ پشتِ یک NAT یک سطل مشترک
+            // می‌گرفتند — هم نشتِ throttle بین کاربران، هم ضعیف‌ترشدنِ گاردِ brute-force.
+            $discriminator = $request->user()?->id
+                ?? (string) $request->input('username', '');
+
+            $throttleKey = 'otp:'.$request->ip().':'.$discriminator;
 
             return Limit::perMinute(5)->by($throttleKey)->response(function () {
                 return error(__('auth.too_many_otp_attempts'), [], 429);
@@ -98,7 +105,14 @@ class RouteServiceProvider extends ServiceProvider
         });
 
         $this->routes(function () {
-            Route::middleware(['api', 'cors'])
+            // CORS is handled ONLY by Laravel's global HandleCors (Kernel::$middleware),
+            // which reads config/cors.php. A second, hand-rolled `cors` middleware used
+            // to be stacked here with its own HARDCODED allowlist; because it wrote
+            // Access-Control-Allow-Origin unconditionally on the way out, it overrode the
+            // config and re-allowed http://localhost:* with credentials on production —
+            // exactly what config/cors.php gates behind APP_ENV=local. One allowlist, one
+            // source of truth: config/cors.php. Never re-add a route-level CORS middleware.
+            Route::middleware('api')
                 ->prefix('api')
                 ->group(base_path('routes/api.php'));
 

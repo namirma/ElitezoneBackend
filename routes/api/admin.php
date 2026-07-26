@@ -72,7 +72,12 @@ Route::prefix('v1/podium')
 // ── Admin panel (auth + role:admin) ───────────────────────────────────────
 Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->group(function () {
 
-    // Dashboard — KPI اجرایی
+    // Dashboard — KPI اجرایی.
+    // عمداً بدون admin.permission: این صفحهٔ خانهٔ پنل است و هر ادمینی، در هر سطحی،
+    // باید بتواند واردش شود. گِیت کردنش یک ادمینِ محدودشده را از صفحهٔ اولِ پنل ۴۰۳
+    // می‌کند بدون آنکه چیزی امن‌تر شود (داده‌های ریزِ مالی پشت /admin/financial/* هستند
+    // که manage-financial دارد). اگر روزی KPIهای مالی از داشبورد جدا شد، همان بخش را
+    // گِیت کنید نه کلِ روت را.
     Route::get('/dashboard', [AdminDashboardController::class, 'index']);
 
     // Debug helpers — هرگز در پروداکشن در دسترس نباشند
@@ -81,17 +86,25 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
         Route::get('/debug/kavir-products', [DebugController::class, 'kavirProducts']);
     }
 
-    // Activity log
-    Route::get('/activities', [AdminActivityLogController::class, 'index']);
+    // Activity log — ردِ ممیزیِ کلِ پنل: چه کسی تنظیمات/کوپن/مدیران/مجوزها را عوض کرد.
+    // پشت manage-users چون همان تیری است که /admin/admins را دارد (حاکمیتِ دسترسی‌ها)؛
+    // دیدنِ اینکه به چه کسی چه مجوزی داده شده نباید برای هر ادمینی باز باشد.
+    Route::get('/activities', [AdminActivityLogController::class, 'index'])
+        ->middleware('admin.permission:manage-users');
 
-    // Search
+    // Search — هر endpoint پشت مجوزِ همان داده‌ای که برمی‌گرداند.
+    // قبلاً هیچ‌کدام مجوز نداشتند در حالی که /admin/users پشت manage-users بود:
+    // یعنی جستجوی کاربر و تراکنش همان داده را بدون دروازه برمی‌گرداند.
     Route::controller(AdminSearchController::class)->prefix('search')->group(function () {
-        Route::get('/users', 'searchUsers');
-        Route::get('/transactions', 'searchTransactions');
+        Route::get('/users', 'searchUsers')->middleware('admin.permission:manage-users');
+        Route::get('/transactions', 'searchTransactions')->middleware('admin.permission:manage-financial');
     });
 
     // Users — back-office lookup endpoints (group 1)
-    Route::prefix('users')->controller(AdminUserController::class)->group(function () {
+    // این گروه همان اطلاعات هویتی/مالیِ گروه ۲ را برمی‌گرداند (پروفایل کامل، سفارش‌ها،
+    // سابقهٔ تراکنش) ولی بدونِ مجوز باز بود — یک ناسازگاری در سطح‌بندی. حالا هر دو
+    // گروه پشت manage-users هستند.
+    Route::prefix('users')->controller(AdminUserController::class)->middleware('admin.permission:manage-users')->group(function () {
         Route::post('/fetch-profile', 'getUserProfileForBackOffice');
         Route::get('/{user}/orders', 'getUserOrders');
         Route::get('/{user}/transactions', 'getUserTransactions');
@@ -288,7 +301,9 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
     });
 
     // Product Variants — واریانت‌ها (لیست/ساخت زیر محصول، بقیه با id واریانت)
-    Route::controller(AdminProductVariantController::class)->group(function () {
+    // manage-catalog قبلاً روی این گروه نبود در حالی که همهٔ گروه‌های هم‌ردیفِ کاتالوگ
+    // داشتند — واریانت مبنای قیمت و موجودی است، پس همان سطح دسترسی را می‌خواهد.
+    Route::controller(AdminProductVariantController::class)->middleware('admin.permission:manage-catalog')->group(function () {
         Route::get('/products/{product}/variants', 'index');
         Route::post('/products/{product}/variants', 'store');
         Route::get('/variants/{variant}', 'show');
@@ -456,6 +471,13 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
 
     // Legacy alias — مسیر قدیمی باسکول در ریشه /admin؛ برای سازگاری فرانت فعلی
     // نگه داشته شده. مسیر استاندارد: POST /admin/orders/{order}/weighbridge
+    //
+    // admin.permission:manage-orders اینجا حیاتی است و قبلاً نبود: مسیر استاندارد
+    // پشت این مجوز بود ولی این alias نه، پس ادمینِ محدودشده (مثلاً فقط manage-content)
+    // می‌توانست از همین‌جا وزن باسکول ثبت کند — سنگین‌ترین عملیات مالی سیستم
+    // (بازمحاسبهٔ POO/PTS، عودت خریدار، بدهی تأمین‌کننده، هولد مالیات).
+    // OrderWeighbridgeController هیچ چک داخلی ندارد و کاملاً به میدل‌ور تکیه می‌کند.
     Route::post('/{order}/weighbridge', [OrderWeighbridgeController::class, 'submitWeight'])
-        ->whereNumber('order');
+        ->whereNumber('order')
+        ->middleware('admin.permission:manage-orders');
 });

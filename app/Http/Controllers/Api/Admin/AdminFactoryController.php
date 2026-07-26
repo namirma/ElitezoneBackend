@@ -104,7 +104,9 @@ class AdminFactoryController extends Controller
             Factory::API_URL => ['nullable', 'string', 'max:255'],
             Factory::SUPPLIER_USER_ID => ['nullable', 'integer', 'exists:users,id'],
             Factory::IS_ACTIVE => ['boolean'],
-            Factory::LOGO => ['nullable', 'file', 'mimes:png,jpg,jpeg,webp,svg', 'max:2048'],
+            // svg عمداً نیست — آپلود روی دیسک public نباید SVG بپذیرد (XSS ذخیره‌شده).
+            // باید با SupplierFactoryController::rules() یکسان بماند.
+            Factory::LOGO => ['nullable', 'file', 'mimes:png,jpg,jpeg,webp', 'max:2048'],
         ];
     }
 

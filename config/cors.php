@@ -47,7 +47,9 @@ return [
 
     'exposed_headers' => [],
 
-    'max_age' => 0,
+    // Cache preflight for 24h — matches what the (now removed) hand-rolled Cors
+    // middleware sent, so dropping it costs no extra OPTIONS round-trips.
+    'max_age' => 86400,
 
     'supports_credentials' => true,
 

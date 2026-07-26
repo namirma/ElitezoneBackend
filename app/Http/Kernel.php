@@ -5,7 +5,6 @@ namespace App\Http;
 use App\Http\Middleware\AttachActivePriceCategory;
 use App\Http\Middleware\Authenticate;
 use App\Http\Middleware\CanSeeTicket;
-use App\Http\Middleware\Cors;
 use App\Http\Middleware\EncryptCookies;
 use App\Http\Middleware\EnsureRoleIsSelected;
 use App\Http\Middleware\EnsureUserIsActive;
@@ -110,7 +109,8 @@ class Kernel extends HttpKernel
         'signed' => ValidateSignature::class,
         'throttle' => ThrottleRequests::class,
         'verified' => EnsureEmailIsVerified::class,
-        'cors' => Cors::class,
+        // NOTE: there is deliberately no 'cors' alias. CORS is owned solely by the
+        // global HandleCors middleware reading config/cors.php — see RouteServiceProvider.
         'SecurityHeaders' => SecurityHeaders::class,
         'attach.price.category' => AttachActivePriceCategory::class,
         'role.admin' => EnsureUserIsAdmin::class,

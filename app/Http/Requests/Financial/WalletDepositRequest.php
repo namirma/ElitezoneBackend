@@ -39,12 +39,20 @@ class WalletDepositRequest extends FormRequest
 
     public function messages(): array
     {
+        // سقف باید با همان مقداری که rules() اعمال می‌کند ساخته شود و به‌صورت
+        // پارامتر :max به ترجمه پاس داده شود؛ بدون آن، پیام با placeholderِ خام
+        // به کاربر می‌رسید.
         $method = $this->input('payment_method');
         $maxMessage = '';
+
         if ($method === 'shaparak') {
-            $maxMessage = __('auth.deposit_amount_max_shaparak');
+            $maxMessage = __('auth.deposit_amount_max_shaparak', [
+                'max' => number_format((int) config('financial.deposit_max_shaparak', 200_000_000)),
+            ]);
         } elseif ($method === 'podium') {
-            $maxMessage = __('auth.deposit_amount_max_podium');
+            $maxMessage = __('auth.deposit_amount_max_podium', [
+                'max' => number_format((int) config('financial.deposit_max_podium', 2_000_000_000)),
+            ]);
         }
 
         return [

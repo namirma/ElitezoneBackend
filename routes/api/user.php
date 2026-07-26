@@ -172,8 +172,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
         Route::prefix('change-mobile')->controller(AccountSecurityController::class)->group(function () {
             Route::get('/', 'updateMobile');
-            Route::post('/request', 'requestChangeMobile');
-            Route::post('/confirm', 'confirmChangeMobile');
+            // throttle:sms — هر فراخوانی یک استعلامِ *پولیِ* Podium (تطبیق کدملی/موبایل)
+            // می‌زند و بعدش یک پیامک. بدون سقف، همان چیزی می‌شد که برای /education/fetch
+            // بسته شد: یک پروکسیِ استعلامِ نامحدود روی سرویسِ پولی.
+            Route::post('/request', 'requestChangeMobile')->middleware('throttle:sms');
+            // throttle:otp-verify — کدِ ۶ رقمی brute-force پذیر است؛ هم‌ردیفِ
+            // verify-code / password/verify / beneficiaries/confirm که همگی داشتند.
+            Route::post('/confirm', 'confirmChangeMobile')->middleware('throttle:otp-verify');
         });
 
         // Notifications
