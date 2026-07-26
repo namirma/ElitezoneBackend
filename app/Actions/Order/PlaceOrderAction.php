@@ -324,7 +324,11 @@ class PlaceOrderAction
             // eliteYAR = الیت یار که کمیسیون CO می‌گیرد (مؤثر — computed در calculateOrderFinancials)
             Order::ELITE_YAR_USER_ID => $fins['effective_elite_yar_id'],
             Order::ADDRESS_ID => $data->addressId,
-            'shipping_method_id' => $data->shippingMethodId ?? 1,
+            // بدون fallback به id=1: StoreOrderRequest این فیلد را required + exists
+            // می‌کند، پس رسیدنِ null اینجا یعنی یک صداکنندهٔ غیرHTTP قرارداد را نقض
+            // کرده. «?? 1» آن باگ را پشتِ یک رکوردِ دلخواه پنهان می‌کرد (و اگر رکورد ۱
+            // وجود نداشت، به یک خطای FK مبهم می‌رسید).
+            'shipping_method_id' => $data->shippingMethodId,
             Order::ORDER_NUMBER => $orderNumber, // استفاده از شماره تولید شده
             Order::STATUS => Order::STATUS_PENDING,
             Order::PAYMENT_STATUS => Order::PAYMENT_PENDING,

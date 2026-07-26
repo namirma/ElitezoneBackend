@@ -4,7 +4,6 @@ use App\Exceptions\Handler;
 use App\Http\Middleware\AttachActivePriceCategory;
 use App\Http\Middleware\Authenticate;
 use App\Http\Middleware\CanSeeTicket;
-use App\Http\Middleware\Cors;
 use App\Http\Middleware\EnsureAdminHasPermission;
 use App\Http\Middleware\EnsureRoleIsSelected;
 use App\Http\Middleware\EnsureUserIsActive;
@@ -54,9 +53,17 @@ return Application::configure(basePath: dirname(__DIR__))
         |----------------------------------------------------------------------
         | API Middleware Group
         |----------------------------------------------------------------------
-        | SecurityHeaders و Cors به ترتیب قبل و بعد از middleware پیش‌فرض
-        | aPI اضافه می‌شوند. EnsureFrontendRequestsAreStateful از Sanctum به
-        | اول گروه اضافه می‌شود تا session-based و token-based هر دو کار کنند.
+        | SecurityHeaders قبل از middleware پیش‌فرض API اضافه می‌شود.
+        | EnsureFrontendRequestsAreStateful از Sanctum به اول گروه اضافه می‌شود
+        | تا session-based و token-based هر دو کار کنند.
+        |
+        | CORS اینجا نیست و نباید باشد: تنها متولیِ آن HandleCors سراسری است که
+        | config/cors.php را می‌خواند. قبلاً App\Http\Middleware\Cors با allowlistِ
+        | هاردکدِ خودش (localhost:3000/8000/5173/5174) در همین گروه بود و چون هدر را
+        | در مسیر خروج بی‌قید می‌نوشت، مقدارِ HandleCors را بازنویسی می‌کرد و
+        | گِیتِ APP_ENV=local را خنثی می‌کرد — روی پروداکشن هم آن مبدأها با
+        | Allow-Credentials مجاز می‌شدند. برای افزودن مبدأ از CORS_EXTRA_ORIGINS
+        | استفاده کنید، نه میدل‌ور.
         */
         $middleware->group('api', [
             SecurityHeaders::class,
@@ -66,7 +73,6 @@ return Application::configure(basePath: dirname(__DIR__))
             // کاربر غیرفعال‌شده (is_active=false) با هیچ توکنی نباید سرویس بگیرد —
             // بدون این، toggleStatus ادمین صرفاً یک فلگ بی‌اثر بود.
             EnsureUserIsActive::class,
-            Cors::class,
         ]);
 
         /*
@@ -86,7 +92,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'signed' => ValidateSignature::class,
             'throttle' => ThrottleRequests::class,
             'verified' => EnsureEmailIsVerified::class,
-            'cors' => Cors::class,
+            // عمداً هیچ alias ای برای cors نیست — بالا را ببینید.
             'SecurityHeaders' => SecurityHeaders::class,
             'attach.price.category' => AttachActivePriceCategory::class,
             'role.admin' => EnsureUserIsAdmin::class,

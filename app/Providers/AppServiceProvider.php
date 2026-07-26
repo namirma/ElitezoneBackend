@@ -101,8 +101,17 @@ class AppServiceProvider extends ServiceProvider
          *   - هر ترکیب IP+موبایل حداکثر ۵ تلاش در دقیقه
          */
         RateLimiter::for('otp-verify', function (Request $request) {
-            $mobile = (string) $request->input('username', '');
-            $throttleKey = 'otp:'.$request->ip().':'.$mobile;
+            // تفکیک‌کننده: برای مسیرهای مهمان (ورود/بازیابی رمز) شمارهٔ موبایلِ ورودی،
+            // و برای مسیرهای احرازشده (تأیید تغییر موبایل، تأیید رمز) شناسهٔ کاربر.
+            // قبلاً همیشه username بود؛ روی مسیرهای احرازشده که username ندارند کلید
+            // به «IP + رشتهٔ خالی» می‌رسید و همهٔ کاربرانِ پشتِ یک NAT یک سطل مشترک
+            // می‌گرفتند — هم نشتِ throttle بین کاربران، هم ضعیف‌ترشدنِ گاردِ brute-force.
+            $user = $request->user();
+            $discriminator = $user !== null
+                ? (string) $user->id
+                : (string) $request->input('username', '');
+
+            $throttleKey = 'otp:'.$request->ip().':'.$discriminator;
 
             return Limit::perMinute(5)->by($throttleKey)->response(function () {
                 return error(__('auth.too_many_otp_attempts'), [], 429);

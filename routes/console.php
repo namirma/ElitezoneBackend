@@ -81,6 +81,13 @@ Schedule::command('sanctum:prune-expired --hours=168')
     ->daily()
     ->onOneServer();
 
+// حذف سبدهای مهمانِ رهاشده — /api/cart عمومی است و بازدیدِ بدونِ کوکی
+// (خزنده/ربات) هر بار یک ردیف carts می‌سازد که هیچ سیاست نگهداشتی نداشت.
+Schedule::command('carts:prune-guests')
+    ->dailyAt('01:30')
+    ->withoutOverlapping()
+    ->onOneServer();
+
 // اسکالیشن خودکار تیکت‌های عبورکرده از SLA (یک‌بار به ازای هر تیکت)
 Schedule::job(new EscalateOverdueTicketsJob)
     ->hourly()

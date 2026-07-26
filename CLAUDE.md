@@ -766,7 +766,11 @@ Event → Listener wiring is registered in `app/Providers/EventServiceProvider.p
 **All listeners implement `ShouldQueue`** (commit `26b2c66`). The last synchronous listener (`SendWinBackOffer`) was queued in Sprint 1. Never add a new listener without `ShouldQueue` + `InteractsWithQueue`.
 
 Dispatch flow:
-- `OrderPlaced` → inventory deduction, notifications
+- `OrderPlaced` → notifications only (`SendOrderPlacedNotification`). **Inventory
+  deduction is NOT here** — it happens synchronously inside `PlaceOrderAction`
+  (`InventoryService::deductStockForOrder`, within the placement transaction and under
+  `lockForUpdate`). This doc used to claim the listener deducted stock; adding a
+  deduction to the listener would double-deduct every order.
 - `OrderPaid` → payment notifications (SendOrderPaymentNotification)
 - `OrderCancelled` → stock restoration, wallet refund
 - `CartItemChanged` → analytics tracking (LogCartEvent)
@@ -920,7 +924,14 @@ tests/
   Unit/          — (empty placeholder dir — kept so phpunit.xml works)
 ```
 
-**Total: 232 tests, ~525 assertions — all green. ✅**
+**Total: 498 tests, 1215 assertions — all green. ✅**
+
+Round-5 audit additions: `Security/CorsAllowlistTest`,
+`Security/PublicDiskUploadRulesTest`, `Admin/AdminPermissionCoverageTest`,
+`Localization/TranslationKeysResolveTest`, `Cart/PruneGuestCartsTest`. The first
+three are **sweep** tests — they walk the whole route table / every upload rule
+rather than asserting one case, so a newly added ungated admin route or a new
+`mimes:...,svg` fails the suite on its own.
 
 Newer test files: `Auth/AuthControllerTest`, `Financial/EliteYARLifetimeCapTest`,
 `Financial/ReceiptPrivateDiskTest`, `Financial/ProcessTransactionRaceTest`,
@@ -1806,6 +1817,77 @@ never `Str::slug` server-side. `SupplierProfileResource` now exposes
 - The front-end SPA base URL is `config('app.front_url')` (env `FRONT_APP_URL`) — used in transactional emails
 - API-docs authorised emails are `config('app.api_docs_emails')` (env `APP_API_DOCS_EMAILS`, comma-separated)
 - **Uploads that land on the `public` disk must never accept `svg`** — the file is served from the app's own origin, so an SVG carrying `<script>` is stored XSS and `script-src 'self'` does not stop it. Keep the `mimes:` list identical between the Store*/Update* request pair for the same resource (they drifted once on `Badge::ICON`; pinned by `Admin/AdminBadgeTest`).
+
+### Hardening round 3 (audit round 5)
+
+- **CORS has exactly one source of truth: `config/cors.php`.** A second, hand-rolled
+  `App\Http\Middleware\Cors` used to be stacked on every API route by
+  `RouteServiceProvider` (`['api', 'cors']`). It carried its own **hardcoded**
+  origin list including `http://localhost:3000/8000/5173/5174` and wrote
+  `Access-Control-Allow-Origin` + `Allow-Credentials: true` unconditionally on the way
+  out — overriding Laravel's `HandleCors` and defeating the `APP_ENV === 'local'` gate in
+  the config. On production that let any page served from those local ports make
+  credentialed cross-origin calls and read the responses (simple requests skip preflight
+  entirely). The class is **deleted**, the `cors` alias is **removed** from `Kernel`, and
+  routes register as `Route::middleware('api')`. `config.max_age` is now `86400` so
+  dropping it costs no extra preflights. **Never add a route-level CORS middleware
+  again** — add origins to `CORS_EXTRA_ORIGINS`. Pinned by `Security/CorsAllowlistTest`.
+- **Every `/admin` + `/v1/podium` route must carry an `admin.permission`.**
+  `Admin/AdminPermissionCoverageTest` walks the whole route table and fails on any
+  ungated one, with a short allowlist of documented exemptions (`/admin/dashboard` —
+  the panel home; the two `debug/*` routes — non-production only). Three real gaps
+  were closed:
+  - `POST /admin/{order}/weighbridge` (the **legacy alias**) had no permission while the
+    canonical `/admin/orders/{order}/weighbridge` had `manage-orders` — a restricted
+    admin could run the heaviest financial operation in the system (POO/PTS recompute,
+    buyer refund, supplier debt, VAT holds). `OrderWeighbridgeController` has no internal
+    check and relies entirely on route middleware.
+  - All 8 product-variant routes → `manage-catalog` (every sibling catalog group had it).
+  - `users/fetch-profile`, `users/{user}/orders`, `users/{user}/transactions`,
+    `search/users` → `manage-users`; `search/transactions` → `manage-financial`;
+    `activities` → `manage-users`. These returned the same PII/financial data as the
+    already-gated group.
+- **`lang/fa/validation.php` now exists.** `app.locale=fa` with `fallback_locale=en` and
+  no Persian validation file meant every rule without an explicit `messages()` override
+  rendered in English — and there are **95 inline `$request->validate()` calls across 43
+  controllers** with none (the whole supplier self-service panel, most of the admin
+  panel). The file also carries an `attributes` map for the field names those inline
+  calls use. FormRequest `messages()`/`attributes()` still win over it.
+- **A missing translation key is a user-visible bug, not a no-op.** `success()`/`error()`
+  run the key through `__()`, and `__()` returns the key verbatim when it is missing — so
+  the response body literally read `global.forbidden`. 13 such keys were added/fixed
+  (incl. every document-download 403, the whole address form, and the wallet deposit
+  min/max). `StoreAddressRequest` was building `address.receiver_name.required` while
+  `lang/fa/address.php` is flat (`receiver_name_required`). `Localization/TranslationKeysResolveTest`
+  pins them. **When adding a `__()` call, add the key in the same commit.**
+- **No `public`-disk upload may accept `svg`** — enforced by
+  `Security/PublicDiskUploadRulesTest`, which greps every known upload rule. Three sites
+  still allowed it (`SupplierFactoryController` — reachable by any approved **supplier**,
+  not just admins — plus `AdminFactoryController` and `AdminProductCategoryController`).
+  With `FILESYSTEM_PUBLIC_DRIVER=local` (the `.env.example` default) those files are
+  served from the app's own origin, so an SVG carrying `<script>` is stored XSS and
+  `script-src 'self'` does not stop it.
+- **`carts:prune-guests`** (daily 01:30) deletes guest carts (`user_id = NULL`) untouched
+  for `config('cart.guest_retention_days')`, 30 by default. `GET /api/cart` is public and
+  mints a `carts` row for every cookie-less visit, so crawler traffic grew the table with
+  no retention policy at all. It keys on `updated_at` (never interrupt a live guest
+  session) and never touches a logged-in user's cart.
+- **`CartResolver` guest lookup is `whereNull(user_id)`-scoped.** `cart_session_id` is a
+  client-controlled cookie and must never be able to resolve to a logged-in user's cart.
+  User carts have `session_id = NULL` today so it was not exploitable — the guard makes
+  that an enforced invariant instead of an implicit assumption.
+- **`throttle` on the mobile-change flow.** `POST /profile/change-mobile/request` fires a
+  **paid** Podium NID↔mobile inquiry plus an SMS and had no limit (`throttle:sms` now) —
+  the same unbounded-paid-proxy shape already fixed for `/education/fetch`.
+  `POST /profile/change-mobile/confirm` brute-forces a 6-digit OTP and had no limit
+  (`throttle:otp-verify` now), unlike every sibling OTP-confirm route.
+- **The `otp-verify` limiter keys on `user()->id` when authenticated**, falling back to
+  the `username` input for guest paths. It used to always use `username`, so on
+  authenticated routes (which send none) the key collapsed to `IP + ''` and every user
+  behind one NAT shared a single bucket.
+- **`PlaceOrderAction` no longer defaults `shipping_method_id` to `1`.**
+  `StoreOrderRequest` makes it `required|exists`, so a null here means a non-HTTP caller
+  broke the contract; the old `?? 1` hid that behind an arbitrary row.
 
 ### Role-selection gate — opt-in, off by default
 
