@@ -63,6 +63,15 @@ class ProductVariantResource extends BaseJsonResource
                         'special_price' => (string) $price->special_price,
                         'golden_figure' => (string) ($price->golden_figure ?? 0),
                         'final_price' => (string) $final,
+
+                        // مالیات — از `VariantPriceHydrator` می‌آید (نه محاسبهٔ اینجا).
+                        // بدون این‌ها، باکس خریدِ سایت مجبور بود نرخ را `× ۱٫۱۰`
+                        // هاردکد کند و با تغییر نرخ در `price_settings`، پیش‌نمایشِ
+                        // قیمت از مبلغی که واقعاً در سبد کسر می‌شود واگرا می‌شد.
+                        'vat_rate' => isset($price->vat_rate) ? (float) $price->vat_rate : null,
+                        'vat_amount' => isset($price->vat_amount) ? (string) $price->vat_amount : null,
+                        'total_with_vat' => isset($price->price_with_vat) ? (string) $price->price_with_vat : null,
+
                         'role_special_price' => isset($price->role_special_price) ? (string) $price->role_special_price : null,
                         'role_general_price' => isset($price->role_general_price) ? (string) $price->role_general_price : null,
                         'role_golden_figure' => isset($price->role_golden_figure) ? (string) $price->role_golden_figure : null,

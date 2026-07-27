@@ -107,7 +107,7 @@ class DashboardAlertsService
             ->where('created_at', '>=', now()->subDay())->latest()->first();
 
         if ($deposit) {
-            $alerts[] = $this->makeAlert('wallet_deposit', 'success', 'wallet', '/profile/wallet', ['amount' => number_format($deposit->amount)], $deposit->id);
+            $alerts[] = $this->makeAlert('wallet_deposit', 'success', 'wallet', '/profile/finance/wallet', ['amount' => number_format($deposit->amount)], $deposit->id);
         }
 
         return $alerts;
@@ -117,10 +117,10 @@ class DashboardAlertsService
     {
         $alerts = [];
         foreach ($user->associatedEmployers()->wherePivot('status', 'pending')->get() as $employer) {
-            $alerts[] = $this->makeAlert('invite_received', 'info', 'user-group', '/profile/eliteYARs', ['name' => $employer->profile->name], $employer->id);
+            $alerts[] = $this->makeAlert('invite_received', 'info', 'user-group', '/profile/employers', ['name' => $employer->profile->name], $employer->id);
         }
         foreach ($user->technicalEliteYARs()->wherePivot('status', 'rejected')->where('employer_elite_yar.updated_at', '>=', now()->subDays(3))->get() as $eliteYAR) {
-            $alerts[] = $this->makeAlert('invite_rejected', 'warning', 'user-minus', '/profile/eliteYARs', ['name' => $eliteYAR->profile->name], $eliteYAR->id);
+            $alerts[] = $this->makeAlert('invite_rejected', 'warning', 'user-minus', '/profile/employers', ['name' => $eliteYAR->profile->name], $eliteYAR->id);
         }
 
         return $alerts;
