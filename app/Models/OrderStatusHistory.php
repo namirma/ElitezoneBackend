@@ -38,6 +38,19 @@ class OrderStatusHistory extends Model
         self::TO_STATUS,
         self::USER_ID,
         self::DURATION_MINUTES,
+        // ⚠️ CREATED_AT باید fillable باشد. `$timestamps = false` است، پس Eloquent
+        // خودش این ستون را پر نمی‌کند و `OrderObserver` صریحاً `now()` می‌فرستد —
+        // ولی تا وقتی اینجا نبود، mass-assignment آن را **بی‌صدا دور می‌ریخت** و
+        // ستون از `DEFAULT CURRENT_TIMESTAMP` مایگریشن (`useCurrent()`) پر می‌شد.
+        //
+        // یعنی این ستون با ساعتِ **MySQL** نوشته می‌شد در حالی که بقیهٔ ستون‌های
+        // زمانیِ سیستم (از جمله `orders.created_at`) با ساعتِ **PHP** و
+        // `config('app.timezone') = UTC` نوشته می‌شوند. اگر tz سرورِ دیتابیس UTC
+        // نباشد (روی این ماشین SYSTEM = UTC−۵، روی سرور ایران معمولاً +۳:۳۰)،
+        // هر ردیفِ تاریخچه به‌اندازهٔ همان اختلاف با بقیهٔ رویدادها جابه‌جا می‌شد.
+        // نتیجه‌اش در خطِ زمانیِ سفارش دیده شد: رویدادِ «تغییر وضعیت» پیش از
+        // «ثبت سفارش» ظاهر می‌شد.
+        self::CREATED_AT,
     ];
 
     protected $casts = [
