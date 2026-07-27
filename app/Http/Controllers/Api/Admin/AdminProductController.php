@@ -53,9 +53,40 @@ class AdminProductController extends Controller
 
     public function show(Product $product): JsonResponse
     {
-        $product->load(['category', 'images', 'videos', 'variants'])->loadCount('variants');
+        $product->load(['category', 'images', 'videos', 'variants', 'orderUnits'])->loadCount('variants');
 
         return success(new ProductResource($product), __('admin.products.received'));
+    }
+
+    /**
+     * واحدهای سفارشِ مجازِ این محصول + سقف تعداد هرکدام (پیوت `product_order_units`).
+     *
+     * جایگزینیِ کامل است (`sync`) — همان قرارداد `syncAttributes` واریانت و
+     * `syncFilters` دستهٔ فیلتر قیمت.
+     *
+     * ⚠️ محصولی که هیچ ردیفی اینجا ندارد **قابل افزودن به سبد نیست**:
+     * `AddToCartAction::validateOrderUnitCounts` هر واحدی را که در این پیوت نباشد
+     * «واحد نامعتبر» می‌شمارد و ۴۲۲ می‌دهد. تا نشست ۲۱ این جدول هیچ راه مدیریتی
+     * نداشت و فقط با seed پر می‌شد.
+     */
+    public function syncOrderUnits(Request $request, Product $product): JsonResponse
+    {
+        $data = $request->validate([
+            'units' => ['present', 'array'],
+            'units.*.order_unit_id' => ['required', 'integer', 'exists:order_units,id'],
+            'units.*.max_quantity' => ['required', 'integer', 'min:0'],
+        ]);
+
+        $sync = [];
+        foreach ($data['units'] as $row) {
+            $sync[$row['order_unit_id']] = ['max_quantity' => $row['max_quantity']];
+        }
+        $product->orderUnits()->sync($sync);
+
+        return success(
+            new ProductResource($product->load(['category', 'orderUnits'])),
+            __('admin.products.order_units_synced')
+        );
     }
 
     public function store(Request $request): JsonResponse

@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\Admin\AdminManagerController;
 use App\Http\Controllers\Api\Admin\AdminMenuItemController;
 use App\Http\Controllers\Api\Admin\AdminNotificationController;
 use App\Http\Controllers\Api\Admin\AdminOrderController;
+use App\Http\Controllers\Api\Admin\AdminOrderUnitController;
 use App\Http\Controllers\Api\Admin\AdminPageController;
 use App\Http\Controllers\Api\Admin\AdminPodiumDepositController;
 use App\Http\Controllers\Api\Admin\AdminPriceAdjustmentController;
@@ -305,6 +306,18 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
         Route::post('/{product}/images/{image}/primary', 'setPrimaryImage');
         Route::post('/{product}/videos', 'addVideo');
         Route::delete('/{product}/videos/{video}', 'deleteVideo');
+        // واحدهای سفارشِ مجاز + سقف تعداد (پیوت). بدون ردیف، افزودن به سبد ۴۲۲ می‌شود.
+        Route::post('/{product}/order-units', 'syncOrderUnits');
+    });
+
+    // Order Units — واحدهای سفارش (ظرفیت/بندیل/خرده‌فروشی…). `amount` ضریب تبدیل به
+    // کیلوگرم است و مبنای وزنِ سبد، کرایهٔ حمل و تسویه — پس همان سطحِ کاتالوگ را می‌گیرد.
+    Route::controller(AdminOrderUnitController::class)->prefix('order-units')->middleware('admin.permission:manage-catalog')->group(function () {
+        Route::get('/', 'index');
+        Route::post('/', 'store');
+        Route::get('/{orderUnit}', 'show');
+        Route::put('/{orderUnit}', 'update');
+        Route::delete('/{orderUnit}', 'destroy');
     });
 
     // Product Variants — واریانت‌ها (لیست/ساخت زیر محصول، بقیه با id واریانت)

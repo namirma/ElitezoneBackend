@@ -4,6 +4,7 @@ namespace App\Http\Resources\Cart;
 
 use App\Http\Resources\BaseJsonResource;
 use App\Http\Resources\Order\ShippingMethodResource;
+use App\Http\Resources\Product\ProductOrderUnitResource;
 use App\Http\Resources\Product\ProductVariantResource;
 use App\Http\Resources\Supplier\FactoryLocationResource;
 use App\Http\Resources\Supplier\FactoryResource;
@@ -42,6 +43,13 @@ class CartItemResource extends BaseJsonResource
 
             CartItem::QUANTITIES => (object) ($quantities ?? []),
 
+            // واحدهای سفارشِ محصولِ والد — همان شکلی که `ProductResource` می‌دهد.
+            // `CartResponseBuilder` رابطهٔ `items.productVariant.product.orderUnits` را از
+            // قبل eager-load می‌کرد ولی هیچ‌جا serialize نمی‌شد (یک eager-loadِ هدررفته)،
+            // پس صفحهٔ سبد نمی‌توانست باکس خرید را داده‌محور رندر کند و به همان
+            // شناسه‌های هاردکدِ ۱/۲/۳ گیر کرده بود.
+            'order_unit_limits' => ProductOrderUnitResource::sortedCollection($this->loadedOrderUnits()),
+
             CartItem::PRICE => (string) $this->price,
             CartItem::FINAL_PRICE => (string) $this->final_price,
             CartItem::VAT_AMOUNT => (string) $this->vat_amount,
@@ -55,5 +63,23 @@ class CartItemResource extends BaseJsonResource
             CartItem::CREATED_AT => optional($this->created_at)->format('Y-m-d H:i:s'),
             CartItem::UPDATED_AT => optional($this->updated_at)->format('Y-m-d H:i:s'),
         ];
+    }
+
+    /**
+     * واحدهای سفارشِ محصولِ والد — فقط اگر واقعاً eager-load شده باشند.
+     *
+     * صریح چک می‌شود تا این Resource هرگز یک کوئری N+1 راه نیندازد؛ فراخوانی از مسیری
+     * که رابطه را لود نکرده، آرایهٔ خالی می‌گیرد نه یک لود پنهان.
+     */
+    private function loadedOrderUnits(): ?\Illuminate\Support\Collection
+    {
+        $variant = $this->productVariant;
+        if (! $variant?->relationLoaded('product')) {
+            return null;
+        }
+
+        $product = $variant->product;
+
+        return $product?->relationLoaded('orderUnits') ? $product->orderUnits : null;
     }
 }

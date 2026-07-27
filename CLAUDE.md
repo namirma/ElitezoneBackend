@@ -1851,6 +1851,37 @@ nothing at all, never a placeholder.
 
 Pinned by `tests/Feature/Content/SiteContentTest.php` (11 tests).
 
+### Order units — the admin surface added in session 21 (`2026-07-27`)
+
+`order_units` (how many kg one "unit" is) and the `product_order_units` pivot (which units
+a product sells in, plus `max_quantity` per unit) had **no admin routes at all** until
+session 21 — they were seed-only, while `order_units.amount` drives cart weight, freight
+and the whole settlement. Now:
+
+- `AdminOrderUnitController` — CRUD under `manage-catalog`. **`destroy` checks all three
+  reference paths** (the pivot, `product_variants.limit_order_unit_id`,
+  `products.aggregate_limit_order_unit_id`) and returns a Persian **422** rather than
+  letting the FK cascade quietly break every product that used the unit.
+- `AdminProductController::syncOrderUnits` — `POST /admin/products/{product}/order-units`,
+  body `units: [{order_unit_id, max_quantity}]`, full replace (same contract as
+  `syncAttributes` / `syncFilters`). An empty array is valid (`present`, not `required`).
+- **`ProductOrderUnitResource`** is the one shape for "which unit, what factor, what cap",
+  used by **both** `ProductResource.order_unit_limits` and
+  `CartItemResource.order_unit_limits`. The customer buy box needs `amount` *and*
+  `max_quantity` together; before this, the list endpoint gave only the cap and the detail
+  endpoint only the factor, so no endpoint gave both and the frontend hardcoded 25000/5000.
+- **`amount` and `max_quantity` are cast to `(float)` in the Resource on purpose.** Laravel
+  `decimal` columns serialize as strings and the frontend *multiplies* by these — the exact
+  shape that produced the 100× price bug in session 20.
+- **Write responses must `refresh()` before serializing.** Without it, `store`/`update`
+  returns the in-memory value the client sent (`2750`) while a later `GET` returns the DB
+  decimal (`"2750.00"`) — one field, two shapes. Pinned by
+  `AdminOrderUnitTest::amount_has_the_same_shape_after_write_as_after_read`.
+- `CartResponseBuilder` also eager-loads `items.productVariant.limitOrderUnit`; without it
+  `limit_order_unit` is absent and the cart editor cannot show min/max at all.
+  (It already loaded `product.orderUnits` but `CartItemResource` never serialized them —
+  a paid-for eager load that was thrown away.)
+
 ### Hardening round 2 (`2026_07_20_13*`)
 
 - **Sentry** (`sentry/sentry-laravel`) is wired via `Handler::register` reportable
