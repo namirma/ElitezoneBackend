@@ -31,7 +31,14 @@ class TicketController extends Controller
 
     public function show(Ticket $ticket): JsonResponse
     {
-        return success(new TicketResource($this->service->show($ticket)));
+        $loaded = $this->service->show($ticket);
+
+        // مثل سمت ادمین: پاسخِ همین درخواست باید هنوز شمارِ خوانده‌نشده را داشته
+        // باشد، بعد ستون به‌روز شود.
+        $payload = new TicketResource($loaded);
+        $loaded->markReadByUser();
+
+        return success($payload);
     }
 
     public function getDepartments(): JsonResponse

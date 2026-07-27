@@ -82,7 +82,13 @@ class AdminTicketController extends Controller
             'notes.admin.profile',
         ]);
 
-        return success(new TicketResource($ticket), __('global.received_successfully'));
+        // پاسخِ همین درخواست باید هنوز شمارِ خوانده‌نشده را داشته باشد (وگرنه
+        // نشانگر در همان لحظه‌ی باز شدن صفر می‌شود و ادمین نمی‌فهمد چه چیزی تازه
+        // بود). پس اول Resource ساخته می‌شود، بعد ستون به‌روز می‌شود.
+        $payload = new TicketResource($ticket);
+        $ticket->markReadByAdmin();
+
+        return success($payload, __('global.received_successfully'));
     }
 
     /**

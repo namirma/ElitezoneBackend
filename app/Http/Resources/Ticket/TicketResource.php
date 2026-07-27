@@ -41,11 +41,24 @@ class TicketResource extends BaseJsonResource
             default => $priorityKey,
         };
 
+        // «خوانده‌نشده» از دیدِ همین بیننده. ادمین باید پاسخ‌های کاربر را ببیند و
+        // کاربر پاسخ‌های پشتیبانی را — یک عددِ مشترک برای هر دو، غلط می‌شد.
+        // منطق در خودِ مدل است تا پنل و سایت دو تعریفِ واگرا نسازند.
+        $isAdminViewer = (bool) $request->user()?->hasRole('admin');
+        $unreadCount = $this->relationLoaded('replies')
+            ? ($isAdminViewer ? $this->unreadForAdminCount() : $this->unreadForUserCount())
+            : 0;
+
         return [
             'id' => $this->id,
             'code' => $this->code,
             'subject' => $this->subject,
             'message' => $this->message,
+
+            'unread_count' => $unreadCount,
+            'has_unread' => $isAdminViewer
+                ? ($this->relationLoaded('replies') ? $this->isUnreadForAdmin() : $this->admin_last_read_at === null)
+                : $unreadCount > 0,
 
             // status_info — ساختار یکپارچه با بقیه Resourceها
             'status_info' => [

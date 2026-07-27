@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\Ticket;
 use App\Models\TicketFile;
 use App\Models\TicketNote;
+use App\Models\TicketReply;
 use App\Repositories\Contracts\TicketRepositoryInterface;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Auth;
@@ -188,9 +189,26 @@ class TicketService
         $reopenedTickets = (int) Ticket::query()->where(Ticket::REOPENED_COUNT, '>', 0)->count();
         $reopenRate = $total > 0 ? round($reopenedTickets / $total, 4) : 0.0;
 
+        // تیکت‌هایی که پنل هنوز ندیده است: یا هرگز باز نشده‌اند، یا پاسخی از
+        // *کاربر* دارند که بعد از آخرین بازدیدِ ادمین ثبت شده. این عدد نشانگرِ
+        // کنارِ آیتمِ منو را می‌سازد؛ بدون آن، ادمین باید تک‌تک تیکت‌ها را باز
+        // می‌کرد تا بفهمد کدام پیام تازه دارد.
+        $unreadTickets = (int) Ticket::query()
+            ->whereNull(Ticket::ADMIN_LAST_READ_AT)
+            ->orWhereHas('replies', function ($q) {
+                $q->whereNull(TicketReply::ADMIN_ID)
+                    ->whereColumn(
+                        'ticket_replies.created_at',
+                        '>',
+                        'tickets.'.Ticket::ADMIN_LAST_READ_AT
+                    );
+            })
+            ->count();
+
         return [
             'total' => $total,
             'open' => $openCount,
+            'unread' => $unreadTickets,
             'sla_breaches' => $slaBreaches,
             'by_department' => $byDepartment,
             'by_status' => $byStatus,

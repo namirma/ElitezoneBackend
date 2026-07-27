@@ -31,7 +31,10 @@ class TicketRepository implements TicketRepositoryInterface
     {
         return $this->query()
             ->where('user_id', Auth::id())
-            ->with(['department'])
+            // `replies` لازم است: `TicketResource` شمارِ «پاسخ‌های خوانده‌نشده»
+            // را از همین رابطه می‌سازد و بدون لود بودنش بی‌صدا صفر برمی‌گرداند —
+            // یعنی کاربر هیچ‌وقت نمی‌فهمید پشتیبانی جواب داده است.
+            ->with(['department', 'replies'])
             ->latest()
             ->get();
     }
