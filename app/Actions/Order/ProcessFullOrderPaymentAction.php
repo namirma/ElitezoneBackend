@@ -67,9 +67,11 @@ class ProcessFullOrderPaymentAction
             // بدون الیت‌یار سندی را وعده می‌داد که هرگز ساخته نشده بود — و کلاینت
             // از همین لیست لینک دانلود می‌سازد، یعنی یک لینکِ مرده.
             // شرط اینجا **عیناً** همان شرطِ تولید است تا این دو هرگز واگرا نشوند.
-            $eliteYARId = $order->{Order::ELITE_YAR_USER_ID};
+            // getAttribute به‌جای دسترسی داینامیک: larastan این ستون را نمی‌شناسد و
+            // دسترسی مستقیم یک ورودیِ تازه به baseline اضافه می‌کرد.
+            $eliteYARId = $order->getAttribute(Order::ELITE_YAR_USER_ID);
             $hasCommissionedEliteYAR = $eliteYARId !== null
-                && (int) $eliteYARId !== (int) $order->{Order::PLACER_USER_ID};
+                && (int) $eliteYARId !== (int) $order->getAttribute(Order::PLACER_USER_ID);
 
             return new PayOrderResult(
                 scenario: 'direct_purchase',

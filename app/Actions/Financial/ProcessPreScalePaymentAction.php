@@ -37,6 +37,10 @@ class ProcessPreScalePaymentAction
                 throw new \RuntimeException(__('orders.internal_order_not_found'));
             }
 
+            // larastan نتیجهٔ `lockForUpdate()->first()` را `Model` می‌بیند، نه `Order`؛
+            // بعد از گاردِ بالا این تنگ‌سازی درست است و `resolveVatRate(Order)` را
+            // بدون افزودن ورودی به baseline قابل فراخوانی می‌کند.
+            /** @var Order $locked */
             if ($this->isAlreadyProcessed($locked)) {
                 Log::channel('financial')->warning("Race detected: order {$locked->id} already paid.");
 
@@ -185,9 +189,9 @@ class ProcessPreScalePaymentAction
             // برای هولد کمیسیون استفاده می‌کند، پس سند با جریان پول هم‌راستا می‌ماند.
             // (قبلاً روی beneficiary_user_id گیت شده بود؛ در مسیر «کارفرما با الیت‌یار»
             //  که beneficiary=null است، Doc D اشتباهاً صادر نمی‌شد.)
-            $eliteYARId = $locked->{Order::ELITE_YAR_USER_ID};
+            $eliteYARId = $locked->getAttribute(Order::ELITE_YAR_USER_ID);
             $hasCommissionedEliteYAR = $eliteYARId !== null
-                && (int) $eliteYARId !== (int) $locked->{Order::PLACER_USER_ID};
+                && (int) $eliteYARId !== (int) $locked->getAttribute(Order::PLACER_USER_ID);
 
             $this->invoiceGenerator->generateDirectPurchaseDocs(
                 $locked,

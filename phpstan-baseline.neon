@@ -1331,36 +1331,6 @@ parameters:
 			path: app/Services/PodiumServices/PodiumWithdrawalService.php
 
 		-
-			message: "#^Access to an undefined property App\\\\Models\\\\ProductPrice\\:\\:\\$final_price\\.$#"
-			count: 1
-			path: app/Services/Pricing/VariantPriceHydrator.php
-
-		-
-			message: "#^Access to an undefined property App\\\\Models\\\\ProductPrice\\:\\:\\$pricing_debug\\.$#"
-			count: 1
-			path: app/Services/Pricing/VariantPriceHydrator.php
-
-		-
-			message: "#^Access to an undefined property App\\\\Models\\\\ProductPrice\\:\\:\\$role_general_price\\.$#"
-			count: 1
-			path: app/Services/Pricing/VariantPriceHydrator.php
-
-		-
-			message: "#^Access to an undefined property App\\\\Models\\\\ProductPrice\\:\\:\\$role_golden_figure\\.$#"
-			count: 1
-			path: app/Services/Pricing/VariantPriceHydrator.php
-
-		-
-			message: "#^Access to an undefined property App\\\\Models\\\\ProductPrice\\:\\:\\$role_special_price\\.$#"
-			count: 1
-			path: app/Services/Pricing/VariantPriceHydrator.php
-
-		-
-			message: "#^Access to an undefined property App\\\\Models\\\\ProductPrice\\:\\:\\$vat_rate\\.$#"
-			count: 1
-			path: app/Services/Pricing/VariantPriceHydrator.php
-
-		-
 			message: "#^Access to an undefined property App\\\\Models\\\\ProductVariant\\:\\:\\$min_price\\.$#"
 			count: 1
 			path: app/Services/Pricing/VariantPriceHydrator.php

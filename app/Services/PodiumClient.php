@@ -86,7 +86,7 @@ class PodiumClient
         } catch (RequestException $e) {
             Log::error('Podium request failed', [
                 'service' => $serviceKey,
-                'status' => $e->response?->status(),
+                'status' => $e->response->status(),
                 'message' => $e->getMessage(),
             ]);
             throw new ServiceUnavailableHttpException(null, __('podium.service_error'));

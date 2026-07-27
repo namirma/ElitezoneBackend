@@ -8,6 +8,29 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * قیمت‌های محاسبه‌شده — ستون نیستند، فقط در حافظه تزئین می‌شوند.
+ *
+ * `VariantPriceHydrator` این هشت خاصیت را روی نمونهٔ مدل می‌نشاند تا
+ * `ProductVariantResource` بتواند خروجیِ پایپ‌لاین قیمت‌گذاری را سریالایز کند.
+ * هیچ‌کدام ستونِ `product_prices` نیستند و هرگز ذخیره نمی‌شوند (این مدل در مسیر
+ * نمایش هیچ‌وقت `save()` نمی‌شود) — اعلامشان اینجا فقط برای این است که larastan
+ * آن‌ها را بشناسد. پیش از این، شش‌تایشان به‌جای اعلام، در `phpstan-baseline.neon`
+ * سرکوب شده بودند.
+ *
+ * همه nullable اعلام شده‌اند چون تزئین شرطی است: اگر `hydrate()` روی این نمونه اجرا
+ * نشده باشد اصلاً وجود ندارند، و `ProductVariantResource` دقیقاً به همین دلیل هرکدام
+ * را با `isset()` گارد می‌کند. اعلامِ غیرnullable آن گاردها را «همیشه درست» می‌کرد.
+ *
+ * @property float|null $final_price
+ * @property float|null $role_special_price
+ * @property float|null $role_general_price
+ * @property float|null $role_golden_figure
+ * @property float|null $vat_rate
+ * @property float|null $vat_amount
+ * @property float|null $price_with_vat
+ * @property mixed $pricing_debug
+ */
 class ProductPrice extends Model
 {
     use HasFactory;
