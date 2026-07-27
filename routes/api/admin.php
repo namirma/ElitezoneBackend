@@ -35,6 +35,7 @@ use App\Http\Controllers\Api\Admin\AdminSearchController;
 use App\Http\Controllers\Api\Admin\AdminSettingController;
 use App\Http\Controllers\Api\Admin\AdminShippingRateController;
 use App\Http\Controllers\Api\Admin\AdminSupplierController;
+use App\Http\Controllers\Api\Admin\AdminSystemHealthController;
 use App\Http\Controllers\Api\Admin\AdminTicketController;
 use App\Http\Controllers\Api\Admin\AdminUserController;
 use App\Http\Controllers\Api\Admin\AdminWalletController;
@@ -82,6 +83,12 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
     // داشبورد را صفحهٔ فرود ثابت فرض کند.
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])
         ->middleware('admin.permission:manage-financial');
+
+    // سلامتِ سامانه — صف، پشتیبان، دفترِ مالی و سفارش‌های گیرکرده در یک پاسخ.
+    // پشتِ manage-financial چون بخشِ «دفتر» شمارِ مغایرت‌های مالی را برمی‌گرداند.
+    Route::get('/system-health', AdminSystemHealthController::class)
+        ->middleware('admin.permission:manage-financial')
+        ->name('admin.system-health');
 
     // Debug helpers — هرگز در پروداکشن در دسترس نباشند
     if (! app()->environment('production')) {
@@ -157,6 +164,9 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
     Route::controller(AdminOrderController::class)->prefix('orders')->middleware('admin.permission:manage-orders')->group(function () {
         Route::get('/', 'index');
         Route::get('/{order}/history', 'history');
+        // روایتِ کاملِ سفارش (چرخهٔ عمر + وضعیت + پول + اسناد در یک خط زمانی).
+        // مثل /history باید پیش از wildcard /{order} بیاید.
+        Route::get('/{order}/timeline', 'timeline');
         Route::get('/{order}', 'show');
         Route::post('/{order}/status', 'changeStatus');
         // Doc P — فاکتور مودیان سیستم (سازه → خریدار)، آزادسازی WVAT hold

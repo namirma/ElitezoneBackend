@@ -1,5 +1,6 @@
 <?php
 
+use App\Constants\FinancialCodes;
 use App\Models\Order;
 
 return [
@@ -59,6 +60,59 @@ return [
     'survey_not_allowed_for_status' => 'ثبت نظرسنجی فقط برای سفارش‌های تحویل‌داده‌شده امکان‌پذیر است.',
     'survey_already_submitted' => 'نظرسنجی این سفارش قبلاً ثبت شده است.',
     'survey_submitted_successfully' => 'نظرسنجی شما با موفقیت ثبت شد.',
+
+    /*
+    | نامِ خوانای اسنادِ مالی. کدها در App\Constants\FinancialCodes تعریف شده‌اند و
+    | در ستون `invoices.document_code` ذخیره می‌شوند؛ «سند LO» به‌تنهایی برای کسی
+    | که سندِ طراحی را ندیده معنایی ندارد.
+    */
+    'document_codes' => [
+        FinancialCodes::DOC_PRE_INVOICE => 'پیش‌فاکتور خریدار',
+        FinancialCodes::DOC_RECEIPT_OWNER => 'رسید پرداخت خریدار',
+        FinancialCodes::DOC_REPORT_SUPPLIER => 'گزارش پرداخت برای تأمین‌کننده',
+        FinancialCodes::DOC_LOADING_ORDER => 'دستور بارگیری',
+        FinancialCodes::DOC_ELITE_YAR_REPORT => 'گزارش پرداخت به الیت یار',
+        FinancialCodes::DOC_RESERVE_RECEIPT => 'رسید پرداخت رزرو',
+        FinancialCodes::DOC_RESERVE_REPORT => 'گزارش رزرو برای تأمین‌کننده',
+        FinancialCodes::DOC_FINAL_RECEIPT_OWNER => 'رسید تکمیل پرداخت خریدار',
+        FinancialCodes::DOC_FINAL_REPORT_SUPPLIER => 'گزارش تکمیل پرداخت برای تأمین‌کننده',
+        FinancialCodes::DOC_REFUND_RECEIPT => 'رسید بازگشت مبلغ رزرو',
+        FinancialCodes::DOC_CANCEL_REPORT => 'گزارش لغو رزرو',
+        FinancialCodes::DOC_BILL_OF_LADING => 'بارنامه / مجوز خروج',
+        FinancialCodes::DOC_MODIFIED_INVOICE_OWNER => 'فاکتور اصلاح‌شده خریدار (وزن بارنامه)',
+        FinancialCodes::DOC_MODIFIED_INVOICE_SUPPLIER => 'فاکتور اصلاح‌شده تأمین‌کننده (وزن بارنامه)',
+        FinancialCodes::DOC_TAX_INVOICE_SUPPLIER => 'فاکتور مودیان: تأمین‌کننده ← سازه',
+        FinancialCodes::DOC_TAX_INVOICE_BUYER => 'فاکتور مودیان: سازه ← خریدار',
+        FinancialCodes::DOC_TAX_INVOICE_ELITE_YAR => 'فاکتور مودیان: الیت یار ← سازه',
+        FinancialCodes::DOC_SURVEY => 'نظرسنجی خریدار',
+        FinancialCodes::DOC_SURVEY_ELITE_YAR => 'نظرسنجی الیت یار',
+    ],
+
+    /*
+    | برچسبِ وضعیتِ *سفارش* — فقط و فقط وضعیت‌های چرخهٔ سفارش.
+    |
+    | جدا از آرایهٔ `status` پایین است چون آن یکی هم‌زمان وضعیتِ سفارش، وضعیتِ
+    | پرداخت و وضعیتِ پرداختِ سهم را در یک فضای نام نگه می‌دارد و این سه، کلیدهای
+    | مشترک دارند: `pending`، `paid` و `failed` هر کدام در بیش از یک دسته هستند.
+    | چون در آرایهٔ PHP کلیدِ بعدی روی قبلی می‌نشیند، `orders.status.pending` عملاً
+    | «در انتظار پرداخت سهم» می‌شود — نه «در انتظار تایید». هر جا فقط وضعیتِ سفارش
+    | لازم است باید از این آرایه خوانده شود تا آن برخورد اثری نگذارد.
+    */
+    'order_status' => [
+        Order::STATUS_PENDING => 'در انتظار تایید (رزرو شده)',
+        Order::STATUS_RESERVED => 'رزرو شده',
+        Order::STATUS_RESERVED_EXTENDED => 'رزرو تمدید شده',
+        Order::STATUS_PROCESSING => 'در حال پردازش (ثبت اولیه)',
+        Order::STATUS_PREPARING => 'در حال آماده‌سازی',
+        Order::STATUS_WEIGHBRIDGE_DONE => 'باسکول انجام شد (ثبت نهایی)',
+        Order::STATUS_WAYBILL_ISSUED => 'بارنامه صادر شد',
+        Order::STATUS_SHIPPED => 'در حال حمل',
+        Order::STATUS_DELIVERED => 'تحویل شده',
+        Order::STATUS_COMPLETED => 'تکمیل شده',
+        Order::STATUS_PENDING_SURPLUS_PAYMENT => 'در انتظار پرداخت مابه‌التفاوت',
+        Order::STATUS_CANCELLED => 'لغو شده',
+        Order::STATUS_FAILED => 'ناموفق',
+    ],
 
     'status' => [
         Order::STATUS_PENDING => 'در انتظار تایید (رزرو شده)',

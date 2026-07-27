@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Services\Ops\QueueHealthService;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -19,6 +19,9 @@ use Illuminate\Support\Facades\Log;
  * خروجی: exit code 0 سالم، 1 هشدار. مانیتورینگِ بیرونی (cron wrapper/uptime check)
  * می‌تواند روی همین کد alert بگذارد؛ لاگِ `error` هم اگر Sentry DSN ست باشد به
  * error-tracker می‌رود.
+ *
+ * قواعد و آستانه‌ها در QueueHealthService است تا صفحهٔ سلامتِ سامانه هم دقیقاً
+ * همان‌ها را ببیند.
  */
 class CheckQueueHealth extends Command
 {
@@ -26,55 +29,22 @@ class CheckQueueHealth extends Command
 
     protected $description = 'بررسی سلامت صف: سن و حجم jobهای منتظر و تعداد شکست‌ها';
 
-    public function handle(): int
+    public function handle(QueueHealthService $queueHealth): int
     {
-        // فقط برای درایورِ database معنا دارد؛ روی redis/sqs متریک‌ها جای دیگری‌اند.
-        if (config('queue.default') !== 'database') {
-            $this->info('queue:health فقط برای درایور database است؛ رد شد (درایور فعلی: '.config('queue.default').').');
+        $report = $queueHealth->report();
+
+        if (! $report['applicable']) {
+            $this->info('queue:health فقط برای درایور database است؛ رد شد (درایور فعلی: '.$report['driver'].').');
 
             return self::SUCCESS;
         }
 
-        $problems = [];
-        $stats = $this->collectStats();
-
-        if ($stats['oldest_pending_age'] !== null
-            && $stats['oldest_pending_age'] > config('ops.queue.max_pending_age_seconds')) {
-            $problems[] = sprintf(
-                'قدیمی‌ترین job منتظر %d ثانیه سن دارد (آستانه %d) — به احتمال زیاد worker متوقف است.',
-                $stats['oldest_pending_age'],
-                config('ops.queue.max_pending_age_seconds')
-            );
-        }
-
-        if ($stats['pending'] > config('ops.queue.max_pending_jobs')) {
-            $problems[] = sprintf(
-                '%d job در صف منتظر است (آستانه %d) — صف در حال انباشت.',
-                $stats['pending'],
-                config('ops.queue.max_pending_jobs')
-            );
-        }
-
-        if ($stats['recent_failures'] > config('ops.queue.max_recent_failures')) {
-            $problems[] = sprintf(
-                '%d شکست در %d دقیقهٔ اخیر (آستانه %d).',
-                $stats['recent_failures'],
-                config('ops.queue.recent_failure_window_minutes'),
-                config('ops.queue.max_recent_failures')
-            );
-        }
-
-        if ($stats['failed_total'] > config('ops.queue.max_failed_jobs')) {
-            $problems[] = sprintf(
-                'مجموع failed_jobs برابر %d است (آستانه %d) — نیازمند بررسی و پاک‌سازی.',
-                $stats['failed_total'],
-                config('ops.queue.max_failed_jobs')
-            );
-        }
+        $stats = $report['stats'];
+        $problems = $report['problems'];
 
         if ($this->option('json')) {
             $this->line((string) json_encode(
-                $stats + ['healthy' => $problems === [], 'problems' => $problems],
+                $stats + ['healthy' => $report['healthy'], 'problems' => $problems],
                 JSON_UNESCAPED_UNICODE
             ));
         }
@@ -100,34 +70,5 @@ class CheckQueueHealth extends Command
         }
 
         return self::FAILURE;
-    }
-
-    /**
-     * @return array{pending:int, oldest_pending_age:int|null, failed_total:int, recent_failures:int}
-     */
-    private function collectStats(): array
-    {
-        $pending = (int) DB::table('jobs')->count();
-
-        // `jobs.available_at` مهرِ زمانیِ یونیکس است (نه datetime).
-        $oldestAvailableAt = DB::table('jobs')->min('available_at');
-        $oldestPendingAge = $oldestAvailableAt === null
-            ? null
-            : max(0, time() - (int) $oldestAvailableAt);
-
-        $failedTotal = (int) DB::table('failed_jobs')->count();
-
-        $recentFailures = (int) DB::table('failed_jobs')
-            ->where('failed_at', '>=', now()->subMinutes(
-                (int) config('ops.queue.recent_failure_window_minutes')
-            ))
-            ->count();
-
-        return [
-            'pending' => $pending,
-            'oldest_pending_age' => $oldestPendingAge,
-            'failed_total' => $failedTotal,
-            'recent_failures' => $recentFailures,
-        ];
     }
 }

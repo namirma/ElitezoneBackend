@@ -10,6 +10,9 @@ return [
     'activity_log_received' => 'گزارش فعالیت‌ها دریافت شد.',
     'invalid_subject_type' => 'نوع موجودیت وارد شده در لیست مجاز نیست.',
     'order_history_received' => 'تاریخچه سفارش دریافت شد.',
+    'order_timeline_received' => 'روایت زمانی سفارش دریافت شد.',
+    'system_health_ok' => 'سامانه سالم است.',
+    'system_health_degraded' => 'سامانه مشکل دارد — جزئیات را بررسی کنید.',
 
     'analytics_received' => 'داده‌های آنالیتیکس با موفقیت دریافت شد.',
     'inventory_predictions_received' => 'گزارش موجودی با موفقیت دریافت شد.',
