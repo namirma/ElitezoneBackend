@@ -6,6 +6,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 EliteZone Backend — a Laravel 10 API for a B2B construction materials marketplace (rebar, brick, etc.). The codebase lives entirely inside the `api/` directory. It handles user authentication (OTP-based), product catalog with dynamic pricing, shopping cart, order lifecycle (including reservation flow), wallet/financial operations, ticketing, and an admin panel.
 
+## 🚨 Required local setup — SMS goes to real phones from dev
+
+`.env` carries **live TSMS credentials**, so `php artisan queue:work` on a
+development machine will deliver queued SMS jobs to **real customer numbers**.
+This happened once (session 22): draining a backlog texted real people.
+
+`SmsService::send()` now blocks this whenever `APP_ENV !== production`. Only
+numbers in `TSMS_DEV_ALLOWLIST` (comma-separated, `config/services.tsms.dev_allowlist`)
+are contacted; everything else is logged and treated as sent so the job neither
+retries nor fails. **An empty allowlist blocks everything** — that is the
+intended default for a fresh clone. Put *your own* number there, never a user's.
+
+Pinned by `Security/SmsDevAllowlistTest`. Do not weaken the environment check.
+
 ## ⚠️ Required local setup — Persian PDF fonts
 
 `storage/fonts/YekanBakh-Regular.ttf` and `storage/fonts/YekanBakh-Bold.ttf` are in
@@ -1223,6 +1237,36 @@ Combined with purging stale entries, the baseline went **298 → 275 entries (39
 errors)**. When you add a relation, type it.
 
 ## Known Architectural Gotchas
+
+### PHP writes timestamps in UTC, MySQL writes them in the server's zone
+
+`config('app.timezone')` is **UTC** but the MySQL session timezone is `SYSTEM`.
+So a column filled by Eloquent/`now()` and a column filled by the database
+(`useCurrent()`, `DEFAULT CURRENT_TIMESTAMP`) land in **different time bases** —
+offset by the DB server's UTC offset (5h on one dev machine, 3.5h on an Iran box).
+
+This bit `order_status_histories.created_at`: the column is `useCurrent()`, the
+model sets `$timestamps = false`, and `OrderObserver` passed `created_at => now()`
+explicitly — but `created_at` was missing from `$fillable`, so mass assignment
+**silently dropped it** and MySQL's default won. Every history row was skewed
+against every other timestamp in the system, which surfaced as the order timeline
+showing the status change *before* the order was created.
+
+When a model turns off `$timestamps` and a writer sets the column by hand, that
+column must be in `$fillable` — otherwise the DB default wins and you get a silent
+timezone skew, not an error. Pinned by `Order/OrderStatusHistoryTimestampTest`.
+
+### `??` never fires on a `NOT NULL DEFAULT 0` column
+
+`orders.vat_rate` is `decimal(5,2) NOT NULL DEFAULT 0.00`, so it is never `null`
+and `$order->vat_rate ?? config('financial.default_vat_rate')` always yields
+`0.00` — the fallback is dead code and the whole settlement runs at zero VAT.
+
+Read the rate through `SettlementCalculatorService::resolveVatRate()`, which
+checks `> 0` and falls back to the live price setting and then to
+`financial.default_vat_rate`. All three payment paths use it, so one order cannot
+be taxed differently depending on which path paid it. Never re-inline a literal
+rate and never reach for `??` on a numeric NOT NULL column.
 
 ### Exception Handler — `renderable()` runs before `unauthenticated()`
 
