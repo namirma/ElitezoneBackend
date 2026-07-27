@@ -23,6 +23,9 @@
         <env name="APP_ENV" value="testing"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="CACHE_DRIVER" value="array"/>
+        <!-- Idempotency در پروداکشن روی storeِ مشترک (database/redis) است؛ در تست
+             روی array می‌ماند تا سریع بماند و با DatabaseTransactions تداخل نکند. -->
+        <env name="IDEMPOTENCY_CACHE_STORE" value="array"/>
         <!-- ⚠️ ایمنی حیاتی: تست‌ها روی یک دیتابیسِ جداگانه اجرا می‌شوند، نه دیتابیس زنده.
              برخی تست‌ها از RefreshDatabase استفاده می‌کنند که migrate:fresh می‌زند (drop همه جدول‌ها).
              این override تضمین می‌کند آن تخریب فقط روی laravel_testing رخ دهد نه laravel.

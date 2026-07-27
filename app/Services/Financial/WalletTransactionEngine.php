@@ -10,6 +10,7 @@ use App\Models\Order;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
+use App\Support\Money;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -94,6 +95,18 @@ class WalletTransactionEngine
         ?string $description = null,
         ?int $targetUserId = null
     ): void {
+        // گاردِ علامت — پیش از هر چیز. گاردهای «موجودی کافی» پایین‌تر با `<` مقایسه
+        // می‌کنند، پس یک مبلغِ منفی از آن‌ها رد می‌شد و معنای عملیات را برعکس می‌کرد:
+        // credit با مبلغ منفی موجودی را *کم* می‌کرد (بدون هیچ چک کفایت موجودی) و
+        // debit با مبلغ منفی پول *خلق* می‌کرد. همهٔ فراخوان‌های امروزی خودشان
+        // `<= 0` را فیلتر می‌کنند، ولی این invariant جای خودش در موتور است نه در
+        // فراخوان‌ها — یک فراخوانِ جدیدِ بی‌گارد نباید بتواند لجر را نامتوازن کند.
+        if (! is_finite($amount) || $amount <= 0) {
+            throw new \InvalidArgumentException(
+                "WalletTransactionEngine: amount must be a positive finite number, got {$amount} (wallet {$walletCode}, order {$order->id})"
+            );
+        }
+
         // اجرای کل عملیات در یک تراکنش برای حفظ یکپارچگی داده‌ها
         DB::transaction(function () use ($operation, $amount, $walletCode, $status, $order, $description, $targetUserId) {
 
@@ -109,23 +122,30 @@ class WalletTransactionEngine
 
             $isHold = ($status === FinancialCodes::STATUS_HOLD || $status === 'hold');
 
+            // موجودی‌ها ستون decimal هستند و Eloquent آن‌ها را رشته برمی‌گرداند؛
+            // جمع/تفریق با bcmath انجام می‌شود تا با قاعدهٔ «ریاضیِ پول bcmath است»
+            // هم‌راستا باشد و هیچ مرحلهٔ میانی به float تبدیل نشود.
+            $balance = (string) $wallet->balance;
+            $hold = (string) $wallet->balance_hold;
+            $delta = Money::s($amount);
+
             if ($operation === '+') {
                 if ($isHold) {
-                    $wallet->balance_hold += $amount;
+                    $wallet->balance_hold = Money::add($hold, $delta);
                 } else {
-                    $wallet->balance += $amount;
+                    $wallet->balance = Money::add($balance, $delta);
                 }
             } else {
                 if ($isHold) {
-                    if ($wallet->balance_hold < $amount) {
-                        throw new InsufficientBalanceException($amount, (float) $wallet->balance_hold);
+                    if (Money::lt($hold, $delta)) {
+                        throw new InsufficientBalanceException($amount, (float) $hold);
                     }
-                    $wallet->balance_hold -= $amount;
+                    $wallet->balance_hold = Money::sub($hold, $delta);
                 } else {
-                    if ($wallet->balance < $amount) {
-                        throw new InsufficientBalanceException($amount, (float) $wallet->balance);
+                    if (Money::lt($balance, $delta)) {
+                        throw new InsufficientBalanceException($amount, (float) $balance);
                     }
-                    $wallet->balance -= $amount;
+                    $wallet->balance = Money::sub($balance, $delta);
                 }
             }
 
@@ -164,16 +184,26 @@ class WalletTransactionEngine
         ?string $description = null,
         ?WalletTransaction $sourceHold = null,
     ): WalletTransaction {
+        if (! is_finite($amount) || $amount <= 0) {
+            throw new \InvalidArgumentException(
+                "WalletTransactionEngine::releaseHold — amount must be a positive finite number, got {$amount} (order {$order->id})"
+            );
+        }
+
         return DB::transaction(function () use ($userId, $amount, $order, $description, $sourceHold) {
             $wallet = Wallet::firstOrCreate(['user_id' => $userId]);
             $wallet = Wallet::where('id', $wallet->id)->lockForUpdate()->first();
 
-            if ((float) $wallet->balance_hold < $amount) {
-                throw new InsufficientBalanceException($amount, (float) $wallet->balance_hold);
+            $hold = (string) $wallet->balance_hold;
+            $delta = Money::s($amount);
+
+            if (Money::lt($hold, $delta)) {
+                throw new InsufficientBalanceException($amount, (float) $hold);
             }
 
-            $wallet->balance_hold -= $amount;
-            $wallet->balance += $amount;
+            // bcmath — همان قاعدهٔ process(): هیچ مرحلهٔ میانیِ float روی موجودی.
+            $wallet->balance_hold = Money::sub($hold, $delta);
+            $wallet->balance = Money::add((string) $wallet->balance, $delta);
             $wallet->save();
 
             return WalletTransaction::create([

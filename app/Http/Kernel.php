@@ -16,7 +16,6 @@ use App\Http\Middleware\Idempotency;
 use App\Http\Middleware\OptionalSanctum;
 use App\Http\Middleware\PreventRequestsDuringMaintenance;
 use App\Http\Middleware\RedirectIfAuthenticated;
-use App\Http\Middleware\Sanitizer;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\TrackDashboardUsage;
 use App\Http\Middleware\TrimStrings;
@@ -56,12 +55,14 @@ class Kernel extends HttpKernel
         HandleCors::class,
         PreventRequestsDuringMaintenance::class,
         ValidatePostSize::class,
+        // TrimStrings تنها trim کنندهٔ ورودی است — میدل‌ور Sanitizer که همین کار را
+        // دوباره تکرار می‌کرد حذف شد (یک پیمایش کامل اضافی از payload در هر درخواست).
         TrimStrings::class,
         ConvertEmptyStringsToNull::class,
-        StartSession::class,
-        ShareErrorsFromSession::class,
-        Sanitizer::class,
-
+        // StartSession/ShareErrorsFromSession از استک سراسری خارج شدند: احراز هویت API
+        // با توکن Sanctum است و session لازم ندارد؛ درخواست‌های stateful (کوکی SPA) را
+        // خودِ EnsureFrontendRequestsAreStateful با استک session مخصوص Sanctum wrap
+        // می‌کند. این دو فقط در گروه web (که به session/CSRF نیاز دارد) باقی می‌مانند.
     ];
 
     /**
@@ -73,6 +74,9 @@ class Kernel extends HttpKernel
         'web' => [
             EncryptCookies::class,
             AddQueuedCookiesToResponse::class,
+            // StartSession باید قبل از VerifyCsrfToken باشد — توکن CSRF از session خوانده می‌شود.
+            StartSession::class,
+            ShareErrorsFromSession::class,
             VerifyCsrfToken::class,
             SubstituteBindings::class,
         ],

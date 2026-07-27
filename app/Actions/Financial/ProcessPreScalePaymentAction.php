@@ -57,18 +57,36 @@ class ProcessPreScalePaymentAction
                 $officialPrice = (float) $firstItem->unit_price;
             }
 
+            // قیمت صفر یعنی دادهٔ خراب، نه «رایگان». هم‌الگو با گاردِ
+            // weight_before_scale پایین‌تر: POO/PTS روی قیمتِ صفر تقریباً صفر
+            // می‌شوند و بعداً در باسکول یک «کسریِ» بزرگ می‌سازند که کلِ مبلغ را به
+            // خریدار عودت می‌دهد. باید متوقف کند، نه پول جابه‌جا کند.
+            if ($officialPrice <= 0) {
+                Log::channel('financial')->critical(
+                    "Order {$order->id}: official_price and item unit_price are both zero — payment aborted."
+                );
+                throw new \RuntimeException(__('orders.invalid_official_price'));
+            }
+
             $weightBeforeScale = (float) ($locked->getAttribute(Order::WEIGHT_BEFORE_SCALE) ?? 0);
             $shippingCost = (float) ($locked->shipping_cost ?? 0);
-            // منبع واحد — ستون سفارش پیش از پرداخت `0.00` است و `?? 10.0` آن را
-            // نمی‌گرفت، پس POO/PTS با مالیات صفر حساب می‌شد. توضیح کامل در
-            // SettlementCalculatorService::resolveVatRate().
+            // منبع واحد — ستون سفارش پیش از پرداخت `0.00` است و `?? config(...)` آن
+            // را نمی‌گیرد (ستون NOT NULL DEFAULT 0.00 است، پس هرگز null نیست)، در
+            // نتیجه POO/PTS با مالیات صفر حساب می‌شد. `resolveVatRate()` با `> 0`
+            // چک می‌کند و فالبکش هم همان `financial.default_vat_rate` است.
             $vatRate = $this->calculator->resolveVatRate($locked);
 
             // نرخ کمیسیون بر اساس نشانِ الیت‌یارِ صاحب کمیسیون (elite_yar_user_id) خوانده می‌شود،
             // نه beneficiary (گیرندهٔ کالا). ProcessWeighbridgeResultAction هم از همین eliteYAR.badge
             // استفاده می‌کند؛ خواندن از beneficiary باعث ناسازگاری نرخ بین pre-scale و باسکول می‌شد.
             $badgeCode = $locked->eliteYAR?->badge?->code ?? 'pioneer';
-            $rates = $this->calculator->getCommissionRates($badgeCode);
+
+            // نرخِ %TC همین‌جا قطعی و اسنپ‌شات می‌شود. tc_percentage یک تنظیمِ سراسریِ
+            // قابل‌تغییر است؛ اگر باسکول دوباره مقدارِ زنده را بخواند، تغییرِ آن بین
+            // پرداخت و باسکول باعث می‌شود POOM با وزنِ یکسان از POO فاصله بگیرد و یک
+            // کسریِ کاذب (عودت واقعی به خریدار + بدهی واقعی تأمین‌کننده) بسازد.
+            $tcPercentage = $this->calculator->currentTcPercentage();
+            $rates = $this->calculator->getCommissionRatesForTc($badgeCode, $tcPercentage);
 
             $ownerDiscountRate = $rates['ow_final_rate'];
             $sazeShareRate = $rates['ssg_final_rate'];
@@ -96,9 +114,14 @@ class ProcessPreScalePaymentAction
             $locked->forceFill([
                 Order::PAYMENT_OF_OWNER => $POO,
                 Order::PAYMENT_TO_SUPPLIER => $PTS,
-                Order::COMMISSION_RATE => 1.0,
+                // نرخِ واقعیِ مؤثر، نه عددِ هاردکدِ 1.0 — باسکول از همین ستون می‌خواند.
+                Order::COMMISSION_RATE => $tcPercentage,
                 Order::VAT_RATE => $vatRate,
                 Order::OWNER_DISCOUNT_RATE => $ownerDiscountRate,
+                // این دو ستون تا امروز هرگز نوشته نمی‌شدند (ستون‌های مرده) در حالی که
+                // در CLAUDE.md جزو فیلدهای اسنپ‌شات مستند شده‌اند.
+                Order::SAZE_SHARE_RATE => $sazeShareRate,
+                Order::ELITE_YAR_SHARE_RATE => $eliteYARRate,
                 Order::TRANS_COMMISSION => $transCommission,
                 Order::TRANS_VAT => $transVat,
             ])->save();

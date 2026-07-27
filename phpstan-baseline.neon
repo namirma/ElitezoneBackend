@@ -461,36 +461,6 @@ parameters:
 			path: app/Actions/Order/CancelOrderAction.php
 
 		-
-			message: "#^Access to an undefined property App\\\\Models\\\\Order\\:\\:\\$elite_yar_user_id\\.$#"
-			count: 2
-			path: app/Actions/Order/FinalizeInvoiceAction.php
-
-		-
-			message: "#^Access to an undefined property App\\\\Models\\\\User\\:\\:\\$wallet\\.$#"
-			count: 1
-			path: app/Actions/Order/FinalizeInvoiceAction.php
-
-		-
-			message: "#^Access to an undefined property Illuminate\\\\Database\\\\Eloquent\\\\Model\\:\\:\\$id\\.$#"
-			count: 2
-			path: app/Actions/Order/FinalizeInvoiceAction.php
-
-		-
-			message: "#^Access to an undefined property Illuminate\\\\Database\\\\Eloquent\\\\Model\\:\\:\\$order_number\\.$#"
-			count: 1
-			path: app/Actions/Order/FinalizeInvoiceAction.php
-
-		-
-			message: "#^Method App\\\\Actions\\\\Order\\\\FinalizeInvoiceAction\\:\\:resolveFee\\(\\) should return array\\{float\\|int\\|null, int\\|null\\} but returns array\\{numeric\\-string, mixed\\}\\.$#"
-			count: 2
-			path: app/Actions/Order/FinalizeInvoiceAction.php
-
-		-
-			message: "#^Parameter \\#1 \\$order of method App\\\\Actions\\\\Order\\\\FinalizeInvoiceAction\\:\\:resolveFee\\(\\) expects App\\\\Models\\\\Order, Illuminate\\\\Database\\\\Eloquent\\\\Model given\\.$#"
-			count: 1
-			path: app/Actions/Order/FinalizeInvoiceAction.php
-
-		-
 			message: "#^Access to an undefined property Illuminate\\\\Database\\\\Eloquent\\\\Model\\:\\:\\$payment_status\\.$#"
 			count: 1
 			path: app/Actions/Order/PayOrderAction.php
@@ -596,11 +566,6 @@ parameters:
 			path: app/Actions/Order/RefundOrderToWalletAction.php
 
 		-
-			message: "#^Relation 'variantAttributes' is not found in App\\\\Models\\\\ProductVariant model\\.$#"
-			count: 1
-			path: app/Actions/Product/FilterProductVariantsAction.php
-
-		-
 			message: "#^Access to an undefined property App\\\\Models\\\\Product\\:\\:\\$min_variant_price\\.$#"
 			count: 1
 			path: app/Actions/Product/FilterProductsAction.php
@@ -641,11 +606,6 @@ parameters:
 			path: app/Actions/Product/FilterProductsAction.php
 
 		-
-			message: "#^Relation 'variantAttributes' is not found in App\\\\Models\\\\ProductVariant model\\.$#"
-			count: 1
-			path: app/Actions/Product/FilterProductsAction.php
-
-		-
 			message: "#^Access to an undefined property App\\\\Models\\\\Agreement\\:\\:\\$pivot\\.$#"
 			count: 2
 			path: app/Http/Controllers/AgreementController.php
@@ -671,16 +631,6 @@ parameters:
 			path: app/Http/Controllers/Api/Admin/AdminProductVariantController.php
 
 		-
-			message: "#^Relation 'wallet' is not found in App\\\\Models\\\\User model\\.$#"
-			count: 1
-			path: app/Http/Controllers/Api/Admin/AdminSearchController.php
-
-		-
-			message: "#^Access to an undefined property App\\\\Models\\\\User\\:\\:\\$wallet\\.$#"
-			count: 1
-			path: app/Http/Controllers/Api/Admin/AdminSupplierController.php
-
-		-
 			message: "#^Access to an undefined property Illuminate\\\\Database\\\\Eloquent\\\\Model\\:\\:\\$count\\.$#"
 			count: 1
 			path: app/Http/Controllers/Api/Admin/AdminSupplierController.php
@@ -694,16 +644,6 @@ parameters:
 			message: "#^Access to an undefined property Illuminate\\\\Database\\\\Eloquent\\\\Model\\:\\:\\$total_amount\\.$#"
 			count: 1
 			path: app/Http/Controllers/Api/Admin/AdminSupplierController.php
-
-		-
-			message: "#^Relation 'wallet' is not found in App\\\\Models\\\\User model\\.$#"
-			count: 1
-			path: app/Http/Controllers/Api/Admin/AdminSupplierController.php
-
-		-
-			message: "#^Access to an undefined property App\\\\Models\\\\User\\:\\:\\$wallet\\.$#"
-			count: 1
-			path: app/Http/Controllers/Api/Admin/AdminUserController.php
 
 		-
 			message: "#^Access to an undefined property Laravel\\\\Sanctum\\\\Contracts\\\\HasAbilities\\:\\:\\$id\\.$#"
@@ -751,24 +691,9 @@ parameters:
 			path: app/Http/Controllers/Api/User/OrderInvoiceController.php
 
 		-
-			message: "#^Access to an undefined property App\\\\Models\\\\User\\:\\:\\$wallet\\.$#"
-			count: 1
-			path: app/Http/Controllers/Api/User/OrderPaymentController.php
-
-		-
 			message: "#^Access to an undefined property App\\\\Models\\\\Order\\:\\:\\$elite_yar_user_id\\.$#"
 			count: 2
 			path: app/Http/Controllers/Api/User/OrderSurveyController.php
-
-		-
-			message: "#^Relation 'variantAttributes' is not found in App\\\\Models\\\\ProductVariant model\\.$#"
-			count: 1
-			path: app/Http/Controllers/Api/User/StockSubscriptionController.php
-
-		-
-			message: "#^Access to an undefined property App\\\\Models\\\\User\\:\\:\\$wallet\\.$#"
-			count: 1
-			path: app/Http/Controllers/Api/User/SupplierOrderController.php
 
 		-
 			message: "#^Access to an undefined property Illuminate\\\\Database\\\\Eloquent\\\\Model\\:\\:\\$count\\.$#"
@@ -789,16 +714,6 @@ parameters:
 			message: "#^Access to an undefined property Illuminate\\\\Database\\\\Eloquent\\\\Model\\:\\:\\$total_amount\\.$#"
 			count: 1
 			path: app/Http/Controllers/Api/User/SupplierOrderController.php
-
-		-
-			message: "#^Access to an undefined property App\\\\Models\\\\User\\:\\:\\$wallet\\.$#"
-			count: 1
-			path: app/Http/Controllers/Api/User/WalletController.php
-
-		-
-			message: "#^Access to an undefined property App\\\\Models\\\\User\\:\\:\\$wallet\\.$#"
-			count: 2
-			path: app/Http/Controllers/Payment/WalletPaymentController.php
 
 		-
 			message: "#^Access to an undefined property Illuminate\\\\Database\\\\Eloquent\\\\Collection\\<int, Illuminate\\\\Database\\\\Eloquent\\\\Model\\>\\|Illuminate\\\\Database\\\\Eloquent\\\\Model\\:\\:\\$final_amount\\.$#"
@@ -834,16 +749,6 @@ parameters:
 			message: "#^Parameter \\#1 \\$user of method App\\\\Services\\\\PricingRoleResolver\\:\\:resolve\\(\\) expects App\\\\Models\\\\User, Illuminate\\\\Contracts\\\\Auth\\\\Authenticatable given\\.$#"
 			count: 1
 			path: app/Http/Middleware/AttachActivePriceCategory.php
-
-		-
-			message: "#^Call to an undefined method Symfony\\\\Component\\\\HttpFoundation\\\\Response\\:\\:header\\(\\)\\.$#"
-			count: 1
-			path: app/Http/Middleware/Cors.php
-
-		-
-			message: "#^Negated boolean expression is always false\\.$#"
-			count: 1
-			path: app/Http/Middleware/EnsureRoleIsSelected.php
 
 		-
 			message: "#^Access to an undefined property \\(object\\|string\\)\\:\\:\\$user_id\\.$#"
@@ -991,11 +896,6 @@ parameters:
 			path: app/Http/Resources/Product/ProductVariantAttributeResource.php
 
 		-
-			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\Product\\\\ProductVariantResource\\:\\:\\$variantAttributes\\.$#"
-			count: 1
-			path: app/Http/Resources/Product/ProductVariantResource.php
-
-		-
 			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\Profile\\\\CustomerTypeResource\\:\\:\\$has_elite_yar\\.$#"
 			count: 1
 			path: app/Http/Resources/Profile/CustomerTypeResource.php
@@ -1114,11 +1014,6 @@ parameters:
 			message: "#^Access to an undefined property App\\\\Models\\\\ProductView\\:\\:\\$views\\.$#"
 			count: 1
 			path: app/Jobs/Analytics/RollupProductViewsJob.php
-
-		-
-			message: "#^Access to an undefined property App\\\\Models\\\\User\\:\\:\\$wallet\\.$#"
-			count: 1
-			path: app/Jobs/Financial/CheckSupplierBalancesJob.php
 
 		-
 			message: "#^Access to an undefined property Illuminate\\\\Database\\\\Eloquent\\\\Model\\:\\:\\$id\\.$#"
@@ -1291,11 +1186,6 @@ parameters:
 			path: app/Models/Ticket.php
 
 		-
-			message: "#^Access to an undefined property App\\\\Models\\\\User\\:\\:\\$wallet\\.$#"
-			count: 1
-			path: app/Models/User.php
-
-		-
 			message: "#^Method App\\\\Models\\\\User\\:\\:getExpireAtDaysAttribute\\(\\) should return string\\|void but returns int\\.$#"
 			count: 2
 			path: app/Models/User.php
@@ -1341,11 +1231,6 @@ parameters:
 			path: app/Repositories/Eloquent/OrderRepository.php
 
 		-
-			message: "#^Relation 'variantAttributes' is not found in App\\\\Models\\\\ProductVariant model\\.$#"
-			count: 1
-			path: app/Repositories/Eloquent/ProductRepository.php
-
-		-
 			message: "#^Access to an undefined property Illuminate\\\\Database\\\\Eloquent\\\\Model\\:\\:\\$count\\.$#"
 			count: 1
 			path: app/Services/Admin/AdminDashboardService.php
@@ -1369,11 +1254,6 @@ parameters:
 			message: "#^Relation 'variant' is not found in App\\\\Models\\\\OrderItem model\\.$#"
 			count: 1
 			path: app/Services/AnalyticsService.php
-
-		-
-			message: "#^Access to an undefined property App\\\\Models\\\\User\\:\\:\\$wallet\\.$#"
-			count: 1
-			path: app/Services/DashboardAlertsService.php
 
 		-
 			message: "#^Access to an undefined property Illuminate\\\\Database\\\\Eloquent\\\\Model\\:\\:\\$final_invoice_ref\\.$#"
@@ -1402,6 +1282,11 @@ parameters:
 
 		-
 			message: "#^Access to an undefined property Illuminate\\\\Database\\\\Eloquent\\\\Model\\:\\:\\$survey_status\\.$#"
+			count: 1
+			path: app/Services/DashboardAlertsService.php
+
+		-
+			message: "#^Parameter \\#1 \\$num of function number_format expects float, string given\\.$#"
 			count: 1
 			path: app/Services/DashboardAlertsService.php
 

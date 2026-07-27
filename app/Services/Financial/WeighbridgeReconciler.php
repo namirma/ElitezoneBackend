@@ -30,15 +30,32 @@ class WeighbridgeReconciler
         $billingWeight = min($actualWeight, $wbs);
 
         $badgeCode = $order->eliteYAR?->badge?->code ?? 'pioneer';
-        $rates = $this->calculator->getCommissionRates($badgeCode);
+
+        // %TC از اسنپ‌شاتِ سفارش خوانده می‌شود، نه از تنظیمِ زندهٔ PriceSetting.
+        // tc_percentage یک مقدارِ سراسریِ قابل‌تغییر است؛ خواندنِ زندهٔ آن یعنی یک
+        // ویرایشِ تنظیمات بین پرداخت و باسکول، POOM را با وزنِ کاملاً یکسان از POO
+        // دور می‌کرد و شاخهٔ «کسری» را فعال می‌کرد — یعنی عودتِ واقعی به خریدار و
+        // ثبتِ بدهیِ واقعی برای تأمین‌کننده، بدون آنکه هیچ کیلوگرمی جابه‌جا شده باشد.
+        // سفارش‌های قدیمی که این ستون را ندارند به مقدارِ زنده برمی‌گردند (سازگاری).
+        $snapshotTc = (float) ($order->{Order::COMMISSION_RATE} ?? 0);
+        $rates = $snapshotTc > 0
+            ? $this->calculator->getCommissionRatesForTc($badgeCode, $snapshotTc)
+            : $this->calculator->getCommissionRates($badgeCode);
 
         $trans = (float) $order->shipping_cost;
-        // منبع واحد؛ `?? 10.0` روی ستونِ NOT NULL DEFAULT 0.00 هرگز کار نمی‌کرد
-        // و بازمحاسبهٔ باسکول با مالیات صفر انجام می‌شد.
+        // منبع واحد؛ `??` روی ستونِ NOT NULL DEFAULT 0.00 هرگز فالبک نمی‌گیرد و
+        // بازمحاسبهٔ باسکول با مالیات صفر انجام می‌شد.
         $vat = $this->calculator->resolveVatRate($order);
         $op = ((float) $order->official_price > 0)
             ? (float) $order->official_price
             : (float) ($order->items->first()?->unit_price ?? 0);
+
+        // قیمت صفر یعنی دادهٔ خراب. بدونِ این گارد، POOM روی op=0 تقریباً صفر
+        // می‌شد و diffPOO به‌شدت منفی → شاخهٔ «کسری» → عودتِ کلِ مبلغ به خریدار و
+        // ثبتِ بدهی برای تأمین‌کننده، فقط به‌خاطر یک ردیفِ ناقص.
+        if ($op <= 0) {
+            throw new \RuntimeException(__('orders.invalid_official_price'));
+        }
 
         // Formula-variant flags are snapshotted onto the order at payment time
         // so they are immutable for the life of the order.

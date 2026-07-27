@@ -28,6 +28,13 @@ class Idempotency
         $key = $request->header(self::HEADER_KEY);
         $isFingerprint = false;
 
+        // اثرانگشتِ خودِ درخواست — برای تشخیصِ «کلیدِ یکسان، درخواستِ متفاوت».
+        $requestFingerprint = sha1(implode('|', [
+            $request->method(),
+            $request->path(),
+            (string) $request->getContent(),
+        ]));
+
         // اگر کلاینت هدرِ Idempotency-Key نفرستد، به‌جای رهاکردنِ درخواست (که دابل‌کلیک/
         // retryِ کلاینت را روی مسیر مالی بی‌محافظت می‌گذاشت) یک «اثرانگشتِ» کوتاه‌عمر از
         // خودِ درخواست می‌سازیم: (متد + مسیر + هشِ بدنه). این درخواست را الزامی نمی‌کند
@@ -35,22 +42,46 @@ class Idempotency
         // در یک پنجرهٔ کوتاه حذف می‌کند. پنجره کوتاه است تا دو درخواستِ واقعاً مجزا با
         // فاصله بلاک نشوند.
         if (empty($key)) {
-            $key = 'fp:'.sha1(implode('|', [
-                $request->method(),
-                $request->path(),
-                (string) $request->getContent(),
-            ]));
+            $key = 'fp:'.$requestFingerprint;
             $isFingerprint = true;
         }
 
         // مهمان‌ها با IP از هم جدا می‌شوند — کلید مشترک 'guest' باعث می‌شد دو
         // کاربر ناشناس با Idempotency-Key یکسان، پاسخ کش‌شده‌ی یکدیگر را بگیرند.
         $userId = optional($request->user())->id ?? 'guest:'.$request->ip();
-        $cacheKey = "idempotency_response:{$userId}:{$key}";
-        $lockKey = "idempotency_lock:{$userId}:{$key}";
 
-        if (Cache::has($cacheKey)) {
-            $cachedResponse = Cache::get($cacheKey);
+        // کلیدِ کش به «متد + مسیر» هم مقید است. پیش از این فقط (کاربر + کلید) بود، پس
+        // اگر کلاینت یک UUID را برای دو درخواستِ مالیِ متفاوت به‌کار می‌برد — مثلاً یک
+        // کلید به ازای هر بار لودِ صفحه و سپس هم pay-hold-fee و هم pay-full، یا
+        // pay-full روی دو سفارشِ مختلف — پاسخِ اولی برای دومی replay می‌شد: سفارشِ دوم
+        // «پرداخت‌شده» جواب می‌گرفت بدون آنکه یک ریال جابه‌جا شود.
+        $scope = sha1($request->method().'|'.$request->path());
+        $cacheKey = "idempotency_response:{$userId}:{$scope}:{$key}";
+        $lockKey = "idempotency_lock:{$userId}:{$scope}:{$key}";
+
+        // storeِ *مشترک بین سرورها* — نه درایورِ پیش‌فرض. با درایورِ `file` هم قفل و هم
+        // پاسخِ کش‌شده per-server می‌شدند، پس روی استقرارِ چندسروری دو درخواستِ هم‌زمانِ
+        // پرداخت روی دو سرور هر دو قفل را می‌گرفتند و هر دو اجرا می‌شدند — گاردِ مالی
+        // عملاً بی‌اثر بود. جزئیات در config/idempotency.php.
+        $cache = Cache::store(config('idempotency.store'));
+
+        if ($cache->has($cacheKey)) {
+            $cachedResponse = $cache->get($cacheKey);
+
+            // همان کلید روی همان endpoint ولی با بدنهٔ متفاوت = خطای کلاینت، نه تکرار.
+            // برگرداندنِ پاسخِ کش‌شده اینجا یعنی پذیرفتنِ عملیاتی که هرگز اجرا نشده؛
+            // پس صریحاً ۴۲۲ می‌دهیم (رفتارِ استانداردِ درگاه‌های پرداخت).
+            if (
+                ! $isFingerprint
+                && isset($cachedResponse['fingerprint'])
+                && ! hash_equals((string) $cachedResponse['fingerprint'], $requestFingerprint)
+            ) {
+                return error(
+                    __('global.idempotency_key_reused'),
+                    ['code' => 'IDEMPOTENCY_KEY_REUSED'],
+                    422
+                );
+            }
 
             return response()->json(
                 $cachedResponse['content'],
@@ -59,7 +90,14 @@ class Idempotency
             );
         }
 
-        $lock = Cache::lock($lockKey, 10);
+        // قفل از خودِ store گرفته می‌شود، نه از Repository — `lock()` روی قرارداد
+        // Repository اعلام نشده و فقط از طریق __call پروکسی می‌شود. این annotation هم
+        // شرطِ لازم را صریح می‌کند: storeِ انتخاب‌شده باید LockProvider باشد
+        // (database / redis / array همه هستند؛ file نیست — و اصلاً به همین دلیل
+        // پیش‌فرض عوض شد).
+        /** @var \Illuminate\Contracts\Cache\LockProvider $lockProvider */
+        $lockProvider = $cache->getStore();
+        $lock = $lockProvider->lock($lockKey, 10);
 
         if (! $lock->get()) {
             return error(__('global.system_busy_try_again'), ['code' => 'DUPLICATE_REQUEST_PROCESSING'], 409);
@@ -88,6 +126,8 @@ class Idempotency
                             'content' => $decoded,
                             'status' => $response->getStatusCode(),
                             'headers' => $safeHeaders,
+                            // برای تشخیصِ استفادهٔ مجددِ کلید با بدنهٔ متفاوت.
+                            'fingerprint' => $requestFingerprint,
                         ];
 
                         // کلیدِ صریحِ کلاینت ۲۴ ساعت نگه داشته می‌شود (idempotencyِ کامل)،
@@ -96,7 +136,7 @@ class Idempotency
                             ? now()->addSeconds((int) config('idempotency.fingerprint_window_seconds', 10))
                             : now()->addHours(self::CACHE_TTL_HOURS);
 
-                        Cache::put($cacheKey, $responseData, $ttl);
+                        $cache->put($cacheKey, $responseData, $ttl);
                     }
                 }
             }

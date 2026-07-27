@@ -91,14 +91,21 @@ class SettlementCalculatorServiceTest extends TestCase
     }
 
     #[Test]
-    public function vat_multiplier_is_exact_for_repeating_decimals(): void
+    public function vat_split_is_exact_for_repeating_decimals(): void
     {
-        // 10% VAT → multiplier = 0.1 / 1.1 = 1/11 = 0.0909090909...
-        $this->assertEqualsWithDelta(1 / 11, $this->calc->vatMultiplier(10), 1e-9);
-
+        // 10% VAT implies the repeating multiplier 0.1/1.1 = 1/11 = 0.0909090909…
         // The whole point of bcmath: 1,100,000,000 × (1/11) = 100,000,000 EXACTLY.
+        //
+        // This used to also assert against a `vatMultiplier()` helper. That helper had
+        // zero production callers (only comments referenced it) and embodied exactly the
+        // inline `(vat/100)/(1+vat/100)` form that CLAUDE.md forbids, so it was removed.
+        // The property it claimed to protect is asserted here through `extractVat()` —
+        // the method every settlement leg actually calls.
         $split = $this->calc->extractVat(1_100_000_000, 10);
         $this->assertEqualsWithDelta(100_000_000.0, $split['vat'], 0.0001);
         $this->assertEqualsWithDelta(1_000_000_000.0, $split['net'], 0.0001);
+
+        // The implied multiplier, derived from the split itself, is still 1/11.
+        $this->assertEqualsWithDelta(1 / 11, $split['vat'] / 1_100_000_000, 1e-9);
     }
 }

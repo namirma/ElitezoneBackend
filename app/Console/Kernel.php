@@ -88,6 +88,45 @@ class Kernel extends ConsoleKernel
             ->dailyAt('01:30')
             ->withoutOverlapping()
             ->onOneServer();
+
+        // ── پشتیبان‌گیری دیتابیس ────────────────────────────────────────────
+        // spatie/laravel-backup نصب بود ولی نه کانفیگ داشت نه زمان‌بندی: یعنی سیستمی
+        // با کیف پول و لجر مالی، هیچ نسخهٔ پشتیبانی نداشت. دامپ روی دیسک خصوصی
+        // `financial` نوشته می‌شود (config/backup.php) چون شامل کدملی/شبا/شمارهٔ کارت است.
+        $schedule->command('backup:run --only-db')
+            ->dailyAt('01:00')
+            ->withoutOverlapping()
+            ->onOneServer();
+
+        // اعمال سیاست نگهداشت — بعد از دامپ اجرا می‌شود تا نسخهٔ تازه لحاظ شود.
+        $schedule->command('backup:clean')
+            ->dailyAt('01:45')
+            ->withoutOverlapping()
+            ->onOneServer();
+
+        // پایشِ سلامت نسخه‌های پشتیبان — اگر آخرین نسخه کهنه یا حجم از سقف رد شده
+        // باشد اعلان می‌دهد. بدون این، خرابیِ بی‌صدای دامپ تا روزِ بازگردانی معلوم نمی‌شد.
+        $schedule->command('backup:monitor')
+            ->dailyAt('02:00')
+            ->onOneServer();
+
+        // پایشِ سلامتِ صف — هر ۱۵ دقیقه. همهٔ listenerها ShouldQueue هستند، پس
+        // خوابیدنِ worker هیچ خطایی تولید نمی‌کند و فقط پیامکِ OTP کاربر نمی‌رسد.
+        // این دستور آن خرابیِ خاموش را به یک لاگِ error (و در نتیجه یک رویداد
+        // Sentry، اگر DSN ست باشد) تبدیل می‌کند.
+        $schedule->command('queue:health')
+            ->everyFifteenMinutes()
+            ->withoutOverlapping()
+            ->onOneServer();
+
+        // تطبیقِ دفترِ مالی با موجودی کیف‌ها. برخلافِ صف، یک موجودیِ غلط هیچ‌وقت
+        // خودش را لو نمی‌دهد — نه خطایی، نه شکایتی — پس تنها راهِ دیدنش سنجیدنِ
+        // دوره‌ایِ همین تساوی است. ۰۲:۴۵ انتخاب شده تا بعد از پشتیبان‌گیری اجرا
+        // شود: اگر مغایرتی هست، دامپِ همان شب حالتِ قبل از کشف را نگه داشته.
+        $schedule->command('financial:doctor')
+            ->dailyAt('02:45')
+            ->withoutOverlapping()
+            ->onOneServer();
     }
 
     /**

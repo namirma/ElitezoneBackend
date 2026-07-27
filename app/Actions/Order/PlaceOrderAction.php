@@ -50,6 +50,9 @@ class PlaceOrderAction
             // ۱. خواندن و قفل کردن سبد خرید دقیقاً داخل تراکنش
             $cart = $this->getCartOrFail($user);
 
+            // ۱.۵ گاردِ تک‌تأمین‌کننده — پیش از هر نوشتنی.
+            $this->assertSingleSupplier($cart);
+
             // ۲. محاسبه مبالغ
             $financials = $this->calculateOrderFinancials($cart, $user, $data);
 
@@ -385,6 +388,39 @@ class PlaceOrderAction
         }
 
         return $map;
+    }
+
+    /**
+     * سفارش باید فقط یک تأمین‌کننده داشته باشد — تا زمانی که تسویه چندخطی نوشته شود.
+     *
+     * سبد خرید عمداً چندمبدأی است (کل زیرسیستم Shipment برای همین ساخته شده و
+     * AddToCartAction هر factory_id را می‌پذیرد) و این متد هر آیتم را با
+     * supplier_user_id مخصوص خودش ثبت می‌کند. اما *تسویهٔ مالی* یک‌خطی است: هر پنج
+     * نقطهٔ تسویه با `items->first()` کار می‌کنند —
+     * ProcessPreScalePaymentAction، ProcessReservationCompletionAction،
+     * WeighbridgeVatRouter، SupplierDebtHandler و WeighbridgeReconciler.
+     *
+     * پس یک سفارشِ دوتأمین‌کننده‌ای امروز این‌طور تسویه می‌شود:
+     *   • کلِ PTS به تأمین‌کنندهٔ آیتمِ اول می‌رود؛ تأمین‌کنندهٔ دوم **هیچ** نمی‌گیرد.
+     *   • مالیات امانی و بدهیِ کسری هم فقط روی تأمین‌کنندهٔ اول ثبت می‌شود.
+     *   • حتی مبلغِ خریدار هم غلط است: POO با `قیمتِ آیتم اول × وزنِ کل` حساب
+     *     می‌شود، پس سبدِ «میلگرد + آجر» کلِ وزن را با نرخِ میلگرد صورت‌حساب می‌کند.
+     *
+     * تسویهٔ چندخطی تغییرِ بزرگی است؛ تا آن‌موقع، ثبتِ چنین سفارشی متوقف می‌شود.
+     * همان قاعده‌ای که برای weight_before_scale برقرار است: دادهٔ نامعتبر باید
+     * متوقف کند، نه پول جابه‌جا کند. با آمدنِ تسویهٔ چندخطی این گارد برداشته شود.
+     */
+    private function assertSingleSupplier(Cart $cart): void
+    {
+        $supplierIds = $cart->items
+            ->map(fn ($item) => $item->factory?->supplier_user_id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($supplierIds->count() > 1) {
+            throw new BusinessException(__('orders.multiple_suppliers_not_supported'));
+        }
     }
 
     private function createOrderItems(Order $order, Cart $cart, array $itemsData, array $shipmentMap): void

@@ -1,6 +1,34 @@
 <?php
 
+use App\Constants\FinancialCodes;
 use App\Models\Order;
+
+/*
+| برچسبِ وضعیتِ چرخهٔ عمرِ سفارش — **یک** تعریف، دو نامِ صادراتی.
+|
+| هر دو تیم مستقلاً همان باگ را پیدا کردند (آرایهٔ `status` هم‌زمان وضعیتِ سفارش،
+| وضعیتِ پرداخت و وضعیتِ پرداختِ سهم را نگه می‌داشت و چون `pending`/`paid`/`failed`
+| در بیش از یک خانواده تکرار می‌شوند، کلیدها در PHP روی هم می‌افتادند: ۱۶ اعلام،
+| ۱۳ resolve). ما `status` را به سه آرایهٔ مستقل شکستیم، تیم بک‌اند آرایهٔ جدیدِ
+| `order_status` را اضافه کرد. هر دو درست‌اند و کدِ هر دو طرف زنده است، پس هر دو
+| کلید باید کار کند — ولی **دو آرایهٔ هم‌محتوا دیر یا زود از هم واگرا می‌شوند**.
+| این متغیر تنها منبع است؛ هیچ‌کدام از دو کلید را جداگانه ویرایش نکنید.
+*/
+$orderStatusLabels = [
+    Order::STATUS_PENDING => 'در انتظار تایید (رزرو شده)',
+    Order::STATUS_RESERVED => 'رزرو شده',
+    Order::STATUS_RESERVED_EXTENDED => 'رزرو تمدید شده',
+    Order::STATUS_PROCESSING => 'در حال پردازش (ثبت اولیه)',
+    Order::STATUS_PREPARING => 'در حال آماده‌سازی',
+    Order::STATUS_WEIGHBRIDGE_DONE => 'باسکول انجام شد (ثبت نهایی)',
+    Order::STATUS_WAYBILL_ISSUED => 'بارنامه صادر شد',
+    Order::STATUS_SHIPPED => 'در حال حمل',
+    Order::STATUS_DELIVERED => 'تحویل شده',
+    Order::STATUS_COMPLETED => 'تکمیل شده',
+    Order::STATUS_PENDING_SURPLUS_PAYMENT => 'در انتظار پرداخت مابه‌التفاوت',
+    Order::STATUS_CANCELLED => 'لغو شده',
+    Order::STATUS_FAILED => 'ناموفق',
+];
 
 return [
     'cannot_cancel' => 'این سفارش در وضعیت قابل لغو نیست.',
@@ -61,39 +89,48 @@ return [
     'survey_submitted_successfully' => 'نظرسنجی شما با موفقیت ثبت شد.',
 
     /*
+    | نامِ خوانای اسنادِ مالی. کدها در App\Constants\FinancialCodes تعریف شده‌اند و
+    | در ستون `invoices.document_code` ذخیره می‌شوند؛ «سند LO» به‌تنهایی برای کسی
+    | که سندِ طراحی را ندیده معنایی ندارد.
+    */
+    'document_codes' => [
+        FinancialCodes::DOC_PRE_INVOICE => 'پیش‌فاکتور خریدار',
+        FinancialCodes::DOC_RECEIPT_OWNER => 'رسید پرداخت خریدار',
+        FinancialCodes::DOC_REPORT_SUPPLIER => 'گزارش پرداخت برای تأمین‌کننده',
+        FinancialCodes::DOC_LOADING_ORDER => 'دستور بارگیری',
+        FinancialCodes::DOC_ELITE_YAR_REPORT => 'گزارش پرداخت به الیت یار',
+        FinancialCodes::DOC_RESERVE_RECEIPT => 'رسید پرداخت رزرو',
+        FinancialCodes::DOC_RESERVE_REPORT => 'گزارش رزرو برای تأمین‌کننده',
+        FinancialCodes::DOC_FINAL_RECEIPT_OWNER => 'رسید تکمیل پرداخت خریدار',
+        FinancialCodes::DOC_FINAL_REPORT_SUPPLIER => 'گزارش تکمیل پرداخت برای تأمین‌کننده',
+        FinancialCodes::DOC_REFUND_RECEIPT => 'رسید بازگشت مبلغ رزرو',
+        FinancialCodes::DOC_CANCEL_REPORT => 'گزارش لغو رزرو',
+        FinancialCodes::DOC_BILL_OF_LADING => 'بارنامه / مجوز خروج',
+        FinancialCodes::DOC_MODIFIED_INVOICE_OWNER => 'فاکتور اصلاح‌شده خریدار (وزن بارنامه)',
+        FinancialCodes::DOC_MODIFIED_INVOICE_SUPPLIER => 'فاکتور اصلاح‌شده تأمین‌کننده (وزن بارنامه)',
+        FinancialCodes::DOC_TAX_INVOICE_SUPPLIER => 'فاکتور مودیان: تأمین‌کننده ← سازه',
+        FinancialCodes::DOC_TAX_INVOICE_BUYER => 'فاکتور مودیان: سازه ← خریدار',
+        FinancialCodes::DOC_TAX_INVOICE_ELITE_YAR => 'فاکتور مودیان: الیت یار ← سازه',
+        FinancialCodes::DOC_SURVEY => 'نظرسنجی خریدار',
+        FinancialCodes::DOC_SURVEY_ELITE_YAR => 'نظرسنجی الیت یار',
+    ],
+
+    /*
     |--------------------------------------------------------------------------
     | وضعیت‌ها — سه واژگانِ مستقل، سه آرایه‌ی مستقل
     |--------------------------------------------------------------------------
     |
-    | ⚠️ این‌ها قبلاً همه در یک آرایه‌ی `status` بودند و چون هر سه خانواده از
-    | رشته‌های 'pending' و 'paid' استفاده می‌کنند، **کلیدها در PHP روی هم
-    | می‌افتادند و آخری برنده می‌شد**: آرایه ۱۶ ورودی داشت ولی ۱۳ تا resolve
-    | می‌شد. نتیجه‌اش این بود که برچسبِ سهمِ الیت‌یار روی وضعیتِ خودِ سفارش و
-    | وضعیتِ پرداخت هم می‌نشست — یک سفارشِ `pending` در همه‌ی کلاینت‌ها
-    | «در انتظار پرداخت سهم» نشان داده می‌شد و صفحه‌ی جزئیات سفارش خودمتناقض
-    | به‌نظر می‌رسید («سهم پرداخت شده» بالای صفحه، «در انتظار پرداخت سهم» در
-    | کارت مالی).
+    | `order_status` و `status` هر دو از `$orderStatusLabels` بالای همین فایل
+    | می‌آیند (تعریفِ واحد؛ توضیحِ کامل همان‌جاست). `status` علاوه بر آن یک
+    | فالبکِ `unknown` دارد چون مصرف‌کننده‌های قدیمی‌تر روی مقدارِ ناشناخته به آن
+    | تکیه می‌کنند.
     |
     | هر آرایه فقط مقادیرِ ستونِ خودش را دارد. کلیدها را با هم قاطی نکنید.
     */
+    'order_status' => $orderStatusLabels,
 
     // ستون `orders.status` — چرخه‌ی عمر سفارش
-    'status' => [
-        Order::STATUS_PENDING => 'در انتظار تایید (رزرو شده)',
-        Order::STATUS_RESERVED => 'رزرو شده',
-        Order::STATUS_RESERVED_EXTENDED => 'رزرو تمدید شده',
-        Order::STATUS_PROCESSING => 'در حال پردازش (ثبت اولیه)',
-        Order::STATUS_PREPARING => 'در حال آماده‌سازی',
-        Order::STATUS_WEIGHBRIDGE_DONE => 'باسکول انجام شد (ثبت نهایی)',
-        Order::STATUS_WAYBILL_ISSUED => 'بارنامه صادر شد',
-        Order::STATUS_SHIPPED => 'در حال حمل',
-        Order::STATUS_DELIVERED => 'تحویل شده',
-        Order::STATUS_COMPLETED => 'تکمیل شده',
-        Order::STATUS_PENDING_SURPLUS_PAYMENT => 'در انتظار پرداخت مابه‌التفاوت',
-        Order::STATUS_CANCELLED => 'لغو شده',
-        Order::STATUS_FAILED => 'ناموفق',
-        'unknown' => 'نامشخص',
-    ],
+    'status' => $orderStatusLabels + ['unknown' => 'نامشخص'],
 
     // ستون `orders.payment_status`
     // (سه مقدارِ failed/refund_pending/refunded تا امروز هیچ برچسبی نداشتند و
@@ -189,6 +226,8 @@ return [
     'reserved_expired_auto_cancel' => 'سفارشات رزرو شده منقضی، تنها توسط سیستم به صورت خودکار لغو می‌شوند.',
     'invalid_financial_calculation' => 'محاسبه مالی سفارش معتبر نیست.',
     'invalid_weight_snapshot' => 'وزن ثبت‌شده سفارش معتبر نیست؛ عملیات مالی متوقف شد. با پشتیبانی تماس بگیرید.',
+    'invalid_official_price' => 'قیمت ثبت‌شده سفارش معتبر نیست؛ عملیات مالی متوقف شد. با پشتیبانی تماس بگیرید.',
+    'multiple_suppliers_not_supported' => 'سبد خرید شما شامل کالاهایی از چند تأمین‌کننده است. در حال حاضر هر سفارش باید از یک تأمین‌کننده باشد؛ لطفاً کالاهای هر تأمین‌کننده را در سفارش جداگانه ثبت کنید.',
     'invalid_transaction_status' => 'وضعیت جدید تراکنش نامعتبر است.',
     'debit_amount_must_be_positive' => 'مبلغ برداشت باید بیشتر از صفر باشد.',
     'reserve_only_on_reserved_orders' => 'تنها سفارش‌های رزرو شده قابل تمدید هستند.',

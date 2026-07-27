@@ -17,6 +17,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class SupplierOrderController extends Controller
 {
@@ -186,15 +187,27 @@ class SupplierOrderController extends Controller
     {
         $this->authorize('manageAsSupplier', $order);
 
-        if ($order->status !== Order::STATUS_PROCESSING) {
-            return error(__('orders.cannot_reject_in_current_state'), [], 400);
-        }
-
         $data = $request->validate(['reason' => ['required', 'string', 'max:1000']]);
 
-        $cancel->execute($order, $data['reason'], true, true);
+        // چک وضعیت زیر قفل (هم‌الگو با markAsPrepared/addWaybill): بدون قفل، دو درخواستِ
+        // هم‌زمانِ reject هر دو از شرط عبور می‌کردند. با value() فقط همان ستون زیر
+        // `FOR UPDATE` خوانده می‌شود — قفلِ ردیف تا پایان تراکنش نگه داشته می‌شود ولی
+        // مدلِ بدونِ تایپ (Model|null) وارد جریان نمی‌شود. خودِ CancelOrderAction هم
+        // دوباره ردیف را قفل و گاردِ «قبلاً لغوشده» را اجرا می‌کند.
+        return DB::transaction(function () use ($order, $data, $cancel) {
+            $lockedStatus = Order::query()
+                ->whereKey($order->id)
+                ->lockForUpdate()
+                ->value(Order::STATUS);
 
-        return success(null, __('orders.supplier_rejected'));
+            if ($lockedStatus !== Order::STATUS_PROCESSING) {
+                return error(__('orders.cannot_reject_in_current_state'), [], 400);
+            }
+
+            $cancel->execute($order, $data['reason'], true, true);
+
+            return success(null, __('orders.supplier_rejected'));
+        });
     }
 
     public function addWaybill(AddWaybillRequest $request, Order $order): JsonResponse
@@ -275,6 +288,14 @@ class SupplierOrderController extends Controller
         } catch (\RuntimeException $e) {
             return error($e->getMessage(), [], 422);
         } catch (Exception $e) {
+            // هم‌الگو با submitEliteYARMoadianInvoice: این متد هولد مالیات (WVAT) آزاد
+            // می‌کند — شکستِ بی‌لاگ آن دیباگ‌ناپذیر بود.
+            Log::channel('orders')->error('submitSupplierMoadianInvoice failed', [
+                'order_id' => $order->id,
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+            ]);
+
             return error(__('orders.unknown_processing_error'), [], 500);
         }
 
