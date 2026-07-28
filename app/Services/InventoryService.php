@@ -8,6 +8,7 @@ use App\Models\OrderItem;
 use App\Models\OrderUnit;
 use App\Models\ProductVariant;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\Log;
 
 class InventoryService
 {
@@ -38,7 +39,75 @@ class InventoryService
     }
 
     /**
-     * اصلاح موجودی بعد از ثبت باسکول (Weighbridge)
+     * اصلاح موجودیِ **کلِ سفارش** پس از باسکول.
+     *
+     * باسکول یک عددِ واحد می‌دهد (وزنِ واقعیِ کلِ بار)، ولی سفارش می‌تواند چند ردیف
+     * داشته باشد. تا پیش از این کلِ اختلافِ وزن روی **اولین واریانت** اعمال می‌شد:
+     * سفارشِ میلگرد ۱۴ + میلگرد ۱۶ با ۲۰۰ کیلو کسری، هر ۲۰۰ کیلو را از میلگرد ۱۴
+     * کم می‌کرد — موجودیِ هر دو غلط می‌شد. گاردِ `assertSingleSupplier` این را
+     * نمی‌گیرد چون تعدادِ *تأمین‌کننده* را می‌شمارد نه تعدادِ *ردیف*، و سبدی با دو
+     * کالا از یک کارخانه کاملاً عادی است.
+     *
+     * چون باسکول نمی‌گوید کسری از کدام کالا بوده، سهم‌بندی **به‌نسبتِ وزنِ سفارشِ
+     * هر ردیف** انجام می‌شود — همان قاعده‌ای که `ShippingCostCalculator` برای
+     * تقسیمِ کرایه بین ردیف‌ها به کار می‌برد. آخرین سهم باقیمانده را جذب می‌کند تا
+     * جمعِ سهم‌ها دقیقاً برابرِ اختلافِ باسکول بماند.
+     *
+     * چند ردیف می‌توانند به یک واریانت اشاره کنند؛ اول تجمیع می‌شوند تا هر واریانت
+     * یک بار قفل و به‌روز شود و کفِ صفرِ متدِ زیر یک‌جا اعمال شود.
+     */
+    public function updateStockAfterWeighbridgeForOrder(Order $order, float $weightDifference): void
+    {
+        if (abs($weightDifference) < 0.001) {
+            return;
+        }
+
+        $order->loadMissing('items');
+
+        $weightByVariant = [];
+        foreach ($order->items as $item) {
+            $variantId = (int) $item->product_variant_id;
+            $itemWeight = (float) $item->weight;
+
+            if ($variantId <= 0 || $itemWeight <= 0) {
+                continue;
+            }
+
+            $weightByVariant[$variantId] = ($weightByVariant[$variantId] ?? 0.0) + $itemWeight;
+        }
+
+        $totalWeight = array_sum($weightByVariant);
+
+        if ($totalWeight <= 0) {
+            // بدون وزنِ ردیفی نمی‌شود سهم‌بندی کرد. سکوت نمی‌کنیم: این یعنی
+            // سفارشی به باسکول رسیده که ردیف‌هایش وزن ندارند — دادهٔ خراب.
+            Log::channel('orders')->warning(
+                "updateStockAfterWeighbridgeForOrder: order {$order->id} has no line weights; stock left untouched."
+            );
+
+            return;
+        }
+
+        $allocated = 0.0;
+        $lastVariantId = array_key_last($weightByVariant);
+
+        foreach ($weightByVariant as $variantId => $variantWeight) {
+            // آخرینی باقیمانده را می‌گیرد تا خطای گردکردن انباشته نشود.
+            $share = $variantId === $lastVariantId
+                ? $weightDifference - $allocated
+                : round($weightDifference * ($variantWeight / $totalWeight), 3);
+
+            $allocated += $share;
+
+            $this->updateStockAfterWeighbridge($variantId, $share);
+        }
+    }
+
+    /**
+     * اصلاح موجودیِ یک واریانت بعد از ثبت باسکول (Weighbridge).
+     *
+     * برای سفارشِ چندردیفی مستقیماً صدا زده نشود —
+     * `updateStockAfterWeighbridgeForOrder()` سهم‌بندی را انجام می‌دهد.
      */
     public function updateStockAfterWeighbridge(int $variantId, float $weightDifference): void
     {

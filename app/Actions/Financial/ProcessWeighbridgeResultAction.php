@@ -72,16 +72,21 @@ class ProcessWeighbridgeResultAction
                 ]));
             }
 
+            // larastan نتیجهٔ `lockForUpdate()->first()` را `Model` می‌بیند نه `Order`؛
+            // گاردهای بالا این تنگ‌سازی را تضمین می‌کنند و بدون آن، فراخوانیِ
+            // متدهایی که `Order` می‌خواهند یک ورودیِ تازه به baseline اضافه می‌کرد.
+            /** @var Order $locked */
             $locked->load('items', 'eliteYAR.badge');
 
             Log::channel('financial')->info("شروع پردازش باسکول سفارش {$locked->id}.");
 
             // Physical stock adjusts by the REAL weight delta (not the billing delta).
+            //
+            // اختلاف بین **همهٔ** ردیف‌ها به‌نسبتِ وزنشان تقسیم می‌شود. پیش از این
+            // کلِ اختلاف روی `items->first()` می‌نشست، پس در سفارشِ چندردیفی
+            // موجودیِ ردیفِ اول بیش از حد و بقیه اصلاً اصلاح نمی‌شد.
             $weightDiff = $actualWeight - (float) $locked->weight_before_scale;
-            $firstVariantId = $locked->items->first()?->product_variant_id;
-            if ($firstVariantId) {
-                $this->inventoryService->updateStockAfterWeighbridge((int) $firstVariantId, $weightDiff);
-            }
+            $this->inventoryService->updateStockAfterWeighbridgeForOrder($locked, $weightDiff);
 
             $result = $this->reconciler->reconcile($locked, $actualWeight);
 

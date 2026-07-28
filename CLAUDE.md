@@ -1268,6 +1268,28 @@ When a model turns off `$timestamps` and a writer sets the column by hand, that
 column must be in `$fillable` — otherwise the DB default wins and you get a silent
 timezone skew, not an error. Pinned by `Order/OrderStatusHistoryTimestampTest`.
 
+### Weighbridge stock correction is split across lines, not dumped on the first
+
+The weighbridge returns **one** number — the real total weight of the load — but an
+order can have several lines. `ProcessWeighbridgeResultAction` used to apply the
+entire delta to `items->first()->product_variant_id`, so a rebar-14 + rebar-16
+order short by 200 kg returned all 200 kg to rebar-14 and left rebar-16 untouched:
+**both** stock figures ended up wrong. `assertSingleSupplier()` does not prevent
+this — it counts *suppliers*, not *lines*.
+
+`InventoryService::updateStockAfterWeighbridgeForOrder()` now allocates the delta
+across lines **in proportion to each line's ordered weight** — the same rule
+`ShippingCostCalculator` uses to split freight — because the weighbridge cannot say
+which product the shortfall came from. Lines sharing a variant are aggregated first
+so each variant is locked and updated once, and the **last share absorbs the
+remainder** so the parts sum exactly to the delta (three equal lines splitting 100 kg
+do not drift). An order whose lines carry no weight is left untouched and logged
+rather than dividing by zero.
+
+Call `updateStockAfterWeighbridgeForOrder()`, never the single-variant
+`updateStockAfterWeighbridge()` directly, for anything order-shaped. Pinned by
+`Order/WeighbridgeStockAllocationTest`.
+
 ### `official_price` is a **per-unit** price, and it must represent every line
 
 Settlement multiplies it: `SettlementCalculatorService::calculatePOO()` computes
