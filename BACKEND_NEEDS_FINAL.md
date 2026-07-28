@@ -1,13 +1,74 @@
 # 📋 Backend Needs — Final Handoff to Backend Developer
 
 > ✅ **وضعیت (2026-07-19): تمام ماژول‌های این سند در بک‌اند پیاده شد** (روت‌ها در `routes/api/admin.php` بخش «Content & BackOffice modules»).
-> قرارداد نهایی پیاده‌شده در چند مورد با پیشنهاد اولیه این سند فرق دارد — **مرجع قرارداد نهایی: جدول فاز A در `BACKOFFICE_POLISH_PLAN.md`** (admins: name/family بدون role؛ coupons: type=percent/fixed + amount + user_id؛ notifications: subject/body + all|user_ids؛ reviews: فیلد comment؛ settings: PUT با wrap `{settings}`؛ articles: فیلد cover + excerpt؛ banners: sort_order؛ reports: فقط CSV با فیلتر from/to).
+> قرارداد نهایی پیاده‌شده در چند مورد با پیشنهاد اولیه این سند فرق دارد.
+> **مرجع قرارداد نهایی: [بخش ۰](#۰-قرارداد-واقعی--استخراجشده-از-کد-2026-07-27) در همین سند.**
 > فرانت بک‌آفیس با قرارداد نهایی هم‌تراز و با لاگین واقعی ادمین وریفای شده است. بخش ۱۱ (status سوپلایر) نیز رفع شد.
 > **2026-07-21:** تمام گپ‌های بخش ۱۲ (۱۲.۱ تا ۱۲.۴ و ۱۲.۷) رفع شدند؛ ۱۲.۶ صرفاً پیشنهاد UX است (اقدام فوری لازم ندارد).
-> دیتابیس `laravel_testing` migrate شد (۱۲.۸) — سوییت کامل بک‌اند: **۳۶۹ از ۳۶۹ تست سبز**.
+>
+> ---
+>
+> ### 🔄 به‌روزرسانی 2026-07-27
+>
+> این سند بین ۱۹ تا ۲۷ تیر از کد عقب افتاد. سه اصلاح ساختاری انجام شد:
+>
+> 1. **ارجاع به `BACKOFFICE_POLISH_PLAN.md` حذف شد** — آن فایل هرگز در repo وجود نداشت
+>    (کل درخت جست‌وجو شد)، پس سند به یک مرجعِ گم‌شده اشاره می‌کرد. جایش **بخش ۰** آمد که
+>    مستقیماً از کد استخراج شده است.
+> 2. **سه بندِ بخش ۱۲ تصحیح شدند** (۱۲.۱، ۱۲.۴، ۱۲.۵). ادعای بند ۱۲.۵ دربارهٔ
+>    `national_code = ''` **دو بار باگ واقعی تولید کرد** — تصحیحش را حتماً بخوانید.
+> 3. **بخش ۹ (نظرات) عملاً وجود ندارد** — پشت فیچرفلگِ خاموش است و ۴۰۴ می‌دهد. تیم محصول
+>    در ۱۴۰۵/۰۵/۰۳ تأیید کرد این فیچر در محصول نیست.
+>
+> عدد «۳۶۹ تست» در نسخهٔ قبلی این سند کهنه است؛ سوییت فعلی **۶۰۸ تست سبز** است.
 
 > این سند شامل تمام نیازمندی‌هایی است که فرانت‌اند بک‌آفیس برای اتصال کامل به بک‌اند نیاز دارد.
 > هر بخش شامل مسیر API، متد HTTP، پارامترهای ورودی و فرمت پاسخ مورد انتظار است.
+
+---
+
+## ۰. قرارداد واقعی — استخراج‌شده از کد (2026-07-27)
+
+> **این بخش جایگزینِ `BACKOFFICE_POLISH_PLAN.md` است.** خط ۴ همین سند آن فایل را «مرجع
+> قرارداد نهایی» معرفی می‌کند، ولی **آن فایل در repo وجود ندارد** (کلِ درخت جست‌وجو شد).
+> پس مرجع، خودِ کد است و جدول زیر مستقیماً از `routes/api/admin.php`، FormRequestها،
+> `config/settings.php` و مدل‌ها استخراج شده — نه از حافظه.
+>
+> **هرجا بخش‌های ۱ تا ۱۰ پایین با این جدول اختلاف داشتند، این جدول درست است.**
+> آن بخش‌ها پیشنهادِ اولیهٔ فرانت‌اند بودند و پیاده‌سازی عمداً در چند مورد از آن‌ها فاصله گرفت.
+
+| # | ماژول | فیلدهای واقعی (create) | اختلاف با متنِ سند |
+|---|---|---|---|
+| ۱ | Banners | `title*`, `image*` (png/jpg/jpeg/webp ≤4MB), `link`, `position`, `sort_order`, `is_active` | `position` **enum نیست** — رشتهٔ آزاد `max:100`. واژگان home_main/home_banners/category_banner هیچ‌جا اعتبارسنجی نمی‌شود. `sort_order` اضافه شده |
+| ۲ | Articles | `title*`, `slug*`, `body*`, `cover`, `excerpt`, `published_at`, `is_active` | نام فیلد فایل **`cover`** است نه `image`/`cover_image`. `excerpt` و `published_at` اضافه شده‌اند |
+| ۳ | FAQ | `question*`, `answer*`, `faq_category_id`, `category`, `sort_order`, `is_active` | `faq_category_id` (FK به جدول `faq_categories`) اضافه شد؛ `category`ِ رشته‌ای فقط برای BC مانده |
+| ۴ | Settings | `PUT { "settings": { key: value } }` — **۱۹ کلید whitelist** | بدنه **wrap** دارد. کلید ناشناس → **۴۲۲**. از ۵ کلیدِ سند فقط `site_title` و `site_description` وجود دارند؛ `contact_phone`→`support_phone`، `social_instagram`→`instagram_url`، `social_telegram`→`telegram_url` |
+| ۵ | Notifications | `subject*`, `body*`, `all` (bool) **یا** `user_ids[]*` | `title`→**`subject`**. `target` (enum) و `link` **وجود ندارند**. پاسخ `{queued, target_count}` است (صف‌دار) |
+| ۶ | Reports | `?from=Y-m-d&to=Y-m-d` | `date_from`/`date_to`→**`from`/`to`**. `status` و `format` **وجود ندارند** (همیشه CSV). بالای `reports.stream_max_rows` پاسخ **۲۰۲** است نه فایل؛ دانلود از `GET /admin/reports/downloads/{filename}` |
+| ۷ | Admins | `mobile*`, `password*`, `national_code*` (۱۰ رقم، یکتا), `birth_date*` (شمسی `YYYYMMDD`), `name`, `family`, `email`, `permissions[]` | **`role` وجود ندارد** — جایش `permissions[]`. `name`/`family` جدا. دو فیلد هویتی **الزامی** شدند (بند ۱۲.۵ را ببینید) |
+| ۸ | Coupons | `code*`, `type*` (`percent`\|`fixed`), `amount*`, `user_id`, `expires_at`, `reason`, `is_active` | `percentage`→**`percent`**، `value`→**`amount`**. `max_uses`، `min_order_amount`، `max_discount_amount`، `used_count` **هیچ‌کدام وجود ندارند** — کوپن **شخصی و یک‌بارمصرف** است (`user_id` + `used_at`) |
+| ۹ | Reviews | — | **هیچ روتی ثبت نمی‌شود.** پشت `features.product_reviews` (پیش‌فرض `false`) است، پس پاسخ **۴۰۴** است نه ۴۰۳ |
+| ۱۰ | Pages | `title*`, `slug*`, `body*`, `is_active` | `slug` **الزامی** است؛ ساخت خودکار از `title` پیاده نشد و نخواهد شد (`Str::slug` اسلاگ فارسی را خراب می‌کند — قاعده در `CLAUDE.md`) |
+
+`*` = الزامی
+
+### چیزهایی که این سند اصلاً نمی‌شناسد
+
+| مورد | توضیح |
+|---|---|
+| `admin.permission:{perm}` | هر گروه روت پشت مجوز granular است — «نکات مشترک»ِ پایین فقط `auth:sanctum + role.admin` را می‌گوید |
+| `admin.ip` | allowlist مبتنی بر IP روی کلِ `/admin` و `/v1/podium` (خالی = غیرفعال) |
+| Soft delete | `banners`/`articles`/`faq`/`pages` قابل بازیابی‌اند: `?trashed=1` برای سطل بازیافت و `POST /{id}/restore` |
+| `GET /admin/tickets/agents` | فهرست کارشناسان برای دراپ‌داون ارجاع |
+| `GET /admin/wallet/transactions/{id}` | صفحهٔ جزئیات تراکنش |
+| `GET /admin/system-health` | صف + پشتیبان + دفتر مالی + سفارش‌های گیرکرده در یک پاسخ |
+| `GET /admin/orders/{order}/timeline` | روایت زمانی سفارش (چرخهٔ عمر + وضعیت + پول + اسناد) |
+| Order units | `/admin/order-units` (CRUD) و `POST /admin/products/{product}/order-units` |
+| FAQ categories / Menu | `/admin/faq-categories` و `/admin/menu-items` + عمومی‌های `GET /faq-categories` و `GET /menu?location=header\|footer` |
+
+### وضعیت بند ۱۱
+
+فیلد `status` روی `SupplierProfileResource` **اضافه شد** — این بند بسته است.
 
 ---
 
@@ -207,6 +268,21 @@ SupplierProfile::STATUS => $this->status,
 **نکته قرارداد:** «ادمین بدون هیچ مجوز ثبت‌شده = دسترسی کامل» — پس خروجی `[]` باید از
 «ثبت‌نشده» قابل تفکیک باشد (مثلاً ادمین full-access قدیمی همه ۶ مجوز را دارد چون سیدر داده).
 
+> ### ⛔ تصحیح (2026-07-27) — قاعدهٔ «صفر مجوز = دسترسی کامل» **حذف شد**
+>
+> `EnsureAdminHasPermission` از دور پنجم **fail-closed** است: نبودِ مجوز یعنی ۴۰۳، تمام.
+> قاعدهٔ قبلی دقیقاً نیتِ فرم را وارونه می‌کرد — وقتی سوپرادمین برای *محدود کردن* یک ادمین
+> `permissions: []` می‌فرستاد، آن ادمین به‌جای از دست دادن دسترسی **دسترسی کامل** می‌گرفت،
+> از جمله به تسویهٔ بانکی پادیوم و شارژ دستی کیف‌پول.
+>
+> سازگاری با ادمین‌های قدیمی یک بار و **به‌صورت داده** حل شد، نه به‌صورت قاعده:
+> مایگریشن `2026_07_25_100000_backfill_admin_permissions` به هر ادمینی که صفر مجوز داشت
+> همهٔ مجوزها را داد.
+>
+> **پیامد برای فرانت:** خروجی `[]` دیگر «دسترسی کامل» نیست، یعنی «هیچ دسترسی». تفکیکِ
+> «ثبت‌نشده» از «خالی» هم دیگر لازم نیست — هر دو یک معنا دارند. اگر جایی در پنل `[]` را
+> full-access تفسیر می‌کنید، همان‌جا باگ است.
+
 **فیکس اعمال‌شده:** `UserResource` حالا `'permissions' => $this->when($canSeeMobile &&
 $this->hasRole('admin'), fn () => $this->permissions->pluck('name')->all())` را برمی‌گرداند
 (همان گیت حریم‌خصوصی مثل mobile — فقط خودِ کاربر یا ادمین می‌بینند، نه هر مصرف‌کننده‌ی دیگر
@@ -256,6 +332,15 @@ belongsTo سبک، batch eager-load می‌شود، N+1 ایجاد نمی‌کن
 `EnsureAdminHasPermission` قانون BC (صفر مجوز ثبت‌شده = دسترسی کامل) را رعایت می‌کند، پس
 ادمین‌های قدیمی/full-access قفل نمی‌شوند.
 
+> ### ⛔ تصحیح (2026-07-27) — جملهٔ دوم دیگر برقرار نیست
+>
+> میدل‌ور روی `v1/podium` سرِ جایش هست و درست است. ولی قاعدهٔ BC که این بند به آن تکیه
+> می‌کند **حذف شده** — جزئیات در تصحیحِ بند ۱۲.۱. ادمین‌های قدیمی حالا با مایگریشنِ
+> backfill محافظت می‌شوند، نه با یک استثنا در میدل‌ور.
+>
+> ضمناً کلِ گروه `/admin` و `/v1/podium` از دور پنجم `admin.ip` هم دارند
+> (allowlist مبتنی بر `ADMIN_IP_WHITELIST`؛ فهرست خالی = غیرفعال).
+
 ### ۱۲.۵ — ✅ رفع‌شده (2026-07-20) — باگ بحرانی: ایجاد مدیر جدید همیشه ۵۰۰ می‌گرفت
 
 `POST /admin/admins` روی هر تلاش (بدون ربط به permissions/فیلدهای جدید) با خطای زیر شکست می‌خورد:
@@ -276,6 +361,35 @@ SQLSTATE[HY000]: General error: 1364 Field 'national_code' doesn't have a defaul
 `UNIQUE`، پس رشته خالی برای چند مدیر مشکلی ایجاد نمی‌کند — از migration دوباره‌خوانده شد و
 تأیید شد). با کردنشیال واقعی تست شد: `POST /admin/admins` حالا `201` می‌دهد
 (`national_code: ""` در پاسخ). `php -l` تمیز.
+
+> ### ⛔ تصحیح (2026-07-27) — بندِ بالا دیگر درست نیست و **دو بار** باگ ساخت
+>
+> جملهٔ «ستون `NOT NULL` است نه `UNIQUE`، پس رشته خالی برای چند مدیر مشکلی ایجاد
+> نمی‌کند» **در زمان نگارش درست بود ولی دو روز بعد باطل شد**: مایگریشن
+> `2026_07_21_130000_add_unique_national_code_to_user_profiles` یک ایندکس UNIQUE روی
+> همان ستون گذاشت. تأیید از دیتابیس:
+>
+> ```
+> SHOW INDEX FROM user_profiles WHERE Column_name='national_code';
+> → user_profiles_national_code_unique   Non_unique = 0
+> ```
+>
+> MySQL رشتهٔ خالی را یک مقدارِ واقعی می‌شمارد، پس **دومین** ردیفی که `''` بنویسد با
+> `SQLSTATE[23000] Duplicate entry ''` می‌افتد. الگوی `NATIONAL_CODE => ''` از همین بند
+> کپی شد و دو بار شکست:
+>
+> | کجا | نشانه | رفع |
+> |---|---|---|
+> | `AdminManagerController::store()` | ساخت **ادمین دوم** ۵۰۰ می‌گرفت | `e78d8b0` + مایگریشن `2026_07_26_120000` (ستون nullable شد و `''`های موجود به NULL تبدیل شدند) |
+> | `PlatformWalletUserSeeder` | حساب دومِ پلتفرم (WVAT جدا از WSSG) ساخته نمی‌شد و چون این سیدر **اولین** مورد `DatabaseSeeder` است، کلِ `db:seed` می‌خوابید | `3ed6074` |
+>
+> **قاعدهٔ درست:** حسابی که واقعاً کد ملی ندارد باید `NULL` بگیرد، نه `''`. MySQL در ایندکس
+> UNIQUE چند NULL را می‌پذیرد. هرگز `''` را برای عبور از `NOT NULL` ننویسید.
+>
+> ضمناً `POST /admin/admins` از `e78d8b0` به بعد `national_code` (۱۰ رقم، یکتا) و
+> `birth_date` (شمسی `YYYYMMDD`) را **الزامی** می‌خواهد — بدون آن‌ها ادمینِ ساخته‌شده
+> اصلاً نمی‌توانست وارد شود (`AuthController::checkPassword` حساب با این دو ستونِ خالی را
+> رد می‌کند).
 
 ### ۱۲.۶ — پیشنهاد اندپوینت سبک برای «شرط خرید تأییدشده» نظرات (فرانت اصلی)
 
