@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\User;
 use App\Models\UserProfile;
+use App\Models\UserType;
 use App\Models\Wallet;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -61,6 +62,14 @@ class PlatformWalletUserSeeder extends Seeder
         $user->mobile = $mobile;
         $user->password = Hash::make(Str::random(48));
         $user->is_active = true;
+        // `users.type_id` در مایگریشن NOT NULL و بدون default است، پس ساختنِ دستیِ
+        // کاربر بدون آن با «Field 'type_id' doesn't have a default value» می‌افتد —
+        // و چون این سیدر اولین موردِ DatabaseSeeder است، کلِ seed را می‌خواباند.
+        // همان الگوی UserFactory دنبال می‌شود تا داده‌ی یکسانی تولید شود.
+        $user->type_id = UserType::firstOrCreate(
+            ['slug' => 'customer'],
+            ['name' => 'customer', 'icon' => 'user']
+        )->id;
         $user->save();
 
         UserProfile::firstOrCreate(
@@ -68,7 +77,12 @@ class PlatformWalletUserSeeder extends Seeder
             [
                 UserProfile::NAME => $name,
                 UserProfile::FAMILY => $family,
-                UserProfile::NATIONAL_CODE => '',
+                // NULL نه `''` — روی `user_profiles.national_code` ایندکس UNIQUE هست و
+                // رشته‌ی خالی یک مقدارِ واقعی شمرده می‌شود، پس حسابِ دومِ پلتفرم (WVAT،
+                // وقتی از WSSG جدا باشد) با `Duplicate entry ''` می‌افتاد. همان حفره‌ای
+                // که مایگریشنِ 2026_07_26_120000 برای ادمین‌ها بست؛ این حساب‌ها هم
+                // واقعاً کد ملی ندارند.
+                UserProfile::NATIONAL_CODE => null,
             ]
         );
 

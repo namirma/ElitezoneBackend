@@ -991,7 +991,7 @@ active/churned counts from `CustomerStat`; surfaced in the admin dashboard as
 
 ### Authorization (Policies)
 
-`app/Policies/` contains five policies, all registered in `AuthServiceProvider`:
+`app/Policies/` contains **nine** policies, all registered in `AuthServiceProvider`:
 
 | Policy | Resource | Pattern |
 |---|---|---|
@@ -1000,6 +1000,18 @@ active/churned counts from `CustomerStat`; surfaced in the admin dashboard as
 | `AddressPolicy` | `Address` | `view`, `update`, `delete` — owner-only |
 | `WishlistPolicy` | `Wishlist` | `view`, `update`, `delete` — owner-only |
 | `UserBankAccountPolicy` | `UserBankAccount` | `view`, `update`, `delete` — strict owner-only (sensitive) |
+| `FactoryPolicy` | `Factory` | supplier self-service — owner via `factories.supplier_user_id` |
+| `FactoryLocationPolicy` | `FactoryLocation` | owner via the parent factory's `supplier_user_id` |
+| `ProductPricePolicy` | `ProductPrice` | owner via the price's factory |
+| `ShippingRatePolicy` | `ShippingRate` | owner via `factoryLocation.factory` |
+
+The last four back the **supplier self-service panel** (`/profile/supplier/*`). Route-model
+binding resolves any `{factory}` / `{price}` / `{shippingRate}` by id, so the policy is the
+only thing standing between one supplier and another's catalogue — every single-resource
+action calls `$this->authorize(...)` and every list query is scoped by
+`supplier_user_id = Auth::id()`. Pinned by `Supplier/SupplierFactoryManagementTest`,
+`SupplierProductPriceManagementTest` and `SupplierShippingRateManagementTest` (34 tests,
+each with an explicit "cannot touch another supplier's row" case).
 
 All policies share the same shape:
 - `before(User, ability)` returns `true` for admins (admin bypass)

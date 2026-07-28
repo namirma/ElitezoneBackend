@@ -367,6 +367,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::delete('/employer', [EmployerController::class, 'destroy']);
         Route::prefix('supplier')->group(function () {
             // Open to any authenticated user applying to become a supplier (pre-approval)
+            //
+            // GET عمداً بیرونِ `role.supplier` است: نقش فقط با تأییدِ ادمین وصل می‌شود،
+            // پس متقاضیِ در انتظار و کاربرِ ردشده (که نقشش جدا شده) هم باید بتوانند
+            // وضعیتِ خودشان را بخوانند. کنترلر خودش روی Auth::id() قفل است.
+            Route::get('/', [SupplierController::class, 'show']);
             Route::post('/', [SupplierController::class, 'store']);
             Route::delete('/', [SupplierController::class, 'destroy']);
             Route::get('/activity-categories', [SupplierController::class, 'getCategories']);

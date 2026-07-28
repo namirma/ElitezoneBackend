@@ -23,6 +23,9 @@ return [
 
     'supplier_deleted' => 'اطلاعات تأمین‌کننده با موفقیت حذف شد.',
     'supplier_not_found' => 'پروفایل تأمین‌کننده یافت نشد.',
+    // پاسخِ GET /profile/supplier — «هنوز درخواست نداده‌ام» هم با همین پیام و
+    // data: null برمی‌گردد (حالتِ عادی است، نه خطا).
+    'supplier_profile_received' => 'اطلاعات تأمین‌کننده دریافت شد.',
 
     // Employer SMS invite (expert/advisor only)
     'invite_sent_successfully' => 'دعوت‌نامه با موفقیت ارسال شد.',

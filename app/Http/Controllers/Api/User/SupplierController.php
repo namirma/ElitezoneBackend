@@ -27,13 +27,30 @@ class SupplierController extends Controller
         return success(SupplierCategoryResource::collection($categories));
     }
 
-    public function getProfile($id): SupplierProfileResource
+    /**
+     * پروفایل سوپلایریِ **خودِ کاربر جاری** — شامل `status`.
+     *
+     * چرا لازم است: نقشِ `supplier` فقط با تأییدِ ادمین وصل می‌شود، و
+     * `ProfileController` رابطهٔ سوپلایر را هم فقط بر همان اساس لود می‌کند. نتیجه
+     * این بود که دقیقاً کسانی که باید وضعیتشان را ببینند — متقاضیِ **در انتظار**
+     * و کاربرِ **ردشده** (که نقشش جدا می‌شود) — هیچ راهی برای دیدنش نداشتند.
+     *
+     * «هنوز درخواست نداده‌ام» یک حالتِ عادی است نه خطا، پس پاسخ ۲۰۰ با
+     * `data: null` است؛ پنل نباید مجبور شود یک ۴۰۴ را به‌عنوان وضعیتِ معمولی
+     * هندل کند.
+     *
+     * scope همیشه روی `Auth::id()` قفل است — این متد هرگز شناسه از ورودی نمی‌گیرد.
+     */
+    public function show(): JsonResponse
     {
-        $supplier = SupplierProfile::with(['activities' => function ($query) {
-            $query->withoutChildren();
-        }])->findOrFail($id);
+        $supplier = SupplierProfile::with(['activities' => fn ($query) => $query->withoutChildren()])
+            ->where(SupplierProfile::USER_ID, Auth::id())
+            ->first();
 
-        return new SupplierProfileResource($supplier);
+        return success(
+            $supplier ? new SupplierProfileResource($supplier) : null,
+            'profile.supplier_profile_received'
+        );
     }
 
     public function getCategories()
