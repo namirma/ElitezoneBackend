@@ -1268,6 +1268,38 @@ When a model turns off `$timestamps` and a writer sets the column by hand, that
 column must be in `$fillable` — otherwise the DB default wins and you get a silent
 timezone skew, not an error. Pinned by `Order/OrderStatusHistoryTimestampTest`.
 
+### `official_price` is a **per-unit** price, and it must represent every line
+
+Settlement multiplies it: `SettlementCalculatorService::calculatePOO()` computes
+`$productBase = Money::mul($op, $weight)` where `$weight` is the **order's total**
+`weight_before_scale`. So `official_price × total_weight` must equal the order's
+true goods value.
+
+Until 2026-07-27 **nothing wrote the column at all** — it was read in three places
+(`ProcessPreScalePaymentAction`, `ProcessReservationCompletionAction`,
+`WeighbridgeReconciler`) and written in none, so every one of them fell through to
+`items->first()->unit_price`. That billed **the whole tonnage at the first line's
+price**. Correct for a single-line order; wrong for any multi-line one — and
+`PlaceOrderAction::assertSingleSupplier()` does not stop those, because it counts
+*suppliers*, not *lines*. A cart with two rebar sizes from one factory is ordinary
+B2B and passes the guard.
+
+`PlaceOrderAction` now snapshots the weighted average
+(`Σ(unit_price × weight) / Σweight`, bcmath) via `forceFill` — the column is not
+fillable, so putting it in the `Order::create([...])` array would be silently
+dropped. With one line the formula returns exactly that line's `unit_price`, so
+single-line behaviour is unchanged.
+
+`financial:doctor` gained a fourth invariant for this
+(`LedgerReconciler::mispricedOrders()`): it recomputes the effective basis the same
+way the code does — including the `first()` fallback — so it also flags **older**
+orders that have no snapshot. Tolerance is `ops.financial.pricing_tolerance`
+(1,000 Rials) because the average is rounded to 2 decimals. Note the ledger stays
+balanced when this bug fires — the wrong POO is distributed consistently across
+wallets — so the wallet-replay check cannot see it. That is why it needed its own
+invariant. Pinned by `Financial/OrderPricingBasisTest` and
+`Order/OfficialPriceSnapshotTest`.
+
 ### `??` never fires on a `NOT NULL DEFAULT 0` column
 
 `orders.vat_rate` is `decimal(5,2) NOT NULL DEFAULT 0.00`, so it is never `null`
