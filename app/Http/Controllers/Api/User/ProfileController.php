@@ -60,7 +60,12 @@ class ProfileController extends Controller
         if ($roleNames->contains('employer')) {
             $relationsToLoad[] = User::RELATION_EMPLOYER;
         }
-        if ($roleNames->contains('supplier')) {
+        // نقشِ `supplier` فقط با تأییدِ ادمین وصل می‌شود (و هنگام رد شدن جدا می‌شود)،
+        // پس شرطِ نقش به‌تنهایی دقیقاً متقاضیِ در انتظار و کاربرِ ردشده را از دیدنِ
+        // وضعیتِ خودش محروم می‌کرد. `type.slug = supplier` همان چیزی است که
+        // SetUserTypeAction هنگام انتخابِ نقش می‌نویسد و بعد از رد شدن هم می‌ماند.
+        // (منبعِ قطعی برای این پرسش، `GET /profile/supplier` است.)
+        if ($roleNames->contains('supplier') || $typeSlug === 'supplier') {
             $relationsToLoad[] = User::RELATION_SUPPLIER;
         }
 
