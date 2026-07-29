@@ -7,6 +7,7 @@ use App\Http\Resources\Product\ProductPriceResource;
 use App\Models\Factory;
 use App\Models\FactoryLocation;
 use App\Models\ProductPrice;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -45,6 +46,15 @@ class SupplierProductPriceController extends Controller
         return success(ProductPriceResource::collection($prices), __('admin.prices.list_received'));
     }
 
+    /**
+     * چکِ تکراری‌بودن و درج، هر دو باید یک تصمیم باشند.
+     *
+     * قبلاً `exists()` و بعد `create()` بدون هیچ قفلی اجرا می‌شد. دو درخواستِ
+     * هم‌زمان هر دو از چک رد می‌شدند و دومی به ایندکسِ یکتای
+     * `unique_product_price` می‌خورد — یعنی به‌جای ۴۲۲ِ موردنظر، یک
+     * `QueryException` مدیریت‌نشده و پاسخِ ۵۰۰. حالا خودِ نقضِ قید هم به همان
+     * ۴۲۲ نگاشت می‌شود، پس مسابقه و تکرارِ ساده یک پاسخ می‌گیرند.
+     */
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate($this->storeRules());
@@ -60,7 +70,12 @@ class SupplierProductPriceController extends Controller
         }
 
         $data[ProductPrice::LAST_UPDATED_AT] = now();
-        $price = ProductPrice::create($data);
+
+        try {
+            $price = ProductPrice::create($data);
+        } catch (UniqueConstraintViolationException) {
+            return error(__('admin.prices.duplicate'), [], 422);
+        }
 
         return created(new ProductPriceResource($price->load(['factory', 'factoryLocation'])), __('admin.prices.created'));
     }

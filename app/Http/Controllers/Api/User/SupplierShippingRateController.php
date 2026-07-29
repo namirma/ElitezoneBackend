@@ -11,6 +11,7 @@ use App\Models\ShippingRate;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 /**
@@ -59,14 +60,12 @@ class SupplierShippingRateController extends Controller
     {
         $data = $request->validate($this->rules());
 
-        if ($this->routeExists($data)) {
-            return error(__('admin.shipping_rates.duplicate_route'), [], 422);
-        }
+        return $this->guardingRoute($data, null, function () use ($data) {
+            $rate = ShippingRate::create($data);
+            $rate->load('factoryLocation.factory');
 
-        $rate = ShippingRate::create($data);
-        $rate->load('factoryLocation.factory');
-
-        return success(new ShippingRateResource($rate), __('admin.shipping_rates.created'));
+            return success(new ShippingRateResource($rate), __('admin.shipping_rates.created'));
+        });
     }
 
     public function update(Request $request, ShippingRate $shippingRate): JsonResponse
@@ -75,14 +74,42 @@ class SupplierShippingRateController extends Controller
 
         $data = $request->validate($this->rules());
 
-        if ($this->routeExists($data, $shippingRate->id)) {
-            return error(__('admin.shipping_rates.duplicate_route'), [], 422);
-        }
+        return $this->guardingRoute($data, $shippingRate->id, function () use ($shippingRate, $data) {
+            $shippingRate->update($data);
+            $shippingRate->load('factoryLocation.factory');
 
-        $shippingRate->update($data);
-        $shippingRate->load('factoryLocation.factory');
+            return success(new ShippingRateResource($shippingRate), __('admin.shipping_rates.updated'));
+        });
+    }
 
-        return success(new ShippingRateResource($shippingRate), __('admin.shipping_rates.updated'));
+    /**
+     * چکِ تکراری‌بودنِ مسیر و نوشتن را زیر یک قفل می‌برد.
+     *
+     * `routeExists()` + `create()` بدونِ قفل یک مسابقهٔ واقعی بود و — برخلاف
+     * قیمت‌ها — ایندکسِ یکتا اینجا تورش را نمی‌گیرد: در MySQL دو `NULL` با هم
+     * برابر نیستند، پس `shipping_rates_route_unique` روی ردیف‌های **سطحِ استان**
+     * (`destination_city_id = NULL`) عملاً بی‌اثر است. دو درخواستِ هم‌زمان دو ردیف
+     * برای یک مسیر می‌ساختند و بعد `ShippingCostCalculator` دلبخواهی یکی را
+     * برمی‌داشت — یعنی کرایهٔ یک سفارش به ترتیبِ رسیدنِ درخواست‌ها بستگی داشت.
+     *
+     * نقطهٔ سریال‌سازی، ردیفِ `factory_locations` (مبدأ مسیر) است: طبیعی است،
+     * از قبل اعتبارسنجی شده که مالِ خودِ کاربر است، و نرخ‌ها آن‌قدر کم نوشته
+     * می‌شوند که هزینهٔ قفل ناچیز است.
+     */
+    private function guardingRoute(array $data, ?int $ignoreId, \Closure $write): JsonResponse
+    {
+        return DB::transaction(function () use ($data, $ignoreId, $write) {
+            FactoryLocation::query()
+                ->whereKey($data['factory_location_id'])
+                ->lockForUpdate()
+                ->first();
+
+            if ($this->routeExists($data, $ignoreId)) {
+                return error(__('admin.shipping_rates.duplicate_route'), [], 422);
+            }
+
+            return $write();
+        });
     }
 
     public function destroy(ShippingRate $shippingRate): JsonResponse
