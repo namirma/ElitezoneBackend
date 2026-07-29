@@ -1034,6 +1034,7 @@ active/churned counts from `CustomerStat`; surfaced in the admin dashboard as
 | `FactoryLocationPolicy` | `FactoryLocation` | owner via the parent factory's `supplier_user_id` |
 | `ProductPricePolicy` | `ProductPrice` | owner via the price's factory |
 | `ShippingRatePolicy` | `ShippingRate` | owner via `factoryLocation.factory` |
+| `FactoryStockPolicy` | `FactoryStock` | owner via the stock row's factory |
 
 ### Supplier panel — show the supplier *their* money, not the buyer's
 
@@ -1059,12 +1060,44 @@ wallet — was returned by no user-facing endpoint at all.
   order where the viewer is merely the buyer. Pinned by
   `Supplier/SupplierSettlementVisibilityTest`.
 
-**Stock is not per-supplier and must not become supplier-writable as-is.**
-`product_variants.stock_quantity` is one global column per variant, while `product_prices`
-is keyed `(variant, factory, location)`. So two suppliers selling the same variant from
-different factories share one stock number: letting supplier A edit it would silently zero
-out supplier B's availability. A supplier stock endpoint therefore needs per-factory stock
-(a schema change), not a new controller. Today stock is admin-only (`manage-catalog`).
+### Stock is per-origin — `factory_stocks` is the ordering authority
+
+`product_variants.stock_quantity` used to be one **global column per variant** while
+`product_prices` is keyed `(variant, factory, location)`. Two suppliers selling the same
+variant from different factories therefore shared one number: A's sale drew down B's
+availability, and giving A write access would have zeroed B out. That schema gap — not a
+missing controller — is why the supplier stock panel did not exist.
+
+`factory_stocks` mirrors the `product_prices` key exactly and is now the authority for
+**check / deduct / restore / weighbridge**. Every cart item and order item already carries
+`factory_id` + `factory_location_id` (the shipping subsystem put them there), so each
+movement hits the origin the goods actually came from.
+
+- **`InventoryService::availableAt()` is the only way to ask "how much is there".** A
+  missing row means *"this origin has not entered its own stock yet"* → falls back to the
+  legacy column. **Never treat a missing row as zero** — a priced triple added after the
+  backfill would silently become unsellable. `checkStock()` takes the origin; always pass
+  it (the optional signature exists only so old call sites don't fatal).
+- **`product_variants.stock_quantity` is now a display rollup**, kept equal to
+  `SUM(factory_stocks)` by `FactoryStock::syncVariantRollup()`. The catalog filter
+  (`stock_quantity > 0`), analytics, dashboard alerts and Resources still read it. It must
+  be a **sum**, not a running decrement: decrementing it per sale would drive it to zero
+  once the old pool was sold and **hide products that are actually in stock**.
+  `syncVariantRollup()` no-ops when the variant has no origin rows at all — "no rows" and
+  "sold out everywhere" are different claims, and the first must not wipe legacy stock.
+- **Backfill seeded every priced triple with the variant's current global stock.** The old
+  number cannot be split correctly — that information is not in the database. Splitting it
+  evenly would keep the total honest but could reject a real order on deploy day; giving
+  each origin the full amount reproduces exactly what the code did yesterday (every origin
+  already offered the whole pool), so **nothing is blocked**. The cost is that the rollup
+  reads N× high for multi-origin variants until suppliers enter real numbers.
+- Panels: `/profile/supplier/stocks` (own origins, `POST` is an **upsert** on the triple)
+  and `/admin/factory-stocks` under `manage-catalog` — without the admin one a wrong number
+  would only be fixable via tinker. `FactoryStockPolicy` guards ownership via
+  `factory.supplier_user_id`; deleting a row means "no dedicated stock" (falls back), **not**
+  "sold out" — for that, set the quantity to 0.
+- Pinned by `Supplier/PerFactoryStockTest`, whose central case is
+  `a_sale_from_one_supplier_leaves_the_other_untouched`.
 
 The four resource policies below back the **supplier self-service panel**
 (`/profile/supplier/*`). Route-model
@@ -1116,7 +1149,7 @@ tests/
   Unit/          — (empty placeholder dir — kept so phpunit.xml works)
 ```
 
-**Total: 663 tests, 1700 assertions — all green. ✅**
+**Total: 684 tests, 1748 assertions — all green. ✅**
 
 Round-5 audit additions: `Security/CorsAllowlistTest`,
 `Security/PublicDiskUploadRulesTest`, `Admin/AdminPermissionCoverageTest`,

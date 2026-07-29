@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\Admin\AdminDashboardController;
 use App\Http\Controllers\Api\Admin\AdminEduixController;
 use App\Http\Controllers\Api\Admin\AdminFactoryController;
 use App\Http\Controllers\Api\Admin\AdminFactoryLocationController;
+use App\Http\Controllers\Api\Admin\AdminFactoryStockController;
 use App\Http\Controllers\Api\Admin\AdminFaqCategoryController;
 use App\Http\Controllers\Api\Admin\AdminFaqController;
 use App\Http\Controllers\Api\Admin\AdminFinancialController;
@@ -350,6 +351,16 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
         Route::post('/', 'store');
         Route::put('/{price}', 'update');
         Route::delete('/{price}', 'destroy');
+    });
+
+    // Factory Stocks — موجودی به‌ازای مبدأ (کارخانه/انبار).
+    // از وقتی factory_stocks مرجعِ سفارش شد، بدون این گروه عددِ اشتباهِ یک
+    // تأمین‌کننده فقط با tinker قابل اصلاح بود.
+    Route::controller(AdminFactoryStockController::class)->prefix('factory-stocks')->middleware('admin.permission:manage-catalog')->group(function () {
+        Route::get('/', 'index');
+        Route::post('/', 'store');
+        Route::put('/{stock}', 'update');
+        Route::delete('/{stock}', 'destroy');
     });
 
     // Price Filter Types — نوع فیلتر قیمت

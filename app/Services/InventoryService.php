@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Exceptions\Order\StockUnavailableException;
+use App\Models\FactoryStock;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderUnit;
@@ -13,15 +14,47 @@ use Illuminate\Support\Facades\Log;
 class InventoryService
 {
     /**
-     * بررسی موجودی قبل از ثبت سفارش (بدون کسر کردن)
+     * بررسی موجودی قبل از ثبت سفارش (بدون کسر کردن).
+     *
+     * مبدأ (کارخانه/انبار) اختیاری است تا فراخوان‌های قدیمی نشکنند، ولی **همیشه
+     * بدهیدش**: موجودی به‌ازای مبدأ نگه داشته می‌شود و بدون آن به عددِ سراسری
+     * برمی‌گردیم که فقط جمعِ نمایشی است و برای هیچ مبدأ خاصی درست نیست.
      */
-    public function checkStock(ProductVariant $variant, array|float|int $quantities): bool
-    {
+    public function checkStock(
+        ProductVariant $variant,
+        array|float|int $quantities,
+        ?int $factoryId = null,
+        ?int $factoryLocationId = null,
+    ): bool {
         $requiredBaseQty = is_array($quantities)
             ? $this->calculateBaseQuantity($quantities, $variant)
             : (float) $quantities;
 
-        return $variant->stock_quantity >= ($requiredBaseQty - 0.0001);
+        return $this->availableAt($variant, $factoryId, $factoryLocationId) >= ($requiredBaseQty - 0.0001);
+    }
+
+    /**
+     * موجودیِ قابلِ فروشِ یک واریانت در یک مبدأ.
+     *
+     * نبودنِ ردیف یعنی «این مبدأ هنوز موجودیِ اختصاصی ثبت نکرده»، نه «صفر» — پس
+     * به عددِ سراسری برمی‌گردیم. اگر صفر فرض می‌کردیم، هر سه‌تاییِ قیمت‌داری که
+     * بعد از backfill اضافه شده بی‌صدا غیرقابل‌فروش می‌شد.
+     */
+    public function availableAt(ProductVariant $variant, ?int $factoryId, ?int $factoryLocationId): float
+    {
+        if ($factoryId && $factoryLocationId) {
+            $row = FactoryStock::query()
+                ->where(FactoryStock::PRODUCT_VARIANT_ID, $variant->id)
+                ->where(FactoryStock::FACTORY_ID, $factoryId)
+                ->where(FactoryStock::FACTORY_LOCATION_ID, $factoryLocationId)
+                ->first();
+
+            if ($row) {
+                return (float) $row->{FactoryStock::QUANTITY};
+            }
+        }
+
+        return (float) $variant->stock_quantity;
     }
 
     /**
@@ -64,7 +97,10 @@ class InventoryService
 
         $order->loadMissing('items');
 
-        $weightByVariant = [];
+        // کلید حالا سه‌تاییِ (واریانت، کارخانه، انبار) است نه فقط واریانت: اصلاحِ
+        // باسکول باید به همان مبدأیی برگردد که بار از آن رفته، وگرنه کسری از
+        // موجودیِ مبدأ دیگری کم می‌شد.
+        $weightByOrigin = [];
         foreach ($order->items as $item) {
             $variantId = (int) $item->product_variant_id;
             $itemWeight = (float) $item->weight;
@@ -73,10 +109,16 @@ class InventoryService
                 continue;
             }
 
-            $weightByVariant[$variantId] = ($weightByVariant[$variantId] ?? 0.0) + $itemWeight;
+            $key = implode(':', [
+                $variantId,
+                (int) $item->{OrderItem::FACTORY_ID},
+                (int) $item->{OrderItem::FACTORY_LOCATION_ID},
+            ]);
+
+            $weightByOrigin[$key] = ($weightByOrigin[$key] ?? 0.0) + $itemWeight;
         }
 
-        $totalWeight = array_sum($weightByVariant);
+        $totalWeight = array_sum($weightByOrigin);
 
         if ($totalWeight <= 0) {
             // بدون وزنِ ردیفی نمی‌شود سهم‌بندی کرد. سکوت نمی‌کنیم: این یعنی
@@ -89,18 +131,53 @@ class InventoryService
         }
 
         $allocated = 0.0;
-        $lastVariantId = array_key_last($weightByVariant);
+        $lastKey = array_key_last($weightByOrigin);
 
-        foreach ($weightByVariant as $variantId => $variantWeight) {
+        foreach ($weightByOrigin as $key => $originWeight) {
             // آخرینی باقیمانده را می‌گیرد تا خطای گردکردن انباشته نشود.
-            $share = $variantId === $lastVariantId
+            $share = $key === $lastKey
                 ? $weightDifference - $allocated
-                : round($weightDifference * ($variantWeight / $totalWeight), 3);
+                : round($weightDifference * ($originWeight / $totalWeight), 3);
 
             $allocated += $share;
 
-            $this->updateStockAfterWeighbridge($variantId, $share);
+            [$variantId, $factoryId, $locationId] = array_map('intval', explode(':', $key));
+
+            $this->updateStockAtOrigin($variantId, $factoryId ?: null, $locationId ?: null, $share);
         }
+    }
+
+    /**
+     * اصلاحِ موجودیِ یک مبدأ پس از باسکول. سهم مثبت یعنی کسری (کم می‌کنیم)،
+     * منفی یعنی اضافه‌تحویل (برمی‌گردانیم).
+     */
+    private function updateStockAtOrigin(int $variantId, ?int $factoryId, ?int $locationId, float $share): void
+    {
+        if (abs($share) < 0.001) {
+            return;
+        }
+
+        $stock = FactoryStock::lockRow($variantId, $factoryId, $locationId);
+
+        if (! $stock) {
+            // مبدأ ردیفِ اختصاصی ندارد — همان مسیرِ لگاسیِ سراسری.
+            $this->updateStockAfterWeighbridge($variantId, $share);
+
+            return;
+        }
+
+        if ($share > 0) {
+            // کف‌بندی روی صفر: اختلافِ باسکولِ بزرگ‌تر از موجودیِ باقی‌مانده
+            // وگرنه ستون را منفی می‌کرد و از آن به بعد هر چکِ موجودی می‌شکست.
+            $stock->decrement(
+                FactoryStock::QUANTITY,
+                min($share, (float) $stock->{FactoryStock::QUANTITY})
+            );
+        } else {
+            $stock->increment(FactoryStock::QUANTITY, abs($share));
+        }
+
+        FactoryStock::syncVariantRollup($variantId);
     }
 
     /**
@@ -131,7 +208,12 @@ class InventoryService
     }
 
     /**
-     * کسر موجودی یک آیتم خاص
+     * کسر موجودی یک آیتم خاص — از **مبدأ خودش**.
+     *
+     * هر ردیفِ سفارش `factory_id`/`factory_location_id` را دارد (همان چیزی که
+     * زیرسیستمِ حمل برای مبدأ استفاده می‌کند)، پس کسر دقیقاً از همان مبدأیی
+     * انجام می‌شود که کالا از آن فروخته شده. پیش از این از یک استخرِ سراسری کم
+     * می‌شد و فروشِ یک تأمین‌کننده موجودیِ تأمین‌کنندهٔ دیگر را کم می‌کرد.
      */
     private function deductItemStock(OrderItem $item): void
     {
@@ -155,17 +237,30 @@ class InventoryService
             $amountToDeduct = $this->calculateBaseQuantity($quantities, $variant);
         }
 
-        // بررسی موجودی و پرتاب خطای ترجمه‌شده و مرتب
-        if ($variant->stock_quantity < ($amountToDeduct - 0.0001)) {
+        $factoryId = (int) $item->{OrderItem::FACTORY_ID} ?: null;
+        $locationId = (int) $item->{OrderItem::FACTORY_LOCATION_ID} ?: null;
+
+        $stock = FactoryStock::lockRow((int) $variant->id, $factoryId, $locationId);
+        $available = $stock ? (float) $stock->{FactoryStock::QUANTITY} : (float) $variant->stock_quantity;
+
+        if ($available < ($amountToDeduct - 0.0001)) {
             throw new StockUnavailableException(
                 __('inventory.errors.insufficient_stock', [
                     'name' => $variant->name,
                     'requested' => number_format($amountToDeduct),
-                    'available' => number_format((float) $variant->stock_quantity),
+                    'available' => number_format($available),
                 ])
             );
         }
 
+        if ($stock) {
+            $stock->decrement(FactoryStock::QUANTITY, $amountToDeduct);
+            FactoryStock::syncVariantRollup((int) $variant->id);
+
+            return;
+        }
+
+        // مبدأ هنوز ردیفِ اختصاصی ندارد — رفتارِ لگاسی روی عددِ سراسری.
         $variant->decrement('stock_quantity', $amountToDeduct);
     }
 
@@ -189,6 +284,21 @@ class InventoryService
             }
 
             if ($amountRestored > 0) {
+                // به همان مبدأیی برمی‌گردد که از آن کم شده بود — وگرنه لغوِ سفارش
+                // موجودی را از تأمین‌کنندهٔ A به استخرِ سراسری منتقل می‌کرد.
+                $stock = FactoryStock::lockRow(
+                    (int) $item->product_variant_id,
+                    (int) $item->{OrderItem::FACTORY_ID} ?: null,
+                    (int) $item->{OrderItem::FACTORY_LOCATION_ID} ?: null,
+                );
+
+                if ($stock) {
+                    $stock->increment(FactoryStock::QUANTITY, $amountRestored);
+                    FactoryStock::syncVariantRollup((int) $item->product_variant_id);
+
+                    continue;
+                }
+
                 ProductVariant::where('id', $item->product_variant_id)
                     ->increment('stock_quantity', $amountRestored);
             }
