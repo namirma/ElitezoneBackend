@@ -10,6 +10,7 @@ use App\Models\ProductPrice;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 /**
  * پنل خودسرویس سوپلایر — CRUD انبارها/مبادی، فقط برای کارخانه‌های خودش.
@@ -64,7 +65,11 @@ class SupplierFactoryLocationController extends Controller
             return error(__('admin.factory_locations.in_use'), [], 422);
         }
 
-        $factoryLocation->delete();
+        // تراکنش لازم است چون `FactoryLocation::booted()` پیش از حذفِ خودِ ردیف،
+        // موجودی‌های این مبدأ را پاک و رول‌آپ را بازسازی می‌کند. اگر حذفِ انبار بعد
+        // از آن به قید کلید خارجیِ دیگری بخورد، بدون تراکنش موجودی رفته بود و انبار
+        // مانده بود.
+        DB::transaction(fn () => $factoryLocation->delete());
 
         return success(null, __('admin.factory_locations.deleted'));
     }

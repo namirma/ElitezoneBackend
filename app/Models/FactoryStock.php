@@ -84,6 +84,53 @@ class FactoryStock extends Model
      * کم می‌شد، پس از فروشِ کلِ استخرِ قدیمی به صفر می‌رسید و **محصولی را که
      * واقعاً موجود است از کاتالوگ حذف می‌کرد**. جمع، این حالت را غیرممکن می‌کند.
      */
+    /**
+     * ردیف‌های موجودیِ یک مبدأ را حذف می‌کند و رول‌آپِ واریانت‌های متأثر را دوباره
+     * می‌سازد.
+     *
+     * چرا لازم است: هر سه کلیدِ خارجیِ این جدول `onDelete('cascade')`اند، و
+     * cascadeِ **سطح دیتابیس هیچ رویداد Eloquent نمی‌زند**. پس حذف یک انبار،
+     * ردیف‌های موجودی را بی‌صدا می‌برد در حالی که
+     * `product_variants.stock_quantity` روی جمعِ قدیمی می‌ماند — عددی که حالا از
+     * واقعیت بزرگ‌تر است. و چون `InventoryService::availableAt()` برای هر
+     * سه‌تاییِ بدونِ ردیف به همان ستون برمی‌گردد، آن عددِ متورم می‌تواند سفارشی را
+     * تأیید کند که پشتوانهٔ موجودی ندارد.
+     *
+     * توجه: اگر واریانت با این حذف آخرین مبدأش را از دست بدهد،
+     * `syncVariantRollup()` عمداً no-op می‌کند — «هیچ ردیفی نیست» یعنی برگشت به
+     * موجودیِ لگاسی، نه «همه‌جا تمام شد».
+     */
+    public static function purgeForLocation(int $locationId): void
+    {
+        // `self::` نه `static::` — `purgeBy()` خصوصی است و فراخوانیِ خصوصی از راه
+        // late static binding را PHPStan (به‌درستی) ناامن می‌داند.
+        self::purgeBy(self::FACTORY_LOCATION_ID, $locationId);
+    }
+
+    /** هم‌ارزِ `purgeForLocation()` برای حذفِ کلِ یک کارخانه. */
+    public static function purgeForFactory(int $factoryId): void
+    {
+        self::purgeBy(self::FACTORY_ID, $factoryId);
+    }
+
+    private static function purgeBy(string $column, int $id): void
+    {
+        $variantIds = static::query()
+            ->where($column, $id)
+            ->distinct()
+            ->pluck(self::PRODUCT_VARIANT_ID);
+
+        if ($variantIds->isEmpty()) {
+            return;
+        }
+
+        static::query()->where($column, $id)->delete();
+
+        foreach ($variantIds as $variantId) {
+            static::syncVariantRollup((int) $variantId);
+        }
+    }
+
     public static function syncVariantRollup(int $variantId): void
     {
         $rows = static::query()->where(self::PRODUCT_VARIANT_ID, $variantId);
