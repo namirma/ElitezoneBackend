@@ -20,12 +20,9 @@ class SupplierController extends Controller
         return getSupplierCategoryId();
     }
 
-    public function index()
-    {
-        $categories = SupplierActivityCategory::with('children')->get();
-
-        return success(SupplierCategoryResource::collection($categories));
-    }
+    // `index()` حذف شد: هیچ روتی به آن اشاره نمی‌کرد و کارش هم تکراری بود —
+    // `getCategories()` (روت `/profile/supplier/activity-categories`) همان
+    // دسته‌بندی‌ها را از `SupplierActivityCategory::getAll()` برمی‌گرداند.
 
     /**
      * پروفایل سوپلایریِ **خودِ کاربر جاری** — شامل `status`.

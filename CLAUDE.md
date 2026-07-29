@@ -710,20 +710,38 @@ surplus/over-delivery path that `FinancialCodes` documents as removed per spec �
 J/K/M). They are formatted Persian invoice templates and are the starting point if any
 of those flows returns. Leave them, and don't "fix" the missing references.
 
-**The survey document slugs stay out of the route whitelist.** `pdf.survey_buyer`
-(Doc S) and `pdf.survey_elite_yar` (Doc T) exist and are wired into `getViewName()` +
-`DOCUMENT_AUDIENCES`, but `routes/api/user.php` still constrains the download route to
-`whereIn('type', ['initial', 'final', 'tax'])`. That is deliberate — surveys are out of
-product scope (2026-07-25). Widening the whitelist is a one-line change if that reverses.
+### `OrderDocumentCatalog` is the single source of truth for document access
 
-**Per-document authorization (do not weaken).** After the generic `authorize('view',
-$order)`, `download()` also enforces `mayAccessDocument($order, $type)` against a
-`DOCUMENT_AUDIENCES` map: buyer-docs (initial/receipt/final/refund/tax/…) → placer only;
-supplier-docs (supplier_report/final_supplier/tax_supplier/…) → the order's item supplier;
-elite yar-docs (elite_yar_report/tax_elite_yar/…) → beneficiary/elite yar; admins
-bypass. This closed a real leak where any order party that passed `view` could pull
-another party's tax invoice. The user-facing route currently whitelists only
-`['initial','final','tax']`; keep the audience map complete anyway in case the route widens.
+`app/Support/OrderDocumentCatalog.php` owns **both** maps — slug→code and
+slug→audiences — plus `downloadableSlugs()`, which the route in `routes/api/user.php`
+uses directly. Nothing else may hand-write a list of document slugs.
+
+This exists because the two copies drifted and their intersection went **empty for
+suppliers and elite yars**. The route said `whereIn('type', ['initial','final','tax'])`
+while the audience map (correctly) marked all three buyer-only. Measured result before
+the fix: a supplier got **404 on all eight** of their own slugs — including **Doc K
+(بارنامه / مجوز خروج)** and **Doc C (دستور بارگیری)**, without which a load does not
+leave the factory — and **403 on the three** the route did allow. Elite yars were in the
+same position for `elite_yar_report` / `tax_elite_yar`.
+
+- Authorization is still the audience map, applied after the generic `authorize('view')`.
+  Widening the route did **not** widen access — a supplier still gets 403 on buyer docs.
+- Survey slugs (Doc S / Doc T) stay out via `OUT_OF_PRODUCT_SCOPE`, matching the
+  `features.order_surveys` decision. Re-enabling is one array edit.
+- `Order::partyRolesFor(?int $userId)` answers "what is this user to this order"
+  (buyer / supplier / elite_yar) and is used by **both** the controller's authorization
+  and `OrderResource`'s download button, so "who may see it" and "what we link to" cannot
+  disagree. It checks `relationLoaded('items')` first to avoid an N+1 on list endpoints.
+- Pinned by `Order/OrderDocumentAccessTest` — a **sweep** over every slug × every
+  audience (51 combinations), not a sample. A sampled test is what let this survive:
+  the three slugs anyone thought to test were all buyer docs that worked.
+
+**`OrderPolicy::view` must keep its `elite_yar_user_id` branch.** It only checked placer /
+beneficiary / supplier, so in the **employer-places-and-names-an-elite-yar** flow — where
+`beneficiary_user_id` is *prohibited* by `StoreOrderRequest` — the elite yar could not view
+the order they earn commission on. Meanwhile `submitEliteYARMoadianInvoice` guards directly
+on `elite_yar_user_id`, so the same user was trusted to release their own commission hold
+but not to read the order. Found by the sweep test above.
 
 ### Financial Flow (Critical Path)
 
@@ -855,7 +873,19 @@ Dispatch flow:
   (`InventoryService::deductStockForOrder`, within the placement transaction and under
   `lockForUpdate`). This doc used to claim the listener deducted stock; adding a
   deduction to the listener would double-deduct every order.
-- `OrderPaid` → payment notifications (SendOrderPaymentNotification)
+- `OrderPaid` → payment notifications: `SendOrderPaymentNotification` (buyer) +
+  `SendSupplierOrderNotification` (supplier). **Dispatched from
+  `ProcessPreScalePaymentAction` and `ProcessReservationCompletionAction`** — the two
+  places an order actually becomes `PROCESSING` + `PAID`.
+
+  > It used to be dispatched **only** from `Actions/Order/PayOrderAction`, which has
+  > **zero callers** (a scaffold for the not-yet-licensed gateway path). So the event
+  > never fired on any live path and `SendOrderPaymentNotification` — registered for a
+  > long time — had never run: no payment SMS reached *anyone*, buyer included. The
+  > supplier's whole queue starts at `markAsPrepared` on a PROCESSING order, so with no
+  > notification they had to poll `/profile/supplier/orders` by hand. If the gateway path
+  > is ever wired up, make sure `OrderPaid` is not then dispatched twice.
+  > Pinned by `Order/OrderPaidNotificationTest`.
 - `OrderCancelled` → stock restoration, wallet refund
 - `CartItemChanged` → analytics tracking (LogCartEvent)
 - `WalletFunded` / `TransactionProcessed` → financial notifications
@@ -1005,7 +1035,39 @@ active/churned counts from `CustomerStat`; surfaced in the admin dashboard as
 | `ProductPricePolicy` | `ProductPrice` | owner via the price's factory |
 | `ShippingRatePolicy` | `ShippingRate` | owner via `factoryLocation.factory` |
 
-The last four back the **supplier self-service panel** (`/profile/supplier/*`). Route-model
+### Supplier panel — show the supplier *their* money, not the buyer's
+
+`orders.final_amount` is the **buyer's** total (goods + commission + VAT + freight). It was
+the only figure the supplier's queue and dashboard showed, so the panel presented a number
+the supplier never receives, while `payment_to_supplier` — what actually lands in their
+wallet — was returned by no user-facing endpoint at all.
+
+- `OrderResource.financial.supplier_settlement` (supplier-only) carries
+  `payment_to_supplier`, `is_post_weighbridge`, `debt_pending`, `supplier_debt_amount`,
+  `moadian_submitted`. `payment_to_supplier` is a **single column holding the current
+  figure**: PTS at payment, overwritten with PTSM by `ProcessWeighbridgeResultAction` —
+  hence `is_post_weighbridge`, without which the panel cannot say which one it is showing.
+  It is `null` before payment, never `0` ("your share is nothing" is a different claim).
+- `dashboard.order_stats[].total_amount` is now `SUM(COALESCE(payment_to_supplier, 0))`;
+  the old buyer-side figure moved to `order_value`. **The field name kept its meaning of
+  "the headline total" and changed its value** — deliberate, since the displayed number
+  was simply wrong and this fixes it with no frontend change.
+- **`$isSupplier` in `OrderResource` means "supplier *of this order*"**, via
+  `Order::partyRolesFor()` — not the global `hasRole('supplier')`. With the global role a
+  supplier buying for their own office got the redacted view of their **own purchase**,
+  and worse, once settlement figures hang off that flag, they would have appeared on an
+  order where the viewer is merely the buyer. Pinned by
+  `Supplier/SupplierSettlementVisibilityTest`.
+
+**Stock is not per-supplier and must not become supplier-writable as-is.**
+`product_variants.stock_quantity` is one global column per variant, while `product_prices`
+is keyed `(variant, factory, location)`. So two suppliers selling the same variant from
+different factories share one stock number: letting supplier A edit it would silently zero
+out supplier B's availability. A supplier stock endpoint therefore needs per-factory stock
+(a schema change), not a new controller. Today stock is admin-only (`manage-catalog`).
+
+The four resource policies below back the **supplier self-service panel**
+(`/profile/supplier/*`). Route-model
 binding resolves any `{factory}` / `{price}` / `{shippingRate}` by id, so the policy is the
 only thing standing between one supplier and another's catalogue — every single-resource
 action calls `$this->authorize(...)` and every list query is scoped by
@@ -1054,7 +1116,7 @@ tests/
   Unit/          — (empty placeholder dir — kept so phpunit.xml works)
 ```
 
-**Total: 498 tests, 1215 assertions — all green. ✅**
+**Total: 663 tests, 1700 assertions — all green. ✅**
 
 Round-5 audit additions: `Security/CorsAllowlistTest`,
 `Security/PublicDiskUploadRulesTest`, `Admin/AdminPermissionCoverageTest`,

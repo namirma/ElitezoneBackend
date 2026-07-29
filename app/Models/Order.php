@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Builders\OrderBuilder;
 use App\Models\Concerns\HasOrderProgress;
+use App\Support\OrderDocumentCatalog;
 use App\Traits\PersianDate;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -332,6 +333,55 @@ class Order extends Model
     {
         return (float) $this->final_amount
             + (float) ($this->{self::COUPON_DISCOUNT_AMOUNT} ?? 0);
+    }
+
+    /**
+     * این کاربر در این سفارش چه نقش‌هایی دارد — خریدار / تأمین‌کننده / الیت‌یار.
+     *
+     * تنها مرجعِ این سؤال. هم مجوزِ دانلودِ سند (`OrderInvoiceController`) و هم
+     * انتخابِ سندِ دکمهٔ دانلود (`OrderResource`) از همین می‌خوانند، تا «چه کسی
+     * می‌تواند ببیند» و «به چه چیزی لینک می‌دهیم» نتوانند با هم اختلاف پیدا کنند —
+     * دقیقاً همان اختلافی که دکمهٔ دانلودِ سوپلایر را به یک لینکِ ۴۰۳ تبدیل کرده بود.
+     *
+     * یک کاربر می‌تواند هم‌زمان چند نقش داشته باشد (الیت‌یاری که برای خودش می‌خرد).
+     *
+     * @return list<string>
+     */
+    public function partyRolesFor(?int $userId): array
+    {
+        if ($userId === null) {
+            return [];
+        }
+
+        $roles = [];
+
+        if ((int) $this->{self::PLACER_USER_ID} === $userId) {
+            $roles[] = OrderDocumentCatalog::AUDIENCE_BUYER;
+        }
+
+        // array_filter صفرها را می‌اندازد، پس ستونِ NULL هرگز با userId=0 جفت نمی‌شود.
+        // getAttribute و نه دسترسی جادویی: larastan بدون فایل‌های ide-helper (که
+        // gitignore شده‌اند) این ستون‌ها را نمی‌شناسد و level 5 خطا می‌دهد.
+        if (in_array($userId, array_filter([
+            (int) $this->getAttribute(self::BENEFICIARY_USER_ID),
+            (int) $this->getAttribute(self::ELITE_YAR_USER_ID),
+        ]), true)) {
+            $roles[] = OrderDocumentCatalog::AUDIENCE_ELITE_YAR;
+        }
+
+        // وقتی آیتم‌ها از قبل eager-load شده‌اند (که OrderResource همیشه می‌کند) در
+        // حافظه چک می‌کنیم؛ وگرنه هر ردیفِ لیستِ سفارش‌ها یک کوئریِ اضافه می‌زد.
+        $isSupplier = $this->relationLoaded('items')
+            ? $this->items->contains(
+                fn (OrderItem $item) => (int) $item->{OrderItem::SUPPLIER_USER_ID} === $userId
+            )
+            : $this->items()->where(OrderItem::SUPPLIER_USER_ID, $userId)->exists();
+
+        if ($isSupplier) {
+            $roles[] = OrderDocumentCatalog::AUDIENCE_SUPPLIER;
+        }
+
+        return $roles;
     }
 
     /**
