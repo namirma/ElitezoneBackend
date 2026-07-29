@@ -7,7 +7,7 @@ namespace Tests\Feature\Financial;
 use App\Models\Order;
 use App\Models\PriceSetting;
 use App\Services\Financial\SettlementCalculatorService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -23,7 +23,12 @@ use Tests\TestCase;
  */
 class VatRateResolutionTest extends TestCase
 {
-    use RefreshDatabase;
+    // `DatabaseTransactions` مثل بقیهٔ تست‌ها، نه `RefreshDatabase`.
+    // `RefreshDatabase` وسط اجرا `migrate:fresh` می‌زند: اسکیما drop و دوباره
+    // ساخته می‌شود، پس هر تستی که هم‌زمان روی همان دیتابیس بدود ممکن است ستونی را
+    // نبیند که وجود دارد. تنها چیزی که این را از دیتابیسِ زنده دور نگه می‌داشت
+    // گاردِ `CreatesApplication::guardAgainstLiveDatabase()` بود.
+    use DatabaseTransactions;
 
     private SettlementCalculatorService $calculator;
 
