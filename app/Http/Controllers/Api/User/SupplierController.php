@@ -7,11 +7,15 @@ use App\Http\Requests\Profile\StoreSupplierProfileRequest;
 use App\Http\Resources\Profile\UserResource;
 use App\Http\Resources\Supplier\SupplierCategoryResource;
 use App\Http\Resources\Supplier\SupplierProfileResource;
+use App\Models\Factory;
+use App\Models\Order;
 use App\Models\SupplierActivityCategory;
 use App\Models\SupplierProfile;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class SupplierController extends Controller
 {
@@ -74,16 +78,63 @@ class SupplierController extends Controller
         return success(new UserResource(User::with('supplier')->find(Auth::id())));
     }
 
+    /**
+     * انصراف از تأمین‌کنندگی — پروفایل **و** نقش با هم می‌روند.
+     *
+     * پیش از این فقط ردیف پروفایل حذف می‌شد و نقشِ Laratrust سرِ جایش می‌ماند.
+     * نتیجه دقیقاً همان حالتی بود که نباید ممکن باشد: کاربری بدون هیچ ردیفِ
+     * `supplier_profiles` که همچنان از `role.supplier` رد می‌شد و کلِ پنل
+     * خودسرویس برایش باز بود (`/profile/supplier/dashboard` → ۲۰۰ با
+     * `supplier_status: null`). دو مسیرِ دیگر — `AdminSupplierController::reject`
+     * و `SyncUserRolesAction` — هر دو نقش را جدا می‌کنند؛ این یکی جا مانده بود.
+     *
+     * دو گاردِ پیش از حذف، چون «انصراف» فقط برای متقاضی معنا دارد نه برای
+     * تأمین‌کننده‌ای که کاتالوگ و سفارشِ زنده دارد:
+     *
+     * ۱. **کارخانهٔ باقی‌مانده** — `factories.supplier_user_id` به کاربر اشاره
+     *    می‌کند و قیمت/موجودی/نرخ حملش همچنان قابل فروش است. با رفتنِ نقش، خودش
+     *    هم دیگر نمی‌تواند اصلاحش کند — یعنی کاتالوگی زنده بدون هیچ متولی.
+     * ۲. **سفارشِ تمام‌نشده** — فلگ‌های فرمول (`trans_commission`/`trans_vat`)
+     *    هنگام **پرداخت** از همین پروفایل خوانده می‌شوند
+     *    (`ProcessPreScalePaymentAction`). نبودِ پروفایل یعنی fallback به
+     *    `?? true`، پس سفارشی که هنوز پرداخت نشده بی‌صدا با فرمولِ دیگری تسویه
+     *    می‌شد.
+     */
     public function destroy(): JsonResponse
     {
-        $profile = SupplierProfile::where(SupplierProfile::USER_ID, Auth::id())->first();
+        /** @var User $user */
+        $user = Auth::user();
+
+        $profile = SupplierProfile::where(SupplierProfile::USER_ID, $user->id)->first();
 
         if (! $profile) {
             return error(__('profile.supplier_not_found'), [], 404);
         }
 
-        $profile->activities()->detach();
-        $profile->delete();
+        if (Factory::where(Factory::SUPPLIER_USER_ID, $user->id)->exists()) {
+            return error(__('profile.supplier_has_factories'), [], 422);
+        }
+
+        $hasOpenOrders = Order::query()
+            ->whereHas('items', fn (Builder $q) => $q->where('supplier_user_id', $user->id))
+            ->whereNotIn(Order::STATUS, [
+                Order::STATUS_COMPLETED,
+                Order::STATUS_CANCELLED,
+                Order::STATUS_FAILED,
+            ])
+            ->exists();
+
+        if ($hasOpenOrders) {
+            return error(__('profile.supplier_has_open_orders'), [], 422);
+        }
+
+        DB::transaction(function () use ($user, $profile) {
+            $profile->activities()->detach();
+            $profile->delete();
+
+            // نیمهٔ گم‌شده — بدون این، پروفایل می‌رود و دسترسی می‌ماند.
+            $user->removeRole('supplier');
+        });
 
         return success([], __('profile.supplier_deleted'));
     }
