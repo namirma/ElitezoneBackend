@@ -20,6 +20,7 @@ class AuthServiceProvider extends ServiceProvider
         \App\Models\UserBankAccount::class => \App\Policies\UserBankAccountPolicy::class,
         \App\Models\Factory::class => \App\Policies\FactoryPolicy::class,
         \App\Models\FactoryLocation::class => \App\Policies\FactoryLocationPolicy::class,
+        \App\Models\FactoryStock::class => \App\Policies\FactoryStockPolicy::class,
         \App\Models\ProductPrice::class => \App\Policies\ProductPricePolicy::class,
         \App\Models\ShippingRate::class => \App\Policies\ShippingRatePolicy::class,
     ];

@@ -25,6 +25,7 @@ use App\Services\PriceCalculationService;
 use App\Services\PricingRoleResolver;
 use App\Services\Shipping\CartShippingQuoteService;
 use App\Services\Shipping\ShippingCostCalculator;
+use App\Support\Money;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -140,6 +141,7 @@ class PlaceOrderAction
         $totalVat = 0.0;
         $totalDiscount = 0.0;
         $totalWeight = 0.0;
+        $goodsValue = 0.0;
         $itemsData = [];
 
         $roleCode = $this->roleResolver->resolve($user);
@@ -191,6 +193,11 @@ class PlaceOrderAction
             $subtotal += ($lineTotal + $lineDiscount);
             $totalVat += $lineVat;
             $totalDiscount += $lineDiscount;
+
+            // ارزشِ خالصِ کالا (پس از تخفیف، بدون مالیات و حمل) — مبنای official_price.
+            // جدا از $subtotal انباشته می‌شود چون آن عمداً پیش-از-تخفیف است؛ گره‌زدنِ
+            // یک عددِ مالی به نحوهٔ حسابداریِ تخفیف، شکننده‌اش می‌کرد.
+            $goodsValue += $lineTotal;
 
             $itemsData[$item->id] = [
                 'weight' => $itemLogisticsWeight,
@@ -252,6 +259,22 @@ class PlaceOrderAction
 
         $commissions = $this->calculateCommissions($user, $effectiveEliteYARId, $subtotal);
 
+        // ── official_price: میانگینِ وزنیِ ردیف‌ها ─────────────────────────────
+        // تسویه با `OP × وزنِ کلِ سفارش` کار می‌کند، پس OP باید عددی باشد که این
+        // ضرب، ارزشِ واقعیِ کالا را بدهد: OP = Σ(قیمت×وزن) / Σوزن.
+        //
+        // تا پیش از این هیچ‌کس این ستون را نمی‌نوشت، و هر سه مسیرِ تسویه روی
+        // فالبکِ `items->first()->unit_price` می‌افتادند — یعنی **کلِ تناژِ سفارش
+        // به قیمتِ ردیفِ اول** حساب می‌شد. برای سفارشِ تک‌ردیفی درست بود؛ برای
+        // سبدی با دو سایز میلگرد از یک کارخانه (که گاردِ تک‌تأمین‌کننده اجازه‌اش
+        // را می‌دهد) خریدار اشتباه صورتحساب می‌گرفت.
+        //
+        // با یک ردیف، این فرمول دقیقاً همان unit_price را می‌دهد — پس رفتار
+        // سفارش‌های تک‌ردیفی ذره‌ای تغییر نمی‌کند.
+        $officialPrice = $totalWeight > 0
+            ? Money::toFloat(Money::div($goodsValue, $totalWeight))
+            : 0.0;
+
         return [
             'subtotal' => $subtotal,
             'vat_amount' => $totalVat,
@@ -259,6 +282,7 @@ class PlaceOrderAction
             'shipping_cost' => $shippingCost,
             'final_amount' => $finalAmount,
             'total_weight' => $totalWeight,
+            'official_price' => $officialPrice,
             'commissions' => $commissions,
             'effective_elite_yar_id' => $effectiveEliteYARId,
             'items_data' => $itemsData,
@@ -321,7 +345,7 @@ class PlaceOrderAction
         );
 
         // ۳. ثبت نهایی در دیتابیس
-        return Order::create([
+        $order = Order::create([
             Order::PLACER_USER_ID => $user->id,
             // beneficiary = گیرنده سفارش (فقط در مسیر الیت یار که برای کارفرما خریداری می‌کند)
             Order::BENEFICIARY_USER_ID => $data->beneficiaryUserId,
@@ -354,6 +378,13 @@ class PlaceOrderAction
             Order::RESERVATION_EXPIRES_AT => now()->addHours((int) config('financial.pending_order_ttl_hours', 2)),
             Order::NOTES => $data->description,
         ]);
+
+        // `official_price` عمداً در $fillable نیست (ستونِ اسنپ‌شاتِ مالی)، پس
+        // گذاشتنش در آرایهٔ create بالا **بی‌صدا دور ریخته می‌شد** — همان تله‌ای که
+        // در این پروژه چند بار زده. forceFill مسیرِ مجازِ نوشتنِ این ستون‌هاست.
+        $order->forceFill([Order::OFFICIAL_PRICE => $fins['official_price']])->save();
+
+        return $order;
     }
 
     /**

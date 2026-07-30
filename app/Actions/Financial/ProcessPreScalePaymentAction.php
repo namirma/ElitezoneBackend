@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Financial;
 
 use App\Constants\FinancialCodes;
+use App\Events\Order\OrderPaid;
 use App\Models\Order;
 use App\Models\SupplierProfile;
 use App\Services\Financial\SettlementCalculatorService;
@@ -181,6 +182,17 @@ class ProcessPreScalePaymentAction
                 'payment_status' => Order::PAYMENT_PAID,
                 'paid_at' => now(),
             ]);
+
+            // اعلانِ پرداخت — به خریدار و به تأمین‌کننده.
+            //
+            // تا پیش از این `OrderPaid` **فقط** از `PayOrderAction` dispatch می‌شد، و آن
+            // اکشن هیچ فراخوانی‌ای ندارد (بقایای مسیرِ درگاهی که هرگز وصل نشد). یعنی
+            // رویداد در هیچ مسیرِ زنده‌ای شلیک نمی‌شد و پیامکِ «سفارش شما ثبت شد» هرگز
+            // برای کسی نمی‌رفت — نه خریدار، نه تأمین‌کننده.
+            //
+            // رویداد `ShouldDispatchAfterCommit` است، پس dispatch داخل تراکنش امن است:
+            // تحویل تا commit صبر می‌کند و listener صف‌شده هرگز ردیفِ commit‌نشده نمی‌بیند.
+            OrderPaid::dispatch($locked);
 
             // ── صدور اسناد مالی خرید مستقیم (A + B + C، با D در صورت داشتن الیت یار) ──
             // Doc D (گزارش الیت‌یار) فقط وقتی صادر می‌شود که یک الیت‌یارِ صاحبِ کمیسیون

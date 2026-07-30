@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\User;
 
 use App\Actions\Financial\RecordSupplierMoadianInvoiceAction;
 use App\Actions\Order\CancelOrderAction;
+use App\Enums\Order\OrderStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Order\AddWaybillRequest;
 use App\Http\Requests\Order\SubmitMoadianInvoiceRequest;
@@ -18,6 +19,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class SupplierOrderController extends Controller
 {
@@ -30,8 +33,14 @@ class SupplierOrderController extends Controller
     {
         $user = Auth::user();
 
+        // وضعیت با فهرستِ واقعی محدود می‌شود: پیش از این هر رشته‌ای پذیرفته می‌شد و
+        // یک تایپو به‌جای ۴۲۲ یک لیستِ خالی برمی‌گرداند — که از دید پنل با «سفارشی
+        // نداری» یکسان است.
         $request->validate([
-            'status' => ['nullable', 'string'],
+            // فهرست از enum می‌آید نه یک آرایهٔ دستیِ تازه: `EnumModelConstantParityTest`
+            // تضمین می‌کند OrderStatus با `Order::STATUS_*` هم‌گام می‌ماند. مقدارِ
+            // اعتبارسنجی‌شده همچنان string است، پس هیچ مقایسه‌ای در کد عوض نمی‌شود.
+            'status' => ['nullable', 'string', Rule::in(array_column(OrderStatus::cases(), 'value'))],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
@@ -62,15 +71,31 @@ class SupplierOrderController extends Controller
 
         $myItems = fn (Builder $q) => $q->where('supplier_user_id', $user->id);
 
+        // `total_amount` عمداً مجموعِ `payment_to_supplier` است، نه `final_amount`.
+        //
+        // `final_amount` رقمِ خریدار است (کالا + کمیسیون + مالیات + کرایه) و به‌عنوان
+        // «درآمدِ من» در داشبوردِ تأمین‌کننده گمراه‌کننده بود — عددی که هرگز دریافت
+        // نمی‌کند. `payment_to_supplier` همان است که به کیف پولش می‌رود (پس از باسکول
+        // با PTSM بازنویسی می‌شود). سفارشِ پرداخت‌نشده هنوز اسنپ‌شات ندارد، پس
+        // `COALESCE` آن را صفر می‌کند نه NULL؛ `order_value` هم نگه داشته شده تا
+        // ارزشِ کلِ سفارش در دسترس بماند، ولی حالا اسمش دروغ نمی‌گوید.
         $orderStats = Order::query()
             ->whereHas('items', $myItems)
-            ->selectRaw('status, COUNT(*) as count, SUM(final_amount) as total_amount')
+            ->selectRaw(
+                'status, COUNT(*) as count,'
+                .' SUM(COALESCE(payment_to_supplier, 0)) as total_amount,'
+                .' SUM(COALESCE(final_amount, 0)) as order_value'
+            )
             ->groupBy('status')
             ->get()
+            // getAttribute نه دسترسی جادویی: ستون‌های selectRaw برای larastan تعریف
+            // نشده‌اند. `count` و `total_amount` هنوز از baseline می‌آیند؛ بقیه
+            // مستقیم حل شده‌اند تا ورودیِ تازه‌ای به baseline اضافه نشود.
             ->map(fn ($row) => [
-                'status' => $row->status,
+                'status' => $row->getAttribute('status'),
                 'count' => (int) $row->count,
                 'total_amount' => (float) $row->total_amount,
+                'order_value' => (float) $row->getAttribute('order_value'),
             ]);
 
         $pendingMoadianCount = Order::query()
@@ -160,6 +185,7 @@ class SupplierOrderController extends Controller
         // قفل ردیف و بازبینی وضعیت زیر قفل (TOCTOU-safe): بدون این، دو درخواستِ
         // هم‌زمان می‌توانند هر دو از شرطِ وضعیت عبور کنند یا گذارِ یکدیگر را بازنویسی کنند.
         return DB::transaction(function () use ($order) {
+            /** @var Order $locked */
             $locked = Order::where(Order::ID, $order->id)->lockForUpdate()->first();
 
             if ($locked->status !== Order::STATUS_PROCESSING) {
@@ -215,6 +241,7 @@ class SupplierOrderController extends Controller
         $this->authorize('manageAsSupplier', $order);
 
         return DB::transaction(function () use ($order, $request) {
+            /** @var Order $locked */
             $locked = Order::where(Order::ID, $order->id)->lockForUpdate()->first();
 
             if (! in_array($locked->status, [Order::STATUS_PREPARING, Order::STATUS_WEIGHBRIDGE_DONE])) {
@@ -233,12 +260,29 @@ class SupplierOrderController extends Controller
         });
     }
 
+    /**
+     * صدور دستور بارگیری اسپادانا.
+     *
+     * تنها متدِ این کنترلر بود که **هیچ گاردی نداشت**: نه وضعیت را چک می‌کرد و نه
+     * idempotent بود، پس روی سفارشِ لغوشده هم اجرا می‌شد و هر بار صدا زدن، شناسه را
+     * با `time()`ِ تازه بازنویسی می‌کرد — یعنی مرجعی که به سیستم بیرونی داده شده
+     * بی‌صدا بی‌اعتبار می‌شد. حالا مثل بقیهٔ گذارها زیر قفل بررسی می‌شود.
+     */
     public function issueEspadanaCommand(Order $order): JsonResponse
     {
         $this->authorize('manageAsSupplier', $order);
 
         return DB::transaction(function () use ($order) {
+            /** @var Order $locked */
             $locked = Order::where(Order::ID, $order->id)->lockForUpdate()->first();
+
+            if ($locked->{Order::ESPADANA_ORDER_REF} !== null) {
+                return error(__('orders.espadana_already_issued'), [], 409);
+            }
+
+            if (! in_array($locked->status, [Order::STATUS_PROCESSING, Order::STATUS_PREPARING], true)) {
+                return error(__('orders.cannot_issue_espadana'), [], 400);
+            }
 
             $locked->update([Order::ESPADANA_ORDER_REF => 'ESPADANA_'.$locked->id.'_'.time()]);
 
@@ -248,18 +292,38 @@ class SupplierOrderController extends Controller
         });
     }
 
+    /**
+     * ضمیمه کردن رسید پرداخت توسط تأمین‌کننده.
+     *
+     * دو نقص داشت: گاردِ وضعیت نداشت (روی سفارشِ پرداخت‌نشده هم می‌نشست) و هنگام
+     * جایگزینی، فایل قبلی را روی دیسکِ `financial` یتیم رها می‌کرد — دیسکی که
+     * اسنادِ مالی حساس روی آن می‌نشیند و هیچ چرخهٔ پاک‌سازی‌ای ندارد.
+     */
     public function attachPaymentReceipt(UploadOrderReceiptRequest $request, Order $order): JsonResponse
     {
         $this->authorize('manageAsSupplier', $order);
+
+        if ($order->{Order::PAYMENT_STATUS} !== Order::PAYMENT_PAID) {
+            return error(__('orders.cannot_attach_receipt_unpaid'), [], 400);
+        }
 
         // آپلود فایل خارج از تراکنش انجام می‌شود تا قفل DB روی I/O دیسک نگه داشته نشود.
         // Private disk — supplier payment receipts must not be reachable via a public URL.
         $path = $request->file('receipt')->store('supplier_receipts', 'financial');
 
         return DB::transaction(function () use ($order, $path) {
+            /** @var Order $locked */
             $locked = Order::where(Order::ID, $order->id)->lockForUpdate()->first();
 
+            $previous = $locked->{Order::PAYMENT_RECEIPT_REF};
+
             $locked->update([Order::PAYMENT_RECEIPT_REF => $path]);
+
+            // فایلِ جایگزین‌شده پاک می‌شود — ولی فقط بعد از اینکه ردیف با موفقیت
+            // به‌روز شد، وگرنه rollback رسیدی را پاک کرده بود که هنوز مرجعش زنده است.
+            if ($previous && $previous !== $path && Storage::disk('financial')->exists($previous)) {
+                Storage::disk('financial')->delete($previous);
+            }
 
             $locked->loadMissing(Order::resourceRelations());
 

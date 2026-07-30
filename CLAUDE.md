@@ -710,20 +710,38 @@ surplus/over-delivery path that `FinancialCodes` documents as removed per spec �
 J/K/M). They are formatted Persian invoice templates and are the starting point if any
 of those flows returns. Leave them, and don't "fix" the missing references.
 
-**The survey document slugs stay out of the route whitelist.** `pdf.survey_buyer`
-(Doc S) and `pdf.survey_elite_yar` (Doc T) exist and are wired into `getViewName()` +
-`DOCUMENT_AUDIENCES`, but `routes/api/user.php` still constrains the download route to
-`whereIn('type', ['initial', 'final', 'tax'])`. That is deliberate — surveys are out of
-product scope (2026-07-25). Widening the whitelist is a one-line change if that reverses.
+### `OrderDocumentCatalog` is the single source of truth for document access
 
-**Per-document authorization (do not weaken).** After the generic `authorize('view',
-$order)`, `download()` also enforces `mayAccessDocument($order, $type)` against a
-`DOCUMENT_AUDIENCES` map: buyer-docs (initial/receipt/final/refund/tax/…) → placer only;
-supplier-docs (supplier_report/final_supplier/tax_supplier/…) → the order's item supplier;
-elite yar-docs (elite_yar_report/tax_elite_yar/…) → beneficiary/elite yar; admins
-bypass. This closed a real leak where any order party that passed `view` could pull
-another party's tax invoice. The user-facing route currently whitelists only
-`['initial','final','tax']`; keep the audience map complete anyway in case the route widens.
+`app/Support/OrderDocumentCatalog.php` owns **both** maps — slug→code and
+slug→audiences — plus `downloadableSlugs()`, which the route in `routes/api/user.php`
+uses directly. Nothing else may hand-write a list of document slugs.
+
+This exists because the two copies drifted and their intersection went **empty for
+suppliers and elite yars**. The route said `whereIn('type', ['initial','final','tax'])`
+while the audience map (correctly) marked all three buyer-only. Measured result before
+the fix: a supplier got **404 on all eight** of their own slugs — including **Doc K
+(بارنامه / مجوز خروج)** and **Doc C (دستور بارگیری)**, without which a load does not
+leave the factory — and **403 on the three** the route did allow. Elite yars were in the
+same position for `elite_yar_report` / `tax_elite_yar`.
+
+- Authorization is still the audience map, applied after the generic `authorize('view')`.
+  Widening the route did **not** widen access — a supplier still gets 403 on buyer docs.
+- Survey slugs (Doc S / Doc T) stay out via `OUT_OF_PRODUCT_SCOPE`, matching the
+  `features.order_surveys` decision. Re-enabling is one array edit.
+- `Order::partyRolesFor(?int $userId)` answers "what is this user to this order"
+  (buyer / supplier / elite_yar) and is used by **both** the controller's authorization
+  and `OrderResource`'s download button, so "who may see it" and "what we link to" cannot
+  disagree. It checks `relationLoaded('items')` first to avoid an N+1 on list endpoints.
+- Pinned by `Order/OrderDocumentAccessTest` — a **sweep** over every slug × every
+  audience (51 combinations), not a sample. A sampled test is what let this survive:
+  the three slugs anyone thought to test were all buyer docs that worked.
+
+**`OrderPolicy::view` must keep its `elite_yar_user_id` branch.** It only checked placer /
+beneficiary / supplier, so in the **employer-places-and-names-an-elite-yar** flow — where
+`beneficiary_user_id` is *prohibited* by `StoreOrderRequest` — the elite yar could not view
+the order they earn commission on. Meanwhile `submitEliteYARMoadianInvoice` guards directly
+on `elite_yar_user_id`, so the same user was trusted to release their own commission hold
+but not to read the order. Found by the sweep test above.
 
 ### Financial Flow (Critical Path)
 
@@ -855,7 +873,19 @@ Dispatch flow:
   (`InventoryService::deductStockForOrder`, within the placement transaction and under
   `lockForUpdate`). This doc used to claim the listener deducted stock; adding a
   deduction to the listener would double-deduct every order.
-- `OrderPaid` → payment notifications (SendOrderPaymentNotification)
+- `OrderPaid` → payment notifications: `SendOrderPaymentNotification` (buyer) +
+  `SendSupplierOrderNotification` (supplier). **Dispatched from
+  `ProcessPreScalePaymentAction` and `ProcessReservationCompletionAction`** — the two
+  places an order actually becomes `PROCESSING` + `PAID`.
+
+  > It used to be dispatched **only** from `Actions/Order/PayOrderAction`, which has
+  > **zero callers** (a scaffold for the not-yet-licensed gateway path). So the event
+  > never fired on any live path and `SendOrderPaymentNotification` — registered for a
+  > long time — had never run: no payment SMS reached *anyone*, buyer included. The
+  > supplier's whole queue starts at `markAsPrepared` on a PROCESSING order, so with no
+  > notification they had to poll `/profile/supplier/orders` by hand. If the gateway path
+  > is ever wired up, make sure `OrderPaid` is not then dispatched twice.
+  > Pinned by `Order/OrderPaidNotificationTest`.
 - `OrderCancelled` → stock restoration, wallet refund
 - `CartItemChanged` → analytics tracking (LogCartEvent)
 - `WalletFunded` / `TransactionProcessed` → financial notifications
@@ -1004,8 +1034,73 @@ active/churned counts from `CustomerStat`; surfaced in the admin dashboard as
 | `FactoryLocationPolicy` | `FactoryLocation` | owner via the parent factory's `supplier_user_id` |
 | `ProductPricePolicy` | `ProductPrice` | owner via the price's factory |
 | `ShippingRatePolicy` | `ShippingRate` | owner via `factoryLocation.factory` |
+| `FactoryStockPolicy` | `FactoryStock` | owner via the stock row's factory |
 
-The last four back the **supplier self-service panel** (`/profile/supplier/*`). Route-model
+### Supplier panel — show the supplier *their* money, not the buyer's
+
+`orders.final_amount` is the **buyer's** total (goods + commission + VAT + freight). It was
+the only figure the supplier's queue and dashboard showed, so the panel presented a number
+the supplier never receives, while `payment_to_supplier` — what actually lands in their
+wallet — was returned by no user-facing endpoint at all.
+
+- `OrderResource.financial.supplier_settlement` (supplier-only) carries
+  `payment_to_supplier`, `is_post_weighbridge`, `debt_pending`, `supplier_debt_amount`,
+  `moadian_submitted`. `payment_to_supplier` is a **single column holding the current
+  figure**: PTS at payment, overwritten with PTSM by `ProcessWeighbridgeResultAction` —
+  hence `is_post_weighbridge`, without which the panel cannot say which one it is showing.
+  It is `null` before payment, never `0` ("your share is nothing" is a different claim).
+- `dashboard.order_stats[].total_amount` is now `SUM(COALESCE(payment_to_supplier, 0))`;
+  the old buyer-side figure moved to `order_value`. **The field name kept its meaning of
+  "the headline total" and changed its value** — deliberate, since the displayed number
+  was simply wrong and this fixes it with no frontend change.
+- **`$isSupplier` in `OrderResource` means "supplier *of this order*"**, via
+  `Order::partyRolesFor()` — not the global `hasRole('supplier')`. With the global role a
+  supplier buying for their own office got the redacted view of their **own purchase**,
+  and worse, once settlement figures hang off that flag, they would have appeared on an
+  order where the viewer is merely the buyer. Pinned by
+  `Supplier/SupplierSettlementVisibilityTest`.
+
+### Stock is per-origin — `factory_stocks` is the ordering authority
+
+`product_variants.stock_quantity` used to be one **global column per variant** while
+`product_prices` is keyed `(variant, factory, location)`. Two suppliers selling the same
+variant from different factories therefore shared one number: A's sale drew down B's
+availability, and giving A write access would have zeroed B out. That schema gap — not a
+missing controller — is why the supplier stock panel did not exist.
+
+`factory_stocks` mirrors the `product_prices` key exactly and is now the authority for
+**check / deduct / restore / weighbridge**. Every cart item and order item already carries
+`factory_id` + `factory_location_id` (the shipping subsystem put them there), so each
+movement hits the origin the goods actually came from.
+
+- **`InventoryService::availableAt()` is the only way to ask "how much is there".** A
+  missing row means *"this origin has not entered its own stock yet"* → falls back to the
+  legacy column. **Never treat a missing row as zero** — a priced triple added after the
+  backfill would silently become unsellable. `checkStock()` takes the origin; always pass
+  it (the optional signature exists only so old call sites don't fatal).
+- **`product_variants.stock_quantity` is now a display rollup**, kept equal to
+  `SUM(factory_stocks)` by `FactoryStock::syncVariantRollup()`. The catalog filter
+  (`stock_quantity > 0`), analytics, dashboard alerts and Resources still read it. It must
+  be a **sum**, not a running decrement: decrementing it per sale would drive it to zero
+  once the old pool was sold and **hide products that are actually in stock**.
+  `syncVariantRollup()` no-ops when the variant has no origin rows at all — "no rows" and
+  "sold out everywhere" are different claims, and the first must not wipe legacy stock.
+- **Backfill seeded every priced triple with the variant's current global stock.** The old
+  number cannot be split correctly — that information is not in the database. Splitting it
+  evenly would keep the total honest but could reject a real order on deploy day; giving
+  each origin the full amount reproduces exactly what the code did yesterday (every origin
+  already offered the whole pool), so **nothing is blocked**. The cost is that the rollup
+  reads N× high for multi-origin variants until suppliers enter real numbers.
+- Panels: `/profile/supplier/stocks` (own origins, `POST` is an **upsert** on the triple)
+  and `/admin/factory-stocks` under `manage-catalog` — without the admin one a wrong number
+  would only be fixable via tinker. `FactoryStockPolicy` guards ownership via
+  `factory.supplier_user_id`; deleting a row means "no dedicated stock" (falls back), **not**
+  "sold out" — for that, set the quantity to 0.
+- Pinned by `Supplier/PerFactoryStockTest`, whose central case is
+  `a_sale_from_one_supplier_leaves_the_other_untouched`.
+
+The four resource policies below back the **supplier self-service panel**
+(`/profile/supplier/*`). Route-model
 binding resolves any `{factory}` / `{price}` / `{shippingRate}` by id, so the policy is the
 only thing standing between one supplier and another's catalogue — every single-resource
 action calls `$this->authorize(...)` and every list query is scoped by
@@ -1054,7 +1149,7 @@ tests/
   Unit/          — (empty placeholder dir — kept so phpunit.xml works)
 ```
 
-**Total: 498 tests, 1215 assertions — all green. ✅**
+**Total: 684 tests, 1748 assertions — all green. ✅**
 
 Round-5 audit additions: `Security/CorsAllowlistTest`,
 `Security/PublicDiskUploadRulesTest`, `Admin/AdminPermissionCoverageTest`,
@@ -1267,6 +1362,60 @@ showing the status change *before* the order was created.
 When a model turns off `$timestamps` and a writer sets the column by hand, that
 column must be in `$fillable` — otherwise the DB default wins and you get a silent
 timezone skew, not an error. Pinned by `Order/OrderStatusHistoryTimestampTest`.
+
+### Weighbridge stock correction is split across lines, not dumped on the first
+
+The weighbridge returns **one** number — the real total weight of the load — but an
+order can have several lines. `ProcessWeighbridgeResultAction` used to apply the
+entire delta to `items->first()->product_variant_id`, so a rebar-14 + rebar-16
+order short by 200 kg returned all 200 kg to rebar-14 and left rebar-16 untouched:
+**both** stock figures ended up wrong. `assertSingleSupplier()` does not prevent
+this — it counts *suppliers*, not *lines*.
+
+`InventoryService::updateStockAfterWeighbridgeForOrder()` now allocates the delta
+across lines **in proportion to each line's ordered weight** — the same rule
+`ShippingCostCalculator` uses to split freight — because the weighbridge cannot say
+which product the shortfall came from. Lines sharing a variant are aggregated first
+so each variant is locked and updated once, and the **last share absorbs the
+remainder** so the parts sum exactly to the delta (three equal lines splitting 100 kg
+do not drift). An order whose lines carry no weight is left untouched and logged
+rather than dividing by zero.
+
+Call `updateStockAfterWeighbridgeForOrder()`, never the single-variant
+`updateStockAfterWeighbridge()` directly, for anything order-shaped. Pinned by
+`Order/WeighbridgeStockAllocationTest`.
+
+### `official_price` is a **per-unit** price, and it must represent every line
+
+Settlement multiplies it: `SettlementCalculatorService::calculatePOO()` computes
+`$productBase = Money::mul($op, $weight)` where `$weight` is the **order's total**
+`weight_before_scale`. So `official_price × total_weight` must equal the order's
+true goods value.
+
+Until 2026-07-27 **nothing wrote the column at all** — it was read in three places
+(`ProcessPreScalePaymentAction`, `ProcessReservationCompletionAction`,
+`WeighbridgeReconciler`) and written in none, so every one of them fell through to
+`items->first()->unit_price`. That billed **the whole tonnage at the first line's
+price**. Correct for a single-line order; wrong for any multi-line one — and
+`PlaceOrderAction::assertSingleSupplier()` does not stop those, because it counts
+*suppliers*, not *lines*. A cart with two rebar sizes from one factory is ordinary
+B2B and passes the guard.
+
+`PlaceOrderAction` now snapshots the weighted average
+(`Σ(unit_price × weight) / Σweight`, bcmath) via `forceFill` — the column is not
+fillable, so putting it in the `Order::create([...])` array would be silently
+dropped. With one line the formula returns exactly that line's `unit_price`, so
+single-line behaviour is unchanged.
+
+`financial:doctor` gained a fourth invariant for this
+(`LedgerReconciler::mispricedOrders()`): it recomputes the effective basis the same
+way the code does — including the `first()` fallback — so it also flags **older**
+orders that have no snapshot. Tolerance is `ops.financial.pricing_tolerance`
+(1,000 Rials) because the average is rounded to 2 decimals. Note the ledger stays
+balanced when this bug fires — the wrong POO is distributed consistently across
+wallets — so the wallet-replay check cannot see it. That is why it needed its own
+invariant. Pinned by `Financial/OrderPricingBasisTest` and
+`Order/OfficialPriceSnapshotTest`.
 
 ### `??` never fires on a `NOT NULL DEFAULT 0` column
 

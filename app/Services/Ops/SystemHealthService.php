@@ -101,6 +101,7 @@ final class SystemHealthService
             'drifted_wallets' => count($report['wallets']['drifted']),
             'unbalanced_orders' => count($report['unbalanced_orders']),
             'orphan_holds' => count($report['orphan_holds']),
+            'mispriced_orders' => count($report['mispriced_orders']),
             'unknown_combinations' => count($report['unknown_combinations']),
         ];
 
@@ -119,6 +120,13 @@ final class SystemHealthService
 
         if ($counts['orphan_holds'] > 0) {
             $problems[] = sprintf('%d سفارشِ تمام‌شده هولدِ آزادنشده دارد.', $counts['orphan_holds']);
+        }
+
+        if ($counts['mispriced_orders'] > 0) {
+            $problems[] = sprintf(
+                '%d سفارش مبنای قیمتی دارد که با ارزشِ ردیف‌هایش نمی‌خواند (صورتحسابِ غلط).',
+                $counts['mispriced_orders'],
+            );
         }
 
         if ($counts['unknown_combinations'] > 0) {

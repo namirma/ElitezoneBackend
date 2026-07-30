@@ -31,10 +31,11 @@ class SendOrderPaymentNotification implements ShouldQueue
         Log::info("Processing payment notification for Order #{$order->order_number}");
 
         try {
-            // متن پیامک
-            $message = "کاربر گرامی، سفارش شما با شماره {$order->order_number} با موفقیت ثبت شد.\nالیت زون";
-
-            SendSmsJob::dispatch($user->mobile, $message);
+            // متن از lang می‌آید، نه هاردکد در PHP — قاعدهٔ صریحِ پروژه.
+            SendSmsJob::dispatch(
+                $user->mobile,
+                __('sms.order_paid_buyer', ['order_number' => $order->order_number])
+            );
 
             //  در آینده ایمیل
 

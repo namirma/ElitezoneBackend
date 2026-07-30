@@ -701,16 +701,6 @@ parameters:
 			path: app/Http/Controllers/Api/User/SupplierOrderController.php
 
 		-
-			message: "#^Access to an undefined property Illuminate\\\\Database\\\\Eloquent\\\\Model\\:\\:\\$id\\.$#"
-			count: 1
-			path: app/Http/Controllers/Api/User/SupplierOrderController.php
-
-		-
-			message: "#^Access to an undefined property Illuminate\\\\Database\\\\Eloquent\\\\Model\\:\\:\\$status\\.$#"
-			count: 3
-			path: app/Http/Controllers/Api/User/SupplierOrderController.php
-
-		-
 			message: "#^Access to an undefined property Illuminate\\\\Database\\\\Eloquent\\\\Model\\:\\:\\$total_amount\\.$#"
 			count: 1
 			path: app/Http/Controllers/Api/User/SupplierOrderController.php

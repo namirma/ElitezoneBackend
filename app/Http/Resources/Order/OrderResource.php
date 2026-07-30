@@ -5,6 +5,7 @@ namespace App\Http\Resources\Order;
 use App\Enums\Shared\StatusTone;
 use App\Http\Resources\BaseJsonResource;
 use App\Models\Order;
+use App\Support\OrderDocumentCatalog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -17,7 +18,17 @@ class OrderResource extends BaseJsonResource
     {
         $user = Auth::user();
         $viewerId = Auth::id();
-        $isSupplier = $user ? $user->hasRole('supplier') : false;
+
+        // نقشِ بیننده **در همین سفارش**، نه نقشِ سراسری‌اش.
+        //
+        // قبلاً معیار `hasRole('supplier')` بود، که یعنی یک تأمین‌کننده وقتی برای
+        // دفترِ خودش میلگرد می‌خرید، روی سفارشِ خریدِ خودش نمای سانسورشده می‌گرفت و
+        // مالیات/کرایهٔ خودش را نمی‌دید. حالا که بلوکِ مالیِ تأمین‌کننده هم به همین
+        // پرچم گره می‌خورد، این تفاوت دیگر صرفاً آزاردهنده نیست: با معیارِ سراسری،
+        // مبلغِ تسویهٔ تأمین‌کننده روی سفارشی که او فقط خریدارش است هم ظاهر می‌شد.
+        $viewerRoles = $this->partyRolesFor($viewerId);
+        $isSupplier = in_array(OrderDocumentCatalog::AUDIENCE_SUPPLIER, $viewerRoles, true);
+        $isAdmin = $user ? $user->hasRole('admin') : false;
 
         // الیت یارِ سفارش — مستقیماً از elite_yar_user_id خوانده می‌شود.
         // (قبلاً از placer.type یا beneficiary_user_id استنتاج می‌شد — حالا ستون جداست)
@@ -47,7 +58,31 @@ class OrderResource extends BaseJsonResource
             && $statusKey !== Order::STATUS_FAILED;
 
         $paymentUrl = $canPay ? route('api.user.orders.pay_full', ['order' => $this->id]) : null;
-        $invoiceUrl = route('api.user.orders.invoice', ['order' => $this->id, 'type' => 'initial']);
+
+        // سندِ «فاکتور» برای هر طرف سندِ دیگری است. تا پیش از این همه — از جمله
+        // تأمین‌کننده — لینکِ سندِ خریدار (`initial`) را می‌گرفتند، که برایشان ۴۰۳
+        // است: دکمه‌ای که همیشه شکست می‌خورد. حالا اسلاگِ نقشِ خودِ بیننده داده
+        // می‌شود، و اگر بیننده هیچ سندِ متناظری ندارد دکمه غیرفعال می‌شود به‌جای
+        // اینکه لینکِ مرده بگیرد. ادمین به هر سندی دسترسی دارد، پس سندِ خریدار.
+        $invoiceSlug = $isAdmin ? 'initial' : null;
+
+        foreach ($viewerRoles as $role) {
+            if ($invoiceSlug !== null) {
+                break;
+            }
+
+            $invoiceSlug = OrderDocumentCatalog::primarySlugFor($role);
+        }
+
+        $invoiceUrl = $invoiceSlug !== null
+            ? route('api.user.orders.invoice', ['order' => $this->id, 'type' => $invoiceSlug])
+            : null;
+
+        $invoiceLabel = match ($invoiceSlug) {
+            'supplier_report' => __('orders.actions.download_supplier_report'),
+            'elite_yar_report' => __('orders.actions.download_elite_yar_report'),
+            default => __('orders.actions.download_initial_invoice'),
+        };
 
         return [
             Order::ID => $this->id,
@@ -149,6 +184,31 @@ class OrderResource extends BaseJsonResource
                     Order::VAT_AMOUNT => (string) $this->{Order::VAT_AMOUNT},
                     Order::SHIPPING_COST => (string) $this->{Order::SHIPPING_COST},
                 ]),
+
+                // سهمِ خودِ تأمین‌کننده.
+                //
+                // `final_amount` رقمِ **خریدار** است: کالا + کمیسیون + مالیات + کرایه.
+                // تا پیش از این تنها عددی بود که تأمین‌کننده در صفِ کاری‌اش می‌دید،
+                // یعنی پنل مبلغی را به او نشان می‌داد که هرگز دریافت نمی‌کند —
+                // و PTS، همان چیزی که واقعاً به کیف پولش می‌رود، در هیچ اندپوینتِ
+                // کاربرمحوری برنمی‌گشت.
+                //
+                // `payment_to_supplier` تک‌ستونی است که همیشه «مبلغِ جاری» را دارد:
+                // PTS در پرداخت، و پس از باسکول با PTSM بازنویسی می‌شود
+                // (ProcessWeighbridgeResultAction). پیش از پرداخت null است.
+                $this->mergeWhen($isSupplier, [
+                    'supplier_settlement' => [
+                        Order::PAYMENT_TO_SUPPLIER => $this->{Order::PAYMENT_TO_SUPPLIER} !== null
+                            ? (string) $this->{Order::PAYMENT_TO_SUPPLIER}
+                            : null,
+                        // پس از باسکول، رقمِ بالا دیگر PTS نیست بلکه PTSM است.
+                        'is_post_weighbridge' => $this->{Order::WEIGHING_COMPLETED_AT} !== null,
+                        'debt_pending' => (bool) $this->{Order::SUPPLIER_DEBT_PENDING},
+                        Order::SUPPLIER_DEBT_AMOUNT => (string) ($this->{Order::SUPPLIER_DEBT_AMOUNT} ?? '0'),
+                        // Doc O — تا وقتی ثبت نشده، هولدِ مالیاتِ تأمین‌کننده باز است.
+                        'moadian_submitted' => $this->{Order::SUPPLIER_MOADIAN_REF} !== null,
+                    ],
+                ]),
             ],
 
             // --- Address ---
@@ -169,10 +229,10 @@ class OrderResource extends BaseJsonResource
             // --- Actions ---
             'actions' => [
                 'download_invoice' => [
-                    'label' => __('orders.actions.download_initial_invoice'),
+                    'label' => $invoiceLabel,
                     'url' => $invoiceUrl,
                     'method' => 'GET',
-                    'active' => true,
+                    'active' => $invoiceUrl !== null,
                 ],
                 'payment' => [
                     'label' => __('orders.actions.final_invoice_settlement'),

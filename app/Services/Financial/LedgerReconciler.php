@@ -72,6 +72,7 @@ final class LedgerReconciler
      *     unknown_combinations: array<int, array<string, mixed>>,
      *     unbalanced_orders: array<int, array<string, mixed>>,
      *     orphan_holds: array<int, array<string, mixed>>,
+     *     mispriced_orders: array<int, array<string, mixed>>,
      *     healthy: bool,
      *     problems: array<int, string>
      * }
@@ -82,6 +83,7 @@ final class LedgerReconciler
         $drifted = $this->driftedWallets($userId);
         $unbalanced = $this->unbalancedOrders($orderId);
         $orphans = $this->orphanHolds($orderId);
+        $mispriced = $this->mispricedOrders($orderId);
 
         $problems = [];
 
@@ -119,6 +121,15 @@ final class LedgerReconciler
             );
         }
 
+        foreach ($mispriced as $row) {
+            $problems[] = sprintf(
+                'سفارش %s (#%d): مبنای قیمت %s ریال است ولی ارزشِ ردیف‌ها %s ریال (اختلاف %s)%s.',
+                $row['order_number'] ?? '—', $row['order_id'],
+                $row['charged_basis'], $row['goods_value'], $row['difference'],
+                $row['has_snapshot'] ? '' : ' — بدون اسنپ‌شاتِ official_price',
+            );
+        }
+
         return [
             'wallets' => [
                 'checked' => $this->walletCount($userId),
@@ -127,6 +138,7 @@ final class LedgerReconciler
             'unknown_combinations' => $unknown,
             'unbalanced_orders' => $unbalanced,
             'orphan_holds' => $orphans,
+            'mispriced_orders' => $mispriced,
             'healthy' => $problems === [],
             'problems' => $problems,
         ];
@@ -282,7 +294,66 @@ final class LedgerReconciler
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // ۴. گاردِ قاعده
+    // ۴. مبنای قیمت باید کلِ کالای سفارش را نمایندگی کند
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * سفارش‌هایی که مبنای قیمتشان با ارزشِ واقعیِ کالا نمی‌خواند.
+     *
+     * تسویه با `OP × weight_before_scale` کار می‌کند، پس این حاصل‌ضرب باید برابرِ
+     * جمعِ ارزشِ ردیف‌ها (`Σ order_items.total_price`) باشد.
+     *
+     * چرا لازم است: تا پیش از این هیچ‌کس `official_price` را نمی‌نوشت و هر سه مسیرِ
+     * تسویه روی فالبکِ `items->first()->unit_price` می‌افتادند — یعنی **کلِ تناژ به
+     * قیمتِ ردیفِ اول** حساب می‌شد. گاردِ `assertSingleSupplier` این را نمی‌گرفت،
+     * چون فقط تعدادِ *تأمین‌کننده* را می‌سنجد نه تعدادِ *ردیف*؛ سبدی با دو سایز
+     * میلگرد از یک کارخانه کاملاً عادی است و از گارد رد می‌شود.
+     *
+     * این بررسی عمداً همان فالبکِ کد را بازتولید می‌کند (`OP > 0 ? OP : قیمتِ ردیف
+     * اول`) تا سفارش‌های *قدیمیِ* بدون اسنپ‌شات را هم بسنجد — نه فقط سفارش‌های تازه.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function mispricedOrders(?int $orderId = null): array
+    {
+        $tolerance = (float) config('ops.financial.pricing_tolerance', 1000);
+
+        // مبنای مؤثر = دقیقاً همان چیزی که ProcessPreScalePaymentAction می‌خواند.
+        $effectiveOp = '(CASE WHEN o.official_price > 0 THEN o.official_price ELSE ('
+            .'SELECT oi2.unit_price FROM order_items oi2 WHERE oi2.order_id = o.id ORDER BY oi2.id LIMIT 1'
+            .') END)';
+
+        $goodsValue = '(SELECT SUM(oi.total_price) FROM order_items oi WHERE oi.order_id = o.id)';
+
+        $query = DB::table('orders as o')
+            ->selectRaw('o.id, o.order_number, o.official_price, o.weight_before_scale')
+            ->selectRaw("$effectiveOp AS effective_op")
+            ->selectRaw("$goodsValue AS goods_value")
+            ->selectRaw("$effectiveOp * o.weight_before_scale AS charged_basis")
+            ->whereRaw('o.weight_before_scale > 0')
+            ->whereRaw("$goodsValue IS NOT NULL")
+            // WHERE و نه HAVING: کوئریِ بیرونی هیچ GROUP BY ندارد (تجمیع داخلِ
+            // زیرکوئری‌های همبسته است)، و MariaDB در آن حالت HAVING روی ستونِ
+            // غیرگروهی را رد می‌کند: «Non-grouping field used in HAVING clause».
+            ->whereRaw("ABS(($effectiveOp * o.weight_before_scale) - $goodsValue) > ?", [$tolerance])
+            ->orderBy('o.id');
+
+        if ($orderId !== null) {
+            $query->where('o.id', $orderId);
+        }
+
+        return $query->get()->map(fn ($row) => [
+            'order_id' => (int) $row->id,
+            'order_number' => $row->order_number,
+            'goods_value' => $this->plain((string) $row->goods_value),
+            'charged_basis' => $this->plain((string) $row->charged_basis),
+            'difference' => $this->plain(Money::sub($row->charged_basis, $row->goods_value)),
+            'has_snapshot' => (float) $row->official_price > 0,
+        ])->all();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // ۵. گاردِ قاعده
     // ─────────────────────────────────────────────────────────────────────────
 
     /**

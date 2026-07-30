@@ -52,6 +52,19 @@ return [
         'max_age_hours' => (int) env('BACKUP_MAX_AGE_HOURS', 26),
     ],
 
+    'financial' => [
+
+        /*
+        | تلورانسِ «مبنای قیمت در برابر ارزشِ ردیف‌ها» (ریال).
+        |
+        | `official_price` میانگینِ وزنی است و به دو رقمِ اعشار گرد می‌شود، پس
+        | `OP × وزنِ کل` می‌تواند چند ریال با `Σ total_price` فرق کند — این نویزِ
+        | گردکردن است نه خطا. هر اختلافِ بزرگ‌تر از این یعنی مبنا واقعاً غلط است.
+        | هم‌ردیفِ `financial.weighbridge_tolerance` که همین نقش را برای POO/PTS دارد.
+        */
+        'pricing_tolerance' => (int) env('PRICING_TOLERANCE_RIALS', 1000),
+    ],
+
     'health' => [
 
         /*

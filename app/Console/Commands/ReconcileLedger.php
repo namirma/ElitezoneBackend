@@ -60,6 +60,7 @@ class ReconcileLedger extends Command
             'drifted_wallets' => count($report['wallets']['drifted']),
             'unbalanced_orders' => count($report['unbalanced_orders']),
             'orphan_holds' => count($report['orphan_holds']),
+            'mispriced_orders' => count($report['mispriced_orders']),
             'unknown_combinations' => $report['unknown_combinations'],
             'problems' => $report['problems'],
         ]);
@@ -98,6 +99,18 @@ class ReconcileLedger extends Command
             $this->table(
                 ['سفارش', 'شماره', 'جمعِ جبری'],
                 array_map(fn ($row) => [$row['order_id'], $row['order_number'] ?? '—', $row['net']], $report['unbalanced_orders']),
+            );
+        }
+
+        if ($report['mispriced_orders'] !== []) {
+            $this->error('سفارش‌هایی که مبنای قیمتشان با ارزشِ ردیف‌ها نمی‌خواند:');
+            $this->table(
+                ['سفارش', 'شماره', 'ارزشِ ردیف‌ها', 'مبنای محاسبه', 'اختلاف', 'اسنپ‌شات دارد؟'],
+                array_map(fn ($row) => [
+                    $row['order_id'], $row['order_number'] ?? '—',
+                    $row['goods_value'], $row['charged_basis'], $row['difference'],
+                    $row['has_snapshot'] ? 'بله' : 'خیر',
+                ], $report['mispriced_orders']),
             );
         }
 

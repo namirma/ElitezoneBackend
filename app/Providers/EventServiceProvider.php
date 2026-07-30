@@ -15,6 +15,7 @@ use App\Listeners\Financial\SendWalletFundingNotification;
 use App\Listeners\Order\SendOrderCancellationNotification;
 use App\Listeners\Order\SendOrderPaymentNotification;
 use App\Listeners\Order\SendOrderPlacedNotification;
+use App\Listeners\Order\SendSupplierOrderNotification;
 use App\Listeners\User\SendWinBackOffer;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
@@ -34,6 +35,7 @@ class EventServiceProvider extends ServiceProvider
         ],
         OrderPaid::class => [
             SendOrderPaymentNotification::class,
+            SendSupplierOrderNotification::class,
         ],
         WalletFunded::class => [
             SendWalletFundingNotification::class,

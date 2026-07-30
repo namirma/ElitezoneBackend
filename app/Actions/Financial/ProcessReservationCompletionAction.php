@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Financial;
 
 use App\Constants\FinancialCodes;
+use App\Events\Order\OrderPaid;
 use App\Exceptions\InsufficientBalanceException;
 use App\Models\Order;
 use App\Models\SupplierProfile;
@@ -203,6 +204,11 @@ class ProcessReservationCompletionAction
                 Order::TRANS_VAT => $transVat,
                 Order::PAID_AT => now(),
             ])->save();
+
+            // اعلانِ پرداخت — همان دلیلِ ProcessPreScalePaymentAction: پیش از این
+            // `OrderPaid` فقط از `PayOrderAction`ِ بدون‌فراخوان dispatch می‌شد، پس
+            // هیچ‌وقت شلیک نمی‌کرد. `ShouldDispatchAfterCommit` است.
+            OrderPaid::dispatch($locked);
 
             // ── صدور اسناد تکمیل وجه (G + H + C) ────────────────────────
             $this->invoiceGenerator->generateReservationCompletionDocs($locked);

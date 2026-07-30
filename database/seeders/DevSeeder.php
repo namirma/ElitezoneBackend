@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\UserProfile;
 use App\Models\UserType;
 use App\Models\Wallet;
+use App\Models\WalletTransaction;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -243,7 +244,7 @@ class DevSeeder extends Seeder
         );
 
         // کیف پول
-        Wallet::firstOrCreate(
+        $wallet = Wallet::firstOrCreate(
             [Wallet::USER_ID => $user->id],
             [
                 Wallet::USER_ID => $user->id,
@@ -251,6 +252,26 @@ class DevSeeder extends Seeder
                 Wallet::BALANCE_HOLD => 0,
             ]
         );
+
+        // ردیفِ دفتر برای همان موجودی.
+        //
+        // `wallet_transactions` دفترِ فقط-افزودنی است و `wallets.balance` باید
+        // بازپخشِ آن باشد. نوشتنِ مستقیمِ موجودی بدونِ ردیفِ متناظر، دقیقاً همان
+        // «پولِ بی‌پشتوانه» است که `financial:doctor` برای کشفش ساخته شد — و چون
+        // سیدر آن را روی هر ماشینِ توسعه بازتولید می‌کرد، آن ابزار همیشه قرمز
+        // بود. پایشی که همیشه قرمز است، خیلی زود نادیده گرفته می‌شود.
+        //
+        // `doesntExist()` هم idempotent نگهش می‌دارد و هم جلوی جعلِ تاریخچه را
+        // می‌گیرد: کیفی که تراکنشِ واقعی دارد دست‌نخورده می‌ماند.
+        if ($balance > 0 && $wallet->transactions()->doesntExist()) {
+            $wallet->transactions()->create([
+                WalletTransaction::AMOUNT => $balance,
+                WalletTransaction::TYPE => WalletTransaction::TYPE_DEPOSIT,
+                WalletTransaction::STATUS => WalletTransaction::STATUS_CONFIRMED,
+                WalletTransaction::DESCRIPTION => 'شارژ اولیهٔ محیط توسعه (DevSeeder)',
+                WalletTransaction::META => ['source' => 'dev_seeder'],
+            ]);
+        }
 
         return $user;
     }
@@ -272,12 +293,22 @@ class DevSeeder extends Seeder
                 Order::STATUS => $status,
                 Order::PAYMENT_STATUS => $paymentStatus,
                 Order::FINAL_AMOUNT => $amount,
-                Order::OFFICIAL_PRICE => $amount,
                 Order::WEIGHT_BEFORE_SCALE => 20_000,   // ۲۰ تن
                 Order::SHIPPING_COST => 0,
-                Order::VAT_RATE => 10,
             ]
         );
+
+        // `official_price` و `vat_rate` ستون‌های اسنپ‌شاتِ مالی‌اند و در $fillable
+        // نیستند، پس داخل آرایهٔ firstOrCreate بالا **بی‌صدا دور ریخته می‌شدند**.
+        //
+        // ضمناً OFFICIAL_PRICE قیمتِ **هر واحد** است نه مبلغِ کل: تسویه با
+        // `OP × weight` کار می‌کند (SettlementCalculatorService::calculatePOO)،
+        // پس نوشتنِ $amount در آن، مبنا را ۲۰٬۰۰۰ برابر می‌کرد. ردیفِ سفارش از
+        // همان اول درست بود (`$amount / 20_000`) و این دو با هم نمی‌خواندند.
+        $order->forceFill([
+            Order::OFFICIAL_PRICE => (int) ($amount / 20_000),
+            Order::VAT_RATE => 10,
+        ])->save();
 
         // آیتم سفارش
         if ($variant) {
