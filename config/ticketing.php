@@ -1,5 +1,7 @@
 <?php
 
+use Illuminate\Support\Carbon;
+
 /**
  * Ticketing / support-desk configuration.
  *
@@ -52,7 +54,13 @@ return [
         'enabled' => (bool) env('TICKET_BUSINESS_HOURS_ENABLED', true),
         'start_hour' => (int) env('TICKET_BUSINESS_START_HOUR', 9),
         'end_hour' => (int) env('TICKET_BUSINESS_END_HOUR', 17),
-        'weekend_days' => [\Illuminate\Support\Carbon::FRIDAY],
+        'weekend_days' => [Carbon::FRIDAY],
+
+        // ساعتِ ۹ تا ۱۷ و «جمعه تعطیل» مفاهیمِ **محلی**اند، ولی `app.timezone`
+        // روی UTC است و `TicketService` با `now()` صدا می‌زند. بدون این تبدیل،
+        // تقویم ساعتِ UTC را با ساعتِ کاریِ ایران مقایسه می‌کرد و ۳٫۵ ساعت
+        // جابه‌جا می‌شد — تیکتِ ساعت ۲۰ تهران «داخل ساعت کاری» شمرده می‌شد.
+        'timezone' => env('TICKET_BUSINESS_TIMEZONE', 'Asia/Tehran'),
     ],
 
     /*
