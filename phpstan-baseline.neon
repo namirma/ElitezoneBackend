@@ -1006,44 +1006,10 @@ parameters:
 			path: app/Jobs/Analytics/RollupProductViewsJob.php
 
 		-
-			message: "#^Access to an undefined property Illuminate\\\\Database\\\\Eloquent\\\\Model\\:\\:\\$id\\.$#"
-			count: 3
-			path: app/Jobs/Financial/CheckSupplierBalancesJob.php
-
-		-
-			message: "#^Access to an undefined property Illuminate\\\\Database\\\\Eloquent\\\\Model\\:\\:\\$order_number\\.$#"
-			count: 3
-			path: app/Jobs/Financial/CheckSupplierBalancesJob.php
-
-		-
-			message: "#^Access to an undefined property Illuminate\\\\Database\\\\Eloquent\\\\Model\\:\\:\\$placer_user_id\\.$#"
-			count: 2
-			path: app/Jobs/Financial/CheckSupplierBalancesJob.php
-
-		-
 			message: "#^Access to an undefined property Illuminate\\\\Database\\\\Eloquent\\\\Model\\:\\:\\$supplier_debt_pending\\.$#"
 			count: 1
 			path: app/Jobs/Financial/CheckSupplierBalancesJob.php
 
-		-
-			message: "#^Parameter \\#1 \\$order of method App\\\\Jobs\\\\Financial\\\\CheckSupplierBalancesJob\\:\\:processOrder\\(\\) expects App\\\\Models\\\\Order, Illuminate\\\\Database\\\\Eloquent\\\\Model given\\.$#"
-			count: 1
-			path: app/Jobs/Financial/CheckSupplierBalancesJob.php
-
-		-
-			message: "#^Parameter \\#1 \\$order of method App\\\\Services\\\\Financial\\\\WalletTransactionEngine\\:\\:creditSystem\\(\\) expects App\\\\Models\\\\Order, Illuminate\\\\Database\\\\Eloquent\\\\Model given\\.$#"
-			count: 1
-			path: app/Jobs/Financial/CheckSupplierBalancesJob.php
-
-		-
-			message: "#^Parameter \\#1 \\$order of method App\\\\Services\\\\Financial\\\\WalletTransactionEngine\\:\\:debitSupplier\\(\\) expects App\\\\Models\\\\Order, Illuminate\\\\Database\\\\Eloquent\\\\Model given\\.$#"
-			count: 1
-			path: app/Jobs/Financial/CheckSupplierBalancesJob.php
-
-		-
-			message: "#^Parameter \\#3 \\$order of method App\\\\Services\\\\Financial\\\\WalletTransactionEngine\\:\\:releaseHold\\(\\) expects App\\\\Models\\\\Order, Illuminate\\\\Database\\\\Eloquent\\\\Model given\\.$#"
-			count: 1
-			path: app/Jobs/Financial/CheckSupplierBalancesJob.php
 
 		-
 			message: "#^Parameter \\#1 \\$num of function number_format expects float, string given\\.$#"

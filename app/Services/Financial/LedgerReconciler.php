@@ -179,8 +179,15 @@ final class LedgerReconciler
             // دقیقاً همان حالتِ «موجودی از هیچ‌جا آمده» را پنهان می‌کرد.
             ->selectRaw('COALESCE(l.expected_balance, 0) as expected_balance')
             ->selectRaw('COALESCE(l.expected_hold, 0) as expected_hold')
-            ->whereRaw('wallets.'.Wallet::BALANCE.' <> COALESCE(l.expected_balance, 0)
-                     OR wallets.'.Wallet::BALANCE_HOLD.' <> COALESCE(l.expected_hold, 0)')
+            // ⚠️ پرانتز الزامی است. `whereRaw` رشته را همان‌طور که هست می‌گذارد و
+            // فیلترِ `--user` پایین‌تر با AND اضافه می‌شود؛ چون AND در SQL از OR
+            // محکم‌تر می‌چسبد، بدون پرانتز شرط به این تبدیل می‌شد:
+            //   balance <> expected  OR  (hold <> expected_hold AND user_id = ?)
+            // یعنی `financial:doctor --user=X` هر کیفی را در کلِ سیستم که
+            // موجودی‌اش مغایر بود گزارش می‌کرد، نه فقط کیفِ همان کاربر — یک
+            // ابزارِ ممیزی که در حالتِ محدود، جوابِ نامحدود می‌داد.
+            ->whereRaw('(wallets.'.Wallet::BALANCE.' <> COALESCE(l.expected_balance, 0)
+                      OR wallets.'.Wallet::BALANCE_HOLD.' <> COALESCE(l.expected_hold, 0))')
             ->orderBy('wallets.'.Wallet::ID);
 
         if ($userId !== null) {

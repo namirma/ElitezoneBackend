@@ -1149,7 +1149,7 @@ tests/
   Unit/          — (empty placeholder dir — kept so phpunit.xml works)
 ```
 
-**Total: 684 tests, 1748 assertions — all green. ✅**
+**Total: 739 tests, 1885 assertions — all green. ✅**
 
 Round-5 audit additions: `Security/CorsAllowlistTest`,
 `Security/PublicDiskUploadRulesTest`, `Admin/AdminPermissionCoverageTest`,
@@ -1492,14 +1492,22 @@ Order::where(Order::SUPPLIER_DEBT_PENDING, true)
 > (`->with([...])`). `chunkById` fetches 100 rows at a time, supports eager loading per
 > chunk, and does not load the full result set into memory — best of both worlds here.
 
-Inside the transaction, it finds the specific buyer hold via:
-```php
-$buyerWallet->transactions()
-    ->where('order_id', $lockedOrder->id)
-    ->where('type', 'deposit')
-    ->where('status', FinancialCodes::STATUS_HOLD)
-    ->latest()->first();
-```
+Inside the transaction it finds the buyer hold via `outstandingRefundHold()` — the
+`deposit/hold` row for that order **minus** any hold already pointed at by a
+`hold_release`'s `meta.source_hold_id`. Never re-add a status rewrite as the
+"settled" marker (see the hold-release section above for what that broke).
+
+**Failing to release must throw, not skip.** The release used to sit inside
+`if ($buyerWallet && $buyerWallet->balance_hold >= $debtAmount)`, and step 3 cleared the
+debt flags regardless. So when the hold could not be found, the money was still reclaimed
+from the supplier, the flag still closed, and the buyer's refund stayed in `balance_hold`
+**forever** with no future event able to release it — surfacing much later as an
+`orphanHolds()` entry with no way to trace it. Now a missing wallet or missing hold throws:
+the whole transaction rolls back, so neither the reclaim nor the flag-clear survives and
+the next run retries cleanly. `handle()` catches per-order, so one stuck order does not
+halt the rest. Note also that the guard compared `balance_hold` against `$debtAmount`
+(the supplier reclaim, `PTS − PTSM`) while the amount actually released is the **buyer
+refund** (`POO − POOM`) — deliberately different, and the larger of the two.
 
 ### Order financial snapshot fields — not in `$fillable`; use `forceFill()->save()`
 
@@ -1670,6 +1678,36 @@ Pinned by `Financial/CommissionRateSnapshotTest`. Note the badge itself is safe 
 mid-flight: `%OW` is 40 % for every badge and `ow+co+ssg` always totals 100 % of TC, so
 POO/PTS are badge-independent — only the WEY/WSSG split shifts.
 
+### Release a hold BEFORE spending it — reservation completion leg order
+
+The reservation deposit (PTR) lands on WSSG with status `HOLD`, i.e. in `balance_hold`.
+Every `debitSystem(..., STATUS_AVAILABLE)` reads `balance` only. So any WSSG debit that is
+*funded by the reservation* must come **after** `releaseHold($systemUserId, $PTR, …)`.
+
+`ProcessReservationCompletionAction` had the release last. In the price-drop branch
+(`POO < PTR`, so `remainingAmount < 0`) it therefore ran `debitSystem(PTR − POO)` against
+WSSG's available balance while the money to pay it was still held two statements below —
+`InsufficientBalanceException`, rolling back the entire completion, reported to the buyer
+as "موجودی کیف پول کافی نیست". On a platform wallet with no unrelated float, **no
+price-drop reservation could be completed at all**.
+
+Unlike `SupplierDebtHandler::parkDebtAndNotify`, this needed no policy call: the funding
+source is the buyer's own deposit on this same order. The new order also keeps the
+"WSSG never goes negative" rule — after the release WSSG holds PTR, and the largest debit
+in that branch (`PTR − POO`) is smaller. Pinned by
+`Financial/ReservationCompletionLegOrderTest`, whose fixture gives the Saze wallet **zero**
+available balance so the bug cannot hide.
+
+### A `whereRaw` containing `OR` must carry its own parentheses
+
+`LedgerReconciler::driftedWallets()` builds the drift condition with a raw
+`balance <> … OR balance_hold <> …`, then appends `--user` as `->where('user_id', $id)`.
+Laravel inserts `whereRaw` verbatim, and SQL binds `AND` tighter than `OR`, so the
+predicate silently became `balance <> … OR (hold <> … AND user_id = ?)` — i.e.
+`financial:doctor --user=X` listed **every drifted wallet in the system** under one user's
+report. Parenthesise any raw fragment that contains a top-level `OR`. Pinned by
+`LedgerReconcilerTest::restricting_to_one_user_does_not_leak_other_wallets`.
+
 ### `extractVat()` — `net` is derived from the rounded `vat`
 
 `net = gross − round(vat)`, so `net + vat === gross` exactly. Rounding the two
@@ -1722,9 +1760,24 @@ funds, and writes a distinct **`WalletTransaction::TYPE_HOLD_RELEASE`** row (sta
 and *release* are two immutable, timestamped ledger events that net to zero and can be
 reconstructed for audit. **Never** release a hold with a bare
 `decrement('balance_hold')` / `increment('balance')` (that left no release event).
-`CheckSupplierBalancesJob` uses `releaseHold()` and additionally flips the original hold
-row to `AVAILABLE` as a settled-marker so it is no longer found as outstanding.
 `HoldReleaseAuditTest` pins this contract.
+
+**A ledger row is an immutable past event — never rewrite one to mark it "settled".**
+`CheckSupplierBalancesJob` used to follow `releaseHold()` with
+`$holdTx->update(['status' => AVAILABLE])` so the row would no longer look like an
+outstanding hold. But `LedgerReconciler` **replays balances from these very columns**, and
+`deposit/hold` and `deposit/confirmed` are different rows in that table: the rewrite moved
+the row from "hold +amount, balance 0" to "balance +amount, hold 0" while the
+`hold_release` row *also* credited +amount. Replay therefore reported `+2×amount` balance
+and `−amount` hold against a wallet actually holding `+1×amount` and `0` — so **every
+supplier-debt release permanently broke the buyer's wallet in `financial:doctor`**, by the
+full refund amount, in both columns.
+
+"Already released?" is answered from the ledger instead: `releaseHold()` writes
+`meta.source_hold_id`, so `CheckSupplierBalancesJob::outstandingRefundHold()` excludes any
+hold that a `hold_release` row points at. `orphanHolds()` never needed the rewrite either —
+it nets `+hold` against `−hold_release` and already reached zero on its own.
+Pinned by `Financial/SupplierDebtReleaseTest`.
 
 ### Wallet status vocabulary — cover `hold` everywhere
 
@@ -2017,10 +2070,25 @@ Podium PAYA/SATNA settlement. Flow:
    `SettleWithdrawalAction` (the Podium call must NOT run inside the deposit-confirm DB tx).
    Rejecting a withdraw still refunds the wallet via the existing path.
 3. `SettleWithdrawalAction` is a **3-phase state machine** so a DB row lock is never held
-   across the HTTP call: (A) lock + claim `settlement.state='sending'`, (B) call Podium with
-   `uniqueId='wd-{id}'` (Podium dedups → retry-safe), (C) lock + on success CONFIRMED + store
-   `reference_number`, on failure back to PENDING (`state='failed'`) and rethrow so an admin
-   can retry. The wallet was debited at request time, so a failure never loses or mints money.
+   across the HTTP call: (A) lock + claim `settlement.state='sending'` + `claimed_at`,
+   (B) call Podium with `uniqueId='wd-{id}'` (Podium dedups → retry-safe), (C) lock + on
+   success CONFIRMED + store `reference_number`, on failure back to PENDING
+   (`state='failed'`, `claimed_at` cleared) and rethrow so an admin can retry. The wallet
+   was debited at request time, so a failure never loses or mints money.
+
+   **Phase A must gate on the claim, not only on `status`.** The row stays PENDING until
+   phase C completes (deliberately — a failed bank call has to be retryable), so
+   `status !== PENDING` closes nothing: two admin confirms arriving together both saw
+   PENDING, both passed, and both POSTed to Podium. Admin routes carry no idempotency
+   middleware and `ProcessTransactionAction` calls this action **outside** its own
+   transaction, so no other lock existed either — the only thing preventing a double payout
+   was Podium's own `uniqueId` dedup, i.e. our money safety delegated to a third party.
+   Phase A now refuses re-entry while `state === 'sending'` and the claim is younger than
+   `config('podium.settlement.claim_ttl_minutes')` (default 15). The TTL exists because a
+   crash between phases B and C would otherwise strand the row as unsettleable forever.
+   Pinned by `WithdrawalSettlementTest::a_second_settlement_while_the_first_is_in_flight_is_refused`,
+   which re-enters from inside the HTTP fake — against the old code that recursed until PHP
+   ran out of memory.
 
 - `PodiumWithdrawalService` (service 2467367 / sandbox 158267, "withdrawal with tool
   selection") is **fail-safe** like the Pasargad scaffold: `isConfigured()` is false until

@@ -72,6 +72,30 @@ class LedgerReconcilerTest extends TestCase
     }
 
     #[Test]
+    public function restricting_to_one_user_does_not_leak_other_wallets(): void
+    {
+        // `financial:doctor --user=X` باید فقط کیفِ همان کاربر را برگرداند.
+        //
+        // شرطِ مغایرت یک `whereRaw` با `OR` است و فیلترِ کاربر با `AND` بعد از آن
+        // اضافه می‌شود. بدون پرانتز، AND محکم‌تر از OR می‌چسبد و شرط عملاً می‌شود
+        // «balance مغایر است **یا** (hold مغایر است و کاربر X است)» — یعنی هر کیفی
+        // در کلِ سیستم که موجودی‌اش مغایر بود، در گزارشِ *یک کاربر* ظاهر می‌شد.
+        // این تست دقیقاً همان نشت را می‌گیرد: هر دو کیف مغایرتِ `balance` دارند.
+        $mine = Wallet::factory()->create([Wallet::BALANCE => 111]);
+        $theirs = Wallet::factory()->create([Wallet::BALANCE => 222]);
+
+        $drift = $this->reconciler->driftedWallets($mine->user_id);
+
+        $this->assertCount(1, $drift);
+        $this->assertSame($mine->id, $drift[0]['wallet_id']);
+        $this->assertNotContains(
+            $theirs->id,
+            array_column($drift, 'wallet_id'),
+            'کیف پول کاربرِ دیگر نباید در گزارشِ محدودشده ظاهر شود.'
+        );
+    }
+
+    #[Test]
     public function a_pending_deposit_does_not_credit_the_balance(): void
     {
         // فیشِ کاربر تا تأییدِ ادمین هیچ اثری روی موجودی ندارد (FundWalletAction).

@@ -208,6 +208,111 @@ class WithdrawalSettlementTest extends TestCase
         Http::assertNothingSent();
     }
 
+    // ─── Re-entrancy: the claim must actually gate ───────────────────────────────
+
+    #[Test]
+    public function a_second_settlement_while_the_first_is_in_flight_is_refused(): void
+    {
+        // بازورودِ **واقعی**: در همان لحظه‌ای که تماس با پادیوم در جریان است، یک
+        // تلاشِ دوم روی همان ردیف انجام می‌شود.
+        //
+        // تا پیش از این، فاز A فقط `status !== PENDING` را می‌سنجید — و ردیف تا
+        // پایانِ فاز C عمداً PENDING می‌ماند. پس هر دو تلاش رد می‌شدند و هر دو به
+        // پادیوم POST می‌کردند؛ تنها چیزی که جلوی واریزِ دوباره را می‌گرفت dedupِ
+        // سمتِ پادیوم روی `uniqueId` بود، نه کدِ ما.
+        $user = $this->makeUserWithWallet(balance: 0);
+        $tx = $this->pendingWithdraw($user, 500_000);
+
+        $reentry = null;
+        $attempted = false;
+
+        Http::fake(function () use ($tx, &$reentry, &$attempted) {
+            // فقط یک بار بازورود — بدون این گارد، کدِ *معیوب* بی‌نهایت بازگشتی
+            // می‌شد (هر تماس یک تسویهٔ تازه می‌ساخت) و کلِ اجرای تست را با
+            // memory exhaustion می‌کشت به‌جای اینکه تمیز fail شود.
+            if (! $attempted) {
+                $attempted = true;
+                try {
+                    app(SettleWithdrawalAction::class)->execute(WalletTransaction::findOrFail($tx->id));
+                    $reentry = 'allowed';
+                } catch (\RuntimeException $e) {
+                    $reentry = $e->getMessage();
+                }
+            }
+
+            return Http::response([
+                'hasError' => false,
+                'referenceNumber' => '3582715528',
+                'errorCode' => 0,
+                'result' => ['id' => 4697990, 'status' => 'SETTLEMENT_WAIT_FOR_SENDING', 'toolCode' => 'SETTLEMENT_TOOL_PAYA'],
+            ], 200);
+        });
+
+        app(SettleWithdrawalAction::class)->execute($tx);
+
+        $this->assertSame(__('wallet.settlement.in_progress'), $reentry, 'تلاشِ هم‌زمانِ دوم باید رد شود.');
+
+        // و مهم‌تر: فقط **یک** درخواست به پادیوم رفته باشد.
+        Http::assertSentCount(1);
+        $this->assertSame(WalletTransaction::STATUS_CONFIRMED, $tx->fresh()->status);
+    }
+
+    #[Test]
+    public function a_stale_claim_does_not_lock_the_row_forever(): void
+    {
+        // اگر پروسه بینِ تماسِ بانکی و ثبتِ نتیجه کرش کند، ردیف با state='sending'
+        // می‌ماند. بدون TTL هیچ ادمینی دیگر نمی‌توانست تسویه را تمام کند.
+        $this->fakePodiumSuccess();
+
+        $user = $this->makeUserWithWallet(balance: 0);
+        $tx = $this->pendingWithdraw($user, 500_000);
+
+        $ttl = (int) config('podium.settlement.claim_ttl_minutes', 15);
+        $meta = $tx->meta;
+        $meta['settlement'] = ['state' => 'sending', 'claimed_at' => now()->subMinutes($ttl + 1)->toIso8601String()];
+        $tx->update([WalletTransaction::META => $meta]);
+
+        app(SettleWithdrawalAction::class)->execute($tx);
+
+        $this->assertSame(WalletTransaction::STATUS_CONFIRMED, $tx->fresh()->status);
+        Http::assertSentCount(1);
+    }
+
+    #[Test]
+    public function a_failed_attempt_is_retryable_without_waiting_for_the_ttl(): void
+    {
+        // شکستِ صریح یعنی هیچ تماسی در جریان نیست — تلاش مجدد نباید منتظر TTL بماند.
+        $user = $this->makeUserWithWallet(balance: 0);
+        $tx = $this->pendingWithdraw($user, 500_000);
+
+        // یک fake با دو پاسخِ پشتِ‌هم: تلاشِ اول شکست، تلاشِ دوم موفق. (فراخوانِ
+        // دوبارهٔ `Http::fake()` استابِ قبلی را جایگزین نمی‌کند، ادغام می‌کند.)
+        Http::fake(['*doServiceCall*' => Http::sequence()
+            ->push(['hasError' => true, 'message' => 'خطا', 'errorCode' => 1], 200)
+            ->push([
+                'hasError' => false,
+                'referenceNumber' => '3582715528',
+                'errorCode' => 0,
+                'result' => ['id' => 4697990, 'status' => 'SETTLEMENT_WAIT_FOR_SENDING', 'toolCode' => 'SETTLEMENT_TOOL_PAYA'],
+            ], 200),
+        ]);
+
+        try {
+            app(SettleWithdrawalAction::class)->execute($tx);
+            $this->fail('Expected a RuntimeException on the first attempt.');
+        } catch (\RuntimeException) {
+            // expected
+        }
+
+        $tx->refresh();
+        $this->assertSame('failed', $tx->meta['settlement']['state']);
+        $this->assertNull($tx->meta['settlement']['claimed_at'] ?? null, 'claim باید با شکست آزاد شود.');
+
+        app(SettleWithdrawalAction::class)->execute($tx);
+
+        $this->assertSame(WalletTransaction::STATUS_CONFIRMED, $tx->fresh()->status);
+    }
+
     #[Test]
     public function confirming_an_already_settled_withdrawal_is_idempotent(): void
     {
