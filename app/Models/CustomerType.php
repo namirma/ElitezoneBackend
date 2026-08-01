@@ -4,9 +4,20 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Cache;
 
 class CustomerType extends Model
 {
+    /**
+     * کشِ عمومیِ `GET /customer-types` هیچ‌جا باطل نمی‌شد — هیچ فراخوانِ
+     * `Cache::forget('customer_types')` در کلِ پروژه وجود نداشت.
+     */
+    protected static function booted(): void
+    {
+        static::saved(fn () => Cache::forget('customer_types'));
+        static::deleted(fn () => Cache::forget('customer_types'));
+    }
+
     const ID = 'id';
 
     const NAME = 'name';

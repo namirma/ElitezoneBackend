@@ -32,10 +32,16 @@ class PriceFilter extends Model
 
     public const UPDATED_AT = 'updated_at';
 
+    /** هم‌الگو با `PriceFilterCategory::booted()` — کشِ عمومی هم باید برود. */
     protected static function booted(): void
     {
-        static::saved(fn () => Cache::forget('pricing:categories_with_filters'));
-        static::deleted(fn () => Cache::forget('pricing:categories_with_filters'));
+        $flush = function (): void {
+            Cache::forget('pricing:categories_with_filters');
+            Cache::forget('price_filter_categories');
+        };
+
+        static::saved($flush);
+        static::deleted($flush);
     }
 
     protected $fillable = [

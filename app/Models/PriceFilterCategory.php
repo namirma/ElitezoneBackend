@@ -28,10 +28,25 @@ class PriceFilterCategory extends Model
         self::NAME, self::CODE, self::DESCRIPTION, self::IS_ACTIVE, self::SORT_ORDER,
     ];
 
+    /**
+     * دو کش با هم فراموش می‌شوند — نه فقط کشِ موتور قیمت‌گذاری.
+     *
+     * `pricing:categories_with_filters` را پایپ‌لاین قیمت می‌خواند و از قبل
+     * فلاش می‌شد، ولی `price_filter_categories` (کشِ `GET /price-filters`، همان
+     * چیزی که صفحهٔ محصول برچسب‌های تخفیف را از آن می‌سازد) هیچ‌جا باطل نمی‌شد.
+     * نتیجه: ادمین مبلغِ فیلتر را عوض می‌کرد، سبد **فوراً** نرخ جدید را می‌گرفت و
+     * کاتالوگ تا یک ساعت نرخ قدیمی را تبلیغ می‌کرد — یعنی کاربر یک عدد می‌دید و
+     * عدد دیگری می‌پرداخت.
+     */
     protected static function booted(): void
     {
-        static::saved(fn () => Cache::forget('pricing:categories_with_filters'));
-        static::deleted(fn () => Cache::forget('pricing:categories_with_filters'));
+        $flush = function (): void {
+            Cache::forget('pricing:categories_with_filters');
+            Cache::forget('price_filter_categories');
+        };
+
+        static::saved($flush);
+        static::deleted($flush);
     }
 
     public function filters(): BelongsToMany
