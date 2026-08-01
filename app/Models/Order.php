@@ -359,13 +359,32 @@ class Order extends Model
             $roles[] = OrderDocumentCatalog::AUDIENCE_BUYER;
         }
 
-        // array_filter صفرها را می‌اندازد، پس ستونِ NULL هرگز با userId=0 جفت نمی‌شود.
+        // ذی‌نفع و الیت‌یار **دو نفرِ متفاوت‌اند** و نباید یک مخاطب حساب شوند.
+        //
+        // این دو ستون قبلاً هر دو به `AUDIENCE_ELITE_YAR` نگاشت می‌شدند. در مسیرِ
+        // «الیت‌یار سفارش می‌دهد و کارفرما را نام می‌برد» — که `StoreOrderRequest`
+        // اجباری‌اش می‌کند — ذی‌نفع همان کارفرما/مشتری است. نتیجه دو طرفه غلط بود:
+        //
+        //   • کارفرما سند D (گزارش پرداخت به الیت‌یار) و سند Q (فاکتور مودیانِ
+        //     شخصیِ الیت‌یار، به مبلغ `payment_to_elite_yar`) را دانلود می‌کرد —
+        //     یعنی سند مالیاتیِ مشاورش به دستِ خودِ مشتری می‌رسید.
+        //   • و روی همهٔ اسناد خریدارِ خودش ۴۰۳ می‌گرفت، از جمله سند P (فاکتور
+        //     مودیانی که *به نامِ او* صادر شده) و سند K (بارنامه).
+        //
+        // هر گاردِ دیگری ذی‌نفع را خریدار می‌داند (`OrderPolicy::view/pay/cancel/
+        // finalizeInvoice` — او حتی می‌تواند پرداخت کند)، پس تنها همین‌جا ناسازگار بود.
+        //
         // getAttribute و نه دسترسی جادویی: larastan بدون فایل‌های ide-helper (که
         // gitignore شده‌اند) این ستون‌ها را نمی‌شناسد و level 5 خطا می‌دهد.
-        if (in_array($userId, array_filter([
-            (int) $this->getAttribute(self::BENEFICIARY_USER_ID),
-            (int) $this->getAttribute(self::ELITE_YAR_USER_ID),
-        ]), true)) {
+        // مقایسه پس از null-check است تا ستونِ NULL با userId صفر جفت نشود.
+        $beneficiaryId = $this->getAttribute(self::BENEFICIARY_USER_ID);
+        $eliteYarId = $this->getAttribute(self::ELITE_YAR_USER_ID);
+
+        if ($beneficiaryId !== null && (int) $beneficiaryId === $userId) {
+            $roles[] = OrderDocumentCatalog::AUDIENCE_BUYER;
+        }
+
+        if ($eliteYarId !== null && (int) $eliteYarId === $userId) {
             $roles[] = OrderDocumentCatalog::AUDIENCE_ELITE_YAR;
         }
 

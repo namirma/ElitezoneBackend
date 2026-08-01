@@ -7,6 +7,7 @@ use App\DataTransferObjects\Pricing\CartPricingResult;
 use App\DataTransferObjects\Pricing\PricingContextData;
 use App\Models\Cart;
 use App\Models\CartItem;
+use App\Models\Offer;
 use App\Models\OrderUnit;
 use App\Services\PriceCalculationService;
 use Illuminate\Support\Collection;
@@ -85,12 +86,19 @@ class CartPricingCalculator
 
         $subtotalFloat = (float) $subtotalStr;
 
-        // محاسبه تخفیف‌های آفر
+        // محاسبه تخفیف‌های آفر — درصد باید روی سطرِ واجدِ شرایط بنشیند، نه کلِ سبد،
+        // پس زیرمجموعِ هر سطر هم پاس داده می‌شود.
+        $lineSubtotals = [];
+        foreach ($lines as $line) {
+            $lineSubtotals[$line->cartItemId] = (string) $line->lineSubtotal;
+        }
+
         [$offerDiscountFloat, $appliedOffers] = $this->calculateOfferDiscount(
             items: $cart->items,
             subtotal: $subtotalFloat,
             unitsMap: $unitsMap,
-            offerBasis: $ctx->offerBasis
+            offerBasis: $ctx->offerBasis,
+            lineSubtotals: $lineSubtotals,
         );
 
         $shippingCostStr = '0.0000';
@@ -145,11 +153,34 @@ class CartPricingCalculator
         return (float) $baseStr;
     }
 
-    private function calculateOfferDiscount(Collection $items, float $subtotal, Collection $unitsMap, string $offerBasis): array
-    {
-        $now = now();
+    /**
+     * تخفیفِ آفر — پشتِ `features.product_offers`، پیش‌فرض خاموش.
+     *
+     * سه نقص اینجا بود، هر سه اصلاح شد؛ ولی خودِ فلگ گاردِ اصلی است، چون
+     * `PlaceOrderAction` تخفیفِ آفر را **اصلاً ثبت نمی‌کند** (ستونش روی `orders`
+     * وجود ندارد). پس هر عددی که این متد برگرداند، عددی است که خریدار می‌بیند و
+     * نمی‌پردازد. جزئیات در `config/features.php`.
+     *
+     * @param  array<int,string>  $lineSubtotals  cartItemId → زیرمجموعِ همان سطر
+     * @return array{0: float, 1: list<array{id:int,type:string,value:float}>}
+     */
+    private function calculateOfferDiscount(
+        Collection $items,
+        float $subtotal,
+        Collection $unitsMap,
+        string $offerBasis,
+        array $lineSubtotals,
+    ): array {
+        if (! config('features.product_offers')) {
+            return [0.0, []];
+        }
 
-        $offers = $items->flatMap(function (CartItem $item) use ($unitsMap, $offerBasis, $now) {
+        $now = now();
+        $discountStr = '0.0000';
+        $applied = [];
+        $seenOffers = [];
+
+        foreach ($items as $item) {
             $quantities = is_string($item->{CartItem::QUANTITIES})
                 ? json_decode($item->{CartItem::QUANTITIES}, true)
                 : $item->{CartItem::QUANTITIES};
@@ -162,32 +193,57 @@ class CartPricingCalculator
                 ? array_sum($quantities)
                 : $this->calculateBaseQuantity($quantities, $unitsMap);
 
-            return $item->productVariant->product->offers->filter(function ($offer) use ($thresholdValue, $now) {
+            $lineSubtotalStr = $lineSubtotals[$item->id] ?? '0.0000';
+
+            foreach ($item->productVariant->product->offers as $offer) {
+                // `is_active` اصلاً چک نمی‌شد. یعنی آفرِ غیرفعالی که
+                // `end_date`ش NULL بود (پیش‌فرضِ مایگریشن) تا ابد تخفیف می‌داد و
+                // تنها راه توقفش عقب‌بردنِ تاریخ بود. `Offer::scopeCurrent()` از
+                // قبل درست چک می‌کرد؛ این مسیر آن را دور می‌زد.
+                if (! $offer->{Offer::IS_ACTIVE}) {
+                    continue;
+                }
+
                 $isCurrent = (! $offer->start_date || $offer->start_date <= $now) &&
                              (! $offer->end_date || $offer->end_date >= $now);
 
-                return $isCurrent && $offer->minimum_quantity <= $thresholdValue;
-            });
-        })->unique('id')->values();
+                if (! $isCurrent || $offer->minimum_quantity > $thresholdValue) {
+                    continue;
+                }
 
-        $discountStr = '0.0000';
-        $applied = [];
+                // یک آفر روی چند سطرِ همان محصول دوباره حساب نمی‌شود.
+                $key = $offer->id.':'.$item->id;
+                if (isset($seenOffers[$key])) {
+                    continue;
+                }
+                $seenOffers[$key] = true;
 
-        foreach ($offers as $offer) {
-            $dStr = '0.0000';
-            if ($offer->type === 'percentage') {
-                $rateStr = bcdiv((string) $offer->value, '100', 4);
-                $dStr = bcmul((string) $subtotal, $rateStr, 4);
-            } elseif ($offer->type === 'fixed_amount') {
-                $dStr = (string) $offer->value;
+                // درصد روی **زیرمجموعِ همان سطر** اعمال می‌شود، نه کلِ سبد.
+                // قبلاً `bcmul($subtotal, $rate)` بود: آفرِ ۱۰٪ِ یک محصولِ
+                // ۱۰ میلیونی در سبدی یک‌میلیاردی، ۱۰۰ میلیون تخفیف می‌داد — صد
+                // برابرِ ارزشِ سطری که آن را کسب کرده بود. چهار آفرِ این‌چنینی
+                // جمعاً به ۱۰۰٪ می‌رسید و سبد رایگان می‌شد.
+                $dStr = '0.0000';
+                if ($offer->type === 'percentage') {
+                    $rateStr = bcdiv((string) $offer->value, '100', 4);
+                    $dStr = bcmul($lineSubtotalStr, $rateStr, 4);
+                } elseif ($offer->type === 'fixed_amount') {
+                    // مبلغِ ثابت هم از خودِ سطر بیشتر نمی‌شود.
+                    $dStr = bccomp((string) $offer->value, $lineSubtotalStr, 4) === 1
+                        ? $lineSubtotalStr
+                        : (string) $offer->value;
+                }
+
+                $discountStr = bcadd($discountStr, $dStr, 4);
+
+                if (! in_array($offer->id, array_column($applied, 'id'), true)) {
+                    $applied[] = [
+                        'id' => $offer->id,
+                        'type' => $offer->type,
+                        'value' => (float) $offer->value,
+                    ];
+                }
             }
-            $discountStr = bcadd($discountStr, $dStr, 4);
-
-            $applied[] = [
-                'id' => $offer->id,
-                'type' => $offer->type,
-                'value' => (float) $offer->value,
-            ];
         }
 
         $finalDiscount = min((float) $discountStr, max(0, $subtotal));

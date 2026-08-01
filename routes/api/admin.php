@@ -164,9 +164,18 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
         Route::get('/{user}', 'show');
         Route::post('/{user}/approve', 'approve'); // اتصال نقش supplier — تنها مسیر مجاز
         Route::post('/{user}/reject', 'reject');
-        // سطح ۱ — این دو پرچم مستقیماً فرمولِ تسویه را عوض می‌کنند (کارمزد و
-        // مالیات روی کرایه) و در لحظه‌ی پرداختِ هر سفارش روی آن snapshot می‌شوند.
-        Route::put('/{user}/formula', 'updateFormula')->middleware('admin.level:1');
+        // دو لایه، چون دو پرسشِ متفاوت‌اند و هر دو باید پاس شوند:
+        //
+        //   manage-financial → «به کدام بخش دسترسی دارد». `updateFormula` فلگ‌های
+        //     trans_commission/trans_vat را می‌نویسد که تعیین می‌کنند کدام‌یک از
+        //     چهار واریانتِ POO/PTS اجرا شود؛ ادمینِ پشتیبانیِ کاربران نباید بتواند
+        //     نحوهٔ محاسبهٔ کمیسیون و مالیات را عوض کند.
+        //
+        //   admin.level:1 → «تا کجا حق دارد». این فلگ‌ها روی هر سفارشِ بعدیِ آن
+        //     تأمین‌کننده snapshot می‌شوند و پس از پرداخت غیرقابلِ بازگشت‌اند، پس
+        //     تغییرشان در سطحِ مالکِ برند است نه هر مدیرِ مالی.
+        Route::put('/{user}/formula', 'updateFormula')
+            ->middleware(['admin.permission:manage-financial', 'admin.level:1']);
         Route::get('/{user}/orders', 'orders');
     });
 

@@ -60,6 +60,36 @@ return [
         'iban' => env('PODIUM_DEPOSIT_IBAN'),                     // شماره شبا (IR + ۲۴ رقم)
         'bank_name' => env('PODIUM_DEPOSIT_BANK_NAME', 'بانک پاسارگاد'),
         'account_holder' => env('PODIUM_DEPOSIT_ACCOUNT_HOLDER', 'شرکت الیت‌زون'),
+
+        /*
+        | صورت‌حسابِ سپرده — صفحه‌بندی و پنجرهٔ polling.
+        |
+        | بانک تراکنش‌ها را صفحه‌به‌صفحه می‌دهد و **واریز و برداشت را با هم**
+        | برمی‌گرداند؛ فیلترِ «فقط واریز» سمتِ ماست. پس یک صفحهٔ کوتاه یعنی
+        | ممکن است واریزهای واقعی در صفحهٔ بعد جا مانده باشند.
+        */
+        'statement' => [
+            // اندازهٔ هر صفحه در فراخوانِ پادیوم.
+            'page_size' => (int) env('PODIUM_STATEMENT_PAGE_SIZE', 100),
+
+            // سقفِ صفحه — گاردِ حلقهٔ بی‌پایان اگر بانک همیشه صفحهٔ پر برگرداند.
+            // با page_size پیش‌فرض یعنی حداکثر ۵۰٬۰۰۰ ردیف در یک اجرا.
+            'max_pages' => (int) env('PODIUM_STATEMENT_MAX_PAGES', 500),
+
+            // زمانِ منطقهٔ بانک. `app.timezone` روی UTC است و تاریخِ شمسی/ساعت باید
+            // محلی باشد، وگرنه پنجره ۳٫۵ ساعت جابه‌جا می‌شود.
+            'timezone' => env('PODIUM_STATEMENT_TIMEZONE', 'Asia/Tehran'),
+
+            // هم‌پوشانیِ عمدی روی هر اجرا. تکرار بی‌خطر است چون `doc_number`
+            // ایندکسِ یکتا دارد و `ProcessPodiumDepositAction` زودهنگام رد می‌کند.
+            'overlap_minutes' => (int) env('PODIUM_STATEMENT_OVERLAP_MINUTES', 5),
+
+            // وقتی هیچ watermarkی نیست (اولین اجرا یا پاک شدن تنظیم).
+            'default_window_minutes' => (int) env('PODIUM_STATEMENT_DEFAULT_WINDOW_MINUTES', 15),
+
+            // سقفِ عقبگرد پس از یک قطعیِ طولانی — تا درخواستِ «کلِ سالِ گذشته» نرود.
+            'max_lookback_minutes' => (int) env('PODIUM_STATEMENT_MAX_LOOKBACK_MINUTES', 10080), // ۷ روز
+        ],
     ],
 
     'services' => [

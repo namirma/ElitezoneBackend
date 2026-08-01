@@ -34,6 +34,12 @@ class OrderEstimateVatTest extends TestCase
     #[Test]
     public function the_estimate_adds_vat_on_top_and_reduces_it_proportionally_for_offers(): void
     {
+        // مثل `CartOfferVatTest` — این تست خودِ قابلیتِ آفر را می‌سنجد، پس فلگش را
+        // روشن می‌کند. `features.product_offers` پیش‌فرض خاموش است چون
+        // `PlaceOrderAction` تخفیفِ آفر را ثبت نمی‌کند؛ رفتارِ «مالیات به‌تناسبِ
+        // تخفیف کم شود» که اینجا پین شده با روشن شدن فلگ برقرار می‌ماند.
+        config(['features.product_offers' => true]);
+
         Cache::flush();
         $this->setVatRate(10);
 
