@@ -29,6 +29,12 @@ class CartOfferVatTest extends TestCase
     #[Test]
     public function a_cart_offer_reduces_vat_proportionally(): void
     {
+        // این تست خودِ قابلیتِ آفر را می‌سنجد، پس فلگش را روشن می‌کند.
+        // `features.product_offers` پیش‌فرض خاموش است چون `PlaceOrderAction`
+        // تخفیفِ آفر را ثبت نمی‌کند — رفتارِ «مالیات به‌تناسبِ تخفیف کم شود» که
+        // اینجا پین شده همچنان درست است و با روشن شدن فلگ برقرار می‌ماند.
+        config(['features.product_offers' => true]);
+
         Cache::flush();
         $this->setVatRate(10);
 
