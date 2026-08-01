@@ -35,8 +35,14 @@ class EliteYARRelationResource extends BaseJsonResource
             'name' => $this->whenLoaded('profile', $this->profile->{UserProfile::NAME} ?? ''),
             'family' => $this->whenLoaded('profile', $this->profile->{UserProfile::FAMILY} ?? ''),
 
-            User::MOBILE => $this->{User::MOBILE},
-            User::NATIONAL_CODE => $this->{User::NATIONAL_CODE},
+            // موبایل ماسک می‌شود و کد ملی اصلاً برنمی‌گردد.
+            //
+            // این رابطه را هر طرف می‌تواند یک‌طرفه بسازد (دعوت، بدون نیاز به
+            // پذیرش) و همین Resource برای فهرستِ دعوت‌های *در انتظار* هم استفاده
+            // می‌شود — یعنی کد ملیِ کاملِ یک غریبه با یک دعوتِ پذیرفته‌نشده
+            // برمی‌گشت. `UserResource` و `listRegisteredClients` در همین کنترلر
+            // هر دو ماسک می‌کنند؛ فقط این مسیر جا مانده بود.
+            User::MOBILE => $this->maskMobile($this->{User::MOBILE}),
 
             // status_info — ساختار یکپارچه با بقیه Resourceها
             'status_info' => [
@@ -87,5 +93,15 @@ class EliteYARRelationResource extends BaseJsonResource
         }
 
         return false;
+    }
+
+    /** هم‌الگو با `UserResource` و `EliteYARRelationController::listRegisteredClients`. */
+    private function maskMobile(?string $mobile): ?string
+    {
+        if ($mobile === null || strlen($mobile) < 7) {
+            return $mobile;
+        }
+
+        return substr($mobile, 0, 4).'****'.substr($mobile, -3);
     }
 }
