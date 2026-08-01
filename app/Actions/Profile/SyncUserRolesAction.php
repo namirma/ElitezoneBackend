@@ -33,7 +33,7 @@ final class SyncUserRolesAction
             }
             $user->employer()->firstOrCreate([EmployerProfile::USER_ID => $user->id]);
         } else {
-            $user->removeRole('employer');
+            $this->dropRole($user, $currentRoles, 'employer');
             $user->employer()->where(EmployerProfile::USER_ID, $user->id)->delete();
         }
 
@@ -50,18 +50,40 @@ final class SyncUserRolesAction
                 $user->addRole('supplier');
             }
         } else {
-            $user->removeRole('supplier');
+            $this->dropRole($user, $currentRoles, 'supplier');
             $user->supplier()->where(SupplierProfile::USER_ID, $user->id)->delete();
         }
 
         // --- Expert (engineer / contractor) — only clean-up on removal ---
         if (! $newDisplayRoles->contains('expert')) {
-            $user->removeRoles(['engineer', 'contractor']);
+            $this->dropRole($user, $currentRoles, 'engineer');
+            $this->dropRole($user, $currentRoles, 'contractor');
             $user->engineer()->where(EngineerProfile::USER_ID, $user->id)->delete();
             $user->contractor()->where(ContractorProfile::USER_ID, $user->id)->delete();
             // مدارک تحصیلی و سوابق شغلی عمداً حذف نمی‌شوند: حذفشان برگشت‌ناپذیر بود
             // (رکوردهای تأییدشده + فایل‌های پیوست) و فایل‌های روی دیسک را orphan می‌کرد.
             // با تغییر نقش فقط غیرفعال می‌مانند و با انتخاب دوباره‌ی expert باز می‌گردند.
+        }
+    }
+
+    /**
+     * نقش را فقط وقتی جدا می‌کند که کاربر واقعاً آن را داشته باشد.
+     *
+     * `removeRole()`/`removeRoles()` نامِ نقش را به مدل resolve می‌کنند و اگر
+     * ردیفِ نقش در جدول نباشد `ModelNotFoundException` می‌اندازند — که هندلر به
+     * ۴۰۴ با پیامِ «مسیر یا آیتم مورد نظر یافت نشد» تبدیلش می‌کند.
+     *
+     * نتیجه این بود که انتخابِ «کارفرما» شکست می‌خورد چون این اکشن در پایان
+     * `removeRoles(['engineer','contractor'])` را صدا می‌زند — نقش‌هایی که کاربر
+     * هرگز نداشته. یعنی یک درخواستِ کاملاً درست، به‌خاطر نبودِ ردیفی که اصلاً
+     * لازمش نداشت، ۴۰۴ می‌گرفت. «حذفِ چیزی که نداری» باید no-op باشد نه خطا.
+     *
+     * @param  Collection<int,string>  $currentRoles
+     */
+    private function dropRole(User $user, Collection $currentRoles, string $role): void
+    {
+        if ($currentRoles->contains($role)) {
+            $user->removeRole($role);
         }
     }
 }
