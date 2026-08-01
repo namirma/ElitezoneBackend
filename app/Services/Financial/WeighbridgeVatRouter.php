@@ -77,13 +77,31 @@ class WeighbridgeVatRouter
             return 0.0;
         }
 
-        ['net' => $net, 'vat' => $vat] = $this->calculator->extractVat($candidateGross, $result->vat);
+        // تنها جای سیستم که **یک** بدهکار به **دو** بستانکار تقسیم می‌شود، پس
+        // تنها جایی که گردکردنِ مستقل می‌تواند ریال خلق یا نابود کند. تقسیم در
+        // دقتِ ذخیره‌سازی انجام می‌شود تا `net + vat === gross` ساختاری باشد؛
+        // توضیح کامل در `SettlementCalculatorService::extractVatInRials()`.
+        ['gross' => $gross, 'net' => $net, 'vat' => $vat] =
+            $this->calculator->extractVatInRials($candidateGross, $result->vat);
 
-        $this->walletEngine->debitSystem($order, $candidateGross, FinancialCodes::STATUS_AVAILABLE, "تخصیص سهم الیت یار سفارش {$order->order_number}");
-        $this->walletEngine->creditEliteYAR($order, $net, FinancialCodes::STATUS_HOLD, $eliteYARUserId, 'کمیسیون امانی الیت یار');
-        $this->walletEngine->creditVat($order, $vat, FinancialCodes::STATUS_HOLD, 'مالیات کمیسیون الیت یار امانی');
+        if ($gross <= 0.0) {
+            return 0.0;
+        }
 
-        return $candidateGross;
+        $this->walletEngine->debitSystem($order, $gross, FinancialCodes::STATUS_AVAILABLE, "تخصیص سهم الیت یار سفارش {$order->order_number}");
+
+        // لِگِ صفر رد می‌شود — موتور مبلغِ نامثبت را رد می‌کند و کلِ باسکول را
+        // rollback می‌کرد (نرخ مالیاتِ صفر روی `price_settings` این را ممکن می‌کرد).
+        // چون net و vat جمعاً دقیقاً gross‌اند، حذفِ لِگِ صفر تراز را به هم نمی‌زند.
+        if ($net > 0.0) {
+            $this->walletEngine->creditEliteYAR($order, $net, FinancialCodes::STATUS_HOLD, $eliteYARUserId, 'کمیسیون امانی الیت یار');
+        }
+
+        if ($vat > 0.0) {
+            $this->walletEngine->creditVat($order, $vat, FinancialCodes::STATUS_HOLD, 'مالیات کمیسیون الیت یار امانی');
+        }
+
+        return $gross;
     }
 
     /**

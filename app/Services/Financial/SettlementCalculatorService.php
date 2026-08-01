@@ -274,4 +274,45 @@ class SettlementCalculatorService
             'vat' => Money::toFloat($vat),
         ];
     }
+
+    /**
+     * همان تقسیم، ولی در **دقتی که واقعاً ذخیره می‌شود** — ریالِ صحیح.
+     *
+     * `extractVat()` تضمین می‌کند `net + vat === gross` با دو رقم اعشار. ولی
+     * `wallets.balance`, `wallets.balance_hold` و `wallet_transactions.amount` هر
+     * سه `decimal(20,0)`اند، پس هر لِگ **جداگانه** به ریالِ صحیح گرد می‌شود و آن
+     * تضمین سرِ نوشتن از بین می‌رود: هرجا کسرِ اعشاریِ net و vat دو طرفِ ۰٫۵
+     * بیفتند، `round(net) + round(vat)` یک ریال از `round(gross)` فاصله می‌گیرد.
+     *
+     * این فقط در `WeighbridgeVatRouter::routeEliteYAR()` اهمیت دارد — تنها جایی
+     * که **یک** بدهکار با **دو** بستانکارِ مستقل جفت می‌شود. بقیهٔ مسیرها یک
+     * بدهکار و یک بستانکار با عددِ یکسان دارند، پس همیشه تراز می‌مانند.
+     *
+     * پیامدش آرام ولی خورنده بود: `LedgerReconciler::unbalancedOrders()` روی
+     * سهمِ بزرگی از سفارش‌های دارای الیت‌یار «پول خلق یا نابود شده» گزارش می‌داد،
+     * و ابزارِ تشخیصی که قرار بود مغایرتِ واقعی را پیدا کند به نویز تبدیل می‌شد.
+     *
+     * راهکار همان قاعده‌ای است که پروژه از قبل جای دیگر به‌کار می‌برد
+     * (`ShippingCostCalculator`, `InventoryService::updateStockAfterWeighbridge
+     * ForOrder`): اول کل را به دقتِ مقصد گرد کن، یک سهم را حساب کن، و **سهمِ
+     * آخر را از تفاضل بگیر** تا جمع به‌طور ساختاری دقیق دربیاید — نه با امید.
+     *
+     * @return array{gross: float, net: float, vat: float} هر سه، ریالِ صحیح
+     */
+    public function extractVatInRials(float $gross, float $vatPercent): array
+    {
+        $grossRial = round($gross);
+
+        if ($grossRial <= 0.0) {
+            return ['gross' => 0.0, 'net' => 0.0, 'vat' => 0.0];
+        }
+
+        // مالیات از همان عددی مشتق می‌شود که واقعاً بدهکار می‌شود، نه از ورودیِ اعشاری.
+        $vatRial = round($this->extractVat($grossRial, $vatPercent)['vat']);
+
+        // بازمانده — نه یک گردکردنِ مستقل. `net + vat === gross` این‌طور اصل است.
+        $netRial = $grossRial - $vatRial;
+
+        return ['gross' => $grossRial, 'net' => $netRial, 'vat' => $vatRial];
+    }
 }
