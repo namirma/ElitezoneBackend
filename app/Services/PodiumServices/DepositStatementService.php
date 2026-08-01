@@ -111,6 +111,62 @@ class DepositStatementService
     }
 
     /**
+     * **همهٔ** صورت‌حساب‌های بازه — صفحه‌به‌صفحه تا انتها.
+     *
+     * چرا لازم است: `getStatements()` یک صفحه می‌گیرد و پیش از این تنها فراخوانش
+     * (`getIncomingDeposits`) پارامترهای صفحه‌بندی را نه می‌گرفت و نه پاس می‌داد،
+     * پس همیشه فقط ۵۰ ردیفِ **اول** خوانده می‌شد. و چون بانک واریز و برداشت را
+     * با هم برمی‌گرداند و فیلترِ «فقط واریز» *بعد* از بریده‌شدن اجرا می‌شد، یک
+     * بازه با ۵۰ برداشتِ اول، «صفر واریز» گزارش می‌کرد — که از «واریزی نبود»
+     * قابل تشخیص نیست.
+     *
+     * حلقه وقتی می‌ایستد که صفحه‌ای کوتاه‌تر از `page_size` برگردد. `max_pages`
+     * گاردِ حلقهٔ بی‌پایان است اگر بانک همیشه صفحهٔ پر بدهد.
+     *
+     * @return list<array<string,mixed>>
+     */
+    public function getAllStatements(
+        string $fromDate,
+        string $toDate,
+        string $fromTime = '00:00:00',
+        string $toTime = '23:59:59',
+    ): array {
+        $pageSize = max(1, (int) Config::get('podium.deposit.statement.page_size', 100));
+        $maxPages = max(1, (int) Config::get('podium.deposit.statement.max_pages', 500));
+
+        $all = [];
+        $firstIndex = 0;
+
+        for ($page = 0; $page < $maxPages; $page++) {
+            $chunk = $this->getStatements($fromDate, $toDate, $fromTime, $toTime, $firstIndex, $pageSize);
+            $count = count($chunk);
+
+            foreach ($chunk as $stmt) {
+                $all[] = $stmt;
+            }
+
+            // صفحهٔ کوتاه = پایانِ بازه.
+            if ($count < $pageSize) {
+                return $all;
+            }
+
+            $firstIndex += $pageSize;
+        }
+
+        // به سقف خوردیم — یعنی احتمالاً هنوز ردیفِ خوانده‌نشده هست. بی‌صدا رد
+        // نمی‌شویم: همین حالت بود که واریزها را نامرئی می‌کرد.
+        Log::warning('DepositStatementService: به سقفِ صفحه‌بندی خوردیم؛ ممکن است ردیفی خوانده نشده باشد', [
+            'from' => "{$fromDate} {$fromTime}",
+            'to' => "{$toDate} {$toTime}",
+            'max_pages' => $maxPages,
+            'page_size' => $pageSize,
+            'fetched' => count($all),
+        ]);
+
+        return $all;
+    }
+
+    /**
      * دریافت صورت‌حساب‌های جدید برای بازه زمانی مشخص
      * فقط ردیف‌هایی که CreditorAmount > 0 دارند (واریز ورودی)
      */
@@ -120,12 +176,13 @@ class DepositStatementService
         string $fromTime = '00:00:00',
         string $toTime = '23:59:59',
     ): array {
-        $statements = $this->getStatements($fromDate, $toDate, $fromTime, $toTime);
+        // فیلتر روی **کلِ** بازه اجرا می‌شود، نه روی صفحهٔ اول.
+        $statements = $this->getAllStatements($fromDate, $toDate, $fromTime, $toTime);
 
-        return array_filter($statements, function (array $stmt): bool {
+        return array_values(array_filter($statements, function (array $stmt): bool {
             $creditor = (int) ($stmt['CreditorAmount'] ?? 0);
 
             return $creditor > 0;
-        });
+        }));
     }
 }
