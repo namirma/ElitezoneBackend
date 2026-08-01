@@ -131,6 +131,32 @@ class ProcessReservationCompletionAction
 
             Log::channel('financial')->info("Order {$locked->id}: POO={$POO}, PTR={$PTR}, Remaining={$remainingAmount}, Coupon={$couponDiscount}");
 
+            // ⚠️ آزادسازیِ هولدِ رزرو باید **قبل از هر برداشت از WSSG** انجام شود.
+            //
+            // بیعانه (PTR) در `ProcessReservationPaymentAction` با وضعیت HOLD به کیف
+            // سازه نشسته، یعنی داخل `balance_hold` است نه `balance`. هر `debitSystem(...)`
+            // با وضعیت AVAILABLE فقط `balance` را می‌بیند.
+            //
+            // این بلوک قبلاً **پایین‌تر** از شاخهٔ افتِ قیمت بود. پس وقتی POO < PTR
+            // (قیمت بین رزرو و تکمیل پایین آمده) و باید مابه‌التفاوت به خریدار برگردد،
+            // سازه باید آن را از موجودیِ آزادِ خودش جلو می‌انداخت — در حالی که پولِ
+            // لازم همان بیعانهٔ همین سفارش بود و دو خط پایین‌تر آزاد می‌شد. نتیجه:
+            // `InsufficientBalanceException` و rollback شدنِ کلِ تکمیل وجه، با پیام
+            // «موجودی کیف پول کافی نیست» که انگار مشکلِ خریدار است.
+            //
+            // برخلافِ `SupplierDebtHandler::parkDebtAndNotify` اینجا هیچ انتخابِ
+            // سیاستی در کار نیست: منبعِ پول از قبل موجود است و فقط ترتیبش غلط بود.
+            // ترتیب جدید هم قاعدهٔ «WSSG هیچ‌وقت منفی نشود» را نگه می‌دارد: بعد از
+            // آزادسازی، سازه PTR در دسترس دارد و بزرگ‌ترین برداشتِ ممکنِ این شاخه
+            // (PTR − POO) از آن کوچک‌تر است.
+            $systemUserId = (int) config('financial.system_user_id', 1);
+            $this->walletEngine->releaseHold(
+                $systemUserId,
+                $PTR,
+                $locked,
+                "تبدیل موجودی هولد رزرو به قطعی — سفارش {$locked->order_number}",
+            );
+
             // اعتبارِ تخفیف قبل از برداشت به کیف خریدار می‌نشیند تا کسرِ
             // «POO − PTR» با موجودیِ تخفیف‌خورده هم ممکن باشد.
             if ($couponDiscount > 0) {
@@ -152,19 +178,11 @@ class ProcessReservationCompletionAction
                 $this->walletEngine->debitSystem($locked, $couponDiscount, FinancialCodes::STATUS_AVAILABLE, $couponDesc);
             }
 
-            // Release the reservation hold on the Saze (WSSG) wallet (balance_hold → balance)
-            // via the append-only releaseHold() so a distinct TYPE_HOLD_RELEASE ledger row is
-            // written and the placement (ProcessReservationPaymentAction) and this release can
-            // be reconciled as a netting pair — per the codebase audit contract. Never move a
-            // hold with a bare debit-HOLD/credit-AVAILABLE pair.
-            $systemUserId = (int) config('financial.system_user_id', 1);
-            $this->walletEngine->releaseHold(
-                $systemUserId,
-                $PTR,
-                $locked,
-                "تبدیل موجودی هولد رزرو به قطعی — سفارش {$locked->order_number}",
-            );
-
+            // هولدِ رزرو بالاتر و پیش از هر برداشتی آزاد شد (توضیح آنجاست). آزادسازی
+            // از مسیرِ فقط-افزودنیِ `releaseHold()` می‌رود تا یک ردیفِ مجزای
+            // TYPE_HOLD_RELEASE ثبت شود و ثبتِ هولد (ProcessReservationPaymentAction)
+            // با آزادسازی‌اش به‌عنوان یک جفتِ خنثی‌شونده قابل تطبیق باشد — طبق قراردادِ
+            // ممیزیِ پروژه. هرگز هولد را با جفتِ خامِ debit-HOLD/credit-AVAILABLE جابه‌جا نکنید.
             $this->walletEngine->debitSystem($locked, $PTS, FinancialCodes::STATUS_AVAILABLE, "تخصیص سهم تامین‌کننده سفارش {$locked->order_number}");
             $this->walletEngine->creditSupplier($locked, $PTS, FinancialCodes::STATUS_AVAILABLE, $realSupplierId, "واریز سهم فروش سفارش {$locked->order_number}");
 

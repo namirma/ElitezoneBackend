@@ -1411,12 +1411,6 @@ parameters:
 			path: app/Http/Middleware/AttachActivePriceCategory.php
 
 		-
-			message: '#^Call to an undefined method Symfony\\Component\\HttpFoundation\\Response\:\:header\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Http/Middleware/Cors.php
-
-		-
 			message: '#^Negated boolean expression is always false\.$#'
 			identifier: booleanNot.alwaysFalse
 			count: 1
@@ -1795,30 +1789,6 @@ parameters:
 			path: app/Jobs/Analytics/RollupProductViewsJob.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$amount\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Jobs/Financial/CheckSupplierBalancesJob.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Jobs/Financial/CheckSupplierBalancesJob.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$order_number\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Jobs/Financial/CheckSupplierBalancesJob.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$placer_user_id\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Jobs/Financial/CheckSupplierBalancesJob.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$supplier\.$#'
 			identifier: property.notFound
 			count: 1
@@ -1831,34 +1801,11 @@ parameters:
 			path: app/Jobs/Financial/CheckSupplierBalancesJob.php
 
 		-
-			message: '#^Parameter \#1 \$order of method App\\Jobs\\Financial\\CheckSupplierBalancesJob\:\:processOrder\(\) expects App\\Models\\Order, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Jobs/Financial/CheckSupplierBalancesJob.php
-
-		-
-			message: '#^Parameter \#1 \$order of method App\\Services\\Financial\\WalletTransactionEngine\:\:creditSystem\(\) expects App\\Models\\Order, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Jobs/Financial/CheckSupplierBalancesJob.php
-
-		-
-			message: '#^Parameter \#1 \$order of method App\\Services\\Financial\\WalletTransactionEngine\:\:debitSupplier\(\) expects App\\Models\\Order, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Jobs/Financial/CheckSupplierBalancesJob.php
-
-		-
 			message: '#^Parameter \#3 \$order of method App\\Services\\Financial\\WalletTransactionEngine\:\:releaseHold\(\) expects App\\Models\\Order, Illuminate\\Database\\Eloquent\\Model given\.$#'
 			identifier: argument.type
 			count: 1
 			path: app/Jobs/Financial/CheckSupplierBalancesJob.php
 
-		-
-			message: '#^Parameter \#5 \$sourceHold of method App\\Services\\Financial\\WalletTransactionEngine\:\:releaseHold\(\) expects App\\Models\\WalletTransaction\|null, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Jobs/Financial/CheckSupplierBalancesJob.php
 
 		-
 			message: '#^Using nullsafe property access on non\-nullable type App\\Models\\User\. Use \-\> instead\.$#'

@@ -65,6 +65,14 @@ class Wallet extends Model
         return $this->belongsTo(User::class, self::USER_ID);
     }
 
+    /**
+     * بدونِ پارامترهای جنریک، larastan این را `HasMany<Model, Wallet>` می‌بیند و هر
+     * چیزی که از آن بیرون می‌آید `Model` است — یعنی خواننده‌های دفتر مجبور می‌شوند
+     * نوع را دستی بازسازی کنند. طبق قاعدهٔ خودِ پروژه («relation را type کن»)، نوع
+     * اینجا اعلام می‌شود نه در محلِ مصرف.
+     *
+     * @return HasMany<WalletTransaction, $this>
+     */
     public function transactions(): HasMany
     {
         return $this->hasMany(WalletTransaction::class);
