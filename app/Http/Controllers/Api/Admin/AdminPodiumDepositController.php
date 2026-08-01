@@ -100,9 +100,14 @@ class AdminPodiumDepositController extends Controller
      * به صورت دستی اجرا کند و نتیجه فوری دریافت کند.
      *
      * Body (اختیاری):
-     *   minutes  = پنجره زمانی به دقیقه (پیش‌فرض: 60، حداکثر: 1440 = یک روز)
+     *   minutes  = پنجره زمانی به دقیقه (پیش‌فرض: 60، حداکثر: 10080 = ۷ روز)
      *
      * ادمین می‌تواند مثلاً minutes=1440 بدهد تا واریزهای کل روز را بررسی کند.
+     *
+     * این همان ابزاری است که وقتی کاربری می‌گوید «واریز کردم و شارژ نشدم» سراغش
+     * می‌روند — و تا پیش از این خودش بریده بود: فقط ۵۰ ردیفِ اولِ بازه خوانده
+     * می‌شد و اگر آن ۵۰ ردیف برداشت بودند، پاسخ «۰ واریز» بود. حالا
+     * `getIncomingDeposits` کلِ بازه را صفحه‌به‌صفحه می‌خواند.
      */
     public function poll(Request $request): JsonResponse
     {
@@ -112,11 +117,17 @@ class AdminPodiumDepositController extends Controller
         $to = Carbon::now();
         $from = $to->copy()->subMinutes($minutes);
 
-        // تبدیل به شمسی برای API پادیوم
-        $fromJalali = Verta::instance($from)->format('Y/m/d');
-        $fromTime = $from->format('H:i:s');
-        $toJalali = Verta::instance($to)->format('Y/m/d');
-        $toTime = $to->format('H:i:s');
+        // ساعتِ بانک محلی است — مثل PollPodiumDepositsJob. بدون این تبدیل، پنجره
+        // ۳٫۵ ساعت عقب می‌رفت: ادمینی که «یک ساعتِ گذشته» می‌خواست، بازه‌ای را
+        // می‌گرفت که ۳٫۵ ساعت پیش تمام شده بود.
+        $tz = (string) config('podium.deposit.statement.timezone', 'Asia/Tehran');
+        $fromLocal = $from->copy()->setTimezone($tz);
+        $toLocal = $to->copy()->setTimezone($tz);
+
+        $fromJalali = Verta::instance($fromLocal)->format('Y/m/d');
+        $fromTime = $fromLocal->format('H:i:s');
+        $toJalali = Verta::instance($toLocal)->format('Y/m/d');
+        $toTime = $toLocal->format('H:i:s');
 
         // دریافت صورت‌حساب از پادیوم
         try {

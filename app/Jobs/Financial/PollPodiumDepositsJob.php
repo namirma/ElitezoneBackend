@@ -3,6 +3,7 @@
 namespace App\Jobs\Financial;
 
 use App\Actions\Financial\ProcessPodiumDepositAction;
+use App\Models\Setting;
 use App\Services\PodiumServices\DepositStatementService;
 use Hekmatinasser\Verta\Verta;
 use Illuminate\Bus\Queueable;
@@ -18,16 +19,24 @@ use Illuminate\Support\Facades\Log;
  * Job polling صورت‌حساب سپرده پادیوم
  *
  * هر ۵ دقیقه اجرا می‌شود.
- * پنجره زمانی: ۱۵ دقیقه قبل تا لحظه حال — با overlap برای PAYA که کمی تأخیر دارد.
+ *
+ * پنجره زمانی: از **watermarkِ آخرین polling موفق** (منهای overlap) تا لحظهٔ حال.
+ * پنجرهٔ ثابتِ «۱۵ دقیقهٔ گذشته» یعنی هر بازه‌ای که در آن worker نمی‌دوید برای
+ * همیشه از دست می‌رفت؛ با watermark، اجرای بعدی همان بازه را جبران می‌کند.
  *
  * ایمنی:
  * - withoutOverlapping() در Kernel → اجرای موازی ندارد
- * - ProcessPodiumDepositAction هر DocNumber را فقط یک‌بار پردازش می‌کند (idempotent)
+ * - ProcessPodiumDepositAction هر DocNumber را فقط یک‌بار پردازش می‌کند (idempotent،
+ *   با ایندکسِ یکتا روی podium_deposit_records.doc_number) — پس overlap و جبران بی‌خطرند
  * - خطای هر statement به صورت isolated log می‌شود — statement‌های بعدی پردازش می‌شوند
+ * - watermark فقط با پردازشِ بی‌خطای کلِ بازه جلو می‌رود
  */
 class PollPodiumDepositsJob implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    /** کلیدِ watermark در جدول `settings`. */
+    private const WATERMARK_KEY = 'podium.deposits.polled_up_to';
 
     /** جابِ singleton — جلوگیری از اجرای هم‌زمانِ دو poll (backlog/cadence). */
     public int $uniqueFor = 600;
@@ -48,17 +57,24 @@ class PollPodiumDepositsJob implements ShouldBeUnique, ShouldQueue
         ProcessPodiumDepositAction $processAction,
     ): void {
         $to = Carbon::now();
-        $from = $to->copy()->subMinutes(15); // پنجره ۱۵ دقیقه‌ای با overlap
+        $from = $this->windowStart($to);
 
-        // تبدیل به تاریخ شمسی برای API پادیوم
-        $fromJalali = Verta::instance($from)->format('Y/m/d');
-        $fromTime = $from->format('H:i:s');
-        $toJalali = Verta::instance($to)->format('Y/m/d');
-        $toTime = $to->format('H:i:s');
+        // ساعتِ بانک محلی است، نه UTC. `app.timezone` روی UTC است، پس تبدیلِ مستقیمِ
+        // یک لحظهٔ UTC به «تاریخ شمسی + ساعت» پنجره را ۳٫۵ ساعت عقب می‌برد: هر واریز
+        // در نهایت دیده می‌شد، ولی با ۳٫۵ ساعت تأخیر در شارژِ کیف پول.
+        $tz = (string) config('podium.deposit.statement.timezone', 'Asia/Tehran');
+        $fromLocal = $from->copy()->setTimezone($tz);
+        $toLocal = $to->copy()->setTimezone($tz);
+
+        $fromJalali = Verta::instance($fromLocal)->format('Y/m/d');
+        $fromTime = $fromLocal->format('H:i:s');
+        $toJalali = Verta::instance($toLocal)->format('Y/m/d');
+        $toTime = $toLocal->format('H:i:s');
 
         Log::info('PollPodiumDepositsJob: شروع polling', [
             'from' => "{$fromJalali} {$fromTime}",
             'to' => "{$toJalali} {$toTime}",
+            'window_minutes' => $from->diffInMinutes($to),
         ]);
 
         try {
@@ -95,10 +111,70 @@ class PollPodiumDepositsJob implements ShouldBeUnique, ShouldQueue
             }
         }
 
+        // watermark فقط وقتی جلو می‌رود که **همهٔ** ردیف‌ها پردازش شده باشند.
+        // اگر حتی یکی خطا داد، بازه را باز نگه می‌داریم تا اجرای بعدی دوباره
+        // ببیندش — تکرار بی‌خطر است چون `doc_number` یکتاست.
+        if ($errors === 0) {
+            $this->rememberPolledUpTo($to);
+        } else {
+            Log::warning('PollPodiumDepositsJob: watermark جلو نرفت چون پردازشِ بعضی ردیف‌ها خطا داد', [
+                'errors' => $errors,
+            ]);
+        }
+
         Log::info('PollPodiumDepositsJob: پایان polling', [
             'total_incoming' => $total,
             'processed' => $processed,
             'errors' => $errors,
         ]);
+    }
+
+    /**
+     * ابتدای پنجره — از watermarkِ آخرین polling موفق، نه از `now()-15min`.
+     *
+     * پیش از این پنجره ثابت بود: هر اجرا فقط ۱۵ دقیقهٔ گذشته را می‌دید و **هیچ
+     * جبرانی** نداشت. اگر worker یا scheduler چند ساعت می‌خوابید، آن پنجره‌ها
+     * صرفاً از دست می‌رفتند — نه دیر، اصلاً خوانده نمی‌شدند. و طبق مستنداتِ خودِ
+     * پروژه مرگِ worker بی‌صداست، پس هیچ‌کس متوجه نمی‌شد.
+     *
+     * هم‌پوشانیِ عمدی اضافه می‌شود تا تراکنشی دقیقاً روی مرز جا نماند؛ تکرار
+     * بی‌خطر است چون `podium_deposit_records.doc_number` ایندکسِ یکتا دارد و
+     * `ProcessPodiumDepositAction` ردیفِ تکراری را زودهنگام رد می‌کند.
+     */
+    private function windowStart(Carbon $to): Carbon
+    {
+        $cfg = (array) config('podium.deposit.statement', []);
+        $overlap = max(0, (int) ($cfg['overlap_minutes'] ?? 5));
+        $default = max(1, (int) ($cfg['default_window_minutes'] ?? 15));
+        $maxLookback = max($default, (int) ($cfg['max_lookback_minutes'] ?? 10080));
+
+        $watermark = Setting::query()
+            ->where(Setting::KEY, self::WATERMARK_KEY)
+            ->value(Setting::VALUE);
+
+        $from = $watermark
+            ? Carbon::parse($watermark)->subMinutes($overlap)
+            : $to->copy()->subMinutes($default);
+
+        // سقفِ عقبگرد: پس از یک قطعیِ طولانی، «کلِ تاریخ» را از بانک نمی‌خواهیم.
+        $floor = $to->copy()->subMinutes($maxLookback);
+        if ($from->lt($floor)) {
+            Log::warning('PollPodiumDepositsJob: watermark از سقفِ عقبگرد قدیمی‌تر بود — بازه بریده شد', [
+                'watermark' => $watermark,
+                'max_lookback_minutes' => $maxLookback,
+            ]);
+            $from = $floor;
+        }
+
+        // ساعتِ سرور می‌تواند عقب برود؛ پنجرهٔ معکوس بی‌معناست.
+        return $from->gt($to) ? $to->copy()->subMinutes($default) : $from;
+    }
+
+    private function rememberPolledUpTo(Carbon $to): void
+    {
+        Setting::updateOrCreate(
+            [Setting::KEY => self::WATERMARK_KEY],
+            [Setting::VALUE => $to->toIso8601String()],
+        );
     }
 }
