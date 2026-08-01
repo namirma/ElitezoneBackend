@@ -84,14 +84,26 @@ class TicketLifecycleTest extends TestCase
             'weekend_days' => [Carbon::FRIDAY],
         ]]);
 
-        // پنجشنبه ۱۶:۰۰ — از ۸ ساعت SLA فقط ۱ ساعت امروز جا دارد؛ جمعه تعطیل است،
-        // پس ۷ ساعت باقی‌مانده از شنبه ۰۹:۰۰ مصرف می‌شود → موعد شنبه ۱۶:۰۰.
-        Carbon::setTestNow('2026-07-16 16:00:00'); // پنجشنبه
+        // پنجشنبه ۱۶:۰۰ **به وقت تهران** — از ۸ ساعت SLA فقط ۱ ساعت امروز جا دارد؛
+        // جمعه تعطیل است، پس ۷ ساعت باقی‌مانده از شنبه ۰۹:۰۰ مصرف می‌شود
+        // → موعد شنبه ۱۶:۰۰ تهران.
+        //
+        // فیکسچر قبلاً `'2026-07-16 16:00:00'` بود که یک لحظهٔ **UTC** می‌سازد
+        // (`app.timezone` = UTC). آن موقع با سناریوی بالا می‌خواند فقط به این دلیل
+        // که تقویم هم ساعتِ UTC را ساعتِ کاری فرض می‌کرد. ۱۶:۰۰ UTC در واقع
+        // ۱۹:۳۰ تهران است — یعنی بعد از پایان کار، نه «۱ ساعت مانده به تعطیلی».
+        Carbon::setTestNow(
+            Carbon::parse('2026-07-16 16:00:00', 'Asia/Tehran')->setTimezone('UTC')
+        );
 
         try {
             $ticket = $this->makeTicket(Ticket::PRIORITY_HIGH); // 8h
 
-            $this->assertSame('2026-07-18 16:00:00', $ticket->sla_due_at->format('Y-m-d H:i:s'));
+            $this->assertSame(
+                '2026-07-18 16:00:00',
+                $ticket->sla_due_at->copy()->setTimezone('Asia/Tehran')->format('Y-m-d H:i:s'),
+                'موعد باید شنبه ۱۶:۰۰ به وقت تهران باشد.'
+            );
         } finally {
             Carbon::setTestNow();
         }
