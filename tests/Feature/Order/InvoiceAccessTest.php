@@ -45,9 +45,17 @@ class InvoiceAccessTest extends TestCase
         $this->supplier = User::factory()->create();
         $this->supplier->addRole($supplierRole);
 
+        // الیت‌یار در ستونِ *خودش* می‌نشیند، نه در `beneficiary_user_id`.
+        //
+        // این فیکسچر قبلاً الیت‌یار را در ستونِ ذی‌نفع می‌گذاشت. آن موقع فرقی
+        // نمی‌کرد چون `partyRolesFor()` هر دو ستون را به یک مخاطب نگاشت می‌کرد —
+        // و دقیقاً همان نگاشت بود که باعث می‌شد کارفرمای ذی‌نفع سندِ مالیاتیِ
+        // شخصیِ الیت‌یار را بگیرد. طبق `StoreOrderRequest`، ذی‌نفع همیشه یک
+        // **کارفرما**ست («باید کارفرمای approved همین الیت یار باشد»)، پس گذاشتنِ
+        // الیت‌یار در آن ستون حالتی را می‌سازد که در محصول وجود ندارد.
         $this->order = Order::create([
             Order::PLACER_USER_ID => $this->buyer->id,
-            Order::BENEFICIARY_USER_ID => $this->eliteYAR->id,
+            Order::ELITE_YAR_USER_ID => $this->eliteYAR->id,
             Order::ORDER_NUMBER => 'INV-'.Str::random(12),
             Order::STATUS => Order::STATUS_PROCESSING,
             Order::PAYMENT_STATUS => 'paid',
