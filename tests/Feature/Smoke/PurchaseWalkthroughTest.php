@@ -5,7 +5,6 @@ namespace Tests\Feature\Smoke;
 use App\Models\Address;
 use App\Models\Factory;
 use App\Models\FactoryLocation;
-use App\Models\FactoryStock;
 use App\Models\Order;
 use App\Models\OrderUnit;
 use App\Models\Product;
@@ -122,12 +121,17 @@ class PurchaseWalkthroughTest extends TestCase
             ProductPrice::GOLDEN_FIGURE => 500_000,
             ProductPrice::LAST_UPDATED_AT => now(),
         ]);
-        FactoryStock::create([
-            FactoryStock::PRODUCT_VARIANT_ID => $variant->id,
-            FactoryStock::FACTORY_ID => $factory->id,
-            FactoryStock::FACTORY_LOCATION_ID => $location->id,
-            FactoryStock::QUANTITY => 100000,
-        ]);
+        // موجودیِ به‌ازای مبدأ فقط روی خطِ لاراول ۱۰ وجود دارد؛ برنچِ ۱۳ هنوز
+        // `factory_stocks` را ندارد و موجودی همان ستونِ سراسریِ واریانت است (که
+        // بالاتر ست شد). پس این گام مشروط است تا پیمایش روی هر دو خط اجرا شود.
+        if (class_exists(\App\Models\FactoryStock::class)) {
+            \App\Models\FactoryStock::create([
+                'product_variant_id' => $variant->id,
+                'factory_id' => $factory->id,
+                'factory_location_id' => $location->id,
+                'quantity' => 100000,
+            ]);
+        }
         $unit = OrderUnit::create(['name' => 'کیلوگرم', 'code' => 'kg_'.uniqid(), 'unit' => 'kg', 'amount' => 1]);
         // واحد باید به محصول وصل باشد، وگرنه سبد آن را نمی‌پذیرد.
         DB::table('product_order_units')->insert([
