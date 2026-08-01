@@ -138,8 +138,19 @@ class AdminFinancialController extends Controller
     {
         $orders = Order::query()
             ->whereNotNull(Order::WEIGHING_COMPLETED_AT)
+            // سند Q فقط وقتی «معلق» است که سفارش اصلاً الیت‌یار داشته باشد.
+            //
+            // `ReleaseEliteYARHoldAction` فقط به `order.elite_yar_user_id` اجازهٔ
+            // ثبت می‌دهد، پس روی سفارشِ بدونِ الیت‌یار **هیچ‌کس** نمی‌تواند Doc Q
+            // را ثبت کند و `elite_yar_moadian_ref` تا ابد NULL می‌ماند. با شرطِ
+            // قبلی چنین سفارشی برای همیشه در صفِ «منتظر فاکتور مودیان» می‌ماند و
+            // شمارندهٔ صف فقط بالا می‌رفت — یعنی صف عملاً غیرقابل‌خالی‌شدن بود و
+            // ادمین نمی‌توانست تشخیص دهد کدام ردیف واقعاً کار دارد.
             ->where(function ($q) {
-                $q->whereNull(Order::ELITE_YAR_MOADIAN_REF)
+                $q->where(function ($eliteYar) {
+                    $eliteYar->whereNotNull(Order::ELITE_YAR_USER_ID)
+                        ->whereNull(Order::ELITE_YAR_MOADIAN_REF);
+                })
                     ->orWhereNull(Order::SUPPLIER_MOADIAN_REF)
                     ->orWhereNull(Order::SYSTEM_MOADIAN_REF);
             })
