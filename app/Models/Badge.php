@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * @property int $id
@@ -35,6 +36,16 @@ use Illuminate\Support\Carbon;
 class Badge extends Model
 {
     use HasFactory;
+
+    /**
+     * کشِ عمومیِ نشان‌ها هیچ‌جا باطل نمی‌شد — هیچ فراخوانِ
+     * `Cache::forget('badges')` در کلِ پروژه وجود نداشت.
+     */
+    protected static function booted(): void
+    {
+        static::saved(fn () => Cache::forget('badges'));
+        static::deleted(fn () => Cache::forget('badges'));
+    }
 
     const ID = 'id';
 
