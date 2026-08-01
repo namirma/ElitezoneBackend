@@ -6,6 +6,7 @@ use App\Models\Badge;
 use App\Models\CustomerType;
 use App\Models\Factory;
 use App\Models\FactoryLocation;
+use App\Models\Offer;
 use App\Models\OrderUnit;
 use App\Models\ProductVariant;
 use App\Services\PriceCalculationService;
@@ -124,12 +125,27 @@ class CalculateOrderEstimateAction
         ];
     }
 
+    /**
+     * پشتِ `features.product_offers` — هم‌سو با `CartPricingCalculator`.
+     *
+     * برآورد و سبد باید یک عدد بدهند؛ اگر فقط یکی گیت می‌شد، همان اختلافی که
+     * فلگ برای بستنش اضافه شد از این مسیر برمی‌گشت. `is_active` هم اینجا
+     * چک نمی‌شد (همان نقصِ `CartPricingCalculator`).
+     */
     private function getEligibleOffers($product, float $qty): Collection
     {
+        if (! config('features.product_offers')) {
+            return collect();
+        }
+
         $now = now();
 
         // فیلتر کردن کالکشنِ از پیش لود شده برای جلوگیری از اجرای کوئری در دیتابیس
         return $product->offers->filter(function ($offer) use ($qty, $now) {
+            if (! $offer->{Offer::IS_ACTIVE}) {
+                return false;
+            }
+
             $isCurrent = (! $offer->start_date || $offer->start_date <= $now) &&
                          (! $offer->end_date || $offer->end_date >= $now);
 
