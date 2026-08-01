@@ -38,29 +38,52 @@ class PruneGuestCarts extends Command
 
         $cutoff = now()->subDays($days);
 
-        // updated_at مبناست نه created_at: سبدی که کاربر مهمان هنوز دارد رویش کار
-        // می‌کند نباید وسطِ خرید حذف شود.
-        $ids = Cart::query()
-            ->whereNull(Cart::USER_ID)
-            ->where('updated_at', '<', $cutoff)
-            ->orderBy(Cart::ID)
-            ->limit($chunk)
-            ->pluck(Cart::ID);
+        // `prune_chunk` اندازهٔ **هر تراکنش** است، نه سقفِ کارِ یک اجرا.
+        //
+        // پیش از این فقط یک chunk برداشته می‌شد و تمام. کرون روزانه است، پس اگر
+        // ورودیِ روزانهٔ سبدهای یتیم از chunk بیشتر بود، صف هرگز کوتاه نمی‌شد و
+        // سیاستِ نگهداشتی که این دستور برای اعمالش وجود دارد هیچ‌وقت اجرا
+        // نمی‌شد — طبق توضیحِ بالا هر بازدیدِ رباتِ بی‌کوکی یک ردیف می‌سازد، پس
+        // ورودی به‌راحتی از هزارتا رد می‌شود. حالا تا ته می‌رود.
+        $maxIterations = 10000; // گاردِ حلقهٔ بی‌پایان اگر حذف بی‌اثر بماند
+        $deleted = 0;
 
-        if ($ids->isEmpty()) {
+        for ($i = 0; $i < $maxIterations; $i++) {
+            // updated_at مبناست نه created_at: سبدی که کاربر مهمان هنوز دارد رویش کار
+            // می‌کند نباید وسطِ خرید حذف شود.
+            $ids = Cart::query()
+                ->whereNull(Cart::USER_ID)
+                ->where('updated_at', '<', $cutoff)
+                ->orderBy(Cart::ID)
+                ->limit($chunk)
+                ->pluck(Cart::ID);
+
+            if ($ids->isEmpty()) {
+                break;
+            }
+
+            // آیتم‌ها صریحاً حذف می‌شوند — به cascade در سطح دیتابیس تکیه نمی‌کنیم
+            // چون در همهٔ محیط‌ها تضمین‌شده نیست.
+            DB::transaction(function () use ($ids) {
+                CartItem::whereIn('cart_id', $ids)->delete();
+                Cart::whereIn(Cart::ID, $ids)->delete();
+            });
+
+            $deleted += $ids->count();
+
+            // صفحهٔ ناقص یعنی چیزی باقی نمانده — یک کوئری اضافه نزنیم.
+            if ($ids->count() < $chunk) {
+                break;
+            }
+        }
+
+        if ($deleted === 0) {
             $this->info('سبد مهمانِ منقضی‌ای برای حذف وجود ندارد.');
 
             return self::SUCCESS;
         }
 
-        // آیتم‌ها صریحاً حذف می‌شوند — به cascade در سطح دیتابیس تکیه نمی‌کنیم
-        // چون در همهٔ محیط‌ها تضمین‌شده نیست.
-        DB::transaction(function () use ($ids) {
-            CartItem::whereIn('cart_id', $ids)->delete();
-            Cart::whereIn(Cart::ID, $ids)->delete();
-        });
-
-        $message = "حذف {$ids->count()} سبد مهمانِ قدیمی‌تر از {$days} روز.";
+        $message = "حذف {$deleted} سبد مهمانِ قدیمی‌تر از {$days} روز.";
         $this->info($message);
         Log::info('PruneGuestCarts: '.$message);
 
