@@ -143,7 +143,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
         Route::post('/real', [ProfileController::class, 'updateRealProfile']);
         Route::post('/legal', [ProfileController::class, 'updateLegalProfile']);
-        Route::post('/legal/fetch', [ProfileController::class, 'fetchLegalData']);
+        // throttle: هر فراخوانی یک استعلامِ **پولیِ** پودیوم از سامانهٔ ثبت شرکت‌هاست
+        // (services.company_inquiry) و هیچ کشی هم ندارد. بدون سقف، این endpoint یک
+        // پروکسیِ نامحدود روی حساب مالکِ سرویس بود: یک اکانتِ رایگان می‌توانست فضای
+        // شناسهٔ ملیِ اشخاص حقوقی را جاروب کند و رجیستری را با هزینهٔ ما آینه کند.
+        // هم‌تراز با education/fetch که دقیقاً به همین دلیل throttle:5,1 دارد.
+        Route::post('/legal/fetch', [ProfileController::class, 'fetchLegalData'])
+            ->middleware('throttle:5,1');
 
         Route::get('/role-options', [ProfileController::class, 'getRoleOptions']);
 

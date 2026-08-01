@@ -159,7 +159,14 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
         Route::get('/{user}', 'show');
         Route::post('/{user}/approve', 'approve'); // اتصال نقش supplier — تنها مسیر مجاز
         Route::post('/{user}/reject', 'reject');
-        Route::put('/{user}/formula', 'updateFormula');
+        // فرمولِ تسویه پشتِ manage-financial، نه manage-users.
+        // `updateFormula` فلگ‌های trans_commission/trans_vat را می‌نویسد که تعیین
+        // می‌کنند کدام‌یک از چهار واریانتِ POO/PTS اجرا شود — و روی هر سفارشِ بعدیِ
+        // آن تأمین‌کننده snapshot می‌شوند. ادمینِ پشتیبانیِ کاربران نباید بتواند
+        // نحوهٔ محاسبهٔ کمیسیون و مالیات را عوض کند؛ هر تغییرِ ریاضیِ پولیِ دیگری
+        // در پنل هم زیر همین مجوز است.
+        Route::put('/{user}/formula', 'updateFormula')
+            ->middleware('admin.permission:manage-financial');
         Route::get('/{user}/orders', 'orders');
     });
 
