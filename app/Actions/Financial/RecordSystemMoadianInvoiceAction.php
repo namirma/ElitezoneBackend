@@ -70,7 +70,10 @@ class RecordSystemMoadianInvoiceAction
         $poom = (float) $order->payment_of_owner;
         $ptsm = (float) $order->payment_to_supplier;
         $eliteYARGross = (float) ($order->payment_to_elite_yar ?? 0);
-        $vatRate = (float) ($order->{Order::VAT_RATE} ?? 10.0);
+        // هم‌الگو با دو اکشنِ مودیانِ دیگر — `??` روی `NOT NULL DEFAULT 0` مرده
+        // بود، پس `sazeVat` صفر درمی‌آمد و سند P بدون آزادسازیِ واقعی، رفرنس را
+        // ثبت می‌کرد و مسیر را می‌بست.
+        $vatRate = $this->calculator->resolveVatRate($order);
 
         // Same bcmath split used at weighbridge time — releases exactly what was held.
         $sazeGross = ($poom - $ptsm) - $eliteYARGross;

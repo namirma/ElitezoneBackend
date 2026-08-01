@@ -57,7 +57,11 @@ class RecordSupplierMoadianInvoiceAction
         //   supplierVat = PTSM × (vat% / 100) / (1 + vat% / 100)
         // Same bcmath split used at weighbridge time — releases exactly what was held.
         $ptsm = (float) $order->{Order::PAYMENT_TO_SUPPLIER};
-        $vatRate = (float) ($order->{Order::VAT_RATE} ?? 10.0);
+        // مثل `ReleaseEliteYARHoldAction` — `??` روی ستونِ NOT NULL مرده بود و
+        // نرخ صفر می‌شد. اینجا بدتر است: گاردِ `if ($supplierVat > 0)` پایین‌تر
+        // باعث می‌شد **هیچ** آزاد نشود در حالی که `supplier_moadian_ref` مهر
+        // می‌خورد و گاردِ idempotency هر تلاش دوباره‌ای را می‌بست.
+        $vatRate = $this->calculator->resolveVatRate($order);
         $supplierVat = $this->calculator->extractVat($ptsm, $vatRate)['vat'];
 
         DB::transaction(function () use (
