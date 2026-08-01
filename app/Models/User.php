@@ -45,6 +45,27 @@ class User extends Authenticatable
 
     public const IS_ACTIVE = 'is_active';
 
+    public const ADMIN_LEVEL = 'admin_level';
+
+    /**
+     * سطحِ اختیارِ ادمین — لایه‌ی دوم، بالای مجوزها.
+     *
+     * مجوز می‌گوید «به کدام بخش دسترسی دارد»؛ سطح می‌گوید «تا کجا حق دارد».
+     * عددِ کوچک‌تر یعنی اختیارِ بیشتر، تا افزودنِ سطحِ محدودترِ جدید در آینده
+     * فقط یک عددِ بزرگ‌تر باشد و ترتیبِ موجود را جابه‌جا نکند.
+     */
+    public const ADMIN_LEVEL_OWNER = 1;
+
+    public const ADMIN_LEVEL_MANAGER = 2;
+
+    public const ADMIN_LEVEL_AGENT = 3;
+
+    public const ADMIN_LEVELS = [
+        self::ADMIN_LEVEL_OWNER,
+        self::ADMIN_LEVEL_MANAGER,
+        self::ADMIN_LEVEL_AGENT,
+    ];
+
     public const NATIONAL_CODE = 'national_code';
 
     public const BIRTH_DATE = 'birth_date';
@@ -88,6 +109,7 @@ class User extends Authenticatable
     protected $fillable = [
         self::MOBILE,
         self::IS_ACTIVE,
+        self::ADMIN_LEVEL,
         self::NATIONAL_CODE,
         self::BIRTH_DATE,
         self::SECRET,
@@ -278,5 +300,26 @@ class User extends Authenticatable
         return $this->agreements()
             ->where('agreements.'.Agreement::ID, $latestAgreement->{Agreement::ID})
             ->exists();
+    }
+
+    /**
+     * آیا این ادمین دستِ‌کم در سطحِ خواسته‌شده است؟ (عددِ کوچک‌تر = اختیارِ بیشتر)
+     *
+     * fail-closed: ادمینی که ستونش NULL است هیچ سطحی ندارد و رد می‌شود. این حالت
+     * نباید پیش بیاید (مایگریشن همه را پر کرده و ساختِ ادمینِ جدید سطح می‌گیرد)،
+     * ولی اگر ردیفی از راهِ دیگری ساخته شد، «سطحِ نامعلوم» باید یعنی «اجازه ندارد»
+     * نه «اجازه دارد» — همان اشتباهی که یک‌بار در مجوزها رخ داد و ادمینِ
+     * محدودشده را به دسترسیِ کامل رساند.
+     */
+    public function hasAdminLevel(int $minimumLevel): bool
+    {
+        $level = $this->{self::ADMIN_LEVEL};
+
+        return $level !== null && (int) $level <= $minimumLevel;
+    }
+
+    public function isOwnerAdmin(): bool
+    {
+        return $this->hasAdminLevel(self::ADMIN_LEVEL_OWNER);
     }
 }

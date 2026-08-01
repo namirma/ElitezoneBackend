@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\Admin\AdminArticleController;
 use App\Http\Controllers\Api\Admin\AdminAttributeController;
 use App\Http\Controllers\Api\Admin\AdminAttributeTypeController;
 use App\Http\Controllers\Api\Admin\AdminAttributeValueController;
+use App\Http\Controllers\Api\Admin\AdminAvatarModerationController;
 use App\Http\Controllers\Api\Admin\AdminBadgeController;
 use App\Http\Controllers\Api\Admin\AdminBannerController;
 use App\Http\Controllers\Api\Admin\AdminCouponController;
@@ -63,8 +64,10 @@ use Illuminate\Support\Facades\Route;
 */
 
 // ── Podium services (admin-only proxy) ────────────────────────────────────
+// سطح ۲ — این گروه پولِ واقعی از کیف پولِ شرکت بیرون می‌فرستد (تسویه‌ی PAYA/SATNA)
+// و استعلام‌های پولی می‌زند. کارشناس (سطح ۳) نباید به آن برسد.
 Route::prefix('v1/podium')
-    ->middleware(['auth:sanctum', 'role.admin', 'admin.ip', 'admin.permission:manage-financial'])
+    ->middleware(['auth:sanctum', 'role.admin', 'admin.ip', 'admin.permission:manage-financial', 'admin.level:2'])
     ->group(function () {
         Route::post('/settlements/single', [PodiumSettlementController::class, 'single']);
         Route::get('/balances', [PodiumBalanceController::class, 'index']);
@@ -147,7 +150,9 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
     Route::controller(AdminUserController::class)->prefix('users')->middleware('admin.permission:manage-users')->group(function () {
         Route::get('/', 'index');
         Route::get('/{user}', 'show');
-        Route::post('/{user}/toggle-status', 'toggleStatus');
+        // سطح ۲ — غیرفعال‌کردنِ حساب همه‌ی نشست‌های کاربر را می‌بندد و او را از
+        // سایت بیرون می‌اندازد؛ کارِ کارشناسِ پشتیبانی نیست.
+        Route::post('/{user}/toggle-status', 'toggleStatus')->middleware('admin.level:2');
         Route::post('/{user}/note', 'addNote');
         Route::post('/{user}/verify-elite-yar', 'verifyEliteYAR');
         Route::post('/{user}/unverify-elite-yar', 'unverifyEliteYAR');
@@ -159,7 +164,9 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
         Route::get('/{user}', 'show');
         Route::post('/{user}/approve', 'approve'); // اتصال نقش supplier — تنها مسیر مجاز
         Route::post('/{user}/reject', 'reject');
-        Route::put('/{user}/formula', 'updateFormula');
+        // سطح ۱ — این دو پرچم مستقیماً فرمولِ تسویه را عوض می‌کنند (کارمزد و
+        // مالیات روی کرایه) و در لحظه‌ی پرداختِ هر سفارش روی آن snapshot می‌شوند.
+        Route::put('/{user}/formula', 'updateFormula')->middleware('admin.level:1');
         Route::get('/{user}/orders', 'orders');
     });
 
@@ -173,10 +180,15 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
         Route::get('/{order}/timeline', 'timeline');
         Route::get('/{order}', 'show');
         Route::post('/{order}/status', 'changeStatus');
-        // Doc P — فاکتور مودیان سیستم (سازه → خریدار)، آزادسازی WVAT hold
-        Route::post('/{order}/system-moadian-invoice', 'submitSystemMoadianInvoice');
-        // ثبت وزن باسکول — مسیر استاندارد زیر /orders (هم‌خانواده با بقیه عملیات سفارش)
+        // Doc P — فاکتور مودیان سیستم (سازه → خریدار)، آزادسازی WVAT hold.
+        // سطح ۲: آزادسازیِ hold یعنی جابه‌جاییِ واقعیِ پول بین کیف‌پول‌ها.
+        Route::post('/{order}/system-moadian-invoice', 'submitSystemMoadianInvoice')
+            ->middleware('admin.level:2');
+        // ثبت وزن باسکول — مسیر استاندارد زیر /orders (هم‌خانواده با بقیه عملیات سفارش).
+        // سنگین‌ترین عملیاتِ مالیِ سیستم: بازمحاسبه‌ی POO/PTS، بازپرداختِ خریدار و
+        // ثبتِ بدهیِ تأمین‌کننده. سطح ۲ حداقلِ لازم است.
         Route::post('/{order}/weighbridge', [OrderWeighbridgeController::class, 'submitWeight'])
+            ->middleware('admin.level:2')
             ->name('admin.orders.weighbridge.submit');
     });
 
@@ -199,7 +211,9 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
     Route::controller(AdminWalletController::class)->prefix('wallet')->middleware('admin.permission:manage-financial')->group(function () {
         Route::get('/transactions', 'index');
         Route::get('/transactions/{transaction}', 'show');
-        Route::post('/transactions/{transaction}/status', 'changeStatus');
+        // تأیید/ردِ واریز و برداشت = جابه‌جاییِ واقعیِ پول → دستِ‌کم سطح ۲.
+        // خواندنِ فهرست برای کارشناس آزاد است تا بتواند به تیکت پاسخ دهد.
+        Route::post('/transactions/{transaction}/status', 'changeStatus')->middleware('admin.level:2');
     });
 
     // Shipping Rates — CRUD نرخ‌های حمل‌ونقل
@@ -470,9 +484,12 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
     });
 
     // Settings — تنظیمات key-value سایت
+    // خواندن برای هر ادمینِ محتوا آزاد است، ولی نوشتن سطح ۱ می‌خواهد: این کلیدها
+    // هویتِ عمومیِ برندند (تلفن، ایمیل، شبکه‌ها، نمادهای اعتماد) و یک مقدارِ غلط
+    // مستقیماً روی صفحه‌ی همه‌ی بازدیدکنندگان می‌نشیند.
     Route::controller(AdminSettingController::class)->prefix('settings')->middleware('admin.permission:manage-content')->group(function () {
         Route::get('/', 'index');
-        Route::put('/', 'update');
+        Route::put('/', 'update')->middleware('admin.level:1');
     });
 
     // Notifications — اعلان‌های درون‌برنامه‌ای (لیست + ارسال + آمار)
@@ -491,7 +508,19 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
     });
 
     // Admins — مدیران سیستم (destroy = فقط جداکردن نقش admin)
-    Route::controller(AdminManagerController::class)->prefix('admins')->middleware('admin.permission:manage-users')->group(function () {
+    // ⚠️ سطح ۱ (مدیر ارشد) — هرکس این گروه را در اختیار داشته باشد می‌تواند ادمین
+    // بسازد و به خودش هر مجوزی بدهد؛ یعنی کنترلِ این گروه عملاً کنترلِ کلِ پنل است.
+    // مجوزِ manage-users به‌تنهایی برای چنین اختیاری کافی نیست.
+    // صفِ تأییدِ تصویرِ ادمین‌ها — سطح ۱. تصویرِ ادمین در تیکت‌های پشتیبانی کنارِ
+    // نامش به مشتری نشان داده می‌شود، پس چهره‌ی برند است و تأییدش دستِ مالک است.
+    Route::controller(AdminAvatarModerationController::class)->prefix('avatar-requests')
+        ->middleware(['admin.permission:manage-users', 'admin.level:1'])->group(function () {
+            Route::get('/', 'index');
+            Route::post('/{user}/approve', 'approve');
+            Route::post('/{user}/reject', 'reject');
+        });
+
+    Route::controller(AdminManagerController::class)->prefix('admins')->middleware(['admin.permission:manage-users', 'admin.level:1'])->group(function () {
         Route::get('/', 'index');
         Route::get('/{user}', 'show');
         Route::post('/', 'store');
