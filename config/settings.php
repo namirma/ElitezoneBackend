@@ -19,6 +19,11 @@ return [
         'telegram_url',
         'linkedin_url',
         'whatsapp_number',
+        // پیام‌رسان‌های داخلی — فوتر برای هرکدام آیکونِ اختصاصی دارد و کلیدِ
+        // پرنشده اصلاً رندر نمی‌شود.
+        'eitaa_url',
+        'rubika_url',
+        'bale_url',
         'about_short',
         'footer_text',
         'maintenance_banner',
@@ -50,6 +55,11 @@ return [
         'telegram_url',
         'linkedin_url',
         'whatsapp_number',
+        // پیام‌رسان‌های داخلی — فوتر برای هرکدام آیکونِ اختصاصی دارد و کلیدِ
+        // پرنشده اصلاً رندر نمی‌شود.
+        'eitaa_url',
+        'rubika_url',
+        'bale_url',
         'about_short',
         'footer_text',
         'maintenance_banner',
