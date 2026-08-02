@@ -10,9 +10,11 @@ use App\Http\Resources\Order\OrderResource;
 use App\Models\Cart;
 use App\Models\Order;
 use App\Models\WalletTransaction;
+use App\Services\Payment\PaymentGatewayFactory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 
 class CheckoutController extends Controller
 {
@@ -49,26 +51,35 @@ class CheckoutController extends Controller
         $user = Auth::user();
         $walletBalance = $user->wallet()->firstOrCreate([])->balance ?? 0;
 
+        // `is_active` واقعاً محاسبه می‌شود، نه `true`ِ ثابت.
+        //
+        // درگاهِ کارت بانکی هنوز مجوز نگرفته و `PasargadGateway::pay()` استثنا
+        // پرتاب می‌کند؛ با مقدارِ ثابتِ قبلی، فرانت دکمه‌ای را فعال نشان می‌داد که
+        // کلیک روی آن **قطعاً** شکست می‌خورد. حالا پاسخ همان چیزی را می‌گوید که
+        // سرور واقعاً می‌تواند انجام دهد، و روزی که PASARGAD_* در .env پر شود این
+        // روش بدون یک خط تغییر در کد فعال می‌شود.
         $gateways = [
             [
                 'key' => WalletTransaction::METHOD_GATEWAY,
                 'title' => __('checkout.gateways.internet'),
                 'icon' => 'card',
-                'is_active' => true,
+                'is_active' => $this->onlineGatewayIsActive(),
             ],
             [
                 'key' => 'wallet',
                 'title' => __('checkout.gateways.wallet'),
                 'balance' => (string) $walletBalance,
+                // موجودیِ کافی سؤالِ جداست: `is_active` یعنی «این رِیل کار می‌کند»،
+                // `has_credit` یعنی «این کاربر پولش را دارد».
                 'has_credit' => $walletBalance >= $order->final_amount,
                 'icon' => 'wallet',
-                'is_active' => true,
+                'is_active' => $this->gatewayIsConfigured('wallet'),
             ],
             [
                 'key' => WalletTransaction::METHOD_BANK_TRANSFER,
                 'title' => __('checkout.gateways.receipt'),
                 'icon' => 'document-text',
-                'is_active' => true,
+                'is_active' => (bool) config('payment.bank_transfer_enabled', true),
             ],
         ];
 
@@ -82,6 +93,33 @@ class CheckoutController extends Controller
         ];
 
         return success($data, __('checkout.payment_info_received'));
+    }
+
+    /**
+     * آیا رِیلِ «پرداخت اینترنتی» (کارت بانکی) واقعاً قابل استفاده است؟
+     * درگاهِ پشتِ این روش در `config/payment.online_gateway` تعیین می‌شود.
+     */
+    private function onlineGatewayIsActive(): bool
+    {
+        return $this->gatewayIsConfigured((string) config('payment.online_gateway', 'pasargad'));
+    }
+
+    /**
+     * وضعیتِ پیکربندیِ یک driver. نامِ ناشناخته یعنی «غیرفعال» — یک تنظیمِ اشتباه
+     * نباید باعثِ ۵۰۰ شدنِ صفحهٔ تسویه شود، فقط باید آن روش را خاموش نشان دهد.
+     */
+    private function gatewayIsConfigured(string $gatewayName): bool
+    {
+        try {
+            return app(PaymentGatewayFactory::class)->make($gatewayName)->isConfigured();
+        } catch (\Throwable $e) {
+            Log::warning('paymentInfo: unknown or unresolvable payment gateway.', [
+                'gateway' => $gatewayName,
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
     }
 
     /**

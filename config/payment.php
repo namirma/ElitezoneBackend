@@ -23,6 +23,23 @@ return [
     */
     'default_gateway' => env('PAYMENT_GATEWAY', 'wallet'),
 
+    /*
+    | درگاهی که پشتِ روشِ «پرداخت اینترنتی» صفحهٔ /order می‌نشیند.
+    |
+    | `CheckoutController::paymentInfo` وضعیتِ `is_active` آن روش را از
+    | `isConfigured()` همین driver می‌خواند. پس وقتی مجوزِ پاسارگاد آمد و
+    | PASARGAD_* در .env پر شد، آن روش **خودبه‌خود** فعال می‌شود و هیچ تغییری در
+    | کد لازم نیست. این عمداً از `default_gateway` جدا است: پیش‌فرضِ سامانه
+    | `wallet` است و کیف پول هرگز نمی‌تواند نمایندهٔ رِیلِ کارت بانکی باشد.
+    */
+    'online_gateway' => env('PAYMENT_ONLINE_GATEWAY', 'pasargad'),
+
+    /*
+    | روشِ «حضور در بانک / واریز فیش» — دستی است و به درگاه وابسته نیست، ولی باید
+    | بتوان بدونِ استقرارِ کد خاموشش کرد (مثلاً وقتی تیم مالی ظرفیتِ بررسی فیش ندارد).
+    */
+    'bank_transfer_enabled' => (bool) env('PAYMENT_BANK_TRANSFER_ENABLED', true),
+
     'gateways' => [
 
         'pasargad' => [
