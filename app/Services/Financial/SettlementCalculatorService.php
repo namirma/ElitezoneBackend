@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Financial;
 
 use App\Models\PriceSetting;
+use App\Models\SupplierProfile;
 use App\Support\Money;
 
 /**
@@ -238,6 +239,68 @@ class SettlementCalculatorService
             'co_final_rate' => (float) Money::mul(self::tcPercentage(), Money::div($shares['co'], '100')),
             'ssg_final_rate' => (float) Money::mul(self::tcPercentage(), Money::div($shares['ssg'], '100')),
         ];
+    }
+
+    /**
+     * نرخِ مالیاتِ **زنده** — برای لحظاتی که هنوز سفارشی وجود ندارد که اسنپ‌شات
+     * داشته باشد (ثبتِ سفارش، پیش‌فاکتورِ سبد).
+     *
+     * ⚠️ روی شاخهٔ لاراول ۱۰ این متد آخرین دو حلقهٔ `resolveVatRate(Order)` است و
+     * آن متد به این delegate می‌کند. این شاخه `resolveVatRate` را ندارد (هرگز
+     * پورت نشد)، پس اینجا مستقل می‌ایستد. اگر روزی `resolveVatRate` پورت شد،
+     * همان delegate را برقرار کنید تا زنجیره یک‌بار نوشته شود.
+     */
+    public function currentVatRate(): float
+    {
+        return PriceSetting::getValueAsFloat(
+            PriceSetting::CODE_VAT_RATE,
+            (float) config('financial.default_vat_rate', 10.0)
+        );
+    }
+
+    /**
+     * فلگِ ±VAT قراردادِ تأمین‌کننده: «آیا مالیات روی کرایه هم بسته می‌شود؟»
+     *
+     * نبودِ پروفایل یعنی `true` — همان پیش‌فرضی که
+     * `ProcessPreScalePaymentAction` و `ProcessReservationCompletionAction`
+     * هنگام اسنپ‌شات‌گرفتن استفاده می‌کنند، تا مبلغی که پیش از پرداخت به خریدار
+     * نشان داده می‌شود با فرمولی که بعداً واقعاً اجرا می‌شود یکی باشد.
+     */
+    public function transVatFlagForSupplier(?int $supplierUserId): bool
+    {
+        if ($supplierUserId === null) {
+            return true;
+        }
+
+        return (bool) (SupplierProfile::where(SupplierProfile::USER_ID, $supplierUserId)
+            ->value(SupplierProfile::TRANS_VAT) ?? true);
+    }
+
+    /**
+     * مالیاتِ متعلق به کرایه — `0` وقتی قراردادِ تأمین‌کننده `−VAT` است.
+     *
+     * ⚠️ **چرا این وجود دارد.** فرمولِ POO (وقتی `+VAT`) مالیات را روی
+     * `Trans + OP×W` می‌بندد، ولی `final_amount` که به خریدار نشان داده می‌شود یک
+     * جمعِ حسابداریِ ساده بود که مالیات را فقط روی کالا حساب می‌کرد و کرایه را
+     * **بدونِ مالیات** اضافه می‌کرد.
+     *
+     * نقطهٔ سربه‌سر پایین است: با `%OW = ۰٫۴٪` و مالیاتِ ۱۰٪، به‌محضِ اینکه کرایه
+     * از حدود **۴٫۶٪ ارزشِ کالا** بگذرد، `POO` از `final_amount` جلو می‌زند — یعنی
+     * از کیف‌پولِ خریدار **بیشتر** از عددی که دیده کسر می‌شود. پنلِ ورودِ نرخِ حمل
+     * ساخته شده و فعال است، پس این یک حالتِ نظری نیست.
+     *
+     * با احتسابِ مالیاتِ کرایه، هر چهار حالتِ فرمول به `final_amount ≥ POO`
+     * برمی‌گردند و تنها اختلافِ باقی‌مانده همان تخفیفِ `%OW` است.
+     *
+     * @see \Tests\Feature\Financial\PooVersusDisplayedAmountTest
+     */
+    public function vatOnTrans(float $trans, float $vatPercent, bool $transVat): float
+    {
+        if (! $transVat || $trans <= 0 || $vatPercent <= 0) {
+            return 0.0;
+        }
+
+        return Money::toFloat(Money::mul($trans, Money::div($vatPercent, '100')));
     }
 
     /**

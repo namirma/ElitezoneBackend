@@ -16,6 +16,7 @@ use App\Models\PriceFilterCategory;
 use App\Models\User;
 use App\Services\Cart\CartPriceValidityResolver;
 use App\Services\Cart\CartResolver;
+use App\Services\Financial\SettlementCalculatorService;
 use App\Services\Invoice\InvoiceGenerator;
 use App\Services\Pricing\CartPricingCalculator;
 use App\Services\Shipping\CartShippingQuoteService;
@@ -61,6 +62,7 @@ class BuildCartPreInvoiceAction
         private readonly CartResolver $resolver,
         private readonly CartShippingQuoteService $shippingQuoteService,
         private readonly CartPriceValidityResolver $priceValidity,
+        private readonly SettlementCalculatorService $settlementCalculator,
         private readonly InvoiceGenerator $invoiceGenerator,
     ) {}
 
@@ -112,7 +114,17 @@ class BuildCartPreInvoiceAction
             ? $this->shippingQuoteService->quoteForCart($cart, $addressId)->total
             : 0.0;
 
-        return $this->buildTransientOrder($cart, $user, $pricing, $address, $shippingCost);
+        // مالیاتِ کرایه، دقیقاً با همان قاعده‌ای که PlaceOrderAction به کار می‌برد —
+        // وگرنه پیش‌فاکتور و فاکتورِ نهاییِ همان سبد دو عدد متفاوت می‌دادند.
+        $shippingVat = $this->settlementCalculator->vatOnTrans(
+            $shippingCost,
+            $this->settlementCalculator->currentVatRate(),
+            $this->settlementCalculator->transVatFlagForSupplier(
+                $cart->items->first()?->factory?->supplier_user_id
+            )
+        );
+
+        return $this->buildTransientOrder($cart, $user, $pricing, $address, $shippingCost, $shippingVat);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -156,10 +168,12 @@ class BuildCartPreInvoiceAction
         CartPricingResult $pricing,
         ?Address $address,
         float $shippingCost,
+        float $shippingVat = 0.0,
     ): Order {
         $subtotalBeforeDiscount = $pricing->subtotal + $pricing->totalVariantDiscount;
         $discountAmount = $pricing->totalVariantDiscount + $pricing->offerDiscount;
-        $finalAmount = max(0.0, $subtotalBeforeDiscount - $discountAmount + $pricing->vatAmount + $shippingCost);
+        $vatAmount = $pricing->vatAmount + $shippingVat;
+        $finalAmount = max(0.0, $subtotalBeforeDiscount - $discountAmount + $vatAmount + $shippingCost);
 
         $order = new Order;
 
@@ -167,7 +181,7 @@ class BuildCartPreInvoiceAction
             Order::ORDER_NUMBER => null,
             Order::SUBTOTAL => $subtotalBeforeDiscount,
             Order::DISCOUNT_AMOUNT => $discountAmount,
-            Order::VAT_AMOUNT => $pricing->vatAmount,
+            Order::VAT_AMOUNT => $vatAmount,
             Order::SHIPPING_COST => $shippingCost,
             Order::FINAL_AMOUNT => $finalAmount,
             // پیش‌فاکتور همیشه پرداخت‌نشده است — برچسبِ وضعیت روی سند از همین می‌آید.

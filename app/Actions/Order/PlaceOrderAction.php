@@ -235,6 +235,25 @@ class PlaceOrderAction
             $itemsData[$itemId]['shipping_cost'] = (float) ($shippingQuote->perLine[$itemId] ?? 0.0);
         }
 
+        // مالیاتِ کرایه — طبق فلگِ ±VAT قراردادِ تأمین‌کننده، همان فلگی که
+        // ProcessPreScalePaymentAction هنگام پرداخت اسنپ‌شات می‌گیرد و POO با آن
+        // حساب می‌شود.
+        //
+        // بدونِ این، `final_amount` مالیات را فقط روی کالا می‌بست در حالی که POO
+        // آن را روی `Trans + OP×W` می‌بندد. تا وقتی هیچ نرخِ حملی وارد نشده بود
+        // کرایه صفر می‌ماند و اختلاف پنهان بود؛ ولی از حدودِ کرایه = ۴٫۶٪ ارزشِ
+        // کالا به بعد، POO از عددِ نمایش‌داده‌شده جلو می‌زند و خریدار **بیشتر** از
+        // آنچه دیده پرداخت می‌کند.
+        $transVat = $this->settlementCalculator->transVatFlagForSupplier(
+            $cart->items->first()?->factory?->supplier_user_id
+        );
+        $shippingVat = $this->settlementCalculator->vatOnTrans(
+            $shippingCost,
+            $this->settlementCalculator->currentVatRate(),
+            $transVat
+        );
+        $totalVat += $shippingVat;
+
         // Now that subtotal is pre-discount, we subtract the totalDiscount to get the actual final goods value,
         // then add VAT and shipping. This preserves the standard accounting formula:
         // Subtotal - Discount + Tax + Shipping = Final
