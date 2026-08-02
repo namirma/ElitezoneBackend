@@ -72,6 +72,23 @@ class BuildCartPreInvoiceAction
      */
     public function execute(Cart $cart, User $user, ?int $addressId = null): mixed
     {
+        return $this->invoiceGenerator->previewPreInvoice(
+            $this->previewOrderFor($cart, $user, $addressId),
+            $this->previewNumber($cart)
+        );
+    }
+
+    /**
+     * سفارشِ درون‌حافظه‌ایِ پشتِ PDF — بدونِ رندر.
+     *
+     * public است تا بتوان **عددها** را مستقل از PDF پین کرد: مهم‌ترین خاصیتِ این
+     * اندپوینت آن است که مبلغِ روی پیش‌فاکتور با `totals.total`ِ پاسخِ سبد یکی
+     * باشد، و سنجیدنِ آن از داخلِ یک PDF عملاً ناممکن است.
+     *
+     * @throws CartIsEmptyException
+     */
+    public function previewOrderFor(Cart $cart, User $user, ?int $addressId = null): Order
+    {
         $cart->loadMissing([
             'items.productVariant.product',
             'items.factory',
@@ -95,9 +112,7 @@ class BuildCartPreInvoiceAction
             ? $this->shippingQuoteService->quoteForCart($cart, $addressId)->total
             : 0.0;
 
-        $order = $this->buildTransientOrder($cart, $user, $pricing, $address, $shippingCost);
-
-        return $this->invoiceGenerator->previewPreInvoice($order, $this->previewNumber($cart));
+        return $this->buildTransientOrder($cart, $user, $pricing, $address, $shippingCost);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
