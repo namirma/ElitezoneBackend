@@ -147,4 +147,60 @@ class CartPreInvoiceTest extends TestCase
         $this->assertSame(1, $cart->items()->count(),
             'سبد باید دست‌نخورده بماند — برخلاف ثبت سفارش که سبد را خالی می‌کند');
     }
+
+    #[Test]
+    public function the_pre_invoice_total_equals_the_cart_response_total(): void
+    {
+        // مهم‌ترین خاصیتِ این اندپوینت: عددِ روی PDF همان عددی است که کاربر در
+        // صفحهٔ سبد می‌بیند. اگر پیش‌فاکتور مسیرِ محاسباتیِ دومی داشته باشد، همان
+        // الگویی تکرار می‌شود که در `features.product_offers` مستند شده — کاربر یک
+        // عدد می‌بیند و عددِ دیگری می‌پردازد.
+        $cart = $this->cartWithOneLine();
+
+        Sanctum::actingAs($this->user);
+
+        $cartTotal = (float) $this->getJson('/api/cart')
+            ->assertOk()
+            ->json('data.totals.total');
+
+        $preInvoice = app(\App\Actions\Cart\BuildCartPreInvoiceAction::class)
+            ->previewOrderFor($cart->fresh(), $this->user->fresh());
+
+        $this->assertEqualsWithDelta(
+            $cartTotal,
+            (float) $preInvoice->final_amount,
+            1.0,
+            'مبلغ پیش‌فاکتور باید با totals.total پاسخ سبد یکی باشد'
+        );
+
+        // و شکلِ حسابداری باید همان چیزی باشد که PlaceOrderAction می‌نویسد:
+        // subtotal (پیش از تخفیف) − discount + vat + shipping = final
+        $this->assertEqualsWithDelta(
+            (float) $preInvoice->final_amount,
+            (float) $preInvoice->subtotal
+                - (float) $preInvoice->discount_amount
+                + (float) $preInvoice->vat_amount
+                + (float) $preInvoice->shipping_cost,
+            1.0,
+            'معادلهٔ حسابداری سند باید بسته باشد'
+        );
+    }
+
+    #[Test]
+    public function the_preview_number_is_never_a_real_document_number(): void
+    {
+        // شمارهٔ واقعی از DocumentSequenceService می‌آید و با ذخیرهٔ رکورد رزرو
+        // می‌شود. اینجا چیزی ذخیره نمی‌شود، پس اگر همان قالب استفاده شود، همان عدد
+        // بعداً روی یک سندِ واقعیِ دیگر می‌نشیند و مشتری دو مدرک با یک شماره دارد.
+        $cart = $this->cartWithOneLine();
+
+        Sanctum::actingAs($this->user);
+        $this->get('/api/cart/pre-invoice')->assertOk();
+
+        $this->assertSame(0, Invoice::where('invoice_number', 'like', 'PRE-%')->count(),
+            'شناسهٔ پیش‌نمایش هرگز نباید در جدول اسناد بنشیند');
+        $this->assertSame(0, Invoice::where('invoice_number', 'like', 'EZ-QTE-%')
+            ->where('created_at', '>=', now()->subMinute())->count(),
+            'پیش‌فاکتور نباید شمارهٔ دنبالهٔ QTE مصرف کند');
+    }
 }
