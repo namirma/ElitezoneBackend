@@ -121,6 +121,14 @@ class SupplierDebtReleaseTest extends TestCase
     #[Test]
     public function releasing_the_debt_leaves_the_buyer_wallet_reconcilable(): void
     {
+        // این ادعا به `LedgerReconciler` وابسته است و آن کلاس فقط روی شاخهٔ لاراول ۱۰
+        // وجود دارد (روی شاخهٔ ۱۳ هرگز پورت نشده). فایل عمداً بین دو شاخه یکسان
+        // نگه داشته می‌شود تا drift نسازد؛ دو تستِ بعدی همان مکانیزم را بدونِ ابزار
+        // می‌سنجند و روی هر دو شاخه اجرا می‌شوند.
+        if (! class_exists(LedgerReconciler::class)) {
+            $this->markTestSkipped('LedgerReconciler روی این شاخه وجود ندارد.');
+        }
+
         $this->runJob();
 
         $drift = app(LedgerReconciler::class)->driftedWallets($this->buyer->id);

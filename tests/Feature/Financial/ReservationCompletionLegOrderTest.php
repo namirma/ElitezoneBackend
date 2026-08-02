@@ -189,6 +189,12 @@ class ReservationCompletionLegOrderTest extends TestCase
     #[Test]
     public function every_wallet_touched_by_the_flow_still_reconciles(): void
     {
+        // `LedgerReconciler` فقط روی شاخهٔ لاراول ۱۰ هست (روی ۱۳ پورت نشده). بقیهٔ
+        // تست‌های این فایل مستقل از آن‌اند و روی هر دو شاخه می‌دوند.
+        if (! class_exists(LedgerReconciler::class)) {
+            $this->markTestSkipped('LedgerReconciler روی این شاخه وجود ندارد.');
+        }
+
         app(ProcessReservationCompletionAction::class)->execute($this->order);
 
         $reconciler = app(LedgerReconciler::class);

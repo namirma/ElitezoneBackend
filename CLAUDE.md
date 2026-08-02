@@ -1779,6 +1779,13 @@ hold that a `hold_release` row points at. `orphanHolds()` never needed the rewri
 it nets `+hold` against `−hold_release` and already reached zero on its own.
 Pinned by `Financial/SupplierDebtReleaseTest`.
 
+> **`LedgerReconciler` exists only on this branch.** The class, the `financial:doctor`
+> command and `Financial/LedgerReconcilerTest` were never ported to
+> `fix/round3-audit-l13`, so that branch has no way to detect ledger/balance drift at all.
+> The two tests that assert reconciliation skip themselves there via `class_exists()` —
+> deliberately, so the test files stay **byte-identical across both branches** rather than
+> forking into two maintained copies. Porting the reconciler to L13 is its own change.
+
 ### Wallet status vocabulary — cover `hold` everywhere
 
 The `wallet_transactions.status` column mixes two vocabularies:
