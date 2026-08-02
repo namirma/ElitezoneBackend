@@ -631,6 +631,21 @@ documents are submitted:
 - Order fields set: `system_moadian_ref`, `system_hold_released_at`
 - Authorization: admin only (`POST /admin/orders/{order}/system-moadian-invoice`)
 
+> 🚧 **Open decision — the debt-parking path cannot currently complete.** The flow below
+> exists for exactly one situation: the supplier has no money. But the supplier receives
+> PTS at payment time and may withdraw it immediately, so "empty wallet at weighbridge" is
+> the *normal* case for this path, not an edge. Right after the debt is parked,
+> `WeighbridgeVatRouter::routeSupplierVat()` unconditionally debits the escrow VAT on PTSM
+> from that same empty wallet → `InsufficientBalanceException` → **the entire weighbridge
+> rolls back, including the park**. So the whole `supplier_debt_pending` machinery only
+> fires in the narrow window where the supplier can cover the VAT but not the reclaim; with
+> a genuinely drained wallet **no under-delivery can be recorded at all**.
+> Pinned as a known defect by `Financial/DrainedSupplierWeighbridgeTest` — *change* that
+> test (don't delete it) once the policy is decided. Fixing it requires deciding who fronts
+> tax money the supplier does not have, or whether VAT is parked like the deficit is; that
+> is the same open question as `SupplierDebtHandler::parkDebtAndNotify` fronting the buyer
+> refund from WSSG. Both are financial-policy calls, not code defects with an obvious fix.
+
 **Weighbridge deficit — insufficient supplier balance**
 If at weighbridge time the supplier's wallet balance < `PTS − PTSM` (reclaimAmount):
 - Buyer refund is credited in `HOLD` (not AVAILABLE) to `WO`
