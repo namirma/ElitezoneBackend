@@ -15,6 +15,17 @@ class ShaparakGateway implements PaymentGatewayInterface
         return 'shaparak';
     }
 
+    /**
+     * هیچ‌وقت پیکربندی‌شده نیست: این driver داربستِ باقی‌مانده از مسیرِ شاپرکی است
+     * که هرگز وصل نشد — `verify()` همیشه رسیدِ ناموفق می‌دهد و `pay()` شماره‌ی
+     * پیگیریِ ساختگی برمی‌گرداند. تا وقتی اینتگریشنِ واقعی نیامده، اعلام کردنِ
+     * «فعال» یعنی فرستادنِ کاربر به مسیری که قطعاً شکست می‌خورد.
+     */
+    public function isConfigured(): bool
+    {
+        return false;
+    }
+
     public function pay(User $user, Order $order): array
     {
         // اینجا معمولاً درخواست به بانک زده می‌شود و توکن گرفته می‌شود

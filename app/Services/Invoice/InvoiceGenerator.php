@@ -110,6 +110,37 @@ class InvoiceGenerator
         return $this->generate($order, $docType, 'download');
     }
 
+    /**
+     * Doc 0 — پیش‌فاکتورِ یک سبدِ **هنوز ثبت‌نشده**.
+     *
+     * تفاوتش با `download($order, DOC_PRE_INVOICE)` در سه چیز است و هر سه عمدی‌اند:
+     *
+     * ۱. **هیچ رکورد `Invoice` ساخته نمی‌شود.** هنوز سفارشی وجود ندارد که سند به
+     *    آن بچسبد؛ ساختنِ رکورد یعنی یک فاکتورِ یتیم با `order_id` نامعتبر.
+     * ۲. **هیچ شمارهٔ دنباله‌ای مصرف نمی‌شود.** `DocumentSequenceService` شماره را
+     *    از روی آخرین ردیفِ ذخیره‌شده می‌سازد؛ چون اینجا چیزی ذخیره نمی‌شود، شماره
+     *    رزرو هم نمی‌شود و همان عدد بعداً به یک سندِ واقعی می‌رسید. یعنی مشتری یک
+     *    PDF با شماره‌ای در دست داشت که بعداً روی سندِ بی‌ربطِ دیگری می‌نشست. پس
+     *    شمارهٔ پیش‌نمایش از بیرون داده می‌شود و باید **آشکارا موقت** باشد.
+     * ۳. **`loadMissing` اجرا نمی‌شود.** سفارشِ ورودی transient است (`id = null`)،
+     *    و هر eager-load روی آن یک کوئریِ `where order_id is null` می‌زند. تمام
+     *    relationها باید از قبل با `setRelation()` روی مدل نشسته باشند.
+     *
+     * @param  Order  $transientOrder  سفارشِ درون‌حافظه‌ای (ذخیره‌نشده) ساختهٔ سبد
+     * @param  string  $previewNumber  شناسهٔ آشکارا موقتِ پیش‌نمایش
+     * @return \Mpdf\Mpdf|\Mccarlosen\LaravelMpdf\LaravelMpdf
+     *
+     * @see \App\Actions\Cart\BuildCartPreInvoiceAction
+     */
+    public function previewPreInvoice(Order $transientOrder, string $previewNumber): mixed
+    {
+        $docType = FinancialCodes::DOC_PRE_INVOICE;
+
+        $data = $this->dataBuilder->build($transientOrder, $docType, $previewNumber);
+
+        return $this->pdfRenderer->render($this->getViewName($docType), $data, $docType, $previewNumber);
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     // Internal implementation (routing + PDF pipeline)
     // ─────────────────────────────────────────────────────────────────────────

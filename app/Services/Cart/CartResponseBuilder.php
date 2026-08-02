@@ -43,6 +43,7 @@ class CartResponseBuilder
         private readonly CartPricingCalculator $cartPricing,
         private readonly CartResolver $resolver,
         private readonly VariantPriceHydrator $priceHydrator,
+        private readonly CartPriceValidityResolver $priceValidity,
     ) {}
 
     /**
@@ -80,6 +81,9 @@ class CartResponseBuilder
                 'cart_level_offer_discount' => (string) $result->offerDiscount,
                 'total' => (string) $result->total,
             ],
+            // مهلتِ اعتبارِ قیمت/موجودی — `null` یعنی مهلتی اعلام نشده (نه «منقضی»).
+            // منبعِ نهایی API تأمین‌کننده است؛ فعلاً از CartPriceValidityResolver.
+            'price_valid_until' => $this->priceValidity->resolveAsIso($cart),
         ], 'global.received_successfully');
 
         if (! $cart->user_id) {
