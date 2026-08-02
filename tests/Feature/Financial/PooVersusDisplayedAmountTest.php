@@ -107,41 +107,90 @@ class PooVersusDisplayedAmountTest extends TestCase
         }
     }
 
-    #[Test]
-    public function with_real_freight_the_gap_is_no_longer_a_simple_factor(): void
+    /**
+     * همان جمعی که `PlaceOrderAction` برای `final_amount` می‌زند، شاملِ مالیاتِ
+     * کرایه — تا تست عددِ نمایش‌داده‌شده را از **همان قاعده‌ای** بسازد که کدِ واقعی
+     * به کار می‌برد، نه یک بازنویسیِ دستیِ فرمول که می‌تواند با آن واگرا شود.
+     */
+    private function displayedAmount(float $goodsExVat, float $trans, bool $transVat): float
     {
-        // واگراییِ دوم: POO با `trans_vat = true` مالیات را روی کرایه هم می‌بندد،
-        // ولی final_amount کرایه را بدونِ مالیات اضافه می‌کند. در تستِ فرانت دیده
-        // نشد چون هیچ ردیفِ shipping_rates وجود نداشت و کرایه صفر بود.
+        $calculator = app(SettlementCalculatorService::class);
+
+        return $goodsExVat * (1 + self::VAT_PERCENT / 100)
+            + $trans
+            + $calculator->vatOnTrans($trans, self::VAT_PERCENT, $transVat);
+    }
+
+    #[Test]
+    public function freight_vat_keeps_the_displayed_amount_above_poo_in_all_four_variants(): void
+    {
+        // ⚠️ این همان حالتی است که در تستِ فرانت پنهان مانده بود، چون هیچ ردیفِ
+        // `shipping_rates` وجود نداشت و کرایه صفر بود.
+        //
+        // فرمولِ POO با `+VAT` مالیات را روی `Trans + OP×W` می‌بندد، ولی
+        // `final_amount` کرایه را بدونِ مالیات اضافه می‌کرد. نقطهٔ سربه‌سر پایین
+        // است: از حدودِ کرایه = ۴٫۶٪ ارزشِ کالا به بعد، POO از عددِ نمایش‌داده‌شده
+        // جلو می‌زد و از کیف‌پولِ خریدار **بیشتر** از آنچه دیده کسر می‌شد.
+        //
+        // با احتسابِ مالیاتِ کرایه، هر چهار حالت به «نمایش ≥ کسرشده» برمی‌گردند.
         $calculator = app(SettlementCalculatorService::class);
 
         $goodsExVat = 314_400_000.0;
-        $trans = 20_000_000.0;
 
-        $finalAmount = $goodsExVat * (1 + self::VAT_PERCENT / 100) + $trans;
+        // کرایه‌های واقع‌بینانه، هر دو طرفِ نقطهٔ سربه‌سرِ ۴٫۶٪.
+        foreach ([5_000_000.0, 14_462_400.0, 20_000_000.0, 90_000_000.0] as $trans) {
+            foreach ([true, false] as $transCommission) {
+                foreach ([true, false] as $transVat) {
+                    $poo = $calculator->calculatePOO(
+                        trans: $trans,
+                        op: $goodsExVat,
+                        weight: 1.0,
+                        owPercent: self::OW_PERCENT,
+                        vatPercent: self::VAT_PERCENT,
+                        transCommission: $transCommission,
+                        transVat: $transVat,
+                    );
 
-        $poo = $calculator->calculatePOO(
-            trans: $trans,
-            op: $goodsExVat,
-            weight: 1.0,
-            owPercent: self::OW_PERCENT,
-            vatPercent: self::VAT_PERCENT,
-            transCommission: true,
-            transVat: true,
-        );
+                    $displayed = $this->displayedAmount($goodsExVat, $trans, $transVat);
 
-        // دیگر ضریبِ ساده نیست — مالیاتِ روی کرایه اختلاف را وارونه می‌کند.
-        $simpleFactorPrediction = $finalAmount * (1 - self::OW_PERCENT / 100);
+                    $this->assertGreaterThanOrEqual(
+                        $poo - 1.0,
+                        $displayed,
+                        sprintf(
+                            'کسر از کیف پول از مبلغِ نمایش‌داده‌شده بیشتر شد (کرایه=%s, TC=%s, VAT=%s)',
+                            $trans,
+                            var_export($transCommission, true),
+                            var_export($transVat, true),
+                        )
+                    );
+                }
+            }
+        }
+    }
 
-        $this->assertGreaterThan(
-            1.0,
-            abs($poo - $simpleFactorPrediction),
-            'با کرایهٔ غیرصفر، اختلافِ POO و final_amount دیگر فقط ضریبِ %OW نیست'
-        );
+    #[Test]
+    public function a_minus_vat_supplier_contract_adds_no_freight_vat(): void
+    {
+        // قراردادِ `−VAT` یعنی مالیات روی کرایه بسته نمی‌شود؛ عددِ نمایش‌داده‌شده هم
+        // نباید ببندد، وگرنه خریدار مالیاتی می‌بیند که هرگز از او گرفته نمی‌شود.
+        $calculator = app(SettlementCalculatorService::class);
 
-        // و اینجا خریدار **بیشتر** از عددِ نمایش‌داده‌شده کسر می‌شود — همان حالتی
-        // که واقعاً علیهِ مشتری است و باید پیش از ورودِ نرخ‌های واقعیِ حمل حل شود.
-        $this->assertGreaterThan($finalAmount, $poo,
-            'مالیاتِ روی کرایه باعث می‌شود POO از مبلغِ نمایش‌داده‌شده بیشتر شود');
+        $this->assertSame(0.0,
+            $calculator->vatOnTrans(20_000_000.0, self::VAT_PERCENT, transVat: false));
+
+        $this->assertEqualsWithDelta(2_000_000.0,
+            $calculator->vatOnTrans(20_000_000.0, self::VAT_PERCENT, transVat: true), 1.0);
+    }
+
+    #[Test]
+    public function the_freight_vat_flag_defaults_to_charging_vat(): void
+    {
+        // نبودِ پروفایلِ تأمین‌کننده باید همان پیش‌فرضی را بدهد که
+        // ProcessPreScalePaymentAction هنگام اسنپ‌شات استفاده می‌کند (`true`)،
+        // وگرنه مبلغِ پیش از پرداخت با فرمولی که بعداً اجرا می‌شود یکی نمی‌ماند.
+        $calculator = app(SettlementCalculatorService::class);
+
+        $this->assertTrue($calculator->transVatFlagForSupplier(null));
+        $this->assertTrue($calculator->transVatFlagForSupplier(999_999_999));
     }
 }
