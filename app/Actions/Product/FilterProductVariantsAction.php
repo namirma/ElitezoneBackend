@@ -21,7 +21,7 @@ class FilterProductVariantsAction
         // می‌کرد، در حالی که نه در VariantPriceHydrator و نه در ProductVariantResource خوانده
         // می‌شود — اتلافِ حافظه/کوئری روی یک endpoint عمومیِ داغ.
         $query = $product->variants()
-            ->with(['prices.factory', 'prices.factoryLocation', 'variantAttributes.attributeType', 'limitOrderUnit']);
+            ->with(['prices.factory', 'prices.factory.activeProductFeatures', 'prices.factoryLocation', 'variantAttributes.attributeType', 'limitOrderUnit']);
 
         // ۲. اعمال فیلتر ویژگی‌ها
         if (! empty($filters['filter_categories'])) {

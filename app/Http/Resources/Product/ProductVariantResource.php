@@ -54,6 +54,10 @@ class ProductVariantResource extends BaseJsonResource
                         'factory' => [
                             'id' => (string) $price->factory->id,
                             'name' => $price->factory->name,
+                            // فقط ویژگی‌های «محصول» — کارتِ محصول هرگز ویژگیِ حمل را نشان نمی‌دهد.
+                            'product_features' => $price->factory->relationLoaded('activeProductFeatures')
+                                ? \App\Http\Resources\Supplier\FactoryFeatureResource::collection($price->factory->activeProductFeatures)
+                                : [],
                         ],
                         'factory_location' => [
                             'id' => (string) $price->factoryLocation->id,

@@ -115,6 +115,7 @@ class ProductController extends Controller
     {
         $variant->load([
             'prices.factory',
+            'prices.factory.activeProductFeatures',
             'prices.factoryLocation',
             'variantAttributes.attributeType',
             'limitOrderUnit',

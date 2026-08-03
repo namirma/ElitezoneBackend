@@ -62,6 +62,31 @@ class Factory extends Model
         return $this->hasMany(FactoryLocation::class);
     }
 
+    public function features(): HasMany
+    {
+        return $this->hasMany(FactoryFeature::class);
+    }
+
+    /**
+     * دو رابطه‌ی جدا برای دو دسته‌ی کاملاً مجزا — عمداً combین نمی‌شوند تا
+     * کارتِ محصول و فوترِ حمل هرگز ویژگیِ همدیگر را نبینند.
+     */
+    public function activeProductFeatures(): HasMany
+    {
+        return $this->hasMany(FactoryFeature::class)
+            ->where(FactoryFeature::CATEGORY, FactoryFeature::CATEGORY_PRODUCT)
+            ->where(FactoryFeature::IS_ACTIVE, true)
+            ->orderBy(FactoryFeature::ORDER);
+    }
+
+    public function activeShippingFeatures(): HasMany
+    {
+        return $this->hasMany(FactoryFeature::class)
+            ->where(FactoryFeature::CATEGORY, FactoryFeature::CATEGORY_SHIPPING)
+            ->where(FactoryFeature::IS_ACTIVE, true)
+            ->orderBy(FactoryFeature::ORDER);
+    }
+
     public function prices(): HasMany
     {
         return $this->hasMany(ProductPrice::class);

@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\Admin\AdminCustomerTypeController;
 use App\Http\Controllers\Api\Admin\AdminDashboardController;
 use App\Http\Controllers\Api\Admin\AdminEduixController;
 use App\Http\Controllers\Api\Admin\AdminFactoryController;
+use App\Http\Controllers\Api\Admin\AdminFactoryFeatureController;
 use App\Http\Controllers\Api\Admin\AdminFactoryLocationController;
 use App\Http\Controllers\Api\Admin\AdminFactoryStockController;
 use App\Http\Controllers\Api\Admin\AdminFaqCategoryController;
@@ -38,6 +39,7 @@ use App\Http\Controllers\Api\Admin\AdminReportController;
 use App\Http\Controllers\Api\Admin\AdminReviewController;
 use App\Http\Controllers\Api\Admin\AdminSearchController;
 use App\Http\Controllers\Api\Admin\AdminSettingController;
+use App\Http\Controllers\Api\Admin\AdminShippingMethodController;
 use App\Http\Controllers\Api\Admin\AdminShippingRateController;
 use App\Http\Controllers\Api\Admin\AdminSupplierController;
 use App\Http\Controllers\Api\Admin\AdminSystemHealthController;
@@ -322,6 +324,23 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
         Route::put('/{factoryLocation}', 'update');
         Route::delete('/{factoryLocation}', 'destroy');
         Route::post('/{factoryLocation}/toggle', 'toggle');
+    });
+
+    // Factory Features — CRUD ویژگی‌های بازاریابیِ کارخانه (آیکون + متن کوتاه)
+    Route::controller(AdminFactoryFeatureController::class)->prefix('factory-features')->middleware('admin.permission:manage-catalog')->group(function () {
+        Route::get('/', 'index');
+        Route::post('/', 'store');
+        Route::put('/{factoryFeature}', 'update');
+        Route::delete('/{factoryFeature}', 'destroy');
+        Route::post('/{factoryFeature}/toggle', 'toggle');
+    });
+
+    // Shipping Methods — CRUD روش‌های ارسال
+    Route::controller(AdminShippingMethodController::class)->prefix('shipping-methods')->middleware('admin.permission:manage-catalog')->group(function () {
+        Route::get('/', 'index');
+        Route::post('/', 'store');
+        Route::put('/{shippingMethod}', 'update');
+        Route::delete('/{shippingMethod}', 'destroy');
     });
 
     // Products — CRUD محصولات + رسانه (مسیر با cuid؛ آپلود با POST/multipart)
