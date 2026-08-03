@@ -93,3 +93,12 @@ Schedule::job(new EscalateOverdueTicketsJob)
     ->hourly()
     ->withoutOverlapping()
     ->onOneServer();
+
+// تطبیقِ دفترِ مالی با موجودی کیف‌ها. برخلافِ صف، یک موجودیِ غلط هیچ‌وقت خودش را
+// لو نمی‌دهد — نه خطایی، نه شکایتی — پس تنها راهِ دیدنش سنجیدنِ دوره‌ایِ همین
+// تساوی است. ۰۲:۴۵ انتخاب شده تا بعد از پشتیبان‌گیری اجرا شود: اگر مغایرتی هست،
+// دامپِ همان شب حالتِ قبل از کشف را نگه داشته.
+Schedule::command('financial:doctor')
+    ->dailyAt('02:45')
+    ->withoutOverlapping()
+    ->onOneServer();
