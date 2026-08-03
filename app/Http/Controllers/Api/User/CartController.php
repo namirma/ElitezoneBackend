@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\User;
 
 use App\Actions\Cart\AddToCartAction;
+use App\Actions\Cart\BuildCartPreInvoiceAction;
 use App\Actions\Cart\RemoveCartItemAction;
 use App\Actions\Cart\SyncCartFiltersAction;
 use App\Actions\Cart\UpdateCartItemAction;
@@ -100,6 +101,45 @@ class CartController extends Controller
         $cart->update(['customer_type_id' => $request->validated('customer_type_id')]);
 
         return $this->responder->build($cart);
+    }
+
+    /**
+     * GET — پیش‌فاکتور (Doc 0) از سبدِ جاری، **پیش از ثبت سفارش**.
+     *
+     * تا پیش از این تنها راهِ گرفتنِ پیش‌فاکتور، ثبتِ سفارشِ واقعی و بعد دانلود از
+     * `/profile/orders/{order}/invoices/initial` بود — یعنی برای یک برگهٔ قیمت،
+     * موجودی کم می‌شد و یک سفارشِ دوساعته ساخته می‌شد که باید لغو می‌شد.
+     *
+     * هیچ سفارشی، هیچ رکورد `Invoice` و هیچ شمارهٔ سندی مصرف نمی‌شود؛ خروجی یک PDF
+     * با شناسهٔ آشکارا موقت است. با دادنِ `address_id` کرایهٔ حمل هم در سند می‌آید.
+     */
+    public function preInvoice(Request $request, BuildCartPreInvoiceAction $action)
+    {
+        $validated = $request->validate([
+            'address_id' => ['sometimes', 'nullable', 'integer', 'exists:addresses,id'],
+        ]);
+
+        $addressId = isset($validated['address_id']) ? (int) $validated['address_id'] : null;
+        $user = Auth::user();
+
+        // همان گاردِ shippingQuote — آدرسِ کسِ دیگری نباید مقصدِ محاسبه شود.
+        if ($addressId && ! $user->addresses()->whereKey($addressId)->exists()) {
+            return error(__('global.forbidden'), [], 403);
+        }
+
+        $cart = $this->resolver->resolve($request);
+
+        $pdf = $action->execute($cart, $user, $addressId);
+
+        // عمداً `$pdf->download()` نیست: آن متد `Destination::DOWNLOAD` را صدا
+        // می‌زند، یعنی mPDF هدرها را خودش می‌فرستد و بایت‌ها را مستقیم echo می‌کند و
+        // پاسخِ لاراول عملاً خالی و `text/html` می‌ماند. با `output()` بایت‌ها
+        // برگردانده می‌شوند و پاسخ یک Response واقعی است — هم برای کلاینت درست‌تر،
+        // هم قابل‌تست.
+        return response($pdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="pre-invoice-'.$cart->id.'.pdf"',
+        ]);
     }
 
     /**

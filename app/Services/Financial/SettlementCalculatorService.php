@@ -6,6 +6,7 @@ namespace App\Services\Financial;
 
 use App\Models\Order;
 use App\Models\PriceSetting;
+use App\Models\SupplierProfile;
 use App\Support\Money;
 
 /**
@@ -321,10 +322,70 @@ class SettlementCalculatorService
 
         return $snapshot > 0
             ? $snapshot
-            : PriceSetting::getValueAsFloat(
-                PriceSetting::CODE_VAT_RATE,
-                (float) config('financial.default_vat_rate', 10.0)
-            );
+            : $this->currentVatRate();
+    }
+
+    /**
+     * نرخِ مالیاتِ **زنده** — برای لحظاتی که هنوز سفارشی وجود ندارد که اسنپ‌شات
+     * داشته باشد (ثبتِ سفارش، پیش‌فاکتورِ سبد).
+     *
+     * همان دو حلقهٔ آخرِ `resolveVatRate()` است و عمداً از آن جدا نشده تا زنجیرهٔ
+     * «تنظیماتِ زندهٔ قیمت ← پیش‌فرضِ کانفیگ» یک‌بار نوشته شود؛ کپی‌شدنِ همین
+     * زنجیره در سه اکشن، همان باگی بود که این کلاس برای جمع‌کردنش ساخته شد.
+     */
+    public function currentVatRate(): float
+    {
+        return PriceSetting::getValueAsFloat(
+            PriceSetting::CODE_VAT_RATE,
+            (float) config('financial.default_vat_rate', 10.0)
+        );
+    }
+
+    /**
+     * فلگِ ±VAT قراردادِ تأمین‌کننده: «آیا مالیات روی کرایه هم بسته می‌شود؟»
+     *
+     * نبودِ پروفایل یعنی `true` — همان پیش‌فرضی که
+     * `ProcessPreScalePaymentAction` و `ProcessReservationCompletionAction`
+     * هنگام اسنپ‌شات‌گرفتن استفاده می‌کنند، تا مبلغی که پیش از پرداخت به خریدار
+     * نشان داده می‌شود با فرمولی که بعداً واقعاً اجرا می‌شود یکی باشد.
+     */
+    public function transVatFlagForSupplier(?int $supplierUserId): bool
+    {
+        if ($supplierUserId === null) {
+            return true;
+        }
+
+        return (bool) (SupplierProfile::where(SupplierProfile::USER_ID, $supplierUserId)
+            ->value(SupplierProfile::TRANS_VAT) ?? true);
+    }
+
+    /**
+     * مالیاتِ متعلق به کرایه — `0` وقتی قراردادِ تأمین‌کننده `−VAT` است.
+     *
+     * ⚠️ **چرا این وجود دارد.** فرمولِ POO (وقتی `+VAT`) مالیات را روی
+     * `Trans + OP×W` می‌بندد، ولی `final_amount` که به خریدار نشان داده می‌شود یک
+     * جمعِ حسابداریِ ساده بود که مالیات را فقط روی کالا حساب می‌کرد و کرایه را
+     * **بدونِ مالیات** اضافه می‌کرد. تا وقتی هیچ ردیفِ `shipping_rates` وارد نشده
+     * بود کرایه صفر می‌ماند و این اختلاف دیده نمی‌شد.
+     *
+     * ولی نقطهٔ سربه‌سر پایین است: با `%OW = ۰٫۴٪` و مالیاتِ ۱۰٪، به‌محضِ اینکه
+     * کرایه از حدود **۴٫۶٪ ارزشِ کالا** بگذرد، `POO` از `final_amount` جلو می‌زند —
+     * یعنی از کیف‌پولِ خریدار **بیشتر** از عددی که دیده کسر می‌شود. کرایهٔ میلگرد
+     * معمولاً از این نسبت بیشتر است، پس این یک حالتِ نظری نبود.
+     *
+     * با احتسابِ مالیاتِ کرایه، هر چهار حالتِ فرمول به `final_amount ≥ POO`
+     * برمی‌گردند و تنها اختلافِ باقی‌مانده همان تخفیفِ `%OW` است — یک اختلافِ
+     * توضیح‌دادنی، همیشه به سودِ خریدار.
+     *
+     * @see \Tests\Feature\Financial\PooVersusDisplayedAmountTest
+     */
+    public function vatOnTrans(float $trans, float $vatPercent, bool $transVat): float
+    {
+        if (! $transVat || $trans <= 0 || $vatPercent <= 0) {
+            return 0.0;
+        }
+
+        return Money::toFloat(Money::mul($trans, Money::div($vatPercent, '100')));
     }
 
     /**
@@ -353,5 +414,46 @@ class SettlementCalculatorService
             'net' => $net,
             'vat' => $vat,
         ];
+    }
+
+    /**
+     * همان تقسیم، ولی در **دقتی که واقعاً ذخیره می‌شود** — ریالِ صحیح.
+     *
+     * `extractVat()` تضمین می‌کند `net + vat === gross` با دو رقم اعشار. ولی
+     * `wallets.balance`, `wallets.balance_hold` و `wallet_transactions.amount` هر
+     * سه `decimal(20,0)`اند، پس هر لِگ **جداگانه** به ریالِ صحیح گرد می‌شود و آن
+     * تضمین سرِ نوشتن از بین می‌رود: هرجا کسرِ اعشاریِ net و vat دو طرفِ ۰٫۵
+     * بیفتند، `round(net) + round(vat)` یک ریال از `round(gross)` فاصله می‌گیرد.
+     *
+     * این فقط در `WeighbridgeVatRouter::routeEliteYAR()` اهمیت دارد — تنها جایی
+     * که **یک** بدهکار با **دو** بستانکارِ مستقل جفت می‌شود. بقیهٔ مسیرها یک
+     * بدهکار و یک بستانکار با عددِ یکسان دارند، پس همیشه تراز می‌مانند.
+     *
+     * پیامدش آرام ولی خورنده بود: `LedgerReconciler::unbalancedOrders()` روی
+     * سهمِ بزرگی از سفارش‌های دارای الیت‌یار «پول خلق یا نابود شده» گزارش می‌داد،
+     * و ابزارِ تشخیصی که قرار بود مغایرتِ واقعی را پیدا کند به نویز تبدیل می‌شد.
+     *
+     * راهکار همان قاعده‌ای است که پروژه از قبل جای دیگر به‌کار می‌برد
+     * (`ShippingCostCalculator`, `InventoryService::updateStockAfterWeighbridge
+     * ForOrder`): اول کل را به دقتِ مقصد گرد کن، یک سهم را حساب کن، و **سهمِ
+     * آخر را از تفاضل بگیر** تا جمع به‌طور ساختاری دقیق دربیاید — نه با امید.
+     *
+     * @return array{gross: float, net: float, vat: float} هر سه، ریالِ صحیح
+     */
+    public function extractVatInRials(float $gross, float $vatPercent): array
+    {
+        $grossRial = round($gross);
+
+        if ($grossRial <= 0.0) {
+            return ['gross' => 0.0, 'net' => 0.0, 'vat' => 0.0];
+        }
+
+        // مالیات از همان عددی مشتق می‌شود که واقعاً بدهکار می‌شود، نه از ورودیِ اعشاری.
+        $vatRial = round($this->extractVat($grossRial, $vatPercent)['vat']);
+
+        // بازمانده — نه یک گردکردنِ مستقل. `net + vat === gross` این‌طور اصل است.
+        $netRial = $grossRial - $vatRial;
+
+        return ['gross' => $grossRial, 'net' => $netRial, 'vat' => $vatRial];
     }
 }

@@ -104,6 +104,9 @@ Route::middleware(['optional.sanctum', 'attach.price.category'])->group(function
         Route::patch('/customer', 'updateCustomerType');
         // استعلام هزینه حمل پیش از checkout — نیازمند آدرس کاربر (auth الزامی)
         Route::post('/shipping-quote', 'shippingQuote')->middleware('auth:sanctum');
+        // پیش‌فاکتور سبدِ هنوز ثبت‌نشده — سند مالی است، پس مهمان اجازه ندارد.
+        // هیچ سفارشی ساخته نمی‌شود و هیچ رکورد Invoice/شمارهٔ سندی مصرف نمی‌شود.
+        Route::get('/pre-invoice', 'preInvoice')->middleware('auth:sanctum');
     });
 });
 

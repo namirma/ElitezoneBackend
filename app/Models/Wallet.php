@@ -40,6 +40,20 @@ class Wallet extends Model
         return $this->belongsTo(User::class, self::USER_ID);
     }
 
+    /**
+     * بدونِ پارامترهای جنریک، larastan این را `HasMany<Model, Wallet>` می‌بیند و هر
+     * چیزی که از آن بیرون می‌آید `Model` است — یعنی خواننده‌های دفتر مجبور می‌شوند
+     * نوع را دستی بازسازی کنند. طبق قاعدهٔ خودِ پروژه («relation را type کن»)، نوع
+     * اینجا اعلام می‌شود نه در محلِ مصرف.
+     *
+     * ⚠️ روی شاخهٔ لاراول ۱۳ این تگ دو پارامتری است
+     * (`HasMany<WalletTransaction, $this>`): لاراول ۱۱ به بعد `TDeclaringModel` را
+     * اضافه کرده، ولی `HasMany` در لاراول ۱۰ فقط `TRelatedModel` دارد و فرمِ دو
+     * پارامتری اینجا خطای PHPStan می‌دهد. این تنها تفاوتِ عمدیِ این فایل بین دو
+     * شاخه است — موقع cherry-pick «اصلاحش» نکنید.
+     *
+     * @return HasMany<WalletTransaction>
+     */
     public function transactions(): HasMany
     {
         return $this->hasMany(WalletTransaction::class);

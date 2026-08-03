@@ -22,6 +22,16 @@ class WalletGateway implements PaymentGatewayInterface
         return 'wallet';
     }
 
+    /**
+     * کیف پول همیشه در دسترس است — رِیلِ داخلیِ خودِ سامانه است و به هیچ مجوز یا
+     * اعتبارنامهٔ بیرونی وابسته نیست. («موجودی کافی دارد یا نه» سؤالِ دیگری است و
+     * در `paymentInfo` با `has_credit` جواب داده می‌شود، نه با `is_active`.)
+     */
+    public function isConfigured(): bool
+    {
+        return true;
+    }
+
     public function pay(User $user, Order $order): array
     {
         // ۱. اعتبارسنجی مبلغ سفارش

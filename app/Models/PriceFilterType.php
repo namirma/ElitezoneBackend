@@ -5,10 +5,22 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Cache;
 
 class PriceFilterType extends Model
 {
     use HasFactory;
+
+    /**
+     * کشِ عمومیِ `GET /price-filters/types` هیچ‌جا باطل نمی‌شد — هیچ فراخوانِ
+     * `Cache::forget('price_filter_types')` در کلِ پروژه وجود نداشت. ادمین مقدار
+     * را عوض می‌کرد و endpoint تا یک ساعت مقدارِ قدیمی را برمی‌گرداند.
+     */
+    protected static function booted(): void
+    {
+        static::saved(fn () => Cache::forget('price_filter_types'));
+        static::deleted(fn () => Cache::forget('price_filter_types'));
+    }
 
     const ID = 'id';
 

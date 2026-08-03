@@ -6,6 +6,7 @@ use App\Events\Financial\TransactionProcessed;
 use App\Models\User;
 use App\Models\WalletTransaction;
 use App\Services\PodiumServices\PodiumWithdrawalService;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -43,14 +44,38 @@ final class SettleWithdrawalAction
         }
 
         // ── Phase A: claim the transaction under a short lock ────────────────────
-        $claimed = DB::transaction(function () use ($transaction) {
+        //
+        // ⚠️ `status` تنها گاردِ ورود نیست و نمی‌تواند باشد.
+        //
+        // ردیف تا **پایانِ** فاز C در وضعیت PENDING می‌ماند (عمدی: اگر تماس بانکی
+        // شکست بخورد باید قابل تلاش مجدد باشد). پس شرطِ `status !== PENDING` به
+        // تنهایی هیچ ورودِ هم‌زمانی را نمی‌بندد: دو تأییدِ ادمین که با هم برسند، هر
+        // دو PENDING می‌بینند، هر دو رد می‌شوند و هر دو به پادیوم POST می‌کنند.
+        // مسیر ادمین هم middleware idempotency ندارد و `ProcessTransactionAction`
+        // این اکشن را **بیرون از** تراکنشِ خودش صدا می‌زند، پس هیچ قفلِ دیگری هم
+        // در کار نیست. تنها چیزی که جلوی واریزِ دوباره را می‌گرفت `uniqueId` سمتِ
+        // پادیوم بود — یعنی ایمنیِ پولِ ما به dedupِ یک سرویسِ بیرونی سپرده شده بود.
+        //
+        // حالا خودِ claim گارد است: تا وقتی `state = 'sending'` است و کهنه نشده،
+        // ورود بسته است. TTL لازم است چون اگر پروسه بینِ فاز A و C کرش کند، بدون
+        // آن ردیف برای همیشه قفل می‌ماند و هیچ ادمینی نمی‌تواند تسویه را تمام کند.
+        $claimTtl = (int) config('podium.settlement.claim_ttl_minutes', 15);
+
+        $claimed = DB::transaction(function () use ($transaction, $claimTtl) {
             $locked = WalletTransaction::where('id', $transaction->id)->lockForUpdate()->first();
 
             if (! $locked || $locked->status !== WalletTransaction::STATUS_PENDING) {
                 throw new \RuntimeException(__('admin.wallet.already_processed'));
             }
 
-            $locked->meta = $this->withSettlement($locked, ['state' => 'sending']);
+            if ($this->hasLiveClaim($locked, $claimTtl)) {
+                throw new \RuntimeException(__('wallet.settlement.in_progress'));
+            }
+
+            $locked->meta = $this->withSettlement($locked, [
+                'state' => 'sending',
+                'claimed_at' => now()->toIso8601String(),
+            ]);
             $locked->save();
 
             return $locked;
@@ -64,8 +89,11 @@ final class SettleWithdrawalAction
             DB::transaction(function () use ($claimed, $e) {
                 $locked = WalletTransaction::where('id', $claimed->id)->lockForUpdate()->first();
                 if ($locked) {
+                    // `claimed_at` پاک می‌شود تا تلاش مجدد لازم نباشد منتظر TTL بماند —
+                    // شکستِ صریح یعنی هیچ تماسی دیگر در جریان نیست.
                     $locked->meta = $this->withSettlement($locked, [
                         'state' => 'failed',
+                        'claimed_at' => null,
                         'error' => mb_substr($e->getMessage(), 0, 500),
                     ]);
                     $locked->save();
@@ -89,6 +117,7 @@ final class SettleWithdrawalAction
             $locked->status = WalletTransaction::STATUS_CONFIRMED;
             $locked->meta = $this->withSettlement($locked, [
                 'state' => 'sent',
+                'claimed_at' => null,
                 'reference_number' => $response['referenceNumber'] ?? null,
                 'podium_id' => data_get($result, 'id'),
                 'podium_status' => data_get($result, 'status'),
@@ -152,6 +181,35 @@ final class SettleWithdrawalAction
             'description' => __('wallet.settlement.description', ['shaba' => $iban]),
             'detailType' => config('podium.settlement.detail_type'),
         ];
+    }
+
+    /**
+     * آیا یک تلاشِ تسویهٔ دیگر همین حالا در جریان است؟
+     *
+     * «در جریان» یعنی `state === 'sending'` و `claimed_at` از TTL جوان‌تر باشد.
+     * یک claim بدونِ `claimed_at` (ردیف‌های قبل از این تغییر که وسطِ راه مانده‌اند)
+     * کهنه فرض می‌شود — وگرنه با استقرارِ این کد قفل می‌شدند.
+     */
+    private function hasLiveClaim(WalletTransaction $transaction, int $ttlMinutes): bool
+    {
+        $settlement = ($transaction->meta ?? [])['settlement'] ?? [];
+
+        if (($settlement['state'] ?? null) !== 'sending') {
+            return false;
+        }
+
+        $claimedAt = $settlement['claimed_at'] ?? null;
+
+        if (! is_string($claimedAt) || $claimedAt === '') {
+            return false;
+        }
+
+        try {
+            return Carbon::parse($claimedAt)->isAfter(now()->subMinutes($ttlMinutes));
+        } catch (\Throwable) {
+            // تاریخِ خراب = claimِ غیرقابل‌اعتماد؛ راه را باز بگذار تا ادمین گیر نکند.
+            return false;
+        }
     }
 
     /**
