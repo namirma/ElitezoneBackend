@@ -21,6 +21,9 @@ use App\Services\Invoice\InvoiceGenerator;
 use App\Services\Pricing\CartPricingCalculator;
 use App\Services\Shipping\CartShippingQuoteService;
 use App\Support\Money;
+use Illuminate\Support\Collection;
+use Mccarlosen\LaravelMpdf\LaravelMpdf;
+use Mpdf\Mpdf;
 
 /**
  * پیش‌فاکتور (Doc 0) از سبدِ **هنوز ثبت‌نشده** — بدون ساختِ سفارش و بدون رکورد Invoice.
@@ -53,7 +56,9 @@ use App\Support\Money;
  * محاسبه از `CartShippingQuoteService` می‌آید که `PlaceOrderAction` هم از آن
  * استفاده می‌کند، پس برآورد با کرایهٔ واقعی برابر است.
  *
- * @see \Tests\Feature\Cart\CartPreInvoiceTest
+ * پین‌شده توسط تستِ Tests\Feature\Cart\CartPreInvoiceTest — عمداً به‌صورت متن و نه
+ * تگِ ‎@see‎، چون فیکسرِ `fully_qualified_strict_types` پینت آن را به یک
+ * `use Tests\...` تبدیل می‌کند و کلاسِ تست در اتولودِ پروداکشن وجود ندارد.
  */
 class BuildCartPreInvoiceAction
 {
@@ -68,7 +73,7 @@ class BuildCartPreInvoiceAction
 
     /**
      * @param  int|null  $addressId  مقصد، برای آنکه کرایه هم در پیش‌فاکتور بیاید
-     * @return \Mpdf\Mpdf|\Mccarlosen\LaravelMpdf\LaravelMpdf آبجکت PDF (ذخیره نمی‌شود)
+     * @return Mpdf|LaravelMpdf آبجکت PDF (ذخیره نمی‌شود)
      *
      * @throws CartIsEmptyException
      */
@@ -119,8 +124,13 @@ class BuildCartPreInvoiceAction
         $shippingVat = $this->settlementCalculator->vatOnTrans(
             $shippingCost,
             $this->settlementCalculator->currentVatRate(),
+            // بدونِ nullsafe، و هر سه حلقه عمدی است: گاردِ `isEmpty()` بالاتر تضمین
+            // می‌کند `first()` خالی نیست، و `cart_items.factory_id` در مایگریشن
+            // `foreignId()->constrained()` بدونِ `nullable()` است — یعنی رابطه هرگز
+            // null نمی‌شود. فقط `factories.supplier_user_id` می‌تواند null باشد و
+            // `transVatFlagForSupplier(?int)` همان را می‌پذیرد.
             $this->settlementCalculator->transVatFlagForSupplier(
-                $cart->items->first()?->factory?->supplier_user_id
+                $cart->items->first()->factory->supplier_user_id
             )
         );
 
@@ -202,9 +212,9 @@ class BuildCartPreInvoiceAction
     }
 
     /**
-     * @return \Illuminate\Support\Collection<int, OrderItem>
+     * @return Collection<int, OrderItem>
      */
-    private function buildTransientItems(Cart $cart, CartPricingResult $pricing): \Illuminate\Support\Collection
+    private function buildTransientItems(Cart $cart, CartPricingResult $pricing): Collection
     {
         $linesById = collect($pricing->lines)->keyBy(fn ($line) => $line->cartItemId);
         $orderUnits = OrderUnit::allCached();
@@ -223,7 +233,9 @@ class BuildCartPreInvoiceAction
 
                 $item->forceFill([
                     OrderItem::PRODUCT_VARIANT_ID => $cartItem->product_variant_id,
-                    OrderItem::PRODUCT_NAME => $cartItem->productVariant?->product?->name,
+                    // `cart_items.product_variant_id` هم NOT NULL است و رابطه‌ها
+                    // بالاتر eager-load شده‌اند، پس زنجیره null نمی‌شود.
+                    OrderItem::PRODUCT_NAME => $cartItem->productVariant->product->name,
                     OrderItem::WEIGHT => $line->baseQuantity,
                     OrderItem::QUANTITY => $logistics['count'],
                     OrderItem::UNIT_NAME => $logistics['unit_name'] ?? 'واحد',
