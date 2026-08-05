@@ -2,7 +2,6 @@
 
 use App\Providers\RepositoryServiceProvider;
 use App\Providers\ResponseServiceProvider;
-use Artisaninweb\SoapWrapper\SoapWrapper;
 use Illuminate\Support\Facades\Facade;
 use Illuminate\Support\ServiceProvider;
 
@@ -221,7 +220,6 @@ return [
 
     'aliases' => Facade::defaultAliases()->merge([
         // 'Example' => App\Facades\Example::class,
-        'SoapWrapper' => SoapWrapper::class,
         'PDF' => Mccarlosen\LaravelMpdf\Facades\LaravelMpdf::class,
     ])->toArray(),
 
