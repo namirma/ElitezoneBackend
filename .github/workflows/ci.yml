@@ -52,6 +52,19 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
+      # آسیب‌پذیری‌های شناخته‌شدهٔ وابستگی‌ها. تا پیش از این هیچ‌چیز در پروژه
+      # خبر نمی‌داد که یک وابستگی آسیب‌پذیر شده — دو CVE از Guzzle و شش مورد از
+      # league/commonmark فقط تصادفی و حین یک کار نامرتبط پیدا شدند.
+      # مواردی که روی لاراول ۱۰ قابل رفع نیستند در composer.json → config.audit.ignore
+      # با دلیل ثبت شده‌اند، پس این گیت فقط برای چیزهای *تازه* قرمز می‌شود.
+      - name: Security advisories (composer audit)
+        run: composer audit
+
+      # قفل وابستگی‌ها باید با PHPای که واقعاً اجرا می‌شود سازگار باشد.
+      # وقتی config.platform.php تنظیم شود، این مرحله همان گیتِ پروداکشن است.
+      - name: Platform requirements
+        run: composer check-platform-reqs
+
       - name: Prepare environment
         run: |
           cp .env.example .env
