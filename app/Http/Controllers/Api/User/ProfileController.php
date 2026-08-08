@@ -48,14 +48,16 @@ class ProfileController extends Controller
         $roleNames = $user->roles->pluck('name')->map(fn ($n) => strtolower($n))->unique()->values();
         $relationsToLoad = [];
 
-        // «الیت یار» دو حالت دارد:
-        //   ۱) نقشِ دقیقِ engineer/contractor دارد (بعد از آپلود مدارک تعیین می‌شود)
-        //   ۲) فقط type.slug = elite_yar دارد (نقش را انتخاب کرده ولی هنوز مدرکی آپلود نکرده)
-        // در هر دو حالت کاربر «الیت یار» است و باید وضعیت تأیید (is_verified) ارزیابی شود.
         $typeSlug = strtolower((string) optional($user->{User::RELATION_TYPE})->{UserType::SLUG});
-        $isExpert = $roleNames->contains('engineer')
-            || $roleNames->contains('contractor')
-            || $typeSlug === 'elite_yar';
+
+        // نقشِ `elite_yar` لحظهٔ انتخابِ نقش وصل می‌شود، مستقل از اینکه مدارک
+        // تأیید شده باشد یا نه — پس یک سیگنال هر دو حالت را می‌پوشاند و دیگر
+        // لازم نیست type.slug هم خوانده شود.
+        //
+        // (شاخهٔ supplier پایین‌تر هنوز type.slug را می‌خواند و این عمدی است —
+        // آنجا نقش فقط با تأیید ادمین وصل می‌شود، پس متقاضیِ در انتظار یا ردشده
+        // هیچ نقشی ندارد و بدون type.slug وضعیتِ خودش را نمی‌بیند.)
+        $isEliteYar = $roleNames->contains('elite_yar');
 
         if ($roleNames->contains('employer')) {
             $relationsToLoad[] = User::RELATION_EMPLOYER;
@@ -69,7 +71,7 @@ class ProfileController extends Controller
             $relationsToLoad[] = User::RELATION_SUPPLIER;
         }
 
-        if ($isExpert) {
+        if ($isEliteYar) {
             // پروفایل‌های مهندس/پیمانکار برای ارزیابی is_verified در UserResource لود می‌شوند.
             // اگر کاربر هنوز مدرکی آپلود نکرده باشد این relationها null خواهند بود (بی‌خطر).
             $relationsToLoad[] = User::RELATION_ENGINEER;

@@ -54,8 +54,19 @@ final class SyncUserRolesAction
             $user->supplier()->where(SupplierProfile::USER_ID, $user->id)->delete();
         }
 
-        // --- Expert (engineer / contractor) — only clean-up on removal ---
-        if (! $newDisplayRoles->contains('elite_yar')) {
+        // --- Elite yar ---
+        //
+        // `elite_yar` نقشِ **قصد** است و همین‌جا وصل می‌شود؛ `engineer`/`contractor`
+        // نقشِ **مدرک**‌اند و فقط بعد از تأیید مدارک توسط ادمین وصل می‌شوند
+        // (EngineerController / ContractorController). جدا نگه‌داشتنشان همان چیزی
+        // است که به گاردها اجازه می‌دهد یک سیگنال بخوانند: قبلاً الیت یارِ تازه هیچ
+        // نقشی نداشت و هر گارد مجبور بود `type.slug` را هم چک کند.
+        if ($newDisplayRoles->contains('elite_yar')) {
+            if (! $currentRoles->contains('elite_yar')) {
+                $user->addRole('elite_yar');
+            }
+        } else {
+            $this->dropRole($user, $currentRoles, 'elite_yar');
             $this->dropRole($user, $currentRoles, 'engineer');
             $this->dropRole($user, $currentRoles, 'contractor');
             $user->engineer()->where(EngineerProfile::USER_ID, $user->id)->delete();

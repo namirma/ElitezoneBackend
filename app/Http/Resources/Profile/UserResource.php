@@ -7,7 +7,6 @@ use App\Http\Resources\Supplier\SupplierProfileResource;
 use App\Models\ContractorProfile;
 use App\Models\EngineerProfile;
 use App\Models\User;
-use App\Models\UserType;
 use Illuminate\Http\Request;
 
 /**
@@ -106,16 +105,16 @@ class UserResource extends BaseJsonResource
      *
      * منطق:
      *   - پروفایل مهندس/پیمانکار لود شده و موجود است → مقدار واقعی is_verified
-     *   - کاربر «الیت یار» است (type.slug = elite_yar) ولی هنوز پروفایل تأییدشده‌ای
-     *     ندارد (نقش را انتخاب کرده ولی مدرکی آپلود/تأیید نکرده) → false
+     *   - کاربر الیت یار است ولی هنوز پروفایل تأییدشده‌ای ندارد (نقش را انتخاب
+     *     کرده ولی مدرکی آپلود/تأیید نکرده) → false
      *     (تا فرانت بَج «تأیید نشده» + CTA آپلود مدارک را نشان دهد)
-     *   - نقش‌های غیرالیت یار (کارفرما/تأمین‌کننده/مشتری) → null (بدون بج)
+     *   - غیرِ الیت یار (کارفرما/تأمین‌کننده/بی‌نقش) → null (بدون بج)
      *
-     * نکته: نقشِ دقیقِ engineer/contractor فقط بعد از آپلود مدارک ست می‌شود؛
-     * پس یک الیت‌یارِ تازه ممکن است roles خالی و بدون پروفایل باشد — برای همین
-     * تشخیصِ «الیت یار بودن» با type.slug انجام می‌شود نه صرفاً با وجود پروفایل.
+     * نکته: `engineer`/`contractor` نقشِ مدرک‌اند و فقط بعد از تأیید وصل می‌شوند،
+     * پس نمی‌شود «الیت یار بودن» را از آن‌ها فهمید. نقشِ `elite_yar` همان لحظهٔ
+     * انتخابِ نقش وصل می‌شود و همین را جواب می‌دهد.
      *
-     * کنترلر از پیش engineerProfile / contractorProfile / type را لود کرده، N+1 نیست.
+     * کنترلر از پیش engineerProfile / contractorProfile / roles را لود کرده، N+1 نیست.
      */
     private function getIsVerified(): ?bool
     {
@@ -131,7 +130,7 @@ class UserResource extends BaseJsonResource
         }
 
         // الیت یارِ تأییدنشده (هنوز مدرکی ندارد) → false، در غیر این صورت null
-        if ($this->isExpertType()) {
+        if ($this->isEliteYar()) {
             return false;
         }
 
@@ -139,16 +138,19 @@ class UserResource extends BaseJsonResource
     }
 
     /**
-     * آیا نوع کاربر «الیت یار» (elite_yar) است؟ — از روی type.slug.
-     * فقط وقتی relationِ type لود شده باشد قابل تشخیص است؛ در غیر این صورت false
-     * (مثلاً در Resourceهایی که type را لود نمی‌کنند، بج نمایش داده نمی‌شود).
+     * آیا کاربر الیت یار است؟ — از روی نقشِ `elite_yar`.
+     *
+     * عمداً `hasRole()` صدا زده نمی‌شود: آن روی relationِ لودنشده کوئری می‌زند و
+     * در لیست‌ها N+1 می‌سازد. مثل نسخهٔ قبلی (که type را می‌خواند)، اگر relation
+     * لود نشده باشد false برمی‌گردد و بج نمایش داده نمی‌شود.
      */
-    private function isExpertType(): bool
+    private function isEliteYar(): bool
     {
-        if ($this->relationLoaded(User::RELATION_TYPE) && $this->{User::RELATION_TYPE}) {
-            return strtolower((string) $this->{User::RELATION_TYPE}->{UserType::SLUG}) === 'elite_yar';
+        if (! $this->relationLoaded(User::RELATION_ROLES)) {
+            return false;
         }
 
-        return false;
+        return $this->{User::RELATION_ROLES}
+            ->contains(fn ($role) => strtolower((string) $role->name) === 'elite_yar');
     }
 }

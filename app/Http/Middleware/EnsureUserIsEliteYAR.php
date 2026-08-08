@@ -15,11 +15,18 @@ class EnsureUserIsEliteYAR
         if (! $user) {
             return error(__('auth.unauthenticated'), [], 401);
         }
-        $user->loadMissing('type');
-        $isExpertType = $user->type && $user->type->slug === 'elite_yar';
-        $hasExpertRole = $user->hasRole(['engineer', 'contractor']);
-
-        if ($isExpertType || $hasExpertRole) {
+        // یک سیگنال، نه ترکیبِ دو واژگان.
+        //
+        // این گارد قبلاً `type.slug === 'elite_yar' || hasRole(['engineer','contractor'])`
+        // بود، و آن OR یک ضرورت بود نه سلیقه: `engineer`/`contractor` مدرک‌اند و
+        // فقط بعد از تأیید مدارک وصل می‌شوند، پس الیت یارِ تازه هیچ نقشی نداشت و
+        // بدون شاخهٔ `type` بیرون می‌ماند. یعنی مجوز از دو جای مستقل خوانده می‌شد
+        // که می‌توانستند با هم اختلاف پیدا کنند.
+        //
+        // حالا `elite_yar` خودش یک نقشِ Laratrust است که همان لحظهٔ انتخابِ نقش
+        // وصل می‌شود (SyncUserRolesAction). قصد از مدرک جدا شد: این نقش یعنی
+        // «الیت یار است»، و engineer/contractor یعنی «مدرکش تأیید شده».
+        if ($user->hasRole('elite_yar')) {
             return $next($request);
         }
 

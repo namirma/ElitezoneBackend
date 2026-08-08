@@ -31,6 +31,9 @@ class UserTypeSeeder extends Seeder
         $roles = [
             ['name' => 'admin',      'display_name' => 'مدیر'],
             ['name' => 'employer',   'display_name' => 'کارفرما'],
+            // قصد: با انتخابِ نقش وصل می‌شود.
+            ['name' => 'elite_yar',  'display_name' => 'الیت یار'],
+            // مدرک: فقط بعد از تأیید مدارک تحصیلی/حرفه‌ای وصل می‌شوند.
             ['name' => 'engineer',   'display_name' => 'مهندس'],
             ['name' => 'contractor', 'display_name' => 'پیمانکار'],
             ['name' => 'supplier',   'display_name' => 'سوپلایر'],

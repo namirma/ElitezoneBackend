@@ -13,7 +13,6 @@ use App\Models\EngineerProfile;
 use App\Models\User;
 use App\Models\UserNotification;
 use App\Models\UserProfile;
-use App\Models\UserType;
 use App\Support\PhoneNumber;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -73,12 +72,10 @@ class EliteYARRelationController extends Controller
             );
         }
 
-        // بررسی نوع کاربر — باید نقش فنی (engineer/contractor/elite_yar) داشته باشد
-        $eliteYARTypeId = $eliteYAR->{User::TYPE_ID};
-        $eliteYarTypes = UserType::whereIn(UserType::SLUG, ['engineer', 'contractor', 'elite_yar'])
-            ->pluck(UserType::ID);
-
-        if (! $eliteYarTypes->contains($eliteYARTypeId)) {
+        // دعوت‌شونده باید واقعاً الیت یار باشد. نقشِ `elite_yar` لحظهٔ انتخابِ نقش
+        // وصل می‌شود، پس این چک برای الیت یارِ تازه هم درست جواب می‌دهد — قبلاً
+        // ترکیبِ سه اسلاگِ user_type خوانده می‌شد چون نقشِ فنی هنوز وصل نشده بود.
+        if (! $eliteYAR->hasRole('elite_yar')) {
             return error(__('auth.elite_yar_is_not_technical'), [], 422);
         }
 

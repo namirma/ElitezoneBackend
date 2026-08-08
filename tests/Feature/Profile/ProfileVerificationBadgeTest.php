@@ -4,6 +4,7 @@ namespace Tests\Feature\Profile;
 
 use App\Models\ContractorProfile;
 use App\Models\EngineerProfile;
+use App\Models\Role;
 use App\Models\User;
 use App\Models\UserType;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
@@ -33,9 +34,16 @@ class ProfileVerificationBadgeTest extends TestCase
 
     private function eliteYarUser(): User
     {
-        return User::factory()->create([
+        $user = User::factory()->create([
             User::TYPE_ID => $this->userType('elite_yar')->id,
         ]);
+
+        // `is_verified` از روی نقشِ `elite_yar` تصمیم می‌گیرد، نه type.slug —
+        // همان نقشی که SyncUserRolesAction هنگام انتخابِ نقش وصل می‌کند. بدون
+        // این، fixture کاربری می‌سازد که در محصول وجود ندارد.
+        $user->addRole(Role::firstOrCreate(['name' => 'elite_yar'], ['display_name' => 'الیت یار']));
+
+        return $user;
     }
 
     #[Test]

@@ -31,7 +31,14 @@ class ProfileFixesTest extends TestCase
         // The engineer role is seeded in production; the controller attaches it on store.
         Role::firstOrCreate(['name' => 'engineer'], ['display_name' => 'Engineer', 'description' => 'Engineer']);
 
-        return User::factory()->create(['type_id' => $type->id]);
+        $user = User::factory()->create(['type_id' => $type->id]);
+
+        // نقشِ `elite_yar` همان چیزی است که SyncUserRolesAction هنگام انتخابِ نقش
+        // وصل می‌کند و EnsureUserIsEliteYAR فقط همان را می‌خواند. بدون آن این
+        // fixture کاربری می‌سازد که در محصول وجود ندارد: type دارد ولی نقش ندارد.
+        $user->addRole(Role::firstOrCreate(['name' => 'elite_yar'], ['display_name' => 'الیت یار']));
+
+        return $user;
     }
 
     private function pdf(): UploadedFile
