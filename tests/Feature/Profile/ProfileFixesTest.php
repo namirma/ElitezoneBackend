@@ -25,9 +25,9 @@ class ProfileFixesTest extends TestCase
 {
     use DatabaseTransactions;
 
-    private function expertUser(): User
+    private function eliteYarUser(): User
     {
-        $type = UserType::firstOrCreate(['slug' => 'expert'], ['name' => 'expert', 'icon' => 'user']);
+        $type = UserType::firstOrCreate(['slug' => 'elite_yar'], ['name' => 'elite_yar', 'icon' => 'user']);
         // The engineer role is seeded in production; the controller attaches it on store.
         Role::firstOrCreate(['name' => 'engineer'], ['display_name' => 'Engineer', 'description' => 'Engineer']);
 
@@ -44,7 +44,7 @@ class ProfileFixesTest extends TestCase
     #[Test]
     public function is_saze90_user_cannot_be_set_through_the_engineer_endpoint(): void
     {
-        $user = $this->expertUser();
+        $user = $this->eliteYarUser();
         Sanctum::actingAs($user);
 
         // Even if the client sends it, the backend ignores it (set only by the saze90 sync).
@@ -61,7 +61,7 @@ class ProfileFixesTest extends TestCase
     public function a_user_can_register_multiple_job_experiences(): void
     {
         Storage::fake('local');
-        $user = $this->expertUser();
+        $user = $this->eliteYarUser();
         Sanctum::actingAs($user);
 
         $this->postJson('/api/profile/job-experiences', ['title' => 'First', 'file' => $this->pdf()])->assertCreated();
@@ -76,7 +76,7 @@ class ProfileFixesTest extends TestCase
     public function job_experience_rejects_a_start_date_before_1300(): void
     {
         Storage::fake('local');
-        Sanctum::actingAs($this->expertUser());
+        Sanctum::actingAs($this->eliteYarUser());
 
         $this->postJson('/api/profile/job-experiences', [
             'title' => 'X', 'start_date' => '1299-12-29', 'file' => $this->pdf(),
@@ -87,7 +87,7 @@ class ProfileFixesTest extends TestCase
     public function job_experience_rejects_a_future_start_date(): void
     {
         Storage::fake('local');
-        Sanctum::actingAs($this->expertUser());
+        Sanctum::actingAs($this->eliteYarUser());
 
         // today is 1405-xx in Jalali; 1499 is comfortably in the future.
         $this->postJson('/api/profile/job-experiences', [
@@ -99,7 +99,7 @@ class ProfileFixesTest extends TestCase
     public function job_experience_accepts_a_valid_past_date_and_null_end_date_for_ongoing_work(): void
     {
         Storage::fake('local');
-        Sanctum::actingAs($this->expertUser());
+        Sanctum::actingAs($this->eliteYarUser());
 
         // start in range, end_date omitted entirely → ongoing project.
         $this->postJson('/api/profile/job-experiences', [
@@ -112,7 +112,7 @@ class ProfileFixesTest extends TestCase
     #[Test]
     public function a_user_can_edit_their_pending_job_experience(): void
     {
-        $user = $this->expertUser();
+        $user = $this->eliteYarUser();
         Sanctum::actingAs($user);
 
         $job = $user->jobExperiences()->create([
@@ -132,7 +132,7 @@ class ProfileFixesTest extends TestCase
     #[Test]
     public function an_approved_job_experience_cannot_be_edited(): void
     {
-        $user = $this->expertUser();
+        $user = $this->eliteYarUser();
         Sanctum::actingAs($user);
 
         $job = $user->jobExperiences()->create([
@@ -148,8 +148,8 @@ class ProfileFixesTest extends TestCase
     #[Test]
     public function a_user_cannot_edit_someone_elses_job_experience(): void
     {
-        $owner = $this->expertUser();
-        $stranger = $this->expertUser();
+        $owner = $this->eliteYarUser();
+        $stranger = $this->eliteYarUser();
         Sanctum::actingAs($stranger);
 
         $job = $owner->jobExperiences()->create([
@@ -167,7 +167,7 @@ class ProfileFixesTest extends TestCase
     #[Test]
     public function the_password_verify_step_checks_the_code_without_consuming_it(): void
     {
-        $user = $this->expertUser();
+        $user = $this->eliteYarUser();
         $user->forceFill([
             User::SECRET => \App\Support\OtpSecret::hash('123456'),
             User::SECRET_EXPIRES_AT => now()->addMinutes(5),

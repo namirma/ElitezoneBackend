@@ -141,8 +141,8 @@ class PurchaseWalkthroughTest extends TestCase
         $shippingMethod = ShippingMethod::create(['name' => 'کامیون', 'code' => 'truck_'.uniqid()]);
 
         // `user_types` در دیتابیسِ تست seed نشده. `SetUserTypeAction` هر سه اسلاگ را
-        // لازم دارد (expert/employer/supplier) وگرنه ۵۰۰ می‌دهد.
-        foreach ([['expert', 'الیت یار'], ['employer', 'کارفرما'], ['supplier', 'تأمین‌کننده']] as [$slug, $name]) {
+        // لازم دارد (elite_yar/employer/supplier) وگرنه ۵۰۰ می‌دهد.
+        foreach ([['elite_yar', 'الیت یار'], ['employer', 'کارفرما'], ['supplier', 'تأمین‌کننده']] as [$slug, $name]) {
             if (! DB::table('user_types')->where('slug', $slug)->exists()) {
                 DB::table('user_types')->insert(['slug' => $slug, 'name' => $name, 'icon' => 'building']);
             }

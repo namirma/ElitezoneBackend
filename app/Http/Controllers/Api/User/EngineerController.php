@@ -15,10 +15,10 @@ class EngineerController extends Controller
     public function store(StoreEngineerProfileRequest $request)
     {
         $user = Auth::user();
-        // The seeded slug for the technical-eliteYAR type is 'expert' (UserTypeSeeder),
-        // not 'consultant' — the old value made $expertTypeId null and never attached the role.
-        $expertTypeId = UserType::where('slug', 'expert')->value('id');
-        if ($user->type_id == $expertTypeId && ! $user->hasRole('engineer')) {
+        // The seeded slug for the technical-eliteYAR type is 'elite_yar' (UserTypeSeeder),
+        // not 'consultant' — the old value made $eliteYarTypeId null and never attached the role.
+        $eliteYarTypeId = UserType::where('slug', 'elite_yar')->value('id');
+        if ($user->type_id == $eliteYarTypeId && ! $user->hasRole('engineer')) {
             $user->addRole('engineer');
         }
         // Load the existing profile so partial updates don't overwrite unsubmitted fields

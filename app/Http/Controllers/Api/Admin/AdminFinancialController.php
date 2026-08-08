@@ -74,7 +74,7 @@ class AdminFinancialController extends Controller
 
         $data = $shares->latest(WalletTransaction::CREATED_AT)->paginate($this->perPage());
 
-        return success(WalletTransactionResource::collection($data), __('admin.expert_shares_success'));
+        return success(WalletTransactionResource::collection($data), __('admin.elite_yar_shares_success'));
     }
 
     /**
@@ -106,7 +106,7 @@ class AdminFinancialController extends Controller
             ->latest(WalletTransaction::CREATED_AT)
             ->paginate($this->perPage());
 
-        return success(WalletTransactionResource::collection($documents), __('admin.expert_docs_success'));
+        return success(WalletTransactionResource::collection($documents), __('admin.elite_yar_docs_success'));
     }
 
     // ─────────────────────────────────────────────────────────────────────────

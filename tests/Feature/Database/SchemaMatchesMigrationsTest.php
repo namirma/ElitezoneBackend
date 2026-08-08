@@ -35,7 +35,14 @@ class SchemaMatchesMigrationsTest extends TestCase
     {
         return [
             // ستون، جدول، آیا باید nullable باشد؟
-            'users.type_id is NOT NULL' => ['users', 'type_id', false],
+
+            // عمداً nullable (مهاجرتِ 2026_08_08_100100): NULL یعنی «هنوز نقشی
+            // انتخاب نکرده». قبلاً NOT NULL بود و ثبت‌نام یک UserTypeِ ساختگی
+            // («مشتری») می‌نشاند تا ستون را پر کند — که «بی‌نقش» و «نقشش مشتری
+            // است» را از هم غیرقابلِ تفکیک می‌کرد. حالا هر سه نقطه‌ای که کاربر
+            // می‌سازند (register، PlatformWalletUserSeeder، UserFactory) صراحتاً
+            // NULL می‌نویسند، پس رفتار روی هر محیطی یکسان است.
+            'users.type_id is nullable' => ['users', 'type_id', true],
 
             // این یکی عمداً nullable شد: حسابِ داخلی (ادمینِ پنل، کیف‌پولِ پلتفرم)
             // واقعاً کد ملی ندارد، و چون ایندکس UNIQUE دارد، `''` باعث

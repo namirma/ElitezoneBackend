@@ -31,7 +31,7 @@ return [
     // data: null برمی‌گردد (حالتِ عادی است، نه خطا).
     'supplier_profile_received' => 'اطلاعات تأمین‌کننده دریافت شد.',
 
-    // Employer SMS invite (expert/advisor only)
+    // Employer SMS invite (elite yar only)
     'invite_sent_successfully' => 'دعوت‌نامه با موفقیت ارسال شد.',
     'invite_cap_reached' => 'حداکثر تعداد دعوت‌های مجاز شما به پایان رسیده است.',
     'invite_already_sent' => 'قبلاً به این شماره موبایل دعوت‌نامه ارسال شده است.',
@@ -53,7 +53,7 @@ return [
 
     // Roles (StoreUserTypeRequest)
     'roles_required' => 'انتخاب حداقل یک نقش الزامی است.',
-    'roles_invalid' => 'نقش نامعتبر است. نقش‌های مجاز: employer, supplier, expert.',
+    'roles_invalid' => 'نقش نامعتبر است. نقش‌های مجاز: employer, supplier, elite_yar.',
     'roles_array' => 'فیلد roles باید آرایه باشد.',
     'roles_supplier_conflict' => 'نقش سوپلایر نمی‌تواند همزمان با کارفرما یا الیت یار انتخاب شود.',
 

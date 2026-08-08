@@ -106,13 +106,13 @@ class UserResource extends BaseJsonResource
      *
      * منطق:
      *   - پروفایل مهندس/پیمانکار لود شده و موجود است → مقدار واقعی is_verified
-     *   - کاربر «الیت یار» است (type.slug = expert) ولی هنوز پروفایل تأییدشده‌ای
+     *   - کاربر «الیت یار» است (type.slug = elite_yar) ولی هنوز پروفایل تأییدشده‌ای
      *     ندارد (نقش را انتخاب کرده ولی مدرکی آپلود/تأیید نکرده) → false
      *     (تا فرانت بَج «تأیید نشده» + CTA آپلود مدارک را نشان دهد)
      *   - نقش‌های غیرالیت یار (کارفرما/تأمین‌کننده/مشتری) → null (بدون بج)
      *
      * نکته: نقشِ دقیقِ engineer/contractor فقط بعد از آپلود مدارک ست می‌شود؛
-     * پس یک expertِ تازه ممکن است roles خالی و بدون پروفایل باشد — برای همین
+     * پس یک الیت‌یارِ تازه ممکن است roles خالی و بدون پروفایل باشد — برای همین
      * تشخیصِ «الیت یار بودن» با type.slug انجام می‌شود نه صرفاً با وجود پروفایل.
      *
      * کنترلر از پیش engineerProfile / contractorProfile / type را لود کرده، N+1 نیست.
@@ -139,14 +139,14 @@ class UserResource extends BaseJsonResource
     }
 
     /**
-     * آیا نوع کاربر «الیت یار» (expert) است؟ — از روی type.slug.
+     * آیا نوع کاربر «الیت یار» (elite_yar) است؟ — از روی type.slug.
      * فقط وقتی relationِ type لود شده باشد قابل تشخیص است؛ در غیر این صورت false
      * (مثلاً در Resourceهایی که type را لود نمی‌کنند، بج نمایش داده نمی‌شود).
      */
     private function isExpertType(): bool
     {
         if ($this->relationLoaded(User::RELATION_TYPE) && $this->{User::RELATION_TYPE}) {
-            return strtolower((string) $this->{User::RELATION_TYPE}->{UserType::SLUG}) === 'expert';
+            return strtolower((string) $this->{User::RELATION_TYPE}->{UserType::SLUG}) === 'elite_yar';
         }
 
         return false;

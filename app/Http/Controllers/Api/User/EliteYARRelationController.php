@@ -73,13 +73,13 @@ class EliteYARRelationController extends Controller
             );
         }
 
-        // بررسی نوع کاربر — باید نقش فنی (engineer/contractor/expert) داشته باشد
+        // بررسی نوع کاربر — باید نقش فنی (engineer/contractor/elite_yar) داشته باشد
         $eliteYARTypeId = $eliteYAR->{User::TYPE_ID};
-        $expertTypes = UserType::whereIn(UserType::SLUG, ['engineer', 'contractor', 'expert'])
+        $eliteYarTypes = UserType::whereIn(UserType::SLUG, ['engineer', 'contractor', 'elite_yar'])
             ->pluck(UserType::ID);
 
-        if (! $expertTypes->contains($eliteYARTypeId)) {
-            return error(__('auth.elite_yar_is_not_expert'), [], 422);
+        if (! $eliteYarTypes->contains($eliteYARTypeId)) {
+            return error(__('auth.elite_yar_is_not_technical'), [], 422);
         }
 
         if ($employer->id === $eliteYAR->id) {

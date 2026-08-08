@@ -23,11 +23,11 @@ class EduixIdentityGuardTest extends TestCase
 {
     use DatabaseTransactions;
 
-    private function expert(?string $nationalCode): User
+    private function eliteYar(?string $nationalCode): User
     {
         // user_types.icon پیش‌فرض DB ندارد — همان مقدارِ UserTypeSeeder.
         $type = UserType::firstOrCreate(
-            ['slug' => 'expert'],
+            ['slug' => 'elite_yar'],
             ['name' => 'الیت یار', 'icon' => 'star'],
         );
 
@@ -46,7 +46,7 @@ class EduixIdentityGuardTest extends TestCase
         // اسکرپر نباید اصلاً صدا زده شود — گارد باید قبل از آن ببندد.
         $this->mock(EduixScraperService::class)->shouldNotReceive('fetchData');
 
-        Sanctum::actingAs($this->expert(null));
+        Sanctum::actingAs($this->eliteYar(null));
 
         $this->postJson('/api/profile/education/fetch', [
             'national_code' => '1234567890',
@@ -59,7 +59,7 @@ class EduixIdentityGuardTest extends TestCase
     {
         $this->mock(EduixScraperService::class)->shouldNotReceive('fetchData');
 
-        Sanctum::actingAs($this->expert('1111111111'));
+        Sanctum::actingAs($this->eliteYar('1111111111'));
 
         $this->postJson('/api/profile/education/fetch', [
             'national_code' => '2222222222',
@@ -70,7 +70,7 @@ class EduixIdentityGuardTest extends TestCase
     #[Test]
     public function national_code_must_be_ten_digits(): void
     {
-        Sanctum::actingAs($this->expert('1111111111'));
+        Sanctum::actingAs($this->eliteYar('1111111111'));
 
         $this->postJson('/api/profile/education/fetch', [
             'national_code' => '111',
@@ -81,7 +81,7 @@ class EduixIdentityGuardTest extends TestCase
     #[Test]
     public function trace_code_rejects_query_injection_characters(): void
     {
-        Sanctum::actingAs($this->expert('1111111111'));
+        Sanctum::actingAs($this->eliteYar('1111111111'));
 
         $this->postJson('/api/profile/education/fetch', [
             'national_code' => '1111111111',
@@ -111,7 +111,7 @@ class EduixIdentityGuardTest extends TestCase
                 'gpa' => '17.5',
             ]);
 
-        Sanctum::actingAs($this->expert('1111111111'));
+        Sanctum::actingAs($this->eliteYar('1111111111'));
 
         $this->postJson('/api/profile/education/fetch', [
             'national_code' => '1111111111',

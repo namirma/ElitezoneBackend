@@ -37,21 +37,21 @@ final class SetUserTypeAction
 
             // 2. Resolve UserType
             $userTypes = UserType::query()
-                ->whereIn(UserType::SLUG, ['expert', 'employer', 'supplier'])
+                ->whereIn(UserType::SLUG, ['elite_yar', 'employer', 'supplier'])
                 ->pluck(UserType::ID, UserType::SLUG);
 
-            $expertTypeId = $userTypes->get('expert');
+            $eliteYarTypeId = $userTypes->get('elite_yar');
             $employerTypeId = $userTypes->get('employer');
             $supplierTypeId = $userTypes->get('supplier');
 
-            if (! $expertTypeId || ! $employerTypeId || ! $supplierTypeId) {
+            if (! $eliteYarTypeId || ! $employerTypeId || ! $supplierTypeId) {
                 Log::error('Missing required UserType slugs in database. Check UserTypeSeeder.');
 
                 return error(__('profile.usertype_missing'), [], 500);
             }
 
             $targetTypeId = match (true) {
-                $newDisplayRoles->contains('expert') => $expertTypeId,
+                $newDisplayRoles->contains('elite_yar') => $eliteYarTypeId,
                 $newDisplayRoles->contains('employer') => $employerTypeId,
                 $newDisplayRoles->contains('supplier') => $supplierTypeId,
                 default => null,

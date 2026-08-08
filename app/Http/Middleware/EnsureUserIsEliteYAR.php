@@ -6,7 +6,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-class EnsureUserIsExpert
+class EnsureUserIsEliteYAR
 {
     public function handle(Request $request, Closure $next): Response
     {
@@ -16,7 +16,7 @@ class EnsureUserIsExpert
             return error(__('auth.unauthenticated'), [], 401);
         }
         $user->loadMissing('type');
-        $isExpertType = $user->type && $user->type->slug === 'expert';
+        $isExpertType = $user->type && $user->type->slug === 'elite_yar';
         $hasExpertRole = $user->hasRole(['engineer', 'contractor']);
 
         if ($isExpertType || $hasExpertRole) {

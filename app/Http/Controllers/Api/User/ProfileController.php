@@ -50,12 +50,12 @@ class ProfileController extends Controller
 
         // «الیت یار» دو حالت دارد:
         //   ۱) نقشِ دقیقِ engineer/contractor دارد (بعد از آپلود مدارک تعیین می‌شود)
-        //   ۲) فقط type.slug = expert دارد (نقش را انتخاب کرده ولی هنوز مدرکی آپلود نکرده)
+        //   ۲) فقط type.slug = elite_yar دارد (نقش را انتخاب کرده ولی هنوز مدرکی آپلود نکرده)
         // در هر دو حالت کاربر «الیت یار» است و باید وضعیت تأیید (is_verified) ارزیابی شود.
         $typeSlug = strtolower((string) optional($user->{User::RELATION_TYPE})->{UserType::SLUG});
         $isExpert = $roleNames->contains('engineer')
             || $roleNames->contains('contractor')
-            || $typeSlug === 'expert';
+            || $typeSlug === 'elite_yar';
 
         if ($roleNames->contains('employer')) {
             $relationsToLoad[] = User::RELATION_EMPLOYER;
@@ -102,14 +102,14 @@ class ProfileController extends Controller
                 'backend_roles' => ['employer'],
             ],
             [
-                'key' => 'expert',
-                'name' => __('auth.expert'),
-                'backend_roles' => ['expert'],
+                'key' => 'elite_yar',
+                'name' => __('auth.elite_yar'),
+                'backend_roles' => ['elite_yar'],
             ],
             [
-                'key' => 'expert_and_employer',
-                'name' => __('auth.expert_and_employer'),
-                'backend_roles' => ['expert', 'employer'],
+                'key' => 'elite_yar_and_employer',
+                'name' => __('auth.elite_yar_and_employer'),
+                'backend_roles' => ['elite_yar', 'employer'],
             ],
             [
                 'key' => 'supplier',
