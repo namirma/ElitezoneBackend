@@ -24,7 +24,6 @@
         "symfony/css-selector": "^7.2",
         "symfony/dom-crawler": "^7.2",
         "symfony/http-client": "^7.2",
-        "symfony/uid": "^6.4",
         "visus/cuid2": "^4.1"
     },
     "require-dev": {
