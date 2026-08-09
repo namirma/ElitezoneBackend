@@ -17,7 +17,13 @@ use Tests\TestCase;
  * `php artisan db:seed` را می‌خواباند — یعنی یک clone تازه یا یک سرور جدید
  * اصلاً به مرحلهٔ دادهٔ اولیه نمی‌رسد. دو تله‌ای که این تست پین می‌کند هر دو
  * واقعاً رخ داده بودند و هیچ‌کدام روی ماشینِ توسعه دیده نمی‌شدند، چون اسکیمای
- * آن دیتابیس با مایگریشن‌ها واگرا شده بود (`users.type_id` آنجا nullable بود).
+ * آن دیتابیس با مایگریشن‌ها واگرا شده بود.
+ *
+ * از مهاجرتِ 2026_08_08_100100 به بعد `users.type_id` عمداً nullable است و NULL
+ * معنیِ «هیچ نقشِ محصولی ندارد» را می‌دهد — که برای یک حسابِ سیستمی دقیقاً درست
+ * است. پس تلهٔ اول شکلش عوض شده، نه اینکه حل شده باشد: قبلاً سیدر به‌خاطر NOT
+ * NULL می‌افتاد، حالا باید مطمئن شویم NULL را عمداً می‌نویسد و نه اینکه یک
+ * UserTypeِ ساختگی («مشتری») را دوباره زنده کند.
  */
 class PlatformWalletSeederTest extends TestCase
 {
@@ -34,8 +40,9 @@ class PlatformWalletSeederTest extends TestCase
     #[Test]
     public function it_creates_both_platform_accounts_when_the_vat_wallet_is_separate(): void
     {
-        // تلهٔ اول: `users.type_id` در مایگریشن NOT NULL و بدون default است. ساختنِ
-        // دستیِ کاربر بدون آن با «Field 'type_id' doesn't have a default value» می‌افتاد.
+        // تلهٔ اول: حسابِ پلتفرم یک کاربرِ سیستمی است، نه یکی از چهار نقشِ محصول.
+        // `type_id` باید NULL بماند — اگر روزی دوباره یک UserTypeِ ساختگی اینجا
+        // نشانده شود، آن حساب در هر کوئریِ نقش‌محور به‌عنوان کاربرِ واقعی ظاهر می‌شود.
         //
         // تلهٔ دوم: روی `user_profiles.national_code` ایندکس UNIQUE هست و رشتهٔ خالی
         // یک مقدارِ واقعی است — پس حساب دوم با `Duplicate entry ''` می‌افتاد.
@@ -51,7 +58,10 @@ class PlatformWalletSeederTest extends TestCase
                 Wallet::where(Wallet::USER_ID, $id)->first(),
                 "کیف پول حساب #{$id} ساخته نشد."
             );
-            $this->assertNotNull(User::find($id)->type_id, "type_id حساب #{$id} خالی است.");
+            $this->assertNull(
+                User::find($id)->type_id,
+                "حساب پلتفرم #{$id} نباید UserType داشته باشد — حسابِ سیستمی است، نه یکی از چهار نقشِ محصول."
+            );
         }
     }
 

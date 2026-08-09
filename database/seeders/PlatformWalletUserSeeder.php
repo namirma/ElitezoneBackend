@@ -62,14 +62,12 @@ class PlatformWalletUserSeeder extends Seeder
         $user->mobile = $mobile;
         $user->password = Hash::make(Str::random(48));
         $user->is_active = true;
-        // `users.type_id` در مایگریشن NOT NULL و بدون default است، پس ساختنِ دستیِ
-        // کاربر بدون آن با «Field 'type_id' doesn't have a default value» می‌افتد —
-        // و چون این سیدر اولین موردِ DatabaseSeeder است، کلِ seed را می‌خواباند.
-        // همان الگوی UserFactory دنبال می‌شود تا داده‌ی یکسانی تولید شود.
-        $user->type_id = UserType::firstOrCreate(
-            ['slug' => 'customer'],
-            ['name' => 'customer', 'icon' => 'user']
-        )->id;
+        // کیف‌پولِ پلتفرم یک حسابِ سیستمی است و هیچ نقشِ محصولی ندارد. `type_id`
+        // از مهاجرتِ 2026_08_08_100100 به بعد nullable است، پس NULL همان چیزی را
+        // می‌گوید که واقعیت دارد. قبلاً اینجا یک UserTypeِ ساختگی («مشتری») ساخته
+        // می‌شد چون ستون NOT NULL بود و این سیدر — که اولین موردِ DatabaseSeeder
+        // است — وگرنه کلِ seed را می‌خواباند.
+        $user->type_id = null;
         $user->save();
 
         UserProfile::firstOrCreate(

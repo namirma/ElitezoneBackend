@@ -46,9 +46,9 @@ class EliteYARTimelineTestSeeder extends Seeder
 
         // ─── 1. کاربر الیت یار ──────────────────────────────────────────
         $this->command->info('▸ کاربر الیت یار...');
-        $expertType = UserType::firstOrCreate(
-            ['slug' => 'expert'],
-            ['slug' => 'expert', 'name' => 'الیت یار', 'icon' => 'star']
+        $eliteYarType = UserType::firstOrCreate(
+            ['slug' => 'elite_yar'],
+            ['slug' => 'elite_yar', 'name' => 'الیت یار', 'icon' => 'star']
         );
 
         $eliteYAR = User::firstOrCreate(
@@ -58,7 +58,7 @@ class EliteYARTimelineTestSeeder extends Seeder
                 User::NATIONAL_CODE => self::ELITE_YAR_NC,
                 User::BIRTH_DATE => '13700101',
                 User::PASSWORD => Hash::make(self::PASSWORD),
-                User::TYPE_ID => $expertType->id,
+                User::TYPE_ID => $eliteYarType->id,
             ]
         );
 

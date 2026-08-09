@@ -77,7 +77,7 @@ class AgreementAcceptanceTest extends TestCase
         $codes = ['CHK-01', 'CHK-02', 'CHK-03', 'CHK-04', 'CHK-05', 'CHK-06', 'CHK-07', 'CHK-08'];
 
         $this->postJson('/api/profile/type', [
-            'roles' => ['expert'],
+            'roles' => ['elite_yar'],
             'terms_accepted' => true,
             'accepted_checkboxes' => $codes,
         ])->assertOk();

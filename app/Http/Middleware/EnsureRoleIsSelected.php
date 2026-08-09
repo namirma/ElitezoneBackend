@@ -19,7 +19,7 @@ use Symfony\Component\HttpFoundation\Response;
  *
  * حالا «انتخابِ نقش» درست تعریف شده: کاربر وقتی نقش دارد که یکی از نقش‌های
  * واقعیِ Laratrust را داشته باشد، یا `type_id`ش یکی از سه نوعِ آنبردینگ
- * (expert / employer / supplier) باشد — دقیقاً همان چیزی که
+ * (elite_yar / employer / supplier) باشد — دقیقاً همان چیزی که
  * `SetUserTypeAction` می‌نویسد. `customer` صرفاً یک placeholder ثبت‌نام است و
  * «انتخابِ نقش» به حساب نمی‌آید.
  *
@@ -30,7 +30,7 @@ use Symfony\Component\HttpFoundation\Response;
 class EnsureRoleIsSelected
 {
     /** UserType slugs that count as a completed role selection. */
-    private const ONBOARDING_TYPE_SLUGS = ['expert', 'employer', 'supplier'];
+    private const ONBOARDING_TYPE_SLUGS = ['elite_yar', 'employer', 'supplier'];
 
     /** Laratrust roles that count as a completed role selection. */
     private const ONBOARDING_ROLES = ['engineer', 'contractor', 'employer', 'supplier'];

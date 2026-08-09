@@ -9,8 +9,8 @@ use App\Http\Middleware\EncryptCookies;
 use App\Http\Middleware\EnsureRoleIsSelected;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\EnsureUserIsAdmin;
+use App\Http\Middleware\EnsureUserIsEliteYAR;
 use App\Http\Middleware\EnsureUserIsEmployer;
-use App\Http\Middleware\EnsureUserIsExpert;
 use App\Http\Middleware\EnsureUserIsSupplier;
 use App\Http\Middleware\Idempotency;
 use App\Http\Middleware\OptionalSanctum;
@@ -118,7 +118,7 @@ class Kernel extends HttpKernel
         'SecurityHeaders' => SecurityHeaders::class,
         'attach.price.category' => AttachActivePriceCategory::class,
         'role.admin' => EnsureUserIsAdmin::class,
-        'role.expert' => EnsureUserIsExpert::class,
+        'role.elite_yar' => EnsureUserIsEliteYAR::class,
         'role.employer' => EnsureUserIsEmployer::class,
         'role.supplier' => EnsureUserIsSupplier::class,
         'admin.permission' => \App\Http\Middleware\EnsureAdminHasPermission::class,

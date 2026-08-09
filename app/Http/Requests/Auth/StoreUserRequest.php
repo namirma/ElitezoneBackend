@@ -29,7 +29,7 @@ class StoreUserRequest extends FormRequest
             'code' => ['sometimes', 'digits:6'],
             'forget_password' => ['nullable', 'boolean'],
             'roles' => ['nullable', 'array'],
-            'roles.*' => ['in:employer,supplier,expert'],
+            'roles.*' => ['in:employer,supplier,elite_yar'],
         ];
     }
 

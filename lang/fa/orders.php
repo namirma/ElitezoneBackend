@@ -147,7 +147,7 @@ return [
         'unknown' => 'نامشخص',
     ],
 
-    // ستون‌های `expert_/engineer_/contractor_fee_payment_status` — سهم کمیسیون
+    // ستون‌های `expert_/engineer_/contractor_fee_payment_status` (نام ستون، تغییر نکرده) — سهم کمیسیون
     'fee_payment_status' => [
         Order::FEE_PAYMENT_PENDING => 'در انتظار پرداخت سهم',
         Order::FEE_PAYMENT_PAID => 'سهم پرداخت شده',

@@ -15,7 +15,7 @@ class StoreUserTypeRequest extends FormRequest
     {
         return [
             'roles' => 'required|array|min:1',
-            'roles.*' => 'in:employer,supplier,expert',
+            'roles.*' => 'in:employer,supplier,elite_yar',
             'employer_has_elite_yar' => 'nullable|boolean',
             'type_id' => 'nullable|integer|exists:user_types,id',
             // پذیرش توافق‌نامه‌ها — یا terms_accepted=true (پذیرش یکجا) یا
@@ -67,7 +67,7 @@ class StoreUserTypeRequest extends FormRequest
 
             if (
                 in_array('supplier', $roles, true) &&
-                count(array_intersect($roles, ['employer', 'expert'])) > 0
+                count(array_intersect($roles, ['employer', 'elite_yar'])) > 0
             ) {
                 $v->errors()->add('roles', __('profile.roles_supplier_conflict'));
             }

@@ -196,7 +196,7 @@ class BadgeSyncTest extends TestCase
         $this->fakeSaze90('gold');
         Badge::firstOrCreate(['code' => 'gold'], ['name' => 'طلایی']);
 
-        $type = UserType::firstOrCreate(['slug' => 'expert'], ['name' => 'expert', 'icon' => 'u']);
+        $type = UserType::firstOrCreate(['slug' => 'elite_yar'], ['name' => 'elite_yar', 'icon' => 'u']);
         $user = User::factory()->create(['type_id' => $type->id]);
         EngineerProfile::create([
             EngineerProfile::USER_ID => $user->id,

@@ -15,7 +15,7 @@ use Symfony\Component\HttpFoundation\Response;
  *   می‌شوند و $request->user() را پر می‌کنند — نه guard وب را.
  *   نتیجه: `role:admin` همیشه 403 برمی‌گرداند حتی برای کاربران ادمین واقعی.
  *
- * راه‌حل: مانند EnsureUserIsExpert از $request->user() استفاده می‌کنیم
+ * راه‌حل: مانند EnsureUserIsEliteYAR از $request->user() استفاده می‌کنیم
  * که پس از auth:sanctum همیشه کاربر احراز هویت شده را برمی‌گرداند.
  */
 class EnsureUserIsAdmin

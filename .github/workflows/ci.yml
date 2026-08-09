@@ -5,8 +5,14 @@ on:
     branches:
       - master
       - main
+      # برنچ‌های یکپارچه‌سازیِ جفتِ L10/L13
       - refactor/consultant-to-elite-yar
       - upgrade/laravel-13
+      # کارِ روزمره روی برنچ‌های fix/* انجام می‌شود و از آنجا cherry-pick می‌شود.
+      # بدون این الگو، هر push به آن‌ها هیچ CIای اجرا نمی‌کرد و اولین بازخورد تا
+      # لحظهٔ باز کردنِ PR عقب می‌افتاد — یعنی دقیقاً روی برنچی که بیشترین تغییر
+      # را می‌گیرد، کمترین پوشش را داشتیم.
+      - 'fix/**'
   pull_request:
 
 jobs:
@@ -52,6 +58,19 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
+      # آسیب‌پذیری‌های شناخته‌شدهٔ وابستگی‌ها. تا پیش از این هیچ‌چیز در پروژه
+      # خبر نمی‌داد که یک وابستگی آسیب‌پذیر شده — دو CVE از Guzzle و شش مورد از
+      # league/commonmark فقط تصادفی و حین یک کار نامرتبط پیدا شدند.
+      # مواردی که روی لاراول ۱۰ قابل رفع نیستند در composer.json → config.audit.ignore
+      # با دلیل ثبت شده‌اند، پس این گیت فقط برای چیزهای *تازه* قرمز می‌شود.
+      - name: Security advisories (composer audit)
+        run: composer audit
+
+      # قفل وابستگی‌ها باید با PHPای که واقعاً اجرا می‌شود سازگار باشد.
+      # وقتی config.platform.php تنظیم شود، این مرحله همان گیتِ پروداکشن است.
+      - name: Platform requirements
+        run: composer check-platform-reqs
+
       - name: Prepare environment
         run: |
           cp .env.example .env
@@ -70,6 +89,24 @@ jobs:
 
       - name: PHPStan (static analysis, level 5 + baseline)
         run: ./vendor/bin/phpstan analyse --memory-limit=1G --no-progress
+
+      # phpstan.neon می‌گوید «سطح را به‌مرور می‌توان بالا برد» و baseline قرار است
+      # تدریجاً خالی شود. ولی هیچ‌چیز جلوی بزرگ‌شدنش را نمی‌گرفت: یک خطای جدید را
+      # می‌شد با یک `phpstan analyse --generate-baseline` دفن کرد و CI سبز می‌ماند.
+      # این مرحله آن نیت را به قانون تبدیل می‌کند — سقف فقط با ویرایشِ عمدیِ همین
+      # عدد بالا می‌رود، و پایین‌آوردنش هر وقت خطایی واقعاً رفع شد تشویق می‌شود.
+      - name: PHPStan baseline must not grow
+        run: |
+          CEILING=260
+          COUNT=$(grep -c 'message:' phpstan-baseline.neon)
+          echo "baseline entries: ${COUNT} (ceiling ${CEILING})"
+          if [ "$COUNT" -gt "$CEILING" ]; then
+            echo "::error::phpstan-baseline.neon grew from ${CEILING} to ${COUNT}. Fix the new error instead of baselining it, or raise CEILING in this workflow deliberately."
+            exit 1
+          fi
+          if [ "$COUNT" -lt "$CEILING" ]; then
+            echo "::notice::baseline shrank to ${COUNT} — lower CEILING in .github/workflows/ci.yml to lock the win in."
+          fi
 
       - name: PHPUnit
         env:

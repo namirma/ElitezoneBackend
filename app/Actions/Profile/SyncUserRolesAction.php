@@ -20,7 +20,7 @@ final class SyncUserRolesAction
 {
     /**
      * @param  User  $user  The authenticated user to sync
-     * @param  Collection  $newDisplayRoles  e.g. collect(['employer']) or collect(['expert'])
+     * @param  Collection  $newDisplayRoles  e.g. collect(['employer']) or collect(['elite_yar'])
      */
     public function execute(User $user, Collection $newDisplayRoles): void
     {
@@ -54,15 +54,26 @@ final class SyncUserRolesAction
             $user->supplier()->where(SupplierProfile::USER_ID, $user->id)->delete();
         }
 
-        // --- Expert (engineer / contractor) — only clean-up on removal ---
-        if (! $newDisplayRoles->contains('expert')) {
+        // --- Elite yar ---
+        //
+        // `elite_yar` نقشِ **قصد** است و همین‌جا وصل می‌شود؛ `engineer`/`contractor`
+        // نقشِ **مدرک**‌اند و فقط بعد از تأیید مدارک توسط ادمین وصل می‌شوند
+        // (EngineerController / ContractorController). جدا نگه‌داشتنشان همان چیزی
+        // است که به گاردها اجازه می‌دهد یک سیگنال بخوانند: قبلاً الیت یارِ تازه هیچ
+        // نقشی نداشت و هر گارد مجبور بود `type.slug` را هم چک کند.
+        if ($newDisplayRoles->contains('elite_yar')) {
+            if (! $currentRoles->contains('elite_yar')) {
+                $user->addRole('elite_yar');
+            }
+        } else {
+            $this->dropRole($user, $currentRoles, 'elite_yar');
             $this->dropRole($user, $currentRoles, 'engineer');
             $this->dropRole($user, $currentRoles, 'contractor');
             $user->engineer()->where(EngineerProfile::USER_ID, $user->id)->delete();
             $user->contractor()->where(ContractorProfile::USER_ID, $user->id)->delete();
             // مدارک تحصیلی و سوابق شغلی عمداً حذف نمی‌شوند: حذفشان برگشت‌ناپذیر بود
             // (رکوردهای تأییدشده + فایل‌های پیوست) و فایل‌های روی دیسک را orphan می‌کرد.
-            // با تغییر نقش فقط غیرفعال می‌مانند و با انتخاب دوباره‌ی expert باز می‌گردند.
+            // با تغییر نقش فقط غیرفعال می‌مانند و با انتخاب دوباره‌ی elite_yar باز می‌گردند.
         }
     }
 

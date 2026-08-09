@@ -81,6 +81,13 @@
         "optimize-autoloader": true,
         "preferred-install": "dist",
         "sort-packages": true,
+        "audit": {
+            "ignore": {
+                "PKSA-m5cs-t1y6-qpcs": "Laravel signed-URL path confusion. Fixed in >=12.61.1 only. This branch is pinned to Laravel 10 by supervisor decision (2026-08-08); re-evaluate when the L13 branch ships.",
+                "PKSA-3r5d-mb8f-1qw9": "Laravel CRLF injection in the default email rule. Fixed in >=12.60.0 only. Same Laravel-10 pin as above.",
+                "CVE-2026-48019": "Duplicate of PKSA-3r5d-mb8f-1qw9 under a CVE id. Same Laravel-10 pin as above."
+            }
+        },
         "allow-plugins": {
             "pestphp/pest-plugin": true,
             "php-http/discovery": true
