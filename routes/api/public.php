@@ -93,6 +93,12 @@ Route::controller(\App\Http\Controllers\ContentController::class)->group(functio
     Route::get('/settings/public', 'publicSettings');
 });
 
+// اورلی‌های ترغیب که برای کاربرِ فعلی واجد شرایط‌اند.
+// عمومی است (مهمان هم اورلیِ خوش‌آمد را می‌گیرد)، ولی `auth:sanctum` به‌صورت
+// اختیاری اعمال می‌شود تا اگر توکن آمد، شرط‌های وابسته به کاربر هم ارزیابی شوند.
+Route::get('/promo-overlays', [\App\Http\Controllers\Api\PromoOverlayController::class, 'index'])
+    ->middleware('optional.sanctum');
+
 Route::prefix('customer-types')->group(function () {
     Route::get('/', [CustomerTypeController::class, 'index']);
     Route::get('/badges', [CustomerTypeController::class, 'getBadges']);
