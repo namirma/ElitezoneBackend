@@ -88,6 +88,23 @@ Schedule::command('carts:prune-guests')
     ->withoutOverlapping()
     ->onOneServer();
 
+// ── سبدِ مهلت‌دار (Park) — بند ۳.۱ و ۱۰.۳ سند بازطراحی ───────────────────
+//
+// انقضا هر دقیقه اجرا می‌شود چون مهلتِ سبد دقیق است و کاربر شمارشِ معکوس را
+// روی صفحه می‌بیند؛ با فاصله‌ی بیشتر، سبدی که فرانت «منقضی» نشان می‌دهد هنوز
+// چند دقیقه در دیتابیس زنده می‌ماند.
+Schedule::command('carts:expire-parked')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->onOneServer();
+
+// هشدار هر ۵ دقیقه کافی است — پنجره‌اش ۳۰ دقیقه است و `park_warned_at` جلوی
+// ارسالِ دوباره را می‌گیرد.
+Schedule::command('carts:warn-expiring')
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->onOneServer();
+
 // اسکالیشن خودکار تیکت‌های عبورکرده از SLA (یک‌بار به ازای هر تیکت)
 Schedule::job(new EscalateOverdueTicketsJob)
     ->hourly()

@@ -13,6 +13,7 @@ use App\Models\OrderUnit;
 use App\Models\PriceFilterCategory;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Services\Cart\CartParkService;
 use App\Services\InventoryService;
 use App\Services\PriceCalculationService;
 use App\Services\PricingRoleResolver;
@@ -25,7 +26,8 @@ class AddToCartAction
     public function __construct(
         protected PriceCalculationService $priceService,
         protected PricingRoleResolver $roleResolver,
-        protected InventoryService $inventoryService
+        protected InventoryService $inventoryService,
+        protected CartParkService $parkService,
     ) {}
 
     public function execute(Cart $cart, array $data): Cart
@@ -47,6 +49,12 @@ class AddToCartAction
                 CartItem::FACTORY_LOCATION_ID => $data['location_id'],
                 CartItem::SHIPPING_METHOD_ID => $data['shipping_method_id'],
             ];
+
+            // قفلِ تک‌تأمین‌کننده پیش از هر کارِ دیگری — بند ۳.۱. زیر همان
+            // `lockForUpdate` بالا، پس دو افزودنِ همزمان از دو تأمین‌کننده
+            // نمی‌توانند هر دو از این گارد رد شوند.
+            $supplierUserId = Factory::whereKey($data['factory_id'])->value('supplier_user_id');
+            $this->parkService->assertSupplierAllowed($cart, $supplierUserId ? (int) $supplierUserId : null);
 
             // اگر سبد خرید قفل شده باشد، دیگر نیازی به قفل کردن این کوئری نیست
             // اما برای سازگاری آن را رها می‌کنیم. از آنجا که تراکنش‌های همزمان روی همین سبد
@@ -97,6 +105,11 @@ class AddToCartAction
 
             $freshCart = $cart->fresh(['items.productVariant.product']);
             $this->checkProductLineAggregateLimits($freshCart, $variant->product, $orderUnitsMap);
+
+            // مهلتِ سبد و قفلِ تأمین‌کننده — **پس از** همه‌ی گاردها، تا افزودنی
+            // که رد می‌شود مهلت را شروع نکند و تأمین‌کننده را قفل نکند.
+            $this->parkService->lockSupplier($cart, $supplierUserId ? (int) $supplierUserId : null);
+            $this->parkService->parkIfNeeded($cart);
 
             if (isset($data['filter_categories'])) {
                 $cart->priceFilterCategories()->sync($data['filter_categories']);

@@ -9,9 +9,11 @@ use App\Actions\Cart\SyncCartFiltersAction;
 use App\Actions\Cart\UpdateCartItemAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Cart\AddToCartRequest;
+use App\Http\Requests\Cart\StoreCartCouponRequest;
 use App\Http\Requests\Cart\UpdateCartFiltersRequest;
 use App\Http\Requests\Cart\UpdateCartItemRequest;
 use App\Http\Requests\Cart\UpdateCustomerTypeRequest;
+use App\Models\Cart;
 use App\Models\CartItem;
 use App\Services\Cart\CartResolver;
 use App\Services\Cart\CartResponseBuilder;
@@ -99,6 +101,25 @@ class CartController extends Controller
     {
         $cart = $this->resolver->resolve($request);
         $cart->update(['customer_type_id' => $request->validated('customer_type_id')]);
+
+        return $this->responder->build($cart);
+    }
+
+    /**
+     * POST — ذخیره‌ی کدِ کوپن روی سبد (بند ۷.۱).
+     *
+     * فقط **کد** ذخیره می‌شود، نه مبلغ. تبدیل به مبلغ در لحظه‌ی رزرو یا
+     * پرداخت انجام می‌شود (بند ۳.۱۳) — و پس از باسکول با وزن واقعی بازمحاسبه
+     * می‌گردد. ذخیره‌ی مبلغ در این مرحله یعنی عددی که تا پرداخت کهنه می‌شود.
+     *
+     * ارسال `null` کوپن را برمی‌دارد.
+     */
+    public function storeCoupon(StoreCartCouponRequest $request): JsonResponse
+    {
+        $cart = $this->resolver->resolve($request);
+
+        $code = $request->validated('coupon_code');
+        $cart->update([Cart::COUPON_CODE => $code !== null && $code !== '' ? $code : null]);
 
         return $this->responder->build($cart);
     }
