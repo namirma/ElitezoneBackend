@@ -83,9 +83,13 @@ class CouponSideEffectsTest extends TestCase
             'سفارشی که بیعانه پرداخت کرده باید مرحلهٔ رزرو را داشته باشد.',
         );
 
+        // یکجا پرداخت‌شده یعنی `processing` — نه `pending`. یک سفارشِ `pending`
+        // هنوز پرداخت‌نشده است و عمداً مرحلهٔ رزرو را می‌گیرد، چون دکمهٔ «پرداخت
+        // فاکتور» روی همان مرحله می‌نشیند.
         $paidOutright = $this->orderWorth(finalAmount: 50_000_000, discount: 5_000_000);
+        $paidOutright->forceFill([Order::STATUS => Order::STATUS_PROCESSING])->save();
 
-        $titles = array_column($paidOutright->dashboard_progress['steps'] ?? [], 'title');
+        $titles = array_column($paidOutright->fresh()->dashboard_progress['steps'] ?? [], 'title');
         $this->assertEmpty(
             array_filter($titles, fn ($t) => str_contains($t, 'رزرو')),
             'سفارشی که یکجا پرداخت شده نباید مرحلهٔ رزرو داشته باشد.',

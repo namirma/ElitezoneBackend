@@ -84,17 +84,20 @@ class AdminPermissionCoverageTest extends TestCase
     }
 
     /**
-     * باسکولِ ادمین در بازطراحی حذف شد (بند ۱۶) — وزن حالا با ثبت بارنامه توسط
-     * تأمین‌کننده وارد می‌شود. این تست جای آن تستِ برابریِ مجوز را می‌گیرد و
-     * مطمئن می‌شود هیچ‌کدام از دو روت برنگشته‌اند؛ سوییپِ اصلیِ همین کلاس پوششِ
-     * مجوزِ هر روتِ تازه را جداگانه تضمین می‌کند.
+     * aliasِ بی‌مجوزِ باسکول در ریشهٔ /admin نباید برگردد.
+     *
+     * نسخهٔ استاندارد (`/admin/orders/{order}/weighbridge`) پشتِ manage-orders
+     * زنده است و تا فاز ۷ می‌ماند — تنها ورودیِ باقی‌ماندهٔ باسکول است. ولی alias
+     * حذف شد و هرگز نباید بازگردد: بدون مجوز بود و همان عملیاتِ مالیِ سنگین را
+     * برای هر ادمینی باز می‌گذاشت. سوییپِ اصلیِ همین کلاس پوششِ مجوزِ نسخهٔ
+     * استاندارد را جداگانه تضمین می‌کند.
      */
     #[Test]
-    public function the_admin_weighbridge_routes_are_gone(): void
+    public function the_unguarded_legacy_weighbridge_alias_stays_deleted(): void
     {
         $uris = array_map(fn ($route) => $route->uri(), iterator_to_array(Route::getRoutes()));
 
-        $this->assertNotContains('api/admin/orders/{order}/weighbridge', $uris);
         $this->assertNotContains('api/admin/{order}/weighbridge', $uris);
+        $this->assertContains('api/admin/orders/{order}/weighbridge', $uris);
     }
 }

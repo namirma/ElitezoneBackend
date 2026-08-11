@@ -5,453 +5,433 @@ namespace App\Models\Concerns;
 use App\Models\Order;
 use Illuminate\Support\Facades\Lang;
 
+/**
+ * نوار پیشرفتِ سفارش برای سه مخاطب — خریدار، تأمین‌کننده، الیت یار.
+ *
+ * ⚠️ هر مرحله یک `key`ِ پایدار دارد و **همهٔ شاخه‌زدن‌ها روی همان کلید است، نه
+ * روی عنوانِ فارسی**. پیش از این، منطق با `$blueprint['title'] === 'بارنامه…'`
+ * مقایسه می‌شد؛ یعنی اصلاحِ یک نیم‌فاصله در برچسب، بی‌صدا دکمه‌های آن مرحله را
+ * خاموش می‌کرد. عنوان‌ها از `lang/fa/orders.php` می‌آیند (قید ۱۴.۷).
+ */
 trait HasOrderProgress
 {
+    /** یک مرحله‌ی نوار پیشرفت، با عنوانِ ترجمه‌شده. */
+    private function progressStep(string $audience, string $key, array $triggers = []): array
+    {
+        return [
+            'key' => $key,
+            'title' => __("orders.progress.{$audience}.{$key}"),
+            'triggers' => $triggers,
+        ];
+    }
+
+    /** برچسبِ وضعیتِ فعلی برای هدرِ کارت. */
+    private function currentStatusLabel(string $status): string
+    {
+        $transKey = "orders.status.{$status}";
+
+        return Lang::has($transKey) ? __($transKey) : __('orders.status.unknown');
+    }
+
     /**
-     * محاسبه مراحل پیشرفت سفارش برای نمایش در فرانت‌اند
+     * حالتِ دایره‌ی هر مرحله: تکمیل‌شده / جاری / خاکستری — یا لغو.
+     *
+     * در حالت لغو فقط دایره‌ی اول قرمز می‌شود و بقیه خاکستری می‌مانند.
+     */
+    private function progressState(int $index, int $currentIndex, bool $isCancelled): string
+    {
+        if ($isCancelled) {
+            return $index === 0 ? 'cancelled' : 'inactive';
+        }
+
+        return match (true) {
+            $index < $currentIndex => 'completed',
+            $index === $currentIndex => 'current',
+            default => 'inactive',
+        };
+    }
+
+    /**
+     * پیشرفته‌ترین مرحله‌ای که ماشه‌اش خورده.
+     *
+     * آخرین تطبیق برنده است، نه اولین — ماشه‌ها ناهم‌پوشان‌اند و با `break` روی
+     * اولین تطبیق، وضعیت‌های عقب‌تر مرحله‌ی جلوتر را می‌بلعیدند (همان باگ بند ۱۱.۴).
+     */
+    private function currentProgressIndex(array $blueprint, string $status): int
+    {
+        $currentIndex = 0;
+
+        foreach ($blueprint as $index => $step) {
+            if (in_array($status, $step['triggers'], true)) {
+                $currentIndex = $index;
+            }
+        }
+
+        return $currentIndex;
+    }
+
+    /**
+     * نوار پیشرفتِ خریدار — بند ۱۱.۱ سند بازطراحی.
      */
     public function getDashboardProgressAttribute(): array
     {
         $status = $this->status;
         $id = $this->id;
-
         $isCancelled = $status === Order::STATUS_CANCELLED;
 
-        // بند ۱۱.۱ سند بازطراحی: شرطِ نمایشِ مرحله‌ی «رزرو» از مقایسه با آستانه به
+        // بند ۱۱.۱: شرطِ نمایشِ مرحله‌ی «رزرو» از مقایسه با آستانه به
         // `payment_to_reserve > 0` تغییر کرد. آستانه‌ی قدیمی یک قاعده‌ی مبلغی بود
         // («سفارشِ بزرگ‌تر از X باید رزرو شود») و در مدل جدید اصلاً وجود ندارد —
-        // رزرو حالا انتخابِ کاربر بر پایه‌ی توانِ پرداختِ خودش است. پس تنها پاسخِ
-        // درست به «آیا این سفارش رزرو شد؟» خودِ بیعانه‌ی پرداخت‌شده است.
-        $wasReserved = (float) $this->payment_to_reserve > 0;
+        // رزرو حالا انتخابِ کاربر بر پایه‌ی توانِ پرداختِ خودش است.
+        // ...یا هنوز اصلاً پرداخت نشده. یک سفارشِ `pending` طبق تعریف بیعانه‌ای
+        // نپرداخته، پس با شرطِ تنهای `payment_to_reserve > 0` این مرحله را
+        // نمی‌گرفت — و چون دکمه‌ی «پرداخت فاکتور» فقط روی همین مرحله می‌نشیند،
+        // تنها راهِ پرداخت از تایم‌لاین ناپدید می‌شد. (فاز ۴ خودِ `pending` را
+        // حذف می‌کند و آن‌وقت این نیم‌شرط هم برداشته می‌شود.)
+        $wasReserved = (float) $this->payment_to_reserve > 0
+            || $this->status === Order::STATUS_PENDING;
 
-        // ترجمه وضعیت فعلی برای نمایش در هدر کارت
-        $transKey = "orders.status.{$status}";
-        $currentStatusLabel = Lang::has($transKey) ? __($transKey) : __('orders.status.unknown');
-
-        // ---------------------------------------------------------
-        // ۱. ساختار اولیه مراحل
-        // ---------------------------------------------------------
         $stepsBlueprint = [];
 
         if ($wasReserved) {
-            $stepsBlueprint[] = [
-                'title' => 'سفارش رزرو شد',
-                'triggers' => [Order::STATUS_PENDING, Order::STATUS_RESERVED],
-            ];
+            $stepsBlueprint[] = $this->progressStep('buyer', 'reserved', [
+                Order::STATUS_PENDING, Order::STATUS_RESERVED,
+            ]);
         }
 
-        $stepsBlueprint[] = [
-            'title' => 'سفارش ثبت شد',
-            'triggers' => [Order::STATUS_PROCESSING, Order::STATUS_AWAITING_WEIGHT_CORRECTION],
-        ];
+        $stepsBlueprint[] = $this->progressStep('buyer', 'placed', [
+            Order::STATUS_PROCESSING, Order::STATUS_AWAITING_WEIGHT_CORRECTION,
+        ]);
 
-        $stepsBlueprint[] = [
-            'title' => 'بارنامه صادر و وزن تأیید شد',
-            'triggers' => [Order::STATUS_SHIPPED, Order::STATUS_RETURNED_TO_ORIGIN],
-        ];
+        $stepsBlueprint[] = $this->progressStep('buyer', 'shipped', [
+            Order::STATUS_SHIPPED, Order::STATUS_RETURNED_TO_ORIGIN,
+        ]);
 
-        $stepsBlueprint[] = [
-            'title' => 'تحویل شد',
-            'triggers' => [Order::STATUS_PARTIALLY_DELIVERED, Order::STATUS_DELIVERED],
-        ];
+        $stepsBlueprint[] = $this->progressStep('buyer', 'delivered', [
+            Order::STATUS_PARTIALLY_DELIVERED, Order::STATUS_DELIVERED,
+        ]);
 
-        $stepsBlueprint[] = [
-            'title' => 'فاکتور سامانه مودیان صادر شد',
-            'triggers' => [],
-        ];
+        // ماشه‌ی این مرحله یک ستون است نه یک وضعیت — سفارش پس از صدور فاکتور
+        // مودیان همچنان `delivered` می‌ماند.
+        $stepsBlueprint[] = $this->progressStep('buyer', 'moadian');
 
-        // ---------------------------------------------------------
-        // ۲. پیدا کردن مرحله فعلی (Current Node)
-        // ---------------------------------------------------------
+        $moadianIssued = $this->{Order::SYSTEM_MOADIAN_REF} !== null;
+
         $currentIndex = 0;
         if (! $isCancelled) {
-            foreach ($stepsBlueprint as $index => $blueprint) {
-                if (in_array($status, $blueprint['triggers'], true)) {
-                    $currentIndex = $index;
-                }
-            }
-            // ماشه‌ی مرحله‌ی آخر یک ستون است، نه یک وضعیت — سفارش پس از صدور
-            // فاکتور مودیان همچنان `delivered` می‌ماند.
-            if ($this->{Order::SYSTEM_MOADIAN_REF} !== null) {
+            $currentIndex = $this->currentProgressIndex($stepsBlueprint, $status);
+
+            if ($moadianIssued) {
                 $currentIndex = count($stepsBlueprint) - 1;
             }
         }
 
-        // ---------------------------------------------------------
-        // ۳. تخصیص وضعیت‌ها و لینک‌ها (دقیقاً طبق فیگما)
-        // ---------------------------------------------------------
         $steps = [];
-        $stepCounter = 1;
 
         foreach ($stepsBlueprint as $index => $blueprint) {
-
-            // تعیین رنگ دایره
-            if ($isCancelled) {
-                // اگر لغو شده، فقط دایره اول قرمز میشه بقیه خاکستری
-                $state = ($index === 0) ? 'cancelled' : 'inactive';
-            } else {
-                if ($index < $currentIndex) {
-                    $state = 'completed'; // قبلی‌ها (تیک سبز)
-                } elseif ($index === $currentIndex) {
-                    $state = 'current';   // فعلی (آبی)
-                } else {
-                    $state = 'inactive';  // بعدی‌ها (خاکستری)
-                }
-            }
-
-            // تعیین لینک‌های زیر دایره
+            $state = $this->progressState($index, $currentIndex, $isCancelled);
             $actions = [];
 
-            // لینک‌ها فقط زمانی نشان داده می‌شوند که دایره خاکستری (inactive) نباشد
+            // لینک‌ها فقط روی دایره‌ای که خاکستری نیست
             if ($state !== 'inactive') {
-
-                if ($blueprint['title'] === 'سفارش رزرو شد') {
-                    // پیش‌فاکتور (initial = DOC_PRE_INVOICE) همیشه قابل دانلود است
-                    $actions[] = [
-                        'label' => 'دریافت رسید',
-                        'link' => "/api/profile/orders/{$id}/invoice/initial",
-                        'type' => 'secondary',
-                        'downloadable' => true,
-                    ];
-                    if ($state === 'current') {
-                        $actions[] = ['label' => 'پرداخت فاکتور', 'link' => "/checkout/payment/{$id}", 'type' => 'primary'];
-                    }
-                    if ($state === 'cancelled') {
-                        $actions[] = ['label' => 'خرید مجدد', 'link' => '/products', 'type' => 'primary'];
-                    }
-                }
-
-                if ($blueprint['title'] === 'سفارش ثبت شد') {
-                    // پیش‌فاکتور (initial = DOC_PRE_INVOICE) — نشان داده می‌شود در هر دو حالت current و completed
-                    $actions[] = [
-                        'label' => 'فاکتور اولیه پرداخت شده',
-                        'link' => "/api/profile/orders/{$id}/invoice/initial",
-                        'type' => 'secondary',
-                        'downloadable' => true,
-                    ];
-                }
-
-                if ($blueprint['title'] === 'بارنامه صادر و وزن تأیید شد') {
-                    // بارنامه / مجوز خروج (K = DOC_BILL_OF_LADING) — فاکتور نهایی پس از وزن‌کشی
-                    $actions[] = [
-                        'label' => 'فاکتور نهایی',
-                        'link' => "/api/profile/orders/{$id}/invoice/bill_of_lading",
-                        'type' => 'secondary',
-                        'downloadable' => true,
-                    ];
-                    // اطلاعات راننده و خودرو روی صفحه‌ی جزئیات سفارش نمایش داده
-                    // می‌شود (per-shipment). لینکِ navigate است، نه دانلود.
-                    $actions[] = ['label' => 'بارنامه و راننده', 'link' => "/profile/orders/{$id}", 'type' => 'secondary'];
-                }
-
-                if ($blueprint['title'] === 'تحویل شد' && $state === 'current') {
-                    $actions[] = [
-                        'label' => 'تأیید تحویل',
-                        'link' => "/profile/orders/{$id}",
-                        'type' => 'primary',
-                    ];
-                }
-
-                if ($blueprint['title'] === 'فاکتور سامانه مودیان صادر شد') {
-                    $actions[] = [
-                        'label' => 'دانلود فاکتور مودیان',
-                        'link' => "/api/profile/orders/{$id}/invoice/tax_buyer",
-                        'type' => 'secondary',
-                        'downloadable' => true,
-                    ];
-                }
-            }
-
-            $steps[] = [
-                'step' => $stepCounter++,
-                'title' => $blueprint['title'],
-                'state' => $state,
-                'actions' => $actions,
-            ];
-        }
-
-        // وقتی آخرین ماشه هم خورده، آخرین دایره باید سبز شود نه آبی — وگرنه سفارشِ
-        // کاملاً تمام‌شده برای همیشه «در حال انجام» نشان داده می‌شود.
-        if ($this->{Order::SYSTEM_MOADIAN_REF} !== null) {
-            $steps[count($steps) - 1]['state'] = 'completed';
-        }
-
-        return [
-            'is_cancelled' => $isCancelled,
-            'current_status_label' => $currentStatusLabel,
-            'steps' => $steps,
-        ];
-    }
-
-    /**
-     * محاسبه مراحل پیشرفت سفارش از دیدِ الیت یار (beneficiary)
-     *
-     * چهار مرحله ثابت — وضعیت مرحله بر اساس فیلدهای مدل تعیین می‌شود،
-     * نه فقط ستون status، تا رویدادهایی مانند ثبت فاکتور مودیان نیز
-     * به‌درستی منعکس شوند.
-     */
-    public function getEliteYARProgressAttribute(): array
-    {
-        $status = $this->status;
-        $id = $this->id;
-
-        $isCancelled = $status === Order::STATUS_CANCELLED;
-
-        $transKey = "orders.status.{$status}";
-        $currentStatusLabel = Lang::has($transKey) ? __($transKey) : __('orders.status.unknown');
-
-        // ---------------------------------------------------------
-        // ۱. ساختار چهار مرحله (عناوین ثابت؛ بدون trigger-list)
-        // ---------------------------------------------------------
-        $stepsBlueprint = [
-            ['title' => 'کارفرما خرید کرد'],
-            ['title' => 'کارمزد الیت یار منظور شد'],
-            ['title' => 'فاکتور خدمات ثبت شد'],
-            ['title' => 'کارمزد الیت یار در دسترس است'],
-        ];
-
-        // ---------------------------------------------------------
-        // ۲. تشخیص پیشرفته‌ترین مرحله فعال (از آخر به اول)
-        //    چون ReleaseEliteYARHoldAction هر دو فیلد را اتمیک ست
-        //    می‌کند، مرحله ۳ (elite_yar_moadian_ref) عملاً هرگز
-        //    به‌عنوان «current» نمایش داده نمی‌شود — اما منطقاً
-        //    پوشش داده شده است.
-        // ---------------------------------------------------------
-        $currentIndex = -1;
-
-        if (! $isCancelled) {
-            // مرحله ۴ فقط وقتی Doc Q ثبت و hold واقعاً آزاد شده — نه صرف تحویل کالا.
-            // طبق پروسه خرید (بخش «الگوریتم وابستگی واریزها»):
-            // «تا زمان صدور فاکتور سامانه مودیان توسط الیت یار در کیف پول وی هولد می‌شود».
-            // پس delivered/completed به‌تنهایی hold را آزاد نمی‌کند؛ ReleaseEliteYARHoldAction لازم است.
-            if ($this->{Order::ELITE_YAR_HOLD_RELEASED_AT} !== null) {
-                $currentIndex = 3; // مرحله ۴: کارمزد الیت یار در دسترس
-            } elseif ($this->{Order::ELITE_YAR_MOADIAN_REF} !== null) {
-                $currentIndex = 2; // مرحله ۳: فاکتور خدمات ثبت شد (حالت گذرا — atomically به ۴ می‌رسد)
-            } elseif (in_array($status, [
-                Order::STATUS_SHIPPED,
-                Order::STATUS_PARTIALLY_DELIVERED,
-                Order::STATUS_RETURNED_TO_ORIGIN,
-                Order::STATUS_DELIVERED,  // کالا تحویل شده ولی الیت یار هنوز Doc Q ثبت نکرده
-            ], true)) {
-                $currentIndex = 1; // مرحله ۲: کارمزد الیت یار منظور شد
-            } elseif (in_array($status, [
-                Order::STATUS_PROCESSING,
-                Order::STATUS_AWAITING_WEIGHT_CORRECTION,
-                Order::STATUS_PENDING,   // سفارش ثبت‌شده ولی هنوز پرداخت نشده
-                Order::STATUS_RESERVED,  // رزرو پرداخت‌شده ولی قبل از تکمیل
-            ], true)) {
-                $currentIndex = 0; // مرحله ۱: کارفرما خرید کرد
-            }
-        }
-
-        // ---------------------------------------------------------
-        // ۳. تخصیص وضعیت و دکمه‌های هر مرحله
-        // ---------------------------------------------------------
-        $steps = [];
-        $stepCounter = 1;
-
-        foreach ($stepsBlueprint as $index => $blueprint) {
-
-            // تعیین رنگ دایره
-            if ($isCancelled) {
-                $state = ($index === 0) ? 'cancelled' : 'inactive';
-            } elseif ($currentIndex === -1) {
-                $state = 'inactive'; // هنوز هیچ مرحله‌ای شروع نشده
-            } elseif ($index < $currentIndex) {
-                $state = 'completed';
-            } elseif ($index === $currentIndex) {
-                $state = 'current';
-            } else {
-                $state = 'inactive';
-            }
-
-            // لینک‌ها فقط برای مراحل تکمیل‌شده یا فعلی نشان داده می‌شوند
-            $actions = [];
-
-            if ($state === 'completed' || $state === 'current') {
-                switch ($blueprint['title']) {
-
-                    case 'کارفرما خرید کرد':
+                switch ($blueprint['key']) {
+                    case 'reserved':
                         $actions[] = [
-                            'label' => 'دانلود فاکتور کالای خریداری شده',
+                            'label' => __('orders.actions.get_receipt'),
+                            'link' => "/api/profile/orders/{$id}/invoice/initial",
+                            'type' => 'secondary',
+                            'downloadable' => true,
+                        ];
+                        if ($state === 'current') {
+                            $actions[] = [
+                                'label' => __('orders.actions.pay_invoice'),
+                                'link' => "/checkout/payment/{$id}",
+                                'type' => 'primary',
+                            ];
+                        }
+                        if ($state === 'cancelled') {
+                            $actions[] = [
+                                'label' => __('orders.actions.buy_again'),
+                                'link' => '/products',
+                                'type' => 'primary',
+                            ];
+                        }
+                        break;
+
+                    case 'placed':
+                        $actions[] = [
+                            'label' => __('orders.actions.paid_initial_invoice'),
                             'link' => "/api/profile/orders/{$id}/invoice/initial",
                             'type' => 'secondary',
                             'downloadable' => true,
                         ];
                         break;
 
-                    case 'کارمزد الیت یار منظور شد':
+                    case 'shipped':
                         $actions[] = [
-                            'label' => 'مشاهده کیف پول',
-                            'link' => '/profile/finance',
+                            'label' => __('orders.actions.final_invoice'),
+                            'link' => "/api/profile/orders/{$id}/invoice/bill_of_lading",
                             'type' => 'secondary',
+                            'downloadable' => true,
                         ];
+                        // اطلاعات راننده و خودرو per-shipment روی صفحه‌ی جزئیات است.
                         $actions[] = [
-                            'label' => 'فاکتور خدمات خود را ثبت کنید',
-                            'link' => "/api/profile/orders/{$id}/elite-yar-moadian-invoice",
-                            'type' => 'primary',
-                        ];
-                        break;
-
-                    case 'فاکتور خدمات ثبت شد':
-                        $actions[] = [
-                            'label' => 'فاکتور خدمات خود را ثبت کنید',
-                            'link' => "/api/profile/orders/{$id}/elite-yar-moadian-invoice",
+                            'label' => __('orders.actions.waybill_and_driver'),
+                            'link' => "/profile/orders/{$id}",
                             'type' => 'secondary',
                         ];
                         break;
 
-                        // مرحله ۴ (کارمزد الیت یار در دسترس است): بدون دکمه
+                    case 'delivered':
+                        if ($state === 'current') {
+                            $actions[] = [
+                                'label' => __('orders.actions.confirm_delivery'),
+                                'link' => "/profile/orders/{$id}",
+                                'type' => 'primary',
+                            ];
+                        }
+                        break;
+
+                    case 'moadian':
+                        $actions[] = [
+                            'label' => __('orders.actions.download_moadian_invoice'),
+                            'link' => "/api/profile/orders/{$id}/invoice/tax_buyer",
+                            'type' => 'secondary',
+                            'downloadable' => true,
+                        ];
+                        break;
                 }
             }
 
             $steps[] = [
-                'step' => $stepCounter++,
+                'step' => $index + 1,
                 'title' => $blueprint['title'],
                 'state' => $state,
                 'actions' => $actions,
             ];
         }
 
-        // آخرین مرحله («کارمزد الیت یار در دسترس است») فقط وقتی Doc Q ثبت و hold آزاد شده «completed» می‌شود.
-        // delivered/completed بدون Doc Q → مرحله ۲ current باقی می‌ماند (hold هنوز فعال است).
-        if ($this->{Order::ELITE_YAR_HOLD_RELEASED_AT} !== null) {
+        // وقتی آخرین ماشه هم خورده، آخرین دایره باید سبز شود نه آبی.
+        if ($moadianIssued) {
             $steps[count($steps) - 1]['state'] = 'completed';
         }
 
         return [
             'is_cancelled' => $isCancelled,
-            'current_status_label' => $currentStatusLabel,
+            'current_status_label' => $this->currentStatusLabel($status),
             'steps' => $steps,
         ];
     }
 
     /**
-     * محاسبه مراحل پیشرفت سفارش از دیدِ سوپلایر
+     * نوار پیشرفت از دیدِ الیت یار — بند ۱۱.۳.
      *
-     * ساختار مشابه getDashboardProgressAttribute (خریدار)؛
-     * عناوین و لینک‌های اکشن متفاوت است.
-     * مرحله رزرو فقط در سفارش‌های رزروی (غیر پرداخت کامل) اضافه می‌شود.
+     * ساختارِ چهارمرحله‌ای درست است و می‌ماند؛ وضعیتِ هر مرحله از فیلدهای مدل
+     * تعیین می‌شود نه فقط ستون `status`، تا رویدادهایی مثل ثبت فاکتور مودیان هم
+     * منعکس شوند.
+     */
+    public function getEliteYARProgressAttribute(): array
+    {
+        $status = $this->status;
+        $id = $this->id;
+        $isCancelled = $status === Order::STATUS_CANCELLED;
+
+        $stepsBlueprint = [
+            $this->progressStep('elite_yar', 'purchased'),
+            $this->progressStep('elite_yar', 'commission_booked'),
+            $this->progressStep('elite_yar', 'invoice_submitted'),
+            $this->progressStep('elite_yar', 'commission_available'),
+        ];
+
+        // از آخر به اول: ReleaseEliteYARHoldAction هر دو فیلد را اتمیک ست می‌کند،
+        // پس مرحله‌ی ۳ عملاً هرگز «جاری» دیده نمی‌شود ولی منطقاً پوشش دارد.
+        $holdReleased = $this->{Order::ELITE_YAR_HOLD_RELEASED_AT} !== null;
+        $currentIndex = -1;
+
+        if (! $isCancelled) {
+            if ($holdReleased) {
+                $currentIndex = 3;
+            } elseif ($this->{Order::ELITE_YAR_MOADIAN_REF} !== null) {
+                $currentIndex = 2;
+            } elseif (in_array($status, [
+                Order::STATUS_SHIPPED,
+                Order::STATUS_PARTIALLY_DELIVERED,
+                Order::STATUS_RETURNED_TO_ORIGIN,
+                Order::STATUS_DELIVERED,  // کالا تحویل شده ولی Doc Q هنوز ثبت نشده
+            ], true)) {
+                $currentIndex = 1;
+            } elseif (in_array($status, [
+                Order::STATUS_PROCESSING,
+                Order::STATUS_AWAITING_WEIGHT_CORRECTION,
+                Order::STATUS_PENDING,
+                Order::STATUS_RESERVED,
+            ], true)) {
+                $currentIndex = 0;
+            }
+        }
+
+        $steps = [];
+
+        foreach ($stepsBlueprint as $index => $blueprint) {
+            if ($isCancelled) {
+                $state = $index === 0 ? 'cancelled' : 'inactive';
+            } elseif ($currentIndex === -1) {
+                $state = 'inactive'; // هنوز هیچ مرحله‌ای شروع نشده
+            } else {
+                $state = $this->progressState($index, $currentIndex, false);
+            }
+
+            $actions = [];
+
+            if ($state === 'completed' || $state === 'current') {
+                switch ($blueprint['key']) {
+                    case 'purchased':
+                        $actions[] = [
+                            'label' => __('orders.actions.download_purchased_invoice'),
+                            'link' => "/api/profile/orders/{$id}/invoice/initial",
+                            'type' => 'secondary',
+                            'downloadable' => true,
+                        ];
+                        break;
+
+                    case 'commission_booked':
+                        $actions[] = [
+                            'label' => __('orders.actions.view_wallet'),
+                            'link' => '/profile/finance',
+                            'type' => 'secondary',
+                        ];
+                        $actions[] = [
+                            'label' => __('orders.actions.submit_service_invoice'),
+                            'link' => "/api/profile/orders/{$id}/elite-yar-moadian-invoice",
+                            'type' => 'primary',
+                        ];
+                        break;
+
+                    case 'invoice_submitted':
+                        $actions[] = [
+                            'label' => __('orders.actions.submit_service_invoice'),
+                            'link' => "/api/profile/orders/{$id}/elite-yar-moadian-invoice",
+                            'type' => 'secondary',
+                        ];
+                        break;
+
+                        // مرحله ۴ بدون دکمه
+                }
+            }
+
+            $steps[] = [
+                'step' => $index + 1,
+                'title' => $blueprint['title'],
+                'state' => $state,
+                'actions' => $actions,
+            ];
+        }
+
+        // مرحله‌ی آخر فقط وقتی Doc Q ثبت و هولد آزاد شده «completed» می‌شود؛
+        // تحویلِ کالا به‌تنهایی هولد را آزاد نمی‌کند.
+        if ($holdReleased) {
+            $steps[count($steps) - 1]['state'] = 'completed';
+        }
+
+        return [
+            'is_cancelled' => $isCancelled,
+            'current_status_label' => $this->currentStatusLabel($status),
+            'steps' => $steps,
+        ];
+    }
+
+    /**
+     * نوار پیشرفتِ تأمین‌کننده — بند ۱۱.۲.
      */
     public function getSupplierProgressAttribute(): array
     {
         $status = $this->status;
         $id = $this->id;
-
         $isCancelled = $status === Order::STATUS_CANCELLED;
 
         // همان قاعده‌ی بند ۱۱.۱ — رزرو از روی بیعانه‌ی پرداخت‌شده تشخیص داده
         // می‌شود، نه از مقایسه با آستانه‌ای که دیگر وجود ندارد.
-        $wasReserved = (float) $this->payment_to_reserve > 0;
+        // ...یا هنوز اصلاً پرداخت نشده. یک سفارشِ `pending` طبق تعریف بیعانه‌ای
+        // نپرداخته، پس با شرطِ تنهای `payment_to_reserve > 0` این مرحله را
+        // نمی‌گرفت — و چون دکمه‌ی «پرداخت فاکتور» فقط روی همین مرحله می‌نشیند،
+        // تنها راهِ پرداخت از تایم‌لاین ناپدید می‌شد. (فاز ۴ خودِ `pending` را
+        // حذف می‌کند و آن‌وقت این نیم‌شرط هم برداشته می‌شود.)
+        $wasReserved = (float) $this->payment_to_reserve > 0
+            || $this->status === Order::STATUS_PENDING;
 
-        $transKey = "orders.status.{$status}";
-        $currentStatusLabel = Lang::has($transKey) ? __($transKey) : __('orders.status.unknown');
-
-        // ---------------------------------------------------------
-        // ۱. ساختار مراحل (مرحله رزرو در صورت نیاز اضافه می‌شود)
-        // ---------------------------------------------------------
         $stepsBlueprint = [];
 
         if ($wasReserved) {
-            $stepsBlueprint[] = [
-                'title' => 'رزرو سفارش ثبت شد',
-                'triggers' => [Order::STATUS_PENDING, Order::STATUS_RESERVED],
-            ];
+            $stepsBlueprint[] = $this->progressStep('supplier', 'reserved', [
+                Order::STATUS_PENDING, Order::STATUS_RESERVED,
+            ]);
         }
 
-        $stepsBlueprint[] = [
-            'title' => 'سفارش دریافت شد',
-            'triggers' => [Order::STATUS_PROCESSING, Order::STATUS_AWAITING_WEIGHT_CORRECTION],
-        ];
+        $stepsBlueprint[] = $this->progressStep('supplier', 'received', [
+            Order::STATUS_PROCESSING, Order::STATUS_AWAITING_WEIGHT_CORRECTION,
+        ]);
 
-        $stepsBlueprint[] = [
-            'title' => 'بارنامه صادر و کالا ارسال شد',
-            'triggers' => [Order::STATUS_SHIPPED, Order::STATUS_RETURNED_TO_ORIGIN],
-        ];
+        $stepsBlueprint[] = $this->progressStep('supplier', 'shipped', [
+            Order::STATUS_SHIPPED, Order::STATUS_RETURNED_TO_ORIGIN,
+        ]);
 
-        $stepsBlueprint[] = [
-            'title' => 'تحویل و تسویه شد',
-            'triggers' => [Order::STATUS_PARTIALLY_DELIVERED, Order::STATUS_DELIVERED],
-        ];
+        $stepsBlueprint[] = $this->progressStep('supplier', 'settled', [
+            Order::STATUS_PARTIALLY_DELIVERED, Order::STATUS_DELIVERED,
+        ]);
 
-        $stepsBlueprint[] = [
-            'title' => 'فاکتور مودیان ثبت شد',
-            'triggers' => [],
-        ];
+        $stepsBlueprint[] = $this->progressStep('supplier', 'moadian');
 
-        // ---------------------------------------------------------
-        // ۲. پیدا کردن مرحله فعلی (مشابه getDashboardProgressAttribute)
-        // ---------------------------------------------------------
+        $moadianSubmitted = $this->{Order::SUPPLIER_MOADIAN_REF} !== null;
+
         $currentIndex = 0;
         if (! $isCancelled) {
-            foreach ($stepsBlueprint as $index => $blueprint) {
-                if (in_array($status, $blueprint['triggers'], true)) {
-                    $currentIndex = $index;
-                }
-            }
-            if ($this->{Order::SUPPLIER_MOADIAN_REF} !== null) {
+            $currentIndex = $this->currentProgressIndex($stepsBlueprint, $status);
+
+            if ($moadianSubmitted) {
                 $currentIndex = count($stepsBlueprint) - 1;
             }
         }
 
-        // ---------------------------------------------------------
-        // ۳. تخصیص وضعیت و اکشن‌های هر مرحله
-        // ---------------------------------------------------------
         $steps = [];
-        $stepCounter = 1;
 
         foreach ($stepsBlueprint as $index => $blueprint) {
-
-            if ($isCancelled) {
-                $state = ($index === 0) ? 'cancelled' : 'inactive';
-            } else {
-                if ($index < $currentIndex) {
-                    $state = 'completed';
-                } elseif ($index === $currentIndex) {
-                    $state = 'current';
-                } else {
-                    $state = 'inactive';
-                }
-            }
-
+            $state = $this->progressState($index, $currentIndex, $isCancelled);
             $actions = [];
 
             if ($state !== 'inactive') {
-                switch ($blueprint['title']) {
-
-                    case 'رزرو سفارش ثبت شد':
+                switch ($blueprint['key']) {
+                    case 'reserved':
                         $actions[] = [
-                            'label' => 'دانلود گزارش رزرو',
+                            'label' => __('orders.actions.download_reserve_report'),
                             'link' => "/api/profile/orders/{$id}/invoice/reserve_report",
                             'method' => 'GET',
                             'downloadable' => true,
                         ];
                         break;
 
-                    case 'سفارش دریافت شد':
+                    case 'received':
                         $actions[] = [
-                            'label' => 'دانلود دستور بارگیری',
+                            'label' => __('orders.actions.download_loading_order'),
                             'link' => "/api/profile/orders/{$id}/invoice/loading_order",
                             'method' => 'GET',
                             'downloadable' => true,
                         ];
                         break;
 
-                    case 'بارنامه صادر و کالا ارسال شد':
+                    case 'shipped':
                         $actions[] = [
-                            'label' => 'دانلود مجوز خروج',
+                            'label' => __('orders.actions.download_exit_permit'),
                             'link' => "/api/profile/orders/{$id}/invoice/exit_permit",
                             'method' => 'GET',
                             'downloadable' => true,
                         ];
                         // دکمه‌ی ثبت روی همین مرحله می‌نشیند، نه روی مرحله‌ی پنجم:
-                        // مرحله‌ی پنجم ماشه‌اش خودِ `supplier_moadian_ref` است، پس تا
-                        // وقتی تأمین‌کننده ثبت نکرده inactive است و دکمه‌اش دیده
-                        // نمی‌شود — یعنی دکمه‌ای که فقط بعد از انجامِ کار ظاهر می‌شود.
-                        if ($this->{Order::SUPPLIER_MOADIAN_REF} === null) {
+                        // ماشه‌ی مرحله‌ی پنجم خودِ `supplier_moadian_ref` است، پس تا
+                        // وقتی ثبت نشده inactive است و دکمه‌اش دیده نمی‌شود — یعنی
+                        // دکمه‌ای که فقط بعد از انجامِ کار ظاهر می‌شود.
+                        if (! $moadianSubmitted) {
                             $actions[] = [
-                                'label' => 'ثبت فاکتور مودیان',
+                                'label' => __('orders.actions.submit_moadian_invoice'),
                                 'link' => "/api/profile/orders/{$id}/supplier-moadian-invoice",
                                 'method' => 'POST',
                                 'downloadable' => false,
@@ -459,18 +439,18 @@ trait HasOrderProgress
                         }
                         break;
 
-                    case 'تحویل و تسویه شد':
+                    case 'settled':
                         $actions[] = [
-                            'label' => 'مشاهده کیف پول',
+                            'label' => __('orders.actions.view_wallet'),
                             'link' => '/profile/finance',
                             'method' => 'GET',
                             'downloadable' => false,
                         ];
                         break;
 
-                    case 'فاکتور مودیان ثبت شد':
+                    case 'moadian':
                         $actions[] = [
-                            'label' => 'دانلود فاکتور مودیان',
+                            'label' => __('orders.actions.download_moadian_invoice'),
                             'link' => "/api/profile/orders/{$id}/invoice/tax_supplier",
                             'method' => 'GET',
                             'downloadable' => true,
@@ -480,21 +460,20 @@ trait HasOrderProgress
             }
 
             $steps[] = [
-                'step' => $stepCounter++,
+                'step' => $index + 1,
                 'title' => $blueprint['title'],
                 'state' => $state,
                 'actions' => $actions,
             ];
         }
 
-        // مانند getDashboardProgressAttribute: آخرین مرحله وقتی تکمیل شده «completed» است
-        if ($this->{Order::SUPPLIER_MOADIAN_REF} !== null) {
+        if ($moadianSubmitted) {
             $steps[count($steps) - 1]['state'] = 'completed';
         }
 
         return [
             'is_cancelled' => $isCancelled,
-            'current_status_label' => $currentStatusLabel,
+            'current_status_label' => $this->currentStatusLabel($status),
             'steps' => $steps,
         ];
     }

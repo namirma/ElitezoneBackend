@@ -43,54 +43,6 @@ parameters:
 			path: app/Actions/Financial/DebitWalletAction.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Actions/Financial/PayHoldFeeAction.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$order_number\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Actions/Financial/PayHoldFeeAction.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$placer_user_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Financial/PayHoldFeeAction.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$reservation_expires_at\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Financial/PayHoldFeeAction.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Actions/Financial/PayHoldFeeAction.php
-
-		-
-			message: '#^Parameter \#1 \$order of method App\\Services\\Financial\\WalletTransactionEngine\:\:creditSystem\(\) expects App\\Models\\Order, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Actions/Financial/PayHoldFeeAction.php
-
-		-
-			message: '#^Parameter \#1 \$order of method App\\Services\\Financial\\WalletTransactionEngine\:\:debitBuyer\(\) expects App\\Models\\Order, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Actions/Financial/PayHoldFeeAction.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>balance" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Actions/Financial/PayHoldFeeAction.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$family\.$#'
 			identifier: property.notFound
 			count: 1

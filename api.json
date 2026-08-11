@@ -710,11 +710,11 @@
                             }
                         }
                     },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
                     }
                 }
             }
@@ -791,14 +791,14 @@
                             }
                         }
                     },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
                     "404": {
                         "$ref": "#/components/responses/ModelNotFoundException"
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
                     }
                 }
             },
@@ -838,14 +838,14 @@
                             }
                         }
                     },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
                     "404": {
                         "$ref": "#/components/responses/ModelNotFoundException"
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
                     }
                 }
             },
@@ -1585,11 +1585,11 @@
                             }
                         }
                     },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
                     }
                 }
             }
@@ -1666,14 +1666,14 @@
                             }
                         }
                     },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
                     "404": {
                         "$ref": "#/components/responses/ModelNotFoundException"
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
                     }
                 }
             },
@@ -1713,14 +1713,14 @@
                             }
                         }
                     },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
                     "404": {
                         "$ref": "#/components/responses/ModelNotFoundException"
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
                     }
                 }
             },
@@ -1825,11 +1825,11 @@
                             }
                         }
                     },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
                     }
                 }
             }
@@ -1906,14 +1906,14 @@
                             }
                         }
                     },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
                     "404": {
                         "$ref": "#/components/responses/ModelNotFoundException"
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
                     }
                 }
             },
@@ -1953,14 +1953,14 @@
                             }
                         }
                     },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
                     "404": {
                         "$ref": "#/components/responses/ModelNotFoundException"
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
                     }
                 }
             },
@@ -2802,6 +2802,7 @@
                                         ],
                                         "format": "binary",
                                         "contentMediaType": "application/octet-stream",
+                                        "description": "svg \u0639\u0645\u062f\u0627\u064b \u0646\u06cc\u0633\u062a \u2014 \u0622\u067e\u0644\u0648\u062f \u0631\u0648\u06cc \u062f\u06cc\u0633\u06a9 public \u0646\u0628\u0627\u06cc\u062f SVG \u0628\u067e\u0630\u06cc\u0631\u062f (XSS \u0630\u062e\u06cc\u0631\u0647\u200c\u0634\u062f\u0647).\n\u0628\u0627\u06cc\u062f \u0628\u0627 SupplierFactoryController::rules() \u06cc\u06a9\u0633\u0627\u0646 \u0628\u0645\u0627\u0646\u062f.",
                                         "maxLength": 2048
                                     }
                                 },
@@ -2936,6 +2937,7 @@
                                         ],
                                         "format": "binary",
                                         "contentMediaType": "application/octet-stream",
+                                        "description": "svg \u0639\u0645\u062f\u0627\u064b \u0646\u06cc\u0633\u062a \u2014 \u0622\u067e\u0644\u0648\u062f \u0631\u0648\u06cc \u062f\u06cc\u0633\u06a9 public \u0646\u0628\u0627\u06cc\u062f SVG \u0628\u067e\u0630\u06cc\u0631\u062f (XSS \u0630\u062e\u06cc\u0631\u0647\u200c\u0634\u062f\u0647).\n\u0628\u0627\u06cc\u062f \u0628\u0627 SupplierFactoryController::rules() \u06cc\u06a9\u0633\u0627\u0646 \u0628\u0645\u0627\u0646\u062f.",
                                         "maxLength": 2048
                                     }
                                 },
@@ -3036,6 +3038,7 @@
                                         ],
                                         "format": "binary",
                                         "contentMediaType": "application/octet-stream",
+                                        "description": "svg \u0639\u0645\u062f\u0627\u064b \u0646\u06cc\u0633\u062a \u2014 \u0622\u067e\u0644\u0648\u062f \u0631\u0648\u06cc \u062f\u06cc\u0633\u06a9 public \u0646\u0628\u0627\u06cc\u062f SVG \u0628\u067e\u0630\u06cc\u0631\u062f (XSS \u0630\u062e\u06cc\u0631\u0647\u200c\u0634\u062f\u0647).\n\u0628\u0627\u06cc\u062f \u0628\u0627 SupplierFactoryController::rules() \u06cc\u06a9\u0633\u0627\u0646 \u0628\u0645\u0627\u0646\u062f.",
                                         "maxLength": 2048
                                     }
                                 },
@@ -4791,10 +4794,6 @@
                                     "status": {
                                         "type": "string",
                                         "enum": [
-                                            "pending",
-                                            "processing",
-                                            "shipped",
-                                            "delivered",
                                             "cancelled"
                                         ]
                                     }
@@ -5199,7 +5198,7 @@
         "/admin/financial/podium-deposits/poll": {
             "post": {
                 "operationId": "adminPodiumDeposit.poll",
-                "description": "\u0627\u062f\u0645\u06cc\u0646 \u0645\u06cc\u200c\u062a\u0648\u0627\u0646\u062f \u0628\u062f\u0648\u0646 \u0627\u0646\u062a\u0638\u0627\u0631 \u0628\u0631\u0627\u06cc cron \u0647\u0631 \u06f5 \u062f\u0642\u06cc\u0642\u0647\u060c polling \u0631\u0627\n\u0628\u0647 \u0635\u0648\u0631\u062a \u062f\u0633\u062a\u06cc \u0627\u062c\u0631\u0627 \u06a9\u0646\u062f \u0648 \u0646\u062a\u06cc\u062c\u0647 \u0641\u0648\u0631\u06cc \u062f\u0631\u06cc\u0627\u0641\u062a \u06a9\u0646\u062f.\n\nBody (\u0627\u062e\u062a\u06cc\u0627\u0631\u06cc):\n  minutes  = \u067e\u0646\u062c\u0631\u0647 \u0632\u0645\u0627\u0646\u06cc \u0628\u0647 \u062f\u0642\u06cc\u0642\u0647 (\u067e\u06cc\u0634\u200c\u0641\u0631\u0636: 60\u060c \u062d\u062f\u0627\u06a9\u062b\u0631: 1440 = \u06cc\u06a9 \u0631\u0648\u0632)\n\n\u0627\u062f\u0645\u06cc\u0646 \u0645\u06cc\u200c\u062a\u0648\u0627\u0646\u062f \u0645\u062b\u0644\u0627\u064b minutes=1440 \u0628\u062f\u0647\u062f \u062a\u0627 \u0648\u0627\u0631\u06cc\u0632\u0647\u0627\u06cc \u06a9\u0644 \u0631\u0648\u0632 \u0631\u0627 \u0628\u0631\u0631\u0633\u06cc \u06a9\u0646\u062f.",
+                "description": "\u0627\u062f\u0645\u06cc\u0646 \u0645\u06cc\u200c\u062a\u0648\u0627\u0646\u062f \u0628\u062f\u0648\u0646 \u0627\u0646\u062a\u0638\u0627\u0631 \u0628\u0631\u0627\u06cc cron \u0647\u0631 \u06f5 \u062f\u0642\u06cc\u0642\u0647\u060c polling \u0631\u0627\n\u0628\u0647 \u0635\u0648\u0631\u062a \u062f\u0633\u062a\u06cc \u0627\u062c\u0631\u0627 \u06a9\u0646\u062f \u0648 \u0646\u062a\u06cc\u062c\u0647 \u0641\u0648\u0631\u06cc \u062f\u0631\u06cc\u0627\u0641\u062a \u06a9\u0646\u062f.\n\nBody (\u0627\u062e\u062a\u06cc\u0627\u0631\u06cc):\n  minutes  = \u067e\u0646\u062c\u0631\u0647 \u0632\u0645\u0627\u0646\u06cc \u0628\u0647 \u062f\u0642\u06cc\u0642\u0647 (\u067e\u06cc\u0634\u200c\u0641\u0631\u0636: 60\u060c \u062d\u062f\u0627\u06a9\u062b\u0631: 10080 = \u06f7 \u0631\u0648\u0632)\n\n\u0627\u062f\u0645\u06cc\u0646 \u0645\u06cc\u200c\u062a\u0648\u0627\u0646\u062f \u0645\u062b\u0644\u0627\u064b minutes=1440 \u0628\u062f\u0647\u062f \u062a\u0627 \u0648\u0627\u0631\u06cc\u0632\u0647\u0627\u06cc \u06a9\u0644 \u0631\u0648\u0632 \u0631\u0627 \u0628\u0631\u0631\u0633\u06cc \u06a9\u0646\u062f.\n\n\u0627\u06cc\u0646 \u0647\u0645\u0627\u0646 \u0627\u0628\u0632\u0627\u0631\u06cc \u0627\u0633\u062a \u06a9\u0647 \u0648\u0642\u062a\u06cc \u06a9\u0627\u0631\u0628\u0631\u06cc \u0645\u06cc\u200c\u06af\u0648\u06cc\u062f \u00ab\u0648\u0627\u0631\u06cc\u0632 \u06a9\u0631\u062f\u0645 \u0648 \u0634\u0627\u0631\u0698 \u0646\u0634\u062f\u0645\u00bb \u0633\u0631\u0627\u063a\u0634\n\u0645\u06cc\u200c\u0631\u0648\u0646\u062f \u2014 \u0648 \u062a\u0627 \u067e\u06cc\u0634 \u0627\u0632 \u0627\u06cc\u0646 \u062e\u0648\u062f\u0634 \u0628\u0631\u06cc\u062f\u0647 \u0628\u0648\u062f: \u0641\u0642\u0637 \u06f5\u06f0 \u0631\u062f\u06cc\u0641\u0650 \u0627\u0648\u0644\u0650 \u0628\u0627\u0632\u0647 \u062e\u0648\u0627\u0646\u062f\u0647\n\u0645\u06cc\u200c\u0634\u062f \u0648 \u0627\u06af\u0631 \u0622\u0646 \u06f5\u06f0 \u0631\u062f\u06cc\u0641 \u0628\u0631\u062f\u0627\u0634\u062a \u0628\u0648\u062f\u0646\u062f\u060c \u067e\u0627\u0633\u062e \u00ab\u06f0 \u0648\u0627\u0631\u06cc\u0632\u00bb \u0628\u0648\u062f. \u062d\u0627\u0644\u0627\n`getIncomingDeposits` \u06a9\u0644\u0650 \u0628\u0627\u0632\u0647 \u0631\u0627 \u0635\u0641\u062d\u0647\u200c\u0628\u0647\u200c\u0635\u0641\u062d\u0647 \u0645\u06cc\u200c\u062e\u0648\u0627\u0646\u062f.",
                 "summary": "\u0627\u062c\u0631\u0627\u06cc \u062f\u0633\u062a\u06cc polling \u0635\u0648\u0631\u062a\u200c\u062d\u0633\u0627\u0628 \u067e\u0627\u062f\u06cc\u0648\u0645",
                 "tags": [
                     "AdminPodiumDeposit"
@@ -7345,6 +7344,7 @@
                                         ],
                                         "format": "binary",
                                         "contentMediaType": "application/octet-stream",
+                                        "description": "svg \u0639\u0645\u062f\u0627\u064b \u0646\u06cc\u0633\u062a \u2014 \u0622\u067e\u0644\u0648\u062f \u0631\u0648\u06cc \u062f\u06cc\u0633\u06a9 public \u0646\u0628\u0627\u06cc\u062f SVG \u0628\u067e\u0630\u06cc\u0631\u062f (XSS \u0630\u062e\u06cc\u0631\u0647\u200c\u0634\u062f\u0647).",
                                         "maxLength": 2048
                                     }
                                 },
@@ -7459,6 +7459,7 @@
                                         ],
                                         "format": "binary",
                                         "contentMediaType": "application/octet-stream",
+                                        "description": "svg \u0639\u0645\u062f\u0627\u064b \u0646\u06cc\u0633\u062a \u2014 \u0622\u067e\u0644\u0648\u062f \u0631\u0648\u06cc \u062f\u06cc\u0633\u06a9 public \u0646\u0628\u0627\u06cc\u062f SVG \u0628\u067e\u0630\u06cc\u0631\u062f (XSS \u0630\u062e\u06cc\u0631\u0647\u200c\u0634\u062f\u0647).",
                                         "maxLength": 2048
                                     }
                                 },
@@ -7539,6 +7540,7 @@
                                         ],
                                         "format": "binary",
                                         "contentMediaType": "application/octet-stream",
+                                        "description": "svg \u0639\u0645\u062f\u0627\u064b \u0646\u06cc\u0633\u062a \u2014 \u0622\u067e\u0644\u0648\u062f \u0631\u0648\u06cc \u062f\u06cc\u0633\u06a9 public \u0646\u0628\u0627\u06cc\u062f SVG \u0628\u067e\u0630\u06cc\u0631\u062f (XSS \u0630\u062e\u06cc\u0631\u0647\u200c\u0634\u062f\u0647).",
                                         "maxLength": 2048
                                     }
                                 },
@@ -8506,18 +8508,7 @@
                                             "type": "boolean"
                                         },
                                         "message": {
-                                            "anyOf": [
-                                                {
-                                                    "type": "string"
-                                                },
-                                                {
-                                                    "type": "array",
-                                                    "items": {}
-                                                },
-                                                {
-                                                    "type": "null"
-                                                }
-                                            ]
+                                            "type": "string"
                                         },
                                         "data": {
                                             "type": "object",
@@ -8526,7 +8517,8 @@
                                                     "type": "boolean"
                                                 },
                                                 "rows": {
-                                                    "type": "integer"
+                                                    "type": "integer",
+                                                    "minimum": 0
                                                 }
                                             },
                                             "required": [
@@ -8589,18 +8581,7 @@
                                             "type": "boolean"
                                         },
                                         "message": {
-                                            "anyOf": [
-                                                {
-                                                    "type": "string"
-                                                },
-                                                {
-                                                    "type": "array",
-                                                    "items": {}
-                                                },
-                                                {
-                                                    "type": "null"
-                                                }
-                                            ]
+                                            "type": "string"
                                         },
                                         "data": {
                                             "type": "object",
@@ -8609,7 +8590,8 @@
                                                     "type": "boolean"
                                                 },
                                                 "rows": {
-                                                    "type": "integer"
+                                                    "type": "integer",
+                                                    "minimum": 0
                                                 }
                                             },
                                             "required": [
@@ -8672,18 +8654,7 @@
                                             "type": "boolean"
                                         },
                                         "message": {
-                                            "anyOf": [
-                                                {
-                                                    "type": "string"
-                                                },
-                                                {
-                                                    "type": "array",
-                                                    "items": {}
-                                                },
-                                                {
-                                                    "type": "null"
-                                                }
-                                            ]
+                                            "type": "string"
                                         },
                                         "data": {
                                             "type": "object",
@@ -8692,7 +8663,8 @@
                                                     "type": "boolean"
                                                 },
                                                 "rows": {
-                                                    "type": "integer"
+                                                    "type": "integer",
+                                                    "minimum": 0
                                                 }
                                             },
                                             "required": [
@@ -8742,187 +8714,6 @@
                                 }
                             }
                         }
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    }
-                }
-            }
-        },
-        "/admin/reviews": {
-            "get": {
-                "operationId": "adminReview.index",
-                "tags": [
-                    "AdminReview"
-                ],
-                "parameters": [
-                    {
-                        "name": "status",
-                        "in": "query",
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "pending",
-                                "approved",
-                                "rejected"
-                            ]
-                        }
-                    },
-                    {
-                        "name": "product_id",
-                        "in": "query",
-                        "schema": {
-                            "type": "integer",
-                            "default": 0
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    }
-                }
-            }
-        },
-        "/admin/reviews/{review}": {
-            "get": {
-                "operationId": "adminReview.show",
-                "tags": [
-                    "AdminReview"
-                ],
-                "parameters": [
-                    {
-                        "name": "review",
-                        "in": "path",
-                        "required": true,
-                        "description": "The review ID",
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/ModelNotFoundException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    }
-                }
-            }
-        },
-        "/admin/reviews/{review}/approve": {
-            "post": {
-                "operationId": "adminReview.approve",
-                "tags": [
-                    "AdminReview"
-                ],
-                "parameters": [
-                    {
-                        "name": "review",
-                        "in": "path",
-                        "required": true,
-                        "description": "The review ID",
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/ModelNotFoundException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    }
-                }
-            }
-        },
-        "/admin/reviews/{review}/reject": {
-            "post": {
-                "operationId": "adminReview.reject",
-                "tags": [
-                    "AdminReview"
-                ],
-                "parameters": [
-                    {
-                        "name": "review",
-                        "in": "path",
-                        "required": true,
-                        "description": "The review ID",
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "type": "object",
-                                "properties": {
-                                    "rejection_reason": {
-                                        "type": "string",
-                                        "maxLength": 1000
-                                    }
-                                },
-                                "required": [
-                                    "rejection_reason"
-                                ]
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/ModelNotFoundException"
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
@@ -10443,7 +10234,7 @@
                                 "null"
                             ],
                             "enum": [
-                                "expert",
+                                "elite_yar",
                                 "employer",
                                 "supplier"
                             ]
@@ -11183,7 +10974,14 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "string"
+                                    "anyOf": [
+                                        {
+                                            "type": "string"
+                                        },
+                                        {
+                                            "type": "object"
+                                        }
+                                    ]
                                 }
                             }
                         }
@@ -11252,10 +11050,13 @@
                                         "type": "string"
                                     },
                                     "password": {
-                                        "type": "string"
+                                        "type": "string",
+                                        "description": "min:8 \u0647\u0645\u200c\u062a\u0631\u0627\u0632 \u0628\u0627 StorePasswordRequest \u0648 StoreAdminRequest \u2014 \u0645\u0633\u06cc\u0631\n\u0628\u0627\u0632\u06cc\u0627\u0628\u06cc \u0631\u0645\u0632 \u0646\u0628\u0627\u06cc\u062f \u0633\u06cc\u0627\u0633\u062a\u06cc \u0636\u0639\u06cc\u0641\u200c\u062a\u0631 \u0627\u0632 \u0645\u0633\u06cc\u0631 \u062a\u063a\u06cc\u06cc\u0631 \u0631\u0645\u0632 \u062f\u0627\u0634\u062a\u0647 \u0628\u0627\u0634\u062f.",
+                                        "minLength": 8
                                     },
                                     "password_confirmation": {
-                                        "type": "string"
+                                        "type": "string",
+                                        "minLength": 8
                                     }
                                 },
                                 "required": [
@@ -11274,7 +11075,14 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "string"
+                                    "anyOf": [
+                                        {
+                                            "type": "string"
+                                        },
+                                        {
+                                            "type": "object"
+                                        }
+                                    ]
                                 }
                             }
                         }
@@ -11380,7 +11188,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "",
+                        "description": "roles \u067e\u0634\u062a\u0650 whenLoaded \u0627\u0633\u062a \u0648 permissions \u0647\u0645 \u0628\u0631\u0627\u06cc \u067e\u0646\u0644\u0650 \u0627\u062f\u0645\u06cc\u0646 \u0644\u0627\u0632\u0645 \u0627\u0633\u062a \u2014\n\u0628\u062f\u0648\u0646 \u0627\u06cc\u0646 eager load\u060c /user \u0646\u0647 \u0646\u0642\u0634 \u0628\u0631\u0645\u06cc\u200c\u06af\u0631\u062f\u0627\u0646\u062f \u0646\u0647 \u0645\u062c\u0648\u0632\u060c \u0648 \u067e\u0646\u0644 \u0627\u0632 \u0648\u0642\u062a\u06cc\nEnsureAdminHasPermission \u0628\u0647 fail-closed \u062a\u063a\u06cc\u06cc\u0631 \u06a9\u0631\u062f \u0631\u0627\u0647\u06cc \u0628\u0631\u0627\u06cc \u062a\u0635\u0645\u06cc\u0645\u200c\u06af\u06cc\u0631\u06cc\n\u062f\u0631\u0628\u0627\u0631\u0647\u0654 \u0646\u0645\u0627\u06cc\u0634\u0650 \u062a\u0628\u200c\u0647\u0627 \u0646\u062f\u0627\u0634\u062a \u062c\u0632 \u062e\u0648\u0631\u062f\u0646\u0650 \u06f4\u06f0\u06f3.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -11832,6 +11640,58 @@
                 }
             }
         },
+        "/cart/pre-invoice": {
+            "get": {
+                "operationId": "cart.preInvoice",
+                "description": "\u062a\u0627 \u067e\u06cc\u0634 \u0627\u0632 \u0627\u06cc\u0646 \u062a\u0646\u0647\u0627 \u0631\u0627\u0647\u0650 \u06af\u0631\u0641\u062a\u0646\u0650 \u067e\u06cc\u0634\u200c\u0641\u0627\u06a9\u062a\u0648\u0631\u060c \u062b\u0628\u062a\u0650 \u0633\u0641\u0627\u0631\u0634\u0650 \u0648\u0627\u0642\u0639\u06cc \u0648 \u0628\u0639\u062f \u062f\u0627\u0646\u0644\u0648\u062f \u0627\u0632\n`/profile/orders/{order}/invoices/initial` \u0628\u0648\u062f \u2014 \u06cc\u0639\u0646\u06cc \u0628\u0631\u0627\u06cc \u06cc\u06a9 \u0628\u0631\u06af\u0647\u0654 \u0642\u06cc\u0645\u062a\u060c\n\u0645\u0648\u062c\u0648\u062f\u06cc \u06a9\u0645 \u0645\u06cc\u200c\u0634\u062f \u0648 \u06cc\u06a9 \u0633\u0641\u0627\u0631\u0634\u0650 \u062f\u0648\u0633\u0627\u0639\u062a\u0647 \u0633\u0627\u062e\u062a\u0647 \u0645\u06cc\u200c\u0634\u062f \u06a9\u0647 \u0628\u0627\u06cc\u062f \u0644\u063a\u0648 \u0645\u06cc\u200c\u0634\u062f.\n\n\u0647\u06cc\u0686 \u0633\u0641\u0627\u0631\u0634\u06cc\u060c \u0647\u06cc\u0686 \u0631\u06a9\u0648\u0631\u062f `Invoice` \u0648 \u0647\u06cc\u0686 \u0634\u0645\u0627\u0631\u0647\u0654 \u0633\u0646\u062f\u06cc \u0645\u0635\u0631\u0641 \u0646\u0645\u06cc\u200c\u0634\u0648\u062f\u061b \u062e\u0631\u0648\u062c\u06cc \u06cc\u06a9 PDF\n\u0628\u0627 \u0634\u0646\u0627\u0633\u0647\u0654 \u0622\u0634\u06a9\u0627\u0631\u0627 \u0645\u0648\u0642\u062a \u0627\u0633\u062a. \u0628\u0627 \u062f\u0627\u062f\u0646\u0650 `address_id` \u06a9\u0631\u0627\u06cc\u0647\u0654 \u062d\u0645\u0644 \u0647\u0645 \u062f\u0631 \u0633\u0646\u062f \u0645\u06cc\u200c\u0622\u06cc\u062f.",
+                "summary": "GET \u2014 \u067e\u06cc\u0634\u200c\u0641\u0627\u06a9\u062a\u0648\u0631 (Doc 0) \u0627\u0632 \u0633\u0628\u062f\u0650 \u062c\u0627\u0631\u06cc\u060c **\u067e\u06cc\u0634 \u0627\u0632 \u062b\u0628\u062a \u0633\u0641\u0627\u0631\u0634**",
+                "tags": [
+                    "Cart"
+                ],
+                "parameters": [
+                    {
+                        "name": "address_id",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "integer",
+                                "null"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "\u0639\u0645\u062f\u0627\u064b `$pdf->download()` \u0646\u06cc\u0633\u062a: \u0622\u0646 \u0645\u062a\u062f `Destination::DOWNLOAD` \u0631\u0627 \u0635\u062f\u0627\n\u0645\u06cc\u200c\u0632\u0646\u062f\u060c \u06cc\u0639\u0646\u06cc mPDF \u0647\u062f\u0631\u0647\u0627 \u0631\u0627 \u062e\u0648\u062f\u0634 \u0645\u06cc\u200c\u0641\u0631\u0633\u062a\u062f \u0648 \u0628\u0627\u06cc\u062a\u200c\u0647\u0627 \u0631\u0627 \u0645\u0633\u062a\u0642\u06cc\u0645 echo \u0645\u06cc\u200c\u06a9\u0646\u062f \u0648\n\u067e\u0627\u0633\u062e\u0650 \u0644\u0627\u0631\u0627\u0648\u0644 \u0639\u0645\u0644\u0627\u064b \u062e\u0627\u0644\u06cc \u0648 `text/html` \u0645\u06cc\u200c\u0645\u0627\u0646\u062f. \u0628\u0627 `output()` \u0628\u0627\u06cc\u062a\u200c\u0647\u0627\n\u0628\u0631\u06af\u0631\u062f\u0627\u0646\u062f\u0647 \u0645\u06cc\u200c\u0634\u0648\u0646\u062f \u0648 \u067e\u0627\u0633\u062e \u06cc\u06a9 Response \u0648\u0627\u0642\u0639\u06cc \u0627\u0633\u062a \u2014 \u0647\u0645 \u0628\u0631\u0627\u06cc \u06a9\u0644\u0627\u06cc\u0646\u062a \u062f\u0631\u0633\u062a\u200c\u062a\u0631\u060c\n\u0647\u0645 \u0642\u0627\u0628\u0644\u200c\u062a\u0633\u062a.",
+                        "content": {
+                            "application/pdf": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "application/json": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Content-Disposition": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
         "/checkout": {
             "post": {
                 "operationId": "checkout.placeOrder",
@@ -12214,17 +12074,10 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "anyOf": [
-                                        {
-                                            "type": "object"
-                                        },
-                                        {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "object"
-                                            }
-                                        }
-                                    ]
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ProductPriceCache"
+                                    }
                                 }
                             }
                         }
@@ -12299,7 +12152,9 @@
                                         "type": "string"
                                     },
                                     "trace_code": {
-                                        "type": "string"
+                                        "type": "string",
+                                        "pattern": "^[A-Za-z0-9-]+$",
+                                        "maxLength": 64
                                     }
                                 },
                                 "required": [
@@ -13182,29 +13037,6 @@
                 }
             }
         },
-        "/profile/my-items/surveys": {
-            "get": {
-                "operationId": "myItems.surveys",
-                "tags": [
-                    "MyItems"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    }
-                }
-            }
-        },
         "/profile/messages": {
             "get": {
                 "operationId": "notification.index",
@@ -13760,49 +13592,6 @@
                 }
             }
         },
-        "/profile/orders/{order}/pay-hold-fee": {
-            "post": {
-                "operationId": "orderPayment.payHoldFee",
-                "tags": [
-                    "OrderPayment"
-                ],
-                "parameters": [
-                    {
-                        "name": "order",
-                        "in": "path",
-                        "required": true,
-                        "description": "The order ID",
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/AuthorizationException"
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/ModelNotFoundException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
-                    }
-                }
-            }
-        },
         "/profile/orders/{order}/pay-full": {
             "post": {
                 "operationId": "user.orders.pay_full",
@@ -13909,110 +13698,9 @@
                 }
             }
         },
-        "/profile/orders/{order}/survey": {
-            "post": {
-                "operationId": "orderSurvey.store",
-                "tags": [
-                    "OrderSurvey"
-                ],
-                "parameters": [
-                    {
-                        "name": "order",
-                        "in": "path",
-                        "required": true,
-                        "description": "The order ID",
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/StoreOrderSurveyRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/ModelNotFoundException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
-                    }
-                }
-            }
-        },
         "/admin/orders/{order}/weighbridge": {
             "post": {
                 "operationId": "admin.orders.weighbridge.submit",
-                "summary": "\u062b\u0628\u062a \u0648\u0632\u0646 \u0646\u0647\u0627\u06cc\u06cc \u0628\u0627\u0633\u06a9\u0648\u0644 \u0648 \u0627\u0646\u062c\u0627\u0645 \u0645\u062d\u0627\u0633\u0628\u0627\u062a \u0645\u0627\u0644\u06cc (\u06a9\u0633\u0631\u06cc/\u0633\u0631\u06a9)",
-                "tags": [
-                    "OrderWeighbridge"
-                ],
-                "parameters": [
-                    {
-                        "name": "order",
-                        "in": "path",
-                        "required": true,
-                        "description": "The order ID",
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/SubmitWeighbridgeRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/ModelNotFoundException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
-                    }
-                }
-            }
-        },
-        "/admin/{order}/weighbridge": {
-            "post": {
-                "operationId": "admin.orderWeighbridge.submitWeight_0",
                 "summary": "\u062b\u0628\u062a \u0648\u0632\u0646 \u0646\u0647\u0627\u06cc\u06cc \u0628\u0627\u0633\u06a9\u0648\u0644 \u0648 \u0627\u0646\u062c\u0627\u0645 \u0645\u062d\u0627\u0633\u0628\u0627\u062a \u0645\u0627\u0644\u06cc (\u06a9\u0633\u0631\u06cc/\u0633\u0631\u06a9)",
                 "tags": [
                     "OrderWeighbridge"
@@ -14909,111 +14597,6 @@
                 }
             }
         },
-        "/products/{product}/reviews": {
-            "get": {
-                "operationId": "productReview.productReviews",
-                "tags": [
-                    "ProductReview"
-                ],
-                "parameters": [
-                    {
-                        "name": "product",
-                        "in": "path",
-                        "required": true,
-                        "description": "The product cuid",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/ModelNotFoundException"
-                    }
-                }
-            },
-            "post": {
-                "operationId": "productReview.store",
-                "tags": [
-                    "ProductReview"
-                ],
-                "parameters": [
-                    {
-                        "name": "product",
-                        "in": "path",
-                        "required": true,
-                        "description": "The product cuid",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/StoreProductReviewRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/ModelNotFoundException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
-                    }
-                }
-            }
-        },
-        "/profile/reviews": {
-            "get": {
-                "operationId": "productReview.myReviews",
-                "tags": [
-                    "ProductReview"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    }
-                }
-            }
-        },
         "/profile": {
             "get": {
                 "operationId": "profile.getProfile",
@@ -15652,6 +15235,8 @@
             },
             "delete": {
                 "operationId": "supplier.destroy",
+                "description": "\u067e\u06cc\u0634 \u0627\u0632 \u0627\u06cc\u0646 \u0641\u0642\u0637 \u0631\u062f\u06cc\u0641 \u067e\u0631\u0648\u0641\u0627\u06cc\u0644 \u062d\u0630\u0641 \u0645\u06cc\u200c\u0634\u062f \u0648 \u0646\u0642\u0634\u0650 Laratrust \u0633\u0631\u0650 \u062c\u0627\u06cc\u0634 \u0645\u06cc\u200c\u0645\u0627\u0646\u062f.\n\u0646\u062a\u06cc\u062c\u0647 \u062f\u0642\u06cc\u0642\u0627\u064b \u0647\u0645\u0627\u0646 \u062d\u0627\u0644\u062a\u06cc \u0628\u0648\u062f \u06a9\u0647 \u0646\u0628\u0627\u06cc\u062f \u0645\u0645\u06a9\u0646 \u0628\u0627\u0634\u062f: \u06a9\u0627\u0631\u0628\u0631\u06cc \u0628\u062f\u0648\u0646 \u0647\u06cc\u0686 \u0631\u062f\u06cc\u0641\u0650\n`supplier_profiles` \u06a9\u0647 \u0647\u0645\u0686\u0646\u0627\u0646 \u0627\u0632 `role.supplier` \u0631\u062f \u0645\u06cc\u200c\u0634\u062f \u0648 \u06a9\u0644\u0650 \u067e\u0646\u0644\n\u062e\u0648\u062f\u0633\u0631\u0648\u06cc\u0633 \u0628\u0631\u0627\u06cc\u0634 \u0628\u0627\u0632 \u0628\u0648\u062f (`/profile/supplier/dashboard` \u2192 \u06f2\u06f0\u06f0 \u0628\u0627\n`supplier_status: null`). \u062f\u0648 \u0645\u0633\u06cc\u0631\u0650 \u062f\u06cc\u06af\u0631 \u2014 `AdminSupplierController::reject`\n\u0648 `SyncUserRolesAction` \u2014 \u0647\u0631 \u062f\u0648 \u0646\u0642\u0634 \u0631\u0627 \u062c\u062f\u0627 \u0645\u06cc\u200c\u06a9\u0646\u0646\u062f\u061b \u0627\u06cc\u0646 \u06cc\u06a9\u06cc \u062c\u0627 \u0645\u0627\u0646\u062f\u0647 \u0628\u0648\u062f.\n\n\u062f\u0648 \u06af\u0627\u0631\u062f\u0650 \u067e\u06cc\u0634 \u0627\u0632 \u062d\u0630\u0641\u060c \u0686\u0648\u0646 \u00ab\u0627\u0646\u0635\u0631\u0627\u0641\u00bb \u0641\u0642\u0637 \u0628\u0631\u0627\u06cc \u0645\u062a\u0642\u0627\u0636\u06cc \u0645\u0639\u0646\u0627 \u062f\u0627\u0631\u062f \u0646\u0647 \u0628\u0631\u0627\u06cc\n\u062a\u0623\u0645\u06cc\u0646\u200c\u06a9\u0646\u0646\u062f\u0647\u200c\u0627\u06cc \u06a9\u0647 \u06a9\u0627\u062a\u0627\u0644\u0648\u06af \u0648 \u0633\u0641\u0627\u0631\u0634\u0650 \u0632\u0646\u062f\u0647 \u062f\u0627\u0631\u062f:\n\n\u06f1. **\u06a9\u0627\u0631\u062e\u0627\u0646\u0647\u0654 \u0628\u0627\u0642\u06cc\u200c\u0645\u0627\u0646\u062f\u0647** \u2014 `factories.supplier_user_id` \u0628\u0647 \u06a9\u0627\u0631\u0628\u0631 \u0627\u0634\u0627\u0631\u0647\n   \u0645\u06cc\u200c\u06a9\u0646\u062f \u0648 \u0642\u06cc\u0645\u062a/\u0645\u0648\u062c\u0648\u062f\u06cc/\u0646\u0631\u062e \u062d\u0645\u0644\u0634 \u0647\u0645\u0686\u0646\u0627\u0646 \u0642\u0627\u0628\u0644 \u0641\u0631\u0648\u0634 \u0627\u0633\u062a. \u0628\u0627 \u0631\u0641\u062a\u0646\u0650 \u0646\u0642\u0634\u060c \u062e\u0648\u062f\u0634\n   \u0647\u0645 \u062f\u06cc\u06af\u0631 \u0646\u0645\u06cc\u200c\u062a\u0648\u0627\u0646\u062f \u0627\u0635\u0644\u0627\u062d\u0634 \u06a9\u0646\u062f \u2014 \u06cc\u0639\u0646\u06cc \u06a9\u0627\u062a\u0627\u0644\u0648\u06af\u06cc \u0632\u0646\u062f\u0647 \u0628\u062f\u0648\u0646 \u0647\u06cc\u0686 \u0645\u062a\u0648\u0644\u06cc.\n\u06f2. **\u0633\u0641\u0627\u0631\u0634\u0650 \u062a\u0645\u0627\u0645\u200c\u0646\u0634\u062f\u0647** \u2014 \u0641\u0644\u06af\u200c\u0647\u0627\u06cc \u0641\u0631\u0645\u0648\u0644 (`trans_commission`/`trans_vat`)\n   \u0647\u0646\u06af\u0627\u0645 **\u067e\u0631\u062f\u0627\u062e\u062a** \u0627\u0632 \u0647\u0645\u06cc\u0646 \u067e\u0631\u0648\u0641\u0627\u06cc\u0644 \u062e\u0648\u0627\u0646\u062f\u0647 \u0645\u06cc\u200c\u0634\u0648\u0646\u062f\n   (`ProcessPreScalePaymentAction`). \u0646\u0628\u0648\u062f\u0650 \u067e\u0631\u0648\u0641\u0627\u06cc\u0644 \u06cc\u0639\u0646\u06cc fallback \u0628\u0647\n   `?? true`\u060c \u067e\u0633 \u0633\u0641\u0627\u0631\u0634\u06cc \u06a9\u0647 \u0647\u0646\u0648\u0632 \u067e\u0631\u062f\u0627\u062e\u062a \u0646\u0634\u062f\u0647 \u0628\u06cc\u200c\u0635\u062f\u0627 \u0628\u0627 \u0641\u0631\u0645\u0648\u0644\u0650 \u062f\u06cc\u06af\u0631\u06cc \u062a\u0633\u0648\u06cc\u0647\n   \u0645\u06cc\u200c\u0634\u062f.",
+                "summary": "\u0627\u0646\u0635\u0631\u0627\u0641 \u0627\u0632 \u062a\u0623\u0645\u06cc\u0646\u200c\u06a9\u0646\u0646\u062f\u06af\u06cc \u2014 \u067e\u0631\u0648\u0641\u0627\u06cc\u0644 **\u0648** \u0646\u0642\u0634 \u0628\u0627 \u0647\u0645 \u0645\u06cc\u200c\u0631\u0648\u0646\u062f",
                 "tags": [
                     "Supplier"
                 ],
@@ -15817,6 +15402,7 @@
                                         ],
                                         "format": "binary",
                                         "contentMediaType": "application/octet-stream",
+                                        "description": "svg \u0639\u0645\u062f\u0627\u064b \u0646\u06cc\u0633\u062a: \u0641\u0627\u06cc\u0644 \u0631\u0648\u06cc \u062f\u06cc\u0633\u06a9 public \u0645\u06cc\u200c\u0646\u0634\u06cc\u0646\u062f \u0648 \u06cc\u06a9 SVG \u062d\u0627\u0648\u06cc <script>\n\u062a\u0628\u062f\u06cc\u0644 \u0628\u0647 XSS \u0630\u062e\u06cc\u0631\u0647\u200c\u0634\u062f\u0647 \u0645\u06cc\u200c\u0634\u0648\u062f (\u0628\u0627 FILESYSTEM_PUBLIC_DRIVER=local \u2014 \u06a9\u0647\n\u067e\u06cc\u0634\u200c\u0641\u0631\u0636\u0650 .env.example \u0627\u0633\u062a \u2014 \u0647\u0645\u0627\u0646 \u0645\u0628\u062f\u0623\u0650 \u062e\u0648\u062f\u0650 \u0627\u067e \u0633\u0631\u0648 \u0645\u06cc\u200c\u0634\u0648\u062f \u0648 CSP \u0647\u0645\nscript-src 'self' \u062f\u0627\u0631\u062f\u060c \u067e\u0633 \u062c\u0644\u0648\u06cc\u0634 \u0631\u0627 \u0646\u0645\u06cc\u200c\u06af\u06cc\u0631\u062f). \u0627\u06cc\u0646 \u0645\u0633\u06cc\u0631 \u0627\u0632 \u0647\u0645\u0647 \u0628\u062f\u062a\u0631 \u0628\u0648\u062f\n\u0686\u0648\u0646 \u06a9\u0627\u0631\u0628\u0631\u0650 \u0639\u0627\u062f\u06cc (\u062a\u0623\u0645\u06cc\u0646\u200c\u06a9\u0646\u0646\u062f\u0647\u0654 \u062a\u0623\u06cc\u06cc\u062f\u0634\u062f\u0647) \u0628\u0647 \u0622\u0646 \u062f\u0633\u062a\u0631\u0633\u06cc \u062f\u0627\u0631\u062f\u060c \u0646\u0647 \u0641\u0642\u0637 \u0627\u062f\u0645\u06cc\u0646.",
                                         "maxLength": 2048
                                     }
                                 },
@@ -15948,6 +15534,7 @@
                                         ],
                                         "format": "binary",
                                         "contentMediaType": "application/octet-stream",
+                                        "description": "svg \u0639\u0645\u062f\u0627\u064b \u0646\u06cc\u0633\u062a: \u0641\u0627\u06cc\u0644 \u0631\u0648\u06cc \u062f\u06cc\u0633\u06a9 public \u0645\u06cc\u200c\u0646\u0634\u06cc\u0646\u062f \u0648 \u06cc\u06a9 SVG \u062d\u0627\u0648\u06cc <script>\n\u062a\u0628\u062f\u06cc\u0644 \u0628\u0647 XSS \u0630\u062e\u06cc\u0631\u0647\u200c\u0634\u062f\u0647 \u0645\u06cc\u200c\u0634\u0648\u062f (\u0628\u0627 FILESYSTEM_PUBLIC_DRIVER=local \u2014 \u06a9\u0647\n\u067e\u06cc\u0634\u200c\u0641\u0631\u0636\u0650 .env.example \u0627\u0633\u062a \u2014 \u0647\u0645\u0627\u0646 \u0645\u0628\u062f\u0623\u0650 \u062e\u0648\u062f\u0650 \u0627\u067e \u0633\u0631\u0648 \u0645\u06cc\u200c\u0634\u0648\u062f \u0648 CSP \u0647\u0645\nscript-src 'self' \u062f\u0627\u0631\u062f\u060c \u067e\u0633 \u062c\u0644\u0648\u06cc\u0634 \u0631\u0627 \u0646\u0645\u06cc\u200c\u06af\u06cc\u0631\u062f). \u0627\u06cc\u0646 \u0645\u0633\u06cc\u0631 \u0627\u0632 \u0647\u0645\u0647 \u0628\u062f\u062a\u0631 \u0628\u0648\u062f\n\u0686\u0648\u0646 \u06a9\u0627\u0631\u0628\u0631\u0650 \u0639\u0627\u062f\u06cc (\u062a\u0623\u0645\u06cc\u0646\u200c\u06a9\u0646\u0646\u062f\u0647\u0654 \u062a\u0623\u06cc\u06cc\u062f\u0634\u062f\u0647) \u0628\u0647 \u0622\u0646 \u062f\u0633\u062a\u0631\u0633\u06cc \u062f\u0627\u0631\u062f\u060c \u0646\u0647 \u0641\u0642\u0637 \u0627\u062f\u0645\u06cc\u0646.",
                                         "maxLength": 2048
                                     }
                                 },
@@ -16045,6 +15632,7 @@
                                         ],
                                         "format": "binary",
                                         "contentMediaType": "application/octet-stream",
+                                        "description": "svg \u0639\u0645\u062f\u0627\u064b \u0646\u06cc\u0633\u062a: \u0641\u0627\u06cc\u0644 \u0631\u0648\u06cc \u062f\u06cc\u0633\u06a9 public \u0645\u06cc\u200c\u0646\u0634\u06cc\u0646\u062f \u0648 \u06cc\u06a9 SVG \u062d\u0627\u0648\u06cc <script>\n\u062a\u0628\u062f\u06cc\u0644 \u0628\u0647 XSS \u0630\u062e\u06cc\u0631\u0647\u200c\u0634\u062f\u0647 \u0645\u06cc\u200c\u0634\u0648\u062f (\u0628\u0627 FILESYSTEM_PUBLIC_DRIVER=local \u2014 \u06a9\u0647\n\u067e\u06cc\u0634\u200c\u0641\u0631\u0636\u0650 .env.example \u0627\u0633\u062a \u2014 \u0647\u0645\u0627\u0646 \u0645\u0628\u062f\u0623\u0650 \u062e\u0648\u062f\u0650 \u0627\u067e \u0633\u0631\u0648 \u0645\u06cc\u200c\u0634\u0648\u062f \u0648 CSP \u0647\u0645\nscript-src 'self' \u062f\u0627\u0631\u062f\u060c \u067e\u0633 \u062c\u0644\u0648\u06cc\u0634 \u0631\u0627 \u0646\u0645\u06cc\u200c\u06af\u06cc\u0631\u062f). \u0627\u06cc\u0646 \u0645\u0633\u06cc\u0631 \u0627\u0632 \u0647\u0645\u0647 \u0628\u062f\u062a\u0631 \u0628\u0648\u062f\n\u0686\u0648\u0646 \u06a9\u0627\u0631\u0628\u0631\u0650 \u0639\u0627\u062f\u06cc (\u062a\u0623\u0645\u06cc\u0646\u200c\u06a9\u0646\u0646\u062f\u0647\u0654 \u062a\u0623\u06cc\u06cc\u062f\u0634\u062f\u0647) \u0628\u0647 \u0622\u0646 \u062f\u0633\u062a\u0631\u0633\u06cc \u062f\u0627\u0631\u062f\u060c \u0646\u0647 \u0641\u0642\u0637 \u0627\u062f\u0645\u06cc\u0646.",
                                         "maxLength": 2048
                                     }
                                 },
@@ -16447,166 +16035,11 @@
                 }
             }
         },
-        "/profile/orders/{order}/prepare": {
-            "post": {
-                "operationId": "supplierOrder.markAsPrepared",
-                "tags": [
-                    "SupplierOrder"
-                ],
-                "parameters": [
-                    {
-                        "name": "order",
-                        "in": "path",
-                        "required": true,
-                        "description": "The order ID",
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/AuthorizationException"
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/ModelNotFoundException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    }
-                }
-            }
-        },
-        "/profile/orders/{order}/reject": {
-            "post": {
-                "operationId": "supplierOrder.rejectOrder",
-                "description": "\u0641\u0642\u0637 \u0631\u0648\u06cc \u0633\u0641\u0627\u0631\u0634\u0650 \u00ab\u062f\u0631 \u062d\u0627\u0644 \u067e\u0631\u062f\u0627\u0632\u0634\u00bb (\u067e\u06cc\u0634 \u0627\u0632 \u0622\u0645\u0627\u062f\u0647\u200c\u0633\u0627\u0632\u06cc/\u062d\u0645\u0644) \u0645\u062c\u0627\u0632 \u0627\u0633\u062a. \u062e\u0631\u06cc\u062f\u0627\u0631 \u0627\u0632 \u0637\u0631\u06cc\u0642\nCancelOrderAction \u0628\u0647\u200c\u0637\u0648\u0631 \u06a9\u0627\u0645\u0644 refund \u0645\u06cc\u200c\u0634\u0648\u062f (\u0647\u0645\u0627\u0646 \u0645\u0633\u06cc\u0631\u0650 \u0627\u0645\u0646\u0650 \u0644\u063a\u0648 \u06a9\u0647 \u0627\u062f\u0645\u06cc\u0646 \u0627\u0633\u062a\u0641\u0627\u062f\u0647 \u0645\u06cc\u200c\u06a9\u0646\u062f).",
-                "summary": "\u0631\u062f \u0633\u0641\u0627\u0631\u0634 \u062a\u0648\u0633\u0637 \u0633\u0648\u067e\u0644\u0627\u06cc\u0631 \u2014 \u0646\u06cc\u0645\u0647\u200c\u06cc \u06af\u0645\u200c\u0634\u062f\u0647\u200c\u06cc \u00ab\u062a\u0623\u06cc\u06cc\u062f/\u0631\u062f \u0633\u0641\u0627\u0631\u0634\u00bb (\u062a\u0623\u06cc\u06cc\u062f = markAsPrepared)",
-                "tags": [
-                    "SupplierOrder"
-                ],
-                "parameters": [
-                    {
-                        "name": "order",
-                        "in": "path",
-                        "required": true,
-                        "description": "The order ID",
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "type": "object",
-                                "properties": {
-                                    "reason": {
-                                        "type": "string",
-                                        "maxLength": 1000
-                                    }
-                                },
-                                "required": [
-                                    "reason"
-                                ]
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/AuthorizationException"
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/ModelNotFoundException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    }
-                }
-            }
-        },
-        "/profile/orders/{order}/waybill": {
-            "post": {
-                "operationId": "supplierOrder.addWaybill",
-                "tags": [
-                    "SupplierOrder"
-                ],
-                "parameters": [
-                    {
-                        "name": "order",
-                        "in": "path",
-                        "required": true,
-                        "description": "The order ID",
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/AddWaybillRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/AuthorizationException"
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/ModelNotFoundException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
-                    }
-                }
-            }
-        },
         "/profile/orders/{order}/espadana": {
             "post": {
                 "operationId": "supplierOrder.issueEspadanaCommand",
+                "description": "\u062a\u0646\u0647\u0627 \u0645\u062a\u062f\u0650 \u0627\u06cc\u0646 \u06a9\u0646\u062a\u0631\u0644\u0631 \u0628\u0648\u062f \u06a9\u0647 **\u0647\u06cc\u0686 \u06af\u0627\u0631\u062f\u06cc \u0646\u062f\u0627\u0634\u062a**: \u0646\u0647 \u0648\u0636\u0639\u06cc\u062a \u0631\u0627 \u0686\u06a9 \u0645\u06cc\u200c\u06a9\u0631\u062f \u0648 \u0646\u0647\nidempotent \u0628\u0648\u062f\u060c \u067e\u0633 \u0631\u0648\u06cc \u0633\u0641\u0627\u0631\u0634\u0650 \u0644\u063a\u0648\u0634\u062f\u0647 \u0647\u0645 \u0627\u062c\u0631\u0627 \u0645\u06cc\u200c\u0634\u062f \u0648 \u0647\u0631 \u0628\u0627\u0631 \u0635\u062f\u0627 \u0632\u062f\u0646\u060c \u0634\u0646\u0627\u0633\u0647 \u0631\u0627\n\u0628\u0627 `time()`\u0650 \u062a\u0627\u0632\u0647 \u0628\u0627\u0632\u0646\u0648\u06cc\u0633\u06cc \u0645\u06cc\u200c\u06a9\u0631\u062f \u2014 \u06cc\u0639\u0646\u06cc \u0645\u0631\u062c\u0639\u06cc \u06a9\u0647 \u0628\u0647 \u0633\u06cc\u0633\u062a\u0645 \u0628\u06cc\u0631\u0648\u0646\u06cc \u062f\u0627\u062f\u0647 \u0634\u062f\u0647\n\u0628\u06cc\u200c\u0635\u062f\u0627 \u0628\u06cc\u200c\u0627\u0639\u062a\u0628\u0627\u0631 \u0645\u06cc\u200c\u0634\u062f. \u062d\u0627\u0644\u0627 \u0645\u062b\u0644 \u0628\u0642\u06cc\u0647\u0654 \u06af\u0630\u0627\u0631\u0647\u0627 \u0632\u06cc\u0631 \u0642\u0641\u0644 \u0628\u0631\u0631\u0633\u06cc \u0645\u06cc\u200c\u0634\u0648\u062f.",
+                "summary": "\u0635\u062f\u0648\u0631 \u062f\u0633\u062a\u0648\u0631 \u0628\u0627\u0631\u06af\u06cc\u0631\u06cc \u0627\u0633\u067e\u0627\u062f\u0627\u0646\u0627",
                 "tags": [
                     "SupplierOrder"
                 ],
@@ -16950,6 +16383,8 @@
             },
             "post": {
                 "operationId": "supplierProductPrice.store",
+                "description": "\u0642\u0628\u0644\u0627\u064b `exists()` \u0648 \u0628\u0639\u062f `create()` \u0628\u062f\u0648\u0646 \u0647\u06cc\u0686 \u0642\u0641\u0644\u06cc \u0627\u062c\u0631\u0627 \u0645\u06cc\u200c\u0634\u062f. \u062f\u0648 \u062f\u0631\u062e\u0648\u0627\u0633\u062a\u0650\n\u0647\u0645\u200c\u0632\u0645\u0627\u0646 \u0647\u0631 \u062f\u0648 \u0627\u0632 \u0686\u06a9 \u0631\u062f \u0645\u06cc\u200c\u0634\u062f\u0646\u062f \u0648 \u062f\u0648\u0645\u06cc \u0628\u0647 \u0627\u06cc\u0646\u062f\u06a9\u0633\u0650 \u06cc\u06a9\u062a\u0627\u06cc\n`unique_product_price` \u0645\u06cc\u200c\u062e\u0648\u0631\u062f \u2014 \u06cc\u0639\u0646\u06cc \u0628\u0647\u200c\u062c\u0627\u06cc \u06f4\u06f2\u06f2\u0650 \u0645\u0648\u0631\u062f\u0646\u0638\u0631\u060c \u06cc\u06a9\n`QueryException` \u0645\u062f\u06cc\u0631\u06cc\u062a\u200c\u0646\u0634\u062f\u0647 \u0648 \u067e\u0627\u0633\u062e\u0650 \u06f5\u06f0\u06f0. \u062d\u0627\u0644\u0627 \u062e\u0648\u062f\u0650 \u0646\u0642\u0636\u0650 \u0642\u06cc\u062f \u0647\u0645 \u0628\u0647 \u0647\u0645\u0627\u0646\n\u06f4\u06f2\u06f2 \u0646\u06af\u0627\u0634\u062a \u0645\u06cc\u200c\u0634\u0648\u062f\u060c \u067e\u0633 \u0645\u0633\u0627\u0628\u0642\u0647 \u0648 \u062a\u06a9\u0631\u0627\u0631\u0650 \u0633\u0627\u062f\u0647 \u06cc\u06a9 \u067e\u0627\u0633\u062e \u0645\u06cc\u200c\u06af\u06cc\u0631\u0646\u062f.",
+                "summary": "\u0686\u06a9\u0650 \u062a\u06a9\u0631\u0627\u0631\u06cc\u200c\u0628\u0648\u062f\u0646 \u0648 \u062f\u0631\u062c\u060c \u0647\u0631 \u062f\u0648 \u0628\u0627\u06cc\u062f \u06cc\u06a9 \u062a\u0635\u0645\u06cc\u0645 \u0628\u0627\u0634\u0646\u062f",
                 "tags": [
                     "SupplierProductPrice"
                 ],
@@ -17520,6 +16955,43 @@
                                 "string",
                                 "null"
                             ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/ticket/files/{ticketFile}": {
+            "get": {
+                "operationId": "ticket.file.download",
+                "tags": [
+                    "TicketFile"
+                ],
+                "parameters": [
+                    {
+                        "name": "ticketFile",
+                        "in": "path",
+                        "required": true,
+                        "description": "The ticket file ID",
+                        "schema": {
+                            "type": "integer"
                         }
                     }
                 ],
@@ -18347,19 +17819,6 @@
                 ],
                 "title": "AddToCartRequest"
             },
-            "AddWaybillRequest": {
-                "type": "object",
-                "properties": {
-                    "waybill_ref": {
-                        "type": "string",
-                        "maxLength": 255
-                    }
-                },
-                "required": [
-                    "waybill_ref"
-                ],
-                "title": "AddWaybillRequest"
-            },
             "AdminTicketReplyRequest": {
                 "type": "object",
                 "properties": {
@@ -18653,6 +18112,50 @@
                     "order_id"
                 ],
                 "title": "PayWithWalletRequest"
+            },
+            "ProductPriceCache": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "product_id": {
+                        "type": "integer"
+                    },
+                    "product_variant_id": {
+                        "type": "integer"
+                    },
+                    "role_code": {
+                        "type": "string"
+                    },
+                    "final_price": {
+                        "type": "string"
+                    },
+                    "created_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    }
+                },
+                "required": [
+                    "id",
+                    "product_id",
+                    "product_variant_id",
+                    "role_code",
+                    "final_price",
+                    "created_at",
+                    "updated_at"
+                ],
+                "title": "ProductPriceCache"
             },
             "ProductVariantPriceRequest": {
                 "type": "object",
@@ -19136,6 +18639,7 @@
                         ],
                         "format": "binary",
                         "contentMediaType": "application/octet-stream",
+                        "description": "svg \u062d\u0630\u0641 \u0634\u062f: SVG \u0645\u06cc\u200c\u062a\u0648\u0627\u0646\u062f \u062d\u0627\u0648\u06cc \u0627\u0633\u06a9\u0631\u06cc\u067e\u062a \u0628\u0627\u0634\u062f (XSS \u0630\u062e\u06cc\u0631\u0647\u200c\u0634\u062f\u0647 \u0627\u06af\u0631 \u0645\u0633\u062a\u0642\u06cc\u0645 \u0631\u0646\u062f\u0631 \u0634\u0648\u062f).",
                         "maxLength": 2048
                     }
                 },
@@ -19673,27 +19177,6 @@
                 ],
                 "title": "StoreOrderRequest"
             },
-            "StoreOrderSurveyRequest": {
-                "type": "object",
-                "properties": {
-                    "rating": {
-                        "type": "integer",
-                        "minimum": 1,
-                        "maximum": 5
-                    },
-                    "comment": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "maxLength": 1000
-                    }
-                },
-                "required": [
-                    "rating"
-                ],
-                "title": "StoreOrderSurveyRequest"
-            },
             "StorePageRequest": {
                 "type": "object",
                 "description": "\u0633\u0627\u062e\u062a \u0635\u0641\u062d\u0647 \u0627\u0633\u062a\u0627\u062a\u06cc\u06a9 \u062c\u062f\u06cc\u062f \u062a\u0648\u0633\u0637 \u0627\u062f\u0645\u06cc\u0646.",
@@ -19728,14 +19211,17 @@
                 "type": "object",
                 "properties": {
                     "password": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "\u062d\u062f\u0627\u0642\u0644 \u0637\u0648\u0644 \u06f8 \u2014 \u0647\u0645\u200c\u062a\u0631\u0627\u0632 \u0628\u0627 StoreAdminRequest. \u0642\u0628\u0644\u0627\u064b \u0641\u0642\u0637\n'required|confirmed' \u0628\u0648\u062f\u060c \u06cc\u0639\u0646\u06cc \u06a9\u0627\u0631\u0628\u0631 \u0639\u0627\u062f\u06cc \u0645\u06cc\u200c\u062a\u0648\u0627\u0646\u0633\u062a \u0631\u0645\u0632 \u062a\u06a9\u200c\u06a9\u0627\u0631\u0627\u06a9\u062a\u0631\u06cc\n\u0628\u06af\u0630\u0627\u0631\u062f \u062f\u0631 \u062d\u0627\u0644\u06cc \u06a9\u0647 \u0627\u062f\u0645\u06cc\u0646 min:8 \u062f\u0627\u0634\u062a.",
+                        "minLength": 8
                     },
                     "code": {
                         "type": "string",
                         "description": "\u06a9\u062f OTP \u0645\u0631\u062d\u0644\u0647 \u0627\u0648\u0644 (changePasswordFirstAttempt) \u2014 \u0628\u062f\u0648\u0646 \u0622\u0646\u060c \u06cc\u06a9 \u062a\u0648\u06a9\u0646\n\u062f\u0632\u062f\u06cc\u062f\u0647\u200c\u0634\u062f\u0647 \u0628\u0631\u0627\u06cc \u062a\u0635\u0627\u062d\u0628 \u06a9\u0627\u0645\u0644 \u062d\u0633\u0627\u0628 (\u062a\u063a\u06cc\u06cc\u0631 \u0631\u0645\u0632) \u06a9\u0627\u0641\u06cc \u0628\u0648\u062f."
                     },
                     "password_confirmation": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 8
                     }
                 },
                 "required": [
@@ -19744,28 +19230,6 @@
                     "password_confirmation"
                 ],
                 "title": "StorePasswordRequest"
-            },
-            "StoreProductReviewRequest": {
-                "type": "object",
-                "description": "\u062b\u0628\u062a \u0646\u0638\u0631 \u0645\u062d\u0635\u0648\u0644 \u062a\u0648\u0633\u0637 \u06a9\u0627\u0631\u0628\u0631 \u0644\u0627\u06af\u06cc\u0646\u200c\u0634\u062f\u0647.\n\nauthorize() \u0647\u0645\u06cc\u0634\u0647 true \u0627\u0633\u062a \u0686\u0648\u0646 \u0631\u0648\u062a \u067e\u0634\u062a auth:sanctum \u0642\u0631\u0627\u0631 \u062f\u0627\u0631\u062f\u061b \u0645\u062d\u0635\u0648\u0644 \u0627\u0632\nroute-model-binding ({product:cuid}) \u0645\u06cc\u200c\u0622\u06cc\u062f.",
-                "properties": {
-                    "rating": {
-                        "type": "integer",
-                        "minimum": 1,
-                        "maximum": 5
-                    },
-                    "comment": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "maxLength": 2000
-                    }
-                },
-                "required": [
-                    "rating"
-                ],
-                "title": "StoreProductReviewRequest"
             },
             "StoreQuestionRequest": {
                 "type": "object",
@@ -19982,7 +19446,7 @@
                             "enum": [
                                 "employer",
                                 "supplier",
-                                "expert"
+                                "elite_yar"
                             ]
                         }
                     }
@@ -20023,7 +19487,7 @@
                             "enum": [
                                 "employer",
                                 "supplier",
-                                "expert"
+                                "elite_yar"
                             ]
                         },
                         "minItems": 1
@@ -20277,6 +19741,7 @@
                         ],
                         "format": "binary",
                         "contentMediaType": "application/octet-stream",
+                        "description": "svg \u0639\u0645\u062f\u0627\u064b \u0645\u062c\u0627\u0632 \u0646\u06cc\u0633\u062a: \u0622\u06cc\u06a9\u0648\u0646 \u0631\u0648\u06cc \u062f\u06cc\u0633\u06a9 public \u0645\u06cc\u200c\u0646\u0634\u06cc\u0646\u062f \u0648 \u0627\u0632 \u0647\u0645\u0627\u0646 origin\n\u0633\u0631\u0648 \u0645\u06cc\u200c\u0634\u0648\u062f\u060c \u067e\u0633 \u06cc\u06a9 SVG \u062d\u0627\u0648\u06cc <script> \u0628\u0631\u0627\u0628\u0631 \u0627\u0633\u062a \u0628\u0627 XSS \u0630\u062e\u06cc\u0631\u0647\u200c\u0634\u062f\u0647\n(CSP \u0641\u0639\u0644\u06cc \u0628\u0627 script-src 'self' \u062c\u0644\u0648\u06cc \u0627\u0633\u06a9\u0631\u06cc\u067e\u062a\u0650 \u0647\u0645\u200c\u0645\u0628\u062f\u0623 \u0631\u0627 \u0646\u0645\u06cc\u200c\u06af\u06cc\u0631\u062f).\nStoreBadgeRequest \u0647\u0645 \u0647\u0645\u06cc\u0646 \u0644\u06cc\u0633\u062a \u0631\u0627 \u062f\u0627\u0631\u062f \u2014 \u0627\u06cc\u0646 \u062f\u0648 \u0628\u0627\u06cc\u062f \u06cc\u06a9\u06cc \u0628\u0645\u0627\u0646\u0646\u062f.",
                         "maxLength": 2048
                     }
                 },
@@ -20670,6 +20135,14 @@
                             "null"
                         ],
                         "maxLength": 255
+                    },
+                    "verified_amount": {
+                        "type": [
+                            "number",
+                            "null"
+                        ],
+                        "description": "\u0645\u0628\u0644\u063a\u0650 \u062a\u0623\u06cc\u06cc\u062f\u0634\u062f\u0647 \u062a\u0648\u0633\u0637 \u0627\u062f\u0645\u06cc\u0646 (\u0627\u062e\u062a\u06cc\u0627\u0631\u06cc). \u0641\u0642\u0637 \u0628\u0631\u0627\u06cc \u00ab\u062a\u0623\u06cc\u06cc\u062f \u0648\u0627\u0631\u06cc\u0632\u00bb \u0645\u0639\u0646\u0627 \u062f\u0627\u0631\u062f:\n\u0627\u06af\u0631 \u0627\u0631\u0633\u0627\u0644 \u0634\u0648\u062f\u060c \u0647\u0645\u06cc\u0646 \u0645\u0628\u0644\u063a \u0628\u0647 \u06a9\u06cc\u0641 \u067e\u0648\u0644 \u0648\u0627\u0631\u06cc\u0632 \u0648 \u0631\u0648\u06cc \u062a\u0631\u0627\u06a9\u0646\u0634 \u062b\u0628\u062a \u0645\u06cc\u200c\u0634\u0648\u062f (\u0628\u0647\u200c\u062c\u0627\u06cc\n\u0645\u0628\u0644\u063a\u0650 \u062e\u0648\u062f\u0627\u0638\u0647\u0627\u0631\u0650 \u06a9\u0627\u0631\u0628\u0631). \u0646\u0628\u0648\u062f\u0650 \u0622\u0646 = \u0631\u0641\u062a\u0627\u0631 \u0642\u0628\u0644\u06cc (\u0633\u0627\u0632\u06af\u0627\u0631\u06cc\u0650 \u0639\u0642\u0628\u200c\u0631\u0648).",
+                        "minimum": 0
                     }
                 },
                 "required": [
