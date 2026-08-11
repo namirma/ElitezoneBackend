@@ -38,7 +38,6 @@ use App\Http\Controllers\Api\Admin\AdminSupplierController;
 use App\Http\Controllers\Api\Admin\AdminTicketController;
 use App\Http\Controllers\Api\Admin\AdminUserController;
 use App\Http\Controllers\Api\Admin\AdminWalletController;
-use App\Http\Controllers\Api\Admin\OrderWeighbridgeController;
 use App\Http\Controllers\Api\DebugController;
 use App\Http\Controllers\Api\Podium\IdentityInquirySc2Controller;
 use App\Http\Controllers\Api\Podium\MobileNidMatchController;
@@ -168,9 +167,6 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
         Route::post('/{order}/status', 'changeStatus');
         // Doc P — فاکتور مودیان سیستم (سازه → خریدار)، آزادسازی WVAT hold
         Route::post('/{order}/system-moadian-invoice', 'submitSystemMoadianInvoice');
-        // ثبت وزن باسکول — مسیر استاندارد زیر /orders (هم‌خانواده با بقیه عملیات سفارش)
-        Route::post('/{order}/weighbridge', [OrderWeighbridgeController::class, 'submitWeight'])
-            ->name('admin.orders.weighbridge.submit');
     });
 
     // Tickets — مدیریت تیکت‌های پشتیبانی — پشتِ مجوزِ granular «manage-tickets».
@@ -479,15 +475,4 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
         Route::delete('/{page}', 'destroy');
     });
 
-    // Legacy alias — مسیر قدیمی باسکول در ریشه /admin؛ برای سازگاری فرانت فعلی
-    // نگه داشته شده. مسیر استاندارد: POST /admin/orders/{order}/weighbridge
-    //
-    // admin.permission:manage-orders اینجا حیاتی است و قبلاً نبود: مسیر استاندارد
-    // پشت این مجوز بود ولی این alias نه، پس ادمینِ محدودشده (مثلاً فقط manage-content)
-    // می‌توانست از همین‌جا وزن باسکول ثبت کند — سنگین‌ترین عملیات مالی سیستم
-    // (بازمحاسبهٔ POO/PTS، عودت خریدار، بدهی تأمین‌کننده، هولد مالیات).
-    // OrderWeighbridgeController هیچ چک داخلی ندارد و کاملاً به میدل‌ور تکیه می‌کند.
-    Route::post('/{order}/weighbridge', [OrderWeighbridgeController::class, 'submitWeight'])
-        ->whereNumber('order')
-        ->middleware('admin.permission:manage-orders');
 });

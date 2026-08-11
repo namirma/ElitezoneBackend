@@ -67,74 +67,30 @@ class AdminOrderController extends Controller
 
     public function changeStatus(Request $request, Order $order, CancelOrderAction $cancelAction): JsonResponse
     {
-        $allowedStatuses = [
-            Order::STATUS_PENDING,
-            Order::STATUS_PROCESSING,
-            Order::STATUS_SHIPPED,
-            Order::STATUS_DELIVERED,
-            Order::STATUS_CANCELLED,
-        ];
-        $request->validate(['status' => 'required|string|in:'.implode(',', $allowedStatuses)]);
-
-        $newStatus = $request->input('status');
+        // بند ۵.۳ سند بازطراحی: **تنها اختیار ادمین روی وضعیت، لغو اجباری است.**
+        //
+        // هر گذارِ دیگری حالا صاحبِ مشخصی دارد که لِگ مالی و موجودی را هم با خودش
+        // می‌برد: `processing` از مسیر پرداخت می‌آید، `shipped` از ثبت بارنامه،
+        // `delivered`/`partially_delivered` از تأیید خریدار، و `returned_to_origin`
+        // از انقضای مهلت تحویل. یک `update([STATUS => ...])` خام از پنل ادمین همان
+        // گذار را بدون هیچ‌کدام از آن اثرها می‌ساخت — سفارشی که «تحویل شده» است ولی
+        // هیچ محموله‌ای تأیید نشده، یا «در حال حمل» بدون بارنامه.
+        $request->validate(['status' => 'required|string|in:'.Order::STATUS_CANCELLED]);
 
         // Cancelling MUST go through CancelOrderAction so the full reversal runs:
         // wallet refund (buyer + supplier legs), stock restoration, OrderCancelled
         // event and the refund/cancel documents. A bare status update here would
         // corrupt the ledger and inventory. isSystemCron=true lets the back-office
         // operator also unwind reserved orders.
-        if ($newStatus === Order::STATUS_CANCELLED) {
-            try {
-                $cancelAction->execute($order, __('admin.orders.cancelled_by_admin'), true, true);
-            } catch (Exception $e) {
-                Log::error('Admin order cancel failed: '.$e->getMessage(), ['order_id' => $order->id]);
+        try {
+            $cancelAction->execute($order, __('admin.orders.cancelled_by_admin'), true, true);
+        } catch (Exception $e) {
+            Log::error('Admin order cancel failed: '.$e->getMessage(), ['order_id' => $order->id]);
 
-                return error(__('orders.cannot_cancel'), [], 422);
-            }
-
-            return success(null, __('orders.cancelled_successfully'));
+            return error(__('orders.cannot_cancel'), [], 422);
         }
 
-        // ماشین وضعیت — فقط ترنزیشن‌های رو به جلوی مجاز؛ پرش (مثلاً pending → delivered)
-        // مراحل پرداخت/باسکول را دور می‌زند و وضعیت‌های نهایی قابل برگشت نیستند.
-        $allowedTransitions = [
-            Order::STATUS_PENDING => [Order::STATUS_PROCESSING],
-            Order::STATUS_PROCESSING => [Order::STATUS_SHIPPED],
-            Order::STATUS_PREPARING => [Order::STATUS_SHIPPED],
-            Order::STATUS_WEIGHBRIDGE_DONE => [Order::STATUS_SHIPPED],
-            Order::STATUS_WAYBILL_ISSUED => [Order::STATUS_SHIPPED],
-            Order::STATUS_SHIPPED => [Order::STATUS_DELIVERED],
-        ];
-
-        $currentStatus = $order->{Order::STATUS};
-
-        if (! in_array($newStatus, $allowedTransitions[$currentStatus] ?? [], true)) {
-            return error(
-                __('admin.orders.invalid_status_transition'),
-                ['current' => $currentStatus, 'requested' => $newStatus],
-                422
-            );
-        }
-
-        // PENDING یعنی هنوز پرداخت نشده. PROCESSING آغاز پایپلاین پس-از-پرداخت است
-        // (سوپلایر سفارش را می‌بیند، آماده‌سازی/باسکول ممکن می‌شود) — بدون پرداخت
-        // واقعی هیچ لگ مالی ثبت نشده و مسیر پرداخت کاربر هم بعداً بسته می‌شود.
-        // این ترنزیشن فقط برای سفارشِ پرداخت‌شده مجاز است.
-        if (
-            $currentStatus === Order::STATUS_PENDING
-            && $newStatus === Order::STATUS_PROCESSING
-            && $order->{Order::PAYMENT_STATUS} !== Order::PAYMENT_PAID
-        ) {
-            return error(
-                __('admin.orders.cannot_process_unpaid'),
-                ['payment_status' => $order->{Order::PAYMENT_STATUS}],
-                422
-            );
-        }
-
-        $order->update([Order::STATUS => $newStatus]);
-
-        return success(null, __('admin.orders.status_updated'));
+        return success(null, __('orders.cancelled_successfully'));
     }
 
     /**

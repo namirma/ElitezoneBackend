@@ -84,18 +84,18 @@ class RealEliteYARTimelineSeeder extends Seeder
         // ─── سناریو A: کاربر الیت یارِ سفارشِ کارفرماست (داشبورد) ──────────
         $this->command->info('▸ سناریو A — کارفرما خرید کرده، کاربر الیت یارِ آن است:');
         $a1 = $this->makeOrder($employerA->id, $eliteYAR->id, 'ORD-CONS-A1', Order::STATUS_PROCESSING);
-        $a2 = $this->makeOrder($employerA->id, $eliteYAR->id, 'ORD-CONS-A2', Order::STATUS_WEIGHBRIDGE_DONE);
-        $a3 = $this->makeOrder($employerB->id, $eliteYAR->id, 'ORD-CONS-A3', Order::STATUS_WEIGHBRIDGE_DONE, [
+        $a2 = $this->makeOrder($employerA->id, $eliteYAR->id, 'ORD-CONS-A2', Order::STATUS_SHIPPED);
+        $a3 = $this->makeOrder($employerB->id, $eliteYAR->id, 'ORD-CONS-A3', Order::STATUS_SHIPPED, [
             Order::ELITE_YAR_MOADIAN_REF => '1402-CON-A3-77451',
         ]);
-        $a4 = $this->makeOrder($employerB->id, $eliteYAR->id, 'ORD-CONS-A4', Order::STATUS_WEIGHBRIDGE_DONE, [
+        $a4 = $this->makeOrder($employerB->id, $eliteYAR->id, 'ORD-CONS-A4', Order::STATUS_SHIPPED, [
             Order::ELITE_YAR_MOADIAN_REF => '1402-CON-A4-77452',
             Order::ELITE_YAR_HOLD_RELEASED_AT => now()->subDay(),
         ]);
 
         // ─── سناریو B: کاربر برای کارفرما خرید کرده (تب خرید برای دیگران) ─
         $this->command->info('▸ سناریو B — کاربر برای کارفرمای دیگری خرید کرده:');
-        $this->makeOrder($eliteYAR->id, $client->id, 'ORD-CONS-B1', Order::STATUS_WEIGHBRIDGE_DONE);
+        $this->makeOrder($eliteYAR->id, $client->id, 'ORD-CONS-B1', Order::STATUS_SHIPPED);
         $this->makeOrder($eliteYAR->id, $client->id, 'ORD-CONS-B2', Order::STATUS_SHIPPED);
         $this->makeOrder($eliteYAR->id, $client->id, 'ORD-CONS-B3', Order::STATUS_CANCELLED);
         // تحویل‌شده: پورسانت آزاد شده → هر ۴ مرحلهٔ تایم‌لاین الیت یار completed

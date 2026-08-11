@@ -101,7 +101,7 @@ class EliteYARTimelineTestSeeder extends Seeder
                 Order::PLACER_USER_ID => $employer->id,
                 Order::BENEFICIARY_USER_ID => $eliteYAR->id,
                 Order::ORDER_NUMBER => self::ORDER_NUMBER,
-                Order::STATUS => Order::STATUS_WEIGHBRIDGE_DONE,
+                Order::STATUS => Order::STATUS_SHIPPED,
                 Order::PAYMENT_STATUS => Order::PAYMENT_PAID,
                 Order::FINAL_AMOUNT => 1_200_000_000,
                 Order::OFFICIAL_PRICE => 1_200_000_000,

@@ -24,7 +24,7 @@ class AnalyticsService
 
             // دریافت مجموع فروش روزانه
             $rawData = Order::query()
-                ->where(Order::STATUS, Order::STATUS_COMPLETED) // فقط سفارش‌های موفق
+                ->where(Order::STATUS, Order::STATUS_DELIVERED)
                 ->where(Order::CREATED_AT, '>=', $startDate)
                 ->select([
                     DB::raw('DATE(created_at) as date'),

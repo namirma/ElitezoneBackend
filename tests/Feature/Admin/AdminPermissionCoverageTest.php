@@ -16,7 +16,7 @@ use Tests\TestCase;
  *     (`/admin/orders/{order}/weighbridge`) پشتِ manage-orders بود ولی این نه، پس
  *     ادمینی با فقط manage-content می‌توانست سنگین‌ترین عملیات مالی سیستم را اجرا
  *     کند (بازمحاسبهٔ POO/PTS، عودت خریدار، بدهی تأمین‌کننده، هولد مالیات).
- *     OrderWeighbridgeController هیچ چک داخلی ندارد.
+ *     آن کنترلر هیچ چک داخلی نداشت. هر دو روت در بازطراحی حذف شدند (بند ۱۶).
  *  ۲. روت‌های واریانت محصول — بدون manage-catalog، برخلافِ همهٔ گروه‌های هم‌ردیف.
  *  ۳. جستجو و lookupهای کاربر — همان PII و سابقهٔ مالیِ گروهِ گِیت‌شده را
  *     بدون دروازه برمی‌گرداندند.
@@ -83,31 +83,18 @@ class AdminPermissionCoverageTest extends TestCase
         );
     }
 
+    /**
+     * باسکولِ ادمین در بازطراحی حذف شد (بند ۱۶) — وزن حالا با ثبت بارنامه توسط
+     * تأمین‌کننده وارد می‌شود. این تست جای آن تستِ برابریِ مجوز را می‌گیرد و
+     * مطمئن می‌شود هیچ‌کدام از دو روت برنگشته‌اند؛ سوییپِ اصلیِ همین کلاس پوششِ
+     * مجوزِ هر روتِ تازه را جداگانه تضمین می‌کند.
+     */
     #[Test]
-    public function the_legacy_weighbridge_alias_requires_the_same_permission_as_the_canonical_route(): void
+    public function the_admin_weighbridge_routes_are_gone(): void
     {
-        $permissionOf = function (string $uri): array {
-            foreach (Route::getRoutes() as $route) {
-                if ($route->uri() === $uri) {
-                    return array_values(array_filter(
-                        $route->gatherMiddleware(),
-                        fn ($m) => is_string($m)
-                            && (str_contains($m, 'admin.permission') || str_contains($m, 'EnsureAdminHasPermission'))
-                    ));
-                }
-            }
+        $uris = array_map(fn ($route) => $route->uri(), iterator_to_array(Route::getRoutes()));
 
-            return [];
-        };
-
-        $canonical = $permissionOf('api/admin/orders/{order}/weighbridge');
-        $legacy = $permissionOf('api/admin/{order}/weighbridge');
-
-        $this->assertNotEmpty($canonical, 'روت استاندارد باسکول باید مجوز داشته باشد.');
-        $this->assertSame(
-            $canonical,
-            $legacy,
-            'alias قدیمی باسکول باید دقیقاً همان مجوزِ روت استاندارد را داشته باشد.'
-        );
+        $this->assertNotContains('api/admin/orders/{order}/weighbridge', $uris);
+        $this->assertNotContains('api/admin/{order}/weighbridge', $uris);
     }
 }

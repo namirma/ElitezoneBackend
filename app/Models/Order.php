@@ -111,31 +111,31 @@ class Order extends Model
     // =========================================================================
     //  Constants (Business Logic / Statuses)
     // =========================================================================
+    /**
+     * ⚠️ موقت — تا فاز ۴ (جداسازی موجودی از ثبت سفارش).
+     *
+     * طبق بند ۵.۲ سند بازطراحی این وضعیت حذف می‌شود، ولی تنها نویسنده‌اش
+     * `PlaceOrderAction` است که در فاز ۴ بازنویسی می‌شود («رکورد Order فقط وقتی
+     * ساخته می‌شود که پول قطعی نشسته باشد»). حذفِ ثابت پیش از حذفِ نویسنده‌اش
+     * فقط build را می‌شکند، پس اینجا می‌ماند و در همان فاز ۴ برداشته می‌شود.
+     */
     public const STATUS_PENDING = 'pending';
 
     public const STATUS_RESERVED = 'reserved';
 
-    public const STATUS_RESERVED_EXTENDED = 'reserved_extended';
-
     public const STATUS_PROCESSING = 'processing';
 
-    public const STATUS_PREPARING = 'preparing';
-
-    public const STATUS_WEIGHBRIDGE_DONE = 'weighbridge_done';
-
-    public const STATUS_WAYBILL_ISSUED = 'waybill_issued';
+    public const STATUS_AWAITING_WEIGHT_CORRECTION = 'awaiting_weight_correction';
 
     public const STATUS_SHIPPED = 'shipped';
 
+    public const STATUS_PARTIALLY_DELIVERED = 'partially_delivered';
+
     public const STATUS_DELIVERED = 'delivered';
 
-    public const STATUS_COMPLETED = 'completed';
+    public const STATUS_RETURNED_TO_ORIGIN = 'returned_to_origin';
 
     public const STATUS_CANCELLED = 'cancelled';
-
-    public const STATUS_FAILED = 'failed';
-
-    public const STATUS_PENDING_SURPLUS_PAYMENT = 'pending_surplus_payment';
 
     /**
      * وضعیت‌هایی که یک سفارش در آن‌ها قابل‌پرداخت است — منبعِ واحدِ حقیقت تا مسیرِ
@@ -145,7 +145,6 @@ class Order extends Model
     public const PAYABLE_STATUSES = [
         self::STATUS_PENDING,
         self::STATUS_RESERVED,
-        self::STATUS_RESERVED_EXTENDED,
     ];
 
     public const PAYMENT_PENDING = 'pending';

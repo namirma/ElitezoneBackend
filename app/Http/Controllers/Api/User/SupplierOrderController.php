@@ -3,9 +3,7 @@
 namespace App\Http\Controllers\Api\User;
 
 use App\Actions\Financial\RecordSupplierMoadianInvoiceAction;
-use App\Actions\Order\CancelOrderAction;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Order\AddWaybillRequest;
 use App\Http\Requests\Order\SubmitMoadianInvoiceRequest;
 use App\Http\Requests\Order\UploadOrderReceiptRequest;
 use App\Http\Resources\Order\OrderResource;
@@ -140,10 +138,9 @@ class SupplierOrderController extends Controller
             ->whereNotNull(Order::WEIGHING_COMPLETED_AT)
             ->whereNull(Order::SUPPLIER_MOADIAN_REF)
             ->whereIn(Order::STATUS, [
-                Order::STATUS_WEIGHBRIDGE_DONE,
-                Order::STATUS_WAYBILL_ISSUED,
+                Order::STATUS_SHIPPED,
+                Order::STATUS_PARTIALLY_DELIVERED,
                 Order::STATUS_DELIVERED,
-                Order::STATUS_COMPLETED,
             ])
             ->with(Order::resourceRelations())
             ->latest()
@@ -152,80 +149,30 @@ class SupplierOrderController extends Controller
         return success(OrderResource::collection($orders), __('admin.financial.pending_moadian_received'));
     }
 
-    public function markAsPrepared(Order $order): JsonResponse
-    {
-        $this->authorize('manageAsSupplier', $order);
-
-        // قفل ردیف و بازبینی وضعیت زیر قفل (TOCTOU-safe): بدون این، دو درخواستِ
-        // هم‌زمان می‌توانند هر دو از شرطِ وضعیت عبور کنند یا گذارِ یکدیگر را بازنویسی کنند.
-        return DB::transaction(function () use ($order) {
-            $locked = Order::where(Order::ID, $order->id)->lockForUpdate()->first();
-
-            if ($locked->status !== Order::STATUS_PROCESSING) {
-                return error(__('orders.cannot_prepare_in_current_state'), [], 400);
-            }
-
-            $locked->update([
-                Order::STATUS => Order::STATUS_PREPARING,
-                Order::PREPARED_AT => now(),
-            ]);
-
-            $locked->loadMissing(Order::resourceRelations());
-
-            return success(new OrderResource($locked), __('orders.marked_as_prepared'));
-        });
-    }
-
     /**
-     * رد سفارش توسط سوپلایر — نیمه‌ی گم‌شده‌ی «تأیید/رد سفارش» (تأیید = markAsPrepared).
+     * صدور دستور بارگیری اسپادانا.
      *
-     * فقط روی سفارشِ «در حال پردازش» (پیش از آماده‌سازی/حمل) مجاز است. خریدار از طریق
-     * CancelOrderAction به‌طور کامل refund می‌شود (همان مسیرِ امنِ لغو که ادمین استفاده می‌کند).
+     * تنها متدِ این کنترلر بود که **هیچ گاردی نداشت**: نه وضعیت را چک می‌کرد و نه
+     * idempotent بود، پس روی سفارشِ لغوشده هم اجرا می‌شد و هر بار صدا زدن، شناسه را
+     * با `time()`ِ تازه بازنویسی می‌کرد — یعنی مرجعی که به سیستم بیرونی داده شده
+     * بی‌صدا بی‌اعتبار می‌شد. حالا مثل بقیهٔ گذارها زیر قفل بررسی می‌شود.
      */
-    public function rejectOrder(Request $request, Order $order, CancelOrderAction $cancel): JsonResponse
-    {
-        $this->authorize('manageAsSupplier', $order);
-
-        if ($order->status !== Order::STATUS_PROCESSING) {
-            return error(__('orders.cannot_reject_in_current_state'), [], 400);
-        }
-
-        $data = $request->validate(['reason' => ['required', 'string', 'max:1000']]);
-
-        $cancel->execute($order, $data['reason'], true, true);
-
-        return success(null, __('orders.supplier_rejected'));
-    }
-
-    public function addWaybill(AddWaybillRequest $request, Order $order): JsonResponse
-    {
-        $this->authorize('manageAsSupplier', $order);
-
-        return DB::transaction(function () use ($order, $request) {
-            $locked = Order::where(Order::ID, $order->id)->lockForUpdate()->first();
-
-            if (! in_array($locked->status, [Order::STATUS_PREPARING, Order::STATUS_WEIGHBRIDGE_DONE])) {
-                return error(__('orders.cannot_add_waybill'), [], 400);
-            }
-
-            $locked->update([
-                Order::STATUS => Order::STATUS_WAYBILL_ISSUED,
-                Order::WAYBILL_REF => $request->validated('waybill_ref'),
-                Order::SHIPPED_AT => now(),
-            ]);
-
-            $locked->loadMissing(Order::resourceRelations());
-
-            return success(new OrderResource($locked), __('orders.waybill_added'));
-        });
-    }
-
     public function issueEspadanaCommand(Order $order): JsonResponse
     {
         $this->authorize('manageAsSupplier', $order);
 
         return DB::transaction(function () use ($order) {
+            // larastan نتیجهٔ `lockForUpdate()->first()` را `Model` می‌بیند نه `Order`.
+            /** @var Order $locked */
             $locked = Order::where(Order::ID, $order->id)->lockForUpdate()->first();
+
+            if ($locked->{Order::ESPADANA_ORDER_REF} !== null) {
+                return error(__('orders.espadana_already_issued'), [], 409);
+            }
+
+            if ($locked->status !== Order::STATUS_PROCESSING) {
+                return error(__('orders.cannot_issue_espadana'), [], 400);
+            }
 
             $locked->update([Order::ESPADANA_ORDER_REF => 'ESPADANA_'.$locked->id.'_'.time()]);
 

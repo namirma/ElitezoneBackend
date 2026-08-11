@@ -14,12 +14,12 @@ class OrderBuilder extends Builder
     {
         return $this->whereIn(Order::STATUS, [
             Order::STATUS_PENDING,
-            Order::STATUS_RESERVED_EXTENDED,
+            Order::STATUS_RESERVED,
             Order::STATUS_PROCESSING,
-            Order::STATUS_PREPARING,
-            Order::STATUS_WEIGHBRIDGE_DONE,
-            Order::STATUS_WAYBILL_ISSUED,
+            Order::STATUS_AWAITING_WEIGHT_CORRECTION,
             Order::STATUS_SHIPPED,
+            Order::STATUS_PARTIALLY_DELIVERED,
+            Order::STATUS_RETURNED_TO_ORIGIN,
         ]);
     }
 
@@ -64,10 +64,7 @@ class OrderBuilder extends Builder
      */
     public function cancelled(): self
     {
-        return $this->whereIn(Order::STATUS, [
-            Order::STATUS_CANCELLED,
-            Order::STATUS_FAILED,
-        ]);
+        return $this->where(Order::STATUS, Order::STATUS_CANCELLED);
     }
 
     /**

@@ -34,7 +34,11 @@ class AdminFinancialController extends Controller
             // فیلتر فاکتور نهایی
             ->when($type === 'final', function (Builder $query) {
                 $query->whereNotNull(Order::FINAL_INVOICE_REF)
-                    ->whereIn(Order::STATUS, [Order::STATUS_WEIGHBRIDGE_DONE, Order::STATUS_DELIVERED]);
+                    ->whereIn(Order::STATUS, [
+                        Order::STATUS_SHIPPED,
+                        Order::STATUS_PARTIALLY_DELIVERED,
+                        Order::STATUS_DELIVERED,
+                    ]);
             })
             // فیلتر دستور سفارش
             ->when($type === 'command', fn (Builder $query) => $query->whereNotNull(Order::ESPADANA_ORDER_REF))
@@ -155,10 +159,9 @@ class AdminFinancialController extends Controller
                     ->orWhereNull(Order::SYSTEM_MOADIAN_REF);
             })
             ->whereIn(Order::STATUS, [
-                Order::STATUS_WEIGHBRIDGE_DONE,
-                Order::STATUS_WAYBILL_ISSUED,
+                Order::STATUS_SHIPPED,
+                Order::STATUS_PARTIALLY_DELIVERED,
                 Order::STATUS_DELIVERED,
-                Order::STATUS_COMPLETED,
             ])
             ->with(['placer.profile'])
             ->latest()

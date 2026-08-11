@@ -26,17 +26,6 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Hold Fee (Rials)
-    |--------------------------------------------------------------------------
-    |
-    | Fixed fee charged to extend an existing reservation by 24 hours.
-    | 50,000,000 Rials = 5,000,000 Tomans
-    |
-    */
-    'hold_fee' => env('HOLD_FEE_RIALS', 50_000_000),
-
-    /*
-    |--------------------------------------------------------------------------
     | Time windows (hours)
     |--------------------------------------------------------------------------
     |
@@ -47,14 +36,16 @@ return [
     |                                  after this many hours (CheckReservationExpiryJob).
     |   reservation_validity_hours   — how long a paid reservation stays valid before
     |                                  it must be completed or extended.
-    |   hold_fee_extension_hours     — how much paying the hold fee extends a reservation.
+    |
+    | The paid extension (`hold_fee*`) is gone: extending a reservation is now free
+    | and is the supplier's call, not something the buyer pays 5M Tomans for
+    | (redesign spec §3.4). Reservation deadlines live on the order itself
+    | (`reserve_deadline`), sourced from `supplier_profiles.reserve_time`.
     |
     */
     'pending_order_ttl_hours' => (int) env('PENDING_ORDER_TTL_HOURS', 2),
 
     'reservation_validity_hours' => (int) env('RESERVATION_VALIDITY_HOURS', 2),
-
-    'hold_fee_extension_hours' => (int) env('HOLD_FEE_EXTENSION_HOURS', 24),
 
     /*
     |--------------------------------------------------------------------------

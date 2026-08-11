@@ -54,13 +54,12 @@ class AdminDashboardService
         $statuses = [
             Order::STATUS_PENDING,
             Order::STATUS_RESERVED,
-            Order::STATUS_RESERVED_EXTENDED,
             Order::STATUS_PROCESSING,
-            Order::STATUS_PREPARING,
-            Order::STATUS_WEIGHBRIDGE_DONE,
-            Order::STATUS_WAYBILL_ISSUED,
+            Order::STATUS_AWAITING_WEIGHT_CORRECTION,
             Order::STATUS_SHIPPED,
+            Order::STATUS_PARTIALLY_DELIVERED,
             Order::STATUS_DELIVERED,
+            Order::STATUS_RETURNED_TO_ORIGIN,
             Order::STATUS_CANCELLED,
         ];
 
@@ -105,14 +104,14 @@ class AdminDashboardService
                     ->orWhereNull(Order::SYSTEM_MOADIAN_REF);
             })
             ->whereIn(Order::STATUS, [
-                Order::STATUS_WEIGHBRIDGE_DONE,
-                Order::STATUS_WAYBILL_ISSUED,
+                Order::STATUS_SHIPPED,
+                Order::STATUS_PARTIALLY_DELIVERED,
                 Order::STATUS_DELIVERED,
             ])
             ->count();
 
         $expiredReservationCount = Order::query()
-            ->whereIn(Order::STATUS, [Order::STATUS_RESERVED, Order::STATUS_RESERVED_EXTENDED])
+            ->where(Order::STATUS, Order::STATUS_RESERVED)
             ->whereNotNull(Order::RESERVATION_EXPIRES_AT)
             ->where(Order::RESERVATION_EXPIRES_AT, '<', now())
             ->count();

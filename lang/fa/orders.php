@@ -2,26 +2,42 @@
 
 use App\Models\Order;
 
+/*
+| برچسبِ وضعیتِ چرخهٔ عمرِ سفارش — **یک** تعریف، دو نامِ صادراتی.
+|
+| هر دو تیم مستقلاً همان باگ را پیدا کردند (آرایهٔ `status` هم‌زمان وضعیتِ سفارش،
+| وضعیتِ پرداخت و وضعیتِ پرداختِ سهم را نگه می‌داشت و چون `pending`/`paid`/`failed`
+| در بیش از یک خانواده تکرار می‌شوند، کلیدها در PHP روی هم می‌افتادند: ۱۶ اعلام،
+| ۱۳ resolve). ما `status` را به سه آرایهٔ مستقل شکستیم، تیم بک‌اند آرایهٔ جدیدِ
+| `order_status` را اضافه کرد. هر دو درست‌اند و کدِ هر دو طرف زنده است، پس هر دو
+| کلید باید کار کند — ولی **دو آرایهٔ هم‌محتوا دیر یا زود از هم واگرا می‌شوند**.
+| این متغیر تنها منبع است؛ هیچ‌کدام از دو کلید را جداگانه ویرایش نکنید.
+*/
+$orderStatusLabels = [
+    Order::STATUS_PENDING => 'در انتظار تایید (رزرو شده)',
+    Order::STATUS_RESERVED => 'رزرو شده',
+    Order::STATUS_PROCESSING => 'در حال آماده‌سازی',
+    Order::STATUS_AWAITING_WEIGHT_CORRECTION => 'در انتظار اصلاح وزن',
+    Order::STATUS_SHIPPED => 'در حال حمل',
+    Order::STATUS_PARTIALLY_DELIVERED => 'تحویل جزئی',
+    Order::STATUS_DELIVERED => 'تحویل شده',
+    Order::STATUS_RETURNED_TO_ORIGIN => 'عودت به مبدأ',
+    Order::STATUS_CANCELLED => 'لغو شده',
+];
+
 return [
     'cannot_cancel' => 'این سفارش در وضعیت قابل لغو نیست.',
     'cancelled_successfully' => 'سفارش با موفقیت لغو شد.',
     'invalid_invoice_type' => 'نوع فاکتور درخواستی نامعتبر است.',
     'invoice_not_found' => 'فاکتور مورد نظر یافت نشد یا هنوز صادر نشده است.',
     'invoice_download_link' => 'لینک دانلود فاکتور آماده شد.',
-    'marked_as_prepared' => 'سفارش به عنوان «در حال آماده‌سازی» علامت‌گذاری شد.',
-    'cannot_prepare_in_current_state' => 'امکان تایید سفارش (آماده‌سازی) در وضعیت فعلی وجود ندارد.',
-    'supplier_rejected' => 'سفارش توسط تأمین‌کننده رد شد و مبلغ به خریدار بازگردانده شد.',
-    'cannot_reject_in_current_state' => 'امکان رد سفارش در وضعیت فعلی وجود ندارد (فقط پیش از آماده‌سازی).',
-    'waybill_added' => 'اطلاعات بارنامه با موفقیت ثبت شد و وضعیت سفارش به‌روز شد.',
-    'cannot_add_waybill' => 'امکان ثبت بارنامه برای این سفارش در وضعیت فعلی وجود ندارد.',
     'espadana_command_issued' => 'دستور سفارش اسپادانا (به صورت آزمایشی) ثبت شد.',
+    'espadana_already_issued' => 'دستور سفارش اسپادانا قبلاً برای این سفارش ثبت شده است.',
+    'cannot_issue_espadana' => 'امکان ثبت دستور اسپادانا برای این سفارش در وضعیت فعلی وجود ندارد.',
     'receipt_attached' => 'رسید پرداخت (به صورت آزمایشی) ضمیمه شد.',
-    'cannot_extend_reservation' => 'امکان تمدید رزرو برای این سفارش وجود ندارد.',
-    'reservation_extended' => 'رزرو سفارش شما با موفقیت به مدت ۲۴ ساعت تمدید شد.',
+    'cannot_attach_receipt_unpaid' => 'تا پیش از پرداخت سفارش، امکان ضمیمه کردن رسید وجود ندارد.',
     'cannot_pay_order' => 'امکان پرداخت این سفارش در وضعیت فعلی وجود ندارد.',
     'payment_successful_awaiting_confirmation' => 'پرداخت شما با موفقیت انجام شد و سفارش در انتظار تایید تامین‌کننده است.',
-    'cannot_extend_reservation_status' => 'امکان تمدید رزرو برای این سفارش در وضعیت فعلی وجود ندارد.',
-    'cannot_extend_reservation_expired' => 'زمان رزرو اولیه (۲ ساعته) این سفارش به پایان رسیده و امکان تمدید آن وجود ندارد.',
     'already_paid' => 'این سفارش قبلاً پرداخت شده است.',
     'receipt_uploaded_success' => 'فیش پرداخت با موفقیت ثبت شد و در انتظار بررسی است.',
     'completion_successful' => 'تکمیل وجه با موفقیت انجام شد.',
@@ -29,7 +45,6 @@ return [
     'reservation_successful' => 'سفارش با موفقیت رزرو شد.',
     'unknown_processing_error' => 'خطای ناشناخته در پردازش سفارش.',
     'payment_processing_error' => 'خطا در پردازش پرداخت. لطفاً دوباره تلاش کنید.',
-    'hold_fee_successful' => 'هزینه تمدید با موفقیت پرداخت شد.',
     'cannot_finalize_invoice' => 'سفارش در وضعیت مناسب برای ثبت فاکتور نهایی نیست.',
     'finalize_invoice_success' => 'فاکتور نهایی با موفقیت ثبت شد.',
     'fee_hold_description' => 'سهم رزرو شده برای سفارش :order_number',
@@ -60,24 +75,28 @@ return [
     'survey_already_submitted' => 'نظرسنجی این سفارش قبلاً ثبت شده است.',
     'survey_submitted_successfully' => 'نظرسنجی شما با موفقیت ثبت شد.',
 
-    'status' => [
-        Order::STATUS_PENDING => 'در انتظار تایید (رزرو شده)',
-        Order::STATUS_RESERVED_EXTENDED => 'رزرو تمدید شده',
-        Order::STATUS_PROCESSING => 'در حال پردازش (ثبت اولیه)',
-        Order::STATUS_PREPARING => 'در حال آماده‌سازی',
-        Order::STATUS_WEIGHBRIDGE_DONE => 'باسکول انجام شد (ثبت نهایی)',
-        Order::STATUS_WAYBILL_ISSUED => 'بارنامه صادر شد',
-        Order::STATUS_SHIPPED => 'در حال حمل',
-        Order::STATUS_DELIVERED => 'تحویل شده',
-        Order::STATUS_CANCELLED => 'لغو شده',
-        Order::STATUS_FAILED => 'ناموفق',
+    /*
+    | ⚠️ این آرایه هنوز سه واژگان را با هم نگه می‌دارد (وضعیت سفارش + وضعیت
+    | پرداخت + وضعیت پرداخت سهم) و چون `pending`/`paid` در بیش از یک خانواده
+    | تکرار می‌شوند، ردیف‌های بعدی روی قبلی‌ها می‌افتند. شاخهٔ L10 این را به سه
+    | آرایهٔ مستقل شکسته؛ اینجا عمداً دست‌نخورده مانده تا این کامیت فقط کارِ
+    | فاز ۰ (مجموعهٔ وضعیت‌ها) را انجام دهد. جداسازی، پورتِ جداگانهٔ خودش را دارد.
+    |
+    | برچسب‌های وضعیت سفارش از `$orderStatusLabels` بالای همین فایل می‌آیند تا
+    | همان تک‌منبع دو شاخه را هم‌راستا نگه دارد.
+    |
+    | `array_merge` است و نه `+`، چون تقدم روی کلیدهای مشترک باید دقیقاً همان
+    | چیزی بماند که بود: `OrderResource` برچسبِ `payment_status` را هم از همین
+    | آرایه می‌خواند، پس روی `pending` باید ردیفِ پرداخت برنده شود. با `+` طرفِ
+    | چپ برنده می‌شد و «در انتظار پرداخت» بی‌صدا به «در انتظار تایید» تغییر می‌کرد.
+    */
+    'status' => array_merge($orderStatusLabels, [
         Order::PAYMENT_PENDING => 'در انتظار پرداخت',
         Order::PAYMENT_PAID => 'پرداخت شده',
         Order::FEE_PAYMENT_PENDING => 'در انتظار پرداخت سهم',
         Order::FEE_PAYMENT_PAID => 'سهم پرداخت شده',
-        'reserved' => 'رزرو شده',
         'unknown' => 'نامشخص',
-    ],
+    ]),
 
     'receipt_required' => 'آپلود فایل رسید الزامی است.',
     'receipt_mimes' => 'فرمت فایل باید jpg، jpeg، png یا pdf باشد.',
