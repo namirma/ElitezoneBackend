@@ -151,6 +151,6 @@ class UserResource extends BaseJsonResource
         }
 
         return $this->{User::RELATION_ROLES}
-            ->contains(fn ($role) => strtolower((string) $role->name) === 'elite_yar');
+            ->contains(fn ($role) => strtolower((string) $role->getAttribute('name')) === 'elite_yar');
     }
 }
