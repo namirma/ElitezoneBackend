@@ -102,6 +102,10 @@ Route::middleware(['optional.sanctum', 'attach.price.category'])->group(function
         Route::delete('/items/{item}', 'removeCartItem');
         Route::patch('/filters', 'updateCartFilters');
         Route::patch('/customer', 'updateCustomerType');
+        // فقط کدِ کوپن روی سبد می‌نشیند؛ مبلغش در لحظه‌ی رزرو/پرداخت حساب
+        // می‌شود (بند ۳.۱۳). throttle چون کد ورودیِ کاربر است و نباید بشود با
+        // تکرار، فضای کدها را جارو کرد — هم‌سو با /checkout/coupon-preview.
+        Route::post('/coupon', 'storeCoupon')->middleware('throttle:10,1');
         // استعلام هزینه حمل پیش از checkout — نیازمند آدرس کاربر (auth الزامی)
         Route::post('/shipping-quote', 'shippingQuote')->middleware('auth:sanctum');
         // پیش‌فاکتور سبدِ هنوز ثبت‌نشده — سند مالی است، پس مهمان اجازه ندارد.

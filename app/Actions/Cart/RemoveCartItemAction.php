@@ -6,10 +6,15 @@ use App\Events\Cart\CartItemChanged;
 use App\Models\Cart;
 use App\Models\CartEvent;
 use App\Models\CartItem;
+use App\Services\Cart\CartParkService;
 use Illuminate\Support\Facades\DB;
 
 class RemoveCartItemAction
 {
+    public function __construct(
+        protected CartParkService $parkService,
+    ) {}
+
     public function execute(CartItem $cartItem): Cart
     {
         return DB::transaction(function () use ($cartItem) {
@@ -34,6 +39,12 @@ class RemoveCartItemAction
             if ($cart->items()->count() === 0) {
                 $cart->priceFilterCategories()->detach();
             }
+
+            // با خالی‌شدن سبد، مهلت و قفلِ تأمین‌کننده برداشته می‌شوند — وگرنه
+            // سبدِ بعدی مهلتِ کهنه را به ارث می‌برد و به تأمین‌کننده‌ی قبلی
+            // قفل می‌ماند. حذفِ یک قلم از سبدِ چندقلمی مهلت را **دست نمی‌زند**
+            // (بند ۳.۱: ویرایش مهلت را ریست نمی‌کند).
+            $this->parkService->releaseIfEmpty($cart);
 
             /* -----------------------------------------------------------------
              * گام ۳: ارسال ایونت (بعد از حذف موفق)

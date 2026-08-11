@@ -23,6 +23,23 @@ class Cart extends Model
 
     const BADGE_ID = 'badge_id';
 
+    /** پایان مهلت نگهداری سبد (Park). null یعنی سبد خالی یا مهمان. */
+    const PARKED_UNTIL = 'parked_until';
+
+    /** زمان ارسال پیامک هشدار — گاردِ ارسالِ دوباره. */
+    const PARK_WARNED_AT = 'park_warned_at';
+
+    /** تأمین‌کننده‌ی قفل‌شده‌ی سبد (بند ۳.۱ — هر سبد فقط یک تأمین‌کننده). */
+    const SUPPLIER_USER_ID = 'supplier_user_id';
+
+    /** مقصد واحدِ سبد (بند ۳.۱ — هر سفارش یک مقصد). */
+    const ADDRESS_ID = 'address_id';
+
+    /** فقط کد؛ مبلغ در لحظه‌ی رزرو/پرداخت محاسبه می‌شود (بند ۳.۱۳). */
+    const COUPON_CODE = 'coupon_code';
+
+    const SHIPPING_METHOD_ID = 'shipping_method_id';
+
     const CREATED_AT = 'created_at';
 
     const UPDATED_AT = 'updated_at';
@@ -32,6 +49,20 @@ class Cart extends Model
         self::SESSION_ID,
         self::CUSTOMER_TYPE_ID,
         self::BADGE_ID,
+        self::ADDRESS_ID,
+        self::COUPON_CODE,
+        self::SHIPPING_METHOD_ID,
+    ];
+
+    /**
+     * `parked_until`، `park_warned_at` و `supplier_user_id` عمداً در `$fillable`
+     * نیستند: هر سه را فقط `CartParkService` می‌نویسد. مهلتِ سبد چیزی نیست که
+     * یک درخواستِ کاربر بتواند mass-assign کند — وگرنه یک فیلدِ اضافه در بدنه‌ی
+     * «افزودن به سبد» مهلت را برای همیشه جلو می‌برد.
+     */
+    protected $casts = [
+        self::PARKED_UNTIL => 'datetime',
+        self::PARK_WARNED_AT => 'datetime',
     ];
 
     /**
@@ -115,5 +146,25 @@ class Cart extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function supplier(): BelongsTo
+    {
+        return $this->belongsTo(User::class, self::SUPPLIER_USER_ID);
+    }
+
+    public function address(): BelongsTo
+    {
+        return $this->belongsTo(Address::class, self::ADDRESS_ID);
+    }
+
+    /** ثانیه‌های باقی‌مانده تا انقضا؛ null یعنی مهلتی تنظیم نشده. */
+    public function parkRemainingSeconds(): ?int
+    {
+        if ($this->{self::PARKED_UNTIL} === null) {
+            return null;
+        }
+
+        return max(0, now()->diffInSeconds($this->{self::PARKED_UNTIL}, false));
     }
 }
