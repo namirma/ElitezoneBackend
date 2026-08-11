@@ -23,7 +23,7 @@ class UserSearchRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'role' => ['nullable', 'string', 'in:expert,employer,supplier'],
+            'role' => ['nullable', 'string', 'in:elite_yar,employer,supplier'],
             'search' => ['nullable', 'string', 'min:2'],
             'is_active' => ['nullable', 'boolean'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],

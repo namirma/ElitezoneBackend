@@ -3,7 +3,6 @@
 namespace Database\Factories;
 
 use App\Models\User;
-use App\Models\UserType;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -28,12 +27,8 @@ class UserFactory extends Factory
             'birth_date' => '13800101',
             'password' => Hash::make('password'),
             'remember_token' => Str::random(10),
-            'type_id' => function () {
-                return UserType::firstOrCreate(
-                    ['slug' => 'customer'],
-                    ['name' => 'customer', 'icon' => 'user']
-                )->id;
-            },
+            // کاربرِ تازه هنوز نقشی انتخاب نکرده است.
+            'type_id' => null,
         ];
     }
 

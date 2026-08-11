@@ -28,7 +28,7 @@ return [
     'supplier_has_factories' => 'تا زمانی که کارخانه‌ای به نام شما ثبت است نمی‌توانید اطلاعات تأمین‌کننده را حذف کنید. ابتدا کارخانه‌ها را حذف کنید.',
     'supplier_has_open_orders' => 'تا زمانی که سفارش تمام‌نشده‌ای دارید نمی‌توانید اطلاعات تأمین‌کننده را حذف کنید.',
 
-    // Employer SMS invite (expert/advisor only)
+    // Employer SMS invite (elite yar only)
     'invite_sent_successfully' => 'دعوت‌نامه با موفقیت ارسال شد.',
     'invite_cap_reached' => 'حداکثر تعداد دعوت‌های مجاز شما به پایان رسیده است.',
     'invite_already_sent' => 'قبلاً به این شماره موبایل دعوت‌نامه ارسال شده است.',
@@ -50,7 +50,7 @@ return [
 
     // Roles (StoreUserTypeRequest)
     'roles_required' => 'انتخاب حداقل یک نقش الزامی است.',
-    'roles_invalid' => 'نقش نامعتبر است. نقش‌های مجاز: employer, supplier, expert.',
+    'roles_invalid' => 'نقش نامعتبر است. نقش‌های مجاز: employer, supplier, elite_yar.',
     'roles_array' => 'فیلد roles باید آرایه باشد.',
     'roles_supplier_conflict' => 'نقش سوپلایر نمی‌تواند همزمان با کارفرما یا الیت یار انتخاب شود.',
 

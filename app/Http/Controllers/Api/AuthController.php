@@ -174,15 +174,15 @@ class AuthController extends Controller
                 User::BIRTH_DATE => $birthDate,
             ]);
         } else {
-            $customerType = UserType::firstOrCreate(
-                ['slug' => 'customer'],
-                ['name' => 'مشتری', 'icon' => 'user'],
-            );
+            // ثبت‌نام نقش را انتخاب نمی‌کند، پس `type_id` تا مرحلهٔ انتخابِ نقش
+            // NULL می‌ماند. اینجا قبلاً یک UserTypeِ ساختگی («مشتری») نشانده
+            // می‌شد تا ستونِ NOT NULL پر شود؛ نتیجه‌اش این بود که «هنوز نقشی
+            // انتخاب نکرده» و «نقشش مشتری است» از هم قابلِ تفکیک نبودند.
             $user = User::create([
                 User::MOBILE => $mobile,
                 User::NATIONAL_CODE => $nationalCode,
                 User::BIRTH_DATE => $birthDate,
-                User::TYPE_ID => $customerType->id,
+                User::TYPE_ID => null,
             ]);
         }
 

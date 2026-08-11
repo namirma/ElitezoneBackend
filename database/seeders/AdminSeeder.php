@@ -5,7 +5,6 @@ namespace Database\Seeders;
 use App\Models\Role;
 use App\Models\User;
 use App\Models\UserProfile;
-use App\Models\UserType;
 use App\Models\Wallet;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -42,20 +41,16 @@ class AdminSeeder extends Seeder
             ['display_name' => 'مدیر'],
         );
 
-        // ۲. یک UserType معتبر — ستون users.type_id روی NOT NULL است
-        $type = UserType::firstOrCreate(
-            ['slug' => 'customer'],
-            ['name' => 'مشتری', 'icon' => 'user'],
-        );
-
-        // ۳. کاربر ادمین — idempotent؛ رمز/کدملی/تاریخ تولد هر بار همگام می‌شود
+        // ۲. کاربر ادمین — idempotent؛ رمز/کدملی/تاریخ تولد هر بار همگام می‌شود.
+        // `type_id` عمداً NULL است: ادمین هیچ‌کدام از چهار نقشِ محصول نیست و
+        // دسترسی‌اش از نقشِ Laratrust «admin» می‌آید.
         $admin = User::updateOrCreate(
             [User::MOBILE => self::MOBILE],
             [
                 User::NATIONAL_CODE => self::NATIONAL_CODE,
                 User::BIRTH_DATE => '13700101',
                 User::PASSWORD => Hash::make(self::PASSWORD),
-                User::TYPE_ID => $type->id,
+                User::TYPE_ID => null,
                 User::IS_ACTIVE => true,
             ],
         );

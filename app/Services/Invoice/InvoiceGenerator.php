@@ -2,12 +2,14 @@
 
 namespace App\Services\Invoice;
 
+use App\Actions\Cart\BuildCartPreInvoiceAction;
 use App\Constants\FinancialCodes;
 use App\Models\Invoice;
 use App\Models\Order;
 use App\Services\DocumentSequenceService;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
+use Mccarlosen\LaravelMpdf\LaravelMpdf;
 use Mpdf\Mpdf;
 
 /**
@@ -128,9 +130,9 @@ class InvoiceGenerator
      *
      * @param  Order  $transientOrder  سفارشِ درون‌حافظه‌ای (ذخیره‌نشده) ساختهٔ سبد
      * @param  string  $previewNumber  شناسهٔ آشکارا موقتِ پیش‌نمایش
-     * @return \Mpdf\Mpdf|\Mccarlosen\LaravelMpdf\LaravelMpdf
+     * @return Mpdf|LaravelMpdf
      *
-     * @see \App\Actions\Cart\BuildCartPreInvoiceAction
+     * @see BuildCartPreInvoiceAction
      */
     public function previewPreInvoice(Order $transientOrder, string $previewNumber): mixed
     {

@@ -7,6 +7,7 @@ namespace App\Services\Financial;
 use App\Models\PriceSetting;
 use App\Models\SupplierProfile;
 use App\Support\Money;
+use Tests\Feature\Financial\PooVersusDisplayedAmountTest;
 
 /**
  * Financial settlement calculator.
@@ -292,7 +293,7 @@ class SettlementCalculatorService
      * با احتسابِ مالیاتِ کرایه، هر چهار حالتِ فرمول به `final_amount ≥ POO`
      * برمی‌گردند و تنها اختلافِ باقی‌مانده همان تخفیفِ `%OW` است.
      *
-     * @see \Tests\Feature\Financial\PooVersusDisplayedAmountTest
+     * @see PooVersusDisplayedAmountTest
      */
     public function vatOnTrans(float $trans, float $vatPercent, bool $transVat): float
     {

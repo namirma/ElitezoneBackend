@@ -50,7 +50,7 @@ use Illuminate\Support\Facades\Route;
 | Authenticated User Routes
 |--------------------------------------------------------------------------
 | همه روتهای نیازمند لاگین کاربر. هر group بسته به نیازش middleware اضافه
-| دارد (attach.price.category, role.expert, idempotency, throttle, …).
+| دارد (attach.price.category, role.elite_yar, idempotency, throttle, …).
 */
 
 // ── Wallet payment + misc auth ────────────────────────────────────────────
@@ -199,8 +199,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::delete('/{userNotification}', 'destroy');
         });
 
-        // Education (expert only)
-        Route::prefix('education')->middleware('role.expert')->controller(EduixController::class)->group(function () {
+        // Education (elite yar only)
+        Route::prefix('education')->middleware('role.elite_yar')->controller(EduixController::class)->group(function () {
             Route::get('/', 'index')->middleware('track:education');
             // throttle: هر فراخوانی یک scrape واقعی روی سامانهٔ msrt.ir است؛
             // بدون سقف، endpoint به یک پروکسیِ استعلامِ نامحدود تبدیل می‌شد.
@@ -208,8 +208,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::delete('/{record}', 'destroy');
         });
 
-        // Job experiences (expert only)
-        Route::prefix('job-experiences')->middleware('role.expert')->controller(JobExperienceController::class)->group(function () {
+        // Job experiences (elite yar only)
+        Route::prefix('job-experiences')->middleware('role.elite_yar')->controller(JobExperienceController::class)->group(function () {
             Route::get('/', 'index')->middleware('track:job');
             Route::post('/', 'store');
             // PUT for text-only edits (JSON); POST (multipart) when replacing the attachment,
@@ -219,8 +219,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::delete('/{jobExperience}', 'destroy');
         });
 
-        // Employer SMS invites (expert/advisor only)
-        Route::prefix('employer-invites')->middleware('role.expert')->controller(EmployerInviteController::class)->group(function () {
+        // Employer SMS invites (elite yar only)
+        Route::prefix('employer-invites')->middleware('role.elite_yar')->controller(EmployerInviteController::class)->group(function () {
             Route::get('/remaining', 'remaining');
             Route::post('/sms', 'send')->middleware('throttle:3,1');
         });
@@ -359,7 +359,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
                 Route::post('/invite', 'inviteEliteYAR');
                 Route::delete('/{eliteYAR}', 'removeEliteYAR');
             });
-            Route::middleware('role.expert')->group(function () {
+            Route::middleware('role.elite_yar')->group(function () {
                 Route::get('/employers', 'listMyEmployers');
                 Route::get('/invitations', 'listMyInvitations');
                 Route::get('/invitations/rejection-reasons', 'getRejectionReasons');

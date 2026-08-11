@@ -26,7 +26,7 @@ use Illuminate\Http\Request;
 final class SignAgreementAction
 {
     /**
-     * @param  string  $roleSlug  One of 'expert' | 'employer' | 'supplier'
+     * @param  string  $roleSlug  One of 'elite_yar' | 'employer' | 'supplier'
      */
     public function execute(User $user, string $roleSlug, Request $request): void
     {
@@ -102,7 +102,7 @@ final class SignAgreementAction
     private function slugsFor(string $roleSlug): array
     {
         $roleAgreement = match ($roleSlug) {
-            'expert' => Agreement::SLUG_ELITE_YAR_TERMS,
+            'elite_yar' => Agreement::SLUG_ELITE_YAR_TERMS,
             'employer' => Agreement::SLUG_EMPLOYER_TERMS,
             'supplier' => Agreement::SLUG_SUPPLIER_TERMS,
             default => null,

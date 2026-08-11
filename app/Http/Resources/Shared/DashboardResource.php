@@ -15,9 +15,9 @@ class DashboardResource extends BaseJsonResource
 
         return [
             'active_orders' => $this['active_orders']->map(function ($order) use ($currentUser, $viewerId) {
-                // الیت یارِ سفارش: اگر خریدار خودش «الیت یار» (type=expert) باشد، خودِ اوست؛
+                // الیت یارِ سفارش: اگر خریدار خودش «الیت یار» (type=elite_yar) باشد، خودِ اوست؛
                 // وگرنه الیت یارِ نام‌برده‌شده = beneficiary.
-                $placerIsEliteYAR = optional($order->placer?->type)->slug === 'expert';
+                $placerIsEliteYAR = optional($order->placer?->type)->slug === 'elite_yar';
                 $eliteYARUser = $placerIsEliteYAR
                     ? $order->placer
                     : ($order->beneficiary_user_id ? $order->beneficiary : null);

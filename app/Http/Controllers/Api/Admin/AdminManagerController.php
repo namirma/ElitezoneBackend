@@ -8,7 +8,6 @@ use App\Http\Requests\Admin\UpdateAdminRequest;
 use App\Http\Resources\Profile\UserResource;
 use App\Models\User;
 use App\Models\UserProfile;
-use App\Models\UserType;
 use Database\Seeders\AdminPermissionSeeder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -59,15 +58,12 @@ class AdminManagerController extends Controller
     public function store(StoreAdminRequest $request): JsonResponse
     {
         $user = DB::transaction(function () use ($request) {
-            $type = UserType::firstOrCreate(
-                ['slug' => 'customer'],
-                ['name' => 'مشتری', 'icon' => 'user'],
-            );
-
             $user = User::create([
                 User::MOBILE => $request->string(User::MOBILE),
                 User::PASSWORD => Hash::make($request->string(User::PASSWORD)),
-                User::TYPE_ID => $type->id,
+                // ادمین هیچ‌کدام از چهار نقشِ محصول نیست — دسترسی‌اش از نقشِ Laratrust
+                // «admin» می‌آید، نه از `type_id`. NULL همان «نقشِ محصولی ندارد» است.
+                User::TYPE_ID => null,
             ]);
 
             $user->profile()->create([

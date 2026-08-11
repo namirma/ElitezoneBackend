@@ -48,14 +48,16 @@ class ProfileController extends Controller
         $roleNames = $user->roles->pluck('name')->map(fn ($n) => strtolower($n))->unique()->values();
         $relationsToLoad = [];
 
-        // «الیت یار» دو حالت دارد:
-        //   ۱) نقشِ دقیقِ engineer/contractor دارد (بعد از آپلود مدارک تعیین می‌شود)
-        //   ۲) فقط type.slug = expert دارد (نقش را انتخاب کرده ولی هنوز مدرکی آپلود نکرده)
-        // در هر دو حالت کاربر «الیت یار» است و باید وضعیت تأیید (is_verified) ارزیابی شود.
         $typeSlug = strtolower((string) optional($user->{User::RELATION_TYPE})->{UserType::SLUG});
-        $isExpert = $roleNames->contains('engineer')
-            || $roleNames->contains('contractor')
-            || $typeSlug === 'expert';
+
+        // نقشِ `elite_yar` لحظهٔ انتخابِ نقش وصل می‌شود، مستقل از اینکه مدارک
+        // تأیید شده باشد یا نه — پس یک سیگنال هر دو حالت را می‌پوشاند و دیگر
+        // لازم نیست type.slug هم خوانده شود.
+        //
+        // (شاخهٔ supplier پایین‌تر هنوز type.slug را می‌خواند و این عمدی است —
+        // آنجا نقش فقط با تأیید ادمین وصل می‌شود، پس متقاضیِ در انتظار یا ردشده
+        // هیچ نقشی ندارد و بدون type.slug وضعیتِ خودش را نمی‌بیند.)
+        $isEliteYar = $roleNames->contains('elite_yar');
 
         if ($roleNames->contains('employer')) {
             $relationsToLoad[] = User::RELATION_EMPLOYER;
@@ -64,7 +66,7 @@ class ProfileController extends Controller
             $relationsToLoad[] = User::RELATION_SUPPLIER;
         }
 
-        if ($isExpert) {
+        if ($isEliteYar) {
             // پروفایل‌های مهندس/پیمانکار برای ارزیابی is_verified در UserResource لود می‌شوند.
             // اگر کاربر هنوز مدرکی آپلود نکرده باشد این relationها null خواهند بود (بی‌خطر).
             $relationsToLoad[] = User::RELATION_ENGINEER;
@@ -97,14 +99,14 @@ class ProfileController extends Controller
                 'backend_roles' => ['employer'],
             ],
             [
-                'key' => 'expert',
-                'name' => __('auth.expert'),
-                'backend_roles' => ['expert'],
+                'key' => 'elite_yar',
+                'name' => __('auth.elite_yar'),
+                'backend_roles' => ['elite_yar'],
             ],
             [
-                'key' => 'expert_and_employer',
-                'name' => __('auth.expert_and_employer'),
-                'backend_roles' => ['expert', 'employer'],
+                'key' => 'elite_yar_and_employer',
+                'name' => __('auth.elite_yar_and_employer'),
+                'backend_roles' => ['elite_yar', 'employer'],
             ],
             [
                 'key' => 'supplier',

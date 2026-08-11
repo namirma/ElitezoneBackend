@@ -4,6 +4,7 @@ namespace Tests\Feature\Profile;
 
 use App\Models\ContractorProfile;
 use App\Models\EngineerProfile;
+use App\Models\Role;
 use App\Models\User;
 use App\Models\UserType;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
@@ -15,7 +16,7 @@ use Tests\TestCase;
  * پوشش رفتار فیلد is_verified در پاسخ GET /api/profile.
  *
  * قرارداد:
- *   - الیت یار (type.slug = expert) با پروفایل تأییدشده → true
+ *   - الیت یار (type.slug = elite_yar) با پروفایل تأییدشده → true
  *   - الیت یار با پروفایل تأییدنشده (یا بدون مدرک) → false
  *   - نقش‌های غیرالیت یار (employer/supplier/customer) → null
  */
@@ -31,17 +32,24 @@ class ProfileVerificationBadgeTest extends TestCase
         );
     }
 
-    private function expertUser(): User
+    private function eliteYarUser(): User
     {
-        return User::factory()->create([
-            User::TYPE_ID => $this->userType('expert')->id,
+        $user = User::factory()->create([
+            User::TYPE_ID => $this->userType('elite_yar')->id,
         ]);
+
+        // `is_verified` از روی نقشِ `elite_yar` تصمیم می‌گیرد، نه type.slug —
+        // همان نقشی که SyncUserRolesAction هنگام انتخابِ نقش وصل می‌کند. بدون
+        // این، fixture کاربری می‌سازد که در محصول وجود ندارد.
+        $user->addRole(Role::firstOrCreate(['name' => 'elite_yar'], ['display_name' => 'الیت یار']));
+
+        return $user;
     }
 
     #[Test]
-    public function expert_without_documents_returns_is_verified_false(): void
+    public function elite_yar_without_documents_returns_is_verified_false(): void
     {
-        $user = $this->expertUser();
+        $user = $this->eliteYarUser();
 
         Sanctum::actingAs($user);
 
@@ -54,7 +62,7 @@ class ProfileVerificationBadgeTest extends TestCase
     #[Test]
     public function verified_engineer_returns_is_verified_true(): void
     {
-        $user = $this->expertUser();
+        $user = $this->eliteYarUser();
         EngineerProfile::forceCreate([
             EngineerProfile::USER_ID => $user->id,
             EngineerProfile::IS_VERIFIED => true,
@@ -73,7 +81,7 @@ class ProfileVerificationBadgeTest extends TestCase
     #[Test]
     public function unverified_engineer_returns_is_verified_false(): void
     {
-        $user = $this->expertUser();
+        $user = $this->eliteYarUser();
         EngineerProfile::forceCreate([
             EngineerProfile::USER_ID => $user->id,
             EngineerProfile::IS_VERIFIED => false,
@@ -92,7 +100,7 @@ class ProfileVerificationBadgeTest extends TestCase
     #[Test]
     public function verified_contractor_returns_is_verified_true(): void
     {
-        $user = $this->expertUser();
+        $user = $this->eliteYarUser();
         ContractorProfile::forceCreate([
             ContractorProfile::USER_ID => $user->id,
             ContractorProfile::IS_VERIFIED => true,

@@ -6,6 +6,7 @@ namespace App\Services\Cart;
 
 use App\Models\Cart;
 use Carbon\CarbonInterface;
+use Tests\Feature\Cart\CartPriceValidityTest;
 
 /**
  * مهلتِ اعتبارِ قیمت/موجودیِ سبد — «تا چه زمانی این قیمت‌ها معتبرند؟»
@@ -23,7 +24,7 @@ use Carbon\CarbonInterface;
  * است — یعنی رفتارِ امروز دقیقاً «مهلتی اعلام نشده» است و هیچ عددی از هوا ساخته
  * نمی‌شود. اگر کسب‌وکار خواست یک مهلتِ ثابت اعلام کند، یک متغیرِ env کافی است.
  *
- * @see \Tests\Feature\Cart\CartPriceValidityTest
+ * @see CartPriceValidityTest
  */
 class CartPriceValidityResolver
 {

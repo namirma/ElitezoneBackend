@@ -48,12 +48,11 @@ class DevSeeder extends Seeder
 
         // user_types — شامل icon که در UserTypeSeeder موجود نیست
         $userTypes = [
-            ['slug' => 'customer',  'name' => 'مشتری',     'icon' => 'user'],
             ['slug' => 'engineer',  'name' => 'مهندس',     'icon' => 'hard-hat'],
             ['slug' => 'contractor', 'name' => 'پیمانکار',  'icon' => 'briefcase'],
             ['slug' => 'supplier',  'name' => 'سوپلایر',   'icon' => 'factory'],
             ['slug' => 'employer',  'name' => 'کارفرما',   'icon' => 'building'],
-            ['slug' => 'expert',    'name' => 'الیت یار', 'icon' => 'star'],
+            ['slug' => 'elite_yar',    'name' => 'الیت یار', 'icon' => 'star'],
         ];
         foreach ($userTypes as $t) {
             UserType::updateOrCreate(['slug' => $t['slug']], $t);
@@ -144,8 +143,8 @@ class DevSeeder extends Seeder
         );
         $this->grantRole($supplier, 'supplier');
 
-        // ── ۷. مهندس (expert) ─────────────────────────────────────────────
-        $this->command->info('▸ مهندس (expert)...');
+        // ── ۷. مهندس (elite_yar) ─────────────────────────────────────────────
+        $this->command->info('▸ مهندس (elite_yar)...');
         $engineer = $this->createUser(
             mobile      : '09400000004',
             nationalCode: '4444444444',
@@ -213,7 +212,7 @@ class DevSeeder extends Seeder
         string $name,
         string $family,
         int $balance,
-        string $typeSug = 'customer',
+        string $typeSug = 'employer',
     ): User {
         $typeId = UserType::firstOrCreate(
             ['slug' => $typeSug],

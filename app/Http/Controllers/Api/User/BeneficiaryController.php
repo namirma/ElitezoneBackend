@@ -89,11 +89,13 @@ class BeneficiaryController extends Controller
             ]
         );
 
-        // نقش‌های فنی (expert, engineer, contractor) نمی‌توانند گیرنده سفارش باشند —
-        // آن‌ها الیت یاران هستند نه کارفرما، پس بخش financial beneficiary نمی‌شوند.
-        $blockedTypeIds = UserType::whereIn(UserType::SLUG, ['expert', 'engineer', 'contractor'])
-            ->pluck(UserType::ID);
-        if ($blockedTypeIds->contains($beneficiaryUser->{User::TYPE_ID})) {
+        // الیت یار نمی‌تواند گیرندهٔ سفارش باشد — او کمیسیون‌گیرِ سفارش است، نه
+        // کارفرمای آن. (ذی‌نفع و الیت یار دو شخصِ متفاوت روی یک سفارش‌اند.)
+        //
+        // قبلاً این چک سه اسلاگِ user_type را به شناسه ترجمه می‌کرد؛ حالا نقشِ
+        // `elite_yar` تنها سیگنال است و engineer/contractor صرفاً وضعیتِ مدرک را
+        // می‌گویند، نه اینکه کاربر الیت یار است.
+        if ($beneficiaryUser->hasRole('elite_yar')) {
             return error(__('beneficiary.cannot_be_technical_role'), [], 422);
         }
 
