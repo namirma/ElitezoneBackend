@@ -7,7 +7,6 @@ namespace App\Services\Sales;
 use App\Models\Setting;
 use App\Models\User;
 use Carbon\CarbonInterval;
-use Tests\Feature\Sales\SalesSettingsTest;
 
 /**
  * تنها راهِ خواندنِ پارامترهای مسیر فروش.
@@ -19,7 +18,7 @@ use Tests\Feature\Sales\SalesSettingsTest;
  * کلیدها فقط در `allowed_keys` هستند و **نه** در `public_keys`: این‌ها
  * پارامترهای داخلی‌اند و هیچ‌کدام نباید بدون auth بیرون بروند.
  *
- * @see SalesSettingsTest
+ * پوششِ تست: tests/Feature/Sales/SalesSettingsTest.php
  */
 final class SalesSettings
 {

@@ -4,7 +4,6 @@ namespace App\Models;
 
 use App\Models\Concerns\HasOrders;
 use App\Models\Concerns\HasWallet;
-use App\Services\Sales\SalesSettings;
 use App\Traits\PersianDate;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -50,7 +49,7 @@ class User extends Authenticatable
      * سه‌حالته: true/false تصمیمِ صریحِ بک‌آفیس، `null` یعنی پیروی از تنظیمِ
      * سراسریِ `coupon_visibility`. فقط در حالتِ `selected` خوانده می‌شود.
      *
-     * @see SalesSettings::couponVisibleFor()
+     * خواننده: App\Services\Sales\SalesSettings::couponVisibleFor()
      */
     public const COUPON_ENABLED = 'coupon_enabled';
 
