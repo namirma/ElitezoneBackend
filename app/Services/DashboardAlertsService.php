@@ -58,21 +58,44 @@ class DashboardAlertsService
     private function checkOrderAlerts(User $user): array
     {
         $alerts = [];
+        // ⚠️ این متد تنها جای پروژه بود که وضعیت سفارش را با **رشته‌ی خام** می‌خواند
+        // و به همین دلیل از جاروی حذفِ وضعیت‌ها (فاز ۰) جا ماند: `reserved_extended`
+        // و `weighbridge_done` دیگر وجود ندارند، پس هشدارِ `order_invoice` برای همیشه
+        // مرده بود و `order_pay` بی‌صدا فقط به `pending` محدود شده بود.
+        // از این به بعد `Order::STATUS_*` — تا حذفِ بعدی این فایل را هم بشکند.
         $orders = Order::where(function ($q) use ($user) {
-            $q->where('placer_user_id', $user->id)->orWhere('beneficiary_user_id', $user->id);
+            $q->where(Order::PLACER_USER_ID, $user->id)->orWhere(Order::BENEFICIARY_USER_ID, $user->id);
         })
-            ->whereIn('status', ['pending', 'reserved_extended', 'weighbridge_done', 'delivered'])
+            ->whereIn(Order::STATUS, [
+                Order::STATUS_PENDING,
+                Order::STATUS_RESERVED,
+                Order::STATUS_SHIPPED,
+                Order::STATUS_PARTIALLY_DELIVERED,
+                Order::STATUS_DELIVERED,
+            ])
             ->latest()
             ->get();
 
         foreach ($orders as $order) {
-            if (in_array($order->status, ['pending', 'reserved_extended']) && $order->payment_status === 'pending') {
+            if (
+                in_array($order->status, [Order::STATUS_PENDING, Order::STATUS_RESERVED], true)
+                && $order->payment_status === Order::PAYMENT_PENDING
+            ) {
                 $alerts[] = $this->makeAlert('order_pay', 'error', 'payment', "/profile/orders/{$order->id}", ['order_number' => $order->order_number], $order->id);
             }
-            if ($order->status === 'weighbridge_done' && $order->final_invoice_ref) {
+            // «فاکتور نهایی آماده است» — پس از باسکول، که حالا با ثبت بارنامه رخ
+            // می‌دهد و سفارش را به `shipped` می‌برد.
+            if (
+                in_array($order->status, [
+                    Order::STATUS_SHIPPED,
+                    Order::STATUS_PARTIALLY_DELIVERED,
+                    Order::STATUS_DELIVERED,
+                ], true)
+                && $order->final_invoice_ref
+            ) {
                 $alerts[] = $this->makeAlert('order_invoice', 'info', 'document-text', "/profile/orders/{$order->id}", ['order_number' => $order->order_number], $order->id);
             }
-            if ($order->status === 'delivered' && $order->survey_status !== 'completed') {
+            if ($order->status === Order::STATUS_DELIVERED && $order->survey_status !== 'completed') {
                 $alerts[] = $this->makeAlert('order_survey', 'success', 'star', "/profile/orders/{$order->id}", ['order_number' => $order->order_number], $order->id);
             }
         }

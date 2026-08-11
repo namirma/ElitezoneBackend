@@ -23,25 +23,16 @@ enum OrderStatus: string
     case Cancelled = 'cancelled';
 
     /**
-     * Human-readable Persian label for display.
+     * برچسب فارسی، از همان تک‌منبعی که API می‌خواند.
      *
-     * ⚠️ این برچسب‌ها باید با `$orderStatusLabels` در `lang/fa/orders.php` یکی
-     * بمانند. آنجا منبعِ نمایشِ API است و اینجا منبعِ نمایشِ enum؛ واگراییِ این دو
-     * یعنی یک وضعیت در دو صفحه دو اسم دارد.
+     * پیش از این یک `match` با رشته‌های هاردکد بود — دو نسخه از یک برچسب، که
+     * روی `pending` واقعاً واگرا شده بودند («در انتظار» اینجا در برابر «در انتظار
+     * تایید (رزرو شده)» در فایل زبان). خواندن از `orders.order_status` هم قید
+     * ۱۴.۷ را رعایت می‌کند و هم واگرایی را ساختاراً ناممکن می‌کند.
      */
     public function label(): string
     {
-        return match ($this) {
-            self::Pending => 'در انتظار',
-            self::Reserved => 'رزرو شده',
-            self::Processing => 'در حال آماده‌سازی',
-            self::AwaitingWeightCorrection => 'در انتظار اصلاح وزن',
-            self::Shipped => 'در حال حمل',
-            self::PartiallyDelivered => 'تحویل جزئی',
-            self::Delivered => 'تحویل شده',
-            self::ReturnedToOrigin => 'عودت به مبدأ',
-            self::Cancelled => 'لغو شده',
-        };
+        return __('orders.order_status.'.$this->value);
     }
 
     /** Returns true for any terminal (non-changeable) state. */

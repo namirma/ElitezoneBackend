@@ -16,41 +16,6 @@ parameters:
 			path: app/Actions/Cart/UpdateCartItemAction.php
 
 		-
-			message: "#^Access to an undefined property Illuminate\\\\Database\\\\Eloquent\\\\Model\\:\\:\\$id\\.$#"
-			count: 2
-			path: app/Actions/Financial/PayHoldFeeAction.php
-
-		-
-			message: "#^Access to an undefined property Illuminate\\\\Database\\\\Eloquent\\\\Model\\:\\:\\$order_number\\.$#"
-			count: 2
-			path: app/Actions/Financial/PayHoldFeeAction.php
-
-		-
-			message: "#^Access to an undefined property Illuminate\\\\Database\\\\Eloquent\\\\Model\\:\\:\\$placer_user_id\\.$#"
-			count: 1
-			path: app/Actions/Financial/PayHoldFeeAction.php
-
-		-
-			message: "#^Access to an undefined property Illuminate\\\\Database\\\\Eloquent\\\\Model\\:\\:\\$reservation_expires_at\\.$#"
-			count: 1
-			path: app/Actions/Financial/PayHoldFeeAction.php
-
-		-
-			message: "#^Access to an undefined property Illuminate\\\\Database\\\\Eloquent\\\\Model\\:\\:\\$status\\.$#"
-			count: 2
-			path: app/Actions/Financial/PayHoldFeeAction.php
-
-		-
-			message: "#^Parameter \\#1 \\$order of method App\\\\Services\\\\Financial\\\\WalletTransactionEngine\\:\\:creditSystem\\(\\) expects App\\\\Models\\\\Order, Illuminate\\\\Database\\\\Eloquent\\\\Model given\\.$#"
-			count: 1
-			path: app/Actions/Financial/PayHoldFeeAction.php
-
-		-
-			message: "#^Parameter \\#1 \\$order of method App\\\\Services\\\\Financial\\\\WalletTransactionEngine\\:\\:debitBuyer\\(\\) expects App\\\\Models\\\\Order, Illuminate\\\\Database\\\\Eloquent\\\\Model given\\.$#"
-			count: 1
-			path: app/Actions/Financial/PayHoldFeeAction.php
-
-		-
 			message: "#^Parameter \\#1 \\$amount of method App\\\\Services\\\\Payment\\\\Contracts\\\\PaymentGatewayInterface\\:\\:verify\\(\\) expects float, string given\\.$#"
 			count: 1
 			path: app/Actions/Financial/ProcessPaymentCallbackAction.php
@@ -764,11 +729,6 @@ parameters:
 			message: "#^Access to an undefined property \\(object\\|string\\)\\:\\:\\$id\\.$#"
 			count: 1
 			path: app/Http/Requests/Admin/UpdatePageRequest.php
-
-		-
-			message: "#^Access to an undefined property \\(object\\|string\\)\\:\\:\\$placer_user_id\\.$#"
-			count: 1
-			path: app/Http/Requests/Order/PayHoldFeeRequest.php
 
 		-
 			message: "#^PHPDoc tag @return has invalid value \\(array\\<string,\\)\\: Unexpected token \"\\*/\", expected type at offset 104$#"

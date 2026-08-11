@@ -46,7 +46,7 @@ enum StatusTone: string
             'reserved',
             'awaiting_weight_correction',
             'shipped',
-            'arrived',            // shipments.status
+            'arrived',            // shipments.status — فاز ۷ می‌سازدش
             'partially_delivered',
             'open',               // ticket: not yet answered
             'waiting_customer',   // ticket: awaiting customer reply
@@ -71,7 +71,7 @@ enum StatusTone: string
             'cancelled',
             'failed',
             'expired',
-            'returned',            // shipments.status
+            'returned',            // shipments.status — فاز ۷ می‌سازدش
             'returned_to_origin',
             'blocked' => self::Failure,
 

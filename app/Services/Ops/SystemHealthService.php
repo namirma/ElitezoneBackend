@@ -154,12 +154,16 @@ final class SystemHealthService
         $hours = (int) config('ops.orders.stuck_after_hours');
         $cutoff = now()->subHours($hours);
 
+        // `returned_to_origin` عمداً اینجا نیست. «گیرکرده» یعنی سفارشی که باید
+        // حرکت کند و نمی‌کند؛ ولی عودت‌خورده منتظرِ یک چرخه‌ی تأییدِ خسارت است که
+        // می‌تواند روزها طول بکشد و هیچ‌کس هم گیر نکرده. با بودنش، هر عودت پس از
+        // `ops.orders.stuck_after_hours` یک هشدارِ دائمی می‌ساخت که هیچ اقدامی
+        // خاموشش نمی‌کرد — و هشداری که همیشه روشن است، هشدار نیست.
         $intermediate = [
             Order::STATUS_PROCESSING,
             Order::STATUS_AWAITING_WEIGHT_CORRECTION,
             Order::STATUS_SHIPPED,
             Order::STATUS_PARTIALLY_DELIVERED,
-            Order::STATUS_RETURNED_TO_ORIGIN,
         ];
 
         $base = Order::query()

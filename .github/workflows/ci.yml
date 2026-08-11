@@ -123,7 +123,7 @@ jobs:
       # عدد بالا می‌رود، و پایین‌آوردنش هر وقت خطایی واقعاً رفع شد تشویق می‌شود.
       - name: PHPStan baseline must not grow
         run: |
-          CEILING=260
+          CEILING=252
           COUNT=$(grep -c 'message:' phpstan-baseline.neon)
           echo "baseline entries: ${COUNT} (ceiling ${CEILING})"
           if [ "$COUNT" -gt "$CEILING" ]; then

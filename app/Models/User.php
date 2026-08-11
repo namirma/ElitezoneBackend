@@ -49,7 +49,7 @@ class User extends Authenticatable
      * سه‌حالته: true/false تصمیمِ صریحِ بک‌آفیس، `null` یعنی پیروی از تنظیمِ
      * سراسریِ `coupon_visibility`. فقط در حالتِ `selected` خوانده می‌شود.
      *
-     * @see \App\Services\Sales\SalesSettings::couponVisibleFor()
+     * خواننده: App\Services\Sales\SalesSettings::couponVisibleFor()
      */
     public const COUPON_ENABLED = 'coupon_enabled';
 

@@ -43,6 +43,7 @@ use App\Http\Controllers\Api\Admin\AdminSystemHealthController;
 use App\Http\Controllers\Api\Admin\AdminTicketController;
 use App\Http\Controllers\Api\Admin\AdminUserController;
 use App\Http\Controllers\Api\Admin\AdminWalletController;
+use App\Http\Controllers\Api\Admin\OrderWeighbridgeController;
 use App\Http\Controllers\Api\DebugController;
 use App\Http\Controllers\Api\Podium\IdentityInquirySc2Controller;
 use App\Http\Controllers\Api\Podium\MobileNidMatchController;
@@ -181,6 +182,14 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
         Route::post('/{order}/status', 'changeStatus');
         // Doc P — فاکتور مودیان سیستم (سازه → خریدار)، آزادسازی WVAT hold
         Route::post('/{order}/system-moadian-invoice', 'submitSystemMoadianInvoice');
+
+        // ⚠️ پلِ موقت تا فاز ۷ — تنها ورودیِ باقی‌مانده به باسکول، و در نتیجه
+        // تنها راهی که سفارش از `processing` جلوتر می‌رود. با ساخته‌شدن
+        // `RegisterShipmentAction` این روت و کنترلرش حذف می‌شوند (بند ۱۶).
+        // aliasِ قدیمیِ بی‌مجوز در ریشهٔ /admin برنگشت و نباید برگردد.
+        Route::post('/{order}/weighbridge', [OrderWeighbridgeController::class, 'submitWeight'])
+            ->whereNumber('order')
+            ->name('admin.orders.weighbridge.submit');
     });
 
     // Tickets — مدیریت تیکت‌های پشتیبانی — پشتِ مجوزِ granular «manage-tickets».

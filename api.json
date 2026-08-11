@@ -5612,10 +5612,6 @@
                                     "status": {
                                         "type": "string",
                                         "enum": [
-                                            "pending",
-                                            "processing",
-                                            "shipped",
-                                            "delivered",
                                             "cancelled"
                                         ]
                                     }
@@ -14890,49 +14886,6 @@
                 }
             }
         },
-        "/profile/orders/{order}/pay-hold-fee": {
-            "post": {
-                "operationId": "orderPayment.payHoldFee",
-                "tags": [
-                    "OrderPayment"
-                ],
-                "parameters": [
-                    {
-                        "name": "order",
-                        "in": "path",
-                        "required": true,
-                        "description": "The order ID",
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/AuthorizationException"
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/ModelNotFoundException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
-                    }
-                }
-            }
-        },
         "/profile/orders/{order}/pay-full": {
             "post": {
                 "operationId": "user.orders.pay_full",
@@ -15026,108 +14979,6 @@
                     },
                     "403": {
                         "$ref": "#/components/responses/AuthorizationException"
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/ModelNotFoundException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
-                    }
-                }
-            }
-        },
-        "/admin/orders/{order}/weighbridge": {
-            "post": {
-                "operationId": "admin.orders.weighbridge.submit",
-                "summary": "\u062b\u0628\u062a \u0648\u0632\u0646 \u0646\u0647\u0627\u06cc\u06cc \u0628\u0627\u0633\u06a9\u0648\u0644 \u0648 \u0627\u0646\u062c\u0627\u0645 \u0645\u062d\u0627\u0633\u0628\u0627\u062a \u0645\u0627\u0644\u06cc (\u06a9\u0633\u0631\u06cc/\u0633\u0631\u06a9)",
-                "tags": [
-                    "OrderWeighbridge"
-                ],
-                "parameters": [
-                    {
-                        "name": "order",
-                        "in": "path",
-                        "required": true,
-                        "description": "The order ID",
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/SubmitWeighbridgeRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/ModelNotFoundException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
-                    }
-                }
-            }
-        },
-        "/admin/{order}/weighbridge": {
-            "post": {
-                "operationId": "admin.orderWeighbridge.submitWeight_0",
-                "summary": "\u062b\u0628\u062a \u0648\u0632\u0646 \u0646\u0647\u0627\u06cc\u06cc \u0628\u0627\u0633\u06a9\u0648\u0644 \u0648 \u0627\u0646\u062c\u0627\u0645 \u0645\u062d\u0627\u0633\u0628\u0627\u062a \u0645\u0627\u0644\u06cc (\u06a9\u0633\u0631\u06cc/\u0633\u0631\u06a9)",
-                "tags": [
-                    "OrderWeighbridge"
-                ],
-                "parameters": [
-                    {
-                        "name": "order",
-                        "in": "path",
-                        "required": true,
-                        "description": "The order ID",
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/SubmitWeighbridgeRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object"
-                                }
-                            }
-                        }
                     },
                     "404": {
                         "$ref": "#/components/responses/ModelNotFoundException"
@@ -17396,163 +17247,6 @@
                 }
             }
         },
-        "/profile/orders/{order}/prepare": {
-            "post": {
-                "operationId": "supplierOrder.markAsPrepared",
-                "tags": [
-                    "SupplierOrder"
-                ],
-                "parameters": [
-                    {
-                        "name": "order",
-                        "in": "path",
-                        "required": true,
-                        "description": "The order ID",
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/AuthorizationException"
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/ModelNotFoundException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    }
-                }
-            }
-        },
-        "/profile/orders/{order}/reject": {
-            "post": {
-                "operationId": "supplierOrder.rejectOrder",
-                "description": "\u0641\u0642\u0637 \u0631\u0648\u06cc \u0633\u0641\u0627\u0631\u0634\u0650 \u00ab\u062f\u0631 \u062d\u0627\u0644 \u067e\u0631\u062f\u0627\u0632\u0634\u00bb (\u067e\u06cc\u0634 \u0627\u0632 \u0622\u0645\u0627\u062f\u0647\u200c\u0633\u0627\u0632\u06cc/\u062d\u0645\u0644) \u0645\u062c\u0627\u0632 \u0627\u0633\u062a. \u062e\u0631\u06cc\u062f\u0627\u0631 \u0627\u0632 \u0637\u0631\u06cc\u0642\nCancelOrderAction \u0628\u0647\u200c\u0637\u0648\u0631 \u06a9\u0627\u0645\u0644 refund \u0645\u06cc\u200c\u0634\u0648\u062f (\u0647\u0645\u0627\u0646 \u0645\u0633\u06cc\u0631\u0650 \u0627\u0645\u0646\u0650 \u0644\u063a\u0648 \u06a9\u0647 \u0627\u062f\u0645\u06cc\u0646 \u0627\u0633\u062a\u0641\u0627\u062f\u0647 \u0645\u06cc\u200c\u06a9\u0646\u062f).",
-                "summary": "\u0631\u062f \u0633\u0641\u0627\u0631\u0634 \u062a\u0648\u0633\u0637 \u0633\u0648\u067e\u0644\u0627\u06cc\u0631 \u2014 \u0646\u06cc\u0645\u0647\u200c\u06cc \u06af\u0645\u200c\u0634\u062f\u0647\u200c\u06cc \u00ab\u062a\u0623\u06cc\u06cc\u062f/\u0631\u062f \u0633\u0641\u0627\u0631\u0634\u00bb (\u062a\u0623\u06cc\u06cc\u062f = markAsPrepared)",
-                "tags": [
-                    "SupplierOrder"
-                ],
-                "parameters": [
-                    {
-                        "name": "order",
-                        "in": "path",
-                        "required": true,
-                        "description": "The order ID",
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "type": "object",
-                                "properties": {
-                                    "reason": {
-                                        "type": "string",
-                                        "maxLength": 1000
-                                    }
-                                },
-                                "required": [
-                                    "reason"
-                                ]
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/AuthorizationException"
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/ModelNotFoundException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    }
-                }
-            }
-        },
-        "/profile/orders/{order}/waybill": {
-            "post": {
-                "operationId": "supplierOrder.addWaybill",
-                "tags": [
-                    "SupplierOrder"
-                ],
-                "parameters": [
-                    {
-                        "name": "order",
-                        "in": "path",
-                        "required": true,
-                        "description": "The order ID",
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/AddWaybillRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/AuthorizationException"
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/ModelNotFoundException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
-                    }
-                }
-            }
-        },
         "/profile/orders/{order}/espadana": {
             "post": {
                 "operationId": "supplierOrder.issueEspadanaCommand",
@@ -17726,17 +17420,13 @@
                             "enum": [
                                 "pending",
                                 "reserved",
-                                "reserved_extended",
                                 "processing",
-                                "preparing",
-                                "weighbridge_done",
-                                "waybill_issued",
+                                "awaiting_weight_correction",
                                 "shipped",
+                                "partially_delivered",
                                 "delivered",
-                                "completed",
-                                "cancelled",
-                                "failed",
-                                "pending_surplus_payment"
+                                "returned_to_origin",
+                                "cancelled"
                             ]
                         }
                     },
@@ -19595,19 +19285,6 @@
                 ],
                 "title": "AddToCartRequest"
             },
-            "AddWaybillRequest": {
-                "type": "object",
-                "properties": {
-                    "waybill_ref": {
-                        "type": "string",
-                        "maxLength": 255
-                    }
-                },
-                "required": [
-                    "waybill_ref"
-                ],
-                "title": "AddWaybillRequest"
-            },
             "AdminTicketReplyRequest": {
                 "type": "object",
                 "properties": {
@@ -21393,19 +21070,6 @@
                     "moadian_ref"
                 ],
                 "title": "SubmitMoadianInvoiceRequest"
-            },
-            "SubmitWeighbridgeRequest": {
-                "type": "object",
-                "properties": {
-                    "weight_after_scale": {
-                        "type": "number",
-                        "minimum": 1
-                    }
-                },
-                "required": [
-                    "weight_after_scale"
-                ],
-                "title": "SubmitWeighbridgeRequest"
             },
             "ToggleStockSubscriptionRequest": {
                 "type": "object",

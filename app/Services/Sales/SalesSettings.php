@@ -18,7 +18,7 @@ use Carbon\CarbonInterval;
  * کلیدها فقط در `allowed_keys` هستند و **نه** در `public_keys`: این‌ها
  * پارامترهای داخلی‌اند و هیچ‌کدام نباید بدون auth بیرون بروند.
  *
- * @see \Tests\Feature\Sales\SalesSettingsTest
+ * پوششِ تست: tests/Feature/Sales/SalesSettingsTest.php
  */
 final class SalesSettings
 {

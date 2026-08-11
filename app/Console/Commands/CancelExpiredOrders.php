@@ -75,14 +75,18 @@ class CancelExpiredOrders extends Command
     }
 
     /**
-     * دریافت کوئری سفارش‌های منقضی شده
-     * * شامل سفارش‌های "در انتظار" و "رزرو تمدید شده" که زمانشان گذشته است
+     * سفارش‌های «در انتظار» و «رزرو شده» که زمانشان گذشته است.
+     *
+     * «رزرو تمدید شده» حذف شد (بند ۵.۲)؛ تمدید دیگر وضعیت جدا نمی‌سازد و فقط
+     * `reserve_deadline` را جلو می‌برد. فاز ۵ این کوئری را به همان ستون و به
+     * بازه‌ی ارفاق منتقل می‌کند و `reservation_expires_at` بازنشسته می‌شود.
      */
     private function getExpiredOrdersQuery()
     {
         return Order::whereIn(Order::STATUS, [
             Order::STATUS_PENDING,
-            Order::STATUS_RESERVED,        ])
+            Order::STATUS_RESERVED,
+        ])
             ->where(Order::RESERVATION_EXPIRES_AT, '<=', Carbon::now());
     }
 }

@@ -32,7 +32,12 @@ class WalletPaymentController extends Controller
             return error(__('payment.error.already_paid'), [], Response::HTTP_BAD_REQUEST);
         }
 
-        if (! \in_array($order->status, [Order::STATUS_PENDING])) {
+        // `PAYABLE_STATUSES` و نه یک فهرستِ دستی — همان قاعده‌ای که
+        // `OrderPaymentController` و مسیرِ درگاه می‌خوانند. این کنترلر تنها مسیرِ
+        // پرداختی بود که هنوز `[STATUS_PENDING]` را هاردکد داشت، پس سفارشِ
+        // `reserved` از یک مسیر قابل تکمیل بود و از این یکی نه. فاز ۴ که
+        // `pending` را حذف می‌کند، این خط دیگر لازم نیست دستکاری شود.
+        if (! \in_array($order->status, Order::PAYABLE_STATUSES, true)) {
             return error(__('orders.cannot_pay_order'), [], Response::HTTP_BAD_REQUEST);
         }
 
