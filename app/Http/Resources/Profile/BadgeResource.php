@@ -17,6 +17,7 @@ class BadgeResource extends BaseJsonResource
         return [
             Badge::ID => $this->id,
             Badge::NAME => $this->name,
+            Badge::DESCRIPTION => $this->description,
             Badge::CODE => $this->code,
             // Full public URL (icons live on the public disk) so the frontend can <img src> it.
             Badge::ICON => $this->icon

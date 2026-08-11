@@ -25,6 +25,8 @@ class Badge extends Model
 
     const NAME = 'name';
 
+    const DESCRIPTION = 'description';
+
     const CODE = 'code';
 
     const ICON = 'icon';
@@ -35,6 +37,7 @@ class Badge extends Model
 
     protected $fillable = [
         self::NAME,
+        self::DESCRIPTION,
         self::CODE,
         self::ICON,
     ];
