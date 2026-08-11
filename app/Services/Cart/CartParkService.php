@@ -119,8 +119,12 @@ final class CartParkService
 
         $items = $cart->items->map(fn (CartItem $item) => [
             'product_variant_id' => $item->{CartItem::PRODUCT_VARIANT_ID},
-            'product_name' => $item->productVariant?->product?->name,
-            'variant_name' => $item->productVariant?->name,
+            // `data_get` و نه `?->`: رابطه در PHPDoc غیرnullable تایپ شده (و
+            // larastan 3 روی L13 همین را می‌گیرد) ولی در زمان اجرا واریانتِ
+            // حذف‌شده واقعاً null است — و اسنپ‌شات دقیقاً برای همان حالت وجود
+            // دارد. `data_get` هم درست است هم بی‌صدا رد نمی‌شود.
+            'product_name' => data_get($item, 'productVariant.product.name'),
+            'variant_name' => data_get($item, 'productVariant.name'),
             'factory_id' => $item->{CartItem::FACTORY_ID},
             'factory_location_id' => $item->{CartItem::FACTORY_LOCATION_ID},
             'quantities' => $item->quantities,
