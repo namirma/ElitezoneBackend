@@ -7,9 +7,40 @@ on:
       - main
       - refactor/consultant-to-elite-yar
       - upgrade/laravel-13
+      # کارِ روزمره روی برنچ‌های fix/* انجام می‌شود و از آنجا cherry-pick می‌شود.
+      # بدون این الگو، هر push به آن‌ها هیچ CIای اجرا نمی‌کرد و اولین بازخورد تا
+      # لحظهٔ باز کردنِ PR عقب می‌افتاد — یعنی دقیقاً روی برنچی که بیشترین تغییر
+      # را می‌گیرد، کمترین پوشش را داشتیم.
+      - 'fix/**'
+      # برنچ‌های بازطراحیِ مسیر سفارش/پرداخت — همان استدلالِ بالا.
+      - 'redesign/**'
   pull_request:
 
 jobs:
+  # ── اسکنِ راز ────────────────────────────────────────────────────────────
+  # یک کردنشیالِ واقعی (کلید پادیوم) به‌عنوان مقدارِ پیش‌فرضِ env() کامیت شد و
+  # ماه‌ها آنجا ماند. این گیت همان کلاسِ اشتباه را build-breaking می‌کند.
+  #
+  # عمداً `--no-git` است: فقط درختِ کاری اسکن می‌شود، نه تاریخچه. آن کلیدِ
+  # افشاشده هنوز در کامیت‌های پیش از 0d30c06 هست و تصمیمِ تیم این بود که
+  # تاریخچه بازنویسی **نشود** (کلید تعویض می‌شود، پس نسخهٔ تاریخی بی‌ارزش است).
+  # با اسکنِ تاریخچه، CI برای همیشه و بی‌فایده قرمز می‌ماند.
+  secrets:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install gitleaks
+        run: |
+          VERSION=8.28.0
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_x64.tar.gz" \
+            | tar -xz -C /usr/local/bin gitleaks
+          gitleaks version
+
+      - name: Scan the working tree
+        run: gitleaks detect --no-git --source . --config .gitleaks.toml --redact --no-banner --verbose
+
   tests:
     name: Pint + PHPUnit (MySQL)
     runs-on: ubuntu-latest

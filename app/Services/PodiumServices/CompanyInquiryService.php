@@ -6,6 +6,7 @@ use Exception;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use InvalidArgumentException;
 
 class CompanyInquiryService
 {
@@ -23,6 +24,20 @@ class CompanyInquiryService
         ];
 
         $serviceConfig = Config::get('services.company_inquiry');
+
+        // تنها سرویسِ پادیوم بود که این گارد را نداشت — همهٔ خواهرهایش
+        // (CardInquiry، CardToIban، IdentityInquirySc2، MobileNidMatch) دارند.
+        //
+        // تا وقتی کلیدِ واقعی در فالبکِ `env()` نشسته بود این تفاوت دیده نمی‌شد،
+        // چون کلید همیشه مقدار داشت. با حذفِ آن فالبک (کامیت 0d30c06) این مسیر
+        // شروع کرد به فرستادنِ درخواست با `scApiKey = null` و خطای عمومیِ سمتِ
+        // پادیوم می‌گرفت — یعنی «کردنشیال تنظیم نشده» به شکلِ «سرویس خراب است»
+        // ظاهر می‌شد. حالا صریح می‌گوید چه چیزی کم است.
+        if (empty($serviceConfig['sc_api_key']) || empty($serviceConfig['sc_product_id'])) {
+            throw new InvalidArgumentException(
+                'Company Inquiry service not configured (PODIUM_SC_API_KEY_COMPANY/PODIUM_SC_PRODUCT_ID_COMPANY missing).'
+            );
+        }
 
         $body = [
             'scProductId' => $serviceConfig['sc_product_id'],
