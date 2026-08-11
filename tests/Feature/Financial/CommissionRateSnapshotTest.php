@@ -92,7 +92,7 @@ class CommissionRateSnapshotTest extends TestCase
     private function makeWeighableOrder(SettlementCalculatorService $calculator, float $snapshotTc): Order
     {
         $order = Order::factory()->create([
-            Order::STATUS => Order::STATUS_PREPARING,
+            Order::STATUS => Order::STATUS_PROCESSING,
             Order::PAYMENT_STATUS => Order::PAYMENT_PAID,
             Order::SHIPPING_COST => 5_000_000,
         ]);

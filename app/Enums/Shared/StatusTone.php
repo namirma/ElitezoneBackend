@@ -42,13 +42,12 @@ enum StatusTone: string
             'processing',
             'in_progress',
             'under_review',
-            'preparing',
+            'preparing',          // shipments.status — not an order status
             'reserved',
-            'reserved_extended',
-            'pending_surplus_payment',
-            'weighbridge_done',
-            'waybill_issued',
+            'awaiting_weight_correction',
             'shipped',
+            'arrived',            // shipments.status
+            'partially_delivered',
             'open',               // ticket: not yet answered
             'waiting_customer',   // ticket: awaiting customer reply
             'waiting_supplier',   // ticket: awaiting supplier reply
@@ -72,6 +71,8 @@ enum StatusTone: string
             'cancelled',
             'failed',
             'expired',
+            'returned',            // shipments.status
+            'returned_to_origin',
             'blocked' => self::Failure,
 
             // ── closed (grey) — terminal, no further action ───────────────────

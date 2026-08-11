@@ -251,7 +251,7 @@ class LedgerReconcilerTest extends TestCase
     #[Test]
     public function a_completed_order_with_an_unreleased_hold_is_reported(): void
     {
-        $order = Order::factory()->create([Order::STATUS => Order::STATUS_COMPLETED]);
+        $order = Order::factory()->create([Order::STATUS => Order::STATUS_DELIVERED]);
         $wallet = Wallet::factory()->create();
 
         $this->ledgerRow($wallet, 2_000_000, WalletTransaction::TYPE_DEPOSIT, WalletTransaction::STATUS_HOLD, $order);
@@ -259,14 +259,14 @@ class LedgerReconcilerTest extends TestCase
         $orphans = $this->reconciler->orphanHolds($order->id);
 
         $this->assertCount(1, $orphans);
-        $this->assertSame(Order::STATUS_COMPLETED, $orphans[0]['order_status']);
+        $this->assertSame(Order::STATUS_DELIVERED, $orphans[0]['order_status']);
         $this->assertSame(2_000_000, (int) $orphans[0]['stuck_hold']);
     }
 
     #[Test]
     public function a_hold_that_was_released_leaves_no_orphan(): void
     {
-        $order = Order::factory()->create([Order::STATUS => Order::STATUS_COMPLETED]);
+        $order = Order::factory()->create([Order::STATUS => Order::STATUS_DELIVERED]);
         $wallet = Wallet::factory()->create();
 
         $this->ledgerRow($wallet, 2_000_000, WalletTransaction::TYPE_DEPOSIT, WalletTransaction::STATUS_HOLD, $order);
@@ -279,7 +279,7 @@ class LedgerReconcilerTest extends TestCase
     public function a_hold_on_an_in_flight_order_is_not_an_orphan(): void
     {
         // سفارشِ در جریان قرار است هولد داشته باشد — گزارشِ آن فقط نویز می‌سازد.
-        $order = Order::factory()->create([Order::STATUS => Order::STATUS_PREPARING]);
+        $order = Order::factory()->create([Order::STATUS => Order::STATUS_PROCESSING]);
         $wallet = Wallet::factory()->create();
 
         $this->ledgerRow($wallet, 2_000_000, WalletTransaction::TYPE_DEPOSIT, WalletTransaction::STATUS_HOLD, $order);
@@ -327,7 +327,7 @@ class LedgerReconcilerTest extends TestCase
      *
      * پیش‌فرضِ `financial.system_user_id` عدد ۱ است و در دیتابیسِ تست چنین کاربری
      * وجود ندارد؛ بدون این، creditSystem روی قید کلید خارجیِ `wallets.user_id`
-     * می‌شکند. همان الگوی PayHoldFeeActionTest.
+     * می‌شکند. همان الگویی که سایر تست‌های مالی استفاده می‌کنند.
      */
     private function useSystemWallet(): User
     {

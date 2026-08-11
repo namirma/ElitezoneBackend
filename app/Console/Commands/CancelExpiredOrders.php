@@ -82,9 +82,7 @@ class CancelExpiredOrders extends Command
     {
         return Order::whereIn(Order::STATUS, [
             Order::STATUS_PENDING,
-            Order::STATUS_RESERVED,
-            Order::STATUS_RESERVED_EXTENDED,
-        ])
+            Order::STATUS_RESERVED,        ])
             ->where(Order::RESERVATION_EXPIRES_AT, '<=', Carbon::now());
     }
 }

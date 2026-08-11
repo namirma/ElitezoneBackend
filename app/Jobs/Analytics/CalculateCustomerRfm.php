@@ -106,7 +106,7 @@ class CalculateCustomerRfm implements ShouldQueue
     private function statsQuery()
     {
         return Order::query()
-            ->whereIn(Order::STATUS, [Order::STATUS_COMPLETED, Order::STATUS_DELIVERED, Order::STATUS_SHIPPED])
+            ->whereIn(Order::STATUS, [Order::STATUS_DELIVERED, Order::STATUS_PARTIALLY_DELIVERED, Order::STATUS_SHIPPED])
             ->select(Order::PLACER_USER_ID)
             ->selectRaw('MAX(created_at) as last_purchase_date')
             ->selectRaw('COUNT(id) as total_orders')

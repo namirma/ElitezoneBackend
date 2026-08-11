@@ -29,7 +29,7 @@ class SettlementDataGuardsTest extends TestCase
     public function the_reconciler_refuses_an_order_with_no_usable_price(): void
     {
         $order = Order::factory()->create([
-            Order::STATUS => Order::STATUS_PREPARING,
+            Order::STATUS => Order::STATUS_PROCESSING,
             Order::PAYMENT_STATUS => Order::PAYMENT_PAID,
             Order::SHIPPING_COST => 1_000_000,
         ]);
@@ -63,7 +63,7 @@ class SettlementDataGuardsTest extends TestCase
     {
         // گاردِ بالا نباید مسیرِ سالم را ببندد.
         $order = Order::factory()->create([
-            Order::STATUS => Order::STATUS_PREPARING,
+            Order::STATUS => Order::STATUS_PROCESSING,
             Order::PAYMENT_STATUS => Order::PAYMENT_PAID,
             Order::SHIPPING_COST => 1_000_000,
         ]);
@@ -99,7 +99,7 @@ class SettlementDataGuardsTest extends TestCase
     {
         // ثابتِ مستندشده در spec: فاکتور نهایی هرگز بیش از فاکتور اولیه نیست.
         $order = Order::factory()->create([
-            Order::STATUS => Order::STATUS_PREPARING,
+            Order::STATUS => Order::STATUS_PROCESSING,
             Order::PAYMENT_STATUS => Order::PAYMENT_PAID,
             Order::SHIPPING_COST => 1_000_000,
         ]);

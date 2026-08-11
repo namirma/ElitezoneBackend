@@ -57,9 +57,8 @@ final class LedgerReconciler
 {
     /** سفارش‌هایی که دیگر حرکتِ مالی ندارند — هولدِ باقی‌مانده روی این‌ها یعنی پولِ گیرافتاده. */
     private const TERMINAL_ORDER_STATUSES = [
-        Order::STATUS_COMPLETED,
+        Order::STATUS_DELIVERED,
         Order::STATUS_CANCELLED,
-        Order::STATUS_FAILED,
     ];
 
     /**

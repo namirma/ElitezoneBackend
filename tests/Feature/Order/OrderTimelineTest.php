@@ -93,11 +93,10 @@ class OrderTimelineTest extends TestCase
     {
         // هر وضعیتی که بدون برچسب بماند، در روایت به‌صورت اسلاگِ خام دیده می‌شود.
         $statuses = [
-            Order::STATUS_PENDING, Order::STATUS_RESERVED, Order::STATUS_RESERVED_EXTENDED,
-            Order::STATUS_PROCESSING, Order::STATUS_PREPARING, Order::STATUS_WEIGHBRIDGE_DONE,
-            Order::STATUS_WAYBILL_ISSUED, Order::STATUS_SHIPPED, Order::STATUS_DELIVERED,
-            Order::STATUS_COMPLETED, Order::STATUS_PENDING_SURPLUS_PAYMENT,
-            Order::STATUS_CANCELLED, Order::STATUS_FAILED,
+            Order::STATUS_PENDING, Order::STATUS_RESERVED, Order::STATUS_PROCESSING,
+            Order::STATUS_AWAITING_WEIGHT_CORRECTION, Order::STATUS_SHIPPED,
+            Order::STATUS_PARTIALLY_DELIVERED, Order::STATUS_DELIVERED,
+            Order::STATUS_RETURNED_TO_ORIGIN, Order::STATUS_CANCELLED,
         ];
 
         foreach ($statuses as $status) {
@@ -131,7 +130,7 @@ class OrderTimelineTest extends TestCase
 
         $this->assertNotNull($status);
         $this->assertSame($actor->full_name, $status['actor']);
-        $this->assertStringContainsString('در حال پردازش', $status['title']);
+        $this->assertStringContainsString('در حال آماده‌سازی', $status['title']);
     }
 
     #[Test]

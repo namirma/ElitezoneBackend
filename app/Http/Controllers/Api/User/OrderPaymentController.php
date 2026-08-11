@@ -2,12 +2,10 @@
 
 namespace App\Http\Controllers\Api\User;
 
-use App\Actions\Financial\PayHoldFeeAction;
 use App\Actions\Order\ProcessFullOrderPaymentAction;
 use App\Exceptions\InsufficientBalanceException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Order\PayFullOrderRequest;
-use App\Http\Requests\Order\PayHoldFeeRequest;
 use App\Http\Requests\Order\UploadOrderReceiptRequest;
 use App\Http\Resources\Order\OrderResource;
 use App\Models\Order;
@@ -20,7 +18,6 @@ class OrderPaymentController extends Controller
 {
     public function __construct(
         protected ProcessFullOrderPaymentAction $payFullOrderAction,
-        protected PayHoldFeeAction $holdFeeAction,
     ) {}
 
     public function payFullOrder(PayFullOrderRequest $request, Order $order): JsonResponse
@@ -53,30 +50,6 @@ class OrderPaymentController extends Controller
             return $this->balanceError($e->available, $e->required);
         } catch (Exception $e) {
             Log::error('Order full payment failed', [
-                'order_id' => $order->id,
-                'user_id' => Auth::id(),
-                'error' => $e->getMessage(),
-            ]);
-
-            return error(__('orders.payment_processing_error'), [], 500);
-        }
-    }
-
-    public function payHoldFee(PayHoldFeeRequest $request, Order $order): JsonResponse
-    {
-        $this->authorize('pay', $order);
-
-        try {
-            $this->holdFeeAction->execute($order);
-
-            return success([
-                'order' => new OrderResource($order->fresh(Order::resourceRelations())),
-                'fee_amount' => PayHoldFeeAction::fee(),
-            ], __('orders.hold_fee_successful'));
-        } catch (InsufficientBalanceException $e) {
-            return $this->balanceError($e->available, $e->required);
-        } catch (Exception $e) {
-            Log::error('Hold fee payment failed', [
                 'order_id' => $order->id,
                 'user_id' => Auth::id(),
                 'error' => $e->getMessage(),

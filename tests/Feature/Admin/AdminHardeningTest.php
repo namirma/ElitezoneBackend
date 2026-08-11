@@ -136,7 +136,14 @@ class AdminHardeningTest extends TestCase
         $this->assertSame(Order::STATUS_PENDING, $order->fresh()->{Order::STATUS});
     }
 
-    public function test_admin_can_move_a_paid_pending_order_to_processing(): void
+    /**
+     * بند ۵.۳ سند بازطراحی — ادمین دیگر هیچ گذارِ رو-به-جلویی ندارد.
+     *
+     * هر گذار حالا صاحبی دارد که لِگ مالی و موجودی را هم با خودش می‌برد؛
+     * `pending → processing` از پنل ادمین یعنی سفارشی که «ثبت شده» ولی هیچ
+     * پرداختی پشتش نیست. تنها اختیارِ باقی‌مانده لغو اجباری است.
+     */
+    public function test_admin_cannot_move_an_order_forward_only_cancel_is_allowed(): void
     {
         $order = $this->makeOrder(Order::STATUS_PENDING, Order::PAYMENT_PAID);
 
@@ -144,9 +151,22 @@ class AdminHardeningTest extends TestCase
 
         $this->postJson("/api/admin/orders/{$order->id}/status", [
             'status' => Order::STATUS_PROCESSING,
+        ])->assertStatus(422);
+
+        $this->assertSame(Order::STATUS_PENDING, $order->fresh()->{Order::STATUS});
+    }
+
+    public function test_admin_can_force_cancel_an_order(): void
+    {
+        $order = $this->makeOrder(Order::STATUS_PROCESSING, Order::PAYMENT_PAID);
+
+        Sanctum::actingAs($this->admin);
+
+        $this->postJson("/api/admin/orders/{$order->id}/status", [
+            'status' => Order::STATUS_CANCELLED,
         ])->assertOk();
 
-        $this->assertSame(Order::STATUS_PROCESSING, $order->fresh()->{Order::STATUS});
+        $this->assertSame(Order::STATUS_CANCELLED, $order->fresh()->{Order::STATUS});
     }
 
     // ── AdminFinancialController — regression for the missing import ─────────

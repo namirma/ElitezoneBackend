@@ -32,7 +32,7 @@ class ProcessFullOrderPaymentAction
     public function execute(Order $order, bool $isReserveRequested, Wallet $wallet): PayOrderResult
     {
         // ── Scenario 1: completion of a previously reserved order ──────────────
-        if (in_array($order->status, [Order::STATUS_RESERVED, Order::STATUS_RESERVED_EXTENDED], true)) {
+        if ($order->status === Order::STATUS_RESERVED) {
             // Balance guard lives inside completionAction — it uses the actual POO
             // formula, not the stale final_amount snapshot stored on the order row.
             $this->completionAction->execute($order);

@@ -88,7 +88,7 @@ class SupplierOrderQueueTest extends TestCase
     {
         $supplier = $this->makeSupplier();
         $processing = $this->makeOrderForSupplier($supplier, Order::STATUS_PROCESSING);
-        $preparing = $this->makeOrderForSupplier($supplier, Order::STATUS_PREPARING);
+        $shipped = $this->makeOrderForSupplier($supplier, Order::STATUS_SHIPPED);
 
         Sanctum::actingAs($supplier);
 
@@ -99,7 +99,7 @@ class SupplierOrderQueueTest extends TestCase
         )->pluck('id');
 
         $this->assertTrue($ids->contains($processing->id));
-        $this->assertFalse($ids->contains($preparing->id));
+        $this->assertFalse($ids->contains($shipped->id));
     }
 
     #[Test]
@@ -108,7 +108,7 @@ class SupplierOrderQueueTest extends TestCase
         $supplier = $this->makeSupplier();
         $this->makeOrderForSupplier($supplier, Order::STATUS_PROCESSING);
         $this->makeOrderForSupplier($supplier, Order::STATUS_PROCESSING);
-        $this->makeOrderForSupplier($supplier, Order::STATUS_PREPARING);
+        $this->makeOrderForSupplier($supplier, Order::STATUS_SHIPPED);
 
         Sanctum::actingAs($supplier);
 
@@ -117,7 +117,7 @@ class SupplierOrderQueueTest extends TestCase
         $stats = collect($response->json('data.order_stats'))->keyBy('status');
 
         $this->assertSame(2, $stats[Order::STATUS_PROCESSING]['count']);
-        $this->assertSame(1, $stats[Order::STATUS_PREPARING]['count']);
+        $this->assertSame(1, $stats[Order::STATUS_SHIPPED]['count']);
         $this->assertArrayHasKey('wallet', $response->json('data'));
         $this->assertArrayHasKey('pending_debt', $response->json('data'));
     }
@@ -158,14 +158,14 @@ class SupplierOrderQueueTest extends TestCase
         $supplierA = $this->makeSupplier();
         $supplierB = $this->makeSupplier();
 
-        $myDebt = $this->makeOrderForSupplier($supplierA, Order::STATUS_WEIGHBRIDGE_DONE);
+        $myDebt = $this->makeOrderForSupplier($supplierA, Order::STATUS_SHIPPED);
         $myDebt->forceFill([Order::SUPPLIER_DEBT_PENDING => true, Order::SUPPLIER_DEBT_AMOUNT => 500_000])->save();
 
         // Mine, but no debt — must not appear.
-        $this->makeOrderForSupplier($supplierA, Order::STATUS_WEIGHBRIDGE_DONE);
+        $this->makeOrderForSupplier($supplierA, Order::STATUS_SHIPPED);
 
         // Another supplier's debt — must not appear.
-        $theirDebt = $this->makeOrderForSupplier($supplierB, Order::STATUS_WEIGHBRIDGE_DONE);
+        $theirDebt = $this->makeOrderForSupplier($supplierB, Order::STATUS_SHIPPED);
         $theirDebt->forceFill([Order::SUPPLIER_DEBT_PENDING => true, Order::SUPPLIER_DEBT_AMOUNT => 500_000])->save();
 
         Sanctum::actingAs($supplierA);
@@ -181,11 +181,11 @@ class SupplierOrderQueueTest extends TestCase
     {
         $supplier = $this->makeSupplier();
 
-        $awaiting = $this->makeOrderForSupplier($supplier, Order::STATUS_WEIGHBRIDGE_DONE);
+        $awaiting = $this->makeOrderForSupplier($supplier, Order::STATUS_SHIPPED);
         $awaiting->forceFill([Order::WEIGHING_COMPLETED_AT => now()])->save();
 
         // Already submitted — must not appear.
-        $done = $this->makeOrderForSupplier($supplier, Order::STATUS_WEIGHBRIDGE_DONE);
+        $done = $this->makeOrderForSupplier($supplier, Order::STATUS_SHIPPED);
         $done->forceFill([Order::WEIGHING_COMPLETED_AT => now(), Order::SUPPLIER_MOADIAN_REF => 'REF-123'])->save();
 
         // Not weighed yet — must not appear.

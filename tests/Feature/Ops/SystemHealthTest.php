@@ -63,7 +63,7 @@ class SystemHealthTest extends TestCase
     #[Test]
     public function a_stuck_order_is_reported_with_its_idle_time(): void
     {
-        $order = Order::factory()->create([Order::STATUS => Order::STATUS_PREPARING]);
+        $order = Order::factory()->create([Order::STATUS => Order::STATUS_PROCESSING]);
 
         // مستقیم روی دیتابیس، چون هر save روی مدل updated_at را دوباره تازه می‌کند
         // و سفارش هرگز «کهنه» نمی‌شد.
@@ -84,7 +84,7 @@ class SystemHealthTest extends TestCase
     #[Test]
     public function a_recently_touched_order_is_not_called_stuck(): void
     {
-        Order::factory()->create([Order::STATUS => Order::STATUS_PREPARING]);
+        Order::factory()->create([Order::STATUS => Order::STATUS_PROCESSING]);
 
         $section = $this->health->report()['sections']['orders'];
 
@@ -96,7 +96,7 @@ class SystemHealthTest extends TestCase
     public function a_terminal_order_is_never_counted_as_stuck(): void
     {
         // ماندن در وضعیتِ نهایی طبیعی است؛ شمردنش فقط صفحه را برای همیشه قرمز می‌کرد.
-        $order = Order::factory()->create([Order::STATUS => Order::STATUS_COMPLETED]);
+        $order = Order::factory()->create([Order::STATUS => Order::STATUS_DELIVERED]);
 
         DB::table('orders')->where(Order::ID, $order->id)->update([
             Order::UPDATED_AT => now()->subYear(),
@@ -110,7 +110,7 @@ class SystemHealthTest extends TestCase
     {
         // تفکیک مهم‌تر از عددِ کل است: انباشت در یک وضعیتِ خاص یعنی یک مرحله
         // از فرآیند متوقف شده، نه اینکه همه‌چیز کند است.
-        foreach ([Order::STATUS_PREPARING, Order::STATUS_PREPARING, Order::STATUS_SHIPPED] as $status) {
+        foreach ([Order::STATUS_PROCESSING, Order::STATUS_PROCESSING, Order::STATUS_SHIPPED] as $status) {
             $order = Order::factory()->create([Order::STATUS => $status]);
             DB::table('orders')->where(Order::ID, $order->id)->update([
                 Order::UPDATED_AT => now()->subDays(5),
@@ -119,7 +119,7 @@ class SystemHealthTest extends TestCase
 
         $byStatus = $this->health->report()['sections']['orders']['by_status'];
 
-        $this->assertSame(2, $byStatus[Order::STATUS_PREPARING]);
+        $this->assertSame(2, $byStatus[Order::STATUS_PROCESSING]);
         $this->assertSame(1, $byStatus[Order::STATUS_SHIPPED]);
     }
 

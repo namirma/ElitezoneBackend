@@ -132,9 +132,8 @@ class SupplierController extends Controller
         $hasOpenOrders = Order::query()
             ->whereHas('items', fn (Builder $q) => $q->where('supplier_user_id', $user->id))
             ->whereNotIn(Order::STATUS, [
-                Order::STATUS_COMPLETED,
+                Order::STATUS_DELIVERED,
                 Order::STATUS_CANCELLED,
-                Order::STATUS_FAILED,
             ])
             ->exists();
 

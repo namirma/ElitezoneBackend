@@ -156,11 +156,10 @@ final class SystemHealthService
 
         $intermediate = [
             Order::STATUS_PROCESSING,
-            Order::STATUS_PREPARING,
-            Order::STATUS_WEIGHBRIDGE_DONE,
-            Order::STATUS_WAYBILL_ISSUED,
+            Order::STATUS_AWAITING_WEIGHT_CORRECTION,
             Order::STATUS_SHIPPED,
-            Order::STATUS_PENDING_SURPLUS_PAYMENT,
+            Order::STATUS_PARTIALLY_DELIVERED,
+            Order::STATUS_RETURNED_TO_ORIGIN,
         ];
 
         $base = Order::query()

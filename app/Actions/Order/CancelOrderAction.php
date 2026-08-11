@@ -31,7 +31,7 @@ class CancelOrderAction
     public function execute(Order $order, ?string $reason = 'لغو سیستمی', bool $refundWallet = true, bool $isSystemCron = false): Order
     {
         // === گارد امنیتی طبق فلوچارت ===
-        if (in_array($order->status, [Order::STATUS_RESERVED, Order::STATUS_RESERVED_EXTENDED])) {
+        if ($order->status === Order::STATUS_RESERVED) {
             if ($order->reservation_expires_at && $order->reservation_expires_at->isFuture()) {
                 throw new Exception(__('orders.reserved_cannot_cancel_before_expiry'));
             }
@@ -60,10 +60,7 @@ class CancelOrderAction
 
             // ── وضعیت مالی قبل از تغییر — برای تصمیم‌گیری درباره اسناد ────
             // باید قبل از update ذخیره شود، چون update مقادیر مدل را تغییر می‌دهد.
-            $wasReserved = in_array($locked->status, [
-                Order::STATUS_RESERVED,
-                Order::STATUS_RESERVED_EXTENDED,
-            ]);
+            $wasReserved = $locked->status === Order::STATUS_RESERVED;
             $wasPaid = ($locked->payment_status === Order::PAYMENT_PAID);
 
             // ۱. بازگرداندن موجودی کالا به انبار
@@ -123,7 +120,7 @@ class CancelOrderAction
     private function processRefund(Order $order): void
     {
         // الف) اگر سفارش رزرو بوده: باید پول هولد شده در سازه به خریدار برگردد
-        if (in_array($order->status, [Order::STATUS_RESERVED, Order::STATUS_RESERVED_EXTENDED])) {
+        if ($order->status === Order::STATUS_RESERVED) {
             $reserveAmount = (float) $order->{Order::PAYMENT_TO_RESERVE};
 
             if ($reserveAmount > 0) {

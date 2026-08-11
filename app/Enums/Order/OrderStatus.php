@@ -11,44 +11,43 @@ namespace App\Enums\Order;
  */
 enum OrderStatus: string
 {
+    /** @see Order::STATUS_PENDING — موقت تا فاز ۴؛ همان‌جا حذف می‌شود. */
     case Pending = 'pending';
     case Reserved = 'reserved';
-    case ReservedExtended = 'reserved_extended';
     case Processing = 'processing';
-    case Preparing = 'preparing';
-    case WeighbridgeDone = 'weighbridge_done';
-    case WaybillIssued = 'waybill_issued';
+    case AwaitingWeightCorrection = 'awaiting_weight_correction';
     case Shipped = 'shipped';
+    case PartiallyDelivered = 'partially_delivered';
     case Delivered = 'delivered';
-    case Completed = 'completed';
+    case ReturnedToOrigin = 'returned_to_origin';
     case Cancelled = 'cancelled';
-    case Failed = 'failed';
-    case PendingSurplusPayment = 'pending_surplus_payment';
 
-    /** Human-readable Persian label for display. */
+    /**
+     * Human-readable Persian label for display.
+     *
+     * ⚠️ این برچسب‌ها باید با `$orderStatusLabels` در `lang/fa/orders.php` یکی
+     * بمانند. آنجا منبعِ نمایشِ API است و اینجا منبعِ نمایشِ enum؛ واگراییِ این دو
+     * یعنی یک وضعیت در دو صفحه دو اسم دارد.
+     */
     public function label(): string
     {
         return match ($this) {
             self::Pending => 'در انتظار',
             self::Reserved => 'رزرو شده',
-            self::ReservedExtended => 'رزرو تمدید شده',
-            self::Processing => 'در حال پردازش',
-            self::Preparing => 'در حال آماده‌سازی',
-            self::WeighbridgeDone => 'باسکول انجام شد',
-            self::WaybillIssued => 'بارنامه صادر شد',
-            self::Shipped => 'ارسال شد',
-            self::Delivered => 'تحویل داده شد',
-            self::Completed => 'تکمیل شد',
-            self::Cancelled => 'لغو شد',
-            self::Failed => 'ناموفق',
-            self::PendingSurplusPayment => 'در انتظار پرداخت مازاد',
+            self::Processing => 'در حال آماده‌سازی',
+            self::AwaitingWeightCorrection => 'در انتظار اصلاح وزن',
+            self::Shipped => 'در حال حمل',
+            self::PartiallyDelivered => 'تحویل جزئی',
+            self::Delivered => 'تحویل شده',
+            self::ReturnedToOrigin => 'عودت به مبدأ',
+            self::Cancelled => 'لغو شده',
         };
     }
 
     /** Returns true for any terminal (non-changeable) state. */
     public function isTerminal(): bool
     {
-        return in_array($this, [self::Completed, self::Cancelled, self::Failed]);
+        return in_array($this, [self::Delivered, self::Cancelled]);
     }
 
     /** Returns true for any active/in-progress state. */

@@ -60,8 +60,7 @@ class ProcessWeighbridgeResultAction
             // مالیِ ثبت‌نشده (POO/PTS صفر) اجرا می‌کرد و وضعیت را به SHIPPED می‌پراند.
             $weighableStatuses = [
                 Order::STATUS_PROCESSING,
-                Order::STATUS_PREPARING,
-                Order::STATUS_WAYBILL_ISSUED,
+                Order::STATUS_SHIPPED,
             ];
             if (
                 $locked->{Order::PAYMENT_STATUS} !== Order::PAYMENT_PAID

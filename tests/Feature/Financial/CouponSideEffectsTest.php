@@ -63,22 +63,32 @@ class CouponSideEffectsTest extends TestCase
         $this->assertSame(12_345_000.0, $order->reservationBasisAmount());
     }
 
+    /**
+     * بند ۱۱.۱ — مرحله‌ی «رزرو» با بیعانه‌ی پرداخت‌شده تعیین می‌شود، نه با آستانه.
+     *
+     * پیش از بازطراحی این تست مبلغ سفارش را با `reservation_threshold` مقایسه
+     * می‌کرد. آن آستانه حذف شده: رزرو دیگر یک قاعده‌ی مبلغی نیست، انتخابِ کاربر
+     * بر پایه‌ی توانِ پرداختِ خودش است. پس تنها شاهدِ «این سفارش رزرو شد»
+     * خودِ `payment_to_reserve` است.
+     */
     #[Test]
-    public function the_progress_timeline_agrees_with_the_payment_router(): void
+    public function the_timeline_shows_the_reserve_step_only_when_a_deposit_was_paid(): void
     {
-        $threshold = (float) config('financial.reservation_threshold');
+        $reserved = $this->orderWorth(finalAmount: 50_000_000, discount: 5_000_000);
+        $reserved->forceFill([Order::PAYMENT_TO_RESERVE => 20_000_000])->save();
 
-        $order = $this->orderWorth(
-            finalAmount: $threshold - 1_000_000,
-            discount: 5_000_000,
-        );
-
-        // سفارشِ رزروی باید در تایم‌لاین هم مرحلهٔ «رزرو» را داشته باشد.
-        $titles = array_column($order->dashboard_progress['steps'] ?? [], 'title');
-
+        $titles = array_column($reserved->fresh()->dashboard_progress['steps'] ?? [], 'title');
         $this->assertNotEmpty(
             array_filter($titles, fn ($t) => str_contains($t, 'رزرو')),
-            'تایم‌لاین باید مرحلهٔ رزرو را نشان دهد چون سفارش بالای آستانه است.',
+            'سفارشی که بیعانه پرداخت کرده باید مرحلهٔ رزرو را داشته باشد.',
+        );
+
+        $paidOutright = $this->orderWorth(finalAmount: 50_000_000, discount: 5_000_000);
+
+        $titles = array_column($paidOutright->dashboard_progress['steps'] ?? [], 'title');
+        $this->assertEmpty(
+            array_filter($titles, fn ($t) => str_contains($t, 'رزرو')),
+            'سفارشی که یکجا پرداخت شده نباید مرحلهٔ رزرو داشته باشد.',
         );
     }
 

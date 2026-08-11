@@ -128,7 +128,7 @@ class SupplierWithdrawalTest extends TestCase
     public function a_completed_order_does_not_block_withdrawing(): void
     {
         $user = $this->approvedSupplier();
-        $this->orderFor($user, Order::STATUS_COMPLETED);
+        $this->orderFor($user, Order::STATUS_DELIVERED);
 
         Sanctum::actingAs($user);
 

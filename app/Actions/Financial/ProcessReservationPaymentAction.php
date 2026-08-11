@@ -63,10 +63,6 @@ class ProcessReservationPaymentAction
 
     private function isAlreadyProcessed(Order $order): bool
     {
-        return in_array(
-            $order->status,
-            [Order::STATUS_RESERVED, Order::STATUS_RESERVED_EXTENDED],
-            true
-        );
+        return $order->status === Order::STATUS_RESERVED;
     }
 }

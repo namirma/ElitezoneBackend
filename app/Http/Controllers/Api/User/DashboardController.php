@@ -31,13 +31,11 @@ class DashboardController extends Controller
             ->whereIn(Order::STATUS, [
                 Order::STATUS_PENDING,
                 Order::STATUS_RESERVED,
-                Order::STATUS_RESERVED_EXTENDED,
                 Order::STATUS_PROCESSING,
-                Order::STATUS_PREPARING,
-                Order::STATUS_WEIGHBRIDGE_DONE,
-                Order::STATUS_PENDING_SURPLUS_PAYMENT,
-                Order::STATUS_WAYBILL_ISSUED,
+                Order::STATUS_AWAITING_WEIGHT_CORRECTION,
                 Order::STATUS_SHIPPED,
+                Order::STATUS_PARTIALLY_DELIVERED,
+                Order::STATUS_RETURNED_TO_ORIGIN,
             ])
             ->with(['placer', 'beneficiary']) // eager-load برای buyer/beneficiary در DashboardResource
             ->latest()

@@ -164,7 +164,7 @@ class OrderPolicyTest extends TestCase
     #[Test]
     public function nobody_can_cancel_a_completed_order(): void
     {
-        $this->order->update([Order::STATUS => Order::STATUS_COMPLETED]);
+        $this->order->update([Order::STATUS => Order::STATUS_DELIVERED]);
 
         $this->assertFalse($this->owner->can('cancel', $this->order));
     }

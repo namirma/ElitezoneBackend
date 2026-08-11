@@ -15,15 +15,14 @@ trait HasOrderProgress
         $status = $this->status;
         $id = $this->id;
 
-        $isCancelled = in_array($status, [Order::STATUS_CANCELLED, Order::STATUS_FAILED]);
+        $isCancelled = $status === Order::STATUS_CANCELLED;
 
-        // تشخیص پرداخت یکجا: کمتر از سقف رزرو یا پرداخت کل مبلغ در رزرو
-        // سقف از config/financial.php خوانده می‌شود (نه hardcode)
-        $threshold = (float) config('financial.reservation_threshold', 2_000_000_000);
-        // مبنا پیش از تخفیف کوپن است — هم‌تراز با ProcessFullOrderPaymentAction،
-        // وگرنه یک سفارشِ رزروی با کوپن در تایم‌لاین «پرداخت یکجا» نشان داده می‌شد.
-        $isFullPayment = $this->reservationBasisAmount() < $threshold
-            || $this->payment_to_reserve == $this->final_amount;
+        // بند ۱۱.۱ سند بازطراحی: شرطِ نمایشِ مرحله‌ی «رزرو» از مقایسه با آستانه به
+        // `payment_to_reserve > 0` تغییر کرد. آستانه‌ی قدیمی یک قاعده‌ی مبلغی بود
+        // («سفارشِ بزرگ‌تر از X باید رزرو شود») و در مدل جدید اصلاً وجود ندارد —
+        // رزرو حالا انتخابِ کاربر بر پایه‌ی توانِ پرداختِ خودش است. پس تنها پاسخِ
+        // درست به «آیا این سفارش رزرو شد؟» خودِ بیعانه‌ی پرداخت‌شده است.
+        $wasReserved = (float) $this->payment_to_reserve > 0;
 
         // ترجمه وضعیت فعلی برای نمایش در هدر کارت
         $transKey = "orders.status.{$status}";
@@ -34,32 +33,31 @@ trait HasOrderProgress
         // ---------------------------------------------------------
         $stepsBlueprint = [];
 
-        // اگر پرداخت کامل نیست، دایره "رزرو" اضافه می‌شود
-        if (! $isFullPayment) {
+        if ($wasReserved) {
             $stepsBlueprint[] = [
                 'title' => 'سفارش رزرو شد',
-                'triggers' => [Order::STATUS_PENDING, Order::STATUS_RESERVED, Order::STATUS_RESERVED_EXTENDED],
+                'triggers' => [Order::STATUS_PENDING, Order::STATUS_RESERVED],
             ];
         }
 
         $stepsBlueprint[] = [
             'title' => 'سفارش ثبت شد',
-            'triggers' => [Order::STATUS_PROCESSING, Order::STATUS_PREPARING],
+            'triggers' => [Order::STATUS_PROCESSING, Order::STATUS_AWAITING_WEIGHT_CORRECTION],
         ];
 
         $stepsBlueprint[] = [
-            'title' => 'مقدار(وزن) تایید شد',
-            'triggers' => [Order::STATUS_WEIGHBRIDGE_DONE, Order::STATUS_PENDING_SURPLUS_PAYMENT],
+            'title' => 'بارنامه صادر و وزن تأیید شد',
+            'triggers' => [Order::STATUS_SHIPPED, Order::STATUS_RETURNED_TO_ORIGIN],
         ];
 
         $stepsBlueprint[] = [
-            'title' => 'سفارش حمل شد',
-            'triggers' => [Order::STATUS_WAYBILL_ISSUED, Order::STATUS_SHIPPED],
+            'title' => 'تحویل شد',
+            'triggers' => [Order::STATUS_PARTIALLY_DELIVERED, Order::STATUS_DELIVERED],
         ];
 
         $stepsBlueprint[] = [
-            'title' => 'سفارش تکمیل شد',
-            'triggers' => [Order::STATUS_DELIVERED, Order::STATUS_COMPLETED],
+            'title' => 'فاکتور سامانه مودیان صادر شد',
+            'triggers' => [],
         ];
 
         // ---------------------------------------------------------
@@ -68,12 +66,13 @@ trait HasOrderProgress
         $currentIndex = 0;
         if (! $isCancelled) {
             foreach ($stepsBlueprint as $index => $blueprint) {
-                if (in_array($status, $blueprint['triggers'])) {
+                if (in_array($status, $blueprint['triggers'], true)) {
                     $currentIndex = $index;
-                    break;
                 }
             }
-            if (in_array($status, [Order::STATUS_DELIVERED, Order::STATUS_COMPLETED])) {
+            // ماشه‌ی مرحله‌ی آخر یک ستون است، نه یک وضعیت — سفارش پس از صدور
+            // فاکتور مودیان همچنان `delivered` می‌ماند.
+            if ($this->{Order::SYSTEM_MOADIAN_REF} !== null) {
                 $currentIndex = count($stepsBlueprint) - 1;
             }
         }
@@ -132,7 +131,7 @@ trait HasOrderProgress
                     ];
                 }
 
-                if ($blueprint['title'] === 'مقدار(وزن) تایید شد') {
+                if ($blueprint['title'] === 'بارنامه صادر و وزن تأیید شد') {
                     // بارنامه / مجوز خروج (K = DOC_BILL_OF_LADING) — فاکتور نهایی پس از وزن‌کشی
                     $actions[] = [
                         'label' => 'فاکتور نهایی',
@@ -140,13 +139,26 @@ trait HasOrderProgress
                         'type' => 'secondary',
                         'downloadable' => true,
                     ];
-                    // بارنامه: لینک صفحه جزئیات سفارش در SPA (navigate، نه دانلود)
-                    $actions[] = ['label' => 'بارنامه', 'link' => "/profile/orders/{$id}", 'type' => 'secondary'];
+                    // اطلاعات راننده و خودرو روی صفحه‌ی جزئیات سفارش نمایش داده
+                    // می‌شود (per-shipment). لینکِ navigate است، نه دانلود.
+                    $actions[] = ['label' => 'بارنامه و راننده', 'link' => "/profile/orders/{$id}", 'type' => 'secondary'];
                 }
 
-                if ($blueprint['title'] === 'سفارش حمل شد') {
-                    // لینک SPA صفحه جزئیات سفارش (navigate، نه دانلود)
-                    $actions[] = ['label' => 'لینک فرآیند تحویل', 'link' => "/profile/orders/{$id}", 'type' => 'secondary'];
+                if ($blueprint['title'] === 'تحویل شد' && $state === 'current') {
+                    $actions[] = [
+                        'label' => 'تأیید تحویل',
+                        'link' => "/profile/orders/{$id}",
+                        'type' => 'primary',
+                    ];
+                }
+
+                if ($blueprint['title'] === 'فاکتور سامانه مودیان صادر شد') {
+                    $actions[] = [
+                        'label' => 'دانلود فاکتور مودیان',
+                        'link' => "/api/profile/orders/{$id}/invoice/tax_buyer",
+                        'type' => 'secondary',
+                        'downloadable' => true,
+                    ];
                 }
             }
 
@@ -158,11 +170,9 @@ trait HasOrderProgress
             ];
         }
 
-        // باگ: وقتی status = delivered/completed، currentIndex برابر آخرین index می‌شود
-        // و آخرین مرحله وضعیت 'current' می‌گیرد — در حالی که سفارش کاملاً تمام شده است.
-        // رفع: آخرین step را به 'completed' تغییر می‌دهیم تا فرانت‌اند بداند همه مراحل
-        // به پایان رسیده‌اند و نیازی به workaround normalizeSteps نیست.
-        if (in_array($status, [Order::STATUS_DELIVERED, Order::STATUS_COMPLETED])) {
+        // وقتی آخرین ماشه هم خورده، آخرین دایره باید سبز شود نه آبی — وگرنه سفارشِ
+        // کاملاً تمام‌شده برای همیشه «در حال انجام» نشان داده می‌شود.
+        if ($this->{Order::SYSTEM_MOADIAN_REF} !== null) {
             $steps[count($steps) - 1]['state'] = 'completed';
         }
 
@@ -185,7 +195,7 @@ trait HasOrderProgress
         $status = $this->status;
         $id = $this->id;
 
-        $isCancelled = in_array($status, [Order::STATUS_CANCELLED, Order::STATUS_FAILED]);
+        $isCancelled = $status === Order::STATUS_CANCELLED;
 
         $transKey = "orders.status.{$status}";
         $currentStatusLabel = Lang::has($transKey) ? __($transKey) : __('orders.status.unknown');
@@ -219,21 +229,18 @@ trait HasOrderProgress
             } elseif ($this->{Order::ELITE_YAR_MOADIAN_REF} !== null) {
                 $currentIndex = 2; // مرحله ۳: فاکتور خدمات ثبت شد (حالت گذرا — atomically به ۴ می‌رسد)
             } elseif (in_array($status, [
-                Order::STATUS_WEIGHBRIDGE_DONE,
-                Order::STATUS_PENDING_SURPLUS_PAYMENT,
-                Order::STATUS_WAYBILL_ISSUED,
                 Order::STATUS_SHIPPED,
+                Order::STATUS_PARTIALLY_DELIVERED,
+                Order::STATUS_RETURNED_TO_ORIGIN,
                 Order::STATUS_DELIVERED,  // کالا تحویل شده ولی الیت یار هنوز Doc Q ثبت نکرده
-                Order::STATUS_COMPLETED,  // → کمیسیون در کیف‌پول الیت یار به‌صورت Hold؛ باید Doc Q ثبت کند
-            ])) {
+            ], true)) {
                 $currentIndex = 1; // مرحله ۲: کارمزد الیت یار منظور شد
             } elseif (in_array($status, [
                 Order::STATUS_PROCESSING,
-                Order::STATUS_PREPARING,
-                Order::STATUS_PENDING,           // سفارش ثبت‌شده ولی هنوز پرداخت نشده
-                Order::STATUS_RESERVED,          // رزرو پرداخت‌شده ولی قبل از تأیید
-                Order::STATUS_RESERVED_EXTENDED, // رزرو تمدیدشده
-            ])) {
+                Order::STATUS_AWAITING_WEIGHT_CORRECTION,
+                Order::STATUS_PENDING,   // سفارش ثبت‌شده ولی هنوز پرداخت نشده
+                Order::STATUS_RESERVED,  // رزرو پرداخت‌شده ولی قبل از تکمیل
+            ], true)) {
                 $currentIndex = 0; // مرحله ۱: کارفرما خرید کرد
             }
         }
@@ -332,13 +339,11 @@ trait HasOrderProgress
         $status = $this->status;
         $id = $this->id;
 
-        $isCancelled = in_array($status, [Order::STATUS_CANCELLED, Order::STATUS_FAILED]);
+        $isCancelled = $status === Order::STATUS_CANCELLED;
 
-        $threshold = (float) config('financial.reservation_threshold', 2_000_000_000);
-        // مبنا پیش از تخفیف کوپن است — هم‌تراز با ProcessFullOrderPaymentAction،
-        // وگرنه یک سفارشِ رزروی با کوپن در تایم‌لاین «پرداخت یکجا» نشان داده می‌شد.
-        $isFullPayment = $this->reservationBasisAmount() < $threshold
-            || $this->payment_to_reserve == $this->final_amount;
+        // همان قاعده‌ی بند ۱۱.۱ — رزرو از روی بیعانه‌ی پرداخت‌شده تشخیص داده
+        // می‌شود، نه از مقایسه با آستانه‌ای که دیگر وجود ندارد.
+        $wasReserved = (float) $this->payment_to_reserve > 0;
 
         $transKey = "orders.status.{$status}";
         $currentStatusLabel = Lang::has($transKey) ? __($transKey) : __('orders.status.unknown');
@@ -348,31 +353,31 @@ trait HasOrderProgress
         // ---------------------------------------------------------
         $stepsBlueprint = [];
 
-        if (! $isFullPayment) {
+        if ($wasReserved) {
             $stepsBlueprint[] = [
                 'title' => 'رزرو سفارش ثبت شد',
-                'triggers' => [Order::STATUS_PENDING, Order::STATUS_RESERVED, Order::STATUS_RESERVED_EXTENDED],
+                'triggers' => [Order::STATUS_PENDING, Order::STATUS_RESERVED],
             ];
         }
 
         $stepsBlueprint[] = [
             'title' => 'سفارش دریافت شد',
-            'triggers' => [Order::STATUS_PROCESSING, Order::STATUS_PREPARING],
+            'triggers' => [Order::STATUS_PROCESSING, Order::STATUS_AWAITING_WEIGHT_CORRECTION],
         ];
 
         $stepsBlueprint[] = [
-            'title' => 'باسکول تأیید شد',
-            'triggers' => [Order::STATUS_WEIGHBRIDGE_DONE, Order::STATUS_PENDING_SURPLUS_PAYMENT],
+            'title' => 'بارنامه صادر و کالا ارسال شد',
+            'triggers' => [Order::STATUS_SHIPPED, Order::STATUS_RETURNED_TO_ORIGIN],
         ];
 
         $stepsBlueprint[] = [
-            'title' => 'کالا ارسال شد',
-            'triggers' => [Order::STATUS_WAYBILL_ISSUED, Order::STATUS_SHIPPED],
+            'title' => 'تحویل و تسویه شد',
+            'triggers' => [Order::STATUS_PARTIALLY_DELIVERED, Order::STATUS_DELIVERED],
         ];
 
         $stepsBlueprint[] = [
-            'title' => 'مبلغ تسویه شد',
-            'triggers' => [Order::STATUS_DELIVERED, Order::STATUS_COMPLETED],
+            'title' => 'فاکتور مودیان ثبت شد',
+            'triggers' => [],
         ];
 
         // ---------------------------------------------------------
@@ -381,12 +386,11 @@ trait HasOrderProgress
         $currentIndex = 0;
         if (! $isCancelled) {
             foreach ($stepsBlueprint as $index => $blueprint) {
-                if (in_array($status, $blueprint['triggers'])) {
+                if (in_array($status, $blueprint['triggers'], true)) {
                     $currentIndex = $index;
-                    break;
                 }
             }
-            if (in_array($status, [Order::STATUS_DELIVERED, Order::STATUS_COMPLETED])) {
+            if ($this->{Order::SUPPLIER_MOADIAN_REF} !== null) {
                 $currentIndex = count($stepsBlueprint) - 1;
             }
         }
@@ -434,14 +438,17 @@ trait HasOrderProgress
                         ];
                         break;
 
-                    case 'باسکول تأیید شد':
+                    case 'بارنامه صادر و کالا ارسال شد':
                         $actions[] = [
                             'label' => 'دانلود مجوز خروج',
                             'link' => "/api/profile/orders/{$id}/invoice/exit_permit",
                             'method' => 'GET',
                             'downloadable' => true,
                         ];
-                        // لینک ثبت فاکتور مودیان فقط تا زمانی که ارسال نشده
+                        // دکمه‌ی ثبت روی همین مرحله می‌نشیند، نه روی مرحله‌ی پنجم:
+                        // مرحله‌ی پنجم ماشه‌اش خودِ `supplier_moadian_ref` است، پس تا
+                        // وقتی تأمین‌کننده ثبت نکرده inactive است و دکمه‌اش دیده
+                        // نمی‌شود — یعنی دکمه‌ای که فقط بعد از انجامِ کار ظاهر می‌شود.
                         if ($this->{Order::SUPPLIER_MOADIAN_REF} === null) {
                             $actions[] = [
                                 'label' => 'ثبت فاکتور مودیان',
@@ -452,21 +459,21 @@ trait HasOrderProgress
                         }
                         break;
 
-                    case 'کالا ارسال شد':
-                        $actions[] = [
-                            'label' => 'مشاهده بارنامه',
-                            'link' => "/api/profile/orders/{$id}/invoice/exit_permit",
-                            'method' => 'GET',
-                            'downloadable' => true,
-                        ];
-                        break;
-
-                    case 'مبلغ تسویه شد':
+                    case 'تحویل و تسویه شد':
                         $actions[] = [
                             'label' => 'مشاهده کیف پول',
                             'link' => '/profile/finance',
                             'method' => 'GET',
                             'downloadable' => false,
+                        ];
+                        break;
+
+                    case 'فاکتور مودیان ثبت شد':
+                        $actions[] = [
+                            'label' => 'دانلود فاکتور مودیان',
+                            'link' => "/api/profile/orders/{$id}/invoice/tax_supplier",
+                            'method' => 'GET',
+                            'downloadable' => true,
                         ];
                         break;
                 }
@@ -481,7 +488,7 @@ trait HasOrderProgress
         }
 
         // مانند getDashboardProgressAttribute: آخرین مرحله وقتی تکمیل شده «completed» است
-        if (in_array($status, [Order::STATUS_DELIVERED, Order::STATUS_COMPLETED])) {
+        if ($this->{Order::SUPPLIER_MOADIAN_REF} !== null) {
             $steps[count($steps) - 1]['state'] = 'completed';
         }
 

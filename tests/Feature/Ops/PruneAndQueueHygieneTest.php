@@ -80,7 +80,7 @@ class PruneAndQueueHygieneTest extends TestCase
             Order::PLACER_USER_ID => User::factory()->create()->id,
             Order::ELITE_YAR_USER_ID => $eliteYarId,
             Order::ORDER_NUMBER => 'MOD-'.Str::random(10),
-            Order::STATUS => Order::STATUS_COMPLETED,
+            Order::STATUS => Order::STATUS_DELIVERED,
         ]);
 
         $order->forceFill(array_merge([

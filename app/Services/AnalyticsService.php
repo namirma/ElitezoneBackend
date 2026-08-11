@@ -28,7 +28,7 @@ class AnalyticsService
             // نمودار روند فروش همیشه خالی می‌ماند. مثل CalculateCustomerRfm و
             // HasOrderProgress، هر دو وضعیتِ «سفارشِ به‌سرانجام‌رسیده» شمرده می‌شوند.
             $rawData = Order::query()
-                ->whereIn(Order::STATUS, [Order::STATUS_DELIVERED, Order::STATUS_COMPLETED])
+                ->where(Order::STATUS, Order::STATUS_DELIVERED)
                 ->where(Order::CREATED_AT, '>=', $startDate)
                 ->select([
                     DB::raw('DATE(created_at) as date'),

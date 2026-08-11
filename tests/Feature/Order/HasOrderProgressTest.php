@@ -78,7 +78,7 @@ class HasOrderProgressTest extends TestCase
     /** WEIGHBRIDGE_DONE → مرحله ۲ current، مرحله ۱ completed */
     public function test_elite_yar_progress_step2_current_on_weighbridge_done(): void
     {
-        $order = $this->makeOrder([Order::STATUS => Order::STATUS_WEIGHBRIDGE_DONE]);
+        $order = $this->makeOrder([Order::STATUS => Order::STATUS_SHIPPED]);
 
         $progress = $order->elite_yar_progress;
 
@@ -155,7 +155,7 @@ class HasOrderProgressTest extends TestCase
     public function test_elite_yar_progress_completed_without_hold_release_stays_at_step2(): void
     {
         $order = $this->makeOrder([
-            Order::STATUS => Order::STATUS_COMPLETED,
+            Order::STATUS => Order::STATUS_DELIVERED,
             Order::ELITE_YAR_MOADIAN_REF => null,
             Order::ELITE_YAR_HOLD_RELEASED_AT => null,
         ]);
@@ -175,7 +175,7 @@ class HasOrderProgressTest extends TestCase
      */
     public function test_elite_yar_progress_waybill_issued_stays_at_step2(): void
     {
-        $order = $this->makeOrder([Order::STATUS => Order::STATUS_WAYBILL_ISSUED]);
+        $order = $this->makeOrder([Order::STATUS => Order::STATUS_SHIPPED]);
 
         $progress = $order->elite_yar_progress;
 
@@ -204,7 +204,7 @@ class HasOrderProgressTest extends TestCase
      */
     public function test_elite_yar_progress_step2_always_shows_submit_button(): void
     {
-        $order = $this->makeOrder([Order::STATUS => Order::STATUS_WEIGHBRIDGE_DONE]);
+        $order = $this->makeOrder([Order::STATUS => Order::STATUS_SHIPPED]);
 
         $progress = $order->elite_yar_progress;
 
@@ -258,14 +258,14 @@ class HasOrderProgressTest extends TestCase
     public function test_supplier_progress_step2_shows_moadian_action_when_not_submitted(): void
     {
         $order = $this->makeOrder([
-            Order::STATUS => Order::STATUS_WEIGHBRIDGE_DONE,
+            Order::STATUS => Order::STATUS_SHIPPED,
             Order::SUPPLIER_MOADIAN_REF => null,
         ]);
 
         $progress = $order->supplier_progress;
 
-        $step2 = $progress['steps'][1]; // index 1 = باسکول تأیید شد (no reserve step)
-        $this->assertSame('باسکول تأیید شد', $step2['title']);
+        $step2 = $progress['steps'][1]; // index 1 = بارنامه صادر و کالا ارسال شد (no reserve step)
+        $this->assertSame('بارنامه صادر و کالا ارسال شد', $step2['title']);
         $this->assertSame('current', $step2['state']);
 
         $labels = array_column($step2['actions'], 'label');
@@ -277,7 +277,7 @@ class HasOrderProgressTest extends TestCase
     public function test_supplier_progress_step2_hides_moadian_action_when_submitted(): void
     {
         $order = $this->makeOrder([
-            Order::STATUS => Order::STATUS_WEIGHBRIDGE_DONE,
+            Order::STATUS => Order::STATUS_SHIPPED,
             Order::SUPPLIER_MOADIAN_REF => 'SUP-TAX-001',
         ]);
 
@@ -298,15 +298,16 @@ class HasOrderProgressTest extends TestCase
         $progress = $order->supplier_progress;
 
         $lastStep = $progress['steps'][count($progress['steps']) - 1];
-        $this->assertSame('مبلغ تسویه شد', $lastStep['title']);
-        $this->assertSame('completed', $lastStep['state']);
+        $this->assertSame('فاکتور مودیان ثبت شد', $lastStep['title']);
 
-        // سایر مراحل هم باید completed باشند
-        $nonLast = array_slice($progress['steps'], 0, -1);
-        foreach ($nonLast as $step) {
-            $this->assertSame('completed', $step['state'],
-                "Step «{$step['title']}» should be completed before delivered");
-        }
+        // مرحله‌ی آخر ماشه‌اش `supplier_moadian_ref` است، نه `delivered` — تحویلِ
+        // کالا هنوز فاکتور مودیانِ تأمین‌کننده را صادر نکرده، پس این دایره باید
+        // خاکستری بماند و «تحویل و تسویه شد» دایره‌ی جاری باشد.
+        $this->assertSame('inactive', $lastStep['state']);
+
+        $settled = $progress['steps'][count($progress['steps']) - 2];
+        $this->assertSame('تحویل و تسویه شد', $settled['title']);
+        $this->assertSame('current', $settled['state']);
     }
 
     // =========================================================================

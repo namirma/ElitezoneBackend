@@ -30,7 +30,6 @@ class RiskyFixesTest extends TestCase
     {
         $this->assertContains(Order::STATUS_PENDING, Order::PAYABLE_STATUSES);
         $this->assertContains(Order::STATUS_RESERVED, Order::PAYABLE_STATUSES);
-        $this->assertContains(Order::STATUS_RESERVED_EXTENDED, Order::PAYABLE_STATUSES);
     }
 
     /** R4 — SendSmsJob must not send the same message twice within the dedupe window. */

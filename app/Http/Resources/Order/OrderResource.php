@@ -54,8 +54,7 @@ class OrderResource extends BaseJsonResource
         }
 
         $canPay = $paymentStatusKey !== Order::PAYMENT_PAID
-            && $statusKey !== Order::STATUS_CANCELLED
-            && $statusKey !== Order::STATUS_FAILED;
+            && $statusKey !== Order::STATUS_CANCELLED;
 
         $paymentUrl = $canPay ? route('api.user.orders.pay_full', ['order' => $this->id]) : null;
 
@@ -96,8 +95,11 @@ class OrderResource extends BaseJsonResource
                 // 'color' نگه‌داشته شده برای سازگاری عقبگرد با نسخه‌های قدیمی فرانت
                 'color' => match ($statusKey) {
                     Order::STATUS_DELIVERED => 'success',
-                    Order::STATUS_CANCELLED, Order::STATUS_FAILED => 'danger',
-                    Order::STATUS_PENDING, Order::STATUS_RESERVED_EXTENDED => 'warning',
+                    Order::STATUS_CANCELLED, Order::STATUS_RETURNED_TO_ORIGIN => 'danger',
+                    Order::STATUS_PENDING,
+                    Order::STATUS_RESERVED,
+                    Order::STATUS_AWAITING_WEIGHT_CORRECTION,
+                    Order::STATUS_PARTIALLY_DELIVERED => 'warning',
                     default => 'primary',
                 },
                 'progress_data' => $progress,
