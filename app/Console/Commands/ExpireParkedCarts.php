@@ -32,6 +32,22 @@ class ExpireParkedCarts extends Command
             ->whereNotNull(Cart::USER_ID)
             ->whereNotNull(Cart::PARKED_UNTIL)
             ->where(Cart::PARKED_UNTIL, '<=', now())
+            // بند ۳.۲: «سبدهای منتظر تا لحظه‌ی اعلام قیمت جدید زنده می‌مانند.»
+            //
+            // اگر اعتبارِ قیمتِ تأمین‌کننده تمام شده و قیمتِ تازه‌ای اعلام نشده،
+            // سبد در حالتِ انتظار است و نباید حذف شود — کاربر منتظرِ چیزی است
+            // که هنوز نیامده، پس منقضی‌کردنش او را بابت تأخیرِ تأمین‌کننده
+            // جریمه می‌کند. لحظه‌ی اعلام، `reparkWaitingCartsFor` مهلتِ تازه
+            // می‌دهد و پیامک می‌فرستد.
+            ->whereNotExists(function ($q) {
+                $q->select(DB::raw(1))
+                    ->from('supplier_profiles')
+                    ->whereColumn('supplier_profiles.user_id', 'carts.supplier_user_id')
+                    ->where(function ($inner) {
+                        $inner->whereNull('supplier_profiles.reserve_time')
+                            ->orWhere('supplier_profiles.reserve_time', '<=', now());
+                    });
+            })
             ->orderBy(Cart::ID)
             ->limit($limit)
             ->get();

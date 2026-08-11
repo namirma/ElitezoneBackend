@@ -30,6 +30,8 @@ return [
     // پاسخِ GET /profile/supplier — «هنوز درخواست نداده‌ام» هم با همین پیام و
     // data: null برمی‌گردد (حالتِ عادی است، نه خطا).
     'supplier_profile_received' => 'اطلاعات تأمین‌کننده دریافت شد.',
+    'supplier_profile_updated' => 'اطلاعات تأمین‌کننده به‌روزرسانی شد.',
+    'supplier_profile_not_found' => 'پروفایل تأمین‌کننده برای شما ثبت نشده است.',
 
     // Employer SMS invite (elite yar only)
     'invite_sent_successfully' => 'دعوت‌نامه با موفقیت ارسال شد.',

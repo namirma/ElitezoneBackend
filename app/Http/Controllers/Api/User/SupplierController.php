@@ -4,14 +4,18 @@ namespace App\Http\Controllers\Api\User;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Profile\StoreSupplierProfileRequest;
+use App\Http\Requests\Profile\UpdateSupplierReserveTimeRequest;
 use App\Http\Resources\Profile\UserResource;
 use App\Http\Resources\Supplier\SupplierCategoryResource;
 use App\Http\Resources\Supplier\SupplierProfileResource;
+use App\Jobs\Notification\SendSmsJob;
+use App\Models\Cart;
 use App\Models\Factory;
 use App\Models\Order;
 use App\Models\SupplierActivityCategory;
 use App\Models\SupplierProfile;
 use App\Models\User;
+use App\Services\Cart\CartParkService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -52,6 +56,66 @@ class SupplierController extends Controller
             $supplier ? new SupplierProfileResource($supplier) : null,
             'profile.supplier_profile_received'
         );
+    }
+
+    /**
+     * PUT /profile/supplier/reserve-time — اعلامِ اعتبارِ قیمت‌ها (بند ۷.۳).
+     *
+     * این تنها راهِ «قیمت‌هایم تا این لحظه معتبرند» است، و ثبتش دو اثرِ جانبی
+     * دارد که هر دو بخشی از همان اعلام‌اند (بند ۳.۲):
+     *   ۱. محصولاتِ این تأمین‌کننده دوباره قابلِ فروش می‌شوند
+     *   ۲. سبدهایی که منتظرِ همین اعلام مانده بودند مهلتِ تازه می‌گیرند و
+     *      صاحبانشان پیامک می‌گیرند
+     *
+     * گاردهای «باید در آینده باشد» و «کاهش ممنوع» در FormRequest اعمال می‌شوند.
+     */
+    public function updateReserveTime(
+        UpdateSupplierReserveTimeRequest $request,
+        CartParkService $parkService,
+    ): JsonResponse {
+        $userId = (int) Auth::id();
+
+        $supplier = SupplierProfile::where(SupplierProfile::USER_ID, $userId)->first();
+
+        if (! $supplier) {
+            return error(__('profile.supplier_profile_not_found'), [], 404);
+        }
+
+        $supplier->update($request->safe()->only([
+            SupplierProfile::RESERVE_TIME,
+            SupplierProfile::RESERVE_AUTO_EXTEND_MINUTES,
+        ]));
+
+        // خارج از تراکنش عمداً نیست — این یک به‌روزرسانیِ تکی است و پیامک‌ها
+        // صف‌شده‌اند، پس چیزی برای rollback نمی‌ماند.
+        $this->notifyWaitingCarts($parkService, $userId);
+
+        return success(
+            new SupplierProfileResource($supplier->fresh()),
+            'profile.supplier_profile_updated'
+        );
+    }
+
+    /** سبدهای منتظر را دوباره مهلت‌دار می‌کند و به صاحبانشان خبر می‌دهد (بند ۳.۲). */
+    private function notifyWaitingCarts(CartParkService $parkService, int $supplierUserId): void
+    {
+        $cartIds = $parkService->reparkWaitingCartsFor($supplierUserId);
+
+        if ($cartIds === []) {
+            return;
+        }
+
+        Cart::query()
+            ->with('user')
+            ->whereIn(Cart::ID, $cartIds)
+            ->get()
+            ->each(function (Cart $cart) {
+                $mobile = $cart->user?->mobile;
+
+                if ($mobile) {
+                    SendSmsJob::dispatch($mobile, __('sms.cart_prices_updated'));
+                }
+            });
     }
 
     public function getCategories()

@@ -8,7 +8,9 @@ use App\Exceptions\BusinessException;
 use App\Models\AbandonedCart;
 use App\Models\Cart;
 use App\Models\CartItem;
+use App\Models\SupplierProfile;
 use App\Services\Sales\SalesSettings;
+use Carbon\CarbonInterface;
 
 /**
  * مهلتِ نگهداری سبد و قفلِ تأمین‌کننده — بند ۳.۱ سند بازطراحی.
@@ -44,9 +46,77 @@ final class CartParkService
         }
 
         $cart->forceFill([
-            Cart::PARKED_UNTIL => now()->add($this->settings->parkTime()),
+            Cart::PARKED_UNTIL => $this->deadlineFor($cart),
             Cart::PARK_WARNED_AT => null,
         ])->save();
+    }
+
+    /**
+     * مهلت، با در نظر گرفتنِ نزدیکیِ `reserve_time` تأمین‌کننده — بند ۳.۱.
+     *
+     * اگر اعتبارِ قیمت زودتر از خودِ مهلتِ سبد تمام شود، مهلت به **پس از**
+     * `reserve_time` منتقل می‌شود، نه قبلش. دلیل: کاربر باید فرصتِ کاملِ
+     * `park_time` را روی قیمتِ *جدید* داشته باشد. با فرمولِ ساده‌ی
+     * `now + park_time` سبدی ساخته می‌شد که وسطِ عمرش قیمتش عوض می‌شود و
+     * کاربر روی عددی تصمیم می‌گیرد که دیگر معتبر نیست.
+     */
+    private function deadlineFor(Cart $cart): CarbonInterface
+    {
+        $parkTime = $this->settings->parkTime();
+        $reserveTime = $this->supplierReserveTime($cart);
+
+        if ($reserveTime !== null
+            && $reserveTime->isFuture()
+            && $reserveTime->diffInMinutes(now()) < $parkTime->totalMinutes
+        ) {
+            return $reserveTime->copy()->add($parkTime);
+        }
+
+        return now()->add($parkTime);
+    }
+
+    private function supplierReserveTime(Cart $cart): ?CarbonInterface
+    {
+        $supplierId = $cart->{Cart::SUPPLIER_USER_ID};
+
+        if ($supplierId === null) {
+            return null;
+        }
+
+        return SupplierProfile::where(SupplierProfile::USER_ID, $supplierId)
+            ->value(SupplierProfile::RESERVE_TIME);
+    }
+
+    /**
+     * سبدهایی که منتظرِ اعلامِ قیمتِ جدیدِ این تأمین‌کننده مانده‌اند را دوباره
+     * مهلت‌دار می‌کند — بند ۳.۲.
+     *
+     * «سبدهای منتظر تا لحظه‌ی اعلام قیمت جدید زنده می‌مانند؛ سپس به‌روز و به
+     * کاربر اطلاع داده می‌شود.» پس مهلتِ تازه از **حالا** شمرده می‌شود: کاربر
+     * تمامِ `park_time` را روی قیمتِ جدید دارد، نه باقی‌مانده‌ی مهلتِ قبلی.
+     *
+     * @return list<int> شناسه‌ی سبدهایی که به‌روز شدند
+     */
+    public function reparkWaitingCartsFor(int $supplierUserId): array
+    {
+        $carts = Cart::query()
+            ->whereNotNull(Cart::USER_ID)
+            ->where(Cart::SUPPLIER_USER_ID, $supplierUserId)
+            ->whereNotNull(Cart::PARKED_UNTIL)
+            ->get();
+
+        $touched = [];
+
+        foreach ($carts as $cart) {
+            $cart->forceFill([
+                Cart::PARKED_UNTIL => now()->add($this->settings->parkTime()),
+                Cart::PARK_WARNED_AT => null,
+            ])->save();
+
+            $touched[] = (int) $cart->id;
+        }
+
+        return $touched;
     }
 
     /**

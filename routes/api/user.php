@@ -398,6 +398,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
             // Self-service panel — approved suppliers only (role.supplier)
             Route::middleware('role.supplier')->group(function () {
+                // اعلامِ اعتبارِ قیمت‌ها — تا وقتی ثبت نشود، کالاهای این
+                // تأمین‌کننده قابل سفارش نیستند (بند ۳.۲).
+                Route::put('/reserve-time', [SupplierController::class, 'updateReserveTime']);
+
                 Route::get('/orders', [SupplierOrderController::class, 'index']);
                 Route::get('/orders/pending-debts', [SupplierOrderController::class, 'pendingDebts']);
                 Route::get('/orders/pending-moadian', [SupplierOrderController::class, 'pendingMoadian']);

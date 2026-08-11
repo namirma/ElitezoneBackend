@@ -3,6 +3,7 @@
 namespace App\Actions\Cart;
 
 use App\Events\Cart\CartItemChanged;
+use App\Exceptions\BusinessException;
 use App\Models\Cart;
 use App\Models\CartEvent;
 use App\Models\CartItem;
@@ -13,6 +14,7 @@ use App\Models\OrderUnit;
 use App\Models\PriceFilterCategory;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\SupplierProfile;
 use App\Services\Cart\CartParkService;
 use App\Services\InventoryService;
 use App\Services\PriceCalculationService;
@@ -55,6 +57,15 @@ class AddToCartAction
             // نمی‌توانند هر دو از این گارد رد شوند.
             $supplierUserId = Factory::whereKey($data['factory_id'])->value('supplier_user_id');
             $this->parkService->assertSupplierAllowed($cart, $supplierUserId ? (int) $supplierUserId : null);
+
+            // بند ۳.۲ / بند ۹: اعتبارِ قیمتِ تأمین‌کننده باید زنده باشد.
+            //
+            // لیستِ عمومی این محصولات را از قبل پنهان می‌کند، ولی آن فیلتر برای
+            // درخواستی که مستقیم به این اندپوینت می‌آید هیچ کاری نمی‌کند —
+            // شناسه‌ی واریانت از یک تبِ باز یا یک اسکریپت هم می‌تواند بیاید. بدون
+            // این گارد، کالایی با قیمتِ منقضی وارد سبد می‌شد و تا لحظه‌ی پرداخت
+            // همان قیمتِ کهنه را حمل می‌کرد.
+            $this->assertSupplierPricesValid($supplierUserId ? (int) $supplierUserId : null);
 
             // اگر سبد خرید قفل شده باشد، دیگر نیازی به قفل کردن این کوئری نیست
             // اما برای سازگاری آن را رها می‌کنیم. از آنجا که تراکنش‌های همزمان روی همین سبد
@@ -147,6 +158,26 @@ class AddToCartAction
                 'badge',
             ]);
         });
+    }
+
+    /**
+     * کالای تأمین‌کننده‌ای که اعتبارِ قیمتش تمام شده وارد سبد نمی‌شود (بند ۳.۲).
+     *
+     * کارخانه‌ی بدون `supplier_user_id` داده‌ی ناقص است و مسیرِ خودش را دارد
+     * (`PlaceOrderAction` جلویش را می‌گیرد)؛ اینجا رهایش می‌کنیم تا این گارد
+     * دو مسئولیت را قاطی نکند.
+     */
+    protected function assertSupplierPricesValid(?int $supplierUserId): void
+    {
+        if ($supplierUserId === null) {
+            return;
+        }
+
+        $profile = SupplierProfile::where(SupplierProfile::USER_ID, $supplierUserId)->first();
+
+        if ($profile && ! $profile->hasValidPriceWindow()) {
+            throw new BusinessException(__('supplier.prices_expired'), 422);
+        }
     }
 
     protected function calculatePhysicalAttributes(array $quantities, Collection $orderUnitsMap, ProductVariant $variant): array

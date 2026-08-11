@@ -6,6 +6,7 @@ use App\DataTransferObjects\Product\ProductFilterData;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\ProductVariantAttribute;
+use App\Models\SupplierProfile;
 use App\Repositories\Contracts\ProductRepositoryInterface;
 use App\Services\PriceCalculationService;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -75,7 +76,41 @@ class FilterProductsAction
             });
         });
 
+        $this->hideProductsWithExpiredPrices($query);
+
         return $query->get();
+    }
+
+    /**
+     * محصولاتی که هیچ قیمتِ **معتبری** ندارند از لیست عمومی حذف می‌شوند — بند ۳.۲.
+     *
+     * «معتبر» یعنی دستِ‌کم یک ردیفِ قیمت از کارخانه‌ای که تأمین‌کننده‌اش
+     * `reserve_time` زنده دارد. با گذشتنِ آن لحظه و نیامدنِ قیمتِ جدید،
+     * محصول باید ناپدید شود تا کسی روی عددِ کهنه تصمیم نگیرد.
+     *
+     * محصولی که اصلاً هیچ ردیفِ قیمتی ندارد دست‌نخورده می‌ماند: پنهان‌کردنش
+     * کارِ این قاعده نیست و `AddToCartAction` جداگانه جلوی قیمتِ صفر را
+     * می‌گیرد. اینجا فقط «قیمت داشت و منقضی شد» را می‌بندیم.
+     */
+    private function hideProductsWithExpiredPrices($query): void
+    {
+        // شناسه‌ی تأمین‌کننده‌هایی که همین حالا پنجره‌ی قیمتِ معتبر دارند.
+        // زیرکوئری و نه `whereHas` زنجیره‌ای، چون `Factory` رابطه‌ای به
+        // `SupplierProfile` ندارد — فقط ستونِ `supplier_user_id`.
+        $validSuppliers = SupplierProfile::query()
+            ->whereNotNull(SupplierProfile::RESERVE_TIME)
+            ->where(SupplierProfile::RESERVE_TIME, '>', now())
+            ->select(SupplierProfile::USER_ID);
+
+        $query->where(function ($outer) use ($validSuppliers) {
+            // محصولِ بدونِ هیچ ردیفِ قیمت دست‌نخورده می‌ماند: پنهان‌کردنش کارِ
+            // این قاعده نیست و گاردِ «قیمت صفر» در AddToCartAction جلویش را
+            // می‌گیرد. اینجا فقط «قیمت داشت و منقضی شد» بسته می‌شود.
+            $outer->whereDoesntHave('variants.prices')
+                ->orWhereHas('variants.prices.factory', function ($factoryQuery) use ($validSuppliers) {
+                    $factoryQuery->whereIn('supplier_user_id', $validSuppliers);
+                });
+        });
     }
 
     private function hydrateProductPrices(Product $product, ProductFilterData $filters): void
