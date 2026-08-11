@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\HasOrders;
 use App\Models\Concerns\HasWallet;
+use App\Services\Sales\SalesSettings;
 use App\Traits\PersianDate;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -44,6 +45,14 @@ class User extends Authenticatable
     public const MOBILE = 'mobile';
 
     public const IS_ACTIVE = 'is_active';
+
+    /**
+     * سه‌حالته: true/false تصمیمِ صریحِ بک‌آفیس، `null` یعنی پیروی از تنظیمِ
+     * سراسریِ `coupon_visibility`. فقط در حالتِ `selected` خوانده می‌شود.
+     *
+     * @see SalesSettings::couponVisibleFor()
+     */
+    public const COUPON_ENABLED = 'coupon_enabled';
 
     public const NATIONAL_CODE = 'national_code';
 
@@ -108,6 +117,7 @@ class User extends Authenticatable
     protected $casts = [
         self::PASSWORD => 'hashed',
         self::IS_ACTIVE => 'boolean',
+        self::COUPON_ENABLED => 'boolean',
         self::BADGE_PURCHASE_AMOUNT => 'decimal:2',
     ];
 
