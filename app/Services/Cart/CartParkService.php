@@ -65,9 +65,12 @@ final class CartParkService
         $parkTime = $this->settings->parkTime();
         $reserveTime = $this->supplierReserveTime($cart);
 
+        // مقایسه‌ی مستقیمِ دو لحظه و نه `diffInMinutes`: کاربنِ ۳ (شاخه‌ی L13)
+        // مقدارِ **علامت‌دار** برمی‌گرداند و کاربنِ ۲ قدرمطلق، پس همین شرط روی دو
+        // شاخه دو جواب می‌داد — روی L13 همیشه شاخه‌ی «نزدیک» را می‌گرفت.
         if ($reserveTime !== null
             && $reserveTime->isFuture()
-            && $reserveTime->diffInMinutes(now()) < $parkTime->totalMinutes
+            && $reserveTime->lessThan(now()->add($parkTime))
         ) {
             return $reserveTime->copy()->add($parkTime);
         }
