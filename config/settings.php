@@ -30,6 +30,20 @@ return [
         'enamad_link',
         'samandehi_image_url',
         'samandehi_link',
+
+        /*
+        | پارامترهای مسیر فروش (سند بازطراحی، بند ۲.۱).
+        |
+        | ⚠️ این شش کلید عمداً **در `public_keys` نیستند** و نباید اضافه شوند —
+        | داخلی‌اند. پیش‌فرض‌هایشان در `config/sales.php` است و تنها راهِ
+        | خواندنشان `App\Services\Sales\SalesSettings` است.
+        */
+        'shaparak_value',
+        'reserve_value',
+        'park_time_minutes',
+        'reserve_grace_hours',
+        'max_overweight_percent',
+        'coupon_visibility',
     ],
 
     /*

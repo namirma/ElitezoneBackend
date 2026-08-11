@@ -45,6 +45,14 @@ class User extends Authenticatable
 
     public const IS_ACTIVE = 'is_active';
 
+    /**
+     * سه‌حالته: true/false تصمیمِ صریحِ بک‌آفیس، `null` یعنی پیروی از تنظیمِ
+     * سراسریِ `coupon_visibility`. فقط در حالتِ `selected` خوانده می‌شود.
+     *
+     * @see \App\Services\Sales\SalesSettings::couponVisibleFor()
+     */
+    public const COUPON_ENABLED = 'coupon_enabled';
+
     public const NATIONAL_CODE = 'national_code';
 
     public const BIRTH_DATE = 'birth_date';
@@ -108,6 +116,7 @@ class User extends Authenticatable
     protected $casts = [
         self::PASSWORD => 'hashed',
         self::IS_ACTIVE => 'boolean',
+        self::COUPON_ENABLED => 'boolean',
         self::BADGE_PURCHASE_AMOUNT => 'decimal:2',
     ];
 
