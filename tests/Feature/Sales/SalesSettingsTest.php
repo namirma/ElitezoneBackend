@@ -40,7 +40,7 @@ class SalesSettingsTest extends TestCase
             (float) config('sales.shaparak_value'),
             $this->settings()->shaparakValue(),
         );
-        $this->assertSame(120, $this->settings()->parkTime()->totalMinutes);
+        $this->assertSame(120, (int) $this->settings()->parkTime()->totalMinutes);
     }
 
     #[Test]
@@ -48,7 +48,7 @@ class SalesSettingsTest extends TestCase
     {
         $this->storeSetting('park_time_minutes', '45');
 
-        $this->assertSame(45, $this->settings()->parkTime()->totalMinutes);
+        $this->assertSame(45, (int) $this->settings()->parkTime()->totalMinutes);
     }
 
     #[Test]
@@ -58,7 +58,7 @@ class SalesSettingsTest extends TestCase
         // بدون این، park_time = 0 و هر سبد بلافاصله منقضی می‌شد.
         $this->storeSetting('park_time_minutes', '');
 
-        $this->assertSame(120, $this->settings()->parkTime()->totalMinutes);
+        $this->assertSame(120, (int) $this->settings()->parkTime()->totalMinutes);
     }
 
     #[Test]

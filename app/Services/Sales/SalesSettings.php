@@ -69,7 +69,7 @@ final class SalesSettings
     {
         return match ($this->string('coupon_visibility')) {
             'none' => false,
-            'selected' => (bool) ($user?->{User::COUPON_ENABLED} ?? false),
+            'selected' => $user !== null && (bool) $user->{User::COUPON_ENABLED},
             default => true,
         };
     }
