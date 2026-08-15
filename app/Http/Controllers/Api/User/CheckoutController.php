@@ -42,6 +42,40 @@ class CheckoutController extends Controller
         ], __('coupons.preview_valid'));
     }
 
+    /**
+     * GET /checkout/payment-options — خروجی `PaymentBranchResolver` (بند ۷.۲).
+     *
+     * **منبع واحد برای بک‌اند و فرانت** (بند ۶.۱): فرانت شاخه را از همین‌جا
+     * می‌خواند و خودش دوباره حساب نمی‌کند. اگر هر دو طرف مستقل محاسبه کنند،
+     * روی مرزها (`Final` دقیقاً برابرِ موجودی) دیر یا زود دو جواب می‌دهند و
+     * کاربر دکمه‌ای می‌بیند که سرور ردش می‌کند.
+     *
+     * `reserve_warning` طبق الحاقیه‌ی ۱ اضافه شده — و همان مقدارِ `show` است
+     * که `POST /checkout/reserve` را وادار به گرفتنِ `confirm_short_window`
+     * می‌کند، تا هشدار صرفاً یک تزئینِ سمت کلاینت نباشد.
+     */
+    public function paymentOptions(
+        \Illuminate\Http\Request $request,
+        \App\Services\Cart\CartResolver $cartResolver,
+        \App\Services\Payment\PaymentBranchResolver $branchResolver,
+        \App\Services\Payment\ReserveWarningResolver $warningResolver,
+        \App\Services\Cart\CartCheckoutTotals $totals,
+    ): JsonResponse {
+        $user = Auth::user();
+        $cart = $cartResolver->resolve($request);
+
+        if ($cart->items()->doesntExist()) {
+            return error(__('checkout.cart_is_empty'), [], 400);
+        }
+
+        $finalAmount = $totals->finalAmountFor($cart, $user);
+        $branch = $branchResolver->resolve($user, $finalAmount);
+
+        return success(array_merge($branch->toArray(), [
+            'reserve_warning' => $warningResolver->forCart($cart),
+        ]), 'global.received_successfully');
+    }
+
     public function paymentInfo(Order $order): JsonResponse
     {
         Gate::authorize('view', $order);
