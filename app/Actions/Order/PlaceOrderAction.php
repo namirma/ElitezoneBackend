@@ -19,7 +19,6 @@ use App\Models\User;
 use App\Models\UserType;
 use App\Services\DocumentSequenceService;
 use App\Services\Financial\SettlementCalculatorService;
-use App\Services\InventoryService;
 use App\Services\Marketing\CouponService;
 use App\Services\PriceCalculationService;
 use App\Services\PricingRoleResolver;
@@ -36,7 +35,6 @@ class PlaceOrderAction
     public function __construct(
         private readonly PriceCalculationService $priceService,
         private readonly PricingRoleResolver $roleResolver,
-        private readonly InventoryService $inventoryService,
         private readonly SettlementCalculatorService $settlementCalculator,
         private readonly DocumentSequenceService $sequenceService,
         private readonly ShippingCostCalculator $shippingCalculator,
@@ -44,9 +42,23 @@ class PlaceOrderAction
         private readonly CouponService $couponService,
     ) {}
 
-    public function execute(User $user, PlaceOrderData $data): Order
+    /**
+     * سفارش را از روی سبد می‌سازد — **بدون کسر موجودی و بدون هیچ لِگ مالی**.
+     *
+     * بند ۳.۳: «رکورد Order فقط وقتی ساخته می‌شود که پول قطعی نشسته باشد.» پس
+     * این متد دیگر یک اندپوینت نیست؛ از داخلِ تراکنشِ پرداخت صدا زده می‌شود
+     * (`CheckoutController::pay` / `reserve`) و کسر موجودی کارِ همان مسیر است.
+     *
+     * چرا کسر موجودی از اینجا رفت (بند ۶.۲): سفارشِ `pending` موجودی را قفل
+     * می‌کرد بدون آنکه یک ریال جابه‌جا شده باشد — هر کسی می‌توانست با ثبت
+     * سفارش و نپرداختن، کالای انبار را برای دو ساعت از دسترس بقیه خارج کند.
+     *
+     * @param  string  $initialStatus  وضعیت اولیه — `processing` برای پرداخت کامل،
+     *                                 `reserved` برای رزرو. هرگز `pending`.
+     */
+    public function execute(User $user, PlaceOrderData $data, string $initialStatus = Order::STATUS_PROCESSING): Order
     {
-        $order = DB::transaction(function () use ($user, $data) {
+        $order = DB::transaction(function () use ($user, $data, $initialStatus) {
 
             // ۱. خواندن و قفل کردن سبد خرید دقیقاً داخل تراکنش
             $cart = $this->getCartOrFail($user);
@@ -70,7 +82,7 @@ class PlaceOrderAction
             }
 
             // ۳. ایجاد سفارش + مرسوله‌ها (هر مبدأ→مقصد یک مرسوله) + اقلام
-            $order = $this->createOrderRecord($user, $data, $financials, $cart);
+            $order = $this->createOrderRecord($user, $data, $financials, $cart, $initialStatus);
 
             if ($coupon) {
                 $this->couponService->redeem($coupon);
@@ -78,8 +90,12 @@ class PlaceOrderAction
             $shipmentMap = $this->createShipments($order, $financials['shipments']);
             $this->createOrderItems($order, $cart, $financials['items_data'], $shipmentMap);
 
-            // ۴. کسر از انبار
-            $this->inventoryService->deductStockForOrder($order);
+            // ۴. کسر از انبار **اینجا نیست** — بند ۶.۲.
+            //
+            // موجودی در لحظه‌ی پرداخت یا رزرو کسر می‌شود، نه در لحظه‌ی ساختِ
+            // سفارش. صداکننده (`CheckoutController`) بلافاصله پس از این و در
+            // همان تراکنش آن را انجام می‌دهد، پس بینِ ساخت و کسر هیچ فاصله‌ای
+            // نیست — ولی مسئولیتش آنجاست، جایی که پول هم جابه‌جا می‌شود.
 
             // ۵. پاکسازی سبد خرید
             $this->clearCart($cart);
@@ -346,7 +362,7 @@ class PlaceOrderAction
         return $fees;
     }
 
-    private function createOrderRecord(User $user, PlaceOrderData $data, array $fins, Cart $cart): Order
+    private function createOrderRecord(User $user, PlaceOrderData $data, array $fins, Cart $cart, string $initialStatus): Order
     {
         // ۱. تشخیص کانتکست (Context) کالا بر اساس اولین آیتم سبد خرید
         // می‌توانید منطق شرط را بر اساس ساختار دیتابیس خودتان (مثلاً نام دسته‌بندی) تنظیم کنید
@@ -377,7 +393,7 @@ class PlaceOrderAction
             // وجود نداشت، به یک خطای FK مبهم می‌رسید).
             'shipping_method_id' => $data->shippingMethodId,
             Order::ORDER_NUMBER => $orderNumber, // استفاده از شماره تولید شده
-            Order::STATUS => Order::STATUS_PENDING,
+            Order::STATUS => $initialStatus,
             Order::PAYMENT_STATUS => Order::PAYMENT_PENDING,
 
             Order::SUBTOTAL => $fins['subtotal'],

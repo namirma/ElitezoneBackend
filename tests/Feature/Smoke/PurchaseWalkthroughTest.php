@@ -232,40 +232,40 @@ class PurchaseWalkthroughTest extends TestCase
         $cartTotal = $r->json('data.totals.total') ?? $r->json('data.total');
         $this->step('۷. مشاهدهٔ سبد', $r->status(), 'total='.json_encode($cartTotal));
 
-        // ─────────────── ۶. ثبت سفارش ───────────────
-        $r = $this->postJson('/api/checkout', [
-            'address_id' => $addressId,
-            'shipping_method_id' => $shippingMethod->id,
-        ]);
-        $this->step('۸. ثبت سفارش (checkout)', $r->status(), $r->status() >= 300 ? $r->json() : null);
-
-        $order = Order::where(Order::PLACER_USER_ID, $user->id)->latest('id')->first();
-        if (! $order) {
-            $this->fail('سفارشی ساخته نشد — مسیر همین‌جا می‌ایستد.');
-        }
-        $this->step('   └ سفارش ساخته شد', 200, [
-            'order' => $order->order_number,
-            'status' => $order->status,
-            'final_amount' => (string) $order->final_amount,
-        ]);
-
-        // ─────────────── ۷. شارژ کیف پول و پرداخت ───────────────
+        // ─────────────── ۶. شارژ کیف پول (پیش از سفارش) ───────────────
+        //
+        // ترتیب در مدل جدید برعکس شده: **اول پول، بعد سفارش**. تا پیش از این
+        // `POST /checkout` یک سفارشِ `pending` می‌ساخت و موجودی را قفل می‌کرد
+        // بی‌آنکه ریالی جابه‌جا شده باشد؛ حالا رکورد سفارش فقط وقتی ساخته
+        // می‌شود که پول در کیف پول نشسته باشد (بند ۳.۳).
         $wallet = Wallet::firstOrCreate(
             [Wallet::USER_ID => $user->id],
             [Wallet::BALANCE => 0, Wallet::BALANCE_HOLD => 0],
         );
-        $wallet->update([Wallet::BALANCE => (float) $order->final_amount + 10_000_000]);
-        $this->step('۹. شارژ کیف پول (مستقیم — درگاه stub است)', 200, 'balance='.$wallet->fresh()->balance);
+        $wallet->update([Wallet::BALANCE => (float) $cartTotal + 100_000_000]);
+        $this->step('۸. شارژ کیف پول (مستقیم — درگاه stub است)', 200, 'balance='.$wallet->fresh()->balance);
 
         $sys = User::factory()->create();
         config(['financial.system_user_id' => $sys->id]);
         Wallet::create([Wallet::USER_ID => $sys->id, Wallet::BALANCE => 0, Wallet::BALANCE_HOLD => 0]);
 
-        $r = $this->postJson("/api/profile/orders/{$order->id}/pay-full", ['payment_type' => 'pay']);
-        $this->step('۱۰. پرداخت کامل سفارش', $r->status(), $r->status() >= 300 ? $r->json() : $r->json('message'));
+        // ─────────────── ۷. شاخهٔ پرداخت ───────────────
+        $r = $this->getJson('/api/checkout/payment-options');
+        $this->step('۹. گزینه‌های پرداخت', $r->status(), $r->json('data.branch'));
 
-        $order->refresh();
-        $this->step('   └ وضعیت پس از پرداخت', 200, [
+        // ─────────────── ۸. پرداخت = ساختِ سفارش ───────────────
+        $r = $this->postJson('/api/checkout/pay', [
+            'address_id' => $addressId,
+            'shipping_method_id' => $shippingMethod->id,
+        ]);
+        $this->step('۱۰. پرداخت و ثبت سفارش', $r->status(), $r->status() >= 300 ? $r->json() : $r->json('message'));
+
+        $order = Order::where(Order::PLACER_USER_ID, $user->id)->latest('id')->first();
+        if (! $order) {
+            $this->fail('سفارشی ساخته نشد — مسیر همین‌جا می‌ایستد.');
+        }
+        $this->step('   └ سفارش ساخته و پرداخت شد', 200, [
+            'order' => $order->order_number,
             'status' => $order->status,
             'payment_status' => $order->payment_status,
             'payment_to_supplier' => (string) $order->payment_to_supplier,

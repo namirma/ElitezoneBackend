@@ -36,7 +36,7 @@ class RoleSelectionGateTest extends TestCase
     private function placeOrder(): TestResponse
     {
         // بدنه عمداً خالی است — گیت باید *قبل* از اعتبارسنجی بزند.
-        return $this->postJson('/api/checkout', []);
+        return $this->postJson('/api/checkout/pay', []);
     }
 
     #[Test]
