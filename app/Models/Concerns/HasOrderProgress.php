@@ -152,7 +152,11 @@ trait HasOrderProgress
                         if ($state === 'cancelled') {
                             $actions[] = [
                                 'label' => __('orders.actions.buy_again'),
-                                'link' => '/products',
+                                // کاتالوگ در SPA روی `/rebar` است؛ `/products`
+                                // هیچ‌وقت وجود نداشته. فرانت لینک‌های تایم‌لاین را
+                                // بدون عبور از جدولِ ترجمه‌اش navigate می‌کند، پس
+                                // این ۴۰۴ زنده بود.
+                                'link' => '/rebar',
                                 'type' => 'primary',
                             ];
                         }

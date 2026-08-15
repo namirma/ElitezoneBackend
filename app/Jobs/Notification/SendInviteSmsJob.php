@@ -19,10 +19,17 @@ class SendInviteSmsJob implements ShouldQueue
 
     public array $backoff = [30, 60, 120];
 
+    /**
+     * @param  class-string<\Illuminate\Database\Eloquent\Model>  $inviteModel
+     *                                                                          مدلِ دعوت — دو سمتِ جریان دو جدول دارند
+     *                                                                          (`employer_sms_invites` / `elite_yar_sms_invites`) ولی
+     *                                                                          چرخه‌ی عمرشان یکی است، پس یک job هر دو را می‌برد.
+     */
     public function __construct(
         protected int $inviteId,
         protected string $mobile,
         protected string $message,
+        protected string $inviteModel = EmployerSmsInvite::class,
     ) {}
 
     public function handle(SmsService $smsService): void
@@ -40,7 +47,7 @@ class SendInviteSmsJob implements ShouldQueue
      */
     public function failed(\Throwable $e): void
     {
-        EmployerSmsInvite::find($this->inviteId)?->delete();
+        $this->inviteModel::find($this->inviteId)?->delete();
 
         Log::error("SendInviteSmsJob permanently failed for {$this->mobile}: {$e->getMessage()}");
     }

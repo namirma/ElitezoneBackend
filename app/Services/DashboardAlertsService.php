@@ -158,7 +158,10 @@ class DashboardAlertsService
             ->take(3)->get();
 
         foreach ($items as $item) {
-            $alerts[] = $this->makeAlert('wishlist_stock', 'success', 'bell', '/products/'.$item->product->slug, ['name' => $item->name], $item->id);
+            // روتِ جزئیات محصول در SPA **مفرد** است و **اول id** می‌آید:
+            // `/product/{id}/{slug?}`. شکلِ قبلی (`/products/{slug}`) هیچ‌وقت
+            // وجود نداشت و مستقیم به ۴۰۴ می‌رفت.
+            $alerts[] = $this->makeAlert('wishlist_stock', 'success', 'bell', '/product/'.$item->product->id.'/'.$item->product->slug, ['name' => $item->name], $item->id);
         }
 
         return $alerts;
