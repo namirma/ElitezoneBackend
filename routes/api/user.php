@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\User\CheckoutController;
 use App\Http\Controllers\Api\User\ContractorController;
 use App\Http\Controllers\Api\User\DashboardController;
 use App\Http\Controllers\Api\User\EduixController;
+use App\Http\Controllers\Api\User\EliteYARInviteController;
 use App\Http\Controllers\Api\User\EliteYARRelationController;
 use App\Http\Controllers\Api\User\EmployerController;
 use App\Http\Controllers\Api\User\EmployerInviteController;
@@ -225,6 +226,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::match(['put', 'post'], '/{jobExperience}', 'update');
             Route::get('/{jobExperience}/file', 'download')->name('job-experience.file');
             Route::delete('/{jobExperience}', 'destroy');
+        });
+
+        // EliteYAR SMS invites (employer only) — نیمه‌ی دومِ جریانِ دعوتِ
+        // الیت یارِ ثبت‌نام‌نکرده؛ قرینه‌ی گروهِ زیر.
+        Route::prefix('elite-yar-invites')->middleware('role.employer')->controller(EliteYARInviteController::class)->group(function () {
+            Route::get('/remaining', 'remaining');
+            Route::post('/sms', 'sendSms')->middleware('throttle:3,1');
         });
 
         // Employer SMS invites (elite yar only)
