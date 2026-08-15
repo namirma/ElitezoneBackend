@@ -50,7 +50,7 @@ class PlaceOrderTest extends TestCase
     #[Test]
     public function it_requires_authentication(): void
     {
-        $response = $this->postJson('/api/checkout');
+        $response = $this->postJson('/api/checkout/pay');
 
         $response->assertStatus(401);
     }
@@ -66,7 +66,7 @@ class PlaceOrderTest extends TestCase
         $shipping = $this->makeShippingMethod();
         Sanctum::actingAs($user);
 
-        $response = $this->postJson('/api/checkout', [
+        $response = $this->postJson('/api/checkout/pay', [
             'shipping_method_id' => $shipping->id,
         ]);
 
@@ -81,7 +81,7 @@ class PlaceOrderTest extends TestCase
         $address = $this->makeAddress($user);
         Sanctum::actingAs($user);
 
-        $response = $this->postJson('/api/checkout', [
+        $response = $this->postJson('/api/checkout/pay', [
             'address_id' => $address->id,
         ]);
 
@@ -96,7 +96,7 @@ class PlaceOrderTest extends TestCase
         $address = $this->makeAddress($user);
         Sanctum::actingAs($user);
 
-        $response = $this->postJson('/api/checkout', [
+        $response = $this->postJson('/api/checkout/pay', [
             'address_id' => $address->id,
             'shipping_method_id' => 9999999,
         ]);
@@ -120,7 +120,7 @@ class PlaceOrderTest extends TestCase
         Sanctum::actingAs($bob);
 
         // Bob tries to place an order using Alice's address
-        $response = $this->postJson('/api/checkout', [
+        $response = $this->postJson('/api/checkout/pay', [
             'address_id' => $aliceAddress->id,
             'shipping_method_id' => $shipping->id,
         ]);
@@ -136,7 +136,7 @@ class PlaceOrderTest extends TestCase
         $shipping = $this->makeShippingMethod();
         Sanctum::actingAs($user);
 
-        $response = $this->postJson('/api/checkout', [
+        $response = $this->postJson('/api/checkout/pay', [
             'address_id' => 9999999,
             'shipping_method_id' => $shipping->id,
         ]);
@@ -158,7 +158,7 @@ class PlaceOrderTest extends TestCase
         Sanctum::actingAs($user);
 
         // No cart created for this user, so it should be empty
-        $response = $this->postJson('/api/checkout', [
+        $response = $this->postJson('/api/checkout/pay', [
             'address_id' => $address->id,
             'shipping_method_id' => $shipping->id,
         ]);
@@ -179,7 +179,7 @@ class PlaceOrderTest extends TestCase
         $shipping = $this->makeShippingMethod();
         Sanctum::actingAs($user);
 
-        $response = $this->postJson('/api/checkout', [
+        $response = $this->postJson('/api/checkout/pay', [
             'address_id' => $address->id,
             'shipping_method_id' => $shipping->id,
             'description' => str_repeat('a', 1001),
@@ -197,7 +197,7 @@ class PlaceOrderTest extends TestCase
         $shipping = $this->makeShippingMethod();
         Sanctum::actingAs($user);
 
-        $response = $this->postJson('/api/checkout', [
+        $response = $this->postJson('/api/checkout/pay', [
             'address_id' => $address->id,
             'shipping_method_id' => $shipping->id,
             'beneficiary_user_id' => 9999999,

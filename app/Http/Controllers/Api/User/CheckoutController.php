@@ -2,9 +2,13 @@
 
 namespace App\Http\Controllers\Api\User;
 
+use App\Actions\Financial\ProcessPreScalePaymentAction;
+use App\Actions\Financial\ProcessReservationPaymentAction;
 use App\Actions\Order\PlaceOrderAction;
 use App\DataTransferObjects\Order\PlaceOrderData;
+use App\Exceptions\InsufficientBalanceException;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Order\ReserveFromCartRequest;
 use App\Http\Requests\Order\StoreOrderRequest;
 use App\Http\Resources\Order\OrderResource;
 use App\Models\Cart;
@@ -12,13 +16,17 @@ use App\Models\Order;
 use App\Models\WalletTransaction;
 use App\Services\Cart\CartCheckoutTotals;
 use App\Services\Cart\CartResolver;
+use App\Services\InventoryService;
 use App\Services\Marketing\CouponService;
+use App\Services\Payment\PaymentBranch;
 use App\Services\Payment\PaymentBranchResolver;
 use App\Services\Payment\PaymentGatewayFactory;
 use App\Services\Payment\ReserveWarningResolver;
+use App\Services\Sales\SalesSettings;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 
@@ -78,6 +86,159 @@ class CheckoutController extends Controller
         return success(array_merge($branch->toArray(), [
             'reserve_warning' => $warningResolver->forCart($cart),
         ]), 'global.received_successfully');
+    }
+
+    /**
+     * POST /checkout/pay — شاخه‌ی الف/ب (بند ۳.۳ و ۷.۲).
+     *
+     * **رکورد سفارش فقط اینجا و فقط وقتی ساخته می‌شود که پول در کیف پول نشسته
+     * باشد.** ترتیبِ درونِ تراکنش عمدی است: ساختِ سفارش → کسر موجودی →
+     * لِگ‌های مالی. اگر موجودی تمام شده باشد، کلِ تراکنش برمی‌گردد، هیچ سفارشی
+     * نمی‌ماند و **پول در کیف پول کاربر باقی می‌ماند** — دقیقاً همان چیزی که
+     * بند ۳.۳ برای حالتِ «پرداخت درگاه موفق شد ولی موجودی تمام شد» می‌خواهد.
+     *
+     * شاخه‌ی ب مستقیم از اینجا پرداخت نمی‌شود: پول درگاه **همیشه اول به کیف
+     * پول** می‌رود (بند ۳.۳)، پس کلاینت اول کیف را شارژ می‌کند و بعد همین
+     * اندپوینت را صدا می‌زند — آن وقت شاخه به الف تبدیل شده است.
+     */
+    public function pay(
+        StoreOrderRequest $request,
+        PaymentBranchResolver $branchResolver,
+        CartCheckoutTotals $totals,
+        ProcessPreScalePaymentAction $settle,
+        InventoryService $inventory,
+    ): JsonResponse {
+        $user = Auth::user();
+        $cart = Cart::queryForUser($user->id)->with('items')->first();
+
+        if (! $cart || $cart->items->isEmpty()) {
+            return error(__('checkout.cart_is_empty'), [], 400);
+        }
+
+        $branch = $branchResolver->resolve($user, $totals->finalAmountFor($cart, $user));
+
+        if ($branch->branch === PaymentBranch::RESERVE) {
+            return error(__('checkout.reserve_only'), ['branch' => $branch->toArray()], 422);
+        }
+
+        if ($branch->branch === PaymentBranch::GATEWAY) {
+            return error(__('checkout.top_up_wallet_first'), ['branch' => $branch->toArray()], 422);
+        }
+
+        return $this->createAndSettle(
+            $request,
+            $user,
+            Order::STATUS_PROCESSING,
+            fn (Order $order) => $settle->execute($order),
+            $inventory,
+            'checkout.order_paid',
+        );
+    }
+
+    /**
+     * POST /checkout/reserve — شاخه‌ی ج (بند ۳.۳ و ۳.۴).
+     *
+     * بیعانه از کیف پول کسر می‌شود و **موجودی همین‌جا کسر می‌گردد** — رزرو
+     * برخلافِ سبد، واقعاً کالا را کنار می‌گذارد (بند ۳.۴).
+     */
+    public function reserve(
+        ReserveFromCartRequest $request,
+        PaymentBranchResolver $branchResolver,
+        ReserveWarningResolver $warningResolver,
+        CartCheckoutTotals $totals,
+        SalesSettings $settings,
+        ProcessReservationPaymentAction $settle,
+        InventoryService $inventory,
+    ): JsonResponse {
+        $user = Auth::user();
+        $cart = Cart::queryForUser($user->id)->with('items')->first();
+
+        if (! $cart || $cart->items->isEmpty()) {
+            return error(__('checkout.cart_is_empty'), [], 400);
+        }
+
+        // الحاقیه‌ی ۱، تغییر ۲: در پنجره‌ی کوتاه، تأییدِ صریحِ خریدار الزامی است.
+        $warning = $warningResolver->forCart($cart);
+
+        if ($warning['show'] && ! $request->boolean('confirm_short_window')) {
+            return error(
+                __('orders.reserve_warning.confirmation_required'),
+                ['reserve_warning' => $warning],
+                422
+            );
+        }
+
+        $reserveAmount = $settings->reserveValue();
+        $branch = $branchResolver->resolve($user, $totals->finalAmountFor($cart, $user));
+
+        // بیعانه هم از کیف پول پرداخت می‌شود؛ کسری باید اول شارژ شود.
+        if ($branch->walletBalance < $reserveAmount) {
+            return error(__('checkout.top_up_wallet_first'), ['branch' => $branch->toArray()], 422);
+        }
+
+        return $this->createAndSettle(
+            $request,
+            $user,
+            Order::STATUS_RESERVED,
+            fn (Order $order) => $settle->execute(
+                $order,
+                $reserveAmount,
+                validityHours: (int) config('financial.reservation_validity_hours', 2),
+            ),
+            $inventory,
+            'orders.reservation_successful',
+        );
+    }
+
+    /**
+     * ساختِ سفارش + کسر موجودی + تسویه، همه در **یک** تراکنش.
+     *
+     * ترتیب: سفارش → موجودی → پول. اگر هر کدام شکست بخورد هیچ‌کدام نمی‌مانند و
+     * پولِ کاربر دست‌نخورده در کیف پول است.
+     */
+    private function createAndSettle(
+        StoreOrderRequest $request,
+        $user,
+        string $initialStatus,
+        callable $settle,
+        InventoryService $inventory,
+        string $messageKey,
+    ): JsonResponse {
+        $orderData = PlaceOrderData::fromRequest($request);
+
+        try {
+            $order = DB::transaction(function () use ($user, $orderData, $initialStatus, $settle, $inventory) {
+                $order = $this->placeOrderAction->execute(
+                    $user->fresh(['cart.items.productVariant']),
+                    $orderData,
+                    $initialStatus,
+                );
+
+                // موجودی در لحظه‌ی پرداخت/رزرو کسر می‌شود (بند ۶.۲)، و
+                // `deductStockForOrder` خودش زیر قفل دوباره کفایت را می‌سنجد —
+                // پس اگر بین نمایش سبد و پرداخت کالا تمام شده باشد، اینجا
+                // می‌شکند و تراکنش برمی‌گردد.
+                $inventory->deductStockForOrder($order);
+
+                $settle($order);
+
+                return $order;
+            });
+        } catch (InsufficientBalanceException $e) {
+            return $this->balanceError($e);
+        }
+
+        $order->load(array_merge(Order::resourceRelations(), ['shippingMethod']));
+
+        return success(new OrderResource($order), __($messageKey));
+    }
+
+    private function balanceError(InsufficientBalanceException $e): JsonResponse
+    {
+        return error(__('wallet.insufficient_balance'), [
+            'available' => (string) $e->available,
+            'required' => (string) $e->required,
+        ], 422);
     }
 
     public function paymentInfo(Order $order): JsonResponse
@@ -165,28 +326,4 @@ class CheckoutController extends Controller
     /**
      * ثبت نهایی سفارش (تبدیل سبد خرید به سفارش)
      */
-    public function placeOrder(StoreOrderRequest $request): JsonResponse
-    {
-        $orderData = PlaceOrderData::fromRequest($request);
-        $user = Auth::user();
-
-        // همان انتخابِ PlaceOrderAction — پیش‌بررسیِ «سبد خالی» نباید سبدی غیر از
-        // سبدی که واقعاً سفارش از رویش ثبت می‌شود را نگاه کند.
-        $cart = Cart::queryForUser($user->id)->with('items')->first();
-
-        if (! $cart || $cart->items->isEmpty()) {
-            return error(__('checkout.cart_is_empty'), [], 400);
-        }
-
-        $user = $user->fresh(['cart.items.productVariant']);
-        $order = $this->placeOrderAction->execute($user, $orderData);
-        $order->load(array_merge(Order::resourceRelations(), [
-            'shippingMethod',   // extra: برای صفحه تأیید سفارش
-        ]));
-
-        return success(
-            new OrderResource($order),
-            __('checkout.order_placed_reserved')
-        );
-    }
 }

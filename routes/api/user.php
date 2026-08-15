@@ -116,10 +116,13 @@ Route::middleware(['optional.sanctum', 'attach.price.category'])->group(function
 // ── Checkout — نیاز به احراز هویت دارد ───────────────────────────────────
 Route::middleware(['auth:sanctum', 'attach.price.category'])->group(function () {
     Route::controller(CheckoutController::class)->prefix('checkout')->group(function () {
-        Route::post('/', 'placeOrder')->middleware(EnsureRoleIsSelected::class);
         Route::get('/payment/{order}', 'paymentInfo');
         // درخت تصمیم پرداخت (بند ۳.۳ / ۷.۲) — منبع واحد برای بک‌اند و فرانت.
         Route::get('/payment-options', 'paymentOptions');
+        // شاخه‌ی الف/ب و شاخه‌ی ج (بند ۳.۳). هر دو سفارش را **می‌سازند** — پیش
+        // از اینها هیچ رکورد سفارشی وجود ندارد. idempotency چون عملیات مالی‌اند.
+        Route::post('/pay', 'pay')->middleware(['idempotency', 'throttle:financial', EnsureRoleIsSelected::class]);
+        Route::post('/reserve', 'reserve')->middleware(['idempotency', 'throttle:financial', EnsureRoleIsSelected::class]);
         // پیش‌نمایش کد تخفیف (throttle تا brute-force کد ممکن نباشد)
         Route::post('/coupon-preview', 'couponPreview')->middleware('throttle:10,1');
     });
