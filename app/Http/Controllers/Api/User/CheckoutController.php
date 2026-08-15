@@ -10,8 +10,12 @@ use App\Http\Resources\Order\OrderResource;
 use App\Models\Cart;
 use App\Models\Order;
 use App\Models\WalletTransaction;
+use App\Services\Cart\CartCheckoutTotals;
+use App\Services\Cart\CartResolver;
 use App\Services\Marketing\CouponService;
+use App\Services\Payment\PaymentBranchResolver;
 use App\Services\Payment\PaymentGatewayFactory;
+use App\Services\Payment\ReserveWarningResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -55,11 +59,11 @@ class CheckoutController extends Controller
      * می‌کند، تا هشدار صرفاً یک تزئینِ سمت کلاینت نباشد.
      */
     public function paymentOptions(
-        \Illuminate\Http\Request $request,
-        \App\Services\Cart\CartResolver $cartResolver,
-        \App\Services\Payment\PaymentBranchResolver $branchResolver,
-        \App\Services\Payment\ReserveWarningResolver $warningResolver,
-        \App\Services\Cart\CartCheckoutTotals $totals,
+        Request $request,
+        CartResolver $cartResolver,
+        PaymentBranchResolver $branchResolver,
+        ReserveWarningResolver $warningResolver,
+        CartCheckoutTotals $totals,
     ): JsonResponse {
         $user = Auth::user();
         $cart = $cartResolver->resolve($request);

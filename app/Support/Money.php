@@ -53,6 +53,18 @@ final class Money
     /**
      * Factor (1 + percent/100) — e.g. percentAdd(10) = "1.100000".
      */
+    /** Compare two amounts: -1 if $a < $b, 0 if equal, 1 if $a > $b. */
+    public static function cmp(int|float|string $a, int|float|string $b): int
+    {
+        return bccomp(self::s($a), self::s($b), self::SCALE);
+    }
+
+    /** True when $a is strictly less than $b (exact, no float comparison). */
+    public static function lt(int|float|string $a, int|float|string $b): bool
+    {
+        return self::cmp($a, $b) === -1;
+    }
+
     public static function percentAdd(int|float|string $percent): string
     {
         return self::add('1', self::div($percent, '100'));

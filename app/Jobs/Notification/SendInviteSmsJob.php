@@ -6,6 +6,7 @@ use App\Models\EmployerSmsInvite;
 use App\Services\SmsService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
@@ -20,10 +21,10 @@ class SendInviteSmsJob implements ShouldQueue
     public array $backoff = [30, 60, 120];
 
     /**
-     * @param  class-string<\Illuminate\Database\Eloquent\Model>  $inviteModel
-     *                                                                          مدلِ دعوت — دو سمتِ جریان دو جدول دارند
-     *                                                                          (`employer_sms_invites` / `elite_yar_sms_invites`) ولی
-     *                                                                          چرخه‌ی عمرشان یکی است، پس یک job هر دو را می‌برد.
+     * @param  class-string<Model>  $inviteModel
+     *                                            مدلِ دعوت — دو سمتِ جریان دو جدول دارند
+     *                                            (`employer_sms_invites` / `elite_yar_sms_invites`) ولی
+     *                                            چرخه‌ی عمرشان یکی است، پس یک job هر دو را می‌برد.
      */
     public function __construct(
         protected int $inviteId,

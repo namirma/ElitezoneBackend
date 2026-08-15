@@ -10,6 +10,7 @@ use App\Models\Wallet;
 use App\Services\Payment\PaymentBranch;
 use App\Services\Payment\PaymentBranchResolver;
 use App\Services\Payment\ReserveWarningResolver;
+use Carbon\CarbonInterface;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Cache;
 use PHPUnit\Framework\Attributes\Test;
@@ -171,7 +172,7 @@ class PaymentBranchResolverTest extends TestCase
 
     // ── هشدارِ رزرو دیرهنگام (الحاقیه‌ی ۱، تغییر ۲) ─────────────────────────
 
-    private function cartForSupplierWithReserveTime(?\Carbon\CarbonInterface $reserveTime): Cart
+    private function cartForSupplierWithReserveTime(?CarbonInterface $reserveTime): Cart
     {
         $supplier = User::factory()->create();
         SupplierProfile::create([SupplierProfile::USER_ID => $supplier->id])
