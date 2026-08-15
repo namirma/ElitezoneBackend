@@ -53,6 +53,18 @@ final class SalesSettings
         return CarbonInterval::hours(max(0, $this->int('reserve_grace_hours')));
     }
 
+    /**
+     * آستانه‌ی هشدارِ رزرو دیرهنگام (الحاقیه‌ی ۱، تغییر ۱).
+     *
+     * فقط تعیین می‌کند کِی به خریدار هشدار داده شود؛ روی خودِ `reserve_deadline`
+     * هیچ اثری ندارد — آن را `reserve_auto_extend_minutes` تأمین‌کننده تعیین
+     * می‌کند و این دو عمداً مستقل‌اند.
+     */
+    public function reserveWarningThreshold(): CarbonInterval
+    {
+        return CarbonInterval::minutes(max(0, $this->int('reserve_warning_threshold_minutes')));
+    }
+
     /** حداکثر اضافه‌بار مجاز نسبت به کل سفارش (درصد). */
     public function maxOverweightPercent(): float
     {
@@ -98,6 +110,7 @@ final class SalesSettings
             'reserve_grace_hours' => ['integer', 'min:0'],
             'max_overweight_percent' => ['numeric', 'min:0', 'max:100'],
             'coupon_visibility' => ['in:'.implode(',', self::couponVisibilityOptions())],
+            'reserve_warning_threshold_minutes' => ['integer', 'min:0'],
         ];
     }
 

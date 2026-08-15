@@ -41,6 +41,16 @@ return [
     'max_overweight_percent' => (float) env('SALES_MAX_OVERWEIGHT_PERCENT', 20),
 
     /*
+    | آستانه‌ی هشدارِ «رزرو دیرهنگام» (الحاقیه‌ی ۱، تغییر ۱).
+    |
+    | اگر فاصله تا `reserve_time` تأمین‌کننده از این کمتر باشد، پیش از تأیید
+    | رزرو به خریدار هشدار داده می‌شود. **کاملاً مستقل از**
+    | `reserve_auto_extend_minutes` است: این فقط تعیین می‌کند کِی پیام داده شود
+    | و هیچ اثری روی خودِ مهلت ندارد.
+    */
+    'reserve_warning_threshold_minutes' => (int) env('SALES_RESERVE_WARNING_THRESHOLD_MINUTES', 180),
+
+    /*
     | نمایش/اعمال کوپن: all | none | selected
     | در حالت `selected` معیار ستون `users.coupon_enabled` است.
     */

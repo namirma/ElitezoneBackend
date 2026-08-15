@@ -44,6 +44,7 @@ return [
         'reserve_grace_hours',
         'max_overweight_percent',
         'coupon_visibility',
+        'reserve_warning_threshold_minutes',
     ],
 
     /*
