@@ -8,7 +8,6 @@ use App\Actions\Order\FinalizeInvoiceAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Order\FinalizeOrderInvoiceRequest;
 use App\Http\Requests\Order\SubmitMoadianInvoiceRequest;
-use App\Http\Resources\Order\OrderResource;
 use App\Models\Order;
 use Exception;
 use Illuminate\Http\JsonResponse;
@@ -29,20 +28,15 @@ class OrderActionController extends Controller
     {
         $this->authorize('cancel', $order);
 
-        // A buyer may only self-cancel an order that has NOT been paid yet.
-        // - PENDING orders carry no money, so cancellation is always safe.
-        // - RESERVED / RESERVED_EXTENDED orders cannot be cancelled before expiry
-        //   (CancelOrderAction enforces this); the system auto-cancels them on expiry.
-        // - PROCESSING and later states are paid/settled and must NOT be unwound by a
-        //   simple refund (supplier/eliteYAR/VAT legs are involved). Those go through
-        //   the dedicated return/dispute flow (مرجوعی/داوری), never self-cancel.
-        if ($order->status !== Order::STATUS_PENDING) {
-            return error(__('orders.cannot_cancel'), [], 400);
-        }
-
-        $cancelAction->execute($order, 'لغو توسط کاربر');
-
-        return success(new OrderResource($order->fresh(Order::resourceRelations())), __('orders.cancelled_successfully'));
+        // خودلغویِ خریدار فعلاً هیچ وضعیتی ندارد — فاز ۴.
+        //
+        // تنها وضعیتِ خودلغو `pending` بود و حذف شد: سفارش تنها پس از نشستنِ پول
+        // ساخته می‌شود. وضعیت‌های پس از پرداخت لِگِ تأمین‌کننده/الیت‌یار/مالیات
+        // دارند و با یک refundِ ساده باز نمی‌شوند؛ مسیرشان مرجوعی/داوری است.
+        //
+        // پنجره‌ی لغوِ خریدار روی رزرو (بند ۳.۴) در فاز ۵ باز می‌شود و آن‌وقت
+        // `$cancelAction` دوباره از اینجا صدا زده می‌شود.
+        return error(__('orders.cannot_cancel'), [], 400);
     }
 
     /**

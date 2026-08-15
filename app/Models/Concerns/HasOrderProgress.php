@@ -83,19 +83,13 @@ trait HasOrderProgress
         // `payment_to_reserve > 0` تغییر کرد. آستانه‌ی قدیمی یک قاعده‌ی مبلغی بود
         // («سفارشِ بزرگ‌تر از X باید رزرو شود») و در مدل جدید اصلاً وجود ندارد —
         // رزرو حالا انتخابِ کاربر بر پایه‌ی توانِ پرداختِ خودش است.
-        // ...یا هنوز اصلاً پرداخت نشده. یک سفارشِ `pending` طبق تعریف بیعانه‌ای
-        // نپرداخته، پس با شرطِ تنهای `payment_to_reserve > 0` این مرحله را
-        // نمی‌گرفت — و چون دکمه‌ی «پرداخت فاکتور» فقط روی همین مرحله می‌نشیند،
-        // تنها راهِ پرداخت از تایم‌لاین ناپدید می‌شد. (فاز ۴ خودِ `pending` را
-        // حذف می‌کند و آن‌وقت این نیم‌شرط هم برداشته می‌شود.)
-        $wasReserved = (float) $this->payment_to_reserve > 0
-            || $this->status === Order::STATUS_PENDING;
+        $wasReserved = (float) $this->payment_to_reserve > 0;
 
         $stepsBlueprint = [];
 
         if ($wasReserved) {
             $stepsBlueprint[] = $this->progressStep('buyer', 'reserved', [
-                Order::STATUS_PENDING, Order::STATUS_RESERVED,
+                Order::STATUS_RESERVED,
             ]);
         }
 
@@ -267,7 +261,6 @@ trait HasOrderProgress
             } elseif (in_array($status, [
                 Order::STATUS_PROCESSING,
                 Order::STATUS_AWAITING_WEIGHT_CORRECTION,
-                Order::STATUS_PENDING,
                 Order::STATUS_RESERVED,
             ], true)) {
                 $currentIndex = 0;
@@ -355,19 +348,13 @@ trait HasOrderProgress
 
         // همان قاعده‌ی بند ۱۱.۱ — رزرو از روی بیعانه‌ی پرداخت‌شده تشخیص داده
         // می‌شود، نه از مقایسه با آستانه‌ای که دیگر وجود ندارد.
-        // ...یا هنوز اصلاً پرداخت نشده. یک سفارشِ `pending` طبق تعریف بیعانه‌ای
-        // نپرداخته، پس با شرطِ تنهای `payment_to_reserve > 0` این مرحله را
-        // نمی‌گرفت — و چون دکمه‌ی «پرداخت فاکتور» فقط روی همین مرحله می‌نشیند،
-        // تنها راهِ پرداخت از تایم‌لاین ناپدید می‌شد. (فاز ۴ خودِ `pending` را
-        // حذف می‌کند و آن‌وقت این نیم‌شرط هم برداشته می‌شود.)
-        $wasReserved = (float) $this->payment_to_reserve > 0
-            || $this->status === Order::STATUS_PENDING;
+        $wasReserved = (float) $this->payment_to_reserve > 0;
 
         $stepsBlueprint = [];
 
         if ($wasReserved) {
             $stepsBlueprint[] = $this->progressStep('supplier', 'reserved', [
-                Order::STATUS_PENDING, Order::STATUS_RESERVED,
+                Order::STATUS_RESERVED,
             ]);
         }
 

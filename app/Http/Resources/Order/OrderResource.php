@@ -56,7 +56,6 @@ class OrderResource extends BaseJsonResource
                 'color' => match ($statusKey) {
                     Order::STATUS_DELIVERED => 'success',
                     Order::STATUS_CANCELLED, Order::STATUS_RETURNED_TO_ORIGIN => 'danger',
-                    Order::STATUS_PENDING,
                     Order::STATUS_RESERVED,
                     Order::STATUS_AWAITING_WEIGHT_CORRECTION,
                     Order::STATUS_PARTIALLY_DELIVERED => 'warning',

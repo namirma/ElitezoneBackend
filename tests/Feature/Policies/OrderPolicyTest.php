@@ -53,7 +53,7 @@ class OrderPolicyTest extends TestCase
             Order::PLACER_USER_ID => $this->owner->id,
             Order::BENEFICIARY_USER_ID => $this->beneficiary->id,
             Order::ORDER_NUMBER => 'POLICY-TEST-'.now()->format('YmdHis').rand(100, 999),
-            Order::STATUS => Order::STATUS_PENDING,
+            Order::STATUS => Order::STATUS_PROCESSING,
             Order::FINAL_AMOUNT => 1_000_000,
             Order::PAYMENT_STATUS => Order::PAYMENT_PENDING,
         ]);
@@ -144,10 +144,20 @@ class OrderPolicyTest extends TestCase
     // cancel
     // ─────────────────────────────────────────────────────────────────────────
 
+    /**
+     * خودلغویِ خریدار فعلاً هیچ وضعیتی ندارد — فاز ۴.
+     *
+     * تنها وضعیتِ خودلغو `pending` بود («هنوز پولی جابه‌جا نشده») و آن وضعیت
+     * حذف شد: سفارش تنها پس از نشستنِ پول ساخته می‌شود. پنجره‌ی لغوِ خریدار روی
+     * رزرو (بین `reserve_deadline_original` و `reserve_deadline`، بند ۳.۴) در
+     * فاز ۵ باز می‌شود و همین تست آن‌جا دوباره مثبت می‌شود.
+     */
     #[Test]
-    public function owner_can_cancel_pending_order(): void
+    public function a_buyer_cannot_self_cancel_until_the_reserve_window_exists(): void
     {
-        $this->assertTrue($this->owner->can('cancel', $this->order));
+        $this->assertFalse($this->owner->can('cancel', $this->order));
+        // لغو اجباری ادمین سرِ جایش است.
+        $this->assertTrue($this->admin->can('cancel', $this->order));
     }
 
     #[Test]

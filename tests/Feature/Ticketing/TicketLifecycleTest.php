@@ -161,7 +161,7 @@ class TicketLifecycleTest extends TestCase
         $foreignOrder = Order::create([
             Order::PLACER_USER_ID => $stranger->id,
             Order::ORDER_NUMBER => 'TCK-ORD-'.uniqid(),
-            Order::STATUS => Order::STATUS_PENDING,
+            Order::STATUS => Order::STATUS_PROCESSING,
             Order::PAYMENT_STATUS => 'pending',
         ]);
 

@@ -124,7 +124,7 @@ class AdminHardeningTest extends TestCase
 
     public function test_admin_cannot_move_an_unpaid_pending_order_to_processing(): void
     {
-        $order = $this->makeOrder(Order::STATUS_PENDING, Order::PAYMENT_PENDING);
+        $order = $this->makeOrder(Order::STATUS_RESERVED, Order::PAYMENT_PENDING);
 
         Sanctum::actingAs($this->admin);
 
@@ -132,7 +132,7 @@ class AdminHardeningTest extends TestCase
             'status' => Order::STATUS_PROCESSING,
         ])->assertStatus(422);
 
-        $this->assertSame(Order::STATUS_PENDING, $order->fresh()->{Order::STATUS});
+        $this->assertSame(Order::STATUS_RESERVED, $order->fresh()->{Order::STATUS});
     }
 
     /**
@@ -144,7 +144,7 @@ class AdminHardeningTest extends TestCase
      */
     public function test_admin_cannot_move_an_order_forward_only_cancel_is_allowed(): void
     {
-        $order = $this->makeOrder(Order::STATUS_PENDING, Order::PAYMENT_PAID);
+        $order = $this->makeOrder(Order::STATUS_RESERVED, Order::PAYMENT_PAID);
 
         Sanctum::actingAs($this->admin);
 
@@ -152,7 +152,7 @@ class AdminHardeningTest extends TestCase
             'status' => Order::STATUS_PROCESSING,
         ])->assertStatus(422);
 
-        $this->assertSame(Order::STATUS_PENDING, $order->fresh()->{Order::STATUS});
+        $this->assertSame(Order::STATUS_RESERVED, $order->fresh()->{Order::STATUS});
     }
 
     public function test_admin_can_force_cancel_an_order(): void

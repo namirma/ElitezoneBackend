@@ -19,7 +19,7 @@ return new class extends Migration
             $table->foreignId('beneficiary_user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('address_id')->nullable()->constrained('addresses')->nullOnDelete();
             $table->string('order_number')->unique();
-            $table->string('status')->default(Order::STATUS_PENDING);
+            $table->string('status')->default(Order::STATUS_PROCESSING);
             $table->decimal('subtotal', 15, 2)->default(0);
             $table->decimal('discount_amount', 15, 2)->default(0);
             $table->decimal('shipping_cost', 15, 2)->default(0);

@@ -18,7 +18,7 @@ class OrderFactory extends Factory
         return [
             Order::PLACER_USER_ID => User::factory(),
             Order::ORDER_NUMBER => 'ORD-'.fake()->unique()->numerify('########'),
-            Order::STATUS => Order::STATUS_PENDING,
+            Order::STATUS => Order::STATUS_PROCESSING,
             Order::PAYMENT_STATUS => Order::PAYMENT_PENDING,
         ];
     }

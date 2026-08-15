@@ -76,7 +76,7 @@ class ReservationCompletionLegOrderTest extends TestCase
         $this->order = Order::create([
             Order::PLACER_USER_ID => $this->buyer->id,
             Order::ORDER_NUMBER => 'RESCOMP-'.Str::random(10),
-            Order::STATUS => Order::STATUS_PENDING,
+            Order::STATUS => Order::STATUS_PROCESSING,
             Order::FINAL_AMOUNT => self::RESERVE,
             Order::PAYMENT_STATUS => 'unpaid',
             Order::SHIPPING_COST => 0,

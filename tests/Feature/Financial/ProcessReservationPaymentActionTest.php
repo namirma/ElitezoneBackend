@@ -45,7 +45,7 @@ class ProcessReservationPaymentActionTest extends TestCase
             ->andReturnNull();
 
         $this->action = app(ProcessReservationPaymentAction::class);
-        $this->threshold = (float) config('financial.reservation_threshold', 1_950_000_000);
+        $this->threshold = 1_950_000_000.0;
 
         // System (Saze) user/wallet — Action expects user at financial.system_user_id
         $systemUser = User::factory()->create();
@@ -68,7 +68,7 @@ class ProcessReservationPaymentActionTest extends TestCase
         $this->order = Order::create([
             Order::PLACER_USER_ID => $this->buyer->id,
             Order::ORDER_NUMBER => 'TEST-RES-'.now()->format('YmdHis').rand(100, 999),
-            Order::STATUS => Order::STATUS_PENDING,
+            Order::STATUS => Order::STATUS_PROCESSING,
             Order::FINAL_AMOUNT => $this->threshold * 2, // above threshold
             Order::PAYMENT_STATUS => 'unpaid',
         ]);
@@ -142,7 +142,7 @@ class ProcessReservationPaymentActionTest extends TestCase
         }
 
         $this->order->refresh();
-        $this->assertEquals(Order::STATUS_PENDING, $this->order->status,
+        $this->assertEquals(Order::STATUS_PROCESSING, $this->order->status,
             'Order must remain pending when reservation payment fails');
     }
 

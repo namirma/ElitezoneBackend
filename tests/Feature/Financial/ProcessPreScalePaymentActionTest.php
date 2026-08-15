@@ -50,7 +50,7 @@ class ProcessPreScalePaymentActionTest extends TestCase
             ->andReturnNull();
 
         $this->action = app(ProcessPreScalePaymentAction::class);
-        $this->orderAmount = (float) config('financial.reservation_threshold', 1_950_000_000) - 1;
+        $this->orderAmount = 1_949_999_999.0;
 
         // System (Saze) user — Action expects a user at config('financial.system_user_id').
         // The live DB might be empty, so create a fresh one and point config at it.
@@ -84,7 +84,7 @@ class ProcessPreScalePaymentActionTest extends TestCase
         $this->order = Order::create([
             Order::PLACER_USER_ID => $this->buyer->id,
             Order::ORDER_NUMBER => 'TEST-PRE-'.now()->format('YmdHis').rand(100, 999),
-            Order::STATUS => Order::STATUS_PENDING,
+            Order::STATUS => Order::STATUS_PROCESSING,
             Order::FINAL_AMOUNT => $this->orderAmount,
             Order::PAYMENT_STATUS => 'unpaid',
             Order::OFFICIAL_PRICE => $this->orderAmount,
@@ -176,7 +176,7 @@ class ProcessPreScalePaymentActionTest extends TestCase
         } finally {
             // Order must remain in pending status because the transaction rolled back
             $this->order->refresh();
-            $this->assertEquals(Order::STATUS_PENDING, $this->order->status);
+            $this->assertEquals(Order::STATUS_PROCESSING, $this->order->status);
         }
     }
 }

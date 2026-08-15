@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Order;
 
-use App\Actions\Financial\ProcessPreScalePaymentAction;
 use App\Actions\Financial\ProcessReservationCompletionAction;
-use App\Actions\Financial\ProcessReservationPaymentAction;
 use App\Constants\FinancialCodes;
 use App\Exceptions\InsufficientBalanceException;
 use App\Models\Order;
@@ -15,17 +13,15 @@ use App\Models\Wallet;
 class ProcessFullOrderPaymentAction
 {
     public function __construct(
-        private readonly ProcessPreScalePaymentAction $purchaseAction,
-        private readonly ProcessReservationPaymentAction $reservationAction,
         private readonly ProcessReservationCompletionAction $completionAction,
     ) {}
 
     /**
-     * Route the order to the correct payment scenario and execute it.
+     * تکمیلِ یک رزروِ موجود — تنها سناریوی باقی‌مانده.
      *
-     * Scenario 1 — completion:      order is already reserved; pay the outstanding balance.
-     * Scenario 2 — direct purchase: total < threshold, or user did not request reservation.
-     * Scenario 3 — reservation:     total >= threshold and user explicitly requested reserve.
+     * «خرید مستقیم» و «شروع رزرو» از اینجا رفتند: در مدل جدید هر دو سفارش را
+     * خودشان می‌سازند و در `CheckoutController::pay/reserve` زندگی می‌کنند
+     * (بند ۳.۳). این اکشن تنها مسیری است که با سفارشِ از-قبل-موجود کار دارد.
      *
      * @throws InsufficientBalanceException when the wallet cannot cover the required amount.
      */
@@ -48,56 +44,10 @@ class ProcessFullOrderPaymentAction
             );
         }
 
-        // اندازهٔ سفارش پیش از تخفیف کوپن — تخفیف نباید گزینهٔ رزرو را حذف کند.
-        $totalAmount = $order->reservationBasisAmount();
-
-        // ── Scenario 2: direct purchase ─────────────────────────────────────────
-        // `final_amount` only decides reservation-vs-direct (an order-size check).
-        // The balance guard is delegated to ProcessPreScalePaymentAction: it recomputes
-        // the authoritative payable amount (POO) inside its locked transaction and the
-        // buyer debit throws InsufficientBalanceException(POO, balance) if the wallet
-        // can't cover it. Guarding here against final_amount would compare the wrong
-        // number (final_amount ≠ POO) and is the previous "two sources of truth" bug.
-        if ($totalAmount < $this->threshold() || ! $isReserveRequested) {
-            $this->purchaseAction->execute($order);
-
-            return new PayOrderResult(
-                scenario: 'direct_purchase',
-                documents: [
-                    FinancialCodes::DOC_RECEIPT_OWNER,
-                    FinancialCodes::DOC_REPORT_SUPPLIER,
-                    FinancialCodes::DOC_LOADING_ORDER,
-                    FinancialCodes::DOC_ELITE_YAR_REPORT,
-                ],
-                messageKey: 'orders.full_payment_successful',
-            );
-        }
-
-        // ── Scenario 3: reservation ─────────────────────────────────────────────
-        $reserveAmount = $this->threshold();
-
-        if ($wallet->balance < $reserveAmount) {
-            throw new InsufficientBalanceException($reserveAmount, $wallet->balance);
-        }
-
-        $this->reservationAction->execute(
-            $order,
-            $reserveAmount,
-            validityHours: (int) config('financial.reservation_validity_hours', 2),
-        );
-
-        return new PayOrderResult(
-            scenario: 'reservation',
-            documents: [
-                FinancialCodes::DOC_RESERVE_RECEIPT,
-                FinancialCodes::DOC_RESERVE_REPORT,
-            ],
-            messageKey: 'orders.reservation_successful',
-        );
-    }
-
-    private function threshold(): float
-    {
-        return (float) config('financial.reservation_threshold', 2_000_000_000);
+        // شاخه‌های «خرید مستقیم» و «رزرو» از اینجا رفتند: هر دو حالا سفارش را
+        // خودشان **می‌سازند** و در `CheckoutController::pay/reserve` زندگی می‌کنند
+        // (بند ۳.۳). این اکشن فقط تکمیلِ رزروِ موجود را انجام می‌دهد، که تنها
+        // مسیری است که با یک سفارشِ از-قبل-موجود شروع می‌شود.
+        throw new \RuntimeException(__('orders.cannot_pay_order'));
     }
 }

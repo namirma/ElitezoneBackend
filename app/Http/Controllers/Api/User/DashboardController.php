@@ -29,7 +29,6 @@ class DashboardController extends Controller
         })
             ->with(['placer.profile', 'placer.type', 'beneficiary.profile'])
             ->whereIn(Order::STATUS, [
-                Order::STATUS_PENDING,
                 Order::STATUS_RESERVED,
                 Order::STATUS_PROCESSING,
                 Order::STATUS_AWAITING_WEIGHT_CORRECTION,

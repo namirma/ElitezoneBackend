@@ -11,8 +11,6 @@ namespace App\Enums\Order;
  */
 enum OrderStatus: string
 {
-    /** @see Order::STATUS_PENDING — موقت تا فاز ۴؛ همان‌جا حذف می‌شود. */
-    case Pending = 'pending';
     case Reserved = 'reserved';
     case Processing = 'processing';
     case AwaitingWeightCorrection = 'awaiting_weight_correction';

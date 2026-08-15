@@ -17,7 +17,7 @@ class OrderObserver
         OrderStatusHistory::create([
             OrderStatusHistory::ORDER_ID => $order->id,
             OrderStatusHistory::FROM_STATUS => null,
-            OrderStatusHistory::TO_STATUS => $order->status ?? Order::STATUS_PENDING,
+            OrderStatusHistory::TO_STATUS => $order->status ?? Order::STATUS_PROCESSING,
             OrderStatusHistory::USER_ID => Auth::id(),
             OrderStatusHistory::DURATION_MINUTES => 0,
             OrderStatusHistory::CREATED_AT => now(),
