@@ -160,7 +160,7 @@ class DevSeeder extends Seeder
         $variant = ProductVariant::where('sku', 'RBR-A2-12-SH')->first();
 
         // ۸-الف: سفارش pending
-        $this->makeOrder($employer->id, $supplier->id, $variant, Order::STATUS_PENDING, Order::PAYMENT_PENDING, 800_000_000, 'ORD-DEV-001');
+        $this->makeOrder($employer->id, $supplier->id, $variant, Order::STATUS_PROCESSING, Order::PAYMENT_PENDING, 800_000_000, 'ORD-DEV-001');
 
         // ۸-ب: سفارش reserved (بیعانه پرداخت شده)
         $reserved = $this->makeOrder($employer->id, $supplier->id, $variant, Order::STATUS_RESERVED, Order::PAYMENT_PAID, 2_500_000_000, 'ORD-DEV-002');

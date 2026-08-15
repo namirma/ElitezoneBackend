@@ -52,7 +52,6 @@ class AdminDashboardService
             ->keyBy(Order::STATUS);
 
         $statuses = [
-            Order::STATUS_PENDING,
             Order::STATUS_RESERVED,
             Order::STATUS_PROCESSING,
             Order::STATUS_AWAITING_WEIGHT_CORRECTION,

@@ -120,8 +120,6 @@ class Order extends Model
      * ساخته می‌شود که پول قطعی نشسته باشد»). حذفِ ثابت پیش از حذفِ نویسنده‌اش
      * فقط build را می‌شکند، پس اینجا می‌ماند و در همان فاز ۴ برداشته می‌شود.
      */
-    public const STATUS_PENDING = 'pending';
-
     public const STATUS_RESERVED = 'reserved';
 
     public const STATUS_PROCESSING = 'processing';
@@ -144,7 +142,6 @@ class Order extends Model
      * از هم drift نکنند. RESERVED هم شامل است تا «تکمیلِ رزرو» از هر دو مسیر ممکن باشد.
      */
     public const PAYABLE_STATUSES = [
-        self::STATUS_PENDING,
         self::STATUS_RESERVED,
     ];
 
@@ -314,25 +311,6 @@ class Order extends Model
     // =========================================================================
     //  Resource Helpers
     // =========================================================================
-
-    /**
-     * مبلغی که تصمیمِ «رزرو یا پرداخت یکجا» بر اساس آن گرفته می‌شود — یعنی
-     * اندازهٔ واقعیِ سفارش، *پیش از* تخفیف کوپن.
-     *
-     * آستانهٔ رزرو (`financial.reservation_threshold`) یک سقفِ اندازهٔ سفارش است
-     * (هم‌تراز با سقفِ هر تراکنشِ درگاه پاسارگاد در سند)، نه سقفِ مبلغِ قابل
-     * پرداخت. مقایسه با `final_amount` — که PlaceOrderAction تخفیف کوپن را از آن
-     * کم می‌کند — باعث می‌شد یک سفارشِ کمی بالای آستانه با یک کوپن به زیر آستانه
-     * بیفتد و گزینهٔ رزرو خاموش از خریدار گرفته شود (اجبار به پرداخت کامل).
-     *
-     * هر جایی که با آستانه مقایسه می‌شود باید از این متد استفاده کند:
-     * ProcessFullOrderPaymentAction و هر دو مسیرِ progress در HasOrderProgress.
-     */
-    public function reservationBasisAmount(): float
-    {
-        return (float) $this->final_amount
-            + (float) ($this->{self::COUPON_DISCOUNT_AMOUNT} ?? 0);
-    }
 
     /**
      * این کاربر در این سفارش چه نقش‌هایی دارد — خریدار / تأمین‌کننده / الیت‌یار.

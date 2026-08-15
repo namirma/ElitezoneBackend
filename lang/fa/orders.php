@@ -15,7 +15,6 @@ use App\Models\Order;
 | این متغیر تنها منبع است؛ هیچ‌کدام از دو کلید را جداگانه ویرایش نکنید.
 */
 $orderStatusLabels = [
-    Order::STATUS_PENDING => 'در انتظار تایید (رزرو شده)',
     Order::STATUS_RESERVED => 'رزرو شده',
     Order::STATUS_PROCESSING => 'در حال آماده‌سازی',
     Order::STATUS_AWAITING_WEIGHT_CORRECTION => 'در انتظار اصلاح وزن',

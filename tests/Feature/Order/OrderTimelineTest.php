@@ -73,18 +73,17 @@ class OrderTimelineTest extends TestCase
     }
 
     #[Test]
-    public function it_labels_a_pending_order_with_the_order_status_not_the_fee_status(): void
+    public function it_labels_an_order_with_the_order_status_not_the_fee_status(): void
     {
-        // پین‌کردنِ دورزدنِ یک برخوردِ واقعی: در `orders.status` هر سه کلیدِ
-        // STATUS_PENDING و PAYMENT_PENDING و FEE_PAYMENT_PENDING رشتهٔ 'pending'
-        // هستند و آخری روی بقیه می‌نشیند. اگر روزی کسی این سرویس را به آن آرایه
-        // برگرداند، یک سفارشِ در انتظارِ تایید دوباره «در انتظار پرداخت سهم»
-        // برچسب می‌خورد و این تست می‌شکند.
-        $order = Order::factory()->create([Order::STATUS => Order::STATUS_PENDING]);
+        // پین‌کردنِ دورزدنِ یک برخوردِ واقعی: `PAYMENT_PENDING` و
+        // `FEE_PAYMENT_PENDING` هر دو رشتهٔ 'pending' هستند و در آرایهٔ مشترکِ
+        // قدیمی آخری روی بقیه می‌نشست. اگر روزی کسی این سرویس را به آن آرایه
+        // برگرداند، برچسبِ وضعیتِ سفارش با برچسبِ سهم جابه‌جا می‌شود.
+        $order = Order::factory()->create([Order::STATUS => Order::STATUS_PROCESSING]);
 
         $summary = $this->timeline->build($order)['order'];
 
-        $this->assertSame('در انتظار تایید (رزرو شده)', $summary['status_label']);
+        $this->assertSame('در حال آماده‌سازی', $summary['status_label']);
         $this->assertNotSame('در انتظار پرداخت سهم', $summary['status_label']);
     }
 
@@ -93,7 +92,7 @@ class OrderTimelineTest extends TestCase
     {
         // هر وضعیتی که بدون برچسب بماند، در روایت به‌صورت اسلاگِ خام دیده می‌شود.
         $statuses = [
-            Order::STATUS_PENDING, Order::STATUS_RESERVED, Order::STATUS_PROCESSING,
+            Order::STATUS_RESERVED, Order::STATUS_PROCESSING,
             Order::STATUS_AWAITING_WEIGHT_CORRECTION, Order::STATUS_SHIPPED,
             Order::STATUS_PARTIALLY_DELIVERED, Order::STATUS_DELIVERED,
             Order::STATUS_RETURNED_TO_ORIGIN, Order::STATUS_CANCELLED,
@@ -116,7 +115,7 @@ class OrderTimelineTest extends TestCase
 
         OrderStatusHistory::create([
             OrderStatusHistory::ORDER_ID => $order->id,
-            OrderStatusHistory::FROM_STATUS => Order::STATUS_PENDING,
+            OrderStatusHistory::FROM_STATUS => Order::STATUS_PROCESSING,
             OrderStatusHistory::TO_STATUS => Order::STATUS_PROCESSING,
             OrderStatusHistory::USER_ID => $actor->id,
             OrderStatusHistory::CREATED_AT => now()->addMinutes(30),
@@ -291,7 +290,7 @@ class OrderTimelineTest extends TestCase
 
         OrderStatusHistory::create([
             OrderStatusHistory::ORDER_ID => $order->id,
-            OrderStatusHistory::FROM_STATUS => Order::STATUS_PENDING,
+            OrderStatusHistory::FROM_STATUS => Order::STATUS_PROCESSING,
             OrderStatusHistory::TO_STATUS => Order::STATUS_PROCESSING,
             OrderStatusHistory::USER_ID => User::factory()->create()->id,
             OrderStatusHistory::CREATED_AT => now()->subDays(2)->addHours(2),

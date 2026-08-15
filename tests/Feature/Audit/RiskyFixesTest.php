@@ -28,7 +28,6 @@ class RiskyFixesTest extends TestCase
     /** R15 — both payment paths share Order::PAYABLE_STATUSES incl. RESERVED. */
     public function test_payable_statuses_are_aligned_and_include_reserved(): void
     {
-        $this->assertContains(Order::STATUS_PENDING, Order::PAYABLE_STATUSES);
         $this->assertContains(Order::STATUS_RESERVED, Order::PAYABLE_STATUSES);
     }
 

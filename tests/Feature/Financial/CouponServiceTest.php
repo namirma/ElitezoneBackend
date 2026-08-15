@@ -106,7 +106,7 @@ class CouponServiceTest extends TestCase
         $order = \App\Models\Order::create([
             \App\Models\Order::PLACER_USER_ID => $this->user->id,
             \App\Models\Order::ORDER_NUMBER => 'TEST-COUPON-'.uniqid(),
-            \App\Models\Order::STATUS => \App\Models\Order::STATUS_PENDING,
+            \App\Models\Order::STATUS => \App\Models\Order::STATUS_PROCESSING,
             \App\Models\Order::PAYMENT_STATUS => \App\Models\Order::PAYMENT_PENDING,
             \App\Models\Order::COUPON_ID => $coupon->id,
             \App\Models\Order::FINAL_AMOUNT => 100_000,

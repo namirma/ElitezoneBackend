@@ -12,21 +12,19 @@ use Tests\TestCase;
 
 /**
  * دو اثرِ جانبیِ کوپن که هیچ‌کدام «تخفیف» نیستند:
- *   M1 — تخفیف نباید گزینهٔ رزرو را از سفارشِ بزرگ بگیرد.
  *   M3 — تولید کدِ اختصاصی نباید روی برخورد بترکد.
+ * به‌علاوهٔ قاعدهٔ تازهٔ بند ۱۱.۱ برای نمایش مرحلهٔ رزرو.
  */
 class CouponSideEffectsTest extends TestCase
 {
     use DatabaseTransactions;
-
-    // ── M1: آستانهٔ رزرو روی مبلغِ پیش از تخفیف ────────────────────────────
 
     private function orderWorth(float $finalAmount, float $discount): Order
     {
         $order = Order::create([
             Order::PLACER_USER_ID => User::factory()->create()->id,
             Order::ORDER_NUMBER => 'THR-'.uniqid(),
-            Order::STATUS => Order::STATUS_PENDING,
+            Order::STATUS => Order::STATUS_PROCESSING,
             Order::PAYMENT_STATUS => Order::PAYMENT_PENDING,
             Order::FINAL_AMOUNT => $finalAmount,
         ]);
@@ -34,33 +32,6 @@ class CouponSideEffectsTest extends TestCase
         $order->forceFill([Order::COUPON_DISCOUNT_AMOUNT => $discount])->save();
 
         return $order->fresh();
-    }
-
-    #[Test]
-    public function the_reservation_basis_ignores_the_coupon_discount(): void
-    {
-        $threshold = (float) config('financial.reservation_threshold');
-
-        // سفارشی که *پیش از* تخفیف بالای آستانه است ولی بعد از آن زیر آستانه.
-        $order = $this->orderWorth(
-            finalAmount: $threshold - 1_000_000,
-            discount: 5_000_000,
-        );
-
-        $this->assertLessThan($threshold, (float) $order->final_amount);
-        $this->assertGreaterThan(
-            $threshold,
-            $order->reservationBasisAmount(),
-            'تصمیمِ رزرو باید بر اساس اندازهٔ واقعی سفارش باشد، نه مبلغِ تخفیف‌خورده.',
-        );
-    }
-
-    #[Test]
-    public function an_order_without_a_coupon_uses_its_final_amount_unchanged(): void
-    {
-        $order = $this->orderWorth(finalAmount: 12_345_000, discount: 0);
-
-        $this->assertSame(12_345_000.0, $order->reservationBasisAmount());
     }
 
     /**
@@ -83,11 +54,7 @@ class CouponSideEffectsTest extends TestCase
             'سفارشی که بیعانه پرداخت کرده باید مرحلهٔ رزرو را داشته باشد.',
         );
 
-        // یکجا پرداخت‌شده یعنی `processing` — نه `pending`. یک سفارشِ `pending`
-        // هنوز پرداخت‌نشده است و عمداً مرحلهٔ رزرو را می‌گیرد، چون دکمهٔ «پرداخت
-        // فاکتور» روی همان مرحله می‌نشیند.
         $paidOutright = $this->orderWorth(finalAmount: 50_000_000, discount: 5_000_000);
-        $paidOutright->forceFill([Order::STATUS => Order::STATUS_PROCESSING])->save();
 
         $titles = array_column($paidOutright->fresh()->dashboard_progress['steps'] ?? [], 'title');
         $this->assertEmpty(

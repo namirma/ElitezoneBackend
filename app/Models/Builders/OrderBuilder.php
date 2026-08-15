@@ -13,7 +13,6 @@ class OrderBuilder extends Builder
     public function current(): self
     {
         return $this->whereIn(Order::STATUS, [
-            Order::STATUS_PENDING,
             Order::STATUS_RESERVED,
             Order::STATUS_PROCESSING,
             Order::STATUS_AWAITING_WEIGHT_CORRECTION,
@@ -47,7 +46,7 @@ class OrderBuilder extends Builder
      */
     public function expired(): self
     {
-        return $this->where(Order::STATUS, Order::STATUS_PENDING)
+        return $this->where(Order::STATUS, Order::STATUS_RESERVED)
             ->where(Order::RESERVATION_EXPIRES_AT, '<', now());
     }
 

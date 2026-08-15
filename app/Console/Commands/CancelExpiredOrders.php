@@ -83,10 +83,9 @@ class CancelExpiredOrders extends Command
      */
     private function getExpiredOrdersQuery()
     {
-        return Order::whereIn(Order::STATUS, [
-            Order::STATUS_PENDING,
-            Order::STATUS_RESERVED,
-        ])
+        // فقط رزرو. سفارشِ پرداخت‌نشده دیگر وجود ندارد — رکورد سفارش تنها
+        // وقتی ساخته می‌شود که پول نشسته باشد (بند ۳.۳).
+        return Order::where(Order::STATUS, Order::STATUS_RESERVED)
             ->where(Order::RESERVATION_EXPIRES_AT, '<=', Carbon::now());
     }
 }

@@ -104,7 +104,7 @@ class SupplierOrderActionGuardsTest extends TestCase
     {
         Storage::fake('financial');
 
-        $order = $this->order(Order::STATUS_PENDING, Order::PAYMENT_PENDING);
+        $order = $this->order(Order::STATUS_PROCESSING, Order::PAYMENT_PENDING);
         Sanctum::actingAs($this->supplier);
 
         $this->postJson("/api/profile/orders/{$order->id}/receipt", [

@@ -67,7 +67,6 @@ class DashboardAlertsService
             $q->where(Order::PLACER_USER_ID, $user->id)->orWhere(Order::BENEFICIARY_USER_ID, $user->id);
         })
             ->whereIn(Order::STATUS, [
-                Order::STATUS_PENDING,
                 Order::STATUS_RESERVED,
                 Order::STATUS_SHIPPED,
                 Order::STATUS_PARTIALLY_DELIVERED,
@@ -78,7 +77,7 @@ class DashboardAlertsService
 
         foreach ($orders as $order) {
             if (
-                in_array($order->status, [Order::STATUS_PENDING, Order::STATUS_RESERVED], true)
+                $order->status === Order::STATUS_RESERVED
                 && $order->payment_status === Order::PAYMENT_PENDING
             ) {
                 $alerts[] = $this->makeAlert('order_pay', 'error', 'payment', "/profile/orders/{$order->id}", ['order_number' => $order->order_number], $order->id);

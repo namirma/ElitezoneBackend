@@ -79,16 +79,16 @@ class OrderPolicy
      */
     public function cancel(User $user, Order $order): Response
     {
-        // فقط سفارشات در وضعیت PENDING قابل لغو توسط کاربر هستند.
-        // وضعیت‌های بعد از پرداخت (RESERVED, PROCESSING و بالاتر) از طریق
-        // جریان مرجوعی/داوری پردازش می‌شوند، نه لغو مستقیم.
-        if ($order->status !== Order::STATUS_PENDING) {
-            return Response::deny(__('orders.cannot_cancel'));
-        }
-
-        return ($order->placer_user_id === $user->id || $order->beneficiary_user_id === $user->id)
-            ? Response::allow()
-            : Response::deny(__('auth.policy.cancel_denied'));
+        // خودلغویِ خریدار فعلاً هیچ وضعیتی ندارد — فاز ۴.
+        //
+        // تنها وضعیتِ خودلغو `pending` بود («هنوز پولی جابه‌جا نشده») و آن وضعیت
+        // حذف شد: سفارش تنها پس از نشستنِ پول ساخته می‌شود. وضعیت‌های پس از
+        // پرداخت از مسیر مرجوعی/داوری می‌روند، نه لغو مستقیم.
+        //
+        // پنجره‌ی لغوِ خریدار روی رزرو (بین `reserve_deadline_original` و
+        // `reserve_deadline`، بند ۳.۴) در فاز ۵ باز می‌شود؛ آن‌وقت این متد شرطِ
+        // مالکیتِ زیر را دوباره لازم دارد. ادمین از `before()` رد می‌شود.
+        return Response::deny(__('orders.cannot_cancel'));
     }
 
     /**

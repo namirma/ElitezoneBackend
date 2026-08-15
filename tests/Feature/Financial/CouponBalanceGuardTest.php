@@ -87,7 +87,7 @@ class CouponBalanceGuardTest extends TestCase
         $order = Order::create([
             Order::PLACER_USER_ID => $buyer->id,
             Order::ORDER_NUMBER => 'CPN-'.uniqid(),
-            Order::STATUS => Order::STATUS_PENDING,
+            Order::STATUS => Order::STATUS_PROCESSING,
             Order::PAYMENT_STATUS => Order::PAYMENT_PENDING,
             Order::FINAL_AMOUNT => 10_000_000,
             Order::SHIPPING_COST => 0,

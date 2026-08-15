@@ -94,7 +94,7 @@ class OrderStatusHistoryTimestampTest extends TestCase
 
         $row = OrderStatusHistory::create([
             OrderStatusHistory::ORDER_ID => $order->id,
-            OrderStatusHistory::FROM_STATUS => Order::STATUS_PENDING,
+            OrderStatusHistory::FROM_STATUS => Order::STATUS_PROCESSING,
             OrderStatusHistory::TO_STATUS => Order::STATUS_PROCESSING,
             OrderStatusHistory::USER_ID => null,
             OrderStatusHistory::DURATION_MINUTES => 0,
