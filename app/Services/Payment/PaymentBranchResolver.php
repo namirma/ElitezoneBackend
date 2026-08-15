@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Payment;
 
 use App\Models\User;
+use App\Models\Wallet;
 use App\Services\Sales\SalesSettings;
 use App\Support\Money;
 
@@ -82,8 +83,19 @@ final class PaymentBranchResolver
         );
     }
 
+    /**
+     * موجودی از خودِ رابطه خوانده می‌شود و نه از خاصیتِ جادوییِ `$user->wallet`.
+     *
+     * دو دلیل: larastan 3 روی شاخه‌ی L13 آن خاصیت را نمی‌شناسد، و مهم‌تر اینکه
+     * تصمیمِ پرداخت باید روی موجودیِ **تازه** گرفته شود — نه روی رابطه‌ای که
+     * شاید چند کوئری قبل‌تر لود شده باشد.
+     */
     private function walletBalance(?User $user): float
     {
-        return (float) ($user?->wallet?->balance ?? 0);
+        if ($user === null) {
+            return 0.0;
+        }
+
+        return (float) ($user->wallet()->value(Wallet::BALANCE) ?? 0);
     }
 }
