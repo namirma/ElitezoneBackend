@@ -122,7 +122,10 @@ class ProcessReservationCompletionAction
 
             $remainingAmount = (float) bcsub((string) $POO, (string) $PTR, 4);
 
-            $buyerId = $locked->payerUserId();
+            // همان دلیلِ ProcessPreScalePaymentAction — تایپِ `$locked` دست نمی‌خورد.
+            /** @var Order $payerSource */
+            $payerSource = $locked;
+            $buyerId = $payerSource->payerUserId();
             $realSupplierId = $firstItem->supplier_user_id;
 
             // Coupon discount leg (once, at the full-payment moment): WSSG(-) → WO(+).

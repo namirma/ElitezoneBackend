@@ -205,9 +205,16 @@ class ProcessPreScalePaymentAction
             // که بالا نوشته شده: این شرط باید با `routeEliteYAR` یکی بماند، و آن
             // هم به `payerUserId()` منتقل شد. اگر این یکی عقب می‌ماند، در مسیرِ
             // «الیت‌یار برای کارفرما» کمیسیون پرداخت می‌شد ولی سند D صادر نمی‌شد.
+            // متغیرِ جداگانه و نه `@var` روی خودِ `$locked`: larastan 3 (شاخه‌ی L13)
+            // نتیجه‌ی `lockForUpdate()->first()` را `Model` می‌بیند، و عوض‌کردنِ
+            // تایپِ `$locked` هم نال‌چکِ واقعیِ بالا را «همیشه غلط» نشان می‌داد و هم
+            // شمارشِ ورودی‌های baseline را جابه‌جا می‌کرد. اینجا لازم نیست ولی
+            // نگهش می‌داریم تا فایل روی هر دو شاخه یکی بماند.
+            /** @var Order $payerSource */
+            $payerSource = $locked;
             $eliteYARId = $locked->getAttribute(Order::ELITE_YAR_USER_ID);
             $hasCommissionedEliteYAR = $eliteYARId !== null
-                && (int) $eliteYARId !== $locked->payerUserId();
+                && (int) $eliteYARId !== $payerSource->payerUserId();
 
             $this->invoiceGenerator->generateDirectPurchaseDocs(
                 $locked,
