@@ -79,7 +79,9 @@ final class ReserveDeadlineResolver
      */
     public function graceHoursFor(?SupplierProfile $supplier): int
     {
-        return $supplier?->{SupplierProfile::RESERVE_GRACE_HOURS}
+        // `->` و نه `?->`: سمتِ چپِ `??` معنایِ isset دارد، پس یک `$supplier`ِ
+        // null هم بدون خطا به پیش‌فرض می‌افتد و `?->` چیزی اضافه نمی‌کند.
+        return $supplier->{SupplierProfile::RESERVE_GRACE_HOURS}
             ?? (int) $this->settings->reserveGrace()->totalHours;
     }
 }
