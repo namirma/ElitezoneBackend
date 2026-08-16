@@ -4,12 +4,15 @@ namespace App\Http\Controllers\Api\User;
 
 use App\Actions\Financial\RecordSupplierMoadianInvoiceAction;
 use App\Actions\Order\ExtendReserveDeadlineAction;
+use App\Actions\Order\RegisterShipmentAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Order\ExtendReserveDeadlineRequest;
+use App\Http\Requests\Order\RegisterShipmentRequest;
 use App\Http\Requests\Order\SubmitMoadianInvoiceRequest;
 use App\Http\Requests\Order\UploadOrderReceiptRequest;
 use App\Http\Resources\Order\OrderResource;
 use App\Models\Order;
+use App\Models\Shipment;
 use App\Models\SupplierProfile;
 use Exception;
 use Illuminate\Database\Eloquent\Builder;
@@ -149,6 +152,37 @@ class SupplierOrderController extends Controller
             ->paginate($this->perPage(20));
 
         return success(OrderResource::collection($orders), __('admin.financial.pending_moadian_received'));
+    }
+
+    /**
+    /**
+     * POST /profile/orders/{order}/shipments/{shipment}/waybill — بند ۳.۷.
+     *
+     * بارنامه، مشخصات راننده و وزن باسکول با هم ثبت می‌شوند. تا فاز ۷ وزن از یک
+     * اندپوینتِ ادمین می‌آمد و بارنامه از مسیری که در فاز ۰ حذف شده بود — یعنی
+     * وضعیت «در حال حمل» را ادمین می‌نوشت، نه کسی که واقعاً بار را می‌فرستد.
+     *
+     * وقتی آخرین محموله‌ی سفارش ثبت شود، تسویه‌ی باسکول با **مجموع** وزن‌ها
+     * اجرا می‌شود و سفارش به `shipped` می‌رود.
+     */
+    public function registerWaybill(
+        RegisterShipmentRequest $request,
+        Order $order,
+        Shipment $shipment,
+        RegisterShipmentAction $action,
+    ): JsonResponse {
+        $this->authorize('manageAsSupplier', $order);
+
+        $result = $action->execute($order, $shipment, $request->validated());
+
+        $order->loadMissing(Order::resourceRelations());
+
+        return success(
+            new OrderResource($order->fresh(Order::resourceRelations())),
+            $result['order_completed']
+                ? __('shipments.registered_and_settled')
+                : __('shipments.registered')
+        );
     }
 
     /**

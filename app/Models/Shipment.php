@@ -93,6 +93,25 @@ class Shipment extends Model
 
     public const STATUS_DELIVERED = 'delivered';
 
+    // ── بارنامه و راننده (فاز ۷، بند ۳.۷) ────────────────────────────────────
+    public const WAYBILL_REF = 'waybill_ref';
+
+    public const DRIVER_NAME = 'driver_name';
+
+    public const DRIVER_NATIONAL_CODE = 'driver_national_code';
+
+    public const DRIVER_MOBILE = 'driver_mobile';
+
+    public const VEHICLE_PLATE = 'vehicle_plate';
+
+    public const VEHICLE_TYPE = 'vehicle_type';
+
+    /** وزنِ باسکولِ همین لِگ — مجموعشان تسویه‌ی سفارش را تغذیه می‌کند. */
+    public const ACTUAL_WEIGHT = 'actual_weight';
+
+    /** لحظه‌ی ثبتِ بارنامه. `null` یعنی این محموله هنوز بار نزده است. */
+    public const REGISTERED_AT = 'registered_at';
+
     protected $fillable = [
         self::ORDER_ID,
         self::FACTORY_ID,
@@ -112,7 +131,19 @@ class Shipment extends Model
         self::BILLED_COUNT => 'decimal:3',
         self::COST_BASIS => ShippingCostBasis::class,
         self::SHIPPING_COST => 'decimal:2',
+        self::ACTUAL_WEIGHT => 'decimal:3',
+        self::REGISTERED_AT => 'datetime',
     ];
+
+    /**
+     * ستون‌های بارنامه عمداً fillable نیستند — فقط `RegisterShipmentAction`
+     * آن‌ها را می‌نویسد. یک محموله‌ی ثبت‌شده سندِ حملِ رسمی است و نباید از
+     * مسیرِ mass-assignment قابلِ بازنویسی باشد.
+     */
+    public function isRegistered(): bool
+    {
+        return $this->{self::REGISTERED_AT} !== null;
+    }
 
     public function order(): BelongsTo
     {

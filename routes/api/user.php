@@ -313,6 +313,14 @@ Route::middleware(['auth:sanctum'])->group(function () {
                 Route::post('/{order}/receipt', 'attachPaymentReceipt')->whereNumber('order');
                 // Doc O: supplier submits Moadian invoice → releases supplier VAT hold
                 Route::post('/{order}/supplier-moadian-invoice', 'submitSupplierMoadianInvoice')->whereNumber('order');
+
+                // بارنامه + راننده + وزن باسکول، یکجا (بند ۳.۷ — فاز ۷). این
+                // اندپوینت جای `POST /admin/orders/{order}/weighbridge` را گرفت:
+                // نویسنده‌ی وضعیت «در حال حمل» حالا تأمین‌کننده است، نه ادمین.
+                // idempotency چون آخرین محموله تسویه‌ی مالی را راه می‌اندازد.
+                Route::post('/{order}/shipments/{shipment}/waybill', 'registerWaybill')
+                    ->whereNumber('order')->whereNumber('shipment')
+                    ->middleware(['idempotency', 'throttle:financial']);
             });
 
             // Detail view (MUST be the last route in the orders group — wildcard)

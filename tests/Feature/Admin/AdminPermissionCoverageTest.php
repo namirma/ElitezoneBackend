@@ -84,20 +84,24 @@ class AdminPermissionCoverageTest extends TestCase
     }
 
     /**
-     * aliasِ بی‌مجوزِ باسکول در ریشهٔ /admin نباید برگردد.
+     * باسکول دیگر هیچ ورودیِ ادمینی ندارد (فاز ۷، بند ۱۶).
      *
-     * نسخهٔ استاندارد (`/admin/orders/{order}/weighbridge`) پشتِ manage-orders
-     * زنده است و تا فاز ۷ می‌ماند — تنها ورودیِ باقی‌ماندهٔ باسکول است. ولی alias
-     * حذف شد و هرگز نباید بازگردد: بدون مجوز بود و همان عملیاتِ مالیِ سنگین را
-     * برای هر ادمینی باز می‌گذاشت. سوییپِ اصلیِ همین کلاس پوششِ مجوزِ نسخهٔ
-     * استاندارد را جداگانه تضمین می‌کند.
+     * دو روت اینجا مرده‌اند و هیچ‌کدام نباید برگردند:
+     *
+     *   • aliasِ بی‌مجوزِ ریشهٔ /admin — بدون مجوز بود و سنگین‌ترین عملیاتِ مالیِ
+     *     سیستم را برای هر ادمینی باز می‌گذاشت.
+     *   • نسخهٔ استانداردِ پشتِ manage-orders — تا فاز ۷ **پلِ موقت** بود، چون
+     *     پس از حذفِ مسیرِ بارنامه در فاز ۰ تنها نویسندهٔ وضعیت `shipped` مانده
+     *     بود. حالا جایگزینش ساخته شده:
+     *     `POST /profile/orders/{order}/shipments/{shipment}/waybill` — وزن را
+     *     همان تأمین‌کننده‌ای ثبت می‌کند که بار را تحویل راننده می‌دهد.
      */
     #[Test]
-    public function the_unguarded_legacy_weighbridge_alias_stays_deleted(): void
+    public function the_weighbridge_has_no_admin_entry_point_left(): void
     {
         $uris = array_map(fn ($route) => $route->uri(), iterator_to_array(Route::getRoutes()));
 
         $this->assertNotContains('api/admin/{order}/weighbridge', $uris);
-        $this->assertContains('api/admin/orders/{order}/weighbridge', $uris);
+        $this->assertNotContains('api/admin/orders/{order}/weighbridge', $uris);
     }
 }

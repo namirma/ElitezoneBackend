@@ -38,7 +38,6 @@ use App\Http\Controllers\Api\Admin\AdminSupplierController;
 use App\Http\Controllers\Api\Admin\AdminTicketController;
 use App\Http\Controllers\Api\Admin\AdminUserController;
 use App\Http\Controllers\Api\Admin\AdminWalletController;
-use App\Http\Controllers\Api\Admin\OrderWeighbridgeController;
 use App\Http\Controllers\Api\DebugController;
 use App\Http\Controllers\Api\Podium\IdentityInquirySc2Controller;
 use App\Http\Controllers\Api\Podium\MobileNidMatchController;
@@ -169,13 +168,10 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
         // Doc P — فاکتور مودیان سیستم (سازه → خریدار)، آزادسازی WVAT hold
         Route::post('/{order}/system-moadian-invoice', 'submitSystemMoadianInvoice');
 
-        // ⚠️ پلِ موقت تا فاز ۷ — تنها ورودیِ باقی‌مانده به باسکول، و در نتیجه
-        // تنها راهی که سفارش از `processing` جلوتر می‌رود. با ساخته‌شدن
-        // `RegisterShipmentAction` این روت و کنترلرش حذف می‌شوند (بند ۱۶).
-        // aliasِ قدیمیِ بی‌مجوز در ریشهٔ /admin برنگشت و نباید برگردد.
-        Route::post('/{order}/weighbridge', [OrderWeighbridgeController::class, 'submitWeight'])
-            ->whereNumber('order')
-            ->name('admin.orders.weighbridge.submit');
+        // باسکول از پنل ادمین حذف شد (بند ۱۶ — فاز ۷). وزن حالا همراهِ بارنامه و
+        // مشخصاتِ راننده توسط تأمین‌کننده ثبت می‌شود:
+        // `POST /profile/orders/{order}/shipments/{shipment}/waybill`.
+        // نه این روت و نه aliasِ قدیمیِ بی‌مجوزِ ریشهٔ /admin نباید برگردند.
     });
 
     // Tickets — مدیریت تیکت‌های پشتیبانی — پشتِ مجوزِ granular «manage-tickets».
