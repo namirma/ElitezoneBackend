@@ -33,6 +33,16 @@ class Cart extends Model
     const SUPPLIER_USER_ID = 'supplier_user_id';
 
     /** مقصد واحدِ سبد (بند ۳.۱ — هر سفارش یک مقصد). */
+    /**
+     * کارفرمایی که این سبد برای اوست و پولش را او می‌دهد (فاز ۶).
+     *
+     * `null` یعنی سبدِ معمولی — خودِ صاحبِ سبد می‌پردازد.
+     */
+    const BENEFICIARY_USER_ID = 'beneficiary_user_id';
+
+    /** آخرین باری که لینک پرداخت پیامک شد — فقط برای نمایش و محدودکردنِ ارسالِ دوباره. */
+    const PAYMENT_LINK_SENT_AT = 'payment_link_sent_at';
+
     const ADDRESS_ID = 'address_id';
 
     /** فقط کد؛ مبلغ در لحظه‌ی رزرو/پرداخت محاسبه می‌شود (بند ۳.۱۳). */
@@ -63,7 +73,24 @@ class Cart extends Model
     protected $casts = [
         self::PARKED_UNTIL => 'datetime',
         self::PARK_WARNED_AT => 'datetime',
+        self::PAYMENT_LINK_SENT_AT => 'datetime',
     ];
+
+    /**
+     * کارفرمای مقصدِ لینک پرداخت. مثل `supplier_user_id` عمداً fillable نیست —
+     * فقط `CartPaymentLinkService` آن را می‌نویسد، وگرنه یک فیلدِ اضافه در بدنه‌ی
+     * «افزودن به سبد» می‌توانست پرداخت را به کیف پولِ شخصِ دیگری بیندازد.
+     */
+    public function beneficiary(): BelongsTo
+    {
+        return $this->belongsTo(User::class, self::BENEFICIARY_USER_ID);
+    }
+
+    /** آیا این سبد برای کارفرمای دیگری بسته شده و پرداختش با اوست؟ */
+    public function isForBeneficiary(): bool
+    {
+        return $this->{self::BENEFICIARY_USER_ID} !== null;
+    }
 
     /**
      * تنها راهِ انتخابِ سبدِ یک کاربر — قدیمی‌ترین ردیف (کوچک‌ترین id).

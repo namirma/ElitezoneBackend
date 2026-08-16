@@ -32,6 +32,16 @@ class Order extends Model
 
     public const PLACER_USER_ID = 'placer_user_id';
 
+    /**
+     * صاحبِ کیف پولی که پول از آن کسر می‌شود (فاز ۶).
+     *
+     * تا پیش از این WO همیشه `placer_user_id` بود؛ در مسیرِ «الیت‌یار برای
+     * کارفرما» این یعنی پرداخت از کیف پولِ الیت‌یار. حالا پرداخت‌کننده صریح است.
+     * برای سفارش‌های قدیمی (و هر سفارشِ معمولی) برابرِ همان ثبت‌کننده است —
+     * `payerUserId()` را بخوانید، نه این ستون را مستقیم.
+     */
+    public const PAYER_USER_ID = 'payer_user_id';
+
     public const BENEFICIARY_USER_ID = 'beneficiary_user_id';
 
     /** الیت یار که کمیسیون CO را دریافت می‌کند (جدا از گیرنده/beneficiary) */
@@ -241,6 +251,7 @@ class Order extends Model
     // =========================================================================
     protected $fillable = [
         self::PLACER_USER_ID,
+        self::PAYER_USER_ID,
         self::BENEFICIARY_USER_ID,
         self::ELITE_YAR_USER_ID,
         self::ADDRESS_ID,
@@ -364,6 +375,25 @@ class Order extends Model
 
         // تمدیدی رخ نداده → پنجره‌ای وجود ندارد.
         return $current->greaterThan($original) && now()->greaterThan($original);
+    }
+
+    /**
+     * کیف پولی که پولِ این سفارش از آن می‌آید و استرداد به آن برمی‌گردد.
+     *
+     * `??` و نه `?:` — و برای سفارش‌های پیش از فاز ۶ که ستون خالی است، به
+     * ثبت‌کننده برمی‌گردد. **هر جا WO لازم دارید این را صدا بزنید**، نه
+     * `placer_user_id` را: هر دو برای سفارش‌های معمولی یکی هستند، ولی در مسیرِ
+     * «الیت‌یار برای کارفرما» متفاوت‌اند و تفاوتشان یعنی پول از کیف پولِ چه
+     * کسی برداشته می‌شود.
+     */
+    public function payerUserId(): int
+    {
+        return (int) ($this->getAttribute(self::PAYER_USER_ID) ?? $this->{self::PLACER_USER_ID});
+    }
+
+    public function payer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, self::PAYER_USER_ID);
     }
 
     public function partyRolesFor(?int $userId): array

@@ -201,9 +201,13 @@ class ProcessPreScalePaymentAction
             // برای هولد کمیسیون استفاده می‌کند، پس سند با جریان پول هم‌راستا می‌ماند.
             // (قبلاً روی beneficiary_user_id گیت شده بود؛ در مسیر «کارفرما با الیت‌یار»
             //  که beneficiary=null است، Doc D اشتباهاً صادر نمی‌شد.)
+            // مقایسه با پرداخت‌کننده و نه ثبت‌کننده (فاز ۶) — دقیقاً به همان دلیلی
+            // که بالا نوشته شده: این شرط باید با `routeEliteYAR` یکی بماند، و آن
+            // هم به `payerUserId()` منتقل شد. اگر این یکی عقب می‌ماند، در مسیرِ
+            // «الیت‌یار برای کارفرما» کمیسیون پرداخت می‌شد ولی سند D صادر نمی‌شد.
             $eliteYARId = $locked->getAttribute(Order::ELITE_YAR_USER_ID);
             $hasCommissionedEliteYAR = $eliteYARId !== null
-                && (int) $eliteYARId !== (int) $locked->getAttribute(Order::PLACER_USER_ID);
+                && (int) $eliteYARId !== $locked->payerUserId();
 
             $this->invoiceGenerator->generateDirectPurchaseDocs(
                 $locked,

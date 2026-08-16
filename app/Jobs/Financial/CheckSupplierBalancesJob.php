@@ -144,7 +144,9 @@ class CheckSupplierBalancesJob implements ShouldBeUnique, ShouldQueue
             //    با پرتاب، کل تراکنش برمی‌گردد: نه بازپس‌گیریِ نیمه‌کاره می‌ماند و نه پرچم
             //    پاک می‌شود، پس اجرای بعدی دوباره و تمیز تلاش می‌کند. `handle()` استثنا را
             //    per-order می‌گیرد، پس یک سفارشِ گیرکرده بقیه را متوقف نمی‌کند.
-            $buyerWallet = Wallet::where('user_id', $lockedOrder->placer_user_id)->lockForUpdate()->first();
+            // کیف پولِ پرداخت‌کننده و نه ثبت‌کننده (فاز ۶) — عودت باید به همان
+            // کیفی برگردد که پول از آن رفته است.
+            $buyerWallet = Wallet::where('user_id', $lockedOrder->payerUserId())->lockForUpdate()->first();
 
             if (! $buyerWallet) {
                 throw new \RuntimeException(
@@ -170,7 +172,7 @@ class CheckSupplierBalancesJob implements ShouldBeUnique, ShouldQueue
             // «بازپس‌گیری از سوپلایر» (PTS − PTSM) — و اولی بزرگ‌تر است، چون
             // سهم کمیسیون را هم شامل می‌شود.
             $walletEngine->releaseHold(
-                (int) $lockedOrder->placer_user_id,
+                $lockedOrder->payerUserId(),
                 (float) $holdTx->amount,
                 $lockedOrder,
                 __('wallet.descriptions.buyer_refund_released', [

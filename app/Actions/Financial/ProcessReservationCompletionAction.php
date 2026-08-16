@@ -122,7 +122,7 @@ class ProcessReservationCompletionAction
 
             $remainingAmount = (float) bcsub((string) $POO, (string) $PTR, 4);
 
-            $buyerId = $locked->placer_user_id;
+            $buyerId = $locked->payerUserId();
             $realSupplierId = $firstItem->supplier_user_id;
 
             // Coupon discount leg (once, at the full-payment moment): WSSG(-) → WO(+).

@@ -213,9 +213,12 @@ class InvoiceGenerator
             FinancialCodes::DOC_TAX_INVOICE_SUPPLIER,  // O — فاکتور مودیان سوپلایر
         ];
 
+        // اسنادِ خریدار به نامِ **پرداخت‌کننده** ثبت می‌شوند و نه ثبت‌کننده (فاز ۶).
+        // در مسیرِ «الیت‌یار برای کارفرما»، خریدارِ واقعی کارفرماست؛ صدور سند P
+        // (فاکتور مودیانِ خریدار) به نامِ الیت‌یار یک خطای حسابداری واقعی بود.
         $userId = in_array($docType, $supplierDocs)
-            ? ($order->items->first()->supplier_user_id ?? $order->placer_user_id)
-            : $order->placer_user_id;
+            ? ($order->items->first()->supplier_user_id ?? $order->payerUserId())
+            : $order->payerUserId();
 
         // مبلغِ ثبت‌شدهٔ هر سند باید «موضوعِ واقعیِ» همان سند باشد، نه همیشه final_amount.
         // لِگ‌های کیف‌پول مستقل و درست‌اند؛ این فقط فیلدِ گزارشیِ invoices.amount را دقیق می‌کند.

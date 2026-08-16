@@ -56,9 +56,19 @@ class PlaceOrderAction
      * @param  string  $initialStatus  وضعیت اولیه — `processing` برای پرداخت کامل،
      *                                 `reserved` برای رزرو. هرگز `pending`.
      */
-    public function execute(User $user, PlaceOrderData $data, string $initialStatus = Order::STATUS_PROCESSING): Order
-    {
-        $order = DB::transaction(function () use ($user, $data, $initialStatus) {
+    /**
+     * @param  User  $user  صاحبِ سبد و ثبت‌کننده‌ی سفارش.
+     * @param  User|null  $payer  صاحبِ کیف پولی که پول از آن می‌رود (فاز ۶).
+     *                            `null` یعنی حالتِ معمول: ثبت‌کننده خودش می‌پردازد.
+     *                            در مسیرِ «الیت‌یار برای کارفرما» اینجا کارفرماست.
+     */
+    public function execute(
+        User $user,
+        PlaceOrderData $data,
+        string $initialStatus = Order::STATUS_PROCESSING,
+        ?User $payer = null,
+    ): Order {
+        $order = DB::transaction(function () use ($user, $data, $initialStatus, $payer) {
 
             // ۱. خواندن و قفل کردن سبد خرید دقیقاً داخل تراکنش
             $cart = $this->getCartOrFail($user);
@@ -82,7 +92,7 @@ class PlaceOrderAction
             }
 
             // ۳. ایجاد سفارش + مرسوله‌ها (هر مبدأ→مقصد یک مرسوله) + اقلام
-            $order = $this->createOrderRecord($user, $data, $financials, $cart, $initialStatus);
+            $order = $this->createOrderRecord($user, $data, $financials, $cart, $initialStatus, $payer);
 
             if ($coupon) {
                 $this->couponService->redeem($coupon);
@@ -362,7 +372,7 @@ class PlaceOrderAction
         return $fees;
     }
 
-    private function createOrderRecord(User $user, PlaceOrderData $data, array $fins, Cart $cart, string $initialStatus): Order
+    private function createOrderRecord(User $user, PlaceOrderData $data, array $fins, Cart $cart, string $initialStatus, ?User $payer = null): Order
     {
         // ۱. تشخیص کانتکست (Context) کالا بر اساس اولین آیتم سبد خرید
         // می‌توانید منطق شرط را بر اساس ساختار دیتابیس خودتان (مثلاً نام دسته‌بندی) تنظیم کنید
@@ -382,6 +392,10 @@ class PlaceOrderAction
         // ۳. ثبت نهایی در دیتابیس
         $order = Order::create([
             Order::PLACER_USER_ID => $user->id,
+            // payer = صاحبِ کیف پولی که پول از آن می‌رود. صریح نوشته می‌شود حتی
+            // وقتی با ثبت‌کننده یکی است، تا هیچ سفارشِ تازه‌ای به fallbackِ
+            // `payerUserId()` تکیه نکند — آن fallback فقط برای ردیف‌های قدیمی است.
+            Order::PAYER_USER_ID => ($payer ?? $user)->id,
             // beneficiary = گیرنده سفارش (فقط در مسیر الیت یار که برای کارفرما خریداری می‌کند)
             Order::BENEFICIARY_USER_ID => $data->beneficiaryUserId,
             // eliteYAR = الیت یار که کمیسیون CO می‌گیرد (مؤثر — computed در calculateOrderFinancials)
