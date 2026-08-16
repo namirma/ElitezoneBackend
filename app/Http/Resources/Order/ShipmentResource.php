@@ -40,6 +40,26 @@ class ShipmentResource extends BaseJsonResource
 
             Shipment::SHIPPING_COST => (string) $this->shipping_cost,
             Shipment::STATUS => $this->status,
+
+            // ── بارنامه و راننده (فاز ۷) ──────────────────────────────────────
+            // `null` تا وقتی تأمین‌کننده بارنامه را ثبت نکرده. فرانت از
+            // `is_registered` شاخه بزند و نه از خالی‌بودنِ تک‌تکِ فیلدها —
+            // کد ملی و موبایل حتی پس از ثبت هم می‌توانند خالی باشند.
+            'is_registered' => $this->registered_at !== null,
+            Shipment::WAYBILL_REF => $this->waybill_ref,
+            Shipment::REGISTERED_AT => $this->registered_at?->toIso8601String(),
+            'actual_weight' => $this->actual_weight !== null ? (string) $this->actual_weight : null,
+
+            'driver' => $this->registered_at === null ? null : [
+                'name' => $this->driver_name,
+                'national_code' => $this->driver_national_code,
+                'mobile' => $this->driver_mobile,
+            ],
+
+            'vehicle' => $this->registered_at === null ? null : [
+                'plate' => $this->vehicle_plate,
+                'type' => $this->vehicle_type,
+            ],
         ];
     }
 }

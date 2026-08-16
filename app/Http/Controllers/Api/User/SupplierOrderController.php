@@ -178,6 +178,36 @@ class SupplierOrderController extends Controller
     }
 
     /**
+     * POST /profile/orders/{order}/shipments/{shipment}/waybill — بند ۳.۷.
+     *
+     * بارنامه، مشخصات راننده و وزن باسکول با هم ثبت می‌شوند. تا فاز ۷ وزن از یک
+     * اندپوینتِ ادمین می‌آمد و بارنامه از مسیری که در فاز ۰ حذف شده بود — یعنی
+     * وضعیت «در حال حمل» را ادمین می‌نوشت، نه کسی که واقعاً بار را می‌فرستد.
+     *
+     * وقتی آخرین محموله‌ی سفارش ثبت شود، تسویه‌ی باسکول با **مجموع** وزن‌ها
+     * اجرا می‌شود و سفارش به `shipped` می‌رود.
+     */
+    public function registerWaybill(
+        \App\Http\Requests\Order\RegisterShipmentRequest $request,
+        Order $order,
+        \App\Models\Shipment $shipment,
+        \App\Actions\Order\RegisterShipmentAction $action,
+    ): JsonResponse {
+        $this->authorize('manageAsSupplier', $order);
+
+        $result = $action->execute($order, $shipment, $request->validated());
+
+        $order->loadMissing(Order::resourceRelations());
+
+        return success(
+            new OrderResource($order->fresh(Order::resourceRelations())),
+            $result['order_completed']
+                ? __('shipments.registered_and_settled')
+                : __('shipments.registered')
+        );
+    }
+
+    /**
      * صدور دستور بارگیری اسپادانا.
      *
      * تنها متدِ این کنترلر بود که **هیچ گاردی نداشت**: نه وضعیت را چک می‌کرد و نه
