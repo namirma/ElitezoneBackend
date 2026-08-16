@@ -17,21 +17,25 @@ class WalletTransactionEngine
     // Typed public entry points — wallet code is expressed in the method name.
     //
     // userId resolution:
-    //   WO (buyer)   → order->placer_user_id
+    //   WO (buyer)   → order->payerUserId()  (payer_user_id, falling back to placer)
     //   WS (supplier)→ $supplierId (required; lives on items, not the order row)
     //   WSSG (saze)  → config('financial.system_user_id')
     //   WEY (consult)→ $eliteYARId (required; two possible order columns)
     //   WVAT (vat)   → config('financial.vat_user_id', system_user_id)
     // ─────────────────────────────────────────────────────────────────────────
 
+    // WO از `payerUserId()` می‌آید و نه از `placer_user_id` (فاز ۶). برای هر
+    // سفارشِ معمولی و هر سفارشِ پیش از فاز ۶ این دو یکی هستند؛ فرقشان فقط در
+    // مسیرِ «الیت‌یار برای کارفرما» ظاهر می‌شود، جایی که پول باید از کیف پولِ
+    // کارفرما برداشته شود و استرداد هم به همان‌جا برگردد.
     public function debitBuyer(Order $order, float $amount, string $status, ?string $description = null): void
     {
-        $this->process('-', $amount, FinancialCodes::WALLET_OWNER, $status, $order, $description, (int) $order->placer_user_id);
+        $this->process('-', $amount, FinancialCodes::WALLET_OWNER, $status, $order, $description, $order->payerUserId());
     }
 
     public function creditBuyer(Order $order, float $amount, string $status, ?string $description = null): void
     {
-        $this->process('+', $amount, FinancialCodes::WALLET_OWNER, $status, $order, $description, (int) $order->placer_user_id);
+        $this->process('+', $amount, FinancialCodes::WALLET_OWNER, $status, $order, $description, $order->payerUserId());
     }
 
     public function debitSupplier(Order $order, float $amount, string $status, int $supplierId, ?string $description = null): void
@@ -200,7 +204,7 @@ class WalletTransactionEngine
     private function resolveUserId(string $code, Order $order): int
     {
         return match ($code) {
-            FinancialCodes::WALLET_OWNER => (int) $order->placer_user_id,
+            FinancialCodes::WALLET_OWNER => $order->payerUserId(),
 
             // Supplier user is stored on order items, not the order itself;
             // callers must always pass $targetUserId explicitly for WALLET_SUPPLIER.

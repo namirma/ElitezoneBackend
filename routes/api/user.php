@@ -110,6 +110,10 @@ Route::middleware(['optional.sanctum', 'attach.price.category'])->group(function
         // پیش‌فاکتور سبدِ هنوز ثبت‌نشده — سند مالی است، پس مهمان اجازه ندارد.
         // هیچ سفارشی ساخته نمی‌شود و هیچ رکورد Invoice/شمارهٔ سندی مصرف نمی‌شود.
         Route::get('/pre-invoice', 'preInvoice')->middleware('auth:sanctum');
+        // الیت‌یار سبد را برای کارفرما پیامک می‌کند (فاز ۶). throttle چون هر
+        // فراخوانی یک پیامکِ پولی می‌فرستد.
+        Route::post('/payment-link', [CheckoutController::class, 'sendPaymentLink'])
+            ->middleware(['auth:sanctum', 'throttle:sms']);
     });
 });
 
@@ -125,6 +129,15 @@ Route::middleware(['auth:sanctum', 'attach.price.category'])->group(function () 
         Route::post('/reserve', 'reserve')->middleware(['idempotency', 'throttle:financial', EnsureRoleIsSelected::class]);
         // پیش‌نمایش کد تخفیف (throttle تا brute-force کد ممکن نباشد)
         Route::post('/coupon-preview', 'couponPreview')->middleware('throttle:10,1');
+
+        // ── «خرید برای دیگری» (فاز ۶) ────────────────────────────────────────
+        //
+        // الیت‌یار سبد را می‌بندد و کارفرما می‌پردازد. لینک توکن ندارد: کارفرما
+        // در هر حال باید وارد حساب شود تا از کیف پولش پرداخت کند، پس خودِ
+        // احراز هویت گاردِ دسترسی است و `assertPayableBy` تطبیق را می‌سنجد.
+        Route::get('/pay-for/{cart}', 'showPaymentLink');
+        Route::post('/pay-for/{cart}', 'payForBeneficiary')
+            ->middleware(['idempotency', 'throttle:financial', EnsureRoleIsSelected::class]);
     });
 });
 

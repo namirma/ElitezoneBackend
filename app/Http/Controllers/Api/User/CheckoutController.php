@@ -10,12 +10,15 @@ use App\Exceptions\InsufficientBalanceException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Order\ReserveFromCartRequest;
 use App\Http\Requests\Order\StoreOrderRequest;
+use App\Http\Resources\Cart\CartResource;
 use App\Http\Resources\Order\OrderResource;
 use App\Models\Cart;
 use App\Models\Order;
 use App\Models\SupplierProfile;
+use App\Models\User;
 use App\Models\WalletTransaction;
 use App\Services\Cart\CartCheckoutTotals;
+use App\Services\Cart\CartPaymentLinkService;
 use App\Services\Cart\CartResolver;
 use App\Services\InventoryService;
 use App\Services\Marketing\CouponService;
@@ -117,6 +120,14 @@ class CheckoutController extends Controller
             return error(__('checkout.cart_is_empty'), [], 400);
         }
 
+        // تصمیم مدیریت (پرسش ۳، گزینه‌ی الف): وقتی سبد برای کارفرما بسته شده،
+        // پرداخت **همیشه** از کیف پول اوست. بدون این گارد، الیت‌یار می‌توانست
+        // همان سبد را از کیف پول خودش بپردازد و روی همان سفارش کمیسیون هم
+        // بگیرد — دقیقاً نقصی که فاز ۶ برای بستنش آمده.
+        if ($cart->isForBeneficiary()) {
+            return error(__('checkout.elite_yar_cannot_pay_for_beneficiary'), [], 422);
+        }
+
         $branch = $branchResolver->resolve($user, $totals->finalAmountFor($cart, $user));
 
         if ($branch->branch === PaymentBranch::RESERVE) {
@@ -128,7 +139,7 @@ class CheckoutController extends Controller
         }
 
         return $this->createAndSettle(
-            $request,
+            PlaceOrderData::fromRequest($request),
             $user,
             Order::STATUS_PROCESSING,
             fn (Order $order) => $settle->execute($order),
@@ -158,6 +169,11 @@ class CheckoutController extends Controller
 
         if (! $cart || $cart->items->isEmpty()) {
             return error(__('checkout.cart_is_empty'), [], 400);
+        }
+
+        // همان گاردِ `pay()` — رزرو هم پرداخت است و از کیف پول کسر می‌کند.
+        if ($cart->isForBeneficiary()) {
+            return error(__('checkout.elite_yar_cannot_pay_for_beneficiary'), [], 422);
         }
 
         // الحاقیه‌ی ۱، تغییر ۲: در پنجره‌ی کوتاه، تأییدِ صریحِ خریدار الزامی است.
@@ -200,7 +216,7 @@ class CheckoutController extends Controller
         $graceHours = $deadlineResolver->graceHoursFor($supplierProfile);
 
         return $this->createAndSettle(
-            $request,
+            PlaceOrderData::fromRequest($request),
             $user,
             Order::STATUS_RESERVED,
             fn (Order $order) => $settle->execute($order, $reserveAmount, $deadline, $graceHours),
@@ -215,22 +231,130 @@ class CheckoutController extends Controller
      * ترتیب: سفارش → موجودی → پول. اگر هر کدام شکست بخورد هیچ‌کدام نمی‌مانند و
      * پولِ کاربر دست‌نخورده در کیف پول است.
      */
+    /**
+     * POST /cart/payment-link — الیت‌یار سبد را برای کارفرما می‌فرستد (فاز ۶).
+     *
+     * اعتبارِ لینک ستون جداگانه‌ای ندارد: همان `carts.parked_until` است، یعنی
+     * `reserve_time` تأمین‌کننده (تصمیم پرسش ۴). وقتی سبد منقضی شود لینک هم
+     * می‌میرد و موجودی آزاد می‌شود (تصمیم پرسش ۵) — بدون هیچ کرونِ تازه‌ای.
+     */
+    public function sendPaymentLink(
+        Request $request,
+        CartPaymentLinkService $links,
+    ): JsonResponse {
+        $request->validate([
+            'beneficiary_user_id' => ['required', 'integer', 'exists:users,id'],
+        ]);
+
+        $user = Auth::user();
+        $cart = Cart::queryForUser($user->id)->with('items')->first();
+
+        if (! $cart) {
+            return error(__('checkout.cart_is_empty'), [], 400);
+        }
+
+        return success(
+            $links->issue($user, $cart, (int) $request->integer('beneficiary_user_id')),
+            __('checkout.payment_link_sent')
+        );
+    }
+
+    /**
+     * GET /checkout/pay-for/{cart} — کارفرما سبدی را که الیت‌یار بسته می‌بیند.
+     *
+     * شاخه‌ی پرداخت در برابر کیف پولِ **کارفرما** حساب می‌شود، نه الیت‌یار —
+     * او کسی است که قرار است بپردازد.
+     */
+    public function showPaymentLink(
+        Cart $cart,
+        CartPaymentLinkService $links,
+        PaymentBranchResolver $branchResolver,
+        CartCheckoutTotals $totals,
+    ): JsonResponse {
+        $employer = Auth::user();
+        $links->assertPayableBy($cart, $employer);
+
+        // عمداً از `CartResponseBuilder::build()` استفاده نمی‌شود.
+        //
+        // آن متد سبد را با نقشِ قیمتیِ **کاربرِ درخواستِ جاری** دوباره قیمت
+        // می‌زند و نتیجه را روی ردیف‌ها می‌نویسد. اینجا کاربرِ جاری کارفرماست،
+        // پس صدازدنش قیمتِ سبدی را که الیت‌یار بسته بی‌صدا عوض می‌کرد — یعنی
+        // کارفرما عددی غیر از آنچه در لینک به او نشان داده شده می‌پرداخت.
+        $cart->loadMissing(['items.productVariant.product', 'user']);
+
+        $cartOwner = $cart->user;
+
+        return success([
+            'cart' => new CartResource($cart),
+            'final_amount' => (string) $totals->finalAmountFor($cart, $cartOwner),
+            'payment' => $branchResolver->resolve($employer, $totals->finalAmountFor($cart, $cartOwner))->toArray(),
+            'expires_at' => $cart->{Cart::PARKED_UNTIL}?->toIso8601String(),
+            'prepared_by' => [
+                'id' => $cartOwner?->id,
+                // getAttribute — larastan بدون ide-helper این ستون را نمی‌شناسد.
+                'name' => $cartOwner?->getAttribute('name'),
+            ],
+        ], 'global.received_successfully');
+    }
+
+    /**
+     * POST /checkout/pay-for/{cart} — کارفرما پرداخت می‌کند و سفارش ساخته می‌شود.
+     *
+     * بدنه‌ای گرفته نمی‌شود: آدرس، روش ارسال و کد تخفیف را الیت‌یار انتخاب کرده
+     * و روی سبد نشسته‌اند (`PlaceOrderData::fromCart`). سفارش با ثبت‌کننده‌ی
+     * الیت‌یار، ذی‌نفعِ کارفرما و **پرداخت‌کننده‌ی کارفرما** ساخته می‌شود.
+     */
+    public function payForBeneficiary(
+        Request $request,
+        Cart $cart,
+        CartPaymentLinkService $links,
+        PaymentBranchResolver $branchResolver,
+        CartCheckoutTotals $totals,
+        ProcessPreScalePaymentAction $settle,
+        InventoryService $inventory,
+    ): JsonResponse {
+        $employer = Auth::user();
+        $links->assertPayableBy($cart, $employer);
+
+        $cartOwner = $cart->user;
+
+        if (! $cartOwner) {
+            return error(__('checkout.cart_is_empty'), [], 400);
+        }
+
+        $branch = $branchResolver->resolve($employer, $totals->finalAmountFor($cart, $cartOwner));
+
+        if ($branch->branch !== PaymentBranch::WALLET) {
+            return error(__('checkout.top_up_wallet_first'), ['branch' => $branch->toArray()], 422);
+        }
+
+        return $this->createAndSettle(
+            PlaceOrderData::fromCart($cart, $request),
+            $cartOwner,
+            Order::STATUS_PROCESSING,
+            fn (Order $order) => $settle->execute($order),
+            $inventory,
+            'checkout.order_paid',
+            payer: $employer,
+        );
+    }
+
     private function createAndSettle(
-        StoreOrderRequest $request,
+        PlaceOrderData $orderData,
         $user,
         string $initialStatus,
         callable $settle,
         InventoryService $inventory,
         string $messageKey,
+        ?User $payer = null,
     ): JsonResponse {
-        $orderData = PlaceOrderData::fromRequest($request);
-
         try {
-            $order = DB::transaction(function () use ($user, $orderData, $initialStatus, $settle, $inventory) {
+            $order = DB::transaction(function () use ($user, $orderData, $initialStatus, $settle, $inventory, $payer) {
                 $order = $this->placeOrderAction->execute(
                     $user->fresh(['cart.items.productVariant']),
                     $orderData,
                     $initialStatus,
+                    $payer,
                 );
 
                 // موجودی در لحظه‌ی پرداخت/رزرو کسر می‌شود (بند ۶.۲)، و

@@ -22,9 +22,13 @@ class WalletPaymentController extends Controller
     public function pay(PayWithWalletRequest $request)
     {
         $user = Auth::user();
+        // larastan نتیجه‌ی `findOrFail` را `Model|Collection` می‌بیند.
+        /** @var Order $order */
         $order = Order::findOrFail($request->order_id);
 
-        if ($order->{Order::PLACER_USER_ID} !== $user->id) {
+        // پرداخت‌کننده و نه ثبت‌کننده (فاز ۶): کسی مجاز به پرداخت است که پول از
+        // کیف پولِ او برداشته می‌شود. برای سفارش‌های معمولی این دو یکی هستند.
+        if ($order->payerUserId() !== $user->id) {
             return error(__('payment.error.unauthorized'), [], Response::HTTP_FORBIDDEN);
         }
 

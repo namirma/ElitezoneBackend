@@ -66,4 +66,6 @@ return [
         'database_error' => 'خطای پایگاه داده رخ داده است.',
         'internal_server_error' => 'خطای داخلی سرور رخ داده است.',
     ],
+
+    'elite_yar' => 'الیت‌یار شما',
 ];

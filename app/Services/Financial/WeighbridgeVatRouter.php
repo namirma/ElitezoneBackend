@@ -46,7 +46,15 @@ class WeighbridgeVatRouter
         WeighbridgeReconcileResult $result,
     ): float {
         $eliteYARUserId = (int) ($order->{Order::ELITE_YAR_USER_ID} ?? 0);
-        $buyerId = (int) $order->placer_user_id;
+
+        // خریدار = پرداخت‌کننده، نه ثبت‌کننده (فاز ۶).
+        //
+        // این گارد یعنی «به کسی که برای خودش خریده کمیسیون نده». با
+        // `placer_user_id` در مسیرِ «الیت‌یار برای کارفرما» همیشه فعال می‌شد —
+        // چون آنجا الیت‌یار خودش ثبت‌کننده است — و کمیسیونِ همان مسیری را که
+        // فاز ۶ ممکن می‌کند بی‌صدا صفر می‌کرد. پرداخت‌کننده کارفرماست، پس
+        // الیت‌یار درست شناخته می‌شود و کمیسیونش را می‌گیرد.
+        $buyerId = $order->payerUserId();
 
         if (! $eliteYARUserId || $eliteYARUserId === $buyerId) {
             return 0.0;
