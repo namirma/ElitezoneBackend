@@ -294,6 +294,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
             // Supplier operations
             Route::controller(SupplierOrderController::class)->group(function () {
+                // تمدید مهلت رزرو — فقط افزایشی، فقط تأمین‌کننده (بند ۳.۴).
+                Route::put('/{order}/reserve-deadline', 'extendReserveDeadline')->whereNumber('order');
                 Route::post('/{order}/espadana', 'issueEspadanaCommand')->whereNumber('order');
                 Route::post('/{order}/receipt', 'attachPaymentReceipt')->whereNumber('order');
                 // Doc O: supplier submits Moadian invoice → releases supplier VAT hold

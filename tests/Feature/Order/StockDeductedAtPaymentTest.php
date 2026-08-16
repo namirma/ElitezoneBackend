@@ -11,6 +11,7 @@ use App\Models\OrderUnit;
 use App\Models\ProductVariant;
 use App\Models\Setting;
 use App\Models\ShippingMethod;
+use App\Models\SupplierProfile;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Services\Invoice\InvoiceGenerator;
@@ -47,6 +48,8 @@ class StockDeductedAtPaymentTest extends TestCase
 
     private ShippingMethod $shipping;
 
+    private int $supplierId;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -69,6 +72,15 @@ class StockDeductedAtPaymentTest extends TestCase
         // همان کاربر واریز می‌کند و بدونش ثبت سفارش رد می‌شود.
         $supplier = User::factory()->create();
         Wallet::create([Wallet::USER_ID => $supplier->id, Wallet::BALANCE => 0, Wallet::BALANCE_HOLD => 0]);
+
+        // رزرو به یک پنجره‌ی قیمتِ معتبر نیاز دارد (بند ۳.۲/۳.۴): بدون
+        // `reserve_time` مهلتی برای قفل‌کردن وجود ندارد و رزرو ۴۲۲ می‌گیرد.
+        SupplierProfile::create([SupplierProfile::USER_ID => $supplier->id])
+            ->forceFill([
+                SupplierProfile::STATUS => SupplierProfile::STATUS_APPROVED,
+                SupplierProfile::RESERVE_TIME => now()->addDays(3),
+            ])->save();
+        $this->supplierId = $supplier->id;
 
         $this->factory = $this->makeFactory();
         $this->factory->forceFill(['supplier_user_id' => $supplier->id])->save();
@@ -134,6 +146,7 @@ class StockDeductedAtPaymentTest extends TestCase
         ]);
 
         $cart = Cart::create([Cart::USER_ID => $this->user->id]);
+        $cart->forceFill([Cart::SUPPLIER_USER_ID => $this->supplierId])->save();
         $cart->items()->create([
             CartItem::PRODUCT_VARIANT_ID => $this->variant->id,
             CartItem::FACTORY_ID => $this->factory->id,

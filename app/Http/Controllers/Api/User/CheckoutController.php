@@ -13,6 +13,7 @@ use App\Http\Requests\Order\StoreOrderRequest;
 use App\Http\Resources\Order\OrderResource;
 use App\Models\Cart;
 use App\Models\Order;
+use App\Models\SupplierProfile;
 use App\Models\WalletTransaction;
 use App\Services\Cart\CartCheckoutTotals;
 use App\Services\Cart\CartResolver;
@@ -22,6 +23,7 @@ use App\Services\Payment\PaymentBranch;
 use App\Services\Payment\PaymentBranchResolver;
 use App\Services\Payment\PaymentGatewayFactory;
 use App\Services\Payment\ReserveWarningResolver;
+use App\Services\Sales\ReserveDeadlineResolver;
 use App\Services\Sales\SalesSettings;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -147,6 +149,7 @@ class CheckoutController extends Controller
         ReserveWarningResolver $warningResolver,
         CartCheckoutTotals $totals,
         SalesSettings $settings,
+        ReserveDeadlineResolver $deadlineResolver,
         ProcessReservationPaymentAction $settle,
         InventoryService $inventory,
     ): JsonResponse {
@@ -168,6 +171,24 @@ class CheckoutController extends Controller
             );
         }
 
+        // مهلتِ رزرو پیش از هر کارِ دیگری حل می‌شود: `null` یعنی پنجره‌ی قیمتِ
+        // تأمین‌کننده منقضی شده و اصلاً چیزی برای قفل‌کردن وجود ندارد.
+        //
+        // این حالت واقعاً ممکن است — بند ۳.۲ سبدهای منتظر را زنده نگه می‌دارد،
+        // پس کاربری با سبدِ منتظر می‌تواند دکمه‌ی رزرو را بزند. بدون این گارد و
+        // با `reserve_auto_extend_minutes = 0`، مهلت برابرِ یک لحظه‌ی گذشته
+        // می‌شد: رزروی که همان لحظه‌ی تولد مرده است.
+        $supplierProfile = SupplierProfile::where(
+            SupplierProfile::USER_ID,
+            $cart->{Cart::SUPPLIER_USER_ID}
+        )->first();
+
+        $deadline = $deadlineResolver->resolve($supplierProfile);
+
+        if ($deadline === null) {
+            return error(__('supplier.prices_expired'), [], 422);
+        }
+
         $reserveAmount = $settings->reserveValue();
         $branch = $branchResolver->resolve($user, $totals->finalAmountFor($cart, $user));
 
@@ -176,15 +197,13 @@ class CheckoutController extends Controller
             return error(__('checkout.top_up_wallet_first'), ['branch' => $branch->toArray()], 422);
         }
 
+        $graceHours = $deadlineResolver->graceHoursFor($supplierProfile);
+
         return $this->createAndSettle(
             $request,
             $user,
             Order::STATUS_RESERVED,
-            fn (Order $order) => $settle->execute(
-                $order,
-                $reserveAmount,
-                validityHours: (int) config('financial.reservation_validity_hours', 2),
-            ),
+            fn (Order $order) => $settle->execute($order, $reserveAmount, $deadline, $graceHours),
             $inventory,
             'orders.reservation_successful',
         );

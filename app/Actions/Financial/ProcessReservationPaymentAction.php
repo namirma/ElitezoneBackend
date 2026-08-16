@@ -8,6 +8,7 @@ use App\Constants\FinancialCodes;
 use App\Models\Order;
 use App\Services\Financial\WalletTransactionEngine;
 use App\Services\Invoice\InvoiceGenerator;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -18,7 +19,11 @@ class ProcessReservationPaymentAction
         protected InvoiceGenerator $invoiceGenerator,
     ) {}
 
-    public function execute(Order $order, float $reserveAmount, int $validityHours = 2): void
+    /**
+     * @param  CarbonInterface  $deadline  مهلتِ رزرو، از `ReserveDeadlineResolver`.
+     * @param  int  $graceHours  اسنپ‌شاتِ ارفاق (الحاقیه‌ی ۱، تغییر ۳).
+     */
+    public function execute(Order $order, float $reserveAmount, CarbonInterface $deadline, int $graceHours): void
     {
         if ($this->isAlreadyProcessed($order)) {
             Log::channel('financial')->warning("ProcessReservationPaymentAction skipped: order {$order->id} already reserved.");
@@ -30,7 +35,7 @@ class ProcessReservationPaymentAction
             throw new \InvalidArgumentException('مبلغ رزرو باید بزرگ‌تر از صفر باشد.');
         }
 
-        DB::transaction(function () use ($order, $reserveAmount, $validityHours) {
+        DB::transaction(function () use ($order, $reserveAmount, $deadline, $graceHours) {
 
             $locked = Order::where('id', $order->id)->lockForUpdate()->first();
 
@@ -51,7 +56,14 @@ class ProcessReservationPaymentAction
             $locked->forceFill([
                 Order::STATUS => Order::STATUS_RESERVED,
                 Order::PAYMENT_TO_RESERVE => $reserveAmount,
-                Order::RESERVATION_EXPIRES_AT => now()->addHours($validityHours),
+                // هر سه با هم نوشته می‌شوند: مهلتِ جاری، مهلتِ اولیه (که هرگز
+                // عوض نمی‌شود و مبنای پنجره‌ی لغو خریدار است) و اسنپ‌شاتِ ارفاق.
+                Order::RESERVE_DEADLINE => $deadline,
+                Order::RESERVE_DEADLINE_ORIGINAL => $deadline,
+                Order::RESERVE_GRACE_HOURS => $graceHours,
+                // ستون بازنشسته — تا فاز ۱۴ هم‌زمان پر می‌شود تا مصرف‌کننده‌های
+                // پورت‌نشده (گزارش‌های ادمین) بی‌صدا خالی نبینند.
+                Order::RESERVATION_EXPIRES_AT => $deadline,
             ])->save();
 
             // ── صدور اسناد مالی رزرو (E + F) ────────────────────────────

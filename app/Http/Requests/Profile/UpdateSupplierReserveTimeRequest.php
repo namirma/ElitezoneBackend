@@ -32,6 +32,9 @@ class UpdateSupplierReserveTimeRequest extends FormRequest
             // پروژه اینجا موضوعیت ندارد.
             'reserve_time' => ['required', 'date'],
             'reserve_auto_extend_minutes' => ['sometimes', 'integer', 'min:0', 'max:10080'],
+            // الحاقیه‌ی ۱، تغییر ۳ — override تأمین‌کننده روی مهلت ارفاق.
+            // `nullable` یعنی «پیروی از تنظیم بک‌آفیس»؛ صفر انتخابِ دیگری است.
+            'reserve_grace_hours' => ['sometimes', 'nullable', 'integer', 'min:0', 'max:168'],
         ];
     }
 
@@ -67,6 +70,9 @@ class UpdateSupplierReserveTimeRequest extends FormRequest
             'reserve_auto_extend_minutes.integer' => __('supplier.reserve_time.extend_invalid'),
             'reserve_auto_extend_minutes.min' => __('supplier.reserve_time.extend_invalid'),
             'reserve_auto_extend_minutes.max' => __('supplier.reserve_time.extend_invalid'),
+            'reserve_grace_hours.integer' => __('supplier.reserve_time.grace_invalid'),
+            'reserve_grace_hours.min' => __('supplier.reserve_time.grace_invalid'),
+            'reserve_grace_hours.max' => __('supplier.reserve_time.grace_invalid'),
         ];
     }
 }

@@ -70,6 +70,7 @@ class SupplierController extends Controller
         $supplier->update($request->safe()->only([
             SupplierProfile::RESERVE_TIME,
             SupplierProfile::RESERVE_AUTO_EXTEND_MINUTES,
+            SupplierProfile::RESERVE_GRACE_HOURS,
         ]));
 
         // خارج از تراکنش عمداً نیست — این یک به‌روزرسانیِ تکی است و پیامک‌ها

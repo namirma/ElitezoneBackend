@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Api\User;
 
 use App\Actions\Financial\RecordSupplierMoadianInvoiceAction;
+use App\Actions\Order\ExtendReserveDeadlineAction;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Order\ExtendReserveDeadlineRequest;
 use App\Http\Requests\Order\SubmitMoadianInvoiceRequest;
 use App\Http\Requests\Order\UploadOrderReceiptRequest;
 use App\Http\Resources\Order\OrderResource;
@@ -147,6 +149,26 @@ class SupplierOrderController extends Controller
             ->paginate($this->perPage(20));
 
         return success(OrderResource::collection($orders), __('admin.financial.pending_moadian_received'));
+    }
+
+    /**
+     * PUT /profile/orders/{order}/reserve-deadline — تمدید مهلت رزرو (بند ۳.۴).
+     *
+     * تمدید حقِ تأمین‌کننده است نه خریدار: کالا برای خریدار کنار گذاشته شده و
+     * هزینه‌ی این قفلِ موجودی را تأمین‌کننده می‌دهد. در مدل جدید رایگان است —
+     * `PayHoldFeeAction` و هزینه‌ی ۵ میلیون تومانی‌اش حذف شدند.
+     */
+    public function extendReserveDeadline(
+        ExtendReserveDeadlineRequest $request,
+        Order $order,
+        ExtendReserveDeadlineAction $action,
+    ): JsonResponse {
+        $this->authorize('manageAsSupplier', $order);
+
+        $updated = $action->execute($order, $request->date('reserve_deadline'));
+        $updated->loadMissing(Order::resourceRelations());
+
+        return success(new OrderResource($updated), __('orders.reserve_deadline.extended'));
     }
 
     /**

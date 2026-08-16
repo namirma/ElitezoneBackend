@@ -70,6 +70,14 @@ class SupplierProfile extends Model
     /** تمدید خودکار برای رزروِ دیرهنگام، به دقیقه (بند ۲.۲). */
     const RESERVE_AUTO_EXTEND_MINUTES = 'reserve_auto_extend_minutes';
 
+    /**
+     * override تأمین‌کننده روی مهلتِ ارفاق (الحاقیه‌ی ۱، تغییر ۳).
+     *
+     * `null` یعنی «پیروی از تنظیم بک‌آفیس» — و صفر یک انتخابِ معتبرِ دیگر است
+     * («هیچ ارفاقی نده»)، پس این دو نباید یکی شمرده شوند.
+     */
+    const RESERVE_GRACE_HOURS = 'reserve_grace_hours';
+
     const CREATED_AT = 'created_at';
 
     const UPDATED_AT = 'updated_at';
@@ -97,6 +105,7 @@ class SupplierProfile extends Model
         // «کاهش ممنوع» در `UpdateSupplierReserveTimeRequest` اعمال می‌شوند.
         self::RESERVE_TIME,
         self::RESERVE_AUTO_EXTEND_MINUTES,
+        self::RESERVE_GRACE_HOURS,
         // TRANS_COMMISSION/TRANS_VAT/STATUS عمداً fillable نیستند — فقط ادمین
         // (updateFormula/approve/reject، همه با forceFill) آن‌ها را تغییر می‌دهد؛
         // mass-assignment از سمت کاربر نباید بتواند فرمول تسویه یا وضعیت احراز را دستکاری کند.
@@ -127,6 +136,7 @@ class SupplierProfile extends Model
         self::TRANS_VAT => 'boolean',
         self::RESERVE_TIME => 'datetime',
         self::RESERVE_AUTO_EXTEND_MINUTES => 'integer',
+        self::RESERVE_GRACE_HOURS => 'integer',
     ];
 
     public function user(): BelongsTo

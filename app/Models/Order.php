@@ -100,7 +100,26 @@ class Order extends Model
 
     public const WAYBILL_REF = 'waybill_ref';
 
+    /**
+     * ⚠️ بازنشسته — جایش را `RESERVE_DEADLINE` گرفته (بند ۳.۴).
+     * در فاز پاک‌سازی (۱۴) حذف می‌شود؛ مهاجرت‌ها افزایشی‌اند.
+     */
     public const RESERVATION_EXPIRES_AT = 'reservation_expires_at';
+
+    /** مهلت جاری رزرو — تمدید این را جلو می‌برد. */
+    public const RESERVE_DEADLINE = 'reserve_deadline';
+
+    /**
+     * مهلت لحظه‌ی رزرو؛ هرگز تغییر نمی‌کند.
+     *
+     * پنجره‌ی لغو خریدار دقیقاً **بین این و `RESERVE_DEADLINE`** است: تا مهلتِ
+     * اولیه نمی‌تواند لغو کند (کالا کنار گذاشته شده)، ولی بازه‌ای که
+     * تأمین‌کننده اضافه کرده چیزی است که او نخواسته بود.
+     */
+    public const RESERVE_DEADLINE_ORIGINAL = 'reserve_deadline_original';
+
+    /** اسنپ‌شات مهلت ارفاق در لحظه‌ی رزرو (الحاقیه‌ی ۱، تغییر ۳). */
+    public const RESERVE_GRACE_HOURS = 'reserve_grace_hours';
 
     public const PARTIAL_PAYMENT_AMOUNT = 'partial_payment_amount';
 
@@ -111,14 +130,6 @@ class Order extends Model
     // =========================================================================
     //  Constants (Business Logic / Statuses)
     // =========================================================================
-    /**
-     * ⚠️ موقت — تا فاز ۴ (جداسازی موجودی از ثبت سفارش).
-     *
-     * طبق بند ۵.۲ سند بازطراحی این وضعیت حذف می‌شود، ولی تنها نویسنده‌اش
-     * `PlaceOrderAction` است که در فاز ۴ بازنویسی می‌شود («رکورد Order فقط وقتی
-     * ساخته می‌شود که پول قطعی نشسته باشد»). حذفِ ثابت پیش از حذفِ نویسنده‌اش
-     * فقط build را می‌شکند، پس اینجا می‌ماند و در همان فاز ۴ برداشته می‌شود.
-     */
     public const STATUS_RESERVED = 'reserved';
 
     public const STATUS_PROCESSING = 'processing';
@@ -281,6 +292,9 @@ class Order extends Model
         self::PREPARED_AT => 'datetime',
         self::SHIPPED_AT => 'datetime',
         self::RESERVATION_EXPIRES_AT => 'datetime',
+        self::RESERVE_DEADLINE => 'datetime',
+        self::RESERVE_DEADLINE_ORIGINAL => 'datetime',
+        self::RESERVE_GRACE_HOURS => 'integer',
         self::PARTIAL_PAYMENT_AMOUNT => 'decimal:2',
         self::FINAL_AMOUNT => 'decimal:2',
 
@@ -312,6 +326,46 @@ class Order extends Model
     // =========================================================================
 
     /**
+     * این کاربر در این سفارش چه نقش‌هایی دارد — خریدار / تأمین‌کننده / الیت‌یار.
+     *
+     * تنها مرجعِ این سؤال. هم مجوزِ دانلودِ سند (`OrderInvoiceController`) و هم
+     * انتخابِ سندِ دکمهٔ دانلود (`OrderResource`) از همین می‌خوانند، تا «چه کسی
+     * می‌تواند ببیند» و «به چه چیزی لینک می‌دهیم» نتوانند با هم اختلاف پیدا کنند —
+     * دقیقاً همان اختلافی که دکمهٔ دانلودِ سوپلایر را به یک لینکِ ۴۰۳ تبدیل کرده بود.
+     *
+     * یک کاربر می‌تواند هم‌زمان چند نقش داشته باشد (الیت‌یاری که برای خودش می‌خرد).
+     *
+     * @return list<string>
+     */
+    /**
+     * آیا خریدار همین حالا می‌تواند این رزرو را لغو کند؟ — بند ۳.۴.
+     *
+     * پنجره دقیقاً بازه‌ای است که **تأمین‌کننده اضافه کرده**:
+     * `(reserve_deadline_original, reserve_deadline]`.
+     *
+     * منطقش: تا مهلتِ اولیه کالا به درخواستِ خودِ خریدار کنار گذاشته شده و
+     * تأمین‌کننده هزینه‌ی قفلِ موجودی را می‌دهد، پس خروجِ زودهنگام حقِ او نیست.
+     * ولی بازه‌ای که تأمین‌کننده بعداً اضافه کرده چیزی است که خریدار نخواسته
+     * بود — در آن بازه حقِ خروج دارد.
+     */
+    public function isInBuyerCancelWindow(): bool
+    {
+        if ($this->{self::STATUS} !== self::STATUS_RESERVED) {
+            return false;
+        }
+
+        $original = $this->{self::RESERVE_DEADLINE_ORIGINAL};
+        $current = $this->{self::RESERVE_DEADLINE};
+
+        if ($original === null || $current === null) {
+            return false;
+        }
+
+        // تمدیدی رخ نداده → پنجره‌ای وجود ندارد.
+        return $current->greaterThan($original) && now()->greaterThan($original);
+    }
+
+    /**
      * Relations required by OrderResource::toArray().
      *
      * Use this whenever constructing an OrderResource or OrderResource::collection()
@@ -336,6 +390,10 @@ class Order extends Model
             'shipments.originFactoryLocation',
             'shipments.destinationAddress.city',
             'shipments.destinationAddress.province',
+            // بدون این، OrderResource::coupon_code همیشه silently غایب بود چون
+            // whenLoaded('coupon') هرگز true نمی‌شد (نه فقط در چک‌اوت — همه کنترلرهای
+            // سفارش که این متد را صدا می‌زنند).
+            'coupon',
         ];
     }
 

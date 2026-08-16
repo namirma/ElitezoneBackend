@@ -83,7 +83,7 @@ class ProcessReservationPaymentActionTest extends TestCase
     {
         $balanceBefore = $this->wallet->balance;
 
-        $this->action->execute($this->order, $this->threshold, validityHours: 2);
+        $this->action->execute($this->order, $this->threshold, now()->addHours(2), graceHours: 0);
 
         $this->order->refresh();
         $this->wallet->refresh();
@@ -106,7 +106,7 @@ class ProcessReservationPaymentActionTest extends TestCase
     #[Test]
     public function it_stores_payment_to_reserve_on_the_order(): void
     {
-        $this->action->execute($this->order, $this->threshold, validityHours: 2);
+        $this->action->execute($this->order, $this->threshold, now()->addHours(2), graceHours: 0);
 
         $this->order->refresh();
         $this->assertEquals(
@@ -127,7 +127,7 @@ class ProcessReservationPaymentActionTest extends TestCase
 
         $this->expectException(InsufficientBalanceException::class);
 
-        $this->action->execute($this->order, $this->threshold, validityHours: 2);
+        $this->action->execute($this->order, $this->threshold, now()->addHours(2), graceHours: 0);
     }
 
     #[Test]
@@ -136,7 +136,7 @@ class ProcessReservationPaymentActionTest extends TestCase
         $this->wallet->update([Wallet::BALANCE => 0]);
 
         try {
-            $this->action->execute($this->order, $this->threshold, validityHours: 2);
+            $this->action->execute($this->order, $this->threshold, now()->addHours(2), graceHours: 0);
         } catch (InsufficientBalanceException) {
             // expected
         }
@@ -153,7 +153,7 @@ class ProcessReservationPaymentActionTest extends TestCase
     #[Test]
     public function it_respects_the_validity_hours_parameter(): void
     {
-        $this->action->execute($this->order, $this->threshold, validityHours: 48);
+        $this->action->execute($this->order, $this->threshold, now()->addHours(48), graceHours: 0);
 
         $this->order->refresh();
 

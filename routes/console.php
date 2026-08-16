@@ -88,6 +88,12 @@ Schedule::command('carts:prune-guests')
     ->withoutOverlapping()
     ->onOneServer();
 
+// رزروهایی که مهلت **و** بازه‌ی ارفاقشان تمام شده (بند ۳.۴ / ۱۰.۳).
+Schedule::command('orders:expire-reserves')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->onOneServer();
+
 // ── سبدِ مهلت‌دار (Park) — بند ۳.۱ و ۱۰.۳ سند بازطراحی ───────────────────
 //
 // انقضا هر دقیقه اجرا می‌شود چون مهلتِ سبد دقیق است و کاربر شمارشِ معکوس را
