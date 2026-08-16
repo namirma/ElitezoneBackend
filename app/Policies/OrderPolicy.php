@@ -88,7 +88,14 @@ class OrderPolicy
         // پنجره‌ی لغوِ خریدار روی رزرو (بین `reserve_deadline_original` و
         // `reserve_deadline`، بند ۳.۴) در فاز ۵ باز می‌شود؛ آن‌وقت این متد شرطِ
         // مالکیتِ زیر را دوباره لازم دارد. ادمین از `before()` رد می‌شود.
-        return Response::deny(__('orders.cannot_cancel'));
+        // پنجره‌ی لغو خریدار = بازه‌ای که تأمین‌کننده اضافه کرده (بند ۳.۴).
+        if (! $order->isInBuyerCancelWindow()) {
+            return Response::deny(__('orders.reserve_deadline.cancel_window_closed'));
+        }
+
+        return ($order->placer_user_id === $user->id || $order->beneficiary_user_id === $user->id)
+            ? Response::allow()
+            : Response::deny(__('auth.policy.cancel_denied'));
     }
 
     /**

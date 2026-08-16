@@ -6,6 +6,7 @@ use App\Actions\Financial\ReleaseEliteYARHoldAction;
 use App\Actions\Order\CancelOrderAction;
 use App\Actions\Order\FinalizeInvoiceAction;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\Order\OrderResource;
 use App\Http\Requests\Order\FinalizeOrderInvoiceRequest;
 use App\Http\Requests\Order\SubmitMoadianInvoiceRequest;
 use App\Models\Order;
@@ -36,7 +37,13 @@ class OrderActionController extends Controller
         //
         // پنجره‌ی لغوِ خریدار روی رزرو (بند ۳.۴) در فاز ۵ باز می‌شود و آن‌وقت
         // `$cancelAction` دوباره از اینجا صدا زده می‌شود.
-        return error(__('orders.cannot_cancel'), [], 400);
+        if (! $order->isInBuyerCancelWindow()) {
+            return error(__('orders.reserve_deadline.cancel_window_closed'), [], 400);
+        }
+
+        $cancelAction->execute($order, 'لغو توسط کاربر');
+
+        return success(new OrderResource($order->fresh(Order::resourceRelations())), __('orders.cancelled_successfully'));
     }
 
     /**

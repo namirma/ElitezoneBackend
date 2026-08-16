@@ -91,7 +91,7 @@ class ReservationCompletionLegOrderTest extends TestCase
         ]);
 
         // مرحلهٔ ۱ — رزرو واقعی: خریدار می‌پردازد، سازه بیعانه را **هولد** می‌کند.
-        app(ProcessReservationPaymentAction::class)->execute($this->order, self::RESERVE, validityHours: 2);
+        app(ProcessReservationPaymentAction::class)->execute($this->order, self::RESERVE, now()->addHours(2), graceHours: 0);
 
         // اسنپ‌شاتِ قیمت در لحظهٔ تکمیل: قیمت افت کرده است.
         $this->order->refresh()->forceFill([

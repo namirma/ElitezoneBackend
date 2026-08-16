@@ -3,6 +3,7 @@
 namespace App\Console;
 
 use App\Console\Commands\CancelExpiredOrders;
+use App\Console\Commands\ExpireReserves;
 use App\Console\Commands\PruneGuestCarts;
 use App\Jobs\Analytics\CalculateCustomerRfm;
 use App\Jobs\Analytics\PredictInventoryNeeds;
@@ -16,6 +17,7 @@ class Kernel extends ConsoleKernel
 {
     protected $commands = [
         CancelExpiredOrders::class,
+        ExpireReserves::class,
         PruneGuestCarts::class,
     ];
 
@@ -86,6 +88,12 @@ class Kernel extends ConsoleKernel
         // (خزنده/ربات) هر بار یک ردیف carts می‌سازد که هیچ سیاست نگهداشتی نداشت.
         $schedule->command('carts:prune-guests')
             ->dailyAt('01:30')
+            ->withoutOverlapping()
+            ->onOneServer();
+
+        // رزروهایی که مهلت **و** بازه‌ی ارفاقشان تمام شده (بند ۳.۴ / ۱۰.۳).
+        $schedule->command('orders:expire-reserves')
+            ->everyMinute()
             ->withoutOverlapping()
             ->onOneServer();
 

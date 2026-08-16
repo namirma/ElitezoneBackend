@@ -4,11 +4,12 @@ namespace Tests\Feature\Order;
 
 use App\Models\Cart;
 use App\Models\CartItem;
-use App\Models\FactoryStock;
 use App\Models\Order;
 use App\Models\OrderUnit;
+use App\Models\ProductVariant;
 use App\Models\Setting;
 use App\Models\ShippingMethod;
+use App\Models\SupplierProfile;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Services\Invoice\InvoiceGenerator;
@@ -45,6 +46,8 @@ class StockDeductedAtPaymentTest extends TestCase
 
     private ShippingMethod $shipping;
 
+    private int $supplierId;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -68,18 +71,22 @@ class StockDeductedAtPaymentTest extends TestCase
         $supplier = User::factory()->create();
         Wallet::create([Wallet::USER_ID => $supplier->id, Wallet::BALANCE => 0, Wallet::BALANCE_HOLD => 0]);
 
+        // رزرو به یک پنجره‌ی قیمتِ معتبر نیاز دارد (بند ۳.۲/۳.۴): بدون
+        // `reserve_time` مهلتی برای قفل‌کردن وجود ندارد و رزرو ۴۲۲ می‌گیرد.
+        SupplierProfile::create([SupplierProfile::USER_ID => $supplier->id])
+            ->forceFill([
+                SupplierProfile::STATUS => SupplierProfile::STATUS_APPROVED,
+                SupplierProfile::RESERVE_TIME => now()->addDays(3),
+            ])->save();
+        $this->supplierId = $supplier->id;
+
         $this->factory = $this->makeFactory();
         $this->factory->forceFill(['supplier_user_id' => $supplier->id])->save();
         $this->location = $this->makeLocation($this->factory);
         $this->variant = $this->makeVariant();
         $this->makePrice($this->variant, $this->factory, $this->location, general: 1_000_000, special: 900_000);
 
-        FactoryStock::create([
-            'product_variant_id' => $this->variant->id,
-            'factory_id' => $this->factory->id,
-            'factory_location_id' => $this->location->id,
-            'quantity' => self::STOCK,
-        ]);
+        $this->setStock(self::STOCK);
 
         $this->shipping = ShippingMethod::create([
             ShippingMethod::NAME => 'تست حمل',
@@ -91,11 +98,40 @@ class StockDeductedAtPaymentTest extends TestCase
         Wallet::create([Wallet::USER_ID => $sys->id, Wallet::BALANCE => 0, Wallet::BALANCE_HOLD => 0]);
     }
 
+    /**
+     * موجودی از همان جایی خوانده می‌شود که `setStock` می‌نویسد.
+     *
+     * شاخه‌ی L10 موجودیِ per-origin دارد (`factory_stocks`) و شاخه‌ی L13 هنوز
+     * روی خودِ واریانت نگه می‌دارد. آنچه این تست پین می‌کند «کِی» کسر می‌شود
+     * است نه «کجا»، پس هر دو شاخه با یک فایل کار می‌کنند.
+     */
     private function stockNow(): float
     {
-        return (float) FactoryStock::where('product_variant_id', $this->variant->id)
-            ->where('factory_location_id', $this->location->id)
-            ->value('quantity');
+        if (class_exists(\App\Models\FactoryStock::class)) {
+            return (float) \App\Models\FactoryStock::where('product_variant_id', $this->variant->id)
+                ->where('factory_location_id', $this->location->id)
+                ->value('quantity');
+        }
+
+        return (float) $this->variant->fresh()->{ProductVariant::STOCK_QUANTITY};
+    }
+
+    private function setStock(float $quantity): void
+    {
+        if (class_exists(\App\Models\FactoryStock::class)) {
+            \App\Models\FactoryStock::updateOrCreate(
+                [
+                    'product_variant_id' => $this->variant->id,
+                    'factory_id' => $this->factory->id,
+                    'factory_location_id' => $this->location->id,
+                ],
+                ['quantity' => $quantity],
+            );
+
+            return;
+        }
+
+        $this->variant->forceFill([ProductVariant::STOCK_QUANTITY => $quantity])->save();
     }
 
     private function fillCart(float $kg = 100): Cart
@@ -108,6 +144,7 @@ class StockDeductedAtPaymentTest extends TestCase
         ]);
 
         $cart = Cart::create([Cart::USER_ID => $this->user->id]);
+        $cart->forceFill([Cart::SUPPLIER_USER_ID => $this->supplierId])->save();
         $cart->items()->create([
             CartItem::PRODUCT_VARIANT_ID => $this->variant->id,
             CartItem::FACTORY_ID => $this->factory->id,
@@ -223,9 +260,7 @@ class StockDeductedAtPaymentTest extends TestCase
         $this->fillCart(kg: 100);
         $this->fundWallet(500_000_000);
 
-        FactoryStock::where('product_variant_id', $this->variant->id)
-            ->where('factory_location_id', $this->location->id)
-            ->update(['quantity' => 10]);
+        $this->setStock(10);
 
         Sanctum::actingAs($this->user);
 
