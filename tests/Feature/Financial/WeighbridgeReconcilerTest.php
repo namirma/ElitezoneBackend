@@ -9,6 +9,7 @@ use App\Models\Wallet;
 use App\Services\Financial\SettlementCalculatorService;
 use App\Services\Financial\WeighbridgeReconciler;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -37,28 +38,33 @@ class WeighbridgeReconcilerTest extends TestCase
         $this->reconciler = app(WeighbridgeReconciler::class);
     }
 
+    /**
+     * ‏این دو تست قبلاً clamp را قفل می‌کردند («وزن مبنا = min(actual, WBS)»).
+     * نسخه‌ی ۲ سند در بند ۸.۲ آن قاعده را برداشت، پس طبق قاعده‌ی مخزن
+     * («تستِ رفتارِ عوض‌شده را تغییر بده، حذف نکن») ادعایشان وارونه شده است.
+     */
     #[Test]
-    public function billing_weight_is_capped_at_wbs_on_over_delivery(): void
+    public function billing_weight_is_the_actual_weight_on_over_delivery(): void
     {
         $order = $this->makeOrder(wbs: 10_000.0);
 
         $result = $this->reconciler->reconcile($order, actualWeight: 12_000.0);
 
-        // Spec: billingWeight = min(actual, WBS) — buyer never pays for over-delivery
-        $this->assertSame(10_000.0, $result->billingWeight);
+        $this->assertSame(12_000.0, $result->billingWeight);
+        $this->assertEqualsWithDelta(20.0, $result->overweightPercent, 0.001);
     }
 
     #[Test]
-    public function over_delivery_does_not_change_invoice_amount(): void
+    public function over_delivery_raises_the_invoice_amount(): void
     {
         $order = $this->makeOrder(wbs: 10_000.0);
 
-        // oldPOO was computed for wbs; reconciling with actualWeight=wbs → same formula input → diffPOO=0
         $exact = $this->reconciler->reconcile($order, actualWeight: 10_000.0);
         $over = $this->reconciler->reconcile($order, actualWeight: 15_000.0);
 
-        $this->assertEqualsWithDelta($exact->newPOO, $over->newPOO, 1.0,
-            'Over-delivery billingWeight is capped at WBS, so POOM must equal POOM(exact)');
+        $this->assertGreaterThan($exact->newPOO, $over->newPOO,
+            'clamp حذف شده است: اضافه‌بار واقعاً صورت‌حساب می‌شود');
+        $this->assertGreaterThan(0.0, $over->diffPOO);
     }
 
     #[Test]
@@ -138,7 +144,7 @@ class WeighbridgeReconcilerTest extends TestCase
 
         $order = Order::create([
             Order::PLACER_USER_ID => $buyer->id,
-            Order::ORDER_NUMBER => 'TEST-WR-'.now()->format('YmdHis').rand(100, 999),
+            Order::ORDER_NUMBER => 'TEST-WR-'.Str::random(12),
             Order::STATUS => Order::STATUS_PROCESSING,
             Order::FINAL_AMOUNT => $oldPOO,
             Order::PAYMENT_STATUS => 'paid',

@@ -6,8 +6,11 @@ namespace App\Services\Financial;
 
 use App\Constants\FinancialCodes;
 use App\DataTransferObjects\Order\WeighbridgeReconcileResult;
+use App\Exceptions\InsufficientBalanceException;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\User;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Executes all three VAT-routing legs that follow every weighbridge result.
@@ -28,7 +31,20 @@ class WeighbridgeVatRouter
 
     public function route(Order $order, WeighbridgeReconcileResult $result): float
     {
-        $supplierId = (int) $order->items->first()->supplier_user_id;
+        // گاردِ صریح: orchestrator در همان نقطه null-safe بود ولی اینجا نبود، پس
+        // سفارشِ بی‌آیتم به‌جای یک خطای معنادار، fatal داخلِ تراکنشِ مالی می‌داد.
+        //
+        // ‏`?->` روی چپِ `??` ننوشته‌ایم چون larastan روی این شاخه آیتم را
+        // non-nullable می‌بیند و آن ترکیب را «بی‌مورد» گزارش می‌کند.
+        $firstItem = $order->items->first();
+        /** @var OrderItem|null $firstItem */
+        $supplierId = $firstItem ? (int) $firstItem->supplier_user_id : 0;
+
+        if ($supplierId <= 0) {
+            throw new \RuntimeException(
+                "WeighbridgeVatRouter: order {$order->id} has no item with a supplier_user_id — cannot route settlement legs."
+            );
+        }
 
         $eliteYARGross = $this->routeEliteYAR($order, $result);
         $this->routeSupplierVat($order, $result, $supplierId);
@@ -122,12 +138,78 @@ class WeighbridgeVatRouter
         int $supplierId,
     ): void {
         $supplierVat = $this->calculator->extractVat($result->newPTS, $result->vat)['vat'];
+
+        $this->placeSupplierVatHold($order, $supplierId, $supplierVat);
+    }
+
+    /**
+     * مالیات **در کیف پول خودِ تأمین‌کننده** هولد می‌شود و به کیف پول امانیِ
+     * جداگانه منتقل نمی‌گردد (تصمیم مدیریت، دور ۲ پرسش ۱): پول مالِ اوست، فقط
+     * تا صدور فاکتور مودیان قابل برداشت نیست.
+     *
+     * مسیر قبلی دو ایراد داشت: پول را از دارایی تأمین‌کننده خارج می‌کرد، و
+     * آزادسازی‌اش هم درونِ همان کیف پولِ امانی انجام می‌شد — یعنی مالیات
+     * هیچ‌وقت به خودِ تأمین‌کننده برنمی‌گشت.
+     *
+     * public است چون `CheckSupplierBalancesJob` هم پس از تسویه‌ی بدهی همین را
+     * صدا می‌زند (بند ۸.۴: «پس از شارژ، کران هم عودت و هم مالیات را اجرا می‌کند»).
+     *
+     * @return bool آیا هولد گذاشته شد؛ `false` یعنی معلق ماند.
+     */
+    public function placeSupplierVatHold(Order $order, int $supplierId, float $supplierVat): bool
+    {
         if ($supplierVat <= 0.0) {
-            return;
+            return true;
         }
 
-        $this->walletEngine->debitSupplier($order, $supplierVat, FinancialCodes::STATUS_AVAILABLE, $supplierId, "کسر مالیات امانی سفارش {$order->order_number}");
-        $this->walletEngine->creditVat($order, $supplierVat, FinancialCodes::STATUS_HOLD, 'مالیات تامین‌کننده امانی');
+        // بدهیِ باز یعنی کیف پول تأمین‌کننده همین حالا هم کسری دارد. تلاش برای
+        // هولد فقط استثنا می‌دهد، پس مالیات صریحاً معلق می‌شود (بند ۸.۴).
+        if ($order->{Order::SUPPLIER_DEBT_PENDING}) {
+            $this->suspendSupplierVat($order, $supplierVat);
+
+            return false;
+        }
+
+        // اگر موجودی کافی نباشد، **پرتاب نمی‌کنیم**: تأمین‌کننده‌ای که سهمش را
+        // برداشته حالت عادیِ این مسیر است، و شکستن اینجا کلِ باسکول را برمی‌گرداند
+        // و ثبتِ کسری را غیرممکن می‌کرد.
+        try {
+            $this->walletEngine->placeHold(
+                $supplierId,
+                $supplierVat,
+                $order,
+                "مالیات امانی سفارش {$order->order_number} — تا ثبت فاکتور مودیان"
+            );
+
+            return true;
+        } catch (InsufficientBalanceException) {
+            $this->suspendSupplierVat($order, $supplierVat);
+
+            return false;
+        }
+    }
+
+    /**
+     * مالیاتی که تأمین‌کننده موجودی‌اش را نداشت، در ستونِ **خودش** پارک می‌شود.
+     *
+     * عمداً به `SUPPLIER_DEBT_AMOUNT` اضافه نمی‌شود: آن ستون را کران به کیف پول
+     * سازه وصول می‌کند، و مالیات طلبِ سازه نیست. اگر آنجا می‌رفت، پول برای همیشه
+     * نزد سازه می‌ماند و `RecordSupplierMoadianInvoiceAction` هیچ هولدی برای
+     * آزادکردن پیدا نمی‌کرد — یعنی مالیات دوباره به تأمین‌کننده برنمی‌گشت،
+     * همان اشتباهی که مسیر قبلیِ WVAT داشت.
+     *
+     * پرچمِ بدهی هم روشن می‌شود تا کران این سفارش را ببیند.
+     */
+    private function suspendSupplierVat(Order $order, float $vat): void
+    {
+        $order->forceFill([
+            Order::SUPPLIER_DEBT_PENDING => true,
+            Order::SUPPLIER_VAT_PENDING_AMOUNT => (float) ($order->{Order::SUPPLIER_VAT_PENDING_AMOUNT} ?? 0) + $vat,
+        ])->save();
+
+        Log::channel('financial')->warning(
+            "Order {$order->id}: supplier could not cover the escrow VAT ({$vat}); suspended until their debt clears."
+        );
     }
 
     /**

@@ -11,6 +11,7 @@ use App\Models\OrderItem;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
+use App\Services\Financial\DebtEngine;
 use App\Services\Financial\LedgerReconciler;
 use App\Services\Financial\WalletTransactionEngine;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
@@ -113,7 +114,10 @@ class SupplierDebtReleaseTest extends TestCase
 
     private function runJob(): void
     {
-        app(CheckSupplierBalancesJob::class)->handle(app(WalletTransactionEngine::class));
+        app(CheckSupplierBalancesJob::class)->handle(
+            app(WalletTransactionEngine::class),
+            app(DebtEngine::class),
+        );
     }
 
     // ─────────────────────────────────────────────────────────────────────────

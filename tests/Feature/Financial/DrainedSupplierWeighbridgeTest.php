@@ -99,25 +99,44 @@ class DrainedSupplierWeighbridgeTest extends TestCase
         $systemWallet->update([Wallet::BALANCE => $poo - $pts]);
 
         // کم‌تحویلی: ۸ کیلو به‌جای ۱۰.
-        try {
-            app(ProcessWeighbridgeResultAction::class)->execute($order, 8.0);
-            $this->fail(
-                'باسکول موفق شد — یعنی مسیرِ پارکِ بدهی رفع شده است. این تست را به '
-                .'ادعای مسیرِ موفق تغییر دهید (وضعیت deficit_pending_supplier + پرچم بدهی).'
-            );
-        } catch (InsufficientBalanceException) {
-            // رفتارِ فعلی: مالیاتِ امانیِ سوپلایر از کیفِ خالی برداشت می‌شود و می‌ترکد.
-        }
+        //
+        // تا فاز ۸ همین فراخوانی `InsufficientBalanceException` می‌داد و کلِ
+        // باسکول rollback می‌شد: `SupplierDebtHandler` عودتِ خریدار را از کیف
+        // پولِ سازه جلو می‌انداخت و سازه پس از پرداخت فقط کمیسیون را دارد.
+        // یعنی با کیف پولِ خالیِ تأمین‌کننده **هیچ کسری‌ای قابل ثبت نبود**.
+        //
+        // تصمیم مدیریت (دور ۲ پرسش ۲/ب): شرکت پول را جلو نمی‌اندازد و خریدار
+        // منتظر شارژِ تأمین‌کننده می‌ماند. پس اینجا هیچ پولی جابه‌جا نمی‌شود و
+        // فقط دو بدهی ثبت می‌گردد.
+        app(ProcessWeighbridgeResultAction::class)->execute($order, 8.0);
 
         $order->refresh();
 
-        $this->assertFalse(
+        $this->assertTrue(
             (bool) $order->{Order::SUPPLIER_DEBT_PENDING},
-            'پارکِ بدهی همراهِ کلِ تراکنش rollback می‌شود — چیزی نیمه‌کاره روی سفارش نمی‌ماند.'
+            'کسری باید ثبت شود، حتی وقتی کیف پول تأمین‌کننده خالی است.'
         );
-        $this->assertNull(
+        $this->assertNotNull(
             $order->{Order::WEIGHING_COMPLETED_AT},
-            'باسکول اصلاً ثبت نمی‌شود؛ کم‌تحویلی برای این سفارش قابل ثبت نیست.'
+            'باسکول باید نهایی شود — دیگر rollback نمی‌شود.'
+        );
+        $this->assertGreaterThan(
+            0,
+            (float) $order->{Order::BUYER_REFUND_PENDING_AMOUNT},
+            'بدهی به خریدار باید ثبت شده باشد تا کرون بعداً بپردازد.'
+        );
+
+        // و مهم‌تر: عودت **پارک نشده** است. تا فاز ۸ سازه پول را جلو می‌انداخت و
+        // در هولدِ خریدار می‌گذاشت؛ حالا هیچ پولی پیش از وصول جابه‌جا نمی‌شود.
+        //
+        // روی کیف پولِ خریدار سنجیده می‌شود و نه سازه: هولدِ کیف پول سازه در این
+        // فیکسچر مالیاتِ امانیِ خودش است (`vat_user_id` به `system_user_id`
+        // برمی‌گردد)، که ربطی به عودتِ خریدار ندارد.
+        $this->assertSame(
+            0.0,
+            (float) Wallet::where('user_id', $order->payerUserId())
+                ->value('balance_hold'),
+            'عودتی که هنوز پرداخت نشده نباید در هولدِ خریدار پارک شده باشد.'
         );
     }
 }

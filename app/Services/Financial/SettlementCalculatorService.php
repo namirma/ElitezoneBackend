@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Financial;
 
+use App\Models\Order;
 use App\Models\PriceSetting;
 use App\Models\SupplierProfile;
 use App\Support\Money;
@@ -47,6 +48,45 @@ class SettlementCalculatorService
     private static function tcPercentage(): float
     {
         return PriceSetting::getValueAsFloat(PriceSetting::CODE_TC_PERCENTAGE, self::TC_PERCENTAGE);
+    }
+
+    /**
+     * نرخِ مؤثرِ %TC برای اسنپ‌شات روی سفارش.
+     *
+     * پرداخت باید همین مقدار را در `orders.commission_rate` ثبت کند و باسکول باید
+     * همان را بخواند — نه اینکه دوباره از PriceSetting زنده بخواند. پیش از این
+     * ProcessPreScalePaymentAction عددِ هاردکدِ `1.0` را ثبت می‌کرد و
+     * WeighbridgeReconciler نرخ را زنده می‌خواند؛ اگر tc_percentage بین پرداخت و
+     * باسکول تغییر می‌کرد، POOM با وزنِ کاملاً یکسان از POO فاصله می‌گرفت و یک
+     * «کسری» کاذب می‌ساخت که واقعاً به خریدار عودت می‌داد و برای تأمین‌کننده بدهی
+     * ثبت می‌کرد.
+     */
+    public function currentTcPercentage(): float
+    {
+        return self::tcPercentage();
+    }
+
+    /**
+     * همان نرخ‌های getCommissionRates اما با یک %TC مشخص (اسنپ‌شاتِ سفارش) به‌جای
+     * مقدارِ زندهٔ PriceSetting. هر محاسبهٔ *بعد از* پرداخت باید از این استفاده کند.
+     *
+     * @return array{
+     *   ow_percent_of_tc: float, co_percent_of_tc: float, ssg_percent_of_tc: float,
+     *   ow_final_rate: float, co_final_rate: float, ssg_final_rate: float,
+     * }
+     */
+    public function getCommissionRatesForTc(?string $badgeCode, float $tcPercentage): array
+    {
+        $shares = $this->badgeShares($badgeCode);
+
+        return [
+            'ow_percent_of_tc' => $shares['ow'],
+            'co_percent_of_tc' => $shares['co'],
+            'ssg_percent_of_tc' => $shares['ssg'],
+            'ow_final_rate' => (float) Money::mul($tcPercentage, Money::div($shares['ow'], '100')),
+            'co_final_rate' => (float) Money::mul($tcPercentage, Money::div($shares['co'], '100')),
+            'ssg_final_rate' => (float) Money::mul($tcPercentage, Money::div($shares['ssg'], '100')),
+        ];
     }
 
     // =========================================================================
@@ -215,18 +255,7 @@ class SettlementCalculatorService
      */
     public function getCommissionRates(?string $badgeCode): array
     {
-        $badge = strtolower(trim($badgeCode ?? ''));
-
-        // Share-of-TC percentages (always sum to 100 %).
-        // NOTE: the canonical badge codes seeded in the DB are gold / silver / bronze
-        // (see database/seeders/ProductSeeder.php). 'golden' is accepted as an alias
-        // so a legacy value never silently falls through to the default rate.
-        $shares = match ($badge) {
-            'gold', 'golden' => ['ow' => 40.0, 'co' => 37.5, 'ssg' => 22.5],
-            'silver' => ['ow' => 40.0, 'co' => 32.5, 'ssg' => 27.5],
-            'bronze' => ['ow' => 40.0, 'co' => 30.0, 'ssg' => 30.0],
-            default => ['ow' => 40.0, 'co' => 25.0, 'ssg' => 35.0], // normal / pioneer
-        };
+        $shares = $this->badgeShares($badgeCode);
 
         return [
             // Percentages relative to TC (for commission-amount calculations)
@@ -243,13 +272,67 @@ class SettlementCalculatorService
     }
 
     /**
+     * Share-of-TC percentages per badge (always sum to 100 %).
+     *
+     * NOTE: the canonical badge codes seeded in the DB are gold / silver / bronze
+     * (see database/seeders/ProductSeeder.php). 'golden' is accepted as an alias
+     * so a legacy value never silently falls through to the default rate.
+     *
+     * @return array{ow: float, co: float, ssg: float}
+     */
+    private function badgeShares(?string $badgeCode): array
+    {
+        return match (strtolower(trim($badgeCode ?? ''))) {
+            'gold', 'golden' => ['ow' => 40.0, 'co' => 37.5, 'ssg' => 22.5],
+            'silver' => ['ow' => 40.0, 'co' => 32.5, 'ssg' => 27.5],
+            'bronze' => ['ow' => 40.0, 'co' => 30.0, 'ssg' => 30.0],
+            default => ['ow' => 40.0, 'co' => 25.0, 'ssg' => 35.0], // normal / pioneer
+        };
+    }
+
+    /**
+     * درصد مالیات مؤثر برای یک سفارش — **تنها منبع مجاز**.
+     *
+     * ⚠️ سه محل (`ProcessPreScalePaymentAction`, `ProcessReservationCompletionAction`,
+     * `WeighbridgeReconciler`) هر کدام جداگانه `$order->vat_rate ?? 10.0` می‌نوشتند و
+     * دو مشکل داشت:
+     *
+     * ۱. **`??` هیچ‌وقت کار نمی‌کرد.** ستون `orders.vat_rate` از نوع
+     *    `decimal(5,2) NOT NULL DEFAULT 0.00` است و هیچ‌کس پیش از پرداخت پرش
+     *    نمی‌کند، پس مقدارش `0.00` بود — نه `null`. یعنی مسیر خرید مستقیم و
+     *    بازمحاسبهٔ باسکول POO/PTS را با **مالیات صفر** حساب می‌کردند، در حالی که
+     *    سبد خرید از خریدار مالیات ۱۰٪ گرفته بود؛ و چون `sazeVat = gross × 0`
+     *    می‌شد، هولد امانیِ مالیات (WVAT) هرگز ثبت نمی‌شد و اسناد O/P/Q عملاً
+     *    صفر آزاد می‌کردند. (مسیر تکمیل رزرو `?:` نوشته بود و درست کار می‌کرد —
+     *    یعنی یک سفارش بسته به مسیر پرداخت، مالیات متفاوتی می‌خورد.)
+     *
+     * ۲. **عدد ۱۰ هاردکد بود** در سه جا، در حالی که نرخ واقعی در
+     *    `price_settings.vat_rate` است و همان چیزی است که پایپ‌لاین قیمت‌گذاری
+     *    (`ApplyVat`) استفاده می‌کند. با تغییر نرخ، تسویه از سبد خرید واگرا می‌شد.
+     *
+     * اسنپ‌شاتِ واقعیِ روی سفارش (مقدار مثبت) مقدم است تا بازاجرای یک عملیات،
+     * نرخِ لحظهٔ پرداخت را عوض نکند؛ در نبودش نرخ زندهٔ تنظیمات خوانده می‌شود، و
+     * اگر آن هم ست نشده باشد `financial.default_vat_rate` (env: `DEFAULT_VAT_RATE`).
+     *
+     * ترتیب: اسنپ‌شاتِ سفارش ← تنظیماتِ زندهٔ قیمت ← پیش‌فرضِ کانفیگ.
+     * هیچ عددی اینجا هاردکد نیست.
+     */
+    public function resolveVatRate(Order $order): float
+    {
+        $snapshot = (float) ($order->{Order::VAT_RATE} ?? 0);
+
+        return $snapshot > 0
+            ? $snapshot
+            : $this->currentVatRate();
+    }
+
+    /**
      * نرخِ مالیاتِ **زنده** — برای لحظاتی که هنوز سفارشی وجود ندارد که اسنپ‌شات
      * داشته باشد (ثبتِ سفارش، پیش‌فاکتورِ سبد).
      *
-     * ⚠️ روی شاخهٔ لاراول ۱۰ این متد آخرین دو حلقهٔ `resolveVatRate(Order)` است و
-     * آن متد به این delegate می‌کند. این شاخه `resolveVatRate` را ندارد (هرگز
-     * پورت نشد)، پس اینجا مستقل می‌ایستد. اگر روزی `resolveVatRate` پورت شد،
-     * همان delegate را برقرار کنید تا زنجیره یک‌بار نوشته شود.
+     * همان دو حلقهٔ آخرِ `resolveVatRate()` است و عمداً از آن جدا نشده تا زنجیرهٔ
+     * «تنظیماتِ زندهٔ قیمت ← پیش‌فرضِ کانفیگ» یک‌بار نوشته شود؛ کپی‌شدنِ همین
+     * زنجیره در سه اکشن، همان باگی بود که این کلاس برای جمع‌کردنش ساخته شد.
      */
     public function currentVatRate(): float
     {
@@ -283,15 +366,17 @@ class SettlementCalculatorService
      * ⚠️ **چرا این وجود دارد.** فرمولِ POO (وقتی `+VAT`) مالیات را روی
      * `Trans + OP×W` می‌بندد، ولی `final_amount` که به خریدار نشان داده می‌شود یک
      * جمعِ حسابداریِ ساده بود که مالیات را فقط روی کالا حساب می‌کرد و کرایه را
-     * **بدونِ مالیات** اضافه می‌کرد.
+     * **بدونِ مالیات** اضافه می‌کرد. تا وقتی هیچ ردیفِ `shipping_rates` وارد نشده
+     * بود کرایه صفر می‌ماند و این اختلاف دیده نمی‌شد.
      *
-     * نقطهٔ سربه‌سر پایین است: با `%OW = ۰٫۴٪` و مالیاتِ ۱۰٪، به‌محضِ اینکه کرایه
-     * از حدود **۴٫۶٪ ارزشِ کالا** بگذرد، `POO` از `final_amount` جلو می‌زند — یعنی
-     * از کیف‌پولِ خریدار **بیشتر** از عددی که دیده کسر می‌شود. پنلِ ورودِ نرخِ حمل
-     * ساخته شده و فعال است، پس این یک حالتِ نظری نیست.
+     * ولی نقطهٔ سربه‌سر پایین است: با `%OW = ۰٫۴٪` و مالیاتِ ۱۰٪، به‌محضِ اینکه
+     * کرایه از حدود **۴٫۶٪ ارزشِ کالا** بگذرد، `POO` از `final_amount` جلو می‌زند —
+     * یعنی از کیف‌پولِ خریدار **بیشتر** از عددی که دیده کسر می‌شود. کرایهٔ میلگرد
+     * معمولاً از این نسبت بیشتر است، پس این یک حالتِ نظری نبود.
      *
      * با احتسابِ مالیاتِ کرایه، هر چهار حالتِ فرمول به `final_amount ≥ POO`
-     * برمی‌گردند و تنها اختلافِ باقی‌مانده همان تخفیفِ `%OW` است.
+     * برمی‌گردند و تنها اختلافِ باقی‌مانده همان تخفیفِ `%OW` است — یک اختلافِ
+     * توضیح‌دادنی، همیشه به سودِ خریدار.
      *
      * @see PooVersusDisplayedAmountTest
      */
@@ -305,21 +390,6 @@ class SettlementCalculatorService
     }
 
     /**
-     * VAT-extraction multiplier for a VAT-inclusive amount:
-     *   vatMultiplier = (VAT/100) / (1 + VAT/100)
-     *
-     * For a gross (VAT-inclusive) amount G, the embedded VAT is G × vatMultiplier
-     * and the net is G − VAT. Computed with bcmath so repeating decimals
-     * (e.g. 10% → 1/11) don't accumulate float error across the settlement legs.
-     */
-    public function vatMultiplier(float $vatPercent): float
-    {
-        // Algebraically (VAT/100)/(1+VAT/100) == VAT/(100+VAT) — the latter avoids a
-        // tiny truncated intermediate, staying numerically stable.
-        return (float) Money::div($vatPercent, Money::add('100', $vatPercent));
-    }
-
-    /**
      * Split a VAT-inclusive gross amount into its net and VAT parts.
      *
      * Uses vat = gross × VAT / (100 + VAT) — the division acts on large operands,
@@ -330,12 +400,20 @@ class SettlementCalculatorService
      */
     public function extractVat(float $gross, float $vatPercent): array
     {
-        $vat = Money::div(Money::mul($gross, $vatPercent), Money::add('100', $vatPercent));
-        $net = Money::sub($gross, $vat);
+        $vat = Money::toFloat(
+            Money::div(Money::mul($gross, $vatPercent), Money::add('100', $vatPercent))
+        );
+
+        // net از vatِ *گردشده* مشتق می‌شود تا `net + vat === gross` دقیقاً برقرار باشد.
+        // پیش از این هر دو مستقل گرد می‌شدند و مجموعشان می‌توانست تا ۰٫۰۱ ریال از
+        // gross فاصله بگیرد — و چون WeighbridgeVatRouter کیف پول سازه را به اندازهٔ
+        // gross بدهکار و WEY/WVAT را به اندازهٔ net و vat بستانکار می‌کند، همان
+        // اختلاف به‌صورت یک عدم‌توازنِ زیرریالی در لجر دوطرفه می‌نشست.
+        $net = Money::toFloat(Money::sub($gross, $vat));
 
         return [
-            'net' => Money::toFloat($net),
-            'vat' => Money::toFloat($vat),
+            'net' => $net,
+            'vat' => $vat,
         ];
     }
 

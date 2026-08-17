@@ -2,9 +2,11 @@
 
 namespace App\Actions\Financial;
 
+use App\Exceptions\BusinessException;
 use App\Models\User;
 use App\Models\UserBankAccount;
 use App\Models\WalletTransaction;
+use App\Services\Financial\DebtEngine;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -27,10 +29,19 @@ final class RequestWithdrawalAction
     public function __construct(
         protected DebitWalletAction $debitAction,
         protected SettleWithdrawalAction $settleAction,
+        protected DebtEngine $debtEngine,
     ) {}
 
     public function execute(User $user, float $amount, int $bankAccountId): WalletTransaction
     {
+        // بدهکار برداشت نمی‌کند — بند ۳.۱۲، برای **هر دو** نقش خریدار و
+        // تأمین‌کننده. همین قاعده است که تضمین می‌کند شارژِ بعدیِ یک
+        // تأمین‌کننده‌ی بدهکار صرف تسویه شود و بلافاصله دوباره خارج نشود
+        // (بند ۸.۴ روی همین حساب می‌کند).
+        if ($this->debtEngine->isInDebt((int) $user->id)) {
+            throw new BusinessException(__('wallet.withdrawal_blocked_by_debt'), 422);
+        }
+
         $lockKey = "wallet_withdraw_lock:user:{$user->id}";
 
         $transaction = Cache::lock($lockKey, 10)->block(10, function () use ($user, $amount, $bankAccountId) {

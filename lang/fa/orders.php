@@ -25,6 +25,8 @@ $orderStatusLabels = [
 ];
 
 return [
+    'blocked_by_debt' => 'به دلیل بدهی معوق امکان ثبت سفارش جدید وجود ندارد. لطفاً ابتدا بدهی خود را تسویه کنید.',
+
     'cannot_cancel' => 'این سفارش در وضعیت قابل لغو نیست.',
     'cancelled_successfully' => 'سفارش با موفقیت لغو شد.',
     'invalid_invoice_type' => 'نوع فاکتور درخواستی نامعتبر است.',

@@ -28,6 +28,8 @@ return [
     'deposit_account_no_bank_account' => 'برای مشاهده اطلاعات واریز، ابتدا باید یک حساب بانکی ثبت و تأیید شده داشته باشید',
     'deposit_account_note' => 'این شناسه واریز مختص شماست. هنگام انتقال PAYA/SATNA حتماً در فیلد شناسه واریز وارد کنید.',
     'deposit_account_unavailable' => 'حساب مقصد واریز موقتاً در دسترس نیست. لطفاً بعداً تلاش کنید یا با پشتیبانی تماس بگیرید.',
+    'withdrawal_blocked_by_debt' => 'تا زمان تسویه‌ی بدهی، امکان برداشت از کیف پول وجود ندارد.',
+
     'withdrawal_description' => 'درخواست برداشت وجه به شبا: :shaba',
     'settlement' => [
         'description' => 'تسویه برداشت به شبا: :shaba',

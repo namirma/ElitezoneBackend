@@ -52,6 +52,10 @@ class RegisterShipmentTest extends TestCase
             Order::FINAL_AMOUNT => 1_000_000,
         ]);
 
+        // وزنِ سفارش لازم است چون یکی از سه ماشه‌ی تسویه «مجموع وزن‌ها به وزنِ
+        // سفارش رسید» است (بند ۸.۲). بدون آن، ماشه هرگز از این راه فعال نمی‌شود.
+        $this->order->forceFill([Order::WEIGHT_BEFORE_SCALE => 1500])->save();
+
         // مالکیت تأمین‌کننده از روی آیتم‌های سفارش خوانده می‌شود
         // (`OrderPolicy::manageAsSupplier`).
         OrderItem::factory()->create([
@@ -208,6 +212,28 @@ class RegisterShipmentTest extends TestCase
 
         Sanctum::actingAs($this->supplier);
         $this->postJson($this->url($first), $this->payload())->assertOk();
+    }
+
+    #[Test]
+    public function marking_a_shipment_final_settles_even_with_legs_outstanding(): void
+    {
+        // ماشه‌ی صریح — بدونِ آن، کم‌تحویلی هرگز تسویه نمی‌شد: مجموع وزن به
+        // وزنِ سفارش نمی‌رسد و محموله‌ی ثبت‌نشده هم باقی می‌ماند.
+        $mock = Mockery::mock(ProcessWeighbridgeResultAction::class);
+        $mock->shouldReceive('execute')
+            ->once()
+            ->with(Mockery::type(Order::class), 400.0)
+            ->andReturn(['status' => 'deficit']);
+        $this->app->instance(ProcessWeighbridgeResultAction::class, $mock);
+
+        $first = $this->makeShipment();
+        $this->makeShipment(); // ثبت‌نشده می‌ماند و هرگز هم نخواهد شد
+
+        Sanctum::actingAs($this->supplier);
+        $this->postJson($this->url($first), $this->payload([
+            'actual_weight' => 400,
+            'is_final' => true,
+        ]))->assertOk();
     }
 
     #[Test]

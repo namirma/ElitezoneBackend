@@ -22,10 +22,10 @@ use Illuminate\Support\Facades\Log;
  * راننده را با هم ثبت می‌کند.
  *
  * **چرا per-shipment و نه per-order:** یک سفارش می‌تواند چند مبدأ→مقصد داشته
- * باشد و هر لِگ بارنامه و راننده‌ی خودش را دارد. ولی تسویه‌ی مالی در این فاز
- * هنوز سطحِ سفارش است، پس محاسبه تنها وقتی اجرا می‌شود که **همه‌ی** محموله‌ها
- * ثبت شده باشند و ورودی‌اش مجموعِ وزن‌هاست. شکستنِ خودِ تسویه به ازای هر
- * محموله (و شاخه‌ی اضافه‌بار) کارِ فاز ۸ است.
+ * باشد و هر لِگ بارنامه و راننده‌ی خودش را دارد. ولی تسویه‌ی مالی **یک‌بار** و
+ * سطحِ سفارش است (بند ۸.۲ نسخه‌ی ۲ سند): ثبتِ هر بارنامه فقط وزنش را ثبت
+ * می‌کند و **هیچ لِگ مالی نمی‌زند**؛ محاسبه تنها با ماشه‌ی تسویه و با مجموعِ
+ * وزن‌ها اجرا می‌شود.
  */
 class RegisterShipmentAction
 {
@@ -36,7 +36,7 @@ class RegisterShipmentAction
     /**
      * @param  array{waybill_ref: string, driver_name: string, driver_national_code?: ?string,
      *               driver_mobile?: ?string, vehicle_plate: string, vehicle_type?: ?string,
-     *               actual_weight: float}  $data
+     *               actual_weight: float, is_final?: bool}  $data
      * @return array{shipment: Shipment, order_completed: bool, settlement: ?array}
      *
      * @throws BusinessException
@@ -47,7 +47,7 @@ class RegisterShipmentAction
             throw new BusinessException(__('shipments.not_part_of_order'), 404);
         }
 
-        [$locked, $allRegistered, $totalWeight] = DB::transaction(function () use ($order, $shipment, $data) {
+        [$locked, $shouldSettle, $totalWeight] = DB::transaction(function () use ($order, $shipment, $data) {
             /** @var Shipment $lockedShipment */
             $lockedShipment = Shipment::where(Shipment::ID, $shipment->id)->lockForUpdate()->first();
 
@@ -68,6 +68,7 @@ class RegisterShipmentAction
             }
 
             $lockedShipment->forceFill([
+                Shipment::IS_FINAL => (bool) ($data['is_final'] ?? false),
                 Shipment::WAYBILL_REF => $data['waybill_ref'],
                 Shipment::DRIVER_NAME => $data['driver_name'],
                 Shipment::DRIVER_NATIONAL_CODE => $data['driver_national_code'] ?? null,
@@ -79,21 +80,42 @@ class RegisterShipmentAction
                 Shipment::STATUS => Shipment::STATUS_SHIPPED,
             ])->save();
 
-            // شمارش زیرِ همان تراکنش: دو تأمین‌کننده‌ای که هم‌زمان آخرین دو
-            // محموله را ثبت کنند، وگرنه هر دو «آخرین» به نظر می‌رسیدند و
+            // زیرِ همان تراکنش خوانده می‌شود: دو تأمین‌کننده‌ای که هم‌زمان دو
+            // محموله‌ی آخر را ثبت کنند، وگرنه هر دو «آخرین» به نظر می‌رسیدند و
             // تسویه دو بار اجرا می‌شد.
+            $registered = Shipment::where(Shipment::ORDER_ID, $lockedOrder->id)
+                ->whereNotNull(Shipment::REGISTERED_AT)
+                ->lockForUpdate()
+                ->get();
+
             $remaining = Shipment::where(Shipment::ORDER_ID, $lockedOrder->id)
                 ->whereNull(Shipment::REGISTERED_AT)
                 ->lockForUpdate()
                 ->count();
 
-            $registered = Shipment::where(Shipment::ORDER_ID, $lockedOrder->id)
-                ->whereNotNull(Shipment::REGISTERED_AT)
-                ->get();
-
             $total = (float) $registered->sum(fn (Shipment $s) => (float) $s->{Shipment::ACTUAL_WEIGHT});
 
-            if ($remaining === 0) {
+            // ماشه‌ی تسویه — بند ۸.۲ نسخه‌ی ۲ سند. سه راه، به همین ترتیب:
+            //
+            //   ۱. تأمین‌کننده صریحاً محموله را «آخرین» علامت زده باشد؛
+            //   ۲. مجموع وزن‌ها به وزنِ سفارش رسیده باشد؛
+            //   ۳. هیچ محموله‌ی ثبت‌نشده‌ای نمانده باشد (رفتار فاز ۷).
+            //
+            // مورد ۱ چیزی است که فاز ۷ نداشت و بدونش **کم‌تحویلی هرگز تسویه
+            // نمی‌شد**: در کم‌تحویلی مجموع وزن به سفارش نمی‌رسد، و اگر
+            // تأمین‌کننده کمتر از تعدادِ محموله‌های ساخته‌شده بار بفرستد، مورد ۳
+            // هم هیچ‌وقت برقرار نمی‌شود. سفارش تا ابد باز می‌ماند.
+            $isFinal = $registered->contains(fn (Shipment $s) => (bool) $s->{Shipment::IS_FINAL});
+
+            // ‏`> 0` لازم است: سفارشی که وزنِ پیش از باسکول ندارد یعنی «نمی‌دانیم»،
+            // نه «به وزن رسیدیم». بدون این گارد اولین محموله همیشه ماشه را
+            // می‌کشید و سفارشِ چندمحموله‌ای با وزنِ همان یک لِگ تسویه می‌شد.
+            $wbs = (float) $lockedOrder->{Order::WEIGHT_BEFORE_SCALE};
+            $reachedOrderWeight = $wbs > 0 && $total >= $wbs;
+
+            $shouldSettle = $isFinal || $reachedOrderWeight || $remaining === 0;
+
+            if ($shouldSettle) {
                 // فهرستِ شماره‌ها روی سفارش می‌ماند تا تایم‌لاین و فیلترِ اسنادِ
                 // ادمین که این ستون را می‌خوانند بدون تغییر کار کنند.
                 $lockedOrder->forceFill([
@@ -104,10 +126,10 @@ class RegisterShipmentAction
                 ])->save();
             }
 
-            return [$lockedOrder, $remaining === 0, $total];
+            return [$lockedOrder, $shouldSettle, $total];
         });
 
-        if (! $allRegistered) {
+        if (! $shouldSettle) {
             Log::channel('financial')->info(
                 "Shipment {$shipment->id} registered for order {$order->id}; awaiting the remaining legs."
             );
