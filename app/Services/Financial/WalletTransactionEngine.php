@@ -205,15 +205,16 @@ class WalletTransactionEngine
             $wallet = Wallet::firstOrCreate(['user_id' => $userId]);
             $wallet = Wallet::where('id', $wallet->id)->lockForUpdate()->first();
 
+            // `Money::s()` روی شاخه‌ی L13 وجود ندارد؛ هر سه متد پایین خودشان
+            // `int|float|string` می‌پذیرند، پس فایل روی هر دو شاخه یکی می‌ماند.
             $balance = (string) $wallet->balance;
-            $delta = Money::s($amount);
 
-            if (Money::lt($balance, $delta)) {
+            if (Money::lt($balance, $amount)) {
                 throw new InsufficientBalanceException($amount, (float) $balance);
             }
 
-            $wallet->balance = Money::sub($balance, $delta);
-            $wallet->balance_hold = Money::add((string) $wallet->balance_hold, $delta);
+            $wallet->balance = Money::sub($balance, $amount);
+            $wallet->balance_hold = Money::add((string) $wallet->balance_hold, $amount);
             $wallet->save();
 
             return WalletTransaction::create([
