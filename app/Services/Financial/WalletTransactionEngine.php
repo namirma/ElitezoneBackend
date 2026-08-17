@@ -181,6 +181,53 @@ class WalletTransactionEngine
      *
      * @param  WalletTransaction|null  $sourceHold  the original hold row, linked in meta for traceability.
      */
+    /**
+     * موجودیِ در دسترس → هولد، **درونِ همان کیف پول**. قرینه‌ی `releaseHold`.
+     *
+     * برای «پول مالِ توست ولی تا ارائه‌ی سند نمی‌توانی برداری» — دقیقاً همان
+     * چیزی که مالیاتِ تأمین‌کننده است. پیش از این چنین ابزاری نبود و مالیات با
+     * یک debit به کیف پولِ امانیِ جداگانه منتقل می‌شد، یعنی پول از دارایی
+     * تأمین‌کننده خارج می‌شد به‌جای اینکه فقط قفل شود.
+     */
+    public function placeHold(
+        int $userId,
+        float $amount,
+        Order $order,
+        ?string $description = null,
+    ): WalletTransaction {
+        if (! is_finite($amount) || $amount <= 0) {
+            throw new \InvalidArgumentException(
+                "WalletTransactionEngine::placeHold — amount must be a positive finite number, got {$amount} (order {$order->id})"
+            );
+        }
+
+        return DB::transaction(function () use ($userId, $amount, $order, $description) {
+            $wallet = Wallet::firstOrCreate(['user_id' => $userId]);
+            $wallet = Wallet::where('id', $wallet->id)->lockForUpdate()->first();
+
+            $balance = (string) $wallet->balance;
+            $delta = Money::s($amount);
+
+            if (Money::lt($balance, $delta)) {
+                throw new InsufficientBalanceException($amount, (float) $balance);
+            }
+
+            $wallet->balance = Money::sub($balance, $delta);
+            $wallet->balance_hold = Money::add((string) $wallet->balance_hold, $delta);
+            $wallet->save();
+
+            return WalletTransaction::create([
+                'wallet_id' => $wallet->id,
+                'order_id' => $order->id,
+                'amount' => $amount,
+                'type' => WalletTransaction::TYPE_FEE_HOLD,
+                'status' => FinancialCodes::STATUS_HOLD,
+                'description' => $description,
+                'meta' => ['op' => 'hold_place'],
+            ]);
+        });
+    }
+
     public function releaseHold(
         int $userId,
         float $amount,

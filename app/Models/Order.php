@@ -240,6 +240,15 @@ class Order extends Model
     /** مبلغ بدهی سوپلایر (ریال) */
     public const SUPPLIER_DEBT_AMOUNT = 'supplier_debt_amount';
 
+    /**
+     * عودتی که به خریدار بدهکاریم ولی هنوز پرداخت نشده (فاز ۸).
+     *
+     * فقط وقتی پر می‌شود که تأمین‌کننده در لحظه‌ی باسکول پولش را نداشته باشد.
+     * شرکت آن را جلو نمی‌اندازد؛ `CheckSupplierBalancesJob` با شارژِ بعدیِ
+     * تأمین‌کننده هم طلب را وصول و هم این را پرداخت می‌کند.
+     */
+    public const BUYER_REFUND_PENDING_AMOUNT = 'buyer_refund_pending_amount';
+
     /** Doc P: شماره فاکتور مودیان سیستم (پلتفرم) برای خریدار */
     public const SYSTEM_MOADIAN_REF = 'system_moadian_ref';
 

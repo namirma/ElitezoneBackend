@@ -97,25 +97,22 @@ class SupplierDebtHandler
         float $refundAmount,
         float $reclaimAmount,
     ): string {
-        // سوپلایر الان نمی‌تواند بپردازد، پس سازه پول را **جلو می‌اندازد** و بعداً
-        // `CheckSupplierBalancesJob` آن را از سوپلایر پس می‌گیرد (WS → WSSG) و
-        // همین هولد را آزاد می‌کند. این legِ سازه پیش‌تر بالای `handle()` و برای
-        // هر دو مسیر اجرا می‌شد؛ حالا فقط اینجا لازم است — در مسیرِ تسویه‌ی فوری
-        // پس از تأمین‌شدنِ سازه انجام می‌شود.
-        $this->walletEngine->debitSystem(
-            $order, $refundAmount, FinancialCodes::STATUS_AVAILABLE,
-            "پرداخت وجه کسری باسکول سفارش {$order->order_number} به خریدار"
-        );
-
-        // Buyer refund parks in HOLD until the supplier tops up their wallet.
-        $this->walletEngine->creditBuyer(
-            $order, $refundAmount, FinancialCodes::STATUS_HOLD,
-            'بازگشت وجه ناشی از کسری باسکول (در انتظار تسویه سوپلایر)'
-        );
-
+        // **هیچ پولی اینجا جابه‌جا نمی‌شود** (تصمیم مدیریت، دور ۲ پرسش ۲/ب).
+        //
+        // پیش از این سازه مبلغ عودت را جلو می‌انداخت (`debitSystem`) و به هولدِ
+        // خریدار می‌ریخت. ولی کیف پول سازه پس از پرداخت فقط کمیسیون را دارد و
+        // عودت از آن بزرگ‌تر است، پس آن برداشت می‌شکست و کلِ تراکنشِ باسکول —
+        // از جمله همین پارک — rollback می‌شد. نتیجه: با کیف پولِ واقعاً خالیِ
+        // تأمین‌کننده **هیچ کسری‌ای قابل ثبت نبود**.
+        //
+        // حالا فقط دو عدد ثبت می‌شود: طلب از تأمین‌کننده و بدهی به خریدار.
+        // پولی که وجود ندارد منتقل هم نمی‌شود، پس دفتر متوازن می‌ماند و
+        // `CheckSupplierBalancesJob` با شارژِ بعدی هر دو لِگ را با هم انجام
+        // می‌دهد.
         $order->forceFill([
             Order::SUPPLIER_DEBT_PENDING => true,
             Order::SUPPLIER_DEBT_AMOUNT => $reclaimAmount,
+            Order::BUYER_REFUND_PENDING_AMOUNT => $refundAmount,
         ])->save();
 
         // Queue the SMS and defer it until AFTER the surrounding weighbridge transaction

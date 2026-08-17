@@ -6,8 +6,10 @@ namespace App\Services\Financial;
 
 use App\Constants\FinancialCodes;
 use App\DataTransferObjects\Order\WeighbridgeReconcileResult;
+use App\Exceptions\InsufficientBalanceException;
 use App\Models\Order;
 use App\Models\User;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Executes all three VAT-routing legs that follow every weighbridge result.
@@ -134,8 +136,51 @@ class WeighbridgeVatRouter
             return;
         }
 
-        $this->walletEngine->debitSupplier($order, $supplierVat, FinancialCodes::STATUS_AVAILABLE, $supplierId, "کسر مالیات امانی سفارش {$order->order_number}");
-        $this->walletEngine->creditVat($order, $supplierVat, FinancialCodes::STATUS_HOLD, 'مالیات تامین‌کننده امانی');
+        // مالیات **در کیف پول خودِ تأمین‌کننده** هولد می‌شود و به کیف پول امانیِ
+        // جداگانه منتقل نمی‌گردد (تصمیم مدیریت، دور ۲ پرسش ۱): پول مالِ اوست،
+        // فقط تا صدور فاکتور مودیان قابل برداشت نیست.
+        //
+        // مسیر قبلی دو ایراد داشت: پول را از دارایی تأمین‌کننده خارج می‌کرد، و
+        // آزادسازی‌اش هم درونِ همان کیف پولِ امانی انجام می‌شد — یعنی مالیات
+        // هیچ‌وقت به خودِ تأمین‌کننده برنمی‌گشت.
+        //
+        // اگر موجودی کافی نباشد، **پرتاب نمی‌کنیم**: تأمین‌کننده‌ای که سهمش را
+        // برداشته حالت عادیِ این مسیر است، و شکستن اینجا کلِ باسکول را برمی‌گرداند
+        // و ثبتِ کسری را غیرممکن می‌کرد. مالیاتِ وصول‌نشده مثل خودِ کسری به بدهی
+        // اضافه می‌شود و با شارژِ بعدی تسویه می‌گردد (دور ۲ پرسش ۲، گزینه‌ی ب).
+        try {
+            $this->walletEngine->placeHold(
+                $supplierId,
+                $supplierVat,
+                $order,
+                "مالیات امانی سفارش {$order->order_number} — تا ثبت فاکتور مودیان"
+            );
+        } catch (InsufficientBalanceException) {
+            $this->parkUncollectedVat($order, $supplierVat);
+        }
+    }
+
+    /**
+     * مالیاتی که تأمین‌کننده موجودی‌اش را نداشت، به بدهی‌اش اضافه می‌شود.
+     *
+     * پیش از این، همین حالت کلِ باسکول را برمی‌گرداند — و چون تأمین‌کننده سهمش
+     * را در لحظه‌ی پرداخت می‌گیرد و ممکن است همان روز برداشت کند، این حالتِ
+     * عادیِ مسیر بود نه استثنا. نتیجه‌اش این بود که با کیف پولِ واقعاً خالی
+     * **هیچ کسری‌ای قابل ثبت نبود**.
+     *
+     * `CheckSupplierBalancesJob` همین ستون را می‌پاید و با شارژِ بعدی وصول
+     * می‌کند؛ چیزی گم نمی‌شود، فقط منتظر می‌ماند.
+     */
+    private function parkUncollectedVat(Order $order, float $vat): void
+    {
+        $order->forceFill([
+            Order::SUPPLIER_DEBT_PENDING => true,
+            Order::SUPPLIER_DEBT_AMOUNT => (float) ($order->{Order::SUPPLIER_DEBT_AMOUNT} ?? 0) + $vat,
+        ])->save();
+
+        Log::channel('financial')->warning(
+            "Order {$order->id}: supplier could not cover the escrow VAT ({$vat}); parked onto their debt."
+        );
     }
 
     /**
