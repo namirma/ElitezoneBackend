@@ -46,6 +46,18 @@ class User extends Authenticatable
     public const IS_ACTIVE = 'is_active';
 
     /**
+     * مجموع بدهی کاربر (ریال) — فاز ۹.
+     *
+     * **هرگز مستقیم ننویسید.** تنها نویسنده `DebtEngine` است، که ردیفِ دفتر و
+     * مانده را با هم و زیرِ قفل می‌نویسد. نوشتنِ مستقیم یعنی مانده و
+     * `debt_entries` از هم جدا بیفتند و هیچ‌کس نتواند بگوید کدام درست است.
+     */
+    public const DEBT_BALANCE = 'debt_balance';
+
+    /** سقف اعتبار (ریال) — دستی توسط بک‌آفیس؛ پیش‌فرض صفر یعنی بدون اعتبار. */
+    public const CREDIT_LIMIT = 'credit_limit';
+
+    /**
      * سه‌حالته: true/false تصمیمِ صریحِ بک‌آفیس، `null` یعنی پیروی از تنظیمِ
      * سراسریِ `coupon_visibility`. فقط در حالتِ `selected` خوانده می‌شود.
      *
@@ -118,6 +130,8 @@ class User extends Authenticatable
         self::IS_ACTIVE => 'boolean',
         self::COUPON_ENABLED => 'boolean',
         self::BADGE_PURCHASE_AMOUNT => 'decimal:2',
+        self::DEBT_BALANCE => 'decimal:2',
+        self::CREDIT_LIMIT => 'decimal:2',
     ];
 
     protected $appends = ['created_at_p', 'created_at_diff', 'updated_at_p', 'updated_at_diff'];

@@ -95,9 +95,10 @@ class SettlementDataGuardsTest extends TestCase
     }
 
     #[Test]
-    public function over_delivery_is_clamped_to_the_ordered_weight(): void
+    public function over_delivery_bills_the_actual_weight(): void
     {
-        // ثابتِ مستندشده در spec: فاکتور نهایی هرگز بیش از فاکتور اولیه نیست.
+        // ‏نسخه‌ی ۲ سند (بند ۸.۲) clamp را برداشت. ادعا وارونه شده، تست حذف
+        // نشده — همان قاعده‌ای که برای هر رفتارِ عوض‌شده‌ی دیگری هم رعایت شده.
         $order = Order::factory()->create([
             Order::STATUS => Order::STATUS_PROCESSING,
             Order::PAYMENT_STATUS => Order::PAYMENT_PAID,
@@ -116,13 +117,14 @@ class SettlementDataGuardsTest extends TestCase
             Order::COMMISSION_RATE => 1.0,
         ])->save();
 
-        // تحویلِ بیشتر از سفارش — وزنِ صورت‌حساب باید روی وزنِ سفارش کلamp شود.
+        // تحویلِ بیشتر از سفارش — وزنِ صورت‌حساب همان وزنِ واقعی است.
         $result = app(WeighbridgeReconciler::class)->reconcile(
             $order->fresh(['items', 'eliteYAR.badge']),
             12_500.0
         );
 
-        $this->assertSame(10_000.0, $result->billingWeight,
-            'اضافه‌تحویل نباید به خریدار صورت‌حساب شود.');
+        $this->assertSame(12_500.0, $result->billingWeight,
+            'اضافه‌تحویل با وزن واقعی صورت‌حساب می‌شود (بند ۸.۲ نسخه‌ی ۲).');
+        $this->assertEqualsWithDelta(25.0, $result->overweightPercent, 0.001);
     }
 }

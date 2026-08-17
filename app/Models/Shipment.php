@@ -69,6 +69,14 @@ class Shipment extends Model
     /** لحظه‌ی ثبتِ بارنامه. `null` یعنی این محموله هنوز بار نزده است. */
     public const REGISTERED_AT = 'registered_at';
 
+    /**
+     * «این آخرین محموله بود» — ماشه‌ی تسویه‌ی نهایی (بند ۸.۲).
+     *
+     * بدون آن، کم‌تحویلی هرگز تسویه نمی‌شد: مجموع وزن‌ها به وزنِ سفارش
+     * نمی‌رسد و ماشه‌ی خودکار هیچ‌وقت فعال نمی‌شود.
+     */
+    public const IS_FINAL = 'is_final';
+
     protected $fillable = [
         self::ORDER_ID,
         self::FACTORY_ID,
@@ -90,6 +98,7 @@ class Shipment extends Model
         self::SHIPPING_COST => 'decimal:2',
         self::ACTUAL_WEIGHT => 'decimal:3',
         self::REGISTERED_AT => 'datetime',
+        self::IS_FINAL => 'boolean',
     ];
 
     /**

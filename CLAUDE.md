@@ -570,11 +570,29 @@ the flags to both `calculatePOO()` and `calculatePTS()`. POOM and PTSM (the
 post-weighbridge recalculations) use the same flags but with the **billing weight**,
 which is `min(actualWeight, weight_before_scale)` — never the raw `actualWeight`.
 
-**Spec invariant — final invoice ≤ initial invoice.** The buyer is never billed for
-more than the ordered weight, so over-delivery (`actualWeight > WBS`) is recorded
-physically (`weight_after_scale` + stock) but clamped for billing. There is **no
-"surplus" branch** that charges the buyer extra; the only non-equal outcome is a
-deficit (under-delivery → buyer refunded POO − POOM).
+**The overweight clamp is GONE — spec v2 §8.2 (2026-08-17).** Billing weight is now the
+raw `actualWeight`, not `min(actualWeight, WBS)`. The old rule ("final invoice ≤ initial
+invoice") meant every kilogram of over-delivery shipped **free**: the weight and stock
+were recorded correctly but nobody was billed, and because `diffPOO` could never go
+positive, no report could show it either.
+
+Two guards replaced the clamp, both in `ProcessWeighbridgeResultAction`:
+
+- **Tolerance.** `overweightPercent > SalesSettings::maxOverweightPercent()` (default 20 %)
+  → order goes to `awaiting_weight_correction`, `weighing_completed_at` stays NULL, and
+  **not one financial leg runs**. Same principle as the zero-`official_price` guard:
+  invalid data halts, it does not move money.
+- **Credit limit.** Within tolerance, the buyer is charged `deltaPOO` from their wallet;
+  whatever the wallet cannot cover becomes a `DebtEngine` entry. If `debt_after ≤
+  credit_limit` the load ships (`status = 'surplus'`); otherwise the debt is **still
+  recorded** and the order additionally halts (`'surplus_pending_buyer'`). §3.12 asks for
+  both, not one — recording the debt and halting the load are separate consequences.
+
+Freight and a percentage coupon are recomputed at the real weight too
+(`WeighbridgeReconciler::recalculateShipping/recalculateCoupon`), so `shipping_cost` and
+`coupon_discount_amount` on the order are post-settlement values. `WeighbridgeReconcilerTest`,
+`SettlementDataGuardsTest` and `ProcessWeighbridgeResultActionTest` were **changed** (not
+deleted) to assert the new direction.
 
 **EliteYAR gross (PTC)** is the `%CO` slice of the commission pool:
 `(POOM − PTSM) × %CO / (%CO + %SSG)`. Deriving it from POOM−PTSM inherits the same
@@ -631,31 +649,42 @@ documents are submitted:
 - Order fields set: `system_moadian_ref`, `system_hold_released_at`
 - Authorization: admin only (`POST /admin/orders/{order}/system-moadian-invoice`)
 
-> 🚧 **Open decision — the debt-parking path cannot currently complete.** The flow below
-> exists for exactly one situation: the supplier has no money. But the supplier receives
-> PTS at payment time and may withdraw it immediately, so "empty wallet at weighbridge" is
-> the *normal* case for this path, not an edge. Right after the debt is parked,
-> `WeighbridgeVatRouter::routeSupplierVat()` unconditionally debits the escrow VAT on PTSM
-> from that same empty wallet → `InsufficientBalanceException` → **the entire weighbridge
-> rolls back, including the park**. So the whole `supplier_debt_pending` machinery only
-> fires in the narrow window where the supplier can cover the VAT but not the reclaim; with
-> a genuinely drained wallet **no under-delivery can be recorded at all**.
-> Pinned as a known defect by `Financial/DrainedSupplierWeighbridgeTest` — *change* that
-> test (don't delete it) once the policy is decided. Fixing it requires deciding who fronts
-> tax money the supplier does not have, or whether VAT is parked like the deficit is; that
-> is the same open question as `SupplierDebtHandler::parkDebtAndNotify` fronting the buyer
-> refund from WSSG. Both are financial-policy calls, not code defects with an obvious fix.
+> ✅ **Resolved 2026-08-17 (spec v2 §8.4).** This used to be a documented dead end: right
+> after the debt was parked, `routeSupplierVat()` debited the escrow VAT from the same
+> empty wallet → `InsufficientBalanceException` → **the whole weighbridge rolled back,
+> including the park**, so a genuinely drained supplier meant no under-delivery could be
+> recorded at all. Two management decisions unblocked it; both are implemented and
+> `Financial/DrainedSupplierWeighbridgeTest` was *changed* (not deleted) to assert the fix.
+
+**The supplier's VAT is held in the supplier's OWN wallet, never moved to WVAT.**
+`WeighbridgeVatRouter::placeSupplierVatHold()` calls
+`WalletTransactionEngine::placeHold()` — `balance → balance_hold` on the supplier's wallet.
+It is their money; it is only locked until they issue Doc O, which
+`RecordSupplierMoadianInvoiceAction` then releases with `releaseHold()` **on that same
+wallet**. The old path debited it into the separate WVAT escrow and released it *within*
+WVAT, so the VAT never came back to the supplier at all.
 
 **Weighbridge deficit — insufficient supplier balance**
-If at weighbridge time the supplier's wallet balance < `PTS − PTSM` (reclaimAmount):
-- Buyer refund is credited in `HOLD` (not AVAILABLE) to `WO`
-- `order.supplier_debt_pending = true`, `order.supplier_debt_amount = reclaimAmount`
-- Supplier receives an SMS to top up their wallet (`sms.supplier_debt_notification`)
-- `CheckSupplierBalancesJob` (cron) polls orders with `supplier_debt_pending = true`:
-  when balance ≥ debt, it locks order + wallets, reclaims the debt, finds the specific
-  hold WalletTransaction (by `order_id/type=deposit/status=hold`), releases it to
-  AVAILABLE, notifies the buyer via SMS (`sms.buyer_refund_released`), and clears
-  the debt flags.
+If at weighbridge time the supplier's wallet cannot cover `PTS − PTSM`:
+- **No money moves.** `SupplierDebtHandler::parkDebtAndNotify` only records what is owed
+  in each direction: `supplier_debt_amount` and `buyer_refund_pending_amount`, plus a
+  person-level `DebtEngine::incur(weighbridge_deficit)` entry. The platform deliberately
+  does **not** front the buyer's refund from WSSG — the Saze wallet holds only the
+  commission after payment, so that debit failed and rolled the weighbridge back.
+- The supplier's VAT is **suspended**, not collected: `orders.supplier_vat_pending_amount`.
+  It gets its own column rather than being added to `supplier_debt_amount` because the two
+  have different destinations — the debt is reclaimed **to Saze**, but the VAT must end up
+  **held in the supplier's own wallet**. Merging them would strand the VAT with Saze
+  forever and leave Doc O with no hold to release.
+- Supplier gets an SMS (`sms.supplier_debt_notification`).
+- `CheckSupplierBalancesJob` (cron) requires `balance ≥ debt + suspendedVat` and then runs
+  three legs in one transaction, **in this order**: reclaim WS→WSSG, pay WSSG→WO, place
+  the VAT hold on the supplier's wallet. Reclaim-before-pay is load-bearing (WSSG must
+  never go negative), and the VAT hold comes last because the reclaim just drew down that
+  same wallet. It also calls `DebtEngine::repay()` so the person-level ledger closes.
+- **Legacy fallback:** orders parked *before* phase 8 really do carry a hold in the buyer's
+  wallet. `outstandingRefundHold()` still finds those and releases them instead of paying
+  a second time from WSSG.
 
 **Order model constants for this flow:**
 ```php
@@ -670,6 +699,44 @@ Order::SUPPLIER_DEBT_AMOUNT        // decimal — Rials owed by supplier
 Order::SYSTEM_MOADIAN_REF          // string|null — set when Doc P submitted (admin)
 Order::SYSTEM_HOLD_RELEASED_AT     // datetime|null
 ```
+
+### Debt and credit — `DebtEngine` is the only writer of `users.debt_balance`
+
+Phase 9 (spec §3.12 / §4.7). Same shape as wallets: one balance column
+(`users.debt_balance`) plus an append-only ledger (`debt_entries`), so
+`financial:doctor` can replay one against the other. **Never write `debt_balance`
+directly** — `DebtEngine::incur()` / `repay()` write the row and the balance together
+under a `users` row lock (the same serialization the elite-yar lifetime cap needed).
+
+- A repayment is a **new row with a negative amount**, never an edit of the original —
+  identical rule to `releaseHold()`, and for the same reason.
+- `repay()` clamps to the outstanding balance; a negative `debt_balance` would mean "the
+  company owes the user", which is a different claim and belongs in the wallet.
+- `users.credit_limit` defaults to **0** — no credit unless an admin grants it via
+  `POST /admin/users/{user}/credit-limit` (`manage-users`). Both columns are deliberately
+  **not** in `$fillable`.
+- `fitsWithinCreditLimit()` answers "halt the order or not", **not** "record the debt or
+  not". Over the limit, the debt is still recorded and the order *additionally* halts.
+- Enforcement: `PlaceOrderAction::assertNotInDebt()` (422, checked against the **payer**,
+  not the placer — in buy-for-others the employer's debt is what matters) and
+  `RequestWithdrawalAction` (422, buyer and supplier alike; this is what guarantees a
+  debtor supplier's next top-up goes to settlement).
+- Pinned by `Financial/DebtEngineTest`.
+
+### Settlement runs ONCE per order, triggered by the last shipment
+
+Spec v2 §8.2. Registering a waybill only records that leg's weight and fires **no**
+financial leg. `RegisterShipmentAction` settles when any of three is true:
+
+1. a registered shipment has `is_final = true` (the supplier says "that was the last one"),
+2. `Σ actual_weight ≥ weight_before_scale` (guarded by `wbs > 0` — an order with no
+   pre-scale weight means *unknown*, not *reached*, and without that guard the first leg
+   always tripped the trigger),
+3. no unregistered leg remains (the phase-7 behaviour).
+
+Trigger 1 is the one phase 7 lacked, and without it **under-delivery could never settle**:
+the summed weight never reaches the order weight, and if the supplier ships in fewer loads
+than there are shipment rows, trigger 3 never fires either. The order stayed open forever.
 
 ### Document Generation — Which Action Emits Which Doc
 
@@ -1164,7 +1231,7 @@ tests/
   Unit/          — (empty placeholder dir — kept so phpunit.xml works)
 ```
 
-**Total: 739 tests, 1885 assertions — all green. ✅**
+**Total: 861 tests, 2234 assertions — all green. ✅**
 
 Round-5 audit additions: `Security/CorsAllowlistTest`,
 `Security/PublicDiskUploadRulesTest`, `Admin/AdminPermissionCoverageTest`,

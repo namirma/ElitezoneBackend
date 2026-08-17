@@ -6,6 +6,7 @@ namespace App\Services\Financial;
 
 use App\Constants\FinancialCodes;
 use App\Jobs\Notification\SendSmsJob;
+use App\Models\DebtEntry;
 use App\Models\Order;
 use App\Models\Wallet;
 use Illuminate\Support\Facades\Log;
@@ -25,6 +26,7 @@ class SupplierDebtHandler
 {
     public function __construct(
         protected WalletTransactionEngine $walletEngine,
+        protected DebtEngine $debtEngine,
     ) {}
 
     /**
@@ -114,6 +116,20 @@ class SupplierDebtHandler
             Order::SUPPLIER_DEBT_AMOUNT => $reclaimAmount,
             Order::BUYER_REFUND_PENDING_AMOUNT => $refundAmount,
         ])->save();
+
+        // دفترِ بدهیِ سطحِ **شخص** (فاز ۹). ستون‌های بالا per-order‌اند و به
+        // تنهایی نمی‌گویند «این تأمین‌کننده رویِ هم چقدر بدهکار است» — همان
+        // چیزی که گاردِ برداشت به آن تکیه می‌کند.
+        $supplierId = (int) ($order->items->first()?->supplier_user_id ?? 0);
+        if ($supplierId > 0) {
+            $this->debtEngine->incur(
+                $supplierId,
+                $reclaimAmount,
+                DebtEntry::TYPE_WEIGHBRIDGE_DEFICIT,
+                $order,
+                "کسری باسکول سفارش {$order->order_number}",
+            );
+        }
 
         // Queue the SMS and defer it until AFTER the surrounding weighbridge transaction
         // commits. The previous synchronous SmsService::send() was a blocking HTTP POST

@@ -92,6 +92,35 @@ class AdminUserController extends Controller
     }
 
     /**
+     * تعیین سقف اعتبار کاربر — بند ۳.۱۲ سند، «دستی توسط بک‌آفیس».
+     *
+     * فقط `credit_limit` نوشته می‌شود، هرگز `debt_balance`: مانده تنها از مسیر
+     * `DebtEngine` عوض می‌شود تا با دفترِ `debt_entries` هم‌خوان بماند. اصلاحِ
+     * دستیِ خودِ بدهی باید یک ردیفِ `adjustment` بگذارد، نه یک UPDATE بی‌رد.
+     *
+     * ستون در `$fillable` نیست (مثل اسنپ‌شات‌های مالیِ Order)، پس `forceFill`.
+     */
+    public function setCreditLimit(Request $request, User $user): JsonResponse
+    {
+        $validated = $request->validate([
+            'credit_limit' => ['required', 'numeric', 'min:0'],
+        ], [
+            'credit_limit.required' => __('admin.users.credit_limit_required'),
+            'credit_limit.min' => __('admin.users.credit_limit_min'),
+        ]);
+
+        $user->forceFill([User::CREDIT_LIMIT => $validated['credit_limit']])->save();
+
+        activity()
+            ->performedOn($user)
+            ->causedBy(Auth::user())
+            ->withProperties(['credit_limit' => $validated['credit_limit']])
+            ->log('admin.user.credit_limit_updated');
+
+        return success(new UserResource($user->fresh()), __('admin.users.credit_limit_updated'));
+    }
+
+    /**
      * افزودن یادداشت ادمین روی کاربر (یادداشت عمومی کاربر)
      */
     public function addNote(Request $request, User $user): JsonResponse

@@ -249,6 +249,15 @@ class Order extends Model
      */
     public const BUYER_REFUND_PENDING_AMOUNT = 'buyer_refund_pending_amount';
 
+    /**
+     * مالیاتِ تأمین‌کننده که در لحظه‌ی باسکول قابل هولد نبود (بند ۸.۴).
+     *
+     * جدا از `SUPPLIER_DEBT_AMOUNT` نگه داشته می‌شود چون مقصدشان فرق دارد:
+     * بدهی به کیف پول سازه وصول می‌شود، ولی مالیات باید در کیف پولِ خودِ
+     * تأمین‌کننده هولد شود تا با فاکتور مودیان به خودش برگردد.
+     */
+    public const SUPPLIER_VAT_PENDING_AMOUNT = 'supplier_vat_pending_amount';
+
     /** Doc P: شماره فاکتور مودیان سیستم (پلتفرم) برای خریدار */
     public const SYSTEM_MOADIAN_REF = 'system_moadian_ref';
 

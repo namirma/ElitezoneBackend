@@ -12,13 +12,21 @@ namespace App\DataTransferObjects\Order;
 final class WeighbridgeReconcileResult
 {
     public function __construct(
-        /** Weight used for billing — min(actualWeight, WBS). Over-delivery is absorbed by stock, never charged. */
+        /**
+         * وزنِ مبنای صورت‌حساب = وزنِ واقعیِ باسکول.
+         *
+         * تا نسخه‌ی ۱ سند اینجا `min(actual, WBS)` بود («فاکتور نهایی هرگز از
+         * فاکتور اولیه بیشتر نیست»). نسخه‌ی ۲ بند ۸.۲ آن clamp را برداشت:
+         * اضافه‌بار درون تلورانس واقعاً صورت‌حساب می‌شود، و فراتر از تلورانس
+         * سفارش را متوقف می‌کند (`awaiting_weight_correction`) نه اینکه
+         * بی‌صدا رایگان تحویل شود.
+         */
         public readonly float $billingWeight,
         /** POOM: POO recomputed with billingWeight (buyer's revised amount). */
         public readonly float $newPOO,
         /** PTSM: PTS recomputed with billingWeight (supplier's revised amount). */
         public readonly float $newPTS,
-        /** POOM − POO_original. Negative means under-delivery; positive is impossible by spec (billingWeight ≤ WBS). */
+        /** POOM − POO_original. منفی = کم‌تحویلی، مثبت = اضافه‌بار (نسخه‌ی ۲). */
         public readonly float $diffPOO,
         /** PTSM − PTS_original. Sign mirrors diffPOO. */
         public readonly float $diffPTS,
@@ -26,5 +34,11 @@ final class WeighbridgeReconcileResult
         public readonly array $rates,
         /** VAT rate (%) from the order snapshot (e.g. 10.0 for 10%). */
         public readonly float $vat,
+        /** درصد اضافه‌بار نسبت به `weight_before_scale`؛ صفر یا منفی = بدون اضافه‌بار. */
+        public readonly float $overweightPercent = 0.0,
+        /** کرایه‌ی بازمحاسبه‌شده با وزن واقعی (بند ۸.۲ گام ۲). */
+        public readonly float $newShippingCost = 0.0,
+        /** تخفیفِ کوپن پس از بازمحاسبه با POOM (بند ۸.۲ گام ۴). */
+        public readonly float $newCouponDiscount = 0.0,
     ) {}
 }

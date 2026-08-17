@@ -148,6 +148,8 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
         Route::get('/{user}', 'show');
         Route::post('/{user}/toggle-status', 'toggleStatus');
         Route::post('/{user}/note', 'addNote');
+        // سقف اعتبار — بند ۳.۱۲: تنها راهِ دادنِ اعتبار به یک خریدار.
+        Route::post('/{user}/credit-limit', 'setCreditLimit');
         Route::post('/{user}/verify-elite-yar', 'verifyEliteYAR');
         Route::post('/{user}/unverify-elite-yar', 'unverifyEliteYAR');
     });

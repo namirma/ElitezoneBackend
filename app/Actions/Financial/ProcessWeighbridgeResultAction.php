@@ -4,12 +4,19 @@ declare(strict_types=1);
 
 namespace App\Actions\Financial;
 
+use App\Constants\FinancialCodes;
+use App\DataTransferObjects\Order\WeighbridgeReconcileResult;
+use App\Models\DebtEntry;
 use App\Models\Order;
+use App\Models\Wallet;
+use App\Services\Financial\DebtEngine;
 use App\Services\Financial\SupplierDebtHandler;
+use App\Services\Financial\WalletTransactionEngine;
 use App\Services\Financial\WeighbridgeReconciler;
 use App\Services\Financial\WeighbridgeVatRouter;
 use App\Services\InventoryService;
 use App\Services\Invoice\InvoiceGenerator;
+use App\Services\Sales\SalesSettings;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -28,6 +35,9 @@ class ProcessWeighbridgeResultAction
         protected SupplierDebtHandler $debtHandler,
         protected InvoiceGenerator $invoiceGenerator,
         protected InventoryService $inventoryService,
+        protected WalletTransactionEngine $walletEngine,
+        protected DebtEngine $debtEngine,
+        protected SalesSettings $salesSettings,
     ) {}
 
     public function execute(Order $order, float $actualWeight): array
@@ -89,11 +99,41 @@ class ProcessWeighbridgeResultAction
 
             $result = $this->reconciler->reconcile($locked, $actualWeight);
 
+            // اضافه‌بارِ فراتر از تلورانس: **هیچ لِگ مالی‌ای اجرا نمی‌شود** و
+            // سفارش تا تأیید دو طرف متوقف می‌ماند (بند ۸.۲ گام ۷الف).
+            //
+            // این شاخه پیش از هر نوشتنِ مالی می‌آید — همان قاعده‌ی «داده‌ی
+            // نامعتبر باید متوقف کند، نه پول جابه‌جا کند» که گاردِ
+            // `official_price` صفر و گاردِ چندتأمین‌کننده هم دارند.
+            if ($result->overweightPercent > $this->maxOverweightPercent()) {
+                $locked->forceFill([
+                    Order::WEIGHT_AFTER_SCALE => $actualWeight,
+                    Order::STATUS => Order::STATUS_AWAITING_WEIGHT_CORRECTION,
+                ])->save();
+
+                Log::channel('financial')->warning(
+                    "Order {$locked->id}: overweight {$result->overweightPercent}% exceeds the tolerance; settlement halted."
+                );
+
+                return [
+                    'status' => 'awaiting_weight_correction',
+                    'old_weight' => (string) $locked->weight_before_scale,
+                    'new_weight' => (string) $actualWeight,
+                    'financial_diff' => (string) $result->diffPOO,
+                    'final_amount' => (string) $locked->final_amount,
+                ];
+            }
+
             $isDeficit = $result->diffPOO < -$this->tolerance();
+            $isSurplus = $result->diffPOO > $this->tolerance();
             $status = 'equal';
+
             if ($isDeficit) {
                 $status = $this->debtHandler->handle($locked, abs($result->diffPOO), abs($result->diffPTS));
+            } elseif ($isSurplus) {
+                $status = $this->chargeOverweight($locked, $result);
             }
+
             // Doc I (always) + LO/LS (only when deficit)
             $this->invoiceGenerator->generateWeighbridgeDocs($locked, $isDeficit);
 
@@ -102,10 +142,16 @@ class ProcessWeighbridgeResultAction
             $locked->forceFill([
                 Order::WEIGHT_AFTER_SCALE => $actualWeight,
                 Order::WEIGHING_COMPLETED_AT => now(),
-                Order::STATUS => Order::STATUS_SHIPPED,
+                // سفارشی که خریدارش از سقف اعتبار گذشته حمل نمی‌شود تا بپردازد
+                // (بند ۸.۲ گام ۷ب) — لِگ‌های مالی ثبت شده‌اند، بار متوقف است.
+                Order::STATUS => $status === 'surplus_pending_buyer'
+                    ? Order::STATUS_AWAITING_WEIGHT_CORRECTION
+                    : Order::STATUS_SHIPPED,
                 Order::PAYMENT_OF_OWNER => $result->newPOO,
                 Order::PAYMENT_TO_SUPPLIER => $result->newPTS,
                 Order::PAYMENT_TO_ELITE_YAR => $eliteYARGross,
+                Order::SHIPPING_COST => $result->newShippingCost,
+                Order::COUPON_DISCOUNT_AMOUNT => $result->newCouponDiscount,
                 Order::FINAL_AMOUNT => $result->newPOO,
             ])->save();
 
@@ -119,6 +165,73 @@ class ProcessWeighbridgeResultAction
                 'final_amount' => (string) $result->newPOO,
             ];
         }, 3);
+    }
+
+    private function maxOverweightPercent(): float
+    {
+        return $this->salesSettings->maxOverweightPercent();
+    }
+
+    /**
+     * اضافه‌بارِ درون تلورانس — بند ۸.۲ گام ۷ب و ۷ج.
+     *
+     * ترتیب لِگ‌ها همان قاعده‌ی همیشگی است: اول از خریدار بگیر، بعد به
+     * تأمین‌کننده بده، تا کیف پول سازه هرگز منفی نشود.
+     *
+     * اگر خریدار موجودیِ کافی ندارد، سفارش لزوماً متوقف نمی‌شود: تا سقفِ
+     * اعتبارش مابقی به بدهی می‌رود و بار حرکت می‌کند (بند ۳.۱۲). فراتر از سقف،
+     * بدهی **باز هم ثبت می‌شود** ولی سفارش تا پرداخت `awaiting_weight_correction`
+     * می‌ماند — سند صریحاً می‌گوید هر دو، نه یکی.
+     */
+    private function chargeOverweight(Order $order, WeighbridgeReconcileResult $result): string
+    {
+        $deltaPOO = $result->diffPOO;
+        $deltaPTS = $result->diffPTS;
+        $payerId = $order->payerUserId();
+        $supplierId = (int) ($order->items->first()?->supplier_user_id ?? 0);
+
+        $balance = (float) (Wallet::where(Wallet::USER_ID, $payerId)->lockForUpdate()->value(Wallet::BALANCE) ?? 0);
+        $available = min($deltaPOO, $balance);
+        $shortfall = round($deltaPOO - $available, 2);
+
+        $withinCredit = $shortfall <= 0
+            || $this->debtEngine->fitsWithinCreditLimit($payerId, $shortfall);
+
+        if ($available > 0) {
+            $this->walletEngine->debitBuyer(
+                $order, $available, FinancialCodes::STATUS_AVAILABLE,
+                "مابه‌التفاوت اضافه‌بار سفارش {$order->order_number}"
+            );
+        }
+
+        if ($shortfall > 0) {
+            $this->debtEngine->incur(
+                $payerId, $shortfall, DebtEntry::TYPE_OVERWEIGHT, $order,
+                "اضافه‌بار سفارش {$order->order_number}"
+            );
+        }
+
+        // سازه کل مابه‌التفاوت را می‌گیرد (چه نقد چه اعتباری) و سهم
+        // تأمین‌کننده را از همان می‌پردازد؛ لِگ ۴ پس از ۳ می‌آید.
+        $this->walletEngine->creditSystem(
+            $order, $deltaPOO, FinancialCodes::STATUS_AVAILABLE,
+            "دریافت مابه‌التفاوت اضافه‌بار سفارش {$order->order_number}"
+        );
+
+        if ($deltaPTS > 0 && $supplierId > 0) {
+            $this->walletEngine->debitSystem(
+                $order, $deltaPTS, FinancialCodes::STATUS_AVAILABLE,
+                "پرداخت سهم اضافه‌بار به تأمین‌کننده سفارش {$order->order_number}"
+            );
+            $this->walletEngine->creditSupplier(
+                $order, $deltaPTS, FinancialCodes::STATUS_AVAILABLE, $supplierId,
+                "سهم اضافه‌بار سفارش {$order->order_number}"
+            );
+        }
+
+        // وضعیت را اینجا نمی‌نویسیم — `forceFill` بعدیِ orchestrator رویش
+        // می‌نوشت. رشته‌ی برگشتی تعیین می‌کند سفارش `shipped` شود یا معلق بماند.
+        return $withinCredit ? 'surplus' : 'surplus_pending_buyer';
     }
 
     private function isAlreadyProcessed(Order $order): bool

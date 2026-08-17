@@ -18,6 +18,7 @@ use App\Models\Shipment;
 use App\Models\User;
 use App\Models\UserType;
 use App\Services\DocumentSequenceService;
+use App\Services\Financial\DebtEngine;
 use App\Services\Financial\SettlementCalculatorService;
 use App\Services\Marketing\CouponService;
 use App\Services\PriceCalculationService;
@@ -40,6 +41,7 @@ class PlaceOrderAction
         private readonly ShippingCostCalculator $shippingCalculator,
         private readonly CartShippingQuoteService $shippingQuoteService,
         private readonly CouponService $couponService,
+        private readonly DebtEngine $debtEngine,
     ) {}
 
     /**
@@ -68,6 +70,12 @@ class PlaceOrderAction
         string $initialStatus = Order::STATUS_PROCESSING,
         ?User $payer = null,
     ): Order {
+        // بدهکار سفارش تازه ثبت نمی‌کند (بند ۳.۱۲). گارد روی **پرداخت‌کننده**
+        // است نه ثبت‌کننده: در مسیرِ «الیت‌یار برای کارفرما» پول از کیف پول
+        // کارفرما می‌رود، پس بدهیِ اوست که باید مانع شود — بدهیِ الیت‌یار
+        // ربطی به این سفارش ندارد.
+        $this->assertNotInDebt($payer ?? $user);
+
         $order = DB::transaction(function () use ($user, $data, $initialStatus, $payer) {
 
             // ۱. خواندن و قفل کردن سبد خرید دقیقاً داخل تراکنش
@@ -490,6 +498,20 @@ class PlaceOrderAction
      * همان قاعده‌ای که برای weight_before_scale برقرار است: دادهٔ نامعتبر باید
      * متوقف کند، نه پول جابه‌جا کند. با آمدنِ تسویهٔ چندخطی این گارد برداشته شود.
      */
+    /**
+     * بدهکار سفارش تازه ثبت نمی‌کند — بند ۳.۱۲ سند.
+     *
+     * پیش از تراکنش اجرا می‌شود، مثل باقی گاردهای «داده نامعتبر باید متوقف کند،
+     * نه اینکه پول جابه‌جا شود»: ثبتِ سفارشی که بعداً قابل پرداخت نیست فقط
+     * موجودی را قفل می‌کند و سبد را خالی.
+     */
+    private function assertNotInDebt(User $payer): void
+    {
+        if ($this->debtEngine->isInDebt((int) $payer->id)) {
+            throw new BusinessException(__('orders.blocked_by_debt'), 422);
+        }
+    }
+
     private function assertSingleSupplier(Cart $cart): void
     {
         $supplierIds = $cart->items

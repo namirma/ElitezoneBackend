@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Actions\Financial;
 
+use App\Exceptions\InsufficientBalanceException;
 use App\Models\Order;
+use App\Services\Financial\SettlementCalculatorService;
 use App\Services\Financial\WalletTransactionEngine;
 use App\Services\Invoice\InvoiceGenerator;
 use Illuminate\Support\Facades\DB;
@@ -36,7 +38,7 @@ class RecordSupplierMoadianInvoiceAction
     public function __construct(
         private readonly WalletTransactionEngine $walletEngine,
         private readonly InvoiceGenerator $invoiceGenerator,
-        private readonly \App\Services\Financial\SettlementCalculatorService $calculator,
+        private readonly SettlementCalculatorService $calculator,
     ) {}
 
     /**
@@ -110,7 +112,7 @@ class RecordSupplierMoadianInvoiceAction
                         $lockedOrder,
                         "آزادسازی مالیات امانی — فاکتور مودیان: {$moadianRef}"
                     );
-                } catch (\App\Exceptions\InsufficientBalanceException) {
+                } catch (InsufficientBalanceException) {
                     Log::channel('financial')->warning(
                         "Order {$lockedOrder->id}: no supplier VAT hold to release — it was parked as debt at weighbridge."
                     );

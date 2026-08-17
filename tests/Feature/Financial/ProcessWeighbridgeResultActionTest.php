@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\User;
 use App\Models\Wallet;
+use App\Services\Financial\DebtEngine;
 use App\Services\Financial\SettlementCalculatorService;
 use App\Services\Invoice\InvoiceGenerator;
 use App\Services\SmsService;
@@ -131,21 +132,81 @@ class ProcessWeighbridgeResultActionTest extends TestCase
         $this->systemWallet->update([Wallet::BALANCE => $this->oldPOO - $oldPTS]);
     }
 
+    /**
+     * ‏قبلاً «اضافه‌بار هرگز به خریدار صورت‌حساب نمی‌شود» را قفل می‌کرد. نسخه‌ی ۲
+     * سند (بند ۸.۲) clamp را برداشت و دو شاخه‌ی تازه تعریف کرد؛ هر دو اینجا
+     * قفل می‌شوند.
+     */
     #[Test]
-    public function over_delivery_never_charges_the_buyer(): void
+    public function over_delivery_beyond_the_tolerance_halts_without_moving_money(): void
     {
         $balanceBefore = (float) $this->buyerWallet->balance;
 
-        // WAS (20) > WBS (10): billing weight is capped at WBS, so nothing extra is charged.
+        // WAS (20) در برابر WBS (10) یعنی ۱۰۰٪ اضافه‌بار — بسیار فراتر از
+        // تلورانس پیش‌فرض (۲۰٪).
         $result = $this->action->execute($this->order, 20.0);
 
         $this->buyerWallet->refresh();
         $this->order->refresh();
 
-        $this->assertSame('equal', $result['status'], 'Over-delivery must settle as equal, never surplus');
-        $this->assertEquals($balanceBefore, (float) $this->buyerWallet->balance, 'Buyer must not be charged for over-delivery');
-        $this->assertEqualsWithDelta($this->oldPOO, (float) $this->order->payment_of_owner, 1.0, 'Final POO must not exceed the initial POO');
-        $this->assertEquals(20.0, (float) $this->order->weight_after_scale, 'Physical weight is still recorded');
+        $this->assertSame('awaiting_weight_correction', $result['status']);
+        $this->assertEquals($balanceBefore, (float) $this->buyerWallet->balance,
+            'فراتر از تلورانس هیچ لِگ مالی‌ای اجرا نمی‌شود');
+        $this->assertSame(Order::STATUS_AWAITING_WEIGHT_CORRECTION, $this->order->{Order::STATUS});
+        $this->assertNull($this->order->{Order::WEIGHING_COMPLETED_AT},
+            'تسویه انجام نشده، پس نباید مهرِ اتمام بخورد');
+        $this->assertEquals(20.0, (float) $this->order->weight_after_scale, 'وزن فیزیکی ثبت می‌شود');
+    }
+
+    #[Test]
+    public function over_delivery_within_the_tolerance_charges_the_buyer(): void
+    {
+        // موجودیِ کافی برای مابه‌التفاوت. بدون آن، مسیرِ «کسری موجودی» فعال
+        // می‌شود که تستِ بعدی آن را جدا می‌سنجد.
+        $this->buyerWallet->update([Wallet::BALANCE => 100_000_000]);
+        $balanceBefore = (float) $this->buyerWallet->fresh()->balance;
+
+        // ۱۰٪ اضافه‌بار — درون تلورانس ۲۰٪.
+        $result = $this->action->execute($this->order, 11.0);
+
+        $this->buyerWallet->refresh();
+        $this->order->refresh();
+
+        $this->assertSame('surplus', $result['status']);
+        $this->assertLessThan($balanceBefore, (float) $this->buyerWallet->balance,
+            'اضافه‌بارِ درون تلورانس از کیف پول خریدار کسر می‌شود');
+        $this->assertGreaterThan($this->oldPOO, (float) $this->order->payment_of_owner);
+        $this->assertSame(Order::STATUS_SHIPPED, $this->order->{Order::STATUS});
+    }
+
+    #[Test]
+    public function an_overweight_the_buyer_cannot_cover_becomes_debt_and_halts_the_load(): void
+    {
+        // کیف پول خالی و سقف اعتبار صفر (پیش‌فرض): بدهی **ثبت می‌شود** و
+        // سفارش هم متوقف می‌ماند — سند صریحاً هر دو را می‌خواهد، نه یکی.
+        $this->buyerWallet->update([Wallet::BALANCE => 0]);
+
+        $result = $this->action->execute($this->order, 11.0);
+        $this->order->refresh();
+
+        $this->assertSame('surplus_pending_buyer', $result['status']);
+        $this->assertSame(Order::STATUS_AWAITING_WEIGHT_CORRECTION, $this->order->{Order::STATUS});
+        $this->assertGreaterThan(0, app(DebtEngine::class)->balanceFor((int) $this->buyer->id));
+    }
+
+    #[Test]
+    public function a_credit_limit_absorbs_the_overweight_and_the_load_ships(): void
+    {
+        $this->buyerWallet->update([Wallet::BALANCE => 0]);
+        $this->buyer->forceFill([User::CREDIT_LIMIT => 100_000_000])->save();
+
+        $result = $this->action->execute($this->order, 11.0);
+        $this->order->refresh();
+
+        $this->assertSame('surplus', $result['status']);
+        $this->assertSame(Order::STATUS_SHIPPED, $this->order->{Order::STATUS});
+        $this->assertGreaterThan(0, app(DebtEngine::class)->balanceFor((int) $this->buyer->id),
+            'بدهی حتی درون سقف اعتبار هم ثبت می‌شود؛ سقف فقط جلوی توقف سفارش را می‌گیرد');
     }
 
     #[Test]

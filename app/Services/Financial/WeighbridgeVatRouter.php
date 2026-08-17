@@ -132,22 +132,41 @@ class WeighbridgeVatRouter
         int $supplierId,
     ): void {
         $supplierVat = $this->calculator->extractVat($result->newPTS, $result->vat)['vat'];
+
+        $this->placeSupplierVatHold($order, $supplierId, $supplierVat);
+    }
+
+    /**
+     * مالیات **در کیف پول خودِ تأمین‌کننده** هولد می‌شود و به کیف پول امانیِ
+     * جداگانه منتقل نمی‌گردد (تصمیم مدیریت، دور ۲ پرسش ۱): پول مالِ اوست، فقط
+     * تا صدور فاکتور مودیان قابل برداشت نیست.
+     *
+     * مسیر قبلی دو ایراد داشت: پول را از دارایی تأمین‌کننده خارج می‌کرد، و
+     * آزادسازی‌اش هم درونِ همان کیف پولِ امانی انجام می‌شد — یعنی مالیات
+     * هیچ‌وقت به خودِ تأمین‌کننده برنمی‌گشت.
+     *
+     * public است چون `CheckSupplierBalancesJob` هم پس از تسویه‌ی بدهی همین را
+     * صدا می‌زند (بند ۸.۴: «پس از شارژ، کران هم عودت و هم مالیات را اجرا می‌کند»).
+     *
+     * @return bool آیا هولد گذاشته شد؛ `false` یعنی معلق ماند.
+     */
+    public function placeSupplierVatHold(Order $order, int $supplierId, float $supplierVat): bool
+    {
         if ($supplierVat <= 0.0) {
-            return;
+            return true;
         }
 
-        // مالیات **در کیف پول خودِ تأمین‌کننده** هولد می‌شود و به کیف پول امانیِ
-        // جداگانه منتقل نمی‌گردد (تصمیم مدیریت، دور ۲ پرسش ۱): پول مالِ اوست،
-        // فقط تا صدور فاکتور مودیان قابل برداشت نیست.
-        //
-        // مسیر قبلی دو ایراد داشت: پول را از دارایی تأمین‌کننده خارج می‌کرد، و
-        // آزادسازی‌اش هم درونِ همان کیف پولِ امانی انجام می‌شد — یعنی مالیات
-        // هیچ‌وقت به خودِ تأمین‌کننده برنمی‌گشت.
-        //
+        // بدهیِ باز یعنی کیف پول تأمین‌کننده همین حالا هم کسری دارد. تلاش برای
+        // هولد فقط استثنا می‌دهد، پس مالیات صریحاً معلق می‌شود (بند ۸.۴).
+        if ($order->{Order::SUPPLIER_DEBT_PENDING}) {
+            $this->suspendSupplierVat($order, $supplierVat);
+
+            return false;
+        }
+
         // اگر موجودی کافی نباشد، **پرتاب نمی‌کنیم**: تأمین‌کننده‌ای که سهمش را
         // برداشته حالت عادیِ این مسیر است، و شکستن اینجا کلِ باسکول را برمی‌گرداند
-        // و ثبتِ کسری را غیرممکن می‌کرد. مالیاتِ وصول‌نشده مثل خودِ کسری به بدهی
-        // اضافه می‌شود و با شارژِ بعدی تسویه می‌گردد (دور ۲ پرسش ۲، گزینه‌ی ب).
+        // و ثبتِ کسری را غیرممکن می‌کرد.
         try {
             $this->walletEngine->placeHold(
                 $supplierId,
@@ -155,31 +174,35 @@ class WeighbridgeVatRouter
                 $order,
                 "مالیات امانی سفارش {$order->order_number} — تا ثبت فاکتور مودیان"
             );
+
+            return true;
         } catch (InsufficientBalanceException) {
-            $this->parkUncollectedVat($order, $supplierVat);
+            $this->suspendSupplierVat($order, $supplierVat);
+
+            return false;
         }
     }
 
     /**
-     * مالیاتی که تأمین‌کننده موجودی‌اش را نداشت، به بدهی‌اش اضافه می‌شود.
+     * مالیاتی که تأمین‌کننده موجودی‌اش را نداشت، در ستونِ **خودش** پارک می‌شود.
      *
-     * پیش از این، همین حالت کلِ باسکول را برمی‌گرداند — و چون تأمین‌کننده سهمش
-     * را در لحظه‌ی پرداخت می‌گیرد و ممکن است همان روز برداشت کند، این حالتِ
-     * عادیِ مسیر بود نه استثنا. نتیجه‌اش این بود که با کیف پولِ واقعاً خالی
-     * **هیچ کسری‌ای قابل ثبت نبود**.
+     * عمداً به `SUPPLIER_DEBT_AMOUNT` اضافه نمی‌شود: آن ستون را کران به کیف پول
+     * سازه وصول می‌کند، و مالیات طلبِ سازه نیست. اگر آنجا می‌رفت، پول برای همیشه
+     * نزد سازه می‌ماند و `RecordSupplierMoadianInvoiceAction` هیچ هولدی برای
+     * آزادکردن پیدا نمی‌کرد — یعنی مالیات دوباره به تأمین‌کننده برنمی‌گشت،
+     * همان اشتباهی که مسیر قبلیِ WVAT داشت.
      *
-     * `CheckSupplierBalancesJob` همین ستون را می‌پاید و با شارژِ بعدی وصول
-     * می‌کند؛ چیزی گم نمی‌شود، فقط منتظر می‌ماند.
+     * پرچمِ بدهی هم روشن می‌شود تا کران این سفارش را ببیند.
      */
-    private function parkUncollectedVat(Order $order, float $vat): void
+    private function suspendSupplierVat(Order $order, float $vat): void
     {
         $order->forceFill([
             Order::SUPPLIER_DEBT_PENDING => true,
-            Order::SUPPLIER_DEBT_AMOUNT => (float) ($order->{Order::SUPPLIER_DEBT_AMOUNT} ?? 0) + $vat,
+            Order::SUPPLIER_VAT_PENDING_AMOUNT => (float) ($order->{Order::SUPPLIER_VAT_PENDING_AMOUNT} ?? 0) + $vat,
         ])->save();
 
         Log::channel('financial')->warning(
-            "Order {$order->id}: supplier could not cover the escrow VAT ({$vat}); parked onto their debt."
+            "Order {$order->id}: supplier could not cover the escrow VAT ({$vat}); suspended until their debt clears."
         );
     }
 
