@@ -3,6 +3,7 @@
 use App\Http\Controllers\AgreementController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\QuestionController;
+use App\Http\Controllers\Api\Shipping\ShipmentDeliveryController;
 use App\Http\Controllers\Api\User\ProductReviewController;
 use App\Http\Controllers\CustomerTypeController;
 use App\Http\Controllers\FactoryController;
@@ -113,4 +114,23 @@ Route::prefix('purchase-parameters')->group(function () {
     Route::get('/user', [PurchaseParameterController::class, 'userParameters']);
     Route::post('/user', [PurchaseParameterController::class, 'store']);
     Route::post('/detect-price-filters', [ParameterDetectionController::class, 'detectPriceFilters']);
+});
+
+// ── چرخه‌ی تحویل: مسیرهای امضاشده (فاز ۱۰، بند ۷.۵) ─────────────────────────
+//
+// عمداً **بدون `auth:sanctum`**. راننده طبق بند ۳.۹ حساب کاربری ندارد و ارتباط
+// فقط از راه پیامک و لینک امضاشده است؛ خریدار هم ممکن است اپ را باز نکند و
+// بند ۳.۱۰ صریحاً «پنل خود یا لینک پیامکی» می‌گوید.
+//
+// امضا تنها گاردِ این دو مسیر است، پس هیچ‌کدام پارامتری از بدنه نمی‌خوانند و
+// انقضای لینک همان `delivery_deadline` است — نه بیشتر، وگرنه پس از عودت هم
+// قابل استفاده می‌ماند. `throttle` چون یک لینکِ لو رفته نباید قابل کوبیدن باشد.
+Route::middleware(['signed', 'throttle:30,1'])->group(function () {
+    Route::get('/shipments/{shipment}/arrived', [ShipmentDeliveryController::class, 'arrived'])
+        ->whereNumber('shipment')
+        ->name('shipments.arrived');
+
+    Route::get('/delivery/{shipment}/confirm', [ShipmentDeliveryController::class, 'confirmSigned'])
+        ->whereNumber('shipment')
+        ->name('delivery.confirm');
 });

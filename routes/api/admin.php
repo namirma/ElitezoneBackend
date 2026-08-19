@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\Admin\AdminBannerController;
 use App\Http\Controllers\Api\Admin\AdminCouponController;
 use App\Http\Controllers\Api\Admin\AdminCustomerTypeController;
 use App\Http\Controllers\Api\Admin\AdminDashboardController;
+use App\Http\Controllers\Api\Admin\AdminDebtController;
 use App\Http\Controllers\Api\Admin\AdminEduixController;
 use App\Http\Controllers\Api\Admin\AdminFactoryController;
 use App\Http\Controllers\Api\Admin\AdminFactoryLocationController;
@@ -50,6 +51,7 @@ use App\Http\Controllers\Api\Podium\PodiumBalanceController;
 use App\Http\Controllers\Api\Podium\PodiumBatchSettlementController;
 use App\Http\Controllers\Api\Podium\PodiumSettlementController;
 use App\Http\Controllers\Api\Podium\PodiumSettlementInquiryController;
+use App\Http\Controllers\Api\Shipping\ReturnDamageController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -173,6 +175,27 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
 
     // Orders — پشتِ مجوزِ granular «manage-orders» (قبلاً این slug به هیچ روتی وصل نبود،
     // پس ادمینِ محدودشده هم می‌توانست وضعیت سفارش/فاکتور مودیان را تغییر دهد).
+    // گزارش‌های فاز ۱۳ — سبدهای رهاشده و بدهی (بند ۷.۶). فقط خواندنی.
+    Route::controller(AdminDebtController::class)->group(function () {
+        Route::get('/abandoned-carts', 'abandonedCarts')
+            ->middleware('admin.permission:manage-orders');
+        Route::get('/debts', 'debts')
+            ->middleware('admin.permission:manage-financial');
+        Route::get('/users/{user}/debt-entries', 'userDebtEntries')
+            ->middleware('admin.permission:manage-financial');
+    });
+
+    // خسارت عودت — تأیید بک‌آفیس، مرحله‌ی دومِ جریان سه‌مرحله‌ای (بند ۳.۱۱).
+    Route::post('/damages/{damage}/approve', [ReturnDamageController::class, 'approveByBackoffice'])
+        ->whereNumber('damage')
+        ->middleware('admin.permission:manage-orders');
+
+    // محموله‌ها — تأیید تلفنی رسیدن توسط بک‌آفیس (بند ۳.۱۰).
+    Route::controller(AdminOrderController::class)->prefix('shipments')
+        ->middleware('admin.permission:manage-orders')->group(function () {
+            Route::post('/{shipment}/confirm-arrival', 'confirmShipmentArrival')->whereNumber('shipment');
+        });
+
     Route::controller(AdminOrderController::class)->prefix('orders')->middleware('admin.permission:manage-orders')->group(function () {
         Route::get('/', 'index');
         Route::get('/{order}/history', 'history');

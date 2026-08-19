@@ -6,10 +6,12 @@ namespace App\Actions\Order;
 
 use App\Actions\Financial\ProcessWeighbridgeResultAction;
 use App\Exceptions\BusinessException;
+use App\Jobs\Notification\SendSmsJob;
 use App\Models\Order;
 use App\Models\Shipment;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\URL;
 
 /**
  * ثبت بارنامه توسط تأمین‌کننده — بارنامه و باسکول در **یک** اقدام (بند ۳.۷).
@@ -29,6 +31,9 @@ use Illuminate\Support\Facades\Log;
  */
 class RegisterShipmentAction
 {
+    /** مهلتِ لینکِ اعلام رسیدن. سفر می‌تواند چند روز باشد، پس سخاوتمندانه. */
+    private const ARRIVAL_LINK_TTL_DAYS = 14;
+
     public function __construct(
         private readonly ProcessWeighbridgeResultAction $weighbridge,
     ) {}
@@ -129,6 +134,8 @@ class RegisterShipmentAction
             return [$lockedOrder, $shouldSettle, $total];
         });
 
+        $this->notifyDriver($shipment->fresh(), $order);
+
         if (! $shouldSettle) {
             Log::channel('financial')->info(
                 "Shipment {$shipment->id} registered for order {$order->id}; awaiting the remaining legs."
@@ -151,5 +158,36 @@ class RegisterShipmentAction
             'order_completed' => true,
             'settlement' => $settlement,
         ];
+    }
+
+    /**
+     * پیامکِ «بار به شما تخصیص یافت» همراه لینکِ اعلام رسیدن — بند ۱۰.۲.
+     *
+     * لینک امضاشده است و راننده حساب کاربری ندارد (بند ۳.۹)، پس این تنها راهِ
+     * ورودِ اوست. انقضا سخاوتمندانه گرفته شده چون سفر ممکن است چند روز طول
+     * بکشد؛ گاردِ واقعی این است که `RecordShipmentArrivalAction` روی محموله‌ی
+     * ثبت‌نشده یا رسیده‌ی قبلی کاری نمی‌کند.
+     */
+    private function notifyDriver(Shipment $shipment, Order $order): void
+    {
+        $mobile = $shipment->{Shipment::DRIVER_MOBILE};
+
+        if (! $mobile) {
+            return;
+        }
+
+        $link = URL::temporarySignedRoute(
+            'shipments.arrived',
+            now()->addDays(self::ARRIVAL_LINK_TTL_DAYS),
+            ['shipment' => $shipment->id],
+        );
+
+        SendSmsJob::dispatch(
+            $mobile,
+            __('sms.driver_assigned', [
+                'order_number' => $order->order_number,
+                'link' => $link,
+            ])
+        )->afterCommit();
     }
 }

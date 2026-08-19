@@ -60,6 +60,27 @@ class ShipmentResource extends BaseJsonResource
                 'plate' => $this->vehicle_plate,
                 'type' => $this->vehicle_type,
             ],
+
+            // ── چرخه‌ی تحویل (فاز ۱۰) ─────────────────────────────────────────
+            // `is_final` را فرانت هم می‌خواند: چک‌باکس «آخرین محموله» پس از ثبت
+            // باید حالتش را نشان دهد، نه اینکه دوباره خالی برگردد.
+            Shipment::IS_FINAL => (bool) $this->is_final,
+
+            'delivery' => [
+                'arrived_at' => $this->arrived_at?->toIso8601String(),
+                'arrival_source' => $this->arrival_source,
+                'deadline' => $this->delivery_deadline?->toIso8601String(),
+                // نسبی و نه مطلق، به همان دلیلِ سبد: ساعتِ کلاینت ممکن است
+                // اختلاف داشته باشد و شمارش معکوس روی عدد مطلق غلط درمی‌آید.
+                'remaining_seconds' => $this->delivery_deadline && $this->delivered_at === null && $this->returned_at === null
+                    ? max(0, now()->diffInSeconds($this->delivery_deadline, false))
+                    : null,
+                'delivered_at' => $this->delivered_at?->toIso8601String(),
+                'returned_at' => $this->returned_at?->toIso8601String(),
+                'can_confirm' => $this->arrived_at !== null
+                    && $this->delivered_at === null
+                    && $this->returned_at === null,
+            ],
         ];
     }
 }

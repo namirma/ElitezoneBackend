@@ -48,7 +48,27 @@ class Shipment extends Model
 
     public const STATUS_SHIPPED = 'shipped';
 
+    /** راننده رسیده و مهلت تأیید خریدار شروع شده (فاز ۱۰). */
+    public const STATUS_ARRIVED = 'arrived';
+
     public const STATUS_DELIVERED = 'delivered';
+
+    /** خریدار تا پایان مهلت تأیید نکرد؛ بار به مبدأ برگشت (فاز ۱۰/۱۱). */
+    public const STATUS_RETURNED = 'returned';
+
+    /**
+     * ترتیب واقعیِ چرخه — بند ۴.۵ سند.
+     *
+     * `preparing` عمداً اینجا نیست: در فاز ۰ از وضعیت‌های سفارش حذف شد و روی
+     * محموله هم هیچ نویسنده‌ای ندارد. ثابتش برای سازگاری مانده است.
+     */
+    public const LIFECYCLE = [
+        self::STATUS_PENDING,
+        self::STATUS_SHIPPED,
+        self::STATUS_ARRIVED,
+        self::STATUS_DELIVERED,
+        self::STATUS_RETURNED,
+    ];
 
     // ── بارنامه و راننده (فاز ۷، بند ۳.۷) ────────────────────────────────────
     public const WAYBILL_REF = 'waybill_ref';
@@ -77,6 +97,31 @@ class Shipment extends Model
      */
     public const IS_FINAL = 'is_final';
 
+    // ── چرخه‌ی تحویل (فاز ۱۰، بند ۳.۱۰) ──────────────────────────────────────
+
+    /** لحظه‌ی رسیدن راننده — ماشه‌ی شروع مهلت تأیید. */
+    public const ARRIVED_AT = 'arrived_at';
+
+    /** `driver_link` یا `backoffice`؛ بند ۳.۱۰ تأیید تلفنی را هم مجاز می‌داند. */
+    public const ARRIVAL_SOURCE = 'arrival_source';
+
+    public const ARRIVAL_DRIVER_LINK = 'driver_link';
+
+    public const ARRIVAL_BACKOFFICE = 'backoffice';
+
+    /** مهلت تأیید خریدار بر حسب ساعت (پیش‌فرض ۵، per-shipment). */
+    public const DELIVERY_DEADLINE_HOURS = 'delivery_deadline_hours';
+
+    /** لحظه‌ی محاسبه‌شده‌ی پایان مهلت — اسنپ‌شات، نه بازخوانی از تنظیم. */
+    public const DELIVERY_DEADLINE = 'delivery_deadline';
+
+    public const DELIVERED_AT = 'delivered_at';
+
+    /** `null` یعنی تأیید از لینک امضاشده آمده، نه از پنل. */
+    public const DELIVERY_CONFIRMED_BY = 'delivery_confirmed_by';
+
+    public const RETURNED_AT = 'returned_at';
+
     protected $fillable = [
         self::ORDER_ID,
         self::FACTORY_ID,
@@ -99,6 +144,10 @@ class Shipment extends Model
         self::ACTUAL_WEIGHT => 'decimal:3',
         self::REGISTERED_AT => 'datetime',
         self::IS_FINAL => 'boolean',
+        self::ARRIVED_AT => 'datetime',
+        self::DELIVERY_DEADLINE => 'datetime',
+        self::DELIVERED_AT => 'datetime',
+        self::RETURNED_AT => 'datetime',
     ];
 
     /**
@@ -109,6 +158,27 @@ class Shipment extends Model
     public function isRegistered(): bool
     {
         return $this->{self::REGISTERED_AT} !== null;
+    }
+
+    public function hasArrived(): bool
+    {
+        return $this->{self::ARRIVED_AT} !== null;
+    }
+
+    public function isDelivered(): bool
+    {
+        return $this->{self::DELIVERED_AT} !== null;
+    }
+
+    /**
+     * محموله‌ای که هنوز نه تحویل شده و نه برگشته — یعنی «بلاتکلیف».
+     *
+     * `partially_delivered` دقیقاً همین است: بعضی تأیید شده و بعضی هنوز
+     * بلاتکلیف (بند ۳.۱۰). برگشته‌ها بلاتکلیف نیستند، تکلیفشان روشن است.
+     */
+    public function isOutstanding(): bool
+    {
+        return $this->{self::DELIVERED_AT} === null && $this->{self::RETURNED_AT} === null;
     }
 
     public function order(): BelongsTo

@@ -102,6 +102,14 @@ class Kernel extends ConsoleKernel
         // انقضا هر دقیقه اجرا می‌شود چون مهلتِ سبد دقیق است و کاربر شمارشِ
         // معکوس را روی صفحه می‌بیند؛ با فاصله‌ی بیشتر، سبدی که فرانت «منقضی»
         // نشان می‌دهد هنوز چند دقیقه در دیتابیس زنده می‌ماند.
+        // محموله‌های تأییدنشده پس از مهلت تحویل ⇒ عودت به مبدأ (بند ۳.۱۱).
+        // هر دقیقه، چون مهلت روی هر محموله جداگانه است و تأخیر یعنی بارِ
+        // عودت‌شده مدتی «هنوز در انتظار تأیید» به نظر برسد.
+        $schedule->command('shipments:expire-delivery')
+            ->everyMinute()
+            ->withoutOverlapping()
+            ->onOneServer();
+
         $schedule->command('carts:expire-parked')
             ->everyMinute()
             ->withoutOverlapping()

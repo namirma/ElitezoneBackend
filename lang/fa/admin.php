@@ -506,4 +506,11 @@ return [
         'rejected' => 'نظر رد شد.',
         'reason_required' => 'دلیلِ رد الزامی است.',
     ],
+    // گزارش‌های فاز ۱۳ (بند ۷.۶)
+    'reports' => [
+        'abandoned_carts_received' => 'گزارش سبدهای رهاشده دریافت شد.',
+        'debts_received' => 'گزارش بدهی‌ها دریافت شد.',
+        'debt_entries_received' => 'دفتر بدهی کاربر دریافت شد.',
+    ],
+
 ];

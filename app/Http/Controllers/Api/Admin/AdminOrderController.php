@@ -4,16 +4,20 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Actions\Financial\RecordSystemMoadianInvoiceAction;
 use App\Actions\Order\CancelOrderAction;
+use App\Actions\Shipping\RecordShipmentArrivalAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\OrderFilterRequest;
 use App\Http\Requests\Order\SubmitMoadianInvoiceRequest;
 use App\Http\Resources\Order\OrderResource;
+use App\Http\Resources\Order\ShipmentResource;
 use App\Models\Order;
+use App\Models\Shipment;
 use App\Services\Order\OrderTimelineService;
 use Exception;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
 class AdminOrderController extends Controller
@@ -129,5 +133,30 @@ class AdminOrderController extends Controller
         }
 
         return success([], __('orders.system_moadian_submitted'));
+    }
+
+    /**
+     * POST /admin/shipments/{shipment}/confirm-arrival — بند ۳.۱۰ و ۷.۶.
+     *
+     * «بک‌آفیس هم می‌تواند با تماس تلفنی تأیید کند (با ثبت در تاریخچه)». همان
+     * اکشنِ لینکِ راننده اجرا می‌شود؛ فقط `arrival_source` فرق می‌کند تا بعداً
+     * معلوم باشد این رسیدن را چه کسی اعلام کرده است.
+     */
+    public function confirmShipmentArrival(
+        Shipment $shipment,
+        RecordShipmentArrivalAction $action,
+    ): JsonResponse {
+        $action->execute($shipment, Shipment::ARRIVAL_BACKOFFICE, (int) Auth::id());
+
+        activity()
+            ->performedOn($shipment)
+            ->causedBy(Auth::user())
+            ->withProperties(['order_id' => $shipment->{Shipment::ORDER_ID}])
+            ->log('admin.shipment.arrival_confirmed');
+
+        return success(
+            new ShipmentResource($shipment->fresh()),
+            __('shipments.arrival_recorded')
+        );
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Models\Concerns;
 
 use App\Models\Order;
+use App\Models\Shipment;
 use Illuminate\Support\Facades\Lang;
 
 /**
@@ -178,10 +179,31 @@ trait HasOrderProgress
                             'link' => "/profile/orders/{$id}",
                             'type' => 'secondary',
                         ];
+
+                        // ⚠️ دکمه‌ی «تأیید تحویل» عمداً روی مرحله‌ی **در حال حمل**
+                        // است، نه روی «تحویل شد» (پاسخ مدیر، دور ۱ پرسش ۸).
+                        //
+                        // ماشه‌ی مرحله‌ی `delivered` خودِ همین تأیید است، پس دکمه
+                        // آنجا فقط **پس از** انجامِ کاری ظاهر می‌شد که قرار بود
+                        // راه بیندازد — دقیقاً همان اشتباهی که دکمه‌ی فاکتور
+                        // مودیانِ تأمین‌کننده داشت و جابه‌جا شد.
+                        //
+                        // فقط وقتی نشان داده می‌شود که واقعاً چیزی برای تأیید
+                        // باشد: محموله‌ای که راننده‌اش رسیده و هنوز نه تحویل شده
+                        // و نه عودت.
+                        if ($state === 'current' && $this->hasShipmentAwaitingConfirmation()) {
+                            $actions[] = [
+                                'label' => __('orders.actions.confirm_delivery'),
+                                'link' => "/profile/orders/{$id}",
+                                'type' => 'primary',
+                            ];
+                        }
                         break;
 
                     case 'delivered':
-                        if ($state === 'current') {
+                        // تحویلِ جزئی: بخشی رسیده و بخشی هنوز در راه است، پس
+                        // دکمه باید همچنان در دسترس باشد.
+                        if ($state === 'current' && $this->hasShipmentAwaitingConfirmation()) {
                             $actions[] = [
                                 'label' => __('orders.actions.confirm_delivery'),
                                 'link' => "/profile/orders/{$id}",
@@ -467,5 +489,28 @@ trait HasOrderProgress
             'current_status_label' => $this->currentStatusLabel($status),
             'steps' => $steps,
         ];
+    }
+
+    /**
+     * آیا محموله‌ای هست که راننده‌اش رسیده و منتظر تأیید خریدار است؟
+     *
+     * `relationLoaded` اول چک می‌شود تا لیستِ سفارش‌ها N+1 نگیرد — همان الگوی
+     * `Order::partyRolesFor()`.
+     */
+    protected function hasShipmentAwaitingConfirmation(): bool
+    {
+        $pending = fn (Shipment $s) => $s->{Shipment::ARRIVED_AT} !== null
+            && $s->{Shipment::DELIVERED_AT} === null
+            && $s->{Shipment::RETURNED_AT} === null;
+
+        if ($this->relationLoaded('shipments')) {
+            return $this->shipments->contains($pending);
+        }
+
+        return $this->shipments()
+            ->whereNotNull(Shipment::ARRIVED_AT)
+            ->whereNull(Shipment::DELIVERED_AT)
+            ->whereNull(Shipment::RETURNED_AT)
+            ->exists();
     }
 }
