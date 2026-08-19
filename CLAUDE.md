@@ -1296,7 +1296,7 @@ tests/
   Unit/          — (empty placeholder dir — kept so phpunit.xml works)
 ```
 
-**Total: 888 tests, 2301 assertions — all green. ✅**
+**Total: 895 tests, 2310 assertions — all green. ✅**
 
 Round-5 audit additions: `Security/CorsAllowlistTest`,
 `Security/PublicDiskUploadRulesTest`, `Admin/AdminPermissionCoverageTest`,
@@ -1788,6 +1788,39 @@ Multi-line settlement is a large change; until it lands the guard stops the orde
 principle as the `weight_before_scale` guard: **invalid data must halt, not move money.**
 When multi-line settlement ships, remove the guard and *change* (don't delete)
 `Checkout/SingleSupplierPerOrderTest` to assert correct multi-supplier distribution.
+
+### One order = one origin and one destination
+
+Management decision (spec §3), enforced 2026-08-19. **The multi-shipment subsystem stays** —
+the return-to-origin cycle and re-shipping both need `shipments` — but a cart can no longer
+produce more than one leg.
+
+The single-supplier guard does **not** cover this: one supplier can own several factory
+locations, so a perfectly valid single-supplier cart could still be multi-origin.
+
+Enforced in three places, deliberately:
+- `CartParkService::assertSingleOriginAllowed()` / `assertSingleDestinationAllowed()`,
+  called from `AddToCartAction` under the same `lockForUpdate` as the supplier lock — so
+  the user is told when they add, not at checkout.
+- `UpdateCartItemAction` — changing a line's `location_id` or `address_id` can break the
+  rule just as easily as adding. It excludes the row being edited (`whereKeyNot`), or a
+  single-line cart could never change origin, which is a legitimate action.
+- `PlaceOrderAction::assertSingleOriginAndDestination()` — the authoritative one, before
+  any write. Anything reaching the action directly never passed through the cart guards.
+
+Two details that are easy to get wrong:
+- **A line's NULL `address_id` means "the order's primary address"**, so it is resolved
+  against `$data->addressId` before comparing. Without that, a cart with one explicit
+  destination and the rest defaulted looked like two destinations.
+- **`$primaryAddressId` is nullable.** `PlaceOrderData::fromCart` (the buy-for-others
+  `pay-for/{cart}` path) reads it from `carts.address_id`, which is nullable — typing the
+  parameter `int` turned that whole flow into a 500. When it is null, only explicit
+  per-line addresses are compared.
+
+`cart_items.factory_location_id` is NOT NULL at the schema level, so a line without an
+origin cannot exist; the `whereNotNull` in the guards is defensive only.
+
+Pinned by `Cart/SingleOriginAndDestinationTest`.
 
 ### Zero price halts settlement
 

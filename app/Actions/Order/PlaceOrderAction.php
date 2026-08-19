@@ -84,6 +84,9 @@ class PlaceOrderAction
             // ۱.۵ گاردِ تک‌تأمین‌کننده — پیش از هر نوشتنی.
             $this->assertSingleSupplier($cart);
 
+            // ۱.۶ یک سفارش = یک مبدأ و یک مقصد (تصمیم مدیریت، بند ۳).
+            $this->assertSingleOriginAndDestination($cart, $data->addressId);
+
             // ۲. محاسبه مبالغ
             $financials = $this->calculateOrderFinancials($cart, $user, $data);
 
@@ -509,6 +512,50 @@ class PlaceOrderAction
     {
         if ($this->debtEngine->isInDebt((int) $payer->id)) {
             throw new BusinessException(__('orders.blocked_by_debt'), 422);
+        }
+    }
+
+    /**
+     * یک سفارش = یک مبدأ و یک مقصد — بند ۳ سند، تصمیم مدیریت.
+     *
+     * گاردِ سبد (`CartParkService`) زودتر جلوی این را می‌گیرد، ولی این یکی
+     * **قاعده‌ی واقعی** است و حذف‌شدنی نیست: `UpdateCartItemAction` می‌تواند
+     * مقصدِ یک ردیف را بعداً عوض کند، و هر فراخوانی که مستقیم به این اکشن
+     * برسد اصلاً از مسیرِ سبد رد نشده است. همان دلیلی که
+     * `assertSingleSupplier` هم در هر دو جا هست.
+     *
+     * مقصدِ خالیِ یک ردیف یعنی «آدرسِ اصلیِ سفارش»، پس پیش از مقایسه به همان
+     * تبدیل می‌شود — وگرنه سبدی که یک ردیفش آدرس صریح دارد و بقیه ندارند،
+     * دومقصدی به نظر می‌رسید در حالی که هر دو به یک جا می‌روند.
+     *
+     * ‏`$primaryAddressId` می‌تواند `null` باشد: مسیرِ «کارفرما سبدِ الیت‌یار را
+     * می‌پردازد» آدرس را از خودِ سبد می‌خواند و آن ستون nullable است. در آن حالت
+     * فقط آدرس‌های **صریحِ** ردیف‌ها با هم سنجیده می‌شوند.
+     *
+     * پیش از هر نوشتنی اجرا می‌شود: داده‌ی نامعتبر باید متوقف کند، نه اینکه
+     * موجودی قفل و سبد خالی شود.
+     */
+    private function assertSingleOriginAndDestination(Cart $cart, ?int $primaryAddressId): void
+    {
+        $origins = $cart->items
+            ->map(fn (CartItem $item) => $item->{CartItem::FACTORY_LOCATION_ID})
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($origins->count() > 1) {
+            throw new BusinessException(__('orders.multiple_origins_not_supported'), 422);
+        }
+
+        $destinations = $cart->items
+            ->map(fn (CartItem $item) => $item->{CartItem::ADDRESS_ID} ?? $primaryAddressId)
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        if ($destinations->count() > 1) {
+            throw new BusinessException(__('orders.multiple_destinations_not_supported'), 422);
         }
     }
 

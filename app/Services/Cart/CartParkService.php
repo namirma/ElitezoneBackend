@@ -166,6 +166,58 @@ final class CartParkService
         }
     }
 
+    /**
+     * یک سفارش = یک مبدأ و یک مقصد — بند ۳ سند، تصمیم مدیریت.
+     *
+     * قفلِ تأمین‌کننده کافی نیست: یک تأمین‌کننده می‌تواند چند کارخانه/انبار
+     * داشته باشد، پس سبدِ تک‌تأمین‌کننده هم می‌تواند چندمبدأیی شود.
+     *
+     * چرا اینجا و نه فقط در لحظه‌ی ثبت سفارش: بازخوردِ دیرهنگام یعنی کاربر سبد
+     * را پر کند و سرِ پرداخت رد شود. گاردِ ثبت سفارش سرِ جایش می‌ماند (کسی
+     * می‌تواند مستقیم به آن اندپوینت بزند)، ولی این یکی زودتر جلویش را می‌گیرد.
+     *
+     * مقایسه با ردیف‌های **موجود** انجام می‌شود و نه با یک ستونِ قفل روی سبد:
+     * سبدِ خالی‌شده باید بتواند مبدأ عوض کند، و یک ستونِ اضافه یعنی حالتی که
+     * باید جداگانه پاک شود.
+     */
+    public function assertSingleOriginAllowed(Cart $cart, ?int $factoryLocationId): void
+    {
+        if ($factoryLocationId === null) {
+            return;
+        }
+
+        $existing = $cart->items()
+            ->whereNotNull(CartItem::FACTORY_LOCATION_ID)
+            ->where(CartItem::FACTORY_LOCATION_ID, '!=', $factoryLocationId)
+            ->exists();
+
+        if ($existing) {
+            throw new BusinessException(__('cart.limits.single_origin_only'), 422);
+        }
+    }
+
+    /**
+     * همان قاعده برای مقصد — بند ۳.
+     *
+     * `null` یعنی «آدرسِ اصلیِ سفارش»، پس با هر مقصدِ صریحی سازگار است و رد
+     * نمی‌شود؛ تضاد فقط بین دو آدرسِ صریحِ متفاوت است.
+     */
+    public function assertSingleDestinationAllowed(Cart $cart, ?int $addressId): void
+    {
+        if ($addressId === null) {
+            return;
+        }
+
+        $existing = $cart->items()
+            ->whereNotNull(CartItem::ADDRESS_ID)
+            ->where(CartItem::ADDRESS_ID, '!=', $addressId)
+            ->exists();
+
+        if ($existing) {
+            throw new BusinessException(__('cart.limits.single_destination_only'), 422);
+        }
+    }
+
     /** پس از افزودنِ موفق، تأمین‌کننده‌ی سبد را قفل می‌کند. */
     public function lockSupplier(Cart $cart, ?int $supplierUserId): void
     {

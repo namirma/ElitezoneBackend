@@ -67,6 +67,18 @@ class AddToCartAction
             // همان قیمتِ کهنه را حمل می‌کرد.
             $this->assertSupplierPricesValid($supplierUserId ? (int) $supplierUserId : null);
 
+            // یک سفارش = یک مبدأ و یک مقصد (تصمیم مدیریت، بند ۳). قفلِ
+            // تأمین‌کننده این را نمی‌پوشاند: یک تأمین‌کننده می‌تواند چند
+            // کارخانه/انبار داشته باشد. زیرِ همان `lockForUpdate` بالا.
+            $this->parkService->assertSingleOriginAllowed(
+                $cart,
+                ($data['location_id'] ?? null) ? (int) $data['location_id'] : null
+            );
+            $this->parkService->assertSingleDestinationAllowed(
+                $cart,
+                ($data['address_id'] ?? null) ? (int) $data['address_id'] : null
+            );
+
             // اگر سبد خرید قفل شده باشد، دیگر نیازی به قفل کردن این کوئری نیست
             // اما برای سازگاری آن را رها می‌کنیم. از آنجا که تراکنش‌های همزمان روی همین سبد
             // در خط بالا منتظر می‌مانند، در اینجا با خیالی آسوده و بدون خطای duplicate می‌توان insert کرد.
