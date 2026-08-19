@@ -2,6 +2,7 @@
 
 namespace App\Actions\Cart;
 
+use App\Exceptions\BusinessException;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\CustomerType;
@@ -76,12 +77,22 @@ class UpdateCartItemAction
             if (isset($data['location_id'])) {
                 $location = FactoryLocation::find($data['location_id']);
                 if ($location) {
+                    // یک سفارش = یک مبدأ (تصمیم مدیریت، بند ۳). ویرایشِ ردیف
+                    // همان‌قدر می‌تواند سبد را چندمبدأیی کند که افزودنِ تازه —
+                    // پس همان گارد اینجا هم لازم است.
+                    $this->assertSingleOrigin($cartItem, (int) $location->{FactoryLocation::ID});
+
                     $cartItem->factory_location_id = $location->{FactoryLocation::ID};
                     $cartItem->factory_id = $location->{FactoryLocation::FACTORY_ID};
                 }
             }
 
             if (array_key_exists('address_id', $data)) {
+                $this->assertSingleDestination(
+                    $cartItem,
+                    $data['address_id'] ? (int) $data['address_id'] : null
+                );
+
                 $cartItem->address_id = $data['address_id'];
             }
 
@@ -392,6 +403,43 @@ class UpdateCartItemAction
                     'current' => number_format($valRounded),
                 ]),
             ]]);
+        }
+    }
+
+    /**
+     * مبدأ تازه نباید با **بقیه‌ی** ردیف‌های سبد تضاد داشته باشد.
+     *
+     * خودِ همین ردیف از مقایسه کنار گذاشته می‌شود، وگرنه سبدِ تک‌ردیفی هرگز
+     * نمی‌توانست مبدأ عوض کند — که کارِ کاملاً معتبری است.
+     */
+    private function assertSingleOrigin(CartItem $cartItem, int $factoryLocationId): void
+    {
+        $conflict = CartItem::where(CartItem::CART_ID, $cartItem->{CartItem::CART_ID})
+            ->whereKeyNot($cartItem->getKey())
+            ->whereNotNull(CartItem::FACTORY_LOCATION_ID)
+            ->where(CartItem::FACTORY_LOCATION_ID, '!=', $factoryLocationId)
+            ->exists();
+
+        if ($conflict) {
+            throw new BusinessException(__('cart.limits.single_origin_only'), 422);
+        }
+    }
+
+    /** همان قاعده برای مقصد. `null` یعنی «آدرسِ اصلیِ سفارش» و تضادی نمی‌سازد. */
+    private function assertSingleDestination(CartItem $cartItem, ?int $addressId): void
+    {
+        if ($addressId === null) {
+            return;
+        }
+
+        $conflict = CartItem::where(CartItem::CART_ID, $cartItem->{CartItem::CART_ID})
+            ->whereKeyNot($cartItem->getKey())
+            ->whereNotNull(CartItem::ADDRESS_ID)
+            ->where(CartItem::ADDRESS_ID, '!=', $addressId)
+            ->exists();
+
+        if ($conflict) {
+            throw new BusinessException(__('cart.limits.single_destination_only'), 422);
         }
     }
 }
