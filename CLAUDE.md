@@ -738,6 +738,71 @@ Trigger 1 is the one phase 7 lacked, and without it **under-delivery could never
 the summed weight never reaches the order weight, and if the supplier ships in fewer loads
 than there are shipment rows, trigger 3 never fires either. The order stayed open forever.
 
+### The delivery cycle — the order's status is COMPUTED, never hand-written
+
+Phase 10 (spec §3.10). Before this, a shipment reached `shipped` and stayed there:
+nothing recorded that the driver arrived or that the buyer took delivery, and
+`partially_delivered` — created in phase 0 — had **no writer at all**.
+
+- **Arrival** (`RecordShipmentArrivalAction`) stamps `arrived_at` and computes
+  `delivery_deadline = now + delivery_deadline_hours` (default 5, `SalesSettings`). The
+  hours are snapshotted onto the shipment for the same reason `reserve_grace_hours` is:
+  changing the setting must not move the deadline of a load already at the customer's gate.
+  Two callers, distinguished by `arrival_source`: the driver's signed link
+  (`driver_link`) and the back-office phone confirmation (`backoffice`, §3.10 allows it).
+- **Confirmation** (`ConfirmShipmentDeliveryAction`) is the buyer's, from the panel or
+  their own signed link (`delivery_confirmed_by` is NULL for the link).
+  `ConfirmShipmentDeliveryAction::syncOrderStatus()` is the **single writer** of
+  `delivered` / `partially_delivered` and is `static` because the expiry cron calls it
+  too — two copies of that rule would mean two definitions of "fully delivered".
+- **"Outstanding" means neither delivered nor returned.** A returned leg is *settled*,
+  not pending, so an order with one delivered and one returned leg is `delivered`, not
+  stuck in `partially_delivered` forever.
+- Driver and buyer have **no authenticated route** into this: `GET /shipments/{id}/arrived`
+  and `GET /delivery/{id}/confirm` are `signed` + `throttle`, no `auth:sanctum`. Drivers
+  have no account at all (§3.9). The confirm link expires exactly at `delivery_deadline` —
+  any longer and it would still work after the load was returned.
+- Panel confirmation is **payer-only**, not placer: in buy-for-others it is the employer's
+  confirmation that prevents the return and the debt that follows.
+- Pinned by `Order/ShipmentDeliveryTest`.
+
+### Return to origin — the platform moves NO money, and the goods rule drives everything
+
+Phase 11 (spec §3.11 / §8.3). One sentence governs the whole subsystem: **the goods
+belong to the buyer, the money to the supplier.** A return therefore makes the supplier
+no poorer — they keep the goods, and the buyer owes them the costs.
+
+- `shipments:expire-delivery` (cron, every minute) turns an unconfirmed shipment past its
+  deadline into `returned` and the order into `returned_to_origin`. **Not one financial
+  leg runs there** — that is the rule above, not an omission.
+- Costs go through a **mandatory three-step approval**: supplier records
+  (`POST /profile/shipments/{id}/damages`, only on a `returned` shipment) → back-office
+  approves (`POST /admin/damages/{id}/approve`) → buyer approves. **Only the third step
+  creates debt** (`DebtEngine::incur(return_damage)`). Back-office comes first on purpose,
+  so a claimed amount is vetted before it reaches the customer. A buyer rejection is a
+  valid path (§3.11 routes it to support) and must stay financially inert.
+- Settling (`POST /profile/damages/{id}/settle`) runs `debitBuyer → creditSupplier →
+  DebtEngine::repay` and then resets the shipment to `pending` — **clearing `waybill_ref`
+  and `registered_at` too**, or `RegisterShipmentAction`'s idempotency guard would 409 the
+  reload and the "repeatable cycle" would not be repeatable.
+- **The cap is the subtle part.** When approved damages reach `orders.subtotal` (the spec
+  names that column explicitly — goods value before freight/commission/VAT), the goods
+  become the supplier's, `DebtEngine::settleAgainstGoods()` zeroes **that order's** debt
+  (not the user's whole balance), and the order is cancelled. The ledger row is an
+  `adjustment`, not a `repayment` — no one paid; an asset replaced the money, and the debt
+  report must be able to tell those apart. **Stock is deliberately NOT released**:
+  `CancelOrderAction` is not called, because the goods really did go to the supplier and
+  never returned to inventory. Freeing them would sell the same tonnage twice.
+- Pinned by `Order/ReturnDamageTest`.
+
+### The confirm-delivery button lives on "in transit", not "delivered"
+
+The `delivered` step's own trigger *is* the buyer's confirmation, so a button placed there
+only appeared **after** the thing it was supposed to start — the exact defect already fixed
+for the supplier's Moadian button. `HasOrderProgress` now renders it on the `shipped` step
+(and still on `partially_delivered`, where legs remain), gated by
+`hasShipmentAwaitingConfirmation()` so it shows only when a leg has actually arrived.
+
 ### Document Generation — Which Action Emits Which Doc
 
 Every `InvoiceGenerator::generate()` call is triggered from inside a `DB::transaction`
@@ -1231,7 +1296,7 @@ tests/
   Unit/          — (empty placeholder dir — kept so phpunit.xml works)
 ```
 
-**Total: 861 tests, 2234 assertions — all green. ✅**
+**Total: 888 tests, 2301 assertions — all green. ✅**
 
 Round-5 audit additions: `Security/CorsAllowlistTest`,
 `Security/PublicDiskUploadRulesTest`, `Admin/AdminPermissionCoverageTest`,

@@ -7,7 +7,9 @@ namespace App\Console\Commands;
 use App\Actions\Shipping\ConfirmShipmentDeliveryAction;
 use App\Jobs\Notification\SendSmsJob;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Shipment;
+use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -101,12 +103,16 @@ class ExpireShipmentDeliveries extends Command
     {
         $message = __('sms.shipment_returned', ['order_number' => $order->order_number]);
 
-        $buyer = $order->payer ?? $order->placer;
+        // متغیرهای تایپ‌دار از راه کوئری: larastan روی شاخه‌ی L13 نتیجه‌ی
+        // رابطه را `Model` می‌بیند و `->mobile` خطای خاصیتِ تعریف‌نشده می‌دهد.
+        /** @var User|null $buyer */
+        $buyer = User::whereKey($order->payerUserId())->first();
         if ($buyer?->mobile) {
             SendSmsJob::dispatch($buyer->mobile, $message)->afterCommit();
         }
 
-        $supplier = $order->items->first()?->supplier;
+        $supplierId = (int) $order->items()->value(OrderItem::SUPPLIER_USER_ID);
+        $supplier = $supplierId > 0 ? User::whereKey($supplierId)->first() : null;
         if ($supplier?->mobile) {
             SendSmsJob::dispatch($supplier->mobile, $message)->afterCommit();
         }

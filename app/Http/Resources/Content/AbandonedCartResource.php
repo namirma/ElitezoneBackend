@@ -16,15 +16,17 @@ class AbandonedCartResource extends BaseJsonResource
         return [
             AbandonedCart::ID => $this->id,
 
+            // ‏`getAttribute` و نه دسترسی جادویی: larastan روی شاخه‌ی L13
+            // نتیجه‌ی رابطه را `Model` می‌بیند و `->mobile` خطا می‌دهد.
             'user' => [
                 'id' => $this->user_id,
-                'mobile' => $this->whenLoaded('user', fn () => $this->user?->mobile),
-                'full_name' => $this->whenLoaded('user', fn () => $this->user?->full_name),
+                'mobile' => $this->whenLoaded('user', fn () => $this->user?->getAttribute('mobile')),
+                'full_name' => $this->whenLoaded('user', fn () => $this->user?->getAttribute('full_name')),
             ],
 
             'supplier' => [
                 'id' => $this->supplier_user_id,
-                'full_name' => $this->whenLoaded('supplier', fn () => $this->supplier?->full_name),
+                'full_name' => $this->whenLoaded('supplier', fn () => $this->supplier?->getAttribute('full_name')),
             ],
 
             // اسنپ‌شاتِ ردیف‌ها در لحظه‌ی انقضا. محصولات ممکن است بعداً حذف یا

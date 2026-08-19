@@ -85,8 +85,19 @@ class ConfirmShipmentDeliveryAction
             return;
         }
 
-        $delivered = $shipments->filter(fn (Shipment $s) => $s->isDelivered())->count();
-        $outstanding = $shipments->filter(fn (Shipment $s) => $s->isOutstanding())->count();
+        // حلقه‌ی صریح و نه `filter` با کلوژرِ تایپ‌دار: larastan روی شاخه‌ی
+        // L13 آیتم‌های رابطه را `Model` می‌بیند و امضای کلوژر را رد می‌کند.
+        $delivered = 0;
+        $outstanding = 0;
+
+        foreach ($shipments as $shipment) {
+            /** @var Shipment $shipment */
+            if ($shipment->isDelivered()) {
+                $delivered++;
+            } elseif ($shipment->isOutstanding()) {
+                $outstanding++;
+            }
+        }
 
         if ($delivered === 0) {
             return;

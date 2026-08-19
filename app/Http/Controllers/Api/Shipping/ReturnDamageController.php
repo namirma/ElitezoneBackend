@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api\Shipping;
 use App\Exceptions\BusinessException;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Order\ReturnDamageResource;
+use App\Models\Order;
 use App\Models\ReturnDamage;
 use App\Models\Shipment;
 use App\Services\Shipping\ReturnDamageService;
@@ -26,7 +27,10 @@ class ReturnDamageController extends Controller
     /** POST /api/profile/shipments/{shipment}/damages — تأمین‌کننده. */
     public function store(Request $request, Shipment $shipment, ReturnDamageService $service): JsonResponse
     {
-        $order = $shipment->order;
+        // ‏`Order::find` و نه `$shipment->order` — روی شاخه‌ی L13 دومی
+        // non-nullable تایپ می‌شود و گاردِ null «همیشه false» گزارش می‌شود.
+        /** @var Order|null $order */
+        $order = Order::whereKey($shipment->{Shipment::ORDER_ID})->first();
 
         if (! $order) {
             throw new BusinessException(__('shipments.not_part_of_order'), 404);
@@ -112,7 +116,8 @@ class ReturnDamageController extends Controller
      */
     private function assertBuyer(ReturnDamage $damage): void
     {
-        $order = $damage->order;
+        /** @var Order|null $order */
+        $order = Order::whereKey($damage->{ReturnDamage::ORDER_ID})->first();
 
         if (! $order || (int) $order->payerUserId() !== (int) Auth::id()) {
             throw new BusinessException(__('global.forbidden'), 403);

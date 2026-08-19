@@ -8,6 +8,7 @@ use App\Exceptions\BusinessException;
 use App\Jobs\Notification\SendSmsJob;
 use App\Models\Order;
 use App\Models\Shipment;
+use App\Models\User;
 use App\Services\Sales\SalesSettings;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\URL;
@@ -78,13 +79,17 @@ class RecordShipmentArrivalAction
     private function notifyBuyer(Shipment $shipment, ?int $actorId): void
     {
         /** @var Order|null $order */
-        $order = $shipment->order;
+        $order = Order::whereKey($shipment->{Shipment::ORDER_ID})->first();
 
         if (! $order) {
             return;
         }
 
-        $buyer = $order->payer ?? $order->placer;
+        // ‏`User::find` و نه `$order->payer ?? $order->placer`: دومی روی شاخه‌ی
+        // L13 به `Model` تایپ می‌شود و `->mobile` خطای خاصیتِ تعریف‌نشده می‌دهد.
+        // `payerUserId()` خودش فالبکِ ثبت‌کننده را دارد (فاز ۶).
+        /** @var User|null $buyer */
+        $buyer = User::whereKey($order->payerUserId())->first();
 
         if (! $buyer?->mobile) {
             return;

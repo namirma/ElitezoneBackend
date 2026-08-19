@@ -9,8 +9,10 @@ use App\Exceptions\BusinessException;
 use App\Jobs\Notification\SendSmsJob;
 use App\Models\DebtEntry;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\ReturnDamage;
 use App\Models\Shipment;
+use App\Models\User;
 use App\Services\Financial\DebtEngine;
 use App\Services\Financial\WalletTransactionEngine;
 use Illuminate\Support\Facades\DB;
@@ -156,11 +158,11 @@ class ReturnDamageService
                 ->lockForUpdate()
                 ->first();
 
-            $order->load('items');
             $amount = (float) $damage->{ReturnDamage::AMOUNT};
 
-            $firstItem = $order->items->first();
-            $supplierId = $firstItem ? (int) $firstItem->supplier_user_id : 0;
+            // از راه کوئری و نه رابطه‌ی بارگذاری‌شده: larastan روی شاخه‌ی L13
+            // آیتم را `Model` می‌بیند و `->supplier_user_id` خطا می‌دهد.
+            $supplierId = (int) $order->items()->value(OrderItem::SUPPLIER_USER_ID);
 
             if ($supplierId <= 0) {
                 throw new \RuntimeException(
@@ -243,7 +245,8 @@ class ReturnDamageService
             "Order {$order->id}: return damages ({$approved}) reached the goods value ({$subtotal}); goods transferred to the supplier."
         );
 
-        $buyer = $order->payer ?? $order->placer;
+        /** @var User|null $buyer */
+        $buyer = User::whereKey($order->payerUserId())->first();
 
         if ($buyer?->mobile) {
             SendSmsJob::dispatch(
@@ -262,8 +265,15 @@ class ReturnDamageService
 
     private function notifyBuyer(ReturnDamage $damage): void
     {
-        $order = $damage->order;
-        $buyer = $order?->payer ?? $order?->placer;
+        /** @var Order|null $order */
+        $order = Order::whereKey($damage->{ReturnDamage::ORDER_ID})->first();
+
+        if (! $order) {
+            return;
+        }
+
+        /** @var User|null $buyer */
+        $buyer = User::whereKey($order->payerUserId())->first();
 
         if (! $buyer?->mobile) {
             return;
@@ -280,7 +290,10 @@ class ReturnDamageService
 
     private function notifySettled(Order $order): void
     {
-        $supplier = $order->items->first()?->supplier;
+        $supplierId = (int) $order->items()->value(OrderItem::SUPPLIER_USER_ID);
+
+        /** @var User|null $supplier */
+        $supplier = $supplierId > 0 ? User::whereKey($supplierId)->first() : null;
 
         if (! $supplier?->mobile) {
             return;

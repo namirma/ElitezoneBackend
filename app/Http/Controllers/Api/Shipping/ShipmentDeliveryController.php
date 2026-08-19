@@ -9,6 +9,7 @@ use App\Actions\Shipping\RecordShipmentArrivalAction;
 use App\Exceptions\BusinessException;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Order\ShipmentResource;
+use App\Models\Order;
 use App\Models\Shipment;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -50,7 +51,11 @@ class ShipmentDeliveryController extends Controller
      */
     public function confirm(Shipment $shipment, ConfirmShipmentDeliveryAction $action): JsonResponse
     {
-        $order = $shipment->order;
+        // ‏`Order::find` و نه `$shipment->order`: دومی روی شاخه‌ی L13
+        // non-nullable تایپ می‌شود، پس گاردِ null «همیشه false» گزارش می‌شد و
+        // `payerUserId()` روی `Model` پیدا نمی‌شد.
+        /** @var Order|null $order */
+        $order = Order::whereKey($shipment->{Shipment::ORDER_ID})->first();
 
         if (! $order || (int) $order->payerUserId() !== (int) Auth::id()) {
             throw new BusinessException(__('global.forbidden'), 403);

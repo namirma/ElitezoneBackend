@@ -499,12 +499,19 @@ trait HasOrderProgress
      */
     protected function hasShipmentAwaitingConfirmation(): bool
     {
-        $pending = fn (Shipment $s) => $s->{Shipment::ARRIVED_AT} !== null
-            && $s->{Shipment::DELIVERED_AT} === null
-            && $s->{Shipment::RETURNED_AT} === null;
-
         if ($this->relationLoaded('shipments')) {
-            return $this->shipments->contains($pending);
+            // حلقه‌ی صریح و نه `contains` با کلوژرِ تایپ‌دار: larastan روی
+            // شاخه‌ی L13 آیتم‌های رابطه را `Model` می‌بیند.
+            foreach ($this->shipments as $shipment) {
+                /** @var Shipment $shipment */
+                if ($shipment->{Shipment::ARRIVED_AT} !== null
+                    && $shipment->{Shipment::DELIVERED_AT} === null
+                    && $shipment->{Shipment::RETURNED_AT} === null) {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         return $this->shipments()
