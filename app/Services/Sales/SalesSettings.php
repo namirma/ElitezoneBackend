@@ -66,6 +66,17 @@ final class SalesSettings
     }
 
     /** حداکثر اضافه‌بار مجاز نسبت به کل سفارش (درصد). */
+    /**
+     * مهلت پیش‌فرضِ تأیید تحویل (ساعت) — بند ۳.۱۰.
+     *
+     * `max(1, …)` چون صفر یعنی «محموله در همان لحظه‌ی رسیدن منقضی است»، که
+     * عملاً هر باری را بی‌درنگ عودت می‌داد.
+     */
+    public function deliveryDeadlineHours(): int
+    {
+        return max(1, $this->int('delivery_deadline_hours'));
+    }
+
     public function maxOverweightPercent(): float
     {
         return max(0.0, $this->float('max_overweight_percent'));
@@ -108,6 +119,7 @@ final class SalesSettings
             'reserve_value' => ['numeric', 'min:0'],
             'park_time_minutes' => ['integer', 'min:1'],
             'reserve_grace_hours' => ['integer', 'min:0'],
+            'delivery_deadline_hours' => ['integer', 'min:1'],
             'max_overweight_percent' => ['numeric', 'min:0', 'max:100'],
             'coupon_visibility' => ['in:'.implode(',', self::couponVisibilityOptions())],
             'reserve_warning_threshold_minutes' => ['integer', 'min:0'],

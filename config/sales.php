@@ -38,6 +38,14 @@ return [
     'reserve_grace_hours' => (int) env('SALES_RESERVE_GRACE_HOURS', 5),
 
     /* حداکثر اضافه‌بار مجاز نسبت به **کل** سفارش، به درصد. */
+    /*
+     | مهلت تأیید تحویل توسط خریدار، بر حسب ساعت (بند ۳.۱۰ / ۴.۵).
+     |
+     | per-shipment روی `shipments.delivery_deadline_hours` اسنپ‌شات می‌شود؛ این
+     | فقط مقدارِ پیش‌فرض است. با پایانِ مهلت، محموله به مبدأ عودت می‌شود.
+     */
+    'delivery_deadline_hours' => (int) env('SALES_DELIVERY_DEADLINE_HOURS', 5),
+
     'max_overweight_percent' => (float) env('SALES_MAX_OVERWEIGHT_PERCENT', 20),
 
     /*

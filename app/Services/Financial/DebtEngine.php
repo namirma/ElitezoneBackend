@@ -79,6 +79,52 @@ class DebtEngine
         });
     }
 
+    /**
+     * سقف خسارت عودت — بند ۳.۱۱ و ۸.۳ سند.
+     *
+     * وقتی مجموع خسارت‌های تأییدشده به ارزش کالا می‌رسد، «کالا از آنِ
+     * تأمین‌کننده می‌شود» و بدهیِ خریدار بابت همین سفارش با خودِ کالا تسویه
+     * می‌گردد. یعنی هیچ پولی جابه‌جا نمی‌شود — دارایی جای پول را می‌گیرد.
+     *
+     * ردیفِ دفتری که می‌نویسد منفی است (مثل بازپرداخت) ولی نوعش
+     * `adjustment` است نه `repayment`: این پرداخت نبود، واگذاریِ کالا بود، و
+     * گزارشِ بدهی باید بتواند این دو را از هم تشخیص دهد.
+     *
+     * فقط بدهیِ **همین سفارش** صفر می‌شود، نه کلِ مانده‌ی کاربر: بدهی‌های
+     * سفارش‌های دیگر ربطی به این کالا ندارند و پاک‌کردنشان یعنی بخشیدنِ پولی
+     * که هیچ‌کس نبخشیده است.
+     */
+    public function settleAgainstGoods(int $userId, Order $order): ?DebtEntry
+    {
+        $orderDebt = (float) DebtEntry::query()
+            ->where(DebtEntry::USER_ID, $userId)
+            ->where(DebtEntry::ORDER_ID, $order->id)
+            ->sum(DebtEntry::AMOUNT);
+
+        if ($orderDebt <= 0) {
+            return null;
+        }
+
+        return DB::transaction(function () use ($userId, $orderDebt, $order) {
+            $current = $this->lockedBalance($userId);
+            $applied = Money::lt($current, $orderDebt) ? (float) $current : $orderDebt;
+
+            if ($applied <= 0) {
+                return null;
+            }
+
+            return $this->write(
+                $userId,
+                -$applied,
+                DebtEntry::TYPE_ADJUSTMENT,
+                $order,
+                __('shipments.damage_cap_reached'),
+                null,
+                locked: true,
+            );
+        });
+    }
+
     /** مانده‌ی بدهی کاربر (ریال). */
     public function balanceFor(int $userId): float
     {

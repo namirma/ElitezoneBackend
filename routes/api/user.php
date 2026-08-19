@@ -5,6 +5,8 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\Data\AnalyticsController;
 use App\Http\Controllers\Api\Data\InventoryController;
 use App\Http\Controllers\Api\ListopherController;
+use App\Http\Controllers\Api\Shipping\ReturnDamageController;
+use App\Http\Controllers\Api\Shipping\ShipmentDeliveryController;
 use App\Http\Controllers\Api\User\AccountSecurityController;
 use App\Http\Controllers\Api\User\AddressController;
 use App\Http\Controllers\Api\User\AvatarController;
@@ -482,4 +484,32 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Current user info
     Route::get('/user', [AuthController::class, 'me']);
+});
+
+// ── چرخه‌ی تحویل — خریدار (فاز ۱۰، بند ۷.۴) ─────────────────────────────────
+Route::middleware('auth:sanctum')->prefix('profile/shipments')->group(function () {
+    // تأیید تحویل از پنل. گاردِ «فقط پرداخت‌کننده» داخل کنترلر است، نه در
+    // یک policy، چون شرطش روی خودِ سفارشِ محموله است نه روی محموله.
+    Route::post('/{shipment}/confirm-delivery', [ShipmentDeliveryController::class, 'confirm'])
+        ->whereNumber('shipment')
+        ->middleware('idempotency');
+});
+
+// ── خسارت عودت به مبدأ (فاز ۱۱، بند ۷.۳ و ۷.۴) ──────────────────────────────
+Route::middleware('auth:sanctum')->prefix('profile')->group(function () {
+    // تأمین‌کننده هزینه را ثبت می‌کند؛ گاردش policy است، همان که بقیه‌ی
+    // اقدام‌های تأمین‌کننده دارند.
+    Route::post('/shipments/{shipment}/damages', [ReturnDamageController::class, 'store'])
+        ->whereNumber('shipment');
+
+    // خریدار تأیید/رد/پرداخت می‌کند. `idempotency` روی دو مسیری که پول یا
+    // بدهی جابه‌جا می‌کنند — رد کردن چیزی را مالی نمی‌کند، پس لازم ندارد.
+    Route::post('/damages/{damage}/approve', [ReturnDamageController::class, 'approveByBuyer'])
+        ->whereNumber('damage')
+        ->middleware('idempotency');
+    Route::post('/damages/{damage}/reject', [ReturnDamageController::class, 'rejectByBuyer'])
+        ->whereNumber('damage');
+    Route::post('/damages/{damage}/settle', [ReturnDamageController::class, 'settle'])
+        ->whereNumber('damage')
+        ->middleware(['idempotency', 'throttle:financial']);
 });

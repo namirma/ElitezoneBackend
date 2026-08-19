@@ -36,6 +36,7 @@ return [
         'reserve_value',
         'park_time_minutes',
         'reserve_grace_hours',
+        'delivery_deadline_hours',
         'max_overweight_percent',
         'coupon_visibility',
         'reserve_warning_threshold_minutes',

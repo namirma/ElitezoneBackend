@@ -30,6 +30,15 @@ Artisan::command('inspire', function () {
 |--------------------------------------------------------------------------
 */
 
+// محموله‌های تأییدنشده پس از مهلت تحویل ⇒ عودت به مبدأ (بند ۳.۱۱).
+// هر دقیقه، چون مهلت روی هر محموله جداگانه است و تأخیر یعنی بارِ عودت‌شده
+// مدتی «هنوز در انتظار تأیید» به نظر برسد.
+Schedule::command('shipments:expire-delivery')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->onOneServer();
+
 // لغو سفارشات منقضی‌شده — هر دقیقه
 Schedule::command('orders:cancel-expired')
     ->everyMinute()
