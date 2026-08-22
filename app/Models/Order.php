@@ -257,6 +257,20 @@ class Order extends Model
      */
     public const SUPPLIER_VAT_PENDING_AMOUNT = 'supplier_vat_pending_amount';
 
+    /**
+     * جریان تأیید دومرحله‌ای اضافه‌بار (بند ۳.۷ / ۸.۲ گام ۷الف).
+     *
+     * صفر یعنی درخواستی باز نیست. تا وقتی هر دو مهر نخورده‌اند **هیچ لِگ مالی
+     * اجرا نشده** — به همین دلیل رد یا انقضا چیزی برای برگرداندن ندارد.
+     */
+    public const OVERWEIGHT_PENDING_AMOUNT = 'overweight_pending_amount';
+
+    public const OVERWEIGHT_SUPPLIER_APPROVED_AT = 'overweight_supplier_approved_at';
+
+    public const OVERWEIGHT_BUYER_APPROVED_AT = 'overweight_buyer_approved_at';
+
+    public const OVERWEIGHT_DEADLINE = 'overweight_deadline';
+
     /** Doc P: شماره فاکتور مودیان سیستم (پلتفرم) برای خریدار */
     public const SYSTEM_MOADIAN_REF = 'system_moadian_ref';
 
@@ -348,7 +362,31 @@ class Order extends Model
         self::SUPPLIER_DEBT_PENDING => 'boolean',
         self::SUPPLIER_DEBT_AMOUNT => 'decimal:2',
         self::SYSTEM_HOLD_RELEASED_AT => 'datetime',
+        self::OVERWEIGHT_PENDING_AMOUNT => 'decimal:2',
+        self::OVERWEIGHT_SUPPLIER_APPROVED_AT => 'datetime',
+        self::OVERWEIGHT_BUYER_APPROVED_AT => 'datetime',
+        self::OVERWEIGHT_DEADLINE => 'datetime',
     ];
+
+    /**
+     * هر دو طرف اضافه‌بار را پذیرفته‌اند؟
+     *
+     * مشتق است و ستون جدا ندارد — ستونِ سومی که باید هم‌زمان با این دو نوشته
+     * شود یعنی سه‌جا برای drift کردن. `ProcessWeighbridgeResultAction` از همین
+     * می‌فهمد که گاردِ تلورانس را رد کند و تعدیل را واقعاً اجرا کند.
+     */
+    public function isOverweightApproved(): bool
+    {
+        return $this->{self::OVERWEIGHT_SUPPLIER_APPROVED_AT} !== null
+            && $this->{self::OVERWEIGHT_BUYER_APPROVED_AT} !== null;
+    }
+
+    /** درخواست تأیید اضافه‌بارِ بازی روی این سفارش هست؟ */
+    public function hasOpenOverweightRequest(): bool
+    {
+        return (float) $this->{self::OVERWEIGHT_PENDING_AMOUNT} > 0.0
+            && ! $this->isOverweightApproved();
+    }
 
     // =========================================================================
     //  Resource Helpers

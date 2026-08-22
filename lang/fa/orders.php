@@ -236,6 +236,25 @@ return [
     'reserved_expired_auto_cancel' => 'سفارشات رزرو شده منقضی، تنها توسط سیستم به صورت خودکار لغو می‌شوند.',
     'invalid_financial_calculation' => 'محاسبه مالی سفارش معتبر نیست.',
     'invalid_weight_snapshot' => 'وزن ثبت‌شده سفارش معتبر نیست؛ عملیات مالی متوقف شد. با پشتیبانی تماس بگیرید.',
+    // ‏`blocked_by_debt`، `multiple_origins_not_supported` و
+    // `multiple_destinations_not_supported` روی این شاخه بالای همین فایل
+    // هستند؛ تکرارشان اینجا یک کلیدِ دوباره در آرایه می‌ساخت.
+    // `multiple_suppliers_not_supported` هم نیامد چون گاردِ تک‌تأمین‌کننده
+    // هنوز به L13 پورت نشده و کلیدِ بی‌مصرف می‌ماند.
+    'invalid_official_price' => 'قیمت ثبت‌شده سفارش معتبر نیست؛ عملیات مالی متوقف شد. با پشتیبانی تماس بگیرید.',
+
+    // ── تأیید دومرحله‌ای اضافه‌بار (بند ۳.۷) ──────────────────────────────
+    'overweight_no_open_request' => 'درخواست تأیید اضافه‌باری برای این سفارش باز نیست.',
+    'overweight_wrong_status' => 'این سفارش در وضعیت انتظار اصلاح وزن نیست.',
+    'overweight_already_supplier_approved' => 'تأمین‌کننده پیش‌تر این اضافه‌بار را تأیید کرده است.',
+    'overweight_supplier_first' => 'تا پیش از تأیید تأمین‌کننده، امکان پذیرش اضافه‌بار وجود ندارد.',
+    'overweight_missing_weight' => 'وزن باسکول روی این سفارش ثبت نشده؛ تعدیل قابل ادامه نیست.',
+    'overweight_supplier_approved' => 'اضافه‌بار توسط تأمین‌کننده تأیید شد و برای خریدار ارسال گردید.',
+    'overweight_buyer_approved' => 'اضافه‌بار پذیرفته و تعدیل مالی اعمال شد.',
+    'overweight_rejected' => 'درخواست اضافه‌بار رد شد؛ بارنامه باطل و سفارش به آماده‌سازی بازگشت.',
+    'overweight_no_shortfall' => 'این سفارش بدهی اضافه‌بارِ در انتظار پرداخت ندارد.',
+    'overweight_shortfall_settled' => 'بدهی اضافه‌بار تسویه شد و بار آزاد گردید.',
+
     'invalid_transaction_status' => 'وضعیت جدید تراکنش نامعتبر است.',
     'debit_amount_must_be_positive' => 'مبلغ برداشت باید بیشتر از صفر باشد.',
     'reserve_only_on_reserved_orders' => 'تنها سفارش‌های رزرو شده قابل تمدید هستند.',

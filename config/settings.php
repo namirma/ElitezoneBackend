@@ -38,6 +38,7 @@ return [
         'reserve_grace_hours',
         'delivery_deadline_hours',
         'max_overweight_percent',
+        'overweight_response_hours',
         'coupon_visibility',
         'reserve_warning_threshold_minutes',
     ],

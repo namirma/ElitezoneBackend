@@ -129,6 +129,16 @@ class Shipment extends Model
     /** وزنِ باسکولِ همین لِگ — مجموعشان تسویه‌ی سفارش را تغذیه می‌کند. */
     public const ACTUAL_WEIGHT = 'actual_weight';
 
+    /**
+     * وزن از کجا آمد — `api` | `ocr` | `manual` (بند ۳.۷ / ۴.۵).
+     *
+     * ‏`null` یعنی نامعلوم (بارنامه‌های پیش از این ستون)، نه ادعای منبع.
+     */
+    public const WEIGHT_SOURCE = 'weight_source';
+
+    /** راننده‌ی این محموله از دفترچه‌ی حمل‌کننده (بند ۴.۶). */
+    public const DRIVER_ID = 'driver_id';
+
     /** لحظه‌ی ثبتِ بارنامه. `null` یعنی این محموله هنوز بار نزده است. */
     public const REGISTERED_AT = 'registered_at';
 

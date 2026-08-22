@@ -39,6 +39,14 @@ Schedule::command('shipments:expire-delivery')
     ->runInBackground()
     ->onOneServer();
 
+// درخواست‌های اضافه‌بارِ بی‌پاسخ (بند ۳.۷). مهلتش ساعتی است نه دقیقه‌ای،
+// پس ساعتی کافی است — و بارِ کوئری را روی جدول سفارش‌ها کم می‌کند.
+Schedule::command('orders:expire-overweight')
+    ->hourly()
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->onOneServer();
+
 // لغو سفارشات منقضی‌شده — هر دقیقه
 Schedule::command('orders:cancel-expired')
     ->everyMinute()

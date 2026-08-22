@@ -168,6 +168,10 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
     Route::controller(AdminOrderController::class)->prefix('shipments')
         ->middleware('admin.permission:manage-orders')->group(function () {
             Route::post('/{shipment}/confirm-arrival', 'confirmShipmentArrival')->whereNumber('shipment');
+
+            // adapter دستی (§۷.۶ / بند ۳.۷) — «ثبت دستی با تأیید بک‌آفیس».
+            // فقط وزن می‌نویسد؛ تعدیل مالی جای دیگری و یک‌بار اجرا می‌شود.
+            Route::post('/{shipment}/weight', 'recordShipmentWeight')->whereNumber('shipment');
         });
 
     // خسارت عودت — تأیید بک‌آفیس، مرحله‌ی دومِ جریان سه‌مرحله‌ای (بند ۳.۱۱).
@@ -190,6 +194,13 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
         Route::get('/{order}/history', 'history');
         Route::get('/{order}', 'show');
         Route::post('/{order}/status', 'changeStatus');
+
+        // §۷.۶ — لغو اجباری با نامِ صریح. `changeStatus` همین کار را می‌کرد ولی
+        // پشت یک اندپوینتِ عمومیِ «تغییر وضعیت» پنهان بود، در حالی که بند ۵.۳
+        // می‌گوید **تنها اختیار ادمین روی وضعیت، لغو اجباری است**. اسمِ درست
+        // یعنی لاگِ ممیزی و مجوزها هم همان چیزی را بگویند که واقعاً رخ می‌دهد.
+        Route::post('/{order}/force-cancel', 'forceCancel')->whereNumber('order');
+
         // Doc P — فاکتور مودیان سیستم (سازه → خریدار)، آزادسازی WVAT hold
         Route::post('/{order}/system-moadian-invoice', 'submitSystemMoadianInvoice');
 

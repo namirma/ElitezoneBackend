@@ -12,6 +12,9 @@ use App\Http\Resources\Order\OrderResource;
 use App\Http\Resources\Order\ShipmentResource;
 use App\Models\Order;
 use App\Models\Shipment;
+// ‏`OrderTimelineService` عمداً نیامد: روی این شاخه وجود ندارد (اندپوینت
+// timeline هنوز پورت نشده) و importِ بی‌مصرف، PHPStan را قرمز می‌کرد.
+use App\Services\Weighbridge\WeightSourceResolver;
 use Exception;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -86,13 +89,38 @@ class AdminOrderController extends Controller
         // event and the refund/cancel documents. A bare status update here would
         // corrupt the ledger and inventory. isSystemCron=true lets the back-office
         // operator also unwind reserved orders.
+        return $this->forceCancel($request, $order, $cancelAction);
+    }
+
+    /**
+     * POST /api/admin/orders/{order}/force-cancel — §۷.۶.
+     *
+     * همان مسیرِ `changeStatus` با نامِ صریح. `isSystemCron=true` عمدی است: ادمین
+     * باید بتواند رزروی را هم که هنوز در پنجره‌ی لغو خریدار نیست باز کند —
+     * دقیقاً همان استثنایی که کرانِ انقضا دارد.
+     *
+     * دلیلِ عبور از `CancelOrderAction` و نه یک `update([STATUS => …])` خام:
+     * برگشتِ کامل لازم است — استرداد کیف پول (لِگ خریدار و تأمین‌کننده)،
+     * بازگرداندن موجودی، رویداد `OrderCancelled` و اسناد لغو. یک نوشتنِ خام
+     * دفتر و انبار را همزمان خراب می‌کرد.
+     */
+    public function forceCancel(Request $request, Order $order, CancelOrderAction $cancelAction): JsonResponse
+    {
+        $reason = (string) ($request->input('reason') ?: __('admin.orders.cancelled_by_admin'));
+
         try {
-            $cancelAction->execute($order, __('admin.orders.cancelled_by_admin'), true, true);
+            $cancelAction->execute($order, $reason, true, true);
         } catch (Exception $e) {
             Log::error('Admin order cancel failed: '.$e->getMessage(), ['order_id' => $order->id]);
 
             return error(__('orders.cannot_cancel'), [], 422);
         }
+
+        activity()
+            ->performedOn($order)
+            ->causedBy(Auth::user())
+            ->withProperties(['reason' => $reason])
+            ->log('admin.order.force_cancelled');
 
         return success(null, __('orders.cancelled_successfully'));
     }
@@ -130,6 +158,45 @@ class AdminOrderController extends Controller
      * اکشنِ لینکِ راننده اجرا می‌شود؛ فقط `arrival_source` فرق می‌کند تا بعداً
      * معلوم باشد این رسیدن را چه کسی اعلام کرده است.
      */
+    /**
+     * POST /api/admin/shipments/{shipment}/weight — adapter دستی (§۷.۶، بند ۳.۷).
+     *
+     * سند می‌گوید `ManualEntryAdapter` «ثبت دستی **با تأیید بک‌آفیس**» است —
+     * این همان تأیید است. عدد از `WeightSourceResolver` می‌گذرد و نه مستقیم از
+     * بدنه‌ی درخواست، پس گاردهای adapter (مثبت‌بودن و بازه‌ی معقول نسبت به وزنِ
+     * برنامه‌ریزی‌شده) اینجا هم اعمال می‌شوند.
+     *
+     * ⚠️ **هیچ لِگ مالی‌ای اینجا اجرا نمی‌شود.** ثبت وزن فقط وزن را می‌نویسد؛
+     * تعدیل یک‌بار و پس از بارنامه‌ی نهایی از `RegisterShipmentAction` می‌آید
+     * (بند ۸.۲). نوشتنِ لِگ اینجا یعنی تعدیلِ دوباره روی همان محموله.
+     */
+    public function recordShipmentWeight(
+        Request $request,
+        Shipment $shipment,
+        WeightSourceResolver $resolver,
+    ): JsonResponse {
+        $data = $request->validate([
+            'actual_weight' => ['required', 'numeric', 'min:0.001'],
+            'source' => ['sometimes', 'string', 'in:manual,ocr,api'],
+        ]);
+
+        $source = $resolver->for($data['source'] ?? 'manual');
+        $weight = $source->readWeight($shipment, $data);
+
+        $shipment->forceFill([
+            Shipment::ACTUAL_WEIGHT => $weight,
+            Shipment::WEIGHT_SOURCE => $source->code(),
+        ])->save();
+
+        activity()
+            ->performedOn($shipment)
+            ->causedBy(Auth::user())
+            ->withProperties(['actual_weight' => $weight, 'source' => $source->code()])
+            ->log('admin.shipment.weight_recorded');
+
+        return success(new ShipmentResource($shipment->fresh()), __('shipments.weight_recorded'));
+    }
+
     public function confirmShipmentArrival(
         Shipment $shipment,
         RecordShipmentArrivalAction $action,
