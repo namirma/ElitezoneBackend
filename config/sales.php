@@ -49,6 +49,14 @@ return [
     'max_overweight_percent' => (float) env('SALES_MAX_OVERWEIGHT_PERCENT', 20),
 
     /*
+    | مهلت پاسخ به درخواست تأیید اضافه‌بار، به ساعت (بند ۳.۷).
+    |
+    | با گذشتن مهلت، محموله باطل و سفارش به `processing` بازمی‌گردد. هیچ
+    | تسویه‌ای برنمی‌گردد چون در این شاخه اصلاً لِگ مالی‌ای اجرا نشده.
+    */
+    'overweight_response_hours' => (int) env('SALES_OVERWEIGHT_RESPONSE_HOURS', 48),
+
+    /*
     | آستانه‌ی هشدارِ «رزرو دیرهنگام» (الحاقیه‌ی ۱، تغییر ۱).
     |
     | اگر فاصله تا `reserve_time` تأمین‌کننده از این کمتر باشد، پیش از تأیید

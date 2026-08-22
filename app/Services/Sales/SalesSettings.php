@@ -83,6 +83,17 @@ final class SalesSettings
     }
 
     /**
+     * مهلت پاسخ به درخواست تأیید اضافه‌بار (ساعت) — بند ۳.۷.
+     *
+     * `max(1, …)` به همان دلیلِ `deliveryDeadlineHours()`: صفر یعنی درخواست در
+     * همان لحظه‌ی ساخته‌شدن منقضی است و کران بلافاصله باطلش می‌کند.
+     */
+    public function overweightResponseHours(): int
+    {
+        return max(1, $this->int('overweight_response_hours'));
+    }
+
+    /**
      * آیا کوپن برای این کاربر نمایش/اعمال می‌شود؟
      *
      * مهمان (`null`) در حالت `selected` کوپن نمی‌بیند — معیار یک ستون روی

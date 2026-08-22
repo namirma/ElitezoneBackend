@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\Data\AnalyticsController;
 use App\Http\Controllers\Api\Data\InventoryController;
 use App\Http\Controllers\Api\ListopherController;
+use App\Http\Controllers\Api\Order\OverweightApprovalController;
 use App\Http\Controllers\Api\Shipping\ReturnDamageController;
 use App\Http\Controllers\Api\Shipping\ShipmentDeliveryController;
 use App\Http\Controllers\Api\User\AccountSecurityController;
@@ -35,6 +36,7 @@ use App\Http\Controllers\Api\User\ProfileController;
 use App\Http\Controllers\Api\User\ProfileSearchController;
 use App\Http\Controllers\Api\User\StockSubscriptionController;
 use App\Http\Controllers\Api\User\SupplierController;
+use App\Http\Controllers\Api\User\SupplierDriverController;
 use App\Http\Controllers\Api\User\SupplierFactoryController;
 use App\Http\Controllers\Api\User\SupplierFactoryLocationController;
 use App\Http\Controllers\Api\User\SupplierOrderController;
@@ -42,6 +44,7 @@ use App\Http\Controllers\Api\User\SupplierProductPriceController;
 use App\Http\Controllers\Api\User\SupplierShippingRateController;
 use App\Http\Controllers\Api\User\SupplierStockController;
 use App\Http\Controllers\Api\User\UserBankAccountController;
+use App\Http\Controllers\Api\User\UserDebtController;
 use App\Http\Controllers\Api\User\WalletController;
 use App\Http\Controllers\Api\User\WishlistController;
 use App\Http\Controllers\Payment\WalletPaymentController;
@@ -440,6 +443,14 @@ Route::middleware(['auth:sanctum'])->group(function () {
                 // تأمین‌کننده قابل سفارش نیستند (بند ۳.۲).
                 Route::put('/reserve-time', [SupplierController::class, 'updateReserveTime']);
 
+                // دفترچه‌ی رانندگان (بند ۳.۹ و §۷.۳). `destroy` غیرفعال می‌کند
+                // و حذف نمی‌کند — بارنامه‌های قبلی به این ردیف‌ها اشاره دارند.
+                Route::get('/drivers', [SupplierDriverController::class, 'index']);
+                Route::post('/drivers', [SupplierDriverController::class, 'store']);
+                Route::put('/drivers/{driver}', [SupplierDriverController::class, 'update'])->whereNumber('driver');
+                Route::delete('/drivers/{driver}', [SupplierDriverController::class, 'destroy'])->whereNumber('driver');
+                Route::post('/drivers/{driver}/verify', [SupplierDriverController::class, 'verify'])->whereNumber('driver');
+
                 Route::get('/orders', [SupplierOrderController::class, 'index']);
                 Route::get('/orders/pending-debts', [SupplierOrderController::class, 'pendingDebts']);
                 Route::get('/orders/pending-moadian', [SupplierOrderController::class, 'pendingMoadian']);
@@ -537,5 +548,38 @@ Route::middleware('auth:sanctum')->prefix('profile')->group(function () {
         ->whereNumber('damage');
     Route::post('/damages/{damage}/settle', [ReturnDamageController::class, 'settle'])
         ->whereNumber('damage')
+        ->middleware(['idempotency', 'throttle:financial']);
+});
+
+// ── بدهی خودِ کاربر (§۷.۴) ───────────────────────────────────────────────────
+//
+// بدون پارامتر و بدون `{user}`: همیشه بدهیِ کاربرِ احرازشده. هر شکلی که
+// شناسه بگیرد، به یک نشتِ بدهیِ دیگران تبدیل می‌شود.
+Route::middleware('auth:sanctum')->get('/profile/debts', [UserDebtController::class, 'index']);
+
+// ── تأیید دومرحله‌ای اضافه‌بار (بند ۳.۷، §۷.۳ و §۷.۴) ────────────────────────
+//
+// ترتیب اجباری است: `approve` مالِ تأمین‌کننده و `accept` مالِ خریدار. تفکیکِ
+// مسیر عمدی است — یک اندپوینتِ مشترک یعنی نقشِ تأییدکننده از بدنه خوانده شود.
+Route::middleware('auth:sanctum')->prefix('profile/orders')->group(function () {
+    Route::post('/{order}/overweight/approve', [OverweightApprovalController::class, 'approveBySupplier'])
+        ->whereNumber('order')
+        ->middleware('idempotency');
+
+    // پذیرشِ خریدار تعدیل را واقعاً اجرا می‌کند، پس هم idempotency می‌خواهد
+    // هم throttle مالی — دقیقاً مثل `damages/settle`.
+    Route::post('/{order}/overweight/accept', [OverweightApprovalController::class, 'approveByBuyer'])
+        ->whereNumber('order')
+        ->middleware(['idempotency', 'throttle:financial']);
+
+    // رد کردن هیچ لِگ مالی‌ای ندارد (در این شاخه هنوز چیزی اجرا نشده)،
+    // پس مثل `damages/reject` بدون idempotency است.
+    Route::post('/{order}/overweight/reject', [OverweightApprovalController::class, 'reject'])
+        ->whereNumber('order');
+
+    // شاخه‌ی ۷ب — بدهیِ اضافه‌بار پرداخت و بار آزاد می‌شود. پول جابه‌جا
+    // می‌کند، پس هر دو میان‌افزار مالی را دارد.
+    Route::post('/{order}/overweight/settle', [OverweightApprovalController::class, 'settleShortfall'])
+        ->whereNumber('order')
         ->middleware(['idempotency', 'throttle:financial']);
 });

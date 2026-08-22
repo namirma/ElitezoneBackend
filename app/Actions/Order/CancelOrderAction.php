@@ -30,15 +30,23 @@ class CancelOrderAction
      */
     public function execute(Order $order, ?string $reason = 'لغو سیستمی', bool $refundWallet = true, bool $isSystemCron = false): Order
     {
-        // === گارد امنیتی طبق فلوچارت ===
-        if ($order->status === Order::STATUS_RESERVED) {
-            if ($order->reservation_expires_at && $order->reservation_expires_at->isFuture()) {
-                throw new Exception(__('orders.reserved_cannot_cancel_before_expiry'));
-            }
-
-            if (! $isSystemCron) {
-                throw new Exception(__('orders.reserved_expired_auto_cancel'));
-            }
+        // === گارد رزرو — بند ۳.۴ سند ===
+        //
+        // ⚠️ نسخه‌ی قبلی این گارد **پنجره‌ی لغو خریدار را کاملاً می‌بست.**
+        // `OrderActionController::cancel` پنجره را با `isInBuyerCancelWindow()`
+        // درست می‌سنجید و اجازه می‌داد، ولی بعد همین‌جا `! $isSystemCron` هر
+        // لغوِ غیرکرونی را throw می‌کرد — پس قابلیتی که سند صریحاً می‌خواهد
+        // («لغو توسط خریدار بین `reserve_deadline_original` و `reserve_deadline`
+        // ⇒ بله») در عمل هرگز کار نمی‌کرد. ستونِ خوانده‌شده هم بازنشسته بود:
+        // `reservation_expires_at` را دیگر هیچ مسیرِ رزروی پر نمی‌کند.
+        //
+        // گارد اینجا می‌ماند و نه در کنترلر: کرانِ انقضا، پنل ادمین و مسیر
+        // خریدار هر سه از همین اکشن می‌گذرند، پس تنها جایی که یک‌بار درست
+        // نوشتنش همه را پوشش می‌دهد همین است.
+        if ($order->status === Order::STATUS_RESERVED
+            && ! $isSystemCron
+            && ! $order->isInBuyerCancelWindow()) {
+            throw new Exception(__('orders.reserve_deadline.cancel_window_closed'));
         }
 
         $cancelled = DB::transaction(function () use ($order, $reason, $refundWallet, $isSystemCron) {

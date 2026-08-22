@@ -110,6 +110,13 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping()
             ->onOneServer();
 
+        // درخواست‌های اضافه‌بارِ بی‌پاسخ (بند ۳.۷). مهلتش ساعتی است نه دقیقه‌ای،
+        // پس ساعتی کافی است — و بارِ کوئری را روی جدول سفارش‌ها کم می‌کند.
+        $schedule->command('orders:expire-overweight')
+            ->hourly()
+            ->withoutOverlapping()
+            ->onOneServer();
+
         $schedule->command('carts:expire-parked')
             ->everyMinute()
             ->withoutOverlapping()

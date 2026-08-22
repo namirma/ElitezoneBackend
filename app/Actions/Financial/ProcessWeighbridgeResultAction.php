@@ -68,9 +68,15 @@ class ProcessWeighbridgeResultAction
             // گارد وضعیت: باسکول فقط برای سفارشِ پرداخت‌شده در پایپلاین آماده‌سازی معناست.
             // بدون این گارد، ثبت وزن روی سفارش PENDING/لغوشده، محاسبات را روی snapshot های
             // مالیِ ثبت‌نشده (POO/PTS صفر) اجرا می‌کرد و وضعیت را به SHIPPED می‌پراند.
+            // ‏`AWAITING_WEIGHT_CORRECTION` عمداً اینجاست: سفارشی که در شاخه‌ی
+            // فراتر-از-تلورانس متوقف شده باید پس از تأیید دو طرف بتواند تعدیل
+            // را ادامه دهد. بدون این ورودی، تأیید هم راه به جایی نمی‌برد و
+            // سفارش برای همیشه قفل می‌ماند. گاردِ واقعی پایین‌تر است:
+            // بازگشت به اینجا فقط با `isOverweightApproved()` مجاز است.
             $weighableStatuses = [
                 Order::STATUS_PROCESSING,
                 Order::STATUS_SHIPPED,
+                Order::STATUS_AWAITING_WEIGHT_CORRECTION,
             ];
             if (
                 $locked->{Order::PAYMENT_STATUS} !== Order::PAYMENT_PAID
@@ -105,7 +111,11 @@ class ProcessWeighbridgeResultAction
             // این شاخه پیش از هر نوشتنِ مالی می‌آید — همان قاعده‌ی «داده‌ی
             // نامعتبر باید متوقف کند، نه پول جابه‌جا کند» که گاردِ
             // `official_price` صفر و گاردِ چندتأمین‌کننده هم دارند.
-            if ($result->overweightPercent > $this->maxOverweightPercent()) {
+            // ‏`isOverweightApproved()` گاردِ برگشت است: وقتی هر دو طرف پذیرفته‌اند
+            // همین وزنِ فراتر-از-تلورانس دیگر باید تعدیل شود، نه دوباره متوقف.
+            // بدون این استثنا، تأییدِ خریدار سفارش را به همین شاخه برمی‌گرداند
+            // و حلقه‌ی بی‌پایان می‌ساخت.
+            if ($result->overweightPercent > $this->maxOverweightPercent() && ! $locked->isOverweightApproved()) {
                 $locked->forceFill([
                     Order::WEIGHT_AFTER_SCALE => $actualWeight,
                     Order::STATUS => Order::STATUS_AWAITING_WEIGHT_CORRECTION,
@@ -114,6 +124,13 @@ class ProcessWeighbridgeResultAction
                 Log::channel('financial')->warning(
                     "Order {$locked->id}: overweight {$result->overweightPercent}% exceeds the tolerance; settlement halted."
                 );
+
+                // درخواستِ تأیید را همین‌جا باز می‌کنیم تا سفارش با مبلغ و مهلت
+                // مشخص منتظر بماند؛ رزولوشن از `RequestOverweightApprovalAction`
+                // می‌آید. تزریق تنبل است چون آن کلاس خودش همین اکشن را تزریق
+                // می‌کند و سازنده‌ی مستقیم یک حلقه‌ی وابستگی می‌ساخت.
+                app(\App\Actions\Order\RequestOverweightApprovalAction::class)
+                    ->open($locked, $result->diffPOO);
 
                 return [
                     'status' => 'awaiting_weight_correction',
@@ -153,6 +170,11 @@ class ProcessWeighbridgeResultAction
                 Order::SHIPPING_COST => $result->newShippingCost,
                 Order::COUPON_DISCOUNT_AMOUNT => $result->newCouponDiscount,
                 Order::FINAL_AMOUNT => $result->newPOO,
+                // درخواستِ اضافه‌بار با اجرای تعدیل بسته می‌شود. مهرهای تأیید
+                // عمداً می‌مانند (رد پای تصمیم دو طرف)؛ فقط مبلغ و مهلت پاک
+                // می‌شوند تا کرانِ انقضا سفارشِ تسویه‌شده را باطل نکند.
+                Order::OVERWEIGHT_PENDING_AMOUNT => 0,
+                Order::OVERWEIGHT_DEADLINE => null,
             ])->save();
 
             Log::channel('financial')->info("باسکول نهایی شد. وضعیت: {$status}");
