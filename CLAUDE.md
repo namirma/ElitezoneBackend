@@ -738,6 +738,62 @@ Trigger 1 is the one phase 7 lacked, and without it **under-delivery could never
 the summed weight never reaches the order weight, and if the supplier ships in fewer loads
 than there are shipment rows, trigger 3 never fires either. The order stayed open forever.
 
+### Over-tolerance overweight is a two-party approval, not a dead end
+
+Spec §3.7 / §8.2 step 7a. `ProcessWeighbridgeResultAction` sends an order whose overweight
+exceeds `max_overweight_percent` to `awaiting_weight_correction` with **no financial leg
+run**. Until `RequestOverweightApprovalAction` existed, nothing brought it back: there was
+no action, no route, and `$weighableStatuses` rejected the status, so re-weighing 409'd
+too. **The order was locked forever.**
+
+- **Order is mandatory: supplier first, then buyer** — same discipline as
+  `ReturnDamageService`. A claimed amount must be vetted by the party that recorded it
+  before it reaches the customer. `approveByBuyer()` throws if the supplier has not signed.
+- `AWAITING_WEIGHT_CORRECTION` is now in `$weighableStatuses`, and the tolerance branch is
+  guarded by `&& ! $locked->isOverweightApproved()`. **Both halves are load-bearing** —
+  drop the guard and the buyer's approval bounces the order straight back into the same
+  branch, an infinite loop. Pinned by `both_approvals_resume_the_settlement`.
+- **Four columns, no more.** "Approved" is derived from the two stamps
+  (`Order::isOverweightApproved()`) and the overweight percentage from the two weight
+  columns; a third column that must be written in lockstep is a third place to drift.
+- **Rejection and expiry are the same code path** (`reject()`), because §3.7 gives them the
+  same outcome: shipments back to `pending` with `waybill_ref`/`registered_at`/`is_final`
+  **cleared** (or `RegisterShipmentAction`'s idempotency guard 409s the reload), order back
+  to `processing`, and `weight_after_scale` wiped — a weight nobody accepted must not
+  pollute the weight reports. **Nothing is refunded, because nothing was ever charged.**
+- `orders:expire-overweight` runs **hourly**, not every minute: the deadline is measured in
+  hours (`SalesSettings::overweightResponseHours()`, default 48).
+- The settlement clears `overweight_pending_amount` + `overweight_deadline` but **keeps the
+  two stamps** — the audit trail of who agreed to what.
+- **Branch 7b is separate.** `surplus_pending_buyer` means the legs *did* run and the load
+  is held pending debt repayment; `settleShortfall()` handles it. It must scope repayment
+  to **this order's** `debt_entries` (`outstandingForOrder()`), never
+  `DebtEngine::balanceFor()` — the person-level balance would charge the buyer for debt
+  from unrelated orders.
+- Pinned by `Order/OverweightApprovalTest`.
+
+### Admin force-cancel requires a ticket AND a reason
+
+Spec §3.6: «لغو اجباری ادمین: **فقط پس از تیکت، با ثبت دلیل**». `reason` used to fall back
+to a canned string, so "recording a reason" was optional in practice and the activity log
+always read the same uninformative sentence. Both `ticket_id` (`exists:tickets,id`) and
+`reason` (`min:10`) are now **required**.
+
+`AdminOrderController::changeStatus` delegates to `forceCancel`, so
+`POST /admin/orders/{order}/status` carries the same requirement — that is deliberate:
+§5.3 makes force-cancel the admin's *only* status power, so the two must not have different
+audit rules. This is the single action that unwinds a paid order and frees stock.
+Pinned by `Admin/AdminForceCancelTest` and two cases in `Admin/AdminHardeningTest`.
+
+### `GET /api/profile/debts` — the debtor can finally see their own debt
+
+Debt blocks three things (order placement, withdrawal, overweight shipping) and the only
+debt report was back-office. Users saw "به دلیل بدهی معوق..." with no way to learn how
+much, for what, or since when. The endpoint takes **no `user_id` parameter** — it reads
+`Auth::id()` only, so it cannot become a leak of someone else's debt. Repayment rows keep
+their negative sign so the ledger sums to the reported balance.
+Pinned by `Financial/UserDebtVisibilityTest`.
+
 ### The delivery cycle — the order's status is COMPUTED, never hand-written
 
 Phase 10 (spec §3.10). Before this, a shipment reached `shipped` and stayed there:
@@ -1296,7 +1352,7 @@ tests/
   Unit/          — (empty placeholder dir — kept so phpunit.xml works)
 ```
 
-**Total: 895 tests, 2310 assertions — all green. ✅**
+**Total: 932 tests, 2403 assertions — all green. ✅**
 
 Round-5 audit additions: `Security/CorsAllowlistTest`,
 `Security/PublicDiskUploadRulesTest`, `Admin/AdminPermissionCoverageTest`,

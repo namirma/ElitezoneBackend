@@ -57,7 +57,10 @@ class UserDebtController extends Controller
         ])->values()->all();
 
         $balance = $debtEngine->balanceFor($userId);
-        $limit = (float) ($user?->{User::CREDIT_LIMIT} ?? 0);
+        // ‏`?->` سمت چپِ `??` روی شاخه‌ی L13 خطای larastan می‌دهد (آنجا نتیجه‌ی
+        // `first()` غیرnullable تایپ می‌شود). شرطِ صریح روی هر دو شاخه یکسان
+        // کار می‌کند و فایل بین دو برنچ واگرا نمی‌شود.
+        $limit = $user === null ? 0.0 : (float) $user->{User::CREDIT_LIMIT};
 
         return success([
             'summary' => [

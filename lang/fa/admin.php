@@ -61,6 +61,10 @@ return [
     'orders' => [
         'status_updated' => 'وضعیت سفارش با موفقیت تغییر کرد.',
         'cancelled_by_admin' => 'لغو توسط مدیر سیستم',
+        'force_cancel_ticket_required' => 'لغو اجباری تنها پس از ثبت تیکت پشتیبانی ممکن است؛ شناسه تیکت الزامی است.',
+        'force_cancel_ticket_missing' => 'تیکت واردشده یافت نشد.',
+        'force_cancel_reason_required' => 'ثبت دلیل برای لغو اجباری الزامی است.',
+        'force_cancel_reason_too_short' => 'دلیل لغو باید حداقل ۱۰ نویسه باشد.',
         'invalid_status_transition' => 'تغییر وضعیت از وضعیت فعلی به وضعیت درخواستی مجاز نیست.',
         'cannot_process_unpaid' => 'این سفارش هنوز پرداخت نشده است و نمی‌توان آن را به وضعیت «در حال پردازش» برد.',
     ],
