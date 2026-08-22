@@ -2,12 +2,15 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Models\Department;
 use App\Models\Order;
 use App\Models\PodiumDepositRecord;
 use App\Models\Role;
+use App\Models\Ticket;
 use App\Models\User;
 use App\Models\Wallet;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
 use Tests\Concerns\GrantsAdminPermissions;
 use Tests\TestCase;
@@ -155,6 +158,11 @@ class AdminHardeningTest extends TestCase
         $this->assertSame(Order::STATUS_RESERVED, $order->fresh()->{Order::STATUS});
     }
 
+    /**
+     * ‏`changeStatus` به `forceCancel` واگذار می‌کند، پس بند ۳.۶ («فقط پس از
+     * تیکت، با ثبت دلیل») روی این مسیر هم اعمال می‌شود. این تست پیش‌تر بدون
+     * هیچ‌کدام ۲۰۰ می‌گرفت — یعنی قراردادِ سست را قفل کرده بود، نه قرارداد سند.
+     */
     public function test_admin_can_force_cancel_an_order(): void
     {
         $order = $this->makeOrder(Order::STATUS_PROCESSING, Order::PAYMENT_PAID);
@@ -163,9 +171,44 @@ class AdminHardeningTest extends TestCase
 
         $this->postJson("/api/admin/orders/{$order->id}/status", [
             'status' => Order::STATUS_CANCELLED,
+            'ticket_id' => $this->makeSupportTicket($order)->id,
+            'reason' => 'خریدار طی تیکت درخواست لغو داد و کالا هنوز ارسال نشده بود.',
         ])->assertOk();
 
         $this->assertSame(Order::STATUS_CANCELLED, $order->fresh()->{Order::STATUS});
+    }
+
+    public function test_force_cancel_without_a_ticket_or_reason_is_refused(): void
+    {
+        $order = $this->makeOrder(Order::STATUS_PROCESSING, Order::PAYMENT_PAID);
+
+        Sanctum::actingAs($this->admin);
+
+        $this->postJson("/api/admin/orders/{$order->id}/status", [
+            'status' => Order::STATUS_CANCELLED,
+        ])->assertStatus(422)->assertJsonValidationErrors(['ticket_id', 'reason']);
+
+        $this->assertSame(Order::STATUS_PROCESSING, $order->fresh()->{Order::STATUS});
+    }
+
+    private function makeSupportTicket(Order $order): Ticket
+    {
+        // ‏`tickets.department_id` مقدار پیش‌فرض ندارد.
+        $department = Department::create([
+            'name' => 'پشتیبانی',
+            'slug' => 'support-'.uniqid(),
+            'is_available_for_ticket' => true,
+        ]);
+
+        return Ticket::create([
+            Ticket::CODE => 'TK-'.Str::random(8),
+            Ticket::USER_ID => $order->{Order::PLACER_USER_ID},
+            Ticket::ORDER_ID => $order->id,
+            Ticket::DEPARTMENT_ID => $department->id,
+            Ticket::SUBJECT => 'درخواست لغو سفارش',
+            Ticket::MESSAGE => 'کالا دیگر لازم نیست.',
+            Ticket::STATUS => Ticket::STATUS_OPEN,
+        ]);
     }
 
     // ── AdminFinancialController — regression for the missing import ─────────

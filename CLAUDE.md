@@ -600,6 +600,53 @@ Order::SYSTEM_MOADIAN_REF          // string|null — set when Doc P submitted (
 Order::SYSTEM_HOLD_RELEASED_AT     // datetime|null
 ```
 
+### Over-tolerance overweight is a two-party approval, not a dead end
+
+Spec §3.7 / §8.2 step 7a. `ProcessWeighbridgeResultAction` sends an order whose overweight
+exceeds `max_overweight_percent` to `awaiting_weight_correction` with **no financial leg
+run**. Until `RequestOverweightApprovalAction` existed, nothing brought it back: there was
+no action, no route, and `$weighableStatuses` rejected the status, so re-weighing 409'd
+too. **The order was locked forever.**
+
+- **Order is mandatory: supplier first, then buyer** — same discipline as
+  `ReturnDamageService`. `approveByBuyer()` throws if the supplier has not signed.
+- `AWAITING_WEIGHT_CORRECTION` is now in `$weighableStatuses`, and the tolerance branch is
+  guarded by `&& ! $locked->isOverweightApproved()`. **Both halves are load-bearing** —
+  drop the guard and the buyer's approval bounces the order back into the same branch, an
+  infinite loop. Pinned by `both_approvals_resume_the_settlement`.
+- **Four columns, no more.** "Approved" is derived from the two stamps
+  (`Order::isOverweightApproved()`); a third column written in lockstep is a third place
+  to drift.
+- **Rejection and expiry share one code path** (`reject()`) because §3.7 gives them the
+  same outcome: shipments back to `pending` with `waybill_ref`/`registered_at`/`is_final`
+  **cleared** (or `RegisterShipmentAction`'s idempotency guard 409s the reload), order back
+  to `processing`, `weight_after_scale` wiped. **Nothing is refunded — nothing was charged.**
+- `orders:expire-overweight` runs **hourly** (the deadline is in hours;
+  `SalesSettings::overweightResponseHours()`, default 48).
+- **Branch 7b is separate.** `surplus_pending_buyer` means the legs *did* run and the load
+  is held pending debt repayment; `settleShortfall()` handles it, scoped to **this order's**
+  `debt_entries` via `outstandingForOrder()` — never `DebtEngine::balanceFor()`, which
+  would charge the buyer for debt from unrelated orders.
+- Pinned by `Order/OverweightApprovalTest`.
+
+### Admin force-cancel requires a ticket AND a reason
+
+Spec §3.6: «لغو اجباری ادمین: **فقط پس از تیکت، با ثبت دلیل**». `reason` used to fall back
+to a canned string, so recording a reason was optional in practice and the activity log
+always read the same uninformative sentence. Both `ticket_id` (`exists:tickets,id`) and
+`reason` (`min:10`) are now **required**. `AdminOrderController::changeStatus` delegates to
+`forceCancel`, so `POST /admin/orders/{order}/status` carries the same requirement —
+deliberate, since §5.3 makes force-cancel the admin's only status power.
+Pinned by `Admin/AdminForceCancelTest` and two cases in `Admin/AdminHardeningTest`.
+
+### `GET /api/profile/debts` — the debtor can finally see their own debt
+
+Debt blocks three things (order placement, withdrawal, overweight shipping) and the only
+debt report was back-office. The endpoint takes **no `user_id` parameter** — it reads
+`Auth::id()` only, so it cannot become a leak of someone else's debt. Repayment rows keep
+their negative sign so the ledger sums to the reported balance.
+Pinned by `Financial/UserDebtVisibilityTest`.
+
 ### Document Generation — Which Action Emits Which Doc
 
 Every `InvoiceGenerator::generate()` call is triggered from inside a `DB::transaction`
@@ -939,7 +986,7 @@ tests/
   Unit/          — (empty placeholder dir — kept so phpunit.xml works)
 ```
 
-**Total: 545 tests, 1328 assertions — 543 green, 2 skipped. ✅**
+**Total: 756 tests, 1888 assertions — all green. ✅**
 
 > The two skips are the `LedgerReconciler`-dependent cases in
 > `Financial/SupplierDebtReleaseTest` and `Financial/ReservationCompletionLegOrderTest`.

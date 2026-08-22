@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Financial;
 
+use App\Actions\Order\RequestOverweightApprovalAction;
 use App\Constants\FinancialCodes;
 use App\DataTransferObjects\Order\WeighbridgeReconcileResult;
 use App\Models\DebtEntry;
@@ -142,7 +143,7 @@ class ProcessWeighbridgeResultAction
                 // مشخص منتظر بماند؛ رزولوشن از `RequestOverweightApprovalAction`
                 // می‌آید. تزریق تنبل است چون آن کلاس خودش همین اکشن را تزریق
                 // می‌کند و سازنده‌ی مستقیم یک حلقه‌ی وابستگی می‌ساخت.
-                app(\App\Actions\Order\RequestOverweightApprovalAction::class)
+                app(RequestOverweightApprovalAction::class)
                     ->open($locked, $result->diffPOO);
 
                 return [

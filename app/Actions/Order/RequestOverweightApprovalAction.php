@@ -8,6 +8,7 @@ use App\Actions\Financial\ProcessWeighbridgeResultAction;
 use App\Constants\FinancialCodes;
 use App\Exceptions\BusinessException;
 use App\Jobs\Notification\SendSmsJob;
+use App\Models\DebtEntry;
 use App\Models\Order;
 use App\Models\Shipment;
 use App\Models\User;
@@ -174,7 +175,7 @@ class RequestOverweightApprovalAction
         }
 
         $payerId = $order->payerUserId();
-        $outstanding = $this->debtEngine->balanceFor($payerId);
+        $outstanding = $this->outstandingForOrder($payerId, $order);
 
         if ($outstanding <= 0.0) {
             // بدهی از راه دیگری تسویه شده — بار را همان‌جا آزاد کن.
@@ -205,6 +206,28 @@ class RequestOverweightApprovalAction
         );
 
         return $order->refresh();
+    }
+
+    /**
+     * بدهیِ باقی‌ماندهٔ **همین سفارش**، نه کل بدهی شخص.
+     *
+     * ‏`DebtEngine::balanceFor()` مانده‌ی شخصی را می‌دهد؛ استفاده از آن اینجا
+     * یعنی خریداری که بابت سفارش دیگری هم بدهکار است، با پرداختِ اضافه‌بارِ این
+     * سفارش **کلِ** بدهی‌اش از کیف پول کسر شود. دفتر بدهی `order_id` دارد و
+     * ردیف بازپرداخت منفی نوشته می‌شود، پس جمعِ ردیف‌های این سفارش دقیقاً همان
+     * مانده‌ی همین سفارش است.
+     *
+     * سقفِ مانده‌ی شخصی هم اعمال می‌شود چون `repay()` خودش clamp می‌کند و بدون
+     * این سقف ممکن بود بیشتر از بدهیِ واقعی از کیف پول کم شود.
+     */
+    private function outstandingForOrder(int $payerId, Order $order): float
+    {
+        $orderDebt = (float) DebtEntry::query()
+            ->where(DebtEntry::USER_ID, $payerId)
+            ->where(DebtEntry::ORDER_ID, $order->getKey())
+            ->sum(DebtEntry::AMOUNT);
+
+        return max(0.0, min($orderDebt, $this->debtEngine->balanceFor($payerId)));
     }
 
     private function assertOpen(Order $order): void

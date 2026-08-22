@@ -106,10 +106,25 @@ class AdminOrderController extends Controller
      */
     public function forceCancel(Request $request, Order $order, CancelOrderAction $cancelAction): JsonResponse
     {
-        $reason = (string) ($request->input('reason') ?: __('admin.orders.cancelled_by_admin'));
+        // بند ۳.۶: «لغو اجباری ادمین: **فقط پس از تیکت، با ثبت دلیل**».
+        //
+        // هر دو شرط اینجا اجباری‌اند، نه اختیاری. این تنها اقدامی است که یک
+        // سفارشِ پرداخت‌شده را یک‌طرفه برمی‌گرداند و موجودی را آزاد می‌کند، پس
+        // بدون تیکت و دلیل هیچ ردی نمی‌ماند که چرا انجام شده. `reason` پیش‌تر
+        // به یک متنِ پیش‌فرض fallback می‌کرد — یعنی «ثبت دلیل» عملاً اختیاری بود
+        // و لاگ همیشه یک جمله‌ی یکسانِ بی‌اطلاع می‌گرفت.
+        $data = $request->validate([
+            'ticket_id' => ['required', 'integer', 'exists:tickets,id'],
+            'reason' => ['required', 'string', 'min:10', 'max:1000'],
+        ], [
+            'ticket_id.required' => __('admin.orders.force_cancel_ticket_required'),
+            'ticket_id.exists' => __('admin.orders.force_cancel_ticket_missing'),
+            'reason.required' => __('admin.orders.force_cancel_reason_required'),
+            'reason.min' => __('admin.orders.force_cancel_reason_too_short'),
+        ]);
 
         try {
-            $cancelAction->execute($order, $reason, true, true);
+            $cancelAction->execute($order, $data['reason'], true, true);
         } catch (Exception $e) {
             Log::error('Admin order cancel failed: '.$e->getMessage(), ['order_id' => $order->id]);
 
@@ -119,7 +134,7 @@ class AdminOrderController extends Controller
         activity()
             ->performedOn($order)
             ->causedBy(Auth::user())
-            ->withProperties(['reason' => $reason])
+            ->withProperties(['reason' => $data['reason'], 'ticket_id' => $data['ticket_id']])
             ->log('admin.order.force_cancelled');
 
         return success(null, __('orders.cancelled_successfully'));
