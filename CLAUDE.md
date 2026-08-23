@@ -2608,8 +2608,44 @@ and the whole settlement. Now:
   (env `ADMIN_IP_WHITELIST`, comma-separated IP/CIDR via Symfony IpUtils).
   **Empty list = disabled** (default) — enabling is an explicit env change.
 - **OpenAPI export** — `api.json` (Scramble) is committed at repo root; regenerate
-  with `php artisan scramble:export` after route/request changes.
+  with `php artisan scramble:export` after route/request changes. **CI now enforces
+  this** — see "The API contract is a CI gate" below.
 - Pinned by `Admin/AdminHardeningRound2Test` (8 tests).
+
+### The API contract is a CI gate, and it pushes itself to the team
+
+Two jobs in `.github/workflows/ci.yml` replace the hand-written frontend handoff docs
+that kept going stale.
+
+**`contract` — the drift gate.** Runs `php artisan scramble:export` and byte-compares
+the result against the committed `api.json`. If they differ the build fails: the
+snapshot no longer describes the real routes. This is not hypothetical — before the
+gate existed, `api.json` was missing **26 endpoints** (all of `overweight/*`,
+`drivers/*`, `force-cancel`, `profile/debts`) and nothing anywhere reported it.
+Byte-comparison is safe because `scramble:export` is deterministic (verified: two
+consecutive runs produce an identical SHA-256).
+
+It then runs `oasdiff` against the previous commit's `api.json` and writes a Persian
+changelog into the job summary and an artifact.
+
+> ⚠️ **Decide the booleans from `--format json`, never from file size.** Both
+> `oasdiff changelog` and `oasdiff breaking` emit a 37-byte header
+> (`# API Changelog x vs. y`) even when there is nothing to report, so `[ -s file ]`
+> is *always* true. The first version of this workflow had that bug and would have
+> labelled every push a breaking change — an alert that always fires gets muted.
+> `--format json` returns `[]` when empty, which is unambiguous.
+
+**`notify` — push, not pull.** Posts branch, commit, test result and the contract
+changelog to the team chat group. Runs `if: always()` on purpose — a failed build is
+exactly when the notification matters most.
+
+- Secrets: `TEAM_CHAT_BOT_TOKEN`, `TEAM_CHAT_ID`. **Missing secrets skip the step
+  silently** so forks and other clones don't go red over a chat token they don't have.
+- Variable `CHAT_API_BASE` selects the backend: unset → Telegram; set to
+  `https://tapi.bale.ai` → Bale. The two share one API shape.
+- A failed notification never fails the build — undelivered chat must not reject
+  sound code. The token is never echoed; only `.description` from an error body is.
+- Messages are trimmed to 3800 chars (Telegram rejects >4096 with a 400).
 
 ### Idempotency uses a **shared** cache store — never the `file` driver
 

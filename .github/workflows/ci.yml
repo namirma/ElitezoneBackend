@@ -140,3 +140,241 @@ jobs:
           DB_USERNAME: root
           DB_PASSWORD: root
         run: php artisan test --compact
+
+  # ── لایه ۱: قرارداد API ──────────────────────────────────────────────────
+  # فرانت باید بداند چه چیزی عوض شد، و تا امروز این را از یک سندِ دستی
+  # می‌فهمید که drift می‌کرد: `api.json` کامیت‌شده هفته‌ها هیچ‌کدام از روت‌های
+  # `overweight`, `drivers`, `force-cancel` را نداشت و هیچ‌چیز خبر نمی‌داد.
+  #
+  # اینجا دو گیت مستقل است:
+  #   ۱. snapshot کامیت‌شده باید با روت‌های واقعی یکی باشد (گاردِ drift)
+  #   ۲. تفاوت با نسخه‌ی قبلی به‌صورت خوانا تولید می‌شود (خوراکِ لایه ۲)
+  #
+  # ‏`scramble:export` قطعی است (دو اجرای پشت‌سرهم همان SHA256 را می‌دهند)، پس
+  # مقایسه‌ی بایت‌به‌بایت flap نمی‌کند.
+  contract:
+    name: OpenAPI contract diff
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.diff.outputs.changed }}
+      summary: ${{ steps.diff.outputs.summary }}
+      breaking: ${{ steps.diff.outputs.breaking }}
+    steps:
+      # ‏fetch-depth: 0 لازم است چون نسخه‌ی پایه را با `git show <sha>:api.json`
+      # از تاریخچه می‌خوانیم — نه با یک composer install دوم روی کدِ قدیمی،
+      # که زمان CI را دو برابر می‌کرد.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, bcmath, gd, iconv, pdo_mysql, zip, exif
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      # روت‌ها و FormRequestها منبع حقیقت‌اند؛ این فایل صرفاً بازتابشان است.
+      - name: Export OpenAPI from the live route table
+        run: php artisan scramble:export --path=api.generated.json
+
+      - name: Committed api.json must match the routes
+        run: |
+          if ! diff -q api.json api.generated.json >/dev/null 2>&1; then
+            echo "::error::api.json is stale — the committed OpenAPI snapshot no longer matches the routes. Run 'php artisan scramble:export' and commit the result."
+            diff <(jq -S . api.json) <(jq -S . api.generated.json) | head -60 || true
+            exit 1
+          fi
+          echo "api.json matches the live route table."
+
+      - name: Install oasdiff
+        run: |
+          VERSION=1.11.7
+          curl -sSfL "https://github.com/Tufin/oasdiff/releases/download/v${VERSION}/oasdiff_${VERSION}_linux_amd64.tar.gz" \
+            | tar -xz -C /usr/local/bin oasdiff
+          oasdiff --version
+
+      # مقایسه با نسخه‌ی پایه. برای PR پایه شاخه‌ی مقصد است و برای push کامیت
+      # قبلی. اگر پایه پیدا نشود (اولین کامیت، force-push، برنچ تازه) دیف
+      # رد می‌شود ولی build قرمز نمی‌شود — نبودِ پایه خطای توسعه‌دهنده نیست.
+      - name: Diff the contract against the base
+        id: diff
+        run: |
+          BASE="${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}"
+          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ] \
+             || ! git cat-file -e "${BASE}:api.json" 2>/dev/null; then
+            echo "::notice::no base api.json to diff against — skipping."
+            {
+              echo "changed=false"
+              echo "breaking=false"
+              echo "summary=قرارداد API: نسخه‌ی پایه‌ای برای مقایسه نبود."
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git show "${BASE}:api.json" > api.base.json
+
+          # `changelog` همه‌ی تغییرات را می‌دهد، `breaking` فقط شکننده‌ها را.
+          #
+          # ⚠️ تصمیم بر پایه‌ی خروجی **json** گرفته می‌شود نه markup: هر دو
+          # دستور حتی وقتی هیچ تغییری نیست یک هدرِ ۳۷ بایتی
+          # (`# API Changelog x vs. y`) چاپ می‌کنند، پس `[ -s file ]` همیشه true
+          # می‌شد و هر push «تغییر شکننده» برچسب می‌خورد. اعلانی که همیشه زنگ
+          # می‌زند را تیم بعد از دو روز خاموش می‌کند. json برای خالی‌بودن `[]`
+          # می‌دهد که تفسیرش قطعی است.
+          oasdiff changelog api.base.json api.generated.json --format markup > contract-changelog.md 2>/dev/null || true
+          oasdiff breaking  api.base.json api.generated.json --format markup > contract-breaking.md  2>/dev/null || true
+
+          count_of() {
+            oasdiff "$1" api.base.json api.generated.json --format json 2>/dev/null \
+              | jq 'if type == "array" then length else 0 end' 2>/dev/null || echo 0
+          }
+          N_CHANGED=$(count_of changelog)
+          N_BREAKING=$(count_of breaking)
+
+          CHANGED=false; BREAKING=false
+          [ "${N_CHANGED:-0}"  -gt 0 ] && CHANGED=true
+          [ "${N_BREAKING:-0}" -gt 0 ] && BREAKING=true
+          echo "contract: ${N_CHANGED} change(s), ${N_BREAKING} breaking."
+
+          {
+            if [ "$CHANGED" = "false" ]; then
+              echo "قرارداد API تغییری نکرد."
+            else
+              echo "*قرارداد API — ${N_CHANGED} تغییر، ${N_BREAKING} شکننده*"
+              echo
+              if [ "$BREAKING" = "true" ]; then
+                echo "⚠️ *شکننده:*"
+                # هدرِ ثابتِ oasdiff حذف می‌شود تا پیامِ چت با یک تیترِ تکراری
+                # شروع نشود؛ فقط بخش‌های واقعی می‌مانند.
+                grep -v '^# API Changelog' contract-breaking.md | sed '/^$/d'
+                echo
+              fi
+              echo "*همه‌ی تغییرات:*"
+              grep -v '^# API Changelog' contract-changelog.md | sed '/^$/d'
+            fi
+          } > contract-summary.md
+
+          cat contract-summary.md >> "$GITHUB_STEP_SUMMARY"
+
+          # خروجی برای لایه ۲. متن چندخطی با delimiter تصادفی پاس می‌شود —
+          # روشِ امنِ GitHub برای مقادیری که ممکن است `\n` یا backtick داشته باشند.
+          DELIM="EOF_$(openssl rand -hex 8)"
+          {
+            echo "changed=${CHANGED}"
+            echo "breaking=${BREAKING}"
+            echo "summary<<${DELIM}"
+            head -c 2500 contract-summary.md
+            echo
+            echo "${DELIM}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Upload the contract diff
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: openapi-contract
+          path: |
+            api.generated.json
+            contract-summary.md
+          if-no-files-found: ignore
+          retention-days: 30
+
+  # ── لایه ۲: اعلانِ push به گروه تیم ───────────────────────────────────────
+  # سند روی یک URL منتظر می‌ماند تا کسی سراغش برود؛ این سراغِ تیم می‌رود.
+  # مدیر و فرانت در یک گروه‌اند و با هر push خلاصه‌ی «چه چیزی عوض شد» را
+  # می‌گیرند، بدون لاگین و بدون باز کردن هیچ سندی.
+  #
+  # `if: always()` عمدی است — شکستِ تست دقیقاً همان چیزی است که باید خبر داده
+  # شود. اعلانِ فقط-در-موفقیت یعنی سکوت درست وقتی خبر مهم‌تر است.
+  #
+  # با Telegram و Bale (بله) هر دو کار می‌کند: API یکی است و فقط base URL فرق
+  # دارد (`vars.CHAT_API_BASE`). پیش‌فرض تلگرام است.
+  notify:
+    name: Notify the team
+    runs-on: ubuntu-latest
+    needs: [tests, contract]
+    if: always() && github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Post the build + contract summary
+        env:
+          BOT_TOKEN: ${{ secrets.TEAM_CHAT_BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.TEAM_CHAT_ID }}
+          API_BASE: ${{ vars.CHAT_API_BASE || 'https://api.telegram.org' }}
+          TESTS_RESULT: ${{ needs.tests.result }}
+          CONTRACT_RESULT: ${{ needs.contract.result }}
+          CONTRACT_CHANGED: ${{ needs.contract.outputs.changed }}
+          CONTRACT_BREAKING: ${{ needs.contract.outputs.breaking }}
+          CONTRACT_SUMMARY: ${{ needs.contract.outputs.summary }}
+        run: |
+          # بدونِ secret ساکت رد شو. فورک و کلونِ توسعه‌دهنده‌ی دیگر نباید
+          # به‌خاطر نداشتنِ توکنِ گروه، build قرمز بگیرد.
+          if [ -z "${BOT_TOKEN}" ] || [ -z "${CHAT_ID}" ]; then
+            echo "::notice::TEAM_CHAT_BOT_TOKEN/TEAM_CHAT_ID not set — skipping notification."
+            exit 0
+          fi
+
+          icon() { [ "$1" = "success" ] && echo "✅" || { [ "$1" = "skipped" ] && echo "⏭️" || echo "❌"; }; }
+
+          SUBJECT=$(git log -1 --pretty=%s | head -c 160)
+          SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
+          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
+          {
+            if [ "${CONTRACT_BREAKING}" = "true" ]; then
+              echo "🚨 *تغییر شکننده در API*"
+            elif [ "${TESTS_RESULT}" != "success" ]; then
+              echo "❌ *بیلد شکست*"
+            else
+              echo "🟢 *بیلد سبز*"
+            fi
+            echo
+            echo "شاخه: \`${GITHUB_REF_NAME}\`"
+            echo "کامیت: \`${SHORT_SHA}\` — ${SUBJECT}"
+            echo "نویسنده: ${GITHUB_ACTOR}"
+            echo
+            echo "$(icon "${TESTS_RESULT}") تست‌ها و تحلیل ایستا"
+            echo "$(icon "${CONTRACT_RESULT}") قرارداد API"
+            echo
+            if [ "${CONTRACT_CHANGED}" = "true" ]; then
+              echo "${CONTRACT_SUMMARY}"
+            else
+              echo "قرارداد API تغییری نکرد."
+            fi
+            echo
+            echo "[جزئیات اجرا](${RUN_URL})"
+          } > message.md
+
+          # سقف پیام تلگرام ۴۰۹۶ کاراکتر است؛ بلندتر با ۴۰۰ رد می‌شود، پس
+          # پیش از ارسال بریده می‌شود نه اینکه اعلان بی‌صدا گم شود.
+          head -c 3800 message.md > message.trimmed.md
+          [ "$(wc -c < message.md)" -gt 3800 ] && echo "…(بریده شد — جزئیات کامل در لینک اجرا)" >> message.trimmed.md
+
+          # ‏--fail-with-body نمی‌گذارد خطای API بی‌صدا رد شود، ولی خودِ مرحله
+          # با `|| true` بیلد را قرمز نمی‌کند: نرسیدنِ اعلان نباید کدِ سالم را
+          # مردود کند. توکن هرگز echo نمی‌شود.
+          HTTP=$(curl -sS -o response.json -w '%{http_code}' \
+            -X POST "${API_BASE}/bot${BOT_TOKEN}/sendMessage" \
+            -d "chat_id=${CHAT_ID}" \
+            -d "parse_mode=Markdown" \
+            -d "disable_web_page_preview=true" \
+            --data-urlencode "text@message.trimmed.md") || true
+
+          if [ "${HTTP}" = "200" ]; then
+            echo "notification delivered."
+          else
+            echo "::warning::chat notification failed with HTTP ${HTTP}."
+            # پاسخ ممکن است توکن را در متنِ خطا برنگرداند، ولی برای اطمینان
+            # فقط فیلد description چاپ می‌شود، نه کل بدنه.
+            jq -r '.description // "no description"' response.json 2>/dev/null || true
+          fi

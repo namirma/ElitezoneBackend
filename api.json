@@ -2492,6 +2492,115 @@
                 }
             }
         },
+        "/admin/abandoned-carts": {
+            "get": {
+                "operationId": "adminDebt.abandonedCarts",
+                "description": "\u0627\u0633\u0646\u067e\u200c\u0634\u0627\u062a\u0650 \u0633\u0628\u062f\u0647\u0627\u06cc\u06cc \u06a9\u0647 \u0645\u0647\u0644\u062a\u0634\u0627\u0646 \u062a\u0645\u0627\u0645 \u0634\u062f \u0648 \u067e\u0627\u06a9 \u0634\u062f\u0646\u062f (\u0641\u0627\u0632 \u06f2). \u0627\u06cc\u0646 \u062a\u0646\u0647\u0627\n\u062c\u0627\u06cc\u06cc \u0627\u0633\u062a \u06a9\u0647 \u0645\u06cc\u200c\u0634\u0648\u062f \u0641\u0647\u0645\u06cc\u062f \u0686\u0647 \u06a9\u0633\u06cc \u0686\u0647 \u0686\u06cc\u0632\u06cc \u0631\u0627 \u0646\u06cc\u0645\u0647\u200c\u06a9\u0627\u0631\u0647 \u0631\u0647\u0627 \u06a9\u0631\u062f \u2014 \u062e\u0648\u062f\u0650\n`carts` \u067e\u0627\u06a9 \u0634\u062f\u0647 \u0627\u0633\u062a.",
+                "summary": "GET /admin/abandoned-carts \u2014 \u0628\u0646\u062f \u06f7.\u06f6",
+                "tags": [
+                    "AdminDebt"
+                ],
+                "parameters": [
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 20
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/admin/debts": {
+            "get": {
+                "operationId": "adminDebt.debts",
+                "description": "\u0641\u0647\u0631\u0633\u062a \u0628\u062f\u0647\u06a9\u0627\u0631\u0627\u0646 \u0628\u0647\u200c\u0639\u0644\u0627\u0648\u0647\u200c\u06cc \u0633\u0631\u062c\u0645\u0639. \u0639\u0645\u062f\u0627\u064b \u0627\u0632 `users.debt_balance` \u062e\u0648\u0627\u0646\u062f\u0647\n\u0645\u06cc\u200c\u0634\u0648\u062f \u0648 \u0646\u0647 \u0627\u0632 \u062c\u0645\u0639\u0650 \u0632\u0646\u062f\u0647\u200c\u06cc \u062f\u0641\u062a\u0631: \u0627\u06af\u0631 \u0627\u06cc\u0646 \u062f\u0648 \u0628\u0627 \u0647\u0645 \u0641\u0631\u0642 \u062f\u0627\u0634\u062a\u0647 \u0628\u0627\u0634\u0646\u062f \u06cc\u06a9\n\u0628\u0627\u06af \u0627\u0633\u062a \u0648 \u06af\u0632\u0627\u0631\u0634 \u0628\u0627\u06cc\u062f \u0647\u0645\u0627\u0646 \u0686\u06cc\u0632\u06cc \u0631\u0627 \u0646\u0634\u0627\u0646 \u062f\u0647\u062f \u06a9\u0647 \u06af\u0627\u0631\u062f\u0647\u0627\u06cc \u0633\u0641\u0627\u0631\u0634 \u0648 \u0628\u0631\u062f\u0627\u0634\u062a\n\u0628\u0647 \u0622\u0646 \u062a\u06a9\u06cc\u0647 \u0645\u06cc\u200c\u06a9\u0646\u0646\u062f.",
+                "summary": "GET /admin/debts \u2014 \u0628\u0646\u062f \u06f7.\u06f6",
+                "tags": [
+                    "AdminDebt"
+                ],
+                "parameters": [
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 20
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/admin/users/{user}/debt-entries": {
+            "get": {
+                "operationId": "adminDebt.userDebtEntries",
+                "description": "\u0628\u062f\u0648\u0646 \u0627\u06cc\u0646\u060c \u0645\u0627\u0646\u062f\u0647 \u06cc\u06a9 \u0639\u062f\u062f\u0650 \u0628\u06cc\u200c\u062a\u0648\u0636\u06cc\u062d \u0627\u0633\u062a \u0648 \u0628\u06a9\u200c\u0622\u0641\u06cc\u0633 \u0646\u0645\u06cc\u200c\u062a\u0648\u0627\u0646\u062f \u0628\u06af\u0648\u06cc\u062f \u0627\u0632 \u06a9\u062c\u0627\n\u0622\u0645\u062f\u0647 \u2014 \u0647\u0645\u0627\u0646 \u062f\u0644\u06cc\u0644\u06cc \u06a9\u0647 \u06a9\u06cc\u0641 \u067e\u0648\u0644 \u062a\u0627\u0631\u06cc\u062e\u0686\u0647 \u062f\u0627\u0631\u062f.",
+                "summary": "GET /admin/users/{user}/debt-entries \u2014 \u062f\u0641\u062a\u0631\u0650 \u06cc\u06a9 \u0628\u062f\u0647\u06a9\u0627\u0631",
+                "tags": [
+                    "AdminDebt"
+                ],
+                "parameters": [
+                    {
+                        "name": "user",
+                        "in": "path",
+                        "required": true,
+                        "description": "The user ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
         "/admin/education-records": {
             "get": {
                 "operationId": "adminEduix.index",
@@ -5402,6 +5511,112 @@
                 }
             }
         },
+        "/admin/shipments/{shipment}/confirm-arrival": {
+            "post": {
+                "operationId": "adminOrder.confirmShipmentArrival",
+                "tags": [
+                    "AdminOrder"
+                ],
+                "parameters": [
+                    {
+                        "name": "shipment",
+                        "in": "path",
+                        "required": true,
+                        "description": "The shipment ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/admin/shipments/{shipment}/weight": {
+            "post": {
+                "operationId": "adminOrder.recordShipmentWeight",
+                "description": "\u0633\u0646\u062f \u0645\u06cc\u200c\u06af\u0648\u06cc\u062f `ManualEntryAdapter` \u00ab\u062b\u0628\u062a \u062f\u0633\u062a\u06cc **\u0628\u0627 \u062a\u0623\u06cc\u06cc\u062f \u0628\u06a9\u200c\u0622\u0641\u06cc\u0633**\u00bb \u0627\u0633\u062a \u2014\n\u0627\u06cc\u0646 \u0647\u0645\u0627\u0646 \u062a\u0623\u06cc\u06cc\u062f \u0627\u0633\u062a. \u0639\u062f\u062f \u0627\u0632 `WeightSourceResolver` \u0645\u06cc\u200c\u06af\u0630\u0631\u062f \u0648 \u0646\u0647 \u0645\u0633\u062a\u0642\u06cc\u0645 \u0627\u0632\n\u0628\u062f\u0646\u0647\u200c\u06cc \u062f\u0631\u062e\u0648\u0627\u0633\u062a\u060c \u067e\u0633 \u06af\u0627\u0631\u062f\u0647\u0627\u06cc adapter (\u0645\u062b\u0628\u062a\u200c\u0628\u0648\u062f\u0646 \u0648 \u0628\u0627\u0632\u0647\u200c\u06cc \u0645\u0639\u0642\u0648\u0644 \u0646\u0633\u0628\u062a \u0628\u0647 \u0648\u0632\u0646\u0650\n\u0628\u0631\u0646\u0627\u0645\u0647\u200c\u0631\u06cc\u0632\u06cc\u200c\u0634\u062f\u0647) \u0627\u06cc\u0646\u062c\u0627 \u0647\u0645 \u0627\u0639\u0645\u0627\u0644 \u0645\u06cc\u200c\u0634\u0648\u0646\u062f.\n\n\u26a0\ufe0f **\u0647\u06cc\u0686 \u0644\u0650\u06af \u0645\u0627\u0644\u06cc\u200c\u0627\u06cc \u0627\u06cc\u0646\u062c\u0627 \u0627\u062c\u0631\u0627 \u0646\u0645\u06cc\u200c\u0634\u0648\u062f.** \u062b\u0628\u062a \u0648\u0632\u0646 \u0641\u0642\u0637 \u0648\u0632\u0646 \u0631\u0627 \u0645\u06cc\u200c\u0646\u0648\u06cc\u0633\u062f\u061b\n\u062a\u0639\u062f\u06cc\u0644 \u06cc\u06a9\u200c\u0628\u0627\u0631 \u0648 \u067e\u0633 \u0627\u0632 \u0628\u0627\u0631\u0646\u0627\u0645\u0647\u200c\u06cc \u0646\u0647\u0627\u06cc\u06cc \u0627\u0632 `RegisterShipmentAction` \u0645\u06cc\u200c\u0622\u06cc\u062f\n(\u0628\u0646\u062f \u06f8.\u06f2). \u0646\u0648\u0634\u062a\u0646\u0650 \u0644\u0650\u06af \u0627\u06cc\u0646\u062c\u0627 \u06cc\u0639\u0646\u06cc \u062a\u0639\u062f\u06cc\u0644\u0650 \u062f\u0648\u0628\u0627\u0631\u0647 \u0631\u0648\u06cc \u0647\u0645\u0627\u0646 \u0645\u062d\u0645\u0648\u0644\u0647.",
+                "summary": "POST /api/admin/shipments/{shipment}/weight \u2014 adapter \u062f\u0633\u062a\u06cc (\u00a7\u06f7.\u06f6\u060c \u0628\u0646\u062f \u06f3.\u06f7)",
+                "tags": [
+                    "AdminOrder"
+                ],
+                "parameters": [
+                    {
+                        "name": "shipment",
+                        "in": "path",
+                        "required": true,
+                        "description": "The shipment ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "actual_weight": {
+                                        "type": "number",
+                                        "minimum": 0.001
+                                    },
+                                    "source": {
+                                        "type": "string",
+                                        "enum": [
+                                            "manual",
+                                            "ocr",
+                                            "api"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "actual_weight"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
         "/admin/orders": {
             "get": {
                 "operationId": "adminOrder.index",
@@ -5625,7 +5840,7 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "",
+                        "description": "Cancelling MUST go through CancelOrderAction so the full reversal runs:\nwallet refund (buyer + supplier legs), stock restoration, OrderCancelled\nevent and the refund/cancel documents. A bare status update here would\ncorrupt the ledger and inventory. isSystemCron=true lets the back-office\noperator also unwind reserved orders.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -5639,6 +5854,34 @@
                     },
                     "404": {
                         "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/admin/orders/{order}/force-cancel": {
+            "post": {
+                "operationId": "adminOrder.forceCancel",
+                "description": "\u0647\u0645\u0627\u0646 \u0645\u0633\u06cc\u0631\u0650 `changeStatus` \u0628\u0627 \u0646\u0627\u0645\u0650 \u0635\u0631\u06cc\u062d. `isSystemCron=true` \u0639\u0645\u062f\u06cc \u0627\u0633\u062a: \u0627\u062f\u0645\u06cc\u0646\n\u0628\u0627\u06cc\u062f \u0628\u062a\u0648\u0627\u0646\u062f \u0631\u0632\u0631\u0648\u06cc \u0631\u0627 \u0647\u0645 \u06a9\u0647 \u0647\u0646\u0648\u0632 \u062f\u0631 \u067e\u0646\u062c\u0631\u0647\u200c\u06cc \u0644\u063a\u0648 \u062e\u0631\u06cc\u062f\u0627\u0631 \u0646\u06cc\u0633\u062a \u0628\u0627\u0632 \u06a9\u0646\u062f \u2014\n\u062f\u0642\u06cc\u0642\u0627\u064b \u0647\u0645\u0627\u0646 \u0627\u0633\u062a\u062b\u0646\u0627\u06cc\u06cc \u06a9\u0647 \u06a9\u0631\u0627\u0646\u0650 \u0627\u0646\u0642\u0636\u0627 \u062f\u0627\u0631\u062f.\n\n\u062f\u0644\u06cc\u0644\u0650 \u0639\u0628\u0648\u0631 \u0627\u0632 `CancelOrderAction` \u0648 \u0646\u0647 \u06cc\u06a9 `update([STATUS => \u2026])` \u062e\u0627\u0645:\n\u0628\u0631\u06af\u0634\u062a\u0650 \u06a9\u0627\u0645\u0644 \u0644\u0627\u0632\u0645 \u0627\u0633\u062a \u2014 \u0627\u0633\u062a\u0631\u062f\u0627\u062f \u06a9\u06cc\u0641 \u067e\u0648\u0644 (\u0644\u0650\u06af \u062e\u0631\u06cc\u062f\u0627\u0631 \u0648 \u062a\u0623\u0645\u06cc\u0646\u200c\u06a9\u0646\u0646\u062f\u0647)\u060c\n\u0628\u0627\u0632\u06af\u0631\u062f\u0627\u0646\u062f\u0646 \u0645\u0648\u062c\u0648\u062f\u06cc\u060c \u0631\u0648\u06cc\u062f\u0627\u062f `OrderCancelled` \u0648 \u0627\u0633\u0646\u0627\u062f \u0644\u063a\u0648. \u06cc\u06a9 \u0646\u0648\u0634\u062a\u0646\u0650 \u062e\u0627\u0645\n\u062f\u0641\u062a\u0631 \u0648 \u0627\u0646\u0628\u0627\u0631 \u0631\u0627 \u0647\u0645\u0632\u0645\u0627\u0646 \u062e\u0631\u0627\u0628 \u0645\u06cc\u200c\u06a9\u0631\u062f.\u26a0\ufe0f Cannot generate request documentation: Scope is not initialized for route.",
+                "summary": "POST /api/admin/orders/{order}/force-cancel \u2014 \u00a7\u06f7.\u06f6",
+                "tags": [
+                    "AdminOrder"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Cancelling MUST go through CancelOrderAction so the full reversal runs:\nwallet refund (buyer + supplier legs), stock restoration, OrderCancelled\nevent and the refund/cancel documents. A bare status update here would\ncorrupt the ledger and inventory. isSystemCron=true lets the back-office\noperator also unwind reserved orders.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
@@ -11633,6 +11876,67 @@
                 }
             }
         },
+        "/admin/users/{user}/credit-limit": {
+            "post": {
+                "operationId": "adminUser.setCreditLimit",
+                "description": "\u0641\u0642\u0637 `credit_limit` \u0646\u0648\u0634\u062a\u0647 \u0645\u06cc\u200c\u0634\u0648\u062f\u060c \u0647\u0631\u06af\u0632 `debt_balance`: \u0645\u0627\u0646\u062f\u0647 \u062a\u0646\u0647\u0627 \u0627\u0632 \u0645\u0633\u06cc\u0631\n`DebtEngine` \u0639\u0648\u0636 \u0645\u06cc\u200c\u0634\u0648\u062f \u062a\u0627 \u0628\u0627 \u062f\u0641\u062a\u0631\u0650 `debt_entries` \u0647\u0645\u200c\u062e\u0648\u0627\u0646 \u0628\u0645\u0627\u0646\u062f. \u0627\u0635\u0644\u0627\u062d\u0650\n\u062f\u0633\u062a\u06cc\u0650 \u062e\u0648\u062f\u0650 \u0628\u062f\u0647\u06cc \u0628\u0627\u06cc\u062f \u06cc\u06a9 \u0631\u062f\u06cc\u0641\u0650 `adjustment` \u0628\u06af\u0630\u0627\u0631\u062f\u060c \u0646\u0647 \u06cc\u06a9 UPDATE \u0628\u06cc\u200c\u0631\u062f.\n\n\u0633\u062a\u0648\u0646 \u062f\u0631 `$fillable` \u0646\u06cc\u0633\u062a (\u0645\u062b\u0644 \u0627\u0633\u0646\u067e\u200c\u0634\u0627\u062a\u200c\u0647\u0627\u06cc \u0645\u0627\u0644\u06cc\u0650 Order)\u060c \u067e\u0633 `forceFill`.",
+                "summary": "\u062a\u0639\u06cc\u06cc\u0646 \u0633\u0642\u0641 \u0627\u0639\u062a\u0628\u0627\u0631 \u06a9\u0627\u0631\u0628\u0631 \u2014 \u0628\u0646\u062f \u06f3.\u06f1\u06f2 \u0633\u0646\u062f\u060c \u00ab\u062f\u0633\u062a\u06cc \u062a\u0648\u0633\u0637 \u0628\u06a9\u200c\u0622\u0641\u06cc\u0633\u00bb",
+                "tags": [
+                    "AdminUser"
+                ],
+                "parameters": [
+                    {
+                        "name": "user",
+                        "in": "path",
+                        "required": true,
+                        "description": "The user ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "credit_limit": {
+                                        "type": "number",
+                                        "minimum": 0
+                                    }
+                                },
+                                "required": [
+                                    "credit_limit"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
         "/admin/users/{user}/verify-elite-yar": {
             "post": {
                 "operationId": "adminUser.verifyEliteYAR",
@@ -15274,12 +15578,92 @@
                 }
             }
         },
-        "/admin/orders/{order}/weighbridge": {
+        "/profile/orders/{order}/overweight/approve": {
             "post": {
-                "operationId": "admin.orders.weighbridge.submit",
-                "summary": "\u062b\u0628\u062a \u0648\u0632\u0646 \u0646\u0647\u0627\u06cc\u06cc \u0628\u0627\u0633\u06a9\u0648\u0644 \u0648 \u0627\u0646\u062c\u0627\u0645 \u0645\u062d\u0627\u0633\u0628\u0627\u062a \u0645\u0627\u0644\u06cc (\u06a9\u0633\u0631\u06cc/\u0633\u0631\u06a9)",
+                "operationId": "overweightApproval.approveBySupplier",
+                "summary": "POST /api/profile/orders/{order}/overweight/approve \u2014 \u062a\u0623\u0645\u06cc\u0646\u200c\u06a9\u0646\u0646\u062f\u0647",
                 "tags": [
-                    "OrderWeighbridge"
+                    "OverweightApproval"
+                ],
+                "parameters": [
+                    {
+                        "name": "order",
+                        "in": "path",
+                        "required": true,
+                        "description": "The order ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/profile/orders/{order}/overweight/accept": {
+            "post": {
+                "operationId": "overweightApproval.approveByBuyer",
+                "summary": "POST /api/profile/orders/{order}/overweight/accept \u2014 \u062e\u0631\u06cc\u062f\u0627\u0631",
+                "tags": [
+                    "OverweightApproval"
+                ],
+                "parameters": [
+                    {
+                        "name": "order",
+                        "in": "path",
+                        "required": true,
+                        "description": "The order ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/profile/orders/{order}/overweight/reject": {
+            "post": {
+                "operationId": "overweightApproval.reject",
+                "description": "\u0631\u062f \u06cc\u06a9 \u0645\u0633\u06cc\u0631\u0650 \u0645\u0639\u062a\u0628\u0631 \u0627\u0633\u062a\u060c \u0646\u0647 \u062e\u0637\u0627: \u0645\u062d\u0645\u0648\u0644\u0647 \u0628\u0627\u0637\u0644 \u0648 \u0633\u0641\u0627\u0631\u0634 \u0628\u0647 `processing`\n\u0628\u0631\u0645\u06cc\u200c\u06af\u0631\u062f\u062f \u062a\u0627 \u062a\u0623\u0645\u06cc\u0646\u200c\u06a9\u0646\u0646\u062f\u0647 \u0628\u0627\u0631\u0646\u0627\u0645\u0647 \u0631\u0627 \u0628\u0627 \u0648\u0632\u0646 \u062f\u0631\u0633\u062a \u062f\u0648\u0628\u0627\u0631\u0647 \u062b\u0628\u062a \u06a9\u0646\u062f.",
+                "summary": "POST /api/profile/orders/{order}/overweight/reject \u2014 \u0647\u0631 \u06cc\u06a9 \u0627\u0632 \u062f\u0648 \u0637\u0631\u0641",
+                "tags": [
+                    "OverweightApproval"
                 ],
                 "parameters": [
                     {
@@ -15297,11 +15681,62 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/SubmitWeighbridgeRequest"
+                                "type": "object",
+                                "properties": {
+                                    "reason": {
+                                        "type": "string",
+                                        "maxLength": 255
+                                    }
+                                },
+                                "required": [
+                                    "reason"
+                                ]
                             }
                         }
                     }
                 },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/profile/orders/{order}/overweight/settle": {
+            "post": {
+                "operationId": "overweightApproval.settleShortfall",
+                "description": "\u0634\u0627\u062e\u0647\u200c\u06cc \u06f7\u0628: \u0644\u0650\u06af\u200c\u0647\u0627\u06cc \u0645\u0627\u0644\u06cc \u0642\u0628\u0644\u0627\u064b \u062e\u0648\u0631\u062f\u0647\u200c\u0627\u0646\u062f \u0648 \u0641\u0642\u0637 \u0628\u0627\u0631 \u0645\u062a\u0648\u0642\u0641 \u0627\u0633\u062a. \u062e\u0631\u06cc\u062f\u0627\u0631\n\u0628\u062f\u0647\u06cc \u0627\u0636\u0627\u0641\u0647\u200c\u0628\u0627\u0631 \u0631\u0627 \u0645\u06cc\u200c\u067e\u0631\u062f\u0627\u0632\u062f \u0648 \u0645\u062d\u0645\u0648\u0644\u0647 \u0622\u0632\u0627\u062f \u0645\u06cc\u200c\u0634\u0648\u062f.",
+                "summary": "POST /api/profile/orders/{order}/overweight/settle \u2014 \u062e\u0631\u06cc\u062f\u0627\u0631",
+                "tags": [
+                    "OverweightApproval"
+                ],
+                "parameters": [
+                    {
+                        "name": "order",
+                        "in": "path",
+                        "required": true,
+                        "description": "The order ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "",
@@ -15318,9 +15753,6 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
                     }
                 }
             }
@@ -16596,6 +17028,250 @@
                 }
             }
         },
+        "/profile/shipments/{shipment}/damages": {
+            "post": {
+                "operationId": "returnDamage.store",
+                "summary": "POST /api/profile/shipments/{shipment}/damages \u2014 \u062a\u0623\u0645\u06cc\u0646\u200c\u06a9\u0646\u0646\u062f\u0647",
+                "tags": [
+                    "ReturnDamage"
+                ],
+                "parameters": [
+                    {
+                        "name": "shipment",
+                        "in": "path",
+                        "required": true,
+                        "description": "The shipment ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "amount": {
+                                        "type": "number",
+                                        "minimum": 1
+                                    },
+                                    "description": {
+                                        "type": "string",
+                                        "maxLength": 255
+                                    }
+                                },
+                                "required": [
+                                    "amount",
+                                    "description"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/profile/damages/{damage}/approve": {
+            "post": {
+                "operationId": "returnDamage.approveByBuyer",
+                "summary": "POST /api/profile/damages/{damage}/approve \u2014 \u062e\u0631\u06cc\u062f\u0627\u0631",
+                "tags": [
+                    "ReturnDamage"
+                ],
+                "parameters": [
+                    {
+                        "name": "damage",
+                        "in": "path",
+                        "required": true,
+                        "description": "The damage ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/profile/damages/{damage}/reject": {
+            "post": {
+                "operationId": "returnDamage.rejectByBuyer",
+                "description": "\u0628\u0646\u062f \u06f3.\u06f1\u06f1: \u00ab\u0639\u062f\u0645 \u062a\u0623\u06cc\u06cc\u062f \u062e\u0631\u06cc\u062f\u0627\u0631 \u21d2 \u062a\u06cc\u06a9\u062a \u067e\u0634\u062a\u06cc\u0628\u0627\u0646\u06cc\u00bb. \u0631\u062f \u06a9\u0631\u062f\u0646 \u06cc\u06a9 \u0645\u0633\u06cc\u0631\u0650 \u0645\u0639\u062a\u0628\u0631\n\u0627\u0633\u062a \u0648 \u0647\u06cc\u0686\u200c\u0686\u06cc\u0632\u06cc \u0631\u0627 \u0645\u0627\u0644\u06cc \u0646\u0645\u06cc\u200c\u06a9\u0646\u062f\u061b \u0627\u062f\u0627\u0645\u0647\u200c\u0627\u0634 \u0627\u0632 \u0631\u0627\u0647 \u067e\u0634\u062a\u06cc\u0628\u0627\u0646\u06cc \u0627\u0633\u062a.",
+                "summary": "POST /api/profile/damages/{damage}/reject \u2014 \u062e\u0631\u06cc\u062f\u0627\u0631",
+                "tags": [
+                    "ReturnDamage"
+                ],
+                "parameters": [
+                    {
+                        "name": "damage",
+                        "in": "path",
+                        "required": true,
+                        "description": "The damage ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "reason": {
+                                        "type": "string",
+                                        "maxLength": 255
+                                    }
+                                },
+                                "required": [
+                                    "reason"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/profile/damages/{damage}/settle": {
+            "post": {
+                "operationId": "returnDamage.settle",
+                "description": "\u067e\u0633 \u0627\u0632 \u0627\u06cc\u0646\u060c \u0645\u062d\u0645\u0648\u0644\u0647 \u0628\u0647 `pending` \u0628\u0631\u0645\u06cc\u200c\u06af\u0631\u062f\u062f \u0648 \u0622\u0645\u0627\u062f\u0647\u200c\u06cc \u062d\u0645\u0644 \u0645\u062c\u062f\u062f \u0627\u0633\u062a.",
+                "summary": "POST /api/profile/damages/{damage}/settle \u2014 \u062e\u0631\u06cc\u062f\u0627\u0631 \u0645\u06cc\u200c\u067e\u0631\u062f\u0627\u0632\u062f",
+                "tags": [
+                    "ReturnDamage"
+                ],
+                "parameters": [
+                    {
+                        "name": "damage",
+                        "in": "path",
+                        "required": true,
+                        "description": "The damage ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/admin/damages/{damage}/approve": {
+            "post": {
+                "operationId": "returnDamage.approveByBackoffice",
+                "summary": "POST /api/admin/damages/{damage}/approve \u2014 \u0628\u06a9\u200c\u0622\u0641\u06cc\u0633",
+                "tags": [
+                    "ReturnDamage"
+                ],
+                "parameters": [
+                    {
+                        "name": "damage",
+                        "in": "path",
+                        "required": true,
+                        "description": "The damage ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
         "/search": {
             "get": {
                 "operationId": "search.search",
@@ -16637,6 +17313,117 @@
                     },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/shipments/{shipment}/arrived": {
+            "get": {
+                "operationId": "shipments.arrived",
+                "description": "\u0631\u0627\u0646\u0646\u062f\u0647 \u0631\u0648\u06cc \u0644\u06cc\u0646\u06a9 \u067e\u06cc\u0627\u0645\u06a9\u06cc \u0645\u06cc\u200c\u0632\u0646\u062f. \u0627\u0645\u0636\u0627 \u062a\u0646\u0647\u0627 \u06af\u0627\u0631\u062f\u0650 \u0627\u06cc\u0646 \u0645\u0633\u06cc\u0631 \u0627\u0633\u062a\u060c \u067e\u0633 \u0647\u06cc\u0686\n\u067e\u0627\u0631\u0627\u0645\u062a\u0631\u06cc \u0627\u0632 \u0628\u062f\u0646\u0647 \u062e\u0648\u0627\u0646\u062f\u0647 \u0646\u0645\u06cc\u200c\u0634\u0648\u062f.",
+                "summary": "GET /api/shipments/{shipment}/arrived \u2014 middleware `signed`\u060c \u0628\u062f\u0648\u0646 auth",
+                "tags": [
+                    "ShipmentDelivery"
+                ],
+                "parameters": [
+                    {
+                        "name": "shipment",
+                        "in": "path",
+                        "required": true,
+                        "description": "The shipment ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                }
+            }
+        },
+        "/delivery/{shipment}/confirm": {
+            "get": {
+                "operationId": "delivery.confirm",
+                "description": "\u0647\u0645\u0627\u0646 \u062a\u0623\u06cc\u06cc\u062f\u060c \u0627\u0632 \u0644\u06cc\u0646\u06a9 \u067e\u06cc\u0627\u0645\u06a9\u06cc. `confirmedBy` \u0639\u0645\u062f\u0627\u064b `null` \u0645\u06cc\u200c\u0645\u0627\u0646\u062f \u062a\u0627 \u062f\u0631\n\u062a\u0627\u0631\u06cc\u062e\u0686\u0647 \u0645\u0639\u0644\u0648\u0645 \u0628\u0627\u0634\u062f \u062a\u0623\u06cc\u06cc\u062f \u0627\u0632 \u067e\u0646\u0644 \u0646\u06cc\u0627\u0645\u062f\u0647 \u0627\u0633\u062a.",
+                "summary": "GET /api/delivery/{shipment}/confirm \u2014 middleware `signed`\u060c \u0628\u062f\u0648\u0646 auth",
+                "tags": [
+                    "ShipmentDelivery"
+                ],
+                "parameters": [
+                    {
+                        "name": "shipment",
+                        "in": "path",
+                        "required": true,
+                        "description": "The shipment ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                }
+            }
+        },
+        "/profile/shipments/{shipment}/confirm-delivery": {
+            "post": {
+                "operationId": "shipmentDelivery.confirm",
+                "description": "\u0641\u0642\u0637 `payerUserId` \u0645\u062c\u0627\u0632 \u0627\u0633\u062a (\u0628\u0646\u062f \u06f9 \u0633\u0646\u062f). \u062b\u0628\u062a\u200c\u06a9\u0646\u0646\u062f\u0647\u200c\u0627\u06cc \u06a9\u0647 \u067e\u0648\u0644 \u0646\u062f\u0627\u062f\u0647 \u2014 \u0645\u062b\u0644\u0627\u064b\n\u0627\u0644\u06cc\u062a\u200c\u06cc\u0627\u0631 \u062f\u0631 \u062e\u0631\u06cc\u062f \u0628\u0631\u0627\u06cc \u062f\u06cc\u06af\u0631\u06cc \u2014 \u062d\u0642 \u062a\u0623\u06cc\u06cc\u062f \u062a\u062d\u0648\u06cc\u0644 \u0646\u062f\u0627\u0631\u062f\u060c \u0686\u0648\u0646 \u0627\u06cc\u0646 \u062a\u0623\u06cc\u06cc\u062f \u0647\u0645\u0627\u0646\n\u0686\u06cc\u0632\u06cc \u0627\u0633\u062a \u06a9\u0647 \u062c\u0644\u0648\u06cc \u0639\u0648\u062f\u062a \u0648 \u0628\u062f\u0647\u06cc\u0650 \u0628\u0639\u062f\u06cc \u0631\u0627 \u0645\u06cc\u200c\u06af\u06cc\u0631\u062f.",
+                "summary": "POST /api/profile/shipments/{shipment}/confirm-delivery \u2014 \u062e\u0631\u06cc\u062f\u0627\u0631\u060c \u0627\u0632 \u067e\u0646\u0644",
+                "tags": [
+                    "ShipmentDelivery"
+                ],
+                "parameters": [
+                    {
+                        "name": "shipment",
+                        "in": "path",
+                        "required": true,
+                        "description": "The shipment ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
                     }
                 }
             }
@@ -16885,6 +17672,176 @@
                     },
                     "403": {
                         "$ref": "#/components/responses/AuthorizationException"
+                    }
+                }
+            }
+        },
+        "/profile/supplier/drivers": {
+            "get": {
+                "operationId": "supplierDriver.index",
+                "summary": "GET /api/profile/supplier/drivers",
+                "tags": [
+                    "SupplierDriver"
+                ],
+                "parameters": [
+                    {
+                        "name": "only_active",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean",
+                            "default": false
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "supplierDriver.store",
+                "summary": "POST /api/profile/supplier/drivers",
+                "tags": [
+                    "SupplierDriver"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/profile/supplier/drivers/{driver}": {
+            "put": {
+                "operationId": "supplierDriver.update",
+                "summary": "PUT /api/profile/supplier/drivers/{driver}",
+                "tags": [
+                    "SupplierDriver"
+                ],
+                "parameters": [
+                    {
+                        "name": "driver",
+                        "in": "path",
+                        "required": true,
+                        "description": "The driver ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "supplierDriver.destroy",
+                "description": "\u063a\u06cc\u0631\u0641\u0639\u0627\u0644\u200c\u0633\u0627\u0632\u06cc \u0648 \u0646\u0647 \u062d\u0630\u0641: \u0628\u0627\u0631\u0646\u0627\u0645\u0647\u200c\u0647\u0627\u06cc \u0642\u0628\u0644\u06cc \u0628\u0647 \u0627\u06cc\u0646 \u0631\u062f\u06cc\u0641 \u0627\u0634\u0627\u0631\u0647 \u062f\u0627\u0631\u0646\u062f \u0648 \u062d\u0630\u0641\u0634\n\u062a\u0627\u0631\u06cc\u062e\u0686\u0647\u200c\u06cc \u062d\u0645\u0644 \u0631\u0627 \u0645\u06cc\u200c\u0634\u06a9\u0633\u062a.",
+                "summary": "DELETE /api/profile/supplier/drivers/{driver}",
+                "tags": [
+                    "SupplierDriver"
+                ],
+                "parameters": [
+                    {
+                        "name": "driver",
+                        "in": "path",
+                        "required": true,
+                        "description": "The driver ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/profile/supplier/drivers/{driver}/verify": {
+            "post": {
+                "operationId": "supplierDriver.verify",
+                "description": "\u0628\u062f\u0648\u0646 \u0628\u062f\u0646\u0647 \u21d2 \u0627\u0631\u0633\u0627\u0644 \u06a9\u062f. \u0628\u0627 `code` \u21d2 \u0628\u0631\u0631\u0633\u06cc \u06a9\u062f.\n\n\u06a9\u062f \u062f\u0631 cache \u0645\u06cc\u200c\u0645\u0627\u0646\u062f \u0646\u0647 \u0631\u0648\u06cc \u0631\u062f\u06cc\u0641: OTP \u0630\u0627\u062a\u0627\u064b \u06af\u0630\u0631\u0627\u0633\u062a \u0648 \u0633\u062a\u0648\u0646\u0650 \u062f\u0627\u0626\u0645\u06cc \u0628\u0631\u0627\u06cc\u0634\n\u06cc\u0639\u0646\u06cc \u06cc\u06a9 \u0647\u0634\u0650 \u0645\u0631\u062f\u0647 \u06a9\u0647 \u062a\u0627 \u0627\u0628\u062f \u0631\u0648\u06cc \u062c\u062f\u0648\u0644 \u0645\u06cc\u200c\u0645\u0627\u0646\u062f. \u0633\u0646\u062f \u0647\u0645 \u0641\u0642\u0637\n`mobile_verified_at` \u0631\u0627 \u062e\u0648\u0627\u0633\u062a\u0647.",
+                "summary": "POST /api/profile/supplier/drivers/{driver}/verify",
+                "tags": [
+                    "SupplierDriver"
+                ],
+                "parameters": [
+                    {
+                        "name": "driver",
+                        "in": "path",
+                        "required": true,
+                        "description": "The driver ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
                     }
                 }
             }
@@ -17796,6 +18753,70 @@
                         "application/json": {
                             "schema": {
                                 "$ref": "#/components/schemas/SubmitMoadianInvoiceRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/profile/orders/{order}/shipments/{shipment}/waybill": {
+            "post": {
+                "operationId": "supplierOrder.registerWaybill",
+                "description": "\u0628\u0627\u0631\u0646\u0627\u0645\u0647\u060c \u0645\u0634\u062e\u0635\u0627\u062a \u0631\u0627\u0646\u0646\u062f\u0647 \u0648 \u0648\u0632\u0646 \u0628\u0627\u0633\u06a9\u0648\u0644 \u0628\u0627 \u0647\u0645 \u062b\u0628\u062a \u0645\u06cc\u200c\u0634\u0648\u0646\u062f. \u062a\u0627 \u0641\u0627\u0632 \u06f7 \u0648\u0632\u0646 \u0627\u0632 \u06cc\u06a9\n\u0627\u0646\u062f\u067e\u0648\u06cc\u0646\u062a\u0650 \u0627\u062f\u0645\u06cc\u0646 \u0645\u06cc\u200c\u0622\u0645\u062f \u0648 \u0628\u0627\u0631\u0646\u0627\u0645\u0647 \u0627\u0632 \u0645\u0633\u06cc\u0631\u06cc \u06a9\u0647 \u062f\u0631 \u0641\u0627\u0632 \u06f0 \u062d\u0630\u0641 \u0634\u062f\u0647 \u0628\u0648\u062f \u2014 \u06cc\u0639\u0646\u06cc\n\u0648\u0636\u0639\u06cc\u062a \u00ab\u062f\u0631 \u062d\u0627\u0644 \u062d\u0645\u0644\u00bb \u0631\u0627 \u0627\u062f\u0645\u06cc\u0646 \u0645\u06cc\u200c\u0646\u0648\u0634\u062a\u060c \u0646\u0647 \u06a9\u0633\u06cc \u06a9\u0647 \u0648\u0627\u0642\u0639\u0627\u064b \u0628\u0627\u0631 \u0631\u0627 \u0645\u06cc\u200c\u0641\u0631\u0633\u062a\u062f.\n\n\u0648\u0642\u062a\u06cc \u0622\u062e\u0631\u06cc\u0646 \u0645\u062d\u0645\u0648\u0644\u0647\u200c\u06cc \u0633\u0641\u0627\u0631\u0634 \u062b\u0628\u062a \u0634\u0648\u062f\u060c \u062a\u0633\u0648\u06cc\u0647\u200c\u06cc \u0628\u0627\u0633\u06a9\u0648\u0644 \u0628\u0627 **\u0645\u062c\u0645\u0648\u0639** \u0648\u0632\u0646\u200c\u0647\u0627\n\u0627\u062c\u0631\u0627 \u0645\u06cc\u200c\u0634\u0648\u062f \u0648 \u0633\u0641\u0627\u0631\u0634 \u0628\u0647 `shipped` \u0645\u06cc\u200c\u0631\u0648\u062f.",
+                "summary": "POST /profile/orders/{order}/shipments/{shipment}/waybill \u2014 \u0628\u0646\u062f \u06f3.\u06f7",
+                "tags": [
+                    "SupplierOrder"
+                ],
+                "parameters": [
+                    {
+                        "name": "order",
+                        "in": "path",
+                        "required": true,
+                        "description": "The order ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "shipment",
+                        "in": "path",
+                        "required": true,
+                        "description": "The shipment ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RegisterShipmentRequest"
                             }
                         }
                     }
@@ -19039,6 +20060,39 @@
                 }
             }
         },
+        "/profile/debts": {
+            "get": {
+                "operationId": "userDebt.index",
+                "tags": [
+                    "UserDebt"
+                ],
+                "parameters": [
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 20
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
         "/profile/financial/wallet": {
             "get": {
                 "operationId": "wallet.getWallet",
@@ -20065,6 +21119,61 @@
                     "location_id"
                 ],
                 "title": "ProductVariantPriceRequest"
+            },
+            "RegisterShipmentRequest": {
+                "type": "object",
+                "description": "\u0628\u0627\u0631\u0646\u0627\u0645\u0647 + \u0631\u0627\u0646\u0646\u062f\u0647 + \u0648\u0632\u0646 \u0628\u0627\u0633\u06a9\u0648\u0644\u060c \u062f\u0631 \u06cc\u06a9 \u062f\u0631\u062e\u0648\u0627\u0633\u062a (\u0641\u0627\u0632 \u06f7\u060c \u0628\u0646\u062f \u06f3.\u06f7).\n\n\u062f\u0633\u062a\u0631\u0633\u06cc \u062f\u0631 \u06a9\u0646\u062a\u0631\u0644\u0631 \u0628\u0627 `authorize('manageAsSupplier', $order)` \u0628\u0631\u0631\u0633\u06cc \u0645\u06cc\u200c\u0634\u0648\u062f \u2014\n\u0647\u0645\u0627\u0646 \u06af\u0627\u0631\u062f\u06cc \u06a9\u0647 \u0628\u0642\u06cc\u0647\u200c\u06cc \u0627\u0642\u062f\u0627\u0645\u200c\u0647\u0627\u06cc \u062a\u0623\u0645\u06cc\u0646\u200c\u06a9\u0646\u0646\u062f\u0647 \u062f\u0627\u0631\u0646\u062f.",
+                "properties": {
+                    "waybill_ref": {
+                        "type": "string",
+                        "maxLength": 100
+                    },
+                    "driver_name": {
+                        "type": "string",
+                        "maxLength": 150
+                    },
+                    "driver_national_code": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "\u06a9\u062f \u0645\u0644\u06cc \u0648 \u0645\u0648\u0628\u0627\u06cc\u0644 \u0627\u062e\u062a\u06cc\u0627\u0631\u06cc\u200c\u0627\u0646\u062f: \u0628\u0627\u0631\u0646\u0627\u0645\u0647\u200c\u06cc \u06a9\u0627\u063a\u0630\u06cc \u0647\u0645\u06cc\u0634\u0647 \u0647\u0631 \u062f\u0648 \u0631\u0627 \u0646\u062f\u0627\u0631\u062f \u0648\n\u0646\u0628\u0648\u062f\u0634\u0627\u0646 \u0646\u0628\u0627\u06cc\u062f \u062c\u0644\u0648\u06cc \u062b\u0628\u062a\u0650 \u062d\u0645\u0644 \u0631\u0627 \u0628\u06af\u06cc\u0631\u062f. \u0648\u0644\u06cc \u0627\u06af\u0631 \u0622\u0645\u062f\u0646\u062f\u060c \u0628\u0627\u06cc\u062f \u062f\u0631\u0633\u062a \u0628\u0627\u0634\u0646\u062f."
+                    },
+                    "driver_mobile": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "pattern": "^09\\d{9}$"
+                    },
+                    "vehicle_plate": {
+                        "type": "string",
+                        "maxLength": 30
+                    },
+                    "vehicle_type": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 100
+                    },
+                    "actual_weight": {
+                        "type": "number",
+                        "description": "\u0648\u0632\u0646\u0650 \u0648\u0627\u0642\u0639\u06cc\u0650 \u0628\u0627\u0633\u06a9\u0648\u0644. `min:1` \u0686\u0648\u0646 \u0635\u0641\u0631 \u06cc\u0639\u0646\u06cc \u062f\u0627\u062f\u0647\u200c\u06cc \u062e\u0631\u0627\u0628\u060c \u0646\u0647 \u00ab\u0628\u0627\u0631\u0650 \u062e\u0627\u0644\u06cc\u00bb \u2014\n\u0648 \u062a\u0633\u0648\u06cc\u0647 \u0631\u0648\u06cc \u0648\u0632\u0646\u0650 \u0635\u0641\u0631 \u06a9\u0644\u0650 \u0645\u0628\u0644\u063a \u0631\u0627 \u0628\u0647 \u062e\u0631\u06cc\u062f\u0627\u0631 \u0639\u0648\u062f\u062a \u0645\u06cc\u200c\u062f\u0647\u062f.",
+                        "minimum": 1
+                    },
+                    "is_final": {
+                        "type": "boolean",
+                        "description": "\u00ab\u0627\u06cc\u0646 \u0622\u062e\u0631\u06cc\u0646 \u0645\u062d\u0645\u0648\u0644\u0647 \u0628\u0648\u062f\u00bb \u2014 \u0645\u0627\u0634\u0647\u200c\u06cc \u062a\u0633\u0648\u06cc\u0647\u200c\u06cc \u0646\u0647\u0627\u06cc\u06cc (\u0628\u0646\u062f \u06f8.\u06f2).\n\u0627\u062e\u062a\u06cc\u0627\u0631\u06cc \u0686\u0648\u0646 \u0645\u062c\u0645\u0648\u0639\u200c\u0631\u0633\u06cc\u062f\u0646 \u0628\u0647 \u0648\u0632\u0646 \u0633\u0641\u0627\u0631\u0634 \u0647\u0645 \u062e\u0648\u062f\u0634 \u0645\u0627\u0634\u0647 \u0627\u0633\u062a\u061b \u0648\u0644\u06cc \u062f\u0631\n\u06a9\u0645\u200c\u062a\u062d\u0648\u06cc\u0644\u06cc \u062a\u0646\u0647\u0627 \u0647\u0645\u06cc\u0646 \u067e\u0631\u0686\u0645 \u0645\u06cc\u200c\u062a\u0648\u0627\u0646\u062f \u062a\u0633\u0648\u06cc\u0647 \u0631\u0627 \u0634\u0631\u0648\u0639 \u06a9\u0646\u062f."
+                    }
+                },
+                "required": [
+                    "waybill_ref",
+                    "driver_name",
+                    "vehicle_plate",
+                    "actual_weight"
+                ],
+                "title": "RegisterShipmentRequest"
             },
             "RejectInvitationRequest": {
                 "type": "object",
@@ -21584,19 +22693,6 @@
                     "moadian_ref"
                 ],
                 "title": "SubmitMoadianInvoiceRequest"
-            },
-            "SubmitWeighbridgeRequest": {
-                "type": "object",
-                "properties": {
-                    "weight_after_scale": {
-                        "type": "number",
-                        "minimum": 1
-                    }
-                },
-                "required": [
-                    "weight_after_scale"
-                ],
-                "title": "SubmitWeighbridgeRequest"
             },
             "ToggleStockSubscriptionRequest": {
                 "type": "object",
