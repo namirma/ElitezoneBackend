@@ -129,3 +129,155 @@ jobs:
           DB_USERNAME: root
           DB_PASSWORD: root
         run: php artisan test --compact
+
+  # ــ توجه: job `notify` عمداً به این شاخه پورت **نشده**. فرانت فقط با
+  # قرارداد شاخه‌ی L10 یکپارچه می‌شود؛ فرستادنِ دو قرارداد به یک گروه یعنی
+  # تیم نداند کدام معتبر است. گاردِ drift ولی اینجا هم لازم است.
+
+  # ── لایه ۱: قرارداد API ──────────────────────────────────────────────────
+  # فرانت باید بداند چه چیزی عوض شد، و تا امروز این را از یک سندِ دستی
+  # می‌فهمید که drift می‌کرد: `api.json` کامیت‌شده هفته‌ها هیچ‌کدام از روت‌های
+  # `overweight`, `drivers`, `force-cancel` را نداشت و هیچ‌چیز خبر نمی‌داد.
+  #
+  # اینجا دو گیت مستقل است:
+  #   ۱. snapshot کامیت‌شده باید با روت‌های واقعی یکی باشد (گاردِ drift)
+  #   ۲. تفاوت با نسخه‌ی قبلی به‌صورت خوانا تولید می‌شود (خوراکِ لایه ۲)
+  #
+  # ‏`scramble:export` قطعی است (دو اجرای پشت‌سرهم همان SHA256 را می‌دهند)، پس
+  # مقایسه‌ی بایت‌به‌بایت flap نمی‌کند.
+  contract:
+    name: OpenAPI contract diff
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.diff.outputs.changed }}
+      summary: ${{ steps.diff.outputs.summary }}
+      breaking: ${{ steps.diff.outputs.breaking }}
+    steps:
+      # ‏fetch-depth: 0 لازم است چون نسخه‌ی پایه را با `git show <sha>:api.json`
+      # از تاریخچه می‌خوانیم — نه با یک composer install دوم روی کدِ قدیمی،
+      # که زمان CI را دو برابر می‌کرد.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, bcmath, gd, iconv, pdo_mysql, zip, exif
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      # روت‌ها و FormRequestها منبع حقیقت‌اند؛ این فایل صرفاً بازتابشان است.
+      - name: Export OpenAPI from the live route table
+        run: php artisan scramble:export --path=api.generated.json
+
+      - name: Committed api.json must match the routes
+        run: |
+          if ! diff -q api.json api.generated.json >/dev/null 2>&1; then
+            echo "::error::api.json is stale — the committed OpenAPI snapshot no longer matches the routes. Run 'php artisan scramble:export' and commit the result."
+            diff <(jq -S . api.json) <(jq -S . api.generated.json) | head -60 || true
+            exit 1
+          fi
+          echo "api.json matches the live route table."
+
+      - name: Install oasdiff
+        run: |
+          VERSION=1.11.7
+          curl -sSfL "https://github.com/Tufin/oasdiff/releases/download/v${VERSION}/oasdiff_${VERSION}_linux_amd64.tar.gz" \
+            | tar -xz -C /usr/local/bin oasdiff
+          oasdiff --version
+
+      # مقایسه با نسخه‌ی پایه. برای PR پایه شاخه‌ی مقصد است و برای push کامیت
+      # قبلی. اگر پایه پیدا نشود (اولین کامیت، force-push، برنچ تازه) دیف
+      # رد می‌شود ولی build قرمز نمی‌شود — نبودِ پایه خطای توسعه‌دهنده نیست.
+      - name: Diff the contract against the base
+        id: diff
+        run: |
+          BASE="${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}"
+          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ] \
+             || ! git cat-file -e "${BASE}:api.json" 2>/dev/null; then
+            echo "::notice::no base api.json to diff against — skipping."
+            {
+              echo "changed=false"
+              echo "breaking=false"
+              echo "summary=قرارداد API: نسخه‌ی پایه‌ای برای مقایسه نبود."
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git show "${BASE}:api.json" > api.base.json
+
+          # `changelog` همه‌ی تغییرات را می‌دهد، `breaking` فقط شکننده‌ها را.
+          #
+          # ⚠️ تصمیم بر پایه‌ی خروجی **json** گرفته می‌شود نه markup: هر دو
+          # دستور حتی وقتی هیچ تغییری نیست یک هدرِ ۳۷ بایتی
+          # (`# API Changelog x vs. y`) چاپ می‌کنند، پس `[ -s file ]` همیشه true
+          # می‌شد و هر push «تغییر شکننده» برچسب می‌خورد. اعلانی که همیشه زنگ
+          # می‌زند را تیم بعد از دو روز خاموش می‌کند. json برای خالی‌بودن `[]`
+          # می‌دهد که تفسیرش قطعی است.
+          oasdiff changelog api.base.json api.generated.json --format markup > contract-changelog.md 2>/dev/null || true
+          oasdiff breaking  api.base.json api.generated.json --format markup > contract-breaking.md  2>/dev/null || true
+
+          count_of() {
+            oasdiff "$1" api.base.json api.generated.json --format json 2>/dev/null \
+              | jq 'if type == "array" then length else 0 end' 2>/dev/null || echo 0
+          }
+          N_CHANGED=$(count_of changelog)
+          N_BREAKING=$(count_of breaking)
+
+          CHANGED=false; BREAKING=false
+          [ "${N_CHANGED:-0}"  -gt 0 ] && CHANGED=true
+          [ "${N_BREAKING:-0}" -gt 0 ] && BREAKING=true
+          echo "contract: ${N_CHANGED} change(s), ${N_BREAKING} breaking."
+
+          {
+            if [ "$CHANGED" = "false" ]; then
+              echo "قرارداد API تغییری نکرد."
+            else
+              echo "*قرارداد API — ${N_CHANGED} تغییر، ${N_BREAKING} شکننده*"
+              echo
+              if [ "$BREAKING" = "true" ]; then
+                echo "⚠️ *شکننده:*"
+                # هدرِ ثابتِ oasdiff حذف می‌شود تا پیامِ چت با یک تیترِ تکراری
+                # شروع نشود؛ فقط بخش‌های واقعی می‌مانند.
+                grep -v '^# API Changelog' contract-breaking.md | sed '/^$/d'
+                echo
+              fi
+              echo "*همه‌ی تغییرات:*"
+              grep -v '^# API Changelog' contract-changelog.md | sed '/^$/d'
+            fi
+          } > contract-summary.md
+
+          cat contract-summary.md >> "$GITHUB_STEP_SUMMARY"
+
+          # خروجی برای لایه ۲. متن چندخطی با delimiter تصادفی پاس می‌شود —
+          # روشِ امنِ GitHub برای مقادیری که ممکن است `\n` یا backtick داشته باشند.
+          DELIM="EOF_$(openssl rand -hex 8)"
+          {
+            echo "changed=${CHANGED}"
+            echo "breaking=${BREAKING}"
+            echo "summary<<${DELIM}"
+            head -c 2500 contract-summary.md
+            echo
+            echo "${DELIM}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Upload the contract diff
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: openapi-contract
+          path: |
+            api.generated.json
+            contract-summary.md
+          if-no-files-found: ignore
+          retention-days: 30
+

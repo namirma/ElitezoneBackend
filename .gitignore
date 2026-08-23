@@ -36,3 +36,11 @@ backend-context.txt
 _ide_helper.php
 _ide_helper_models.php
 .phpstorm.meta.php
+
+# CI contract-diff scratch (.github/workflows/ci.yml → job `contract`).
+# `api.json` itself IS committed — it is the baseline the gate compares against.
+/api.generated.json
+/api.base.json
+/contract-changelog.md
+/contract-breaking.md
+/contract-summary.md
