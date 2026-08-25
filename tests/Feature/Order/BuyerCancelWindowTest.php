@@ -114,12 +114,54 @@ class BuyerCancelWindowTest extends TestCase
     #[Test]
     public function the_expiry_cron_can_still_cancel_outside_the_window(): void
     {
+        // هر دو مهلت در گذشته: پنجره‌ی خریدار باز نیست، ولی رزرو واقعاً منقضی
+        // شده. فیکسچرِ قبلی مهلت را در **آینده** می‌گذاشت که یعنی کران سفارشی
+        // را لغو می‌کرد که هنوز مهلت داشت — دقیقاً باگی که گاردِ تازه می‌بندد.
         $order = $this->reservedOrder(
-            original: now()->addHour()->toDateTimeString(),
+            original: now()->subDay()->toDateTimeString(),
+            current: now()->subHours(2)->toDateTimeString(),
+        );
+
+        $cancelled = $this->action->execute(
+            $order, 'لغو سیستمی', true, true, requireExpiredReserve: true
+        );
+
+        $this->assertSame(Order::STATUS_CANCELLED, $cancelled->fresh()->{Order::STATUS});
+    }
+
+    /**
+     * قلبِ باگ: رزروی که مهلتش هنوز نگذشته نباید با کران لغو شود.
+     *
+     * پیش از این، `orders:cancel-expired` بدون هیچ سنجشِ ارفاقی روی همان
+     * ردیف‌ها کار می‌کرد و رزرو را سرِ `reserve_deadline` می‌بست — یعنی
+     * `reserve_grace_hours` اسنپ‌شات می‌شد ولی هرگز اثر نمی‌کرد.
+     */
+    #[Test]
+    public function the_cron_refuses_a_reserve_still_inside_its_grace_window(): void
+    {
+        $order = $this->reservedOrder(
+            original: now()->subHour()->toDateTimeString(),
+            current: now()->subHour()->toDateTimeString(),
+        );
+        $order->forceFill([Order::RESERVE_GRACE_HOURS => 5])->save();
+
+        $result = $this->action->execute(
+            $order, 'لغو سیستمی', true, true, requireExpiredReserve: true
+        );
+
+        $this->assertSame(Order::STATUS_RESERVED, $result->fresh()->{Order::STATUS});
+    }
+
+    /** لغوِ اجباریِ ادمین به این گارد مشروط نیست و سفارشِ غیررزرو را می‌بندد. */
+    #[Test]
+    public function admin_force_cancel_is_not_bound_by_the_expiry_guard(): void
+    {
+        $order = $this->reservedOrder(
+            original: now()->addDay()->toDateTimeString(),
             current: now()->addDay()->toDateTimeString(),
         );
 
-        $cancelled = $this->action->execute($order, 'لغو سیستمی', true, true);
+        $cancelled = $this->action->execute($order, 'لغو اجباری ادمین', true, true);
 
         $this->assertSame(Order::STATUS_CANCELLED, $cancelled->fresh()->{Order::STATUS});
     }

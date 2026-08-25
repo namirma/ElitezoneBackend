@@ -2,7 +2,6 @@
 
 namespace App\Console;
 
-use App\Console\Commands\CancelExpiredOrders;
 use App\Console\Commands\ExpireReserves;
 use App\Console\Commands\PruneGuestCarts;
 use App\Jobs\Analytics\CalculateCustomerRfm;
@@ -16,7 +15,6 @@ use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 class Kernel extends ConsoleKernel
 {
     protected $commands = [
-        CancelExpiredOrders::class,
         ExpireReserves::class,
         PruneGuestCarts::class,
     ];
@@ -27,13 +25,6 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule): void
     {
         // $schedule->command('inspire')->hourly();
-
-        // 3. افزودن تسک زمان‌بندی شده برای لغو سفارش‌ها
-        $schedule->command('orders:cancel-expired')
-            ->everyMinute()
-            ->withoutOverlapping()
-            ->runInBackground()
-            ->onOneServer();
 
         // سینک محصولات کویر (سنگین)
         $schedule->command('products:sync-kavir')

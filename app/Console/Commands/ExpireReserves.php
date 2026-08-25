@@ -42,14 +42,23 @@ class ExpireReserves extends Command
 
         /** @var Order $order */
         foreach ($candidates as $order) {
-            $grace = (int) ($order->{Order::RESERVE_GRACE_HOURS} ?? 0);
-
-            if ($order->{Order::RESERVE_DEADLINE}->copy()->addHours($grace)->isFuture()) {
+            // قاعده‌ی ارفاق روی خودِ مدل است تا `CancelOrderAction` هم همان
+            // جواب را بگیرد؛ دو نسخه‌ی جدا همان چیزی بود که ارفاق را کشت.
+            if (! $order->isReserveWindowExpired()) {
                 continue; // هنوز در بازه‌ی ارفاق است
             }
 
             try {
-                $cancel->execute($order, __('orders.reserve_expired_cancelled'), true, true);
+                // پرچم چهارم: پنجره‌ی خریدار را رد کن. پنجم: **دوباره** زیر قفل
+                // بسنج که هنوز رزروِ منقضی است — بین این حلقه و قفل، خریدار
+                // می‌تواند پرداخت را تکمیل یا مهلت را تمدید کرده باشد.
+                $cancel->execute(
+                    $order,
+                    __('orders.reserve_expired_cancelled'),
+                    refundWallet: true,
+                    isSystemCron: true,
+                    requireExpiredReserve: true,
+                );
                 $cancelled++;
             } catch (\Throwable $e) {
                 // یک رزروِ خراب نباید بقیه را متوقف کند.
