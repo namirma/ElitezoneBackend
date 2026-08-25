@@ -6,6 +6,40 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 EliteZone Backend — a Laravel 10 API for a B2B construction materials marketplace (rebar, brick, etc.). The codebase lives entirely inside the `api/` directory. It handles user authentication (OTP-based), product catalog with dynamic pricing, shopping cart, order lifecycle (including reservation flow), wallet/financial operations, ticketing, and an admin panel.
 
+## 🚨 Required local setup — SMS goes to real phones from dev
+
+`.env` carries **live TSMS credentials**, so `php artisan queue:work` on a
+development machine will deliver queued SMS jobs to **real customer numbers**.
+This happened once (session 22): draining a backlog texted real people.
+
+`SmsService::send()` now blocks this whenever `APP_ENV !== production`. Only
+numbers in `TSMS_DEV_ALLOWLIST` (comma-separated, `config/services.tsms.dev_allowlist`)
+are contacted; everything else is logged and treated as sent so the job neither
+retries nor fails. **An empty allowlist blocks everything** — that is the
+intended default for a fresh clone. Put *your own* number there, never a user's.
+
+Pinned by `Security/SmsDevAllowlistTest`. Do not weaken the environment check.
+
+## ⚠️ Required local setup — Persian PDF fonts
+
+`storage/fonts/YekanBakh-Regular.ttf` and `storage/fonts/YekanBakh-Bold.ttf` are in
+`.gitignore`, so **a fresh clone does not have them** — and without them *no invoice PDF
+can be generated at all*. Because every `InvoiceGenerator::generate()` call runs inside the
+payment `DB::transaction`, a missing font used to roll back the whole payment while showing
+the raw mPDF message ("Cannot find TTF TrueType font file ...").
+
+Copy them from a sibling repo before running anything financial:
+
+```bash
+mkdir -p storage/fonts
+cp ../../BackOffice/public/fonts/YekanBakh/ttf/YekanBakh-Regular.ttf storage/fonts/
+cp ../../BackOffice/public/fonts/YekanBakh/ttf/YekanBakh-Bold.ttf    storage/fonts/
+```
+
+`InvoicePdfRenderer::assertFontsInstalled()` now preflights this and throws a
+`BusinessException` (503, Persian message) plus a `critical` entry on the `financial` log
+channel, so the cause is obvious instead of surfacing as a mysterious payment failure.
+
 ## Common Commands
 
 All commands must be run from the `api/` directory:
@@ -310,7 +344,44 @@ Enums/
   Survey/  — SurveyStatus
 ```
 
-Backed PHP 8.1 enums for all status/type values. **Note:** the codebase currently uses Model string constants (`Order::STATUS_CANCELLED`) rather than these enum values — future refactoring should switch to enum references for type safety.
+Backed PHP 8.1 enums for all status/type values. **Note:** the codebase currently uses Model string constants (`Order::STATUS_CANCELLED`) rather than these enum values.
+
+> **Do not migrate to enums piecemeal.** Measured scope (2026-07-26): `Order::STATUS_*`
+> alone has **210 usages across 52 files**, plus 55 `Order::PAYMENT_*` and 87
+> `WalletTransaction::STATUS_*`/`TYPE_*` — ~352 sites, most of them on the financial
+> critical path. Adding `'status' => OrderStatus::class` to `$casts` makes `$order->status`
+> return an enum, so **every** `=== Order::STATUS_PENDING` comparison silently becomes
+> false. A half-migrated codebase carries both conventions at once, which is worse than
+> either end state. Do it as one dedicated change with its own review+test pass, or leave
+> it consistent. `Enums/EnumModelConstantParityTest` is the safety net that keeps the two
+> vocabularies from drifting until then.
+
+**Enum ↔ model-constant parity is pinned** by `Tests\Feature\Enums\EnumModelConstantParityTest`
+(OrderStatus ↔ `Order::STATUS_*`, PaymentStatus ↔ `Order::PAYMENT_{PENDING,PAID,FAILED,REFUND_PENDING,REFUNDED}`,
+WalletTransactionStatus ↔ `WalletTransaction::STATUS_*`, WalletTransactionType ↔ `WalletTransaction::TYPE_*`).
+Adding a status/type constant to a model without its enum case (or vice versa) fails the
+suite — this caught a real drift where `TYPE_HOLD_RELEASE` existed on the model but
+`WalletTransactionType` had no `HoldRelease` case. **When adding a constant, add the enum
+case (and its `label()` arm) in the same commit.**
+
+### Repositories — read-side query layer (Order / Product / Ticket only)
+
+`app/Repositories/` is a deliberate, *bounded* layer — not vestigial, not to be expanded
+by default. Interfaces live in `Repositories/Contracts/`, Eloquent implementations in
+`Repositories/Eloquent/` (+ two flat ticket repositories), all bound in
+`RepositoryServiceProvider`. Consumers: `OrderController` (user order lists),
+`ProductController` / `FilterProductsAction` (catalog filtering), `TicketService` /
+`TicketReplyService`.
+
+The division of labour with Actions/Services:
+- **Repositories** = complex *read-side* list/filter queries behind an interface
+  (pagination, status-group scoping, catalog filters).
+- **Actions** = write side-effects and DB transactions (the financial rule — never put
+  money movement in a repository).
+- **Services** = read/composition helpers that don't need an interface.
+
+Don't introduce a repository for a new domain unless it has genuinely complex,
+reused list queries; a query scope or Service is the default.
 
 ### Support
 
@@ -404,7 +475,7 @@ All financial constants live in `config/financial.php` — **never hardcode amou
 | `financial.hold_fee` | `HOLD_FEE_RIALS` | `50_000_000` | Fee to extend a reservation (5M Tomans). `PayHoldFeeAction` debits WO **and** credits WSSG (Saze) so the ledger stays balanced — double-entry, never a bare debit |
 | `financial.system_user_id` | `FINANCIAL_SYSTEM_USER_ID` | `1` | User ID of the platform's central "Saze" (WSSG) wallet |
 | `financial.vat_user_id` | `FINANCIAL_VAT_USER_ID` | *(falls back to system_user_id)* | User ID of the dedicated VAT escrow (WVAT) wallet; set in .env once a separate VAT user is created |
-| `financial.pending_order_ttl_hours` | `PENDING_ORDER_TTL_HOURS` | `2` | Hours before an unpaid PENDING order auto-cancels (`orders:cancel-expired` — `CancelExpiredOrders`) |
+| `financial.pending_order_ttl_hours` | `PENDING_ORDER_TTL_HOURS` | `2` | Legacy TTL for unpaid PENDING orders. **Inert** — that status no longer exists and `orders:cancel-expired` was deleted; expiry runs via `orders:expire-reserves`. |
 | `financial.reservation_validity_hours` | `RESERVATION_VALIDITY_HOURS` | `2` | Hours a paid reservation stays valid before it must be completed/extended |
 | `financial.hold_fee_extension_hours` | `HOLD_FEE_EXTENSION_HOURS` | `24` | Hours that paying the hold fee extends a reservation (`PayHoldFeeAction::extensionHours()`) |
 | `financial.deposit_min` | `DEPOSIT_MIN_RIALS` | `10_000` | Min per wallet deposit (read by `WalletDepositRequest`) |
@@ -499,11 +570,29 @@ the flags to both `calculatePOO()` and `calculatePTS()`. POOM and PTSM (the
 post-weighbridge recalculations) use the same flags but with the **billing weight**,
 which is `min(actualWeight, weight_before_scale)` — never the raw `actualWeight`.
 
-**Spec invariant — final invoice ≤ initial invoice.** The buyer is never billed for
-more than the ordered weight, so over-delivery (`actualWeight > WBS`) is recorded
-physically (`weight_after_scale` + stock) but clamped for billing. There is **no
-"surplus" branch** that charges the buyer extra; the only non-equal outcome is a
-deficit (under-delivery → buyer refunded POO − POOM).
+**The overweight clamp is GONE — spec v2 §8.2 (2026-08-17).** Billing weight is now the
+raw `actualWeight`, not `min(actualWeight, WBS)`. The old rule ("final invoice ≤ initial
+invoice") meant every kilogram of over-delivery shipped **free**: the weight and stock
+were recorded correctly but nobody was billed, and because `diffPOO` could never go
+positive, no report could show it either.
+
+Two guards replaced the clamp, both in `ProcessWeighbridgeResultAction`:
+
+- **Tolerance.** `overweightPercent > SalesSettings::maxOverweightPercent()` (default 20 %)
+  → order goes to `awaiting_weight_correction`, `weighing_completed_at` stays NULL, and
+  **not one financial leg runs**. Same principle as the zero-`official_price` guard:
+  invalid data halts, it does not move money.
+- **Credit limit.** Within tolerance, the buyer is charged `deltaPOO` from their wallet;
+  whatever the wallet cannot cover becomes a `DebtEngine` entry. If `debt_after ≤
+  credit_limit` the load ships (`status = 'surplus'`); otherwise the debt is **still
+  recorded** and the order additionally halts (`'surplus_pending_buyer'`). §3.12 asks for
+  both, not one — recording the debt and halting the load are separate consequences.
+
+Freight and a percentage coupon are recomputed at the real weight too
+(`WeighbridgeReconciler::recalculateShipping/recalculateCoupon`), so `shipping_cost` and
+`coupon_discount_amount` on the order are post-settlement values. `WeighbridgeReconcilerTest`,
+`SettlementDataGuardsTest` and `ProcessWeighbridgeResultActionTest` were **changed** (not
+deleted) to assert the new direction.
 
 **EliteYAR gross (PTC)** is the `%CO` slice of the commission pool:
 `(POOM − PTSM) × %CO / (%CO + %SSG)`. Deriving it from POOM−PTSM inherits the same
@@ -560,31 +649,42 @@ documents are submitted:
 - Order fields set: `system_moadian_ref`, `system_hold_released_at`
 - Authorization: admin only (`POST /admin/orders/{order}/system-moadian-invoice`)
 
-> 🚧 **Open decision — the debt-parking path cannot currently complete.** The flow below
-> exists for exactly one situation: the supplier has no money. But the supplier receives
-> PTS at payment time and may withdraw it immediately, so "empty wallet at weighbridge" is
-> the *normal* case for this path, not an edge. Right after the debt is parked,
-> `WeighbridgeVatRouter::routeSupplierVat()` unconditionally debits the escrow VAT on PTSM
-> from that same empty wallet → `InsufficientBalanceException` → **the entire weighbridge
-> rolls back, including the park**. So the whole `supplier_debt_pending` machinery only
-> fires in the narrow window where the supplier can cover the VAT but not the reclaim; with
-> a genuinely drained wallet **no under-delivery can be recorded at all**.
-> Pinned as a known defect by `Financial/DrainedSupplierWeighbridgeTest` — *change* that
-> test (don't delete it) once the policy is decided. Fixing it requires deciding who fronts
-> tax money the supplier does not have, or whether VAT is parked like the deficit is; that
-> is the same open question as `SupplierDebtHandler::parkDebtAndNotify` fronting the buyer
-> refund from WSSG. Both are financial-policy calls, not code defects with an obvious fix.
+> ✅ **Resolved 2026-08-17 (spec v2 §8.4).** This used to be a documented dead end: right
+> after the debt was parked, `routeSupplierVat()` debited the escrow VAT from the same
+> empty wallet → `InsufficientBalanceException` → **the whole weighbridge rolled back,
+> including the park**, so a genuinely drained supplier meant no under-delivery could be
+> recorded at all. Two management decisions unblocked it; both are implemented and
+> `Financial/DrainedSupplierWeighbridgeTest` was *changed* (not deleted) to assert the fix.
+
+**The supplier's VAT is held in the supplier's OWN wallet, never moved to WVAT.**
+`WeighbridgeVatRouter::placeSupplierVatHold()` calls
+`WalletTransactionEngine::placeHold()` — `balance → balance_hold` on the supplier's wallet.
+It is their money; it is only locked until they issue Doc O, which
+`RecordSupplierMoadianInvoiceAction` then releases with `releaseHold()` **on that same
+wallet**. The old path debited it into the separate WVAT escrow and released it *within*
+WVAT, so the VAT never came back to the supplier at all.
 
 **Weighbridge deficit — insufficient supplier balance**
-If at weighbridge time the supplier's wallet balance < `PTS − PTSM` (reclaimAmount):
-- Buyer refund is credited in `HOLD` (not AVAILABLE) to `WO`
-- `order.supplier_debt_pending = true`, `order.supplier_debt_amount = reclaimAmount`
-- Supplier receives an SMS to top up their wallet (`sms.supplier_debt_notification`)
-- `CheckSupplierBalancesJob` (cron) polls orders with `supplier_debt_pending = true`:
-  when balance ≥ debt, it locks order + wallets, reclaims the debt, finds the specific
-  hold WalletTransaction (by `order_id/type=deposit/status=hold`), releases it to
-  AVAILABLE, notifies the buyer via SMS (`sms.buyer_refund_released`), and clears
-  the debt flags.
+If at weighbridge time the supplier's wallet cannot cover `PTS − PTSM`:
+- **No money moves.** `SupplierDebtHandler::parkDebtAndNotify` only records what is owed
+  in each direction: `supplier_debt_amount` and `buyer_refund_pending_amount`, plus a
+  person-level `DebtEngine::incur(weighbridge_deficit)` entry. The platform deliberately
+  does **not** front the buyer's refund from WSSG — the Saze wallet holds only the
+  commission after payment, so that debit failed and rolled the weighbridge back.
+- The supplier's VAT is **suspended**, not collected: `orders.supplier_vat_pending_amount`.
+  It gets its own column rather than being added to `supplier_debt_amount` because the two
+  have different destinations — the debt is reclaimed **to Saze**, but the VAT must end up
+  **held in the supplier's own wallet**. Merging them would strand the VAT with Saze
+  forever and leave Doc O with no hold to release.
+- Supplier gets an SMS (`sms.supplier_debt_notification`).
+- `CheckSupplierBalancesJob` (cron) requires `balance ≥ debt + suspendedVat` and then runs
+  three legs in one transaction, **in this order**: reclaim WS→WSSG, pay WSSG→WO, place
+  the VAT hold on the supplier's wallet. Reclaim-before-pay is load-bearing (WSSG must
+  never go negative), and the VAT hold comes last because the reclaim just drew down that
+  same wallet. It also calls `DebtEngine::repay()` so the person-level ledger closes.
+- **Legacy fallback:** orders parked *before* phase 8 really do carry a hold in the buyer's
+  wallet. `outstandingRefundHold()` still finds those and releases them instead of paying
+  a second time from WSSG.
 
 **Order model constants for this flow:**
 ```php
@@ -600,6 +700,44 @@ Order::SYSTEM_MOADIAN_REF          // string|null — set when Doc P submitted (
 Order::SYSTEM_HOLD_RELEASED_AT     // datetime|null
 ```
 
+### Debt and credit — `DebtEngine` is the only writer of `users.debt_balance`
+
+Phase 9 (spec §3.12 / §4.7). Same shape as wallets: one balance column
+(`users.debt_balance`) plus an append-only ledger (`debt_entries`), so
+`financial:doctor` can replay one against the other. **Never write `debt_balance`
+directly** — `DebtEngine::incur()` / `repay()` write the row and the balance together
+under a `users` row lock (the same serialization the elite-yar lifetime cap needed).
+
+- A repayment is a **new row with a negative amount**, never an edit of the original —
+  identical rule to `releaseHold()`, and for the same reason.
+- `repay()` clamps to the outstanding balance; a negative `debt_balance` would mean "the
+  company owes the user", which is a different claim and belongs in the wallet.
+- `users.credit_limit` defaults to **0** — no credit unless an admin grants it via
+  `POST /admin/users/{user}/credit-limit` (`manage-users`). Both columns are deliberately
+  **not** in `$fillable`.
+- `fitsWithinCreditLimit()` answers "halt the order or not", **not** "record the debt or
+  not". Over the limit, the debt is still recorded and the order *additionally* halts.
+- Enforcement: `PlaceOrderAction::assertNotInDebt()` (422, checked against the **payer**,
+  not the placer — in buy-for-others the employer's debt is what matters) and
+  `RequestWithdrawalAction` (422, buyer and supplier alike; this is what guarantees a
+  debtor supplier's next top-up goes to settlement).
+- Pinned by `Financial/DebtEngineTest`.
+
+### Settlement runs ONCE per order, triggered by the last shipment
+
+Spec v2 §8.2. Registering a waybill only records that leg's weight and fires **no**
+financial leg. `RegisterShipmentAction` settles when any of three is true:
+
+1. a registered shipment has `is_final = true` (the supplier says "that was the last one"),
+2. `Σ actual_weight ≥ weight_before_scale` (guarded by `wbs > 0` — an order with no
+   pre-scale weight means *unknown*, not *reached*, and without that guard the first leg
+   always tripped the trigger),
+3. no unregistered leg remains (the phase-7 behaviour).
+
+Trigger 1 is the one phase 7 lacked, and without it **under-delivery could never settle**:
+the summed weight never reaches the order weight, and if the supplier ships in fewer loads
+than there are shipment rows, trigger 3 never fires either. The order stayed open forever.
+
 ### Over-tolerance overweight is a two-party approval, not a dead end
 
 Spec §3.7 / §8.2 step 7a. `ProcessWeighbridgeResultAction` sends an order whose overweight
@@ -609,43 +747,219 @@ no action, no route, and `$weighableStatuses` rejected the status, so re-weighin
 too. **The order was locked forever.**
 
 - **Order is mandatory: supplier first, then buyer** — same discipline as
-  `ReturnDamageService`. `approveByBuyer()` throws if the supplier has not signed.
+  `ReturnDamageService`. A claimed amount must be vetted by the party that recorded it
+  before it reaches the customer. `approveByBuyer()` throws if the supplier has not signed.
 - `AWAITING_WEIGHT_CORRECTION` is now in `$weighableStatuses`, and the tolerance branch is
   guarded by `&& ! $locked->isOverweightApproved()`. **Both halves are load-bearing** —
-  drop the guard and the buyer's approval bounces the order back into the same branch, an
-  infinite loop. Pinned by `both_approvals_resume_the_settlement`.
+  drop the guard and the buyer's approval bounces the order straight back into the same
+  branch, an infinite loop. Pinned by `both_approvals_resume_the_settlement`.
 - **Four columns, no more.** "Approved" is derived from the two stamps
-  (`Order::isOverweightApproved()`); a third column written in lockstep is a third place
-  to drift.
-- **Rejection and expiry share one code path** (`reject()`) because §3.7 gives them the
+  (`Order::isOverweightApproved()`) and the overweight percentage from the two weight
+  columns; a third column that must be written in lockstep is a third place to drift.
+- **Rejection and expiry are the same code path** (`reject()`), because §3.7 gives them the
   same outcome: shipments back to `pending` with `waybill_ref`/`registered_at`/`is_final`
   **cleared** (or `RegisterShipmentAction`'s idempotency guard 409s the reload), order back
-  to `processing`, `weight_after_scale` wiped. **Nothing is refunded — nothing was charged.**
-- `orders:expire-overweight` runs **hourly** (the deadline is in hours;
-  `SalesSettings::overweightResponseHours()`, default 48).
+  to `processing`, and `weight_after_scale` wiped — a weight nobody accepted must not
+  pollute the weight reports. **Nothing is refunded, because nothing was ever charged.**
+- `orders:expire-overweight` runs **hourly**, not every minute: the deadline is measured in
+  hours (`SalesSettings::overweightResponseHours()`, default 48).
+- The settlement clears `overweight_pending_amount` + `overweight_deadline` but **keeps the
+  two stamps** — the audit trail of who agreed to what.
 - **Branch 7b is separate.** `surplus_pending_buyer` means the legs *did* run and the load
-  is held pending debt repayment; `settleShortfall()` handles it, scoped to **this order's**
-  `debt_entries` via `outstandingForOrder()` — never `DebtEngine::balanceFor()`, which
-  would charge the buyer for debt from unrelated orders.
+  is held pending debt repayment; `settleShortfall()` handles it. It must scope repayment
+  to **this order's** `debt_entries` (`outstandingForOrder()`), never
+  `DebtEngine::balanceFor()` — the person-level balance would charge the buyer for debt
+  from unrelated orders.
 - Pinned by `Order/OverweightApprovalTest`.
+
+### Reservation expiry: one cron, one grace rule, one guard
+
+Four defects lived here at once and only surfaced by tracing.
+
+**`orders:cancel-expired` is deleted.** It ran every minute filtering on
+`reservation_expires_at` with no grace check, while `orders:expire-reserves` ran every
+minute on `reserve_deadline` *with* `reserve_grace_hours`. `ProcessReservationPaymentAction`
+writes **both columns the same value**, so the first cron always won and cancelled the
+instant the deadline passed — `reserve_grace_hours` was snapshotted, read by the other
+cron, and structurally unable to ever matter.
+
+**`Order::isReserveWindowExpired()` is the only grace rule.** It lives on the model so the
+cron and `CancelOrderAction` cannot answer the question differently.
+
+**`CancelOrderAction` re-checks under the lock.** The only early-out used to be
+`=== CANCELLED`, so a buyer who completed payment between the cron's SELECT and the row
+lock had their **paid** order cancelled and refunded: stock restored (the same goods
+sellable twice) and the supplier's payment clawed back. Every leg reversed cleanly, so
+`financial:doctor` saw nothing.
+
+> ⚠️ **`$isSystemCron` does not mean "the cron sent this".** It means "skip the buyer
+> cancel window", and `AdminOrderController::forceCancel` passes it too. Binding the
+> expiry re-check to that flag broke admin force-cancel. The re-check has its own
+> parameter, **`requireExpiredReserve`**, sent only by `ExpireReserves`.
+
+**`ProcessReservationCompletionAction` rejects an expired reservation.** Its only gate was
+`PAYABLE_STATUSES`, which checks status, not time — an expired reservation stayed
+completable, which is both a rule violation and what made the race above reachable.
+
+Pinned by `Order/BuyerCancelWindowTest` (incl. a case asserting the cron refuses a reserve
+still inside its grace window, and one asserting admin force-cancel is unaffected).
+
+### Debt is repayable, and the ledgers cannot be deleted
+
+**`POST /api/profile/debts/repay`.** Debt blocks order placement and withdrawal, but the
+only ways to clear it were three event-driven paths (overweight, return damage, damage
+cap). A user whose debt came from one of those, where the event never recurred, was locked
+out permanently — they could not clear it and neither could an admin, who can set
+`credit_limit` but never zero a balance. Order of legs matters: debit the wallet, credit
+Saze (the company fronted the money, so repayment must return there or the wallet ledger
+stays unbalanced), then close the debt ledger. An insufficient balance therefore rolls
+back **without** zeroing the debt. Omitting `amount` repays everything; a larger amount is
+clamped to the balance. Uses `DebitWalletAction`/`FundWalletAction`, not
+`WalletTransactionEngine` — the engine is order-scoped and a debt row may have no order.
+
+**Financial ledgers are `restrictOnDelete`.** `wallet_transactions.wallet_id`,
+`debt_entries.user_id` and `invoices.order_id/user_id` were `cascadeOnDelete`, and none of
+the parents use `SoftDeletes` — so one `$user->delete()` erased that person's whole
+financial history: balance, the append-only transaction ledger, the debt ledger and their
+tax documents. Both ledgers exist so `financial:doctor` can replay balances from them,
+which a cascade defeats. The delete now fails loudly instead.
+
+**`financial:doctor` nets `debt_entries`.** `unbalancedOrders()` summed only
+`wallet_transactions`, so every credit-fronted overweight (where `creditSystem(deltaPOO)`
+exceeds `debitBuyer(available)` by the shortfall) was reported as money created —
+permanently. An alert that always fires is not an alert.
+
+**`settleShortfall()` is no longer gated on `AWAITING_WEIGHT_CORRECTION`.**
+`chargeOverweight()` has two outcomes: a buyer over their credit limit lands in that
+status, but a buyer **within** it goes straight to `SHIPPED` carrying a debt — and could
+never reach the settle path. The gate is now the order's own outstanding debt; the status
+write back to `SHIPPED` is guarded so a delivered order is never dragged backwards.
+
+Pinned by `Financial/DebtRepaymentTest`.
+
+### Mass-assignment: what moved out of `$fillable`, and what deliberately did not
+
+`users.badge_id` / `badge_purchase_amount` are **out**. They pick the commission tier and
+set the lifetime-cap basis — the same class of column as `debt_balance`/`credit_limit`,
+which were already excluded. Three `EliteYARLifetimeCapTest` cases failed on this and that
+was the proof, not a nuisance: the fixture used `update()`, the value was silently
+dropped, and the cap read as **uncapped**. Fixtures must use `forceFill()->save()`.
+
+`Invoice` replaced `$guarded = ['id']` with an explicit `$fillable` — the broadest possible
+policy on a tax document, in a codebase with tight `$fillable` everywhere else.
+
+`Order::$fillable` **keeps** `status`, `payment_status`, `paid_at`, `final_amount`, and the
+reason is recorded in the model. They are just as sensitive as the 23 snapshot columns, but
+unlike those they are needed at creation and written by dozens of explicit
+`->update([...])` call sites; removing them broke 72 tests. Rewriting the whole money path
+to `forceFill` carries more risk than the latent issue. The real guard is that **no
+controller may pass request input to `$order->update()`** — none do today.
+
+### The four owner-only policies are load-bearing now
+
+`CartPolicy`, `AddressPolicy`, `WishlistPolicy` and `UserBankAccountPolicy` were registered
+in `AuthServiceProvider`, unit-tested, and **never invoked** — their controllers hand-rolled
+`if ($model->user_id !== Auth::id())`. So the policy tests proved nothing about the HTTP
+layer, and any new action on those controllers shipped with no backstop. Nine guards now
+call `$this->authorize()`. This also removed `WishlistController` returning the raw key
+`global.unauthorized` as the user-facing message.
+
+### `/api/data/*` carries the admin permission tier
+
+`GET /data/analytics/dashboard` and `/data/inventory/predictions` return the same class of
+data as `GET /admin/dashboard` (`revenue_chart`, `rfm_segments`, `customer_value`,
+`top_products`) but carried only `role.admin` — so an admin restricted to, say,
+`manage-content` was 403'd on the panel home and read the same numbers here. They also sat
+outside the `/admin` group, hence outside `admin.ip`. Both now carry `admin.ip` +
+`admin.permission:manage-financial`, and `AdminPermissionCoverageTest` sweeps `api/data`
+too — it previously could not see the gap at all.
 
 ### Admin force-cancel requires a ticket AND a reason
 
 Spec §3.6: «لغو اجباری ادمین: **فقط پس از تیکت، با ثبت دلیل**». `reason` used to fall back
-to a canned string, so recording a reason was optional in practice and the activity log
+to a canned string, so "recording a reason" was optional in practice and the activity log
 always read the same uninformative sentence. Both `ticket_id` (`exists:tickets,id`) and
-`reason` (`min:10`) are now **required**. `AdminOrderController::changeStatus` delegates to
-`forceCancel`, so `POST /admin/orders/{order}/status` carries the same requirement —
-deliberate, since §5.3 makes force-cancel the admin's only status power.
+`reason` (`min:10`) are now **required**.
+
+`AdminOrderController::changeStatus` delegates to `forceCancel`, so
+`POST /admin/orders/{order}/status` carries the same requirement — that is deliberate:
+§5.3 makes force-cancel the admin's *only* status power, so the two must not have different
+audit rules. This is the single action that unwinds a paid order and frees stock.
 Pinned by `Admin/AdminForceCancelTest` and two cases in `Admin/AdminHardeningTest`.
 
 ### `GET /api/profile/debts` — the debtor can finally see their own debt
 
 Debt blocks three things (order placement, withdrawal, overweight shipping) and the only
-debt report was back-office. The endpoint takes **no `user_id` parameter** — it reads
+debt report was back-office. Users saw "به دلیل بدهی معوق..." with no way to learn how
+much, for what, or since when. The endpoint takes **no `user_id` parameter** — it reads
 `Auth::id()` only, so it cannot become a leak of someone else's debt. Repayment rows keep
 their negative sign so the ledger sums to the reported balance.
 Pinned by `Financial/UserDebtVisibilityTest`.
+
+### The delivery cycle — the order's status is COMPUTED, never hand-written
+
+Phase 10 (spec §3.10). Before this, a shipment reached `shipped` and stayed there:
+nothing recorded that the driver arrived or that the buyer took delivery, and
+`partially_delivered` — created in phase 0 — had **no writer at all**.
+
+- **Arrival** (`RecordShipmentArrivalAction`) stamps `arrived_at` and computes
+  `delivery_deadline = now + delivery_deadline_hours` (default 5, `SalesSettings`). The
+  hours are snapshotted onto the shipment for the same reason `reserve_grace_hours` is:
+  changing the setting must not move the deadline of a load already at the customer's gate.
+  Two callers, distinguished by `arrival_source`: the driver's signed link
+  (`driver_link`) and the back-office phone confirmation (`backoffice`, §3.10 allows it).
+- **Confirmation** (`ConfirmShipmentDeliveryAction`) is the buyer's, from the panel or
+  their own signed link (`delivery_confirmed_by` is NULL for the link).
+  `ConfirmShipmentDeliveryAction::syncOrderStatus()` is the **single writer** of
+  `delivered` / `partially_delivered` and is `static` because the expiry cron calls it
+  too — two copies of that rule would mean two definitions of "fully delivered".
+- **"Outstanding" means neither delivered nor returned.** A returned leg is *settled*,
+  not pending, so an order with one delivered and one returned leg is `delivered`, not
+  stuck in `partially_delivered` forever.
+- Driver and buyer have **no authenticated route** into this: `GET /shipments/{id}/arrived`
+  and `GET /delivery/{id}/confirm` are `signed` + `throttle`, no `auth:sanctum`. Drivers
+  have no account at all (§3.9). The confirm link expires exactly at `delivery_deadline` —
+  any longer and it would still work after the load was returned.
+- Panel confirmation is **payer-only**, not placer: in buy-for-others it is the employer's
+  confirmation that prevents the return and the debt that follows.
+- Pinned by `Order/ShipmentDeliveryTest`.
+
+### Return to origin — the platform moves NO money, and the goods rule drives everything
+
+Phase 11 (spec §3.11 / §8.3). One sentence governs the whole subsystem: **the goods
+belong to the buyer, the money to the supplier.** A return therefore makes the supplier
+no poorer — they keep the goods, and the buyer owes them the costs.
+
+- `shipments:expire-delivery` (cron, every minute) turns an unconfirmed shipment past its
+  deadline into `returned` and the order into `returned_to_origin`. **Not one financial
+  leg runs there** — that is the rule above, not an omission.
+- Costs go through a **mandatory three-step approval**: supplier records
+  (`POST /profile/shipments/{id}/damages`, only on a `returned` shipment) → back-office
+  approves (`POST /admin/damages/{id}/approve`) → buyer approves. **Only the third step
+  creates debt** (`DebtEngine::incur(return_damage)`). Back-office comes first on purpose,
+  so a claimed amount is vetted before it reaches the customer. A buyer rejection is a
+  valid path (§3.11 routes it to support) and must stay financially inert.
+- Settling (`POST /profile/damages/{id}/settle`) runs `debitBuyer → creditSupplier →
+  DebtEngine::repay` and then resets the shipment to `pending` — **clearing `waybill_ref`
+  and `registered_at` too**, or `RegisterShipmentAction`'s idempotency guard would 409 the
+  reload and the "repeatable cycle" would not be repeatable.
+- **The cap is the subtle part.** When approved damages reach `orders.subtotal` (the spec
+  names that column explicitly — goods value before freight/commission/VAT), the goods
+  become the supplier's, `DebtEngine::settleAgainstGoods()` zeroes **that order's** debt
+  (not the user's whole balance), and the order is cancelled. The ledger row is an
+  `adjustment`, not a `repayment` — no one paid; an asset replaced the money, and the debt
+  report must be able to tell those apart. **Stock is deliberately NOT released**:
+  `CancelOrderAction` is not called, because the goods really did go to the supplier and
+  never returned to inventory. Freeing them would sell the same tonnage twice.
+- Pinned by `Order/ReturnDamageTest`.
+
+### The confirm-delivery button lives on "in transit", not "delivered"
+
+The `delivered` step's own trigger *is* the buyer's confirmation, so a button placed there
+only appeared **after** the thing it was supposed to start — the exact defect already fixed
+for the supplier's Moadian button. `HasOrderProgress` now renders it on the `shipped` step
+(and still on `partially_delivered`, where legs remain), gated by
+`hasShipmentAwaitingConfirmation()` so it shows only when a leg has actually arrived.
 
 ### Document Generation — Which Action Emits Which Doc
 
@@ -665,12 +979,15 @@ mode (file stored on disk, `Invoice` DB record created).
 | H | `DOC_FINAL_REPORT_SUPPLIER` | Reservation completion | `ProcessReservationCompletionAction` |
 | i | `DOC_REFUND_RECEIPT` | Cancellation (paid/reserved) | `CancelOrderAction` |
 | j | `DOC_CANCEL_REPORT` | Cancellation (paid/reserved) | `CancelOrderAction` |
-| I | `DOC_EXIT_PERMIT` | Weighbridge (equal/deficit) | `ProcessWeighbridgeResultAction` |
-| J | `DOC_SUPPLEMENTARY_RECEIPT` | *(not emitted — surplus path removed per spec)* | — |
-| K | `DOC_SUPPLEMENTARY_REPORT` | *(not emitted — surplus path removed per spec)* | — |
+| K | `DOC_BILL_OF_LADING` | Weighbridge (always) — بارنامه / مجوز خروج | `ProcessWeighbridgeResultAction` |
 | LO | `DOC_MODIFIED_INVOICE_OWNER` | Weighbridge deficit | `ProcessWeighbridgeResultAction` |
 | LS | `DOC_MODIFIED_INVOICE_SUPPLIER` | Weighbridge deficit | `ProcessWeighbridgeResultAction` |
-| M | `DOC_REFUND_REPORT_WEIGH` | Weighbridge deficit | `ProcessWeighbridgeResultAction` |
+
+> **Codes I, J, M, N no longer exist.** `app/Constants/FinancialCodes.php` is the
+> authority: the post-weighbridge stage of the «پروسه خرید» design doc defines only
+> **K, LO, LS**. `I` (exit permit) was folded into `K`, `J` into `LO`, and `M`/`N` were
+> never in the spec. This table previously still listed them, which sends anyone
+> verifying a real weighbridge hunting for documents that are correctly absent.
 | O | `DOC_TAX_INVOICE_SUPPLIER` | Supplier submits Moadian invoice | `RecordSupplierMoadianInvoiceAction` |
 | P | `DOC_TAX_INVOICE_BUYER` | Admin submits system Moadian invoice | `RecordSystemMoadianInvoiceAction` |
 | Q | `DOC_TAX_INVOICE_ELITE_YAR` | EliteYAR submits Moadian invoice | `ReleaseEliteYARHoldAction` |
@@ -698,20 +1015,38 @@ surplus/over-delivery path that `FinancialCodes` documents as removed per spec �
 J/K/M). They are formatted Persian invoice templates and are the starting point if any
 of those flows returns. Leave them, and don't "fix" the missing references.
 
-**The survey document slugs stay out of the route whitelist.** `pdf.survey_buyer`
-(Doc S) and `pdf.survey_elite_yar` (Doc T) exist and are wired into `getViewName()` +
-`DOCUMENT_AUDIENCES`, but `routes/api/user.php` still constrains the download route to
-`whereIn('type', ['initial', 'final', 'tax'])`. That is deliberate — surveys are out of
-product scope (2026-07-25). Widening the whitelist is a one-line change if that reverses.
+### `OrderDocumentCatalog` is the single source of truth for document access
 
-**Per-document authorization (do not weaken).** After the generic `authorize('view',
-$order)`, `download()` also enforces `mayAccessDocument($order, $type)` against a
-`DOCUMENT_AUDIENCES` map: buyer-docs (initial/receipt/final/refund/tax/…) → placer only;
-supplier-docs (supplier_report/final_supplier/tax_supplier/…) → the order's item supplier;
-elite yar-docs (elite_yar_report/tax_elite_yar/…) → beneficiary/elite yar; admins
-bypass. This closed a real leak where any order party that passed `view` could pull
-another party's tax invoice. The user-facing route currently whitelists only
-`['initial','final','tax']`; keep the audience map complete anyway in case the route widens.
+`app/Support/OrderDocumentCatalog.php` owns **both** maps — slug→code and
+slug→audiences — plus `downloadableSlugs()`, which the route in `routes/api/user.php`
+uses directly. Nothing else may hand-write a list of document slugs.
+
+This exists because the two copies drifted and their intersection went **empty for
+suppliers and elite yars**. The route said `whereIn('type', ['initial','final','tax'])`
+while the audience map (correctly) marked all three buyer-only. Measured result before
+the fix: a supplier got **404 on all eight** of their own slugs — including **Doc K
+(بارنامه / مجوز خروج)** and **Doc C (دستور بارگیری)**, without which a load does not
+leave the factory — and **403 on the three** the route did allow. Elite yars were in the
+same position for `elite_yar_report` / `tax_elite_yar`.
+
+- Authorization is still the audience map, applied after the generic `authorize('view')`.
+  Widening the route did **not** widen access — a supplier still gets 403 on buyer docs.
+- Survey slugs (Doc S / Doc T) stay out via `OUT_OF_PRODUCT_SCOPE`, matching the
+  `features.order_surveys` decision. Re-enabling is one array edit.
+- `Order::partyRolesFor(?int $userId)` answers "what is this user to this order"
+  (buyer / supplier / elite_yar) and is used by **both** the controller's authorization
+  and `OrderResource`'s download button, so "who may see it" and "what we link to" cannot
+  disagree. It checks `relationLoaded('items')` first to avoid an N+1 on list endpoints.
+- Pinned by `Order/OrderDocumentAccessTest` — a **sweep** over every slug × every
+  audience (51 combinations), not a sample. A sampled test is what let this survive:
+  the three slugs anyone thought to test were all buyer docs that worked.
+
+**`OrderPolicy::view` must keep its `elite_yar_user_id` branch.** It only checked placer /
+beneficiary / supplier, so in the **employer-places-and-names-an-elite-yar** flow — where
+`beneficiary_user_id` is *prohibited* by `StoreOrderRequest` — the elite yar could not view
+the order they earn commission on. Meanwhile `submitEliteYARMoadianInvoice` guards directly
+on `elite_yar_user_id`, so the same user was trusted to release their own commission hold
+but not to read the order. Found by the sweep test above.
 
 ### Financial Flow (Critical Path)
 
@@ -804,6 +1139,16 @@ directly in `routes/api.php` — it must stay a thin glue file.
 - `track` — logs dashboard page visits for analytics
 - `can-see-ticket` — ticket ownership check
 
+**Global stack is API-lean (2026-07-26).** `Sanitizer` was **deleted** — it duplicated
+`TrimStrings` (both recursively trimmed every string input; one full extra payload walk
+per request). `StartSession` + `ShareErrorsFromSession` moved from the global stack into
+the `web` group only: API auth is token-based Sanctum and needs no session, while
+stateful SPA (cookie) requests get their session stack injected by
+`EnsureFrontendRequestsAreStateful` itself. In the `web` group `StartSession` must stay
+**before** `VerifyCsrfToken` (the CSRF token lives in the session).
+`AuthController::logout`'s web-guard branch guards `$request->hasSession()` before
+invalidating. **Never re-add session middleware to the global stack.**
+
 ### Event-Driven Side Effects — Domain Subfolders
 
 `app/Events/` and `app/Listeners/` are organized into domain subfolders (commit `7f0ca9f`):
@@ -833,7 +1178,19 @@ Dispatch flow:
   (`InventoryService::deductStockForOrder`, within the placement transaction and under
   `lockForUpdate`). This doc used to claim the listener deducted stock; adding a
   deduction to the listener would double-deduct every order.
-- `OrderPaid` → payment notifications (SendOrderPaymentNotification)
+- `OrderPaid` → payment notifications: `SendOrderPaymentNotification` (buyer) +
+  `SendSupplierOrderNotification` (supplier). **Dispatched from
+  `ProcessPreScalePaymentAction` and `ProcessReservationCompletionAction`** — the two
+  places an order actually becomes `PROCESSING` + `PAID`.
+
+  > It used to be dispatched **only** from `Actions/Order/PayOrderAction`, which has
+  > **zero callers** (a scaffold for the not-yet-licensed gateway path). So the event
+  > never fired on any live path and `SendOrderPaymentNotification` — registered for a
+  > long time — had never run: no payment SMS reached *anyone*, buyer included. The
+  > supplier's whole queue starts at `markAsPrepared` on a PROCESSING order, so with no
+  > notification they had to poll `/profile/supplier/orders` by hand. If the gateway path
+  > is ever wired up, make sure `OrderPaid` is not then dispatched twice.
+  > Pinned by `Order/OrderPaidNotificationTest`.
 - `OrderCancelled` → stock restoration, wallet refund
 - `CartItemChanged` → analytics tracking (LogCartEvent)
 - `WalletFunded` / `TransactionProcessed` → financial notifications
@@ -882,12 +1239,48 @@ Jobs/
 ```
 
 > `Order/CheckReservationExpiryJob` was DELETED — it was dead code with zero call
-> sites; expired-order cancellation actually runs via the `orders:cancel-expired`
-> artisan command (`Console/Commands/CancelExpiredOrders`, scheduled every minute).
+> sites; reservation expiry runs via the `orders:expire-reserves` artisan command
+> (`Console/Commands/ExpireReserves`, scheduled every minute). The older
+> `orders:cancel-expired` was deleted — it ignored `reserve_grace_hours`.
+
+### Queue worker is a silent single point of failure — `queue:health` watches it
+
+**Every** listener is `ShouldQueue` and `QUEUE_CONNECTION=database`, so a stopped worker
+throws nothing: OTP SMS, order notifications and mail just pile up in `jobs`. Since login
+depends on OTP SMS, a dead worker is effectively a login outage with no trace in any log.
+
+Not hypothetical — the audit found **7 `SendSmsJob` rows with `attempts=0`, aged 29–47
+days** on the dev database. No worker had ever picked them up and nothing had surfaced it.
+
+`queue:health` (scheduled every 15 min) checks oldest-pending age, pending depth, recent
+failures and total `failed_jobs` against `config/ops.php`, logs `error` on breach (so a
+configured Sentry DSN turns it into an alert) and exits non-zero for external monitors.
+`--json` gives a machine-readable payload. It no-ops on non-`database` queue drivers.
+
+Worker + scheduler supervision: `deploy/supervisor/elitezone-worker.conf`.
+Full runbook (incl. the backup restore drill and the deploy checklist):
+[`docs/OPERATIONS.md`](docs/OPERATIONS.md). **Run `php artisan queue:restart` after every
+deploy** or workers keep executing the old code.
+
+### Database backups (`spatie/laravel-backup`)
+
+The package was installed with **no `config/backup.php` and no schedule** — a wallet/ledger
+system with no backups at all. Now wired:
+
+- `backup:run --only-db` daily 01:00 → gzipped MySQL dump
+- `backup:clean` daily 01:45 → retention policy
+- `backup:monitor` daily 02:00 → alerts on a stale/oversized archive (a silently broken
+  dump otherwise stays invisible until the day you need to restore)
+
+The dump lands on the **private `financial` disk**, never `public` — it contains national
+codes, IBANs and card numbers. Set `BACKUP_DISKS=financial,s3` for a real off-site copy.
+Retention and the notification email are env-driven (see `.env.example`). Files are
+deliberately excluded (`--only-db`); the uploaded receipts/invoices need their own cycle.
 
 Scheduled jobs (crons, wired in `Console/Kernel.php`) — **all** use
 `withoutOverlapping()->onOneServer()`:
-- `orders:cancel-expired` command — cancels expired pending/reserved orders
+- `orders:expire-reserves` command — cancels reservations whose deadline **and** grace
+  window have both passed (`Order::isReserveWindowExpired()`)
 - `Financial/CheckSupplierBalancesJob` — polls `supplier_debt_pending = true` orders;
   when supplier balance ≥ debt, reclaims it and releases buyer's HOLD refund to AVAILABLE
 - `Analytics/CalculateCustomerRfm` — customer segmentation analytics (03:00)
@@ -935,7 +1328,7 @@ active/churned counts from `CustomerStat`; surfaced in the admin dashboard as
 
 ### Authorization (Policies)
 
-`app/Policies/` contains five policies, all registered in `AuthServiceProvider`:
+`app/Policies/` contains **nine** policies, all registered in `AuthServiceProvider`:
 
 | Policy | Resource | Pattern |
 |---|---|---|
@@ -944,6 +1337,83 @@ active/churned counts from `CustomerStat`; surfaced in the admin dashboard as
 | `AddressPolicy` | `Address` | `view`, `update`, `delete` — owner-only |
 | `WishlistPolicy` | `Wishlist` | `view`, `update`, `delete` — owner-only |
 | `UserBankAccountPolicy` | `UserBankAccount` | `view`, `update`, `delete` — strict owner-only (sensitive) |
+| `FactoryPolicy` | `Factory` | supplier self-service — owner via `factories.supplier_user_id` |
+| `FactoryLocationPolicy` | `FactoryLocation` | owner via the parent factory's `supplier_user_id` |
+| `ProductPricePolicy` | `ProductPrice` | owner via the price's factory |
+| `ShippingRatePolicy` | `ShippingRate` | owner via `factoryLocation.factory` |
+| `FactoryStockPolicy` | `FactoryStock` | owner via the stock row's factory |
+
+### Supplier panel — show the supplier *their* money, not the buyer's
+
+`orders.final_amount` is the **buyer's** total (goods + commission + VAT + freight). It was
+the only figure the supplier's queue and dashboard showed, so the panel presented a number
+the supplier never receives, while `payment_to_supplier` — what actually lands in their
+wallet — was returned by no user-facing endpoint at all.
+
+- `OrderResource.financial.supplier_settlement` (supplier-only) carries
+  `payment_to_supplier`, `is_post_weighbridge`, `debt_pending`, `supplier_debt_amount`,
+  `moadian_submitted`. `payment_to_supplier` is a **single column holding the current
+  figure**: PTS at payment, overwritten with PTSM by `ProcessWeighbridgeResultAction` —
+  hence `is_post_weighbridge`, without which the panel cannot say which one it is showing.
+  It is `null` before payment, never `0` ("your share is nothing" is a different claim).
+- `dashboard.order_stats[].total_amount` is now `SUM(COALESCE(payment_to_supplier, 0))`;
+  the old buyer-side figure moved to `order_value`. **The field name kept its meaning of
+  "the headline total" and changed its value** — deliberate, since the displayed number
+  was simply wrong and this fixes it with no frontend change.
+- **`$isSupplier` in `OrderResource` means "supplier *of this order*"**, via
+  `Order::partyRolesFor()` — not the global `hasRole('supplier')`. With the global role a
+  supplier buying for their own office got the redacted view of their **own purchase**,
+  and worse, once settlement figures hang off that flag, they would have appeared on an
+  order where the viewer is merely the buyer. Pinned by
+  `Supplier/SupplierSettlementVisibilityTest`.
+
+### Stock is per-origin — `factory_stocks` is the ordering authority
+
+`product_variants.stock_quantity` used to be one **global column per variant** while
+`product_prices` is keyed `(variant, factory, location)`. Two suppliers selling the same
+variant from different factories therefore shared one number: A's sale drew down B's
+availability, and giving A write access would have zeroed B out. That schema gap — not a
+missing controller — is why the supplier stock panel did not exist.
+
+`factory_stocks` mirrors the `product_prices` key exactly and is now the authority for
+**check / deduct / restore / weighbridge**. Every cart item and order item already carries
+`factory_id` + `factory_location_id` (the shipping subsystem put them there), so each
+movement hits the origin the goods actually came from.
+
+- **`InventoryService::availableAt()` is the only way to ask "how much is there".** A
+  missing row means *"this origin has not entered its own stock yet"* → falls back to the
+  legacy column. **Never treat a missing row as zero** — a priced triple added after the
+  backfill would silently become unsellable. `checkStock()` takes the origin; always pass
+  it (the optional signature exists only so old call sites don't fatal).
+- **`product_variants.stock_quantity` is now a display rollup**, kept equal to
+  `SUM(factory_stocks)` by `FactoryStock::syncVariantRollup()`. The catalog filter
+  (`stock_quantity > 0`), analytics, dashboard alerts and Resources still read it. It must
+  be a **sum**, not a running decrement: decrementing it per sale would drive it to zero
+  once the old pool was sold and **hide products that are actually in stock**.
+  `syncVariantRollup()` no-ops when the variant has no origin rows at all — "no rows" and
+  "sold out everywhere" are different claims, and the first must not wipe legacy stock.
+- **Backfill seeded every priced triple with the variant's current global stock.** The old
+  number cannot be split correctly — that information is not in the database. Splitting it
+  evenly would keep the total honest but could reject a real order on deploy day; giving
+  each origin the full amount reproduces exactly what the code did yesterday (every origin
+  already offered the whole pool), so **nothing is blocked**. The cost is that the rollup
+  reads N× high for multi-origin variants until suppliers enter real numbers.
+- Panels: `/profile/supplier/stocks` (own origins, `POST` is an **upsert** on the triple)
+  and `/admin/factory-stocks` under `manage-catalog` — without the admin one a wrong number
+  would only be fixable via tinker. `FactoryStockPolicy` guards ownership via
+  `factory.supplier_user_id`; deleting a row means "no dedicated stock" (falls back), **not**
+  "sold out" — for that, set the quantity to 0.
+- Pinned by `Supplier/PerFactoryStockTest`, whose central case is
+  `a_sale_from_one_supplier_leaves_the_other_untouched`.
+
+The four resource policies below back the **supplier self-service panel**
+(`/profile/supplier/*`). Route-model
+binding resolves any `{factory}` / `{price}` / `{shippingRate}` by id, so the policy is the
+only thing standing between one supplier and another's catalogue — every single-resource
+action calls `$this->authorize(...)` and every list query is scoped by
+`supplier_user_id = Auth::id()`. Pinned by `Supplier/SupplierFactoryManagementTest`,
+`SupplierProductPriceManagementTest` and `SupplierShippingRateManagementTest` (34 tests,
+each with an explicit "cannot touch another supplier's row" case).
 
 All policies share the same shape:
 - `before(User, ability)` returns `true` for admins (admin bypass)
@@ -986,13 +1456,7 @@ tests/
   Unit/          — (empty placeholder dir — kept so phpunit.xml works)
 ```
 
-**Total: 756 tests, 1888 assertions — all green. ✅**
-
-> The two skips are the `LedgerReconciler`-dependent cases in
-> `Financial/SupplierDebtReleaseTest` and `Financial/ReservationCompletionLegOrderTest`.
-> They skip themselves via `class_exists()` because that class lives only on the Laravel 10
-> branch. The test files are deliberately **byte-identical across both branches** — a
-> `markTestSkipped` that explains itself beats two divergent copies of the same file.
+**Total: 932 tests, 2403 assertions — all green. ✅**
 
 Round-5 audit additions: `Security/CorsAllowlistTest`,
 `Security/PublicDiskUploadRulesTest`, `Admin/AdminPermissionCoverageTest`,
@@ -1082,7 +1546,7 @@ Performance-critical indexes added across multiple migrations:
 |---|---|---|---|
 | `orders` | `orders_status_idx` | `2026_05_23_*` | scope queries (`current`/`delivered`/`cancelled`) |
 | `orders` | `orders_payment_status_idx` | `2026_05_23_*` | admin filtering |
-| `orders` | `orders_reservation_expires_at_idx` | `2026_05_23_*` | `orders:cancel-expired` cron |
+| `orders` | `orders_reservation_expires_at_idx` | `2026_05_23_*` | legacy — the cron that used it is deleted; `reserve_deadline` is the live column |
 | `orders` | `orders_placer_status_idx` (composite) | `2026_05_23_*` | "my orders" lists |
 | `users` | `users_national_code_idx` | `2026_05_23_*` | admin back-office search |
 | `wallet_transactions` | `wt_order_type_status_idx` (composite) | `2026_06_22_000000_*` | financial report filters |
@@ -1163,7 +1627,114 @@ now happens directly inside the payment Actions. `OrderPaid` is now notification
 `SendOrderPaymentNotification`. `EventServiceProvider` has been updated accordingly.
 **Do not re-add** any financial Action call inside an event listener.
 
+## Static analysis — PHPStan level 5 + baseline
+
+`phpstan.neon`: level 5, `app/` only, larastan extension, `phpstan-baseline.neon`.
+CI runs it (`--memory-limit=1G`), so **a new error fails the build**.
+
+Measured on 2026-07-26 before touching anything:
+
+- **Level 6 adds 816 errors** on top of the level-5 baseline (mostly missing iterable
+  value types / param+return typehints). That is a dedicated typing project, not a config
+  bump — baselining them instead would just hide 816 issues and defeat the point.
+- **PHPStan 2.x is blocked**, and not by us: it needs larastan 3.x, which requires
+  Laravel 11+. This app is Laravel 10 with `larastan/larastan ^2.11`. It becomes available
+  after the framework upgrade (see the `upgrade/laravel-13` branch) — until then the
+  1.12 line is the correct pin, so ignore the phar's own upgrade nag.
+- Local runs need `--memory-limit=2G`; the default 128 M crashes the parallel workers.
+
+**Relation methods must declare a return type.** `User::wallet()` and
+`ProductVariant::variantAttributes()` had none, so larastan could not see them as
+relations and every `$user->wallet` became an "undefined property" error — 16 baseline
+entries from two missing typehints. Adding `: HasOne` / `: BelongsToMany` removed them.
+Combined with purging stale entries, the baseline went **298 → 275 entries (397 → 381
+errors)**. When you add a relation, type it.
+
 ## Known Architectural Gotchas
+
+### PHP writes timestamps in UTC, MySQL writes them in the server's zone
+
+`config('app.timezone')` is **UTC** but the MySQL session timezone is `SYSTEM`.
+So a column filled by Eloquent/`now()` and a column filled by the database
+(`useCurrent()`, `DEFAULT CURRENT_TIMESTAMP`) land in **different time bases** —
+offset by the DB server's UTC offset (5h on one dev machine, 3.5h on an Iran box).
+
+This bit `order_status_histories.created_at`: the column is `useCurrent()`, the
+model sets `$timestamps = false`, and `OrderObserver` passed `created_at => now()`
+explicitly — but `created_at` was missing from `$fillable`, so mass assignment
+**silently dropped it** and MySQL's default won. Every history row was skewed
+against every other timestamp in the system, which surfaced as the order timeline
+showing the status change *before* the order was created.
+
+When a model turns off `$timestamps` and a writer sets the column by hand, that
+column must be in `$fillable` — otherwise the DB default wins and you get a silent
+timezone skew, not an error. Pinned by `Order/OrderStatusHistoryTimestampTest`.
+
+### Weighbridge stock correction is split across lines, not dumped on the first
+
+The weighbridge returns **one** number — the real total weight of the load — but an
+order can have several lines. `ProcessWeighbridgeResultAction` used to apply the
+entire delta to `items->first()->product_variant_id`, so a rebar-14 + rebar-16
+order short by 200 kg returned all 200 kg to rebar-14 and left rebar-16 untouched:
+**both** stock figures ended up wrong. `assertSingleSupplier()` does not prevent
+this — it counts *suppliers*, not *lines*.
+
+`InventoryService::updateStockAfterWeighbridgeForOrder()` now allocates the delta
+across lines **in proportion to each line's ordered weight** — the same rule
+`ShippingCostCalculator` uses to split freight — because the weighbridge cannot say
+which product the shortfall came from. Lines sharing a variant are aggregated first
+so each variant is locked and updated once, and the **last share absorbs the
+remainder** so the parts sum exactly to the delta (three equal lines splitting 100 kg
+do not drift). An order whose lines carry no weight is left untouched and logged
+rather than dividing by zero.
+
+Call `updateStockAfterWeighbridgeForOrder()`, never the single-variant
+`updateStockAfterWeighbridge()` directly, for anything order-shaped. Pinned by
+`Order/WeighbridgeStockAllocationTest`.
+
+### `official_price` is a **per-unit** price, and it must represent every line
+
+Settlement multiplies it: `SettlementCalculatorService::calculatePOO()` computes
+`$productBase = Money::mul($op, $weight)` where `$weight` is the **order's total**
+`weight_before_scale`. So `official_price × total_weight` must equal the order's
+true goods value.
+
+Until 2026-07-27 **nothing wrote the column at all** — it was read in three places
+(`ProcessPreScalePaymentAction`, `ProcessReservationCompletionAction`,
+`WeighbridgeReconciler`) and written in none, so every one of them fell through to
+`items->first()->unit_price`. That billed **the whole tonnage at the first line's
+price**. Correct for a single-line order; wrong for any multi-line one — and
+`PlaceOrderAction::assertSingleSupplier()` does not stop those, because it counts
+*suppliers*, not *lines*. A cart with two rebar sizes from one factory is ordinary
+B2B and passes the guard.
+
+`PlaceOrderAction` now snapshots the weighted average
+(`Σ(unit_price × weight) / Σweight`, bcmath) via `forceFill` — the column is not
+fillable, so putting it in the `Order::create([...])` array would be silently
+dropped. With one line the formula returns exactly that line's `unit_price`, so
+single-line behaviour is unchanged.
+
+`financial:doctor` gained a fourth invariant for this
+(`LedgerReconciler::mispricedOrders()`): it recomputes the effective basis the same
+way the code does — including the `first()` fallback — so it also flags **older**
+orders that have no snapshot. Tolerance is `ops.financial.pricing_tolerance`
+(1,000 Rials) because the average is rounded to 2 decimals. Note the ledger stays
+balanced when this bug fires — the wrong POO is distributed consistently across
+wallets — so the wallet-replay check cannot see it. That is why it needed its own
+invariant. Pinned by `Financial/OrderPricingBasisTest` and
+`Order/OfficialPriceSnapshotTest`.
+
+### `??` never fires on a `NOT NULL DEFAULT 0` column
+
+`orders.vat_rate` is `decimal(5,2) NOT NULL DEFAULT 0.00`, so it is never `null`
+and `$order->vat_rate ?? config('financial.default_vat_rate')` always yields
+`0.00` — the fallback is dead code and the whole settlement runs at zero VAT.
+
+Read the rate through `SettlementCalculatorService::resolveVatRate()`, which
+checks `> 0` and falls back to the live price setting and then to
+`financial.default_vat_rate`. All three payment paths use it, so one order cannot
+be taxed differently depending on which path paid it. Never re-inline a literal
+rate and never reach for `??` on a numeric NOT NULL column.
 
 ### Exception Handler — `renderable()` runs before `unauthenticated()`
 
@@ -1237,8 +1808,8 @@ Inside the transaction it finds the buyer hold via `outstandingRefundHold()` —
 `if ($buyerWallet && $buyerWallet->balance_hold >= $debtAmount)`, and step 3 cleared the
 debt flags regardless. So when the hold could not be found, the money was still reclaimed
 from the supplier, the flag still closed, and the buyer's refund stayed in `balance_hold`
-**forever** with no future event able to release it, and with nothing on this branch that
-could even detect it. Now a missing wallet or missing hold throws:
+**forever** with no future event able to release it — surfacing much later as an
+`orphanHolds()` entry with no way to trace it. Now a missing wallet or missing hold throws:
 the whole transaction rolls back, so neither the reclaim nor the flag-clear survives and
 the next run retries cleanly. `handle()` catches per-order, so one stuck order does not
 halt the rest. Note also that the guard compared `balance_hold` against `$debtAmount`
@@ -1357,6 +1928,96 @@ code is **`gold`** (not `golden`). `SettlementCalculatorService::getCommissionRa
 matches `'gold', 'golden'` (alias) so a legacy value never silently falls through to the
 default rate and underpays a gold-tier elite yar.
 
+### One order = one supplier (enforced at placement)
+
+`PlaceOrderAction::assertSingleSupplier()` refuses a cart whose lines resolve to more than
+one `factories.supplier_user_id`, **before any write**. `BusinessException` → 400,
+`orders.multiple_suppliers_not_supported`.
+
+This closes a live money bug, not a hypothetical one. The cart is deliberately
+multi-origin (the whole `Shipment` subsystem exists for it, and `AddToCartAction` accepts
+any `factory_id`), and placement correctly stamps a per-item `supplier_user_id` — but
+**settlement is single-line**: `ProcessPreScalePaymentAction`,
+`ProcessReservationCompletionAction`, `WeighbridgeVatRouter`, `SupplierDebtHandler` and
+`WeighbridgeReconciler` all read `items->first()`. A two-supplier order therefore paid the
+whole PTS to the first supplier and **nothing** to the second, held VAT and booked deficit
+debt against the first only, and even billed the buyer wrong (`POO = first item's unit
+price × total weight`, so a rebar+brick cart charged the whole tonnage at the rebar rate).
+
+Multi-line settlement is a large change; until it lands the guard stops the order. Same
+principle as the `weight_before_scale` guard: **invalid data must halt, not move money.**
+When multi-line settlement ships, remove the guard and *change* (don't delete)
+`Checkout/SingleSupplierPerOrderTest` to assert correct multi-supplier distribution.
+
+### One order = one origin and one destination
+
+Management decision (spec §3), enforced 2026-08-19. **The multi-shipment subsystem stays** —
+the return-to-origin cycle and re-shipping both need `shipments` — but a cart can no longer
+produce more than one leg.
+
+The single-supplier guard does **not** cover this: one supplier can own several factory
+locations, so a perfectly valid single-supplier cart could still be multi-origin.
+
+Enforced in three places, deliberately:
+- `CartParkService::assertSingleOriginAllowed()` / `assertSingleDestinationAllowed()`,
+  called from `AddToCartAction` under the same `lockForUpdate` as the supplier lock — so
+  the user is told when they add, not at checkout.
+- `UpdateCartItemAction` — changing a line's `location_id` or `address_id` can break the
+  rule just as easily as adding. It excludes the row being edited (`whereKeyNot`), or a
+  single-line cart could never change origin, which is a legitimate action.
+- `PlaceOrderAction::assertSingleOriginAndDestination()` — the authoritative one, before
+  any write. Anything reaching the action directly never passed through the cart guards.
+
+Two details that are easy to get wrong:
+- **A line's NULL `address_id` means "the order's primary address"**, so it is resolved
+  against `$data->addressId` before comparing. Without that, a cart with one explicit
+  destination and the rest defaulted looked like two destinations.
+- **`$primaryAddressId` is nullable.** `PlaceOrderData::fromCart` (the buy-for-others
+  `pay-for/{cart}` path) reads it from `carts.address_id`, which is nullable — typing the
+  parameter `int` turned that whole flow into a 500. When it is null, only explicit
+  per-line addresses are compared.
+
+`cart_items.factory_location_id` is NOT NULL at the schema level, so a line without an
+origin cannot exist; the `whereNotNull` in the guards is defensive only.
+
+Pinned by `Cart/SingleOriginAndDestinationTest`.
+
+### Zero price halts settlement
+
+`official_price` falls back to `items->first()->unit_price`; if both are 0, `$op = 0` made
+POO/PTS ≈ 0, then the weighbridge saw a hugely negative `diffPOO`, took the deficit branch
+and refunded the buyer the entire amount while booking a supplier debt — from one
+incomplete row, with no weight shortfall at all. All three sites now throw
+`orders.invalid_official_price`: `ProcessPreScalePaymentAction`,
+`ProcessReservationCompletionAction` (both also log `financial` critical) and
+`WeighbridgeReconciler`. Pinned by `Financial/SettlementDataGuardsTest`.
+
+### `%TC` commission rate is snapshotted per order — read the snapshot, never the live setting
+
+`tc_percentage` lives in `PriceSetting` (a globally editable row), so it is **not** a
+constant. Both payment actions now snapshot the effective rate onto
+`orders.commission_rate` (plus `owner_discount_rate` / `saze_share_rate` /
+`elite_yar_share_rate`) via `SettlementCalculatorService::currentTcPercentage()`, and
+`WeighbridgeReconciler` reads that snapshot through
+`getCommissionRatesForTc($badgeCode, $snapshotTc)`.
+
+Before this, `ProcessPreScalePaymentAction` wrote a hardcoded `COMMISSION_RATE => 1.0`
+(never read back), `ProcessReservationCompletionAction` wrote **no** rate columns at all,
+and `WeighbridgeReconciler` re-read the live `PriceSetting`. Editing that one setting
+between payment and weighbridge therefore moved POOM away from POO **at identical
+weight**, tripping the deficit branch — a real refund to the buyer and a real debt
+recorded against the supplier with not one kilogram changed.
+
+- `getCommissionRates($badgeCode)` — live rate; use only **before/at** payment.
+- `getCommissionRatesForTc($badgeCode, $tc)` — explicit rate; use for **everything after**
+  payment. Orders with no snapshot (legacy rows, `commission_rate` null/0) fall back to the
+  live rate for backward compatibility.
+- `SAZE_SHARE_RATE` / `ELITE_YAR_SHARE_RATE` are no longer dead columns — keep writing them.
+
+Pinned by `Financial/CommissionRateSnapshotTest`. Note the badge itself is safe to change
+mid-flight: `%OW` is 40 % for every badge and `ow+co+ssg` always totals 100 % of TC, so
+POO/PTS are badge-independent — only the WEY/WSSG split shifts.
+
 ### Release a hold BEFORE spending it — reservation completion leg order
 
 The reservation deposit (PTR) lands on WSSG with status `HOLD`, i.e. in `balance_hold`.
@@ -1376,6 +2037,38 @@ source is the buyer's own deposit on this same order. The new order also keeps t
 in that branch (`PTR − POO`) is smaller. Pinned by
 `Financial/ReservationCompletionLegOrderTest`, whose fixture gives the Saze wallet **zero**
 available balance so the bug cannot hide.
+
+### A `whereRaw` containing `OR` must carry its own parentheses
+
+`LedgerReconciler::driftedWallets()` builds the drift condition with a raw
+`balance <> … OR balance_hold <> …`, then appends `--user` as `->where('user_id', $id)`.
+Laravel inserts `whereRaw` verbatim, and SQL binds `AND` tighter than `OR`, so the
+predicate silently became `balance <> … OR (hold <> … AND user_id = ?)` — i.e.
+`financial:doctor --user=X` listed **every drifted wallet in the system** under one user's
+report. Parenthesise any raw fragment that contains a top-level `OR`. Pinned by
+`LedgerReconcilerTest::restricting_to_one_user_does_not_leak_other_wallets`.
+
+### `extractVat()` — `net` is derived from the rounded `vat`
+
+`net = gross − round(vat)`, so `net + vat === gross` exactly. Rounding the two
+independently let their sum drift up to 0.01 Rial from `gross`, and since
+`WeighbridgeVatRouter` debits WSSG by `gross` while crediting WEY/WVAT by `net`+`vat`,
+that drift landed as a sub-Rial imbalance in a double-entry ledger. Pinned by
+`CommissionRateSnapshotTest::extract_vat_net_and_vat_sum_exactly_to_gross`.
+
+> `vatMultiplier()` was **deleted** — zero production callers, and it embodied the exact
+> inline `(vat/100)/(1+vat/100)` form forbidden below. Do not reintroduce it; call
+> `extractVat()`.
+
+### `WalletTransactionEngine` rejects non-positive amounts
+
+`process()` and `releaseHold()` both throw `InvalidArgumentException` unless `$amount` is
+a positive finite number. The sufficient-balance guards compare with `<`, so a negative
+amount slipped straight through them and **inverted the operation**: a `credit*` call with
+a negative amount decremented the balance with no balance check at all, and a `debit*`
+call with one minted money. Every current caller filters `<= 0` itself, but the invariant
+belongs in the engine. Balance mutations also use `Money::add/sub` + `Money::lt` (bcmath)
+rather than raw float `+=` on the decimal columns.
 
 ### Money math is bcmath — never chain raw floats
 
@@ -1412,23 +2105,26 @@ reconstructed for audit. **Never** release a hold with a bare
 **A ledger row is an immutable past event — never rewrite one to mark it "settled".**
 `CheckSupplierBalancesJob` used to follow `releaseHold()` with
 `$holdTx->update(['status' => AVAILABLE])` so the row would no longer look like an
-outstanding hold. But any balance **replayed from these columns** treats `deposit/hold` and
-`deposit/confirmed` as different rows: the rewrite moved the row from "hold +amount,
-balance 0" to "balance +amount, hold 0" while the `hold_release` row *also* credited
-+amount, so a replay yields `+2×amount` balance and `−amount` hold against a wallet
-actually holding `+1×amount` and `0`. On the Laravel 10 branch — which has the
-`LedgerReconciler` / `financial:doctor` audit tool — this permanently broke the buyer's
-wallet in every reconciliation report, by the full refund amount, in both columns.
-
-> **This branch has no `LedgerReconciler`.** The class, its `financial:doctor` command and
-> `Financial/LedgerReconcilerTest` exist only on `fix/round3-audit-elite-yar` and were
-> never ported here, so the damage above is currently invisible on L13 rather than absent.
-> Port it before treating this branch as production-ready.
+outstanding hold. But `LedgerReconciler` **replays balances from these very columns**, and
+`deposit/hold` and `deposit/confirmed` are different rows in that table: the rewrite moved
+the row from "hold +amount, balance 0" to "balance +amount, hold 0" while the
+`hold_release` row *also* credited +amount. Replay therefore reported `+2×amount` balance
+and `−amount` hold against a wallet actually holding `+1×amount` and `0` — so **every
+supplier-debt release permanently broke the buyer's wallet in `financial:doctor`**, by the
+full refund amount, in both columns.
 
 "Already released?" is answered from the ledger instead: `releaseHold()` writes
 `meta.source_hold_id`, so `CheckSupplierBalancesJob::outstandingRefundHold()` excludes any
-hold that a `hold_release` row points at. Pinned by `Financial/SupplierDebtReleaseTest`
-(its reconciler-based case skips itself on branches without the tool).
+hold that a `hold_release` row points at. `orphanHolds()` never needed the rewrite either —
+it nets `+hold` against `−hold_release` and already reached zero on its own.
+Pinned by `Financial/SupplierDebtReleaseTest`.
+
+> **`LedgerReconciler` exists only on this branch.** The class, the `financial:doctor`
+> command and `Financial/LedgerReconcilerTest` were never ported to
+> `fix/round3-audit-l13`, so that branch has no way to detect ledger/balance drift at all.
+> The two tests that assert reconciliation skip themselves there via `class_exists()` —
+> deliberately, so the test files stay **byte-identical across both branches** rather than
+> forking into two maintained copies. Porting the reconciler to L13 is its own change.
 
 ### Wallet status vocabulary — cover `hold` everywhere
 
@@ -1531,6 +2227,14 @@ order-financial escrow values `FinancialCodes::STATUS_HOLD = 'hold'` /
   `whenLoaded('wallet')` (admin lists eager-load it; user endpoints don't).
 - **Idempotency middleware** keys guests by IP (`guest:<ip>`, not a shared `guest`) and caches
   only safe response headers (never `Set-Cookie`/auth headers).
+- **The idempotency cache key is scoped to `method + path`, and the stored entry carries a
+  request fingerprint.** It used to be keyed on `(user, key)` alone, so one client-reused
+  UUID replayed the first response across *different* endpoints — a second `pay-full` on a
+  different order came back "paid" with not a Rial moved. Reusing a key on the same
+  endpoint with a different body now returns **422 `IDEMPOTENCY_KEY_REUSED`** instead of a
+  cached response (accepting a cached success for an operation that never ran is the worse
+  failure). Pinned by `Security/IdempotencyScopeTest` — the middleware had **no** tests
+  before. Never drop the scope or the fingerprint check.
 - **`DebugController` routes are non-production only** (wrapped in `! app()->environment('production')`);
   the analytics/inventory `data/*` routes sit behind `auth:sanctum + role.admin`.
 - **Admin deposit-confirm is double-credit safe.** `ProcessTransactionAction` re-fetches the
@@ -1907,6 +2611,88 @@ never `Str::slug` server-side. `SupplierProfileResource` now exposes
 - **PHPUnit metadata is attribute-based** (`#[Test]`, `#[DataProvider]`) — doc-comment
   `@test`/`@dataProvider` are gone; don't add new ones (PHPUnit 12 removes support).
 
+### Site content that the main frontend actually renders (`2026_07_26_*`)
+
+Two tables added so that **nothing on the customer site is hardcoded**. Both are consumed
+by real pages in `EliteZone_FrontEnd_Phase2` — if you change their contracts, that repo
+breaks visibly.
+
+**`faq_categories`** — `(title, slug unique, subtitle, sort_order, is_active, softDeletes)`
+plus `faqs.faq_category_id` (nullable FK, `nullOnDelete`). The site's support drawer renders
+each category's **title + subtitle + order**, so a free-string `faqs.category` could not
+express it; that legacy column is kept for BC and still filterable, but new writes should
+set `faq_category_id`. `AdminFaqCategoryController::destroy` **422s a category that still
+has FAQs** (deleting it would silently orphan them out of the site menu).
+Public: `GET /faq-categories` → nested `category → faqs` in ONE query
+(`ContentController::faqCategories`), consumed by the support drawer, `/faq`, and the
+product-page FAQ accordion (category slug **`purchase`** — that slug is a contract with
+the frontend, don't rename it).
+
+**`menu_items`** — self-referencing `parent_id` (cascadeOnDelete) + **`location`**
+(`MenuItem::LOCATION_HEADER` / `LOCATION_FOOTER`). ONE table drives both the top-bar
+megamenu and the footer link columns — they are the same concept and two tables would mean
+two places to maintain it. `url = NULL` means **"a title, not a link"**; the frontend
+renders it as non-clickable text, which is why the old `action: ''` dead links are gone.
+Invariants enforced in the FormRequests (`withValidator`, not `rules`):
+- depth ≤ `MenuItem::MAX_DEPTH` (3) — the megamenu design renders no deeper
+- no cycles — an item may not become its own descendant (infinite render otherwise)
+- `url` is either an internal path starting `/` or an absolute http(s) URL
+- `destroy` 422s an item that has children (the FK cascades, so a hard delete would take a
+  whole branch of the site menu down without the admin noticing)
+
+**Caching is per-location**: `MenuItem::cacheKeyFor($location)`, and `booted()` flushes
+**every** location key on save/delete/restore. Never cache the menu under the bare
+`CACHE_KEY` — an admin edit would then not show up on the site.
+
+**Route-parameter gotcha (this bit us):** the admin routes declare `{menuItem}` /
+`{faqCategory}` (camelCase). `UpdateMenuItemRequest` read `$this->route('menu_item')`,
+which returned `null`, so the cycle guard **silently never ran**. When a FormRequest needs
+the bound model, match the parameter name in `routes/api/admin.php` exactly.
+
+**`SiteContentSeeder`** (registered in `DatabaseSeeder`) is an idempotent `firstOrCreate`
+port of the content that used to be hardcoded in the frontend (`supportData.js`,
+`Questions2.jsx`, `NavMenu.jsx`, `Footer.jsx`'s `NAV_COLUMNS`) so that wiring the frontend
+to the API produced **zero visual regression**. Its menu key is
+`(location, parent_id, title)` — `location` is part of it because e.g. "راهنما" exists in
+both the megamenu and the footer and they must not overwrite each other.
+
+Settings gained four public keys for the footer trust badges (`enamad_image_url`,
+`enamad_link`, `samandehi_image_url`, `samandehi_link`) — unset means the frontend renders
+nothing at all, never a placeholder.
+
+Pinned by `tests/Feature/Content/SiteContentTest.php` (11 tests).
+
+### Order units — the admin surface added in session 21 (`2026-07-27`)
+
+`order_units` (how many kg one "unit" is) and the `product_order_units` pivot (which units
+a product sells in, plus `max_quantity` per unit) had **no admin routes at all** until
+session 21 — they were seed-only, while `order_units.amount` drives cart weight, freight
+and the whole settlement. Now:
+
+- `AdminOrderUnitController` — CRUD under `manage-catalog`. **`destroy` checks all three
+  reference paths** (the pivot, `product_variants.limit_order_unit_id`,
+  `products.aggregate_limit_order_unit_id`) and returns a Persian **422** rather than
+  letting the FK cascade quietly break every product that used the unit.
+- `AdminProductController::syncOrderUnits` — `POST /admin/products/{product}/order-units`,
+  body `units: [{order_unit_id, max_quantity}]`, full replace (same contract as
+  `syncAttributes` / `syncFilters`). An empty array is valid (`present`, not `required`).
+- **`ProductOrderUnitResource`** is the one shape for "which unit, what factor, what cap",
+  used by **both** `ProductResource.order_unit_limits` and
+  `CartItemResource.order_unit_limits`. The customer buy box needs `amount` *and*
+  `max_quantity` together; before this, the list endpoint gave only the cap and the detail
+  endpoint only the factor, so no endpoint gave both and the frontend hardcoded 25000/5000.
+- **`amount` and `max_quantity` are cast to `(float)` in the Resource on purpose.** Laravel
+  `decimal` columns serialize as strings and the frontend *multiplies* by these — the exact
+  shape that produced the 100× price bug in session 20.
+- **Write responses must `refresh()` before serializing.** Without it, `store`/`update`
+  returns the in-memory value the client sent (`2750`) while a later `GET` returns the DB
+  decimal (`"2750.00"`) — one field, two shapes. Pinned by
+  `AdminOrderUnitTest::amount_has_the_same_shape_after_write_as_after_read`.
+- `CartResponseBuilder` also eager-loads `items.productVariant.limitOrderUnit`; without it
+  `limit_order_unit` is absent and the cart editor cannot show min/max at all.
+  (It already loaded `product.orderUnits` but `CartItemResource` never serialized them —
+  a paid-for eager load that was thrown away.)
+
 ### Hardening round 2 (`2026_07_20_13*`)
 
 - **Sentry** (`sentry/sentry-laravel`) is wired via `Handler::register` reportable
@@ -1926,8 +2712,66 @@ never `Str::slug` server-side. `SupplierProfileResource` now exposes
   (env `ADMIN_IP_WHITELIST`, comma-separated IP/CIDR via Symfony IpUtils).
   **Empty list = disabled** (default) — enabling is an explicit env change.
 - **OpenAPI export** — `api.json` (Scramble) is committed at repo root; regenerate
-  with `php artisan scramble:export` after route/request changes.
+  with `php artisan scramble:export` after route/request changes. **CI now enforces
+  this** — see "The API contract is a CI gate" below.
 - Pinned by `Admin/AdminHardeningRound2Test` (8 tests).
+
+### The API contract is a CI gate, and it pushes itself to the team
+
+Two jobs in `.github/workflows/ci.yml` replace the hand-written frontend handoff docs
+that kept going stale.
+
+**`contract` — the drift gate.** Runs `php artisan scramble:export` and byte-compares
+the result against the committed `api.json`. If they differ the build fails: the
+snapshot no longer describes the real routes. This is not hypothetical — before the
+gate existed, `api.json` was missing **26 endpoints** (all of `overweight/*`,
+`drivers/*`, `force-cancel`, `profile/debts`) and nothing anywhere reported it.
+Byte-comparison is safe because `scramble:export` is deterministic (verified: two
+consecutive runs produce an identical SHA-256).
+
+It then runs `oasdiff` against the previous commit's `api.json` and writes a Persian
+changelog into the job summary and an artifact.
+
+> ⚠️ **Decide the booleans from `--format json`, never from file size.** Both
+> `oasdiff changelog` and `oasdiff breaking` emit a 37-byte header
+> (`# API Changelog x vs. y`) even when there is nothing to report, so `[ -s file ]`
+> is *always* true. The first version of this workflow had that bug and would have
+> labelled every push a breaking change — an alert that always fires gets muted.
+> `--format json` returns `[]` when empty, which is unambiguous.
+
+**`notify` — push, not pull.** Posts branch, commit, test result and the contract
+changelog to the team chat group. Runs `if: always()` on purpose — a failed build is
+exactly when the notification matters most.
+
+- Secrets: `TEAM_CHAT_BOT_TOKEN`, `TEAM_CHAT_ID`. **Missing secrets skip the step
+  silently** so forks and other clones don't go red over a chat token they don't have.
+- Variable `CHAT_API_BASE` selects the backend: unset → Telegram; set to
+  `https://tapi.bale.ai` → Bale. The two share one API shape.
+- A failed notification never fails the build — undelivered chat must not reject
+  sound code. The token is never echoed; only `.description` from an error body is.
+- Messages are trimmed to 3800 chars (Telegram rejects >4096 with a 400).
+
+### Idempotency uses a **shared** cache store — never the `file` driver
+
+`config('idempotency.store')` (env `IDEMPOTENCY_CACHE_STORE`, default **`database`**) backs
+both the `Cache::lock()` and the cached response in `Idempotency`. It must be shared by
+every app server.
+
+With the project's `CACHE_DRIVER=file`, both were per-server, so on a multi-server
+deployment the financial guard silently did nothing: two concurrent `pay-full` requests
+landing on different servers each acquired "the" lock and both executed, and a client retry
+routed elsewhere missed the cached response and re-ran the operation. The database is
+shared by definition and needs no new infrastructure — hence the default. Requires the
+`cache` + `cache_locks` tables (migration `2026_07_26_120000_create_cache_tables`);
+**run `php artisan migrate`**. `redis` is faster if you have it.
+
+The lock is taken from `$cache->getStore()`, not the `Repository` (which only proxies
+`lock()` via `__call`), and is annotated `LockProvider` — that annotation *is* the
+constraint: `database`/`redis`/`array` all qualify, `file` does not. `phpunit.xml` pins the
+test env to `array`. Pinned by `Security/IdempotencyScopeTest`.
+
+`predis/predis` is in `composer.json` but nothing in `app/` uses Redis yet; it is kept
+deliberately so the client exists *before* an env flip to `redis`, not after.
 
 ## Key Conventions
 
@@ -1962,6 +2806,12 @@ never `Str::slug` server-side. `SupplierProfileResource` now exposes
   routes register as `Route::middleware('api')`. `config.max_age` is now `86400` so
   dropping it costs no extra preflights. **Never add a route-level CORS middleware
   again** — add origins to `CORS_EXTRA_ORIGINS`. Pinned by `Security/CorsAllowlistTest`.
+  **`http://staging.elitezone.me` is now gated to `APP_ENV !== 'production'`.** With
+  `supports_credentials: true`, a plain-HTTP origin sitting in the *production* allowlist
+  means anyone who can MITM that unencrypted traffic can inject script, call the production
+  API with credentials from that origin, and read the responses. Staging still needs the
+  origin (its preflight fails without it) — so run staging with `APP_ENV=staging`, or
+  install SSL and let the existing `https://staging…` entry cover it.
 - **Every `/admin` + `/v1/podium` route must carry an `admin.permission`.**
   `Admin/AdminPermissionCoverageTest` walks the whole route table and fails on any
   ungated one. The **only** exemptions are the two `debug/*` routes, which are already
