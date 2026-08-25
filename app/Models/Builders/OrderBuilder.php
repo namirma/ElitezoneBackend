@@ -76,4 +76,39 @@ class OrderBuilder extends Builder
             $q->where('supplier_user_id', $supplierId);
         });
     }
+
+    /**
+     * سفارش‌هایی که این تأمین‌کننده هنوز نسبت به آن‌ها تعهدِ باز دارد.
+     *
+     * ⚠️ **تنها مرجعِ «تسویه شده یا نه» برای تأمین‌کننده.** هر مسیری که نقشِ
+     * `supplier` را می‌گیرد باید از همین بگذرد — چون گرفتنِ نقش یعنی
+     * `OrderPolicy::manageAsSupplier` دیگر رد می‌کند، و آن‌وقت تأمین‌کننده نه
+     * بارنامه می‌تواند ثبت کند، نه فاکتور مودیان (سند O) بدهد، نه خسارت عودت.
+     * سفارش قفل می‌شود و **هولد مالیاتش هرگز آزاد نمی‌شود** — بدون خطا، فقط
+     * یک ۴۰۳ در مسیری که دیگر کسی صدایش نمی‌زند.
+     *
+     * سه شرط، و هر سه لازم‌اند:
+     *
+     * ۱. وضعیت پایانی نیست → بار هنوز در جریان است.
+     * ۲. `supplier_debt_pending` → به سازه بدهکار است؛ رفتنش یعنی طلبِ
+     *    وصول‌نشده و عودتِ خریدار که در `balance_hold` گیر می‌ماند.
+     * ۳. باسکول خورده ولی `supplier_hold_released_at` خالی است → سند O نیامده
+     *    و مالیاتش هنوز هولد است. **این شرط از دو تای دیگر مستقل است:** سفارش
+     *    می‌تواند `delivered` باشد و پولش همچنان معلق بماند، که دقیقاً همان
+     *    حالتی بود که گاردِ وضعیت‌محورِ قبلی از آن رد می‌شد.
+     */
+    public function unsettledForSupplier(int $supplierId): self
+    {
+        return $this->forSupplier($supplierId)->where(function ($q) {
+            $q->whereNotIn(Order::STATUS, [
+                Order::STATUS_DELIVERED,
+                Order::STATUS_CANCELLED,
+            ])
+                ->orWhere(Order::SUPPLIER_DEBT_PENDING, true)
+                ->orWhere(function ($vat) {
+                    $vat->whereNotNull(Order::WEIGHING_COMPLETED_AT)
+                        ->whereNull(Order::SUPPLIER_HOLD_RELEASED_AT);
+                });
+        });
+    }
 }

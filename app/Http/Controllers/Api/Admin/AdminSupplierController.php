@@ -193,6 +193,24 @@ class AdminSupplierController extends Controller
             return error(__('admin.suppliers.profile_not_found'), [], 404);
         }
 
+        // ⚠️ رد کردن تا تسویه‌ی آخرین سفارش ممنوع است (تصمیم مدیریت).
+        //
+        // این متد نقشِ `supplier` را برمی‌دارد، و `OrderPolicy::manageAsSupplier`
+        // پیش از هر چیز `hasRole('supplier')` را می‌سنجد. پس تأمین‌کننده‌ای که
+        // وسطِ کار رد شود، روی سفارشِ **پرداخت‌شده‌ی** خودش نه بارنامه می‌تواند
+        // ثبت کند، نه سند O بدهد، نه خسارت عودت — سفارش قفل می‌شود و هولد
+        // مالیاتش برای همیشه در `balance_hold` می‌ماند. نه خطایی، نه لاگی؛ فقط
+        // یک ۴۰۳ در مسیری که دیگر کسی صدایش نمی‌زند.
+        $unsettled = Order::query()->unsettledForSupplier((int) $user->id)->count();
+
+        if ($unsettled > 0) {
+            return error(
+                __('admin.suppliers.reject_blocked_by_orders', ['count' => $unsettled]),
+                [],
+                422
+            );
+        }
+
         $profile->forceFill([SupplierProfile::STATUS => SupplierProfile::STATUS_REJECTED])->save();
 
         if ($user->hasRole('supplier')) {

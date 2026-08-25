@@ -16,7 +16,6 @@ use App\Models\SupplierActivityCategory;
 use App\Models\SupplierProfile;
 use App\Models\User;
 use App\Services\Cart\CartParkService;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -194,15 +193,12 @@ class SupplierController extends Controller
             return error(__('profile.supplier_has_factories'), [], 422);
         }
 
-        $hasOpenOrders = Order::query()
-            ->whereHas('items', fn (Builder $q) => $q->where('supplier_user_id', $user->id))
-            ->whereNotIn(Order::STATUS, [
-                Order::STATUS_DELIVERED,
-                Order::STATUS_CANCELLED,
-            ])
-            ->exists();
-
-        if ($hasOpenOrders) {
+        // همان قاعده‌ی ادمین (`AdminSupplierController::reject`) — یک مرجع.
+        //
+        // گاردِ قبلی فقط وضعیت را می‌سنجید، پس سفارشِ `delivered` که سند O
+        // نگرفته بود (مالیاتش هنوز هولد) یا بدهی معلق داشت از آن رد می‌شد و
+        // تأمین‌کننده می‌توانست با پولِ گیرکرده در `balance_hold` برود.
+        if (Order::query()->unsettledForSupplier((int) $user->id)->exists()) {
             return error(__('profile.supplier_has_open_orders'), [], 422);
         }
 
