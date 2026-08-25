@@ -68,9 +68,7 @@ class AddressController extends Controller
     public function update(UpdateAddressRequest $request, Address $address): JsonResponse
     {
 
-        if ($address->{Address::USER_ID} !== Auth::id()) {
-            return error(__('auth.forbidden'), [], 403);
-        }
+        $this->authorize('update', $address);
 
         $data = $request->validated();
 
@@ -91,9 +89,7 @@ class AddressController extends Controller
 
     public function destroy(Address $address): JsonResponse
     {
-        if ($address->{Address::USER_ID} !== Auth::id()) {
-            return error(__('auth.forbidden'), [], 403);
-        }
+        $this->authorize('delete', $address);
 
         if ($address->{Address::IS_DEFAULT}) {
             return error(__('address.delete_default_denied'), [], 400);
@@ -106,9 +102,7 @@ class AddressController extends Controller
 
     public function setDefault(Address $address): JsonResponse
     {
-        if ($address->{Address::USER_ID} !== Auth::id()) {
-            return error(__('auth.forbidden'), [], 403);
-        }
+        $this->authorize('update', $address);
 
         DB::transaction(function () use ($address) {
             Auth::user()->addresses()->where(Address::ID, '!=', $address->id)

@@ -572,6 +572,11 @@ Route::middleware('auth:sanctum')->prefix('profile')->group(function () {
 // شناسه بگیرد، به یک نشتِ بدهیِ دیگران تبدیل می‌شود.
 Route::middleware('auth:sanctum')->get('/profile/debts', [UserDebtController::class, 'index']);
 
+// بازپرداخت بدهی از کیف پول. `idempotency` + `throttle:financial` چون پول
+// جابه‌جا می‌کند — همان الگوی `damages/settle` و `overweight/settle`.
+Route::middleware(['auth:sanctum', 'idempotency', 'throttle:financial'])
+    ->post('/profile/debts/repay', [UserDebtController::class, 'repay']);
+
 // ── تأیید دومرحله‌ای اضافه‌بار (بند ۳.۷، §۷.۳ و §۷.۴) ────────────────────────
 //
 // ترتیب اجباری است: `approve` مالِ تأمین‌کننده و `accept` مالِ خریدار. تفکیکِ

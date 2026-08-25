@@ -114,8 +114,10 @@ class User extends Authenticatable
         self::SECRET_EXPIRES_AT,
         self::TYPE_ID,
         self::PASSWORD,
-        self::BADGE_ID,
-        self::BADGE_PURCHASE_AMOUNT,
+        // ⚠️ `BADGE_ID` و `BADGE_PURCHASE_AMOUNT` عمداً بیرون‌اند، به همان دلیلِ
+        // `debt_balance`/`credit_limit`: نشان، نرخِ کمیسیون را انتخاب می‌کند و
+        // مبلغِ خریدِ نشان مبنای سقفِ مادام‌العمرِ الیت‌یار است. هر دو فقط از
+        // مسیر ادمین/سینک با `forceFill()` نوشته می‌شوند — هرگز از درخواست.
     ];
 
     protected $hidden = [

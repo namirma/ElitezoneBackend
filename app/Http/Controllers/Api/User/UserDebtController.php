@@ -4,14 +4,19 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\User;
 
+use App\Actions\Financial\DebitWalletAction;
+use App\Actions\Financial\FundWalletAction;
+use App\Exceptions\BusinessException;
 use App\Http\Controllers\Controller;
 use App\Models\DebtEntry;
 use App\Models\Order;
 use App\Models\User;
+use App\Models\WalletTransaction;
 use App\Services\Financial\DebtEngine;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 /**
  * بدهی خودِ کاربر — `GET /api/profile/debts` (§۷.۴).
@@ -79,5 +84,79 @@ class UserDebtController extends Controller
                 'total' => $entries->total(),
             ],
         ]);
+    }
+
+    /**
+     * POST /api/profile/debts/repay — کاربر بدهی‌اش را از کیف پول می‌پردازد.
+     *
+     * ⚠️ **بدون این، بدهی می‌توانست دائمی شود.** بدهی هم ثبت سفارش را می‌بست هم
+     * برداشت را، ولی تنها راه‌های تسویه‌اش سه مسیرِ رویدادمحور بودند (اضافه‌بار،
+     * خسارت عودت، سقف خسارت). کاربری که بدهی‌اش از یکی از آن‌ها آمده بود ولی آن
+     * رویداد دیگر تکرار نمی‌شد، **هیچ کاری نمی‌توانست بکند** — نه خودش، نه
+     * ادمین (که فقط `credit_limit` را می‌تواند بگذارد، نه مانده را صفر کند).
+     *
+     * ترتیب لِگ‌ها همان `settleShortfall` است: اول کسر از کیف پول، بعد بستن
+     * دفتر. عکسش یعنی بدهی صفر شود و بعد کسر با موجودیِ ناکافی throw کند.
+     *
+     * ‏`creditSystem` هم می‌خورد چون بدهی یعنی شرکت پول را جلو انداخته بود؛
+     * بازپرداخت باید به همان کیف پولِ سازه برگردد وگرنه دفترِ کیف پول‌ها
+     * نامتوازن می‌ماند و `financial:doctor` آن را «پول خلق‌شده» می‌بیند.
+     */
+    public function repay(
+        Request $request,
+        DebtEngine $debtEngine,
+        DebitWalletAction $debit,
+        FundWalletAction $fund,
+    ): JsonResponse {
+        /** @var User|null $user */
+        $user = User::whereKey((int) Auth::id())->first();
+
+        if ($user === null) {
+            throw new BusinessException(__('orders.internal_order_not_found'), 404);
+        }
+
+        $balance = $debtEngine->balanceFor((int) $user->id);
+
+        if ($balance <= 0.0) {
+            throw new BusinessException(__('orders.debt_nothing_to_repay'), 422);
+        }
+
+        $data = $request->validate(
+            ['amount' => ['nullable', 'numeric', 'min:1']],
+            ['amount.min' => __('orders.debt_repay_amount_min')],
+        );
+
+        // بدون مبلغ یعنی «همه‌اش». بیشتر از مانده به مانده clamp می‌شود تا کاربر
+        // نتواند بیش از بدهی‌اش بپردازد و طلبکارِ سازه شود.
+        $amount = min((float) ($data['amount'] ?? $balance), $balance);
+
+        // ‏`DebitWalletAction`/`FundWalletAction` و نه `WalletTransactionEngine`:
+        // موتور order-scoped است و بدهی می‌تواند ردیفِ بی‌سفارش هم داشته باشد
+        // (تعدیل دستیِ بک‌آفیس). این دو اکشن دقیقاً برای همین حالت‌اند.
+        $systemUser = User::whereKey((int) config('financial.system_user_id', 1))->first();
+
+        DB::transaction(function () use ($user, $systemUser, $amount, $debit, $fund, $debtEngine) {
+            // ترتیب اجباری: اول کسر از کیف پول، بعد بستن دفتر. عکسش یعنی بدهی
+            // صفر شود و بعد کسر با موجودیِ ناکافی throw کند.
+            $debit->execute($user, $amount, __('orders.debt_repay_description'), [
+                'kind' => 'debt_repayment',
+            ]);
+
+            // بدهی یعنی شرکت پول را جلو انداخته بود؛ بازپرداخت باید به همان
+            // کیف پول سازه برگردد وگرنه لِگِ کیف پول‌ها نامتوازن می‌ماند.
+            if ($systemUser !== null) {
+                $fund->execute(
+                    $systemUser, $amount, WalletTransaction::METHOD_BANK_TRANSFER,
+                    __('orders.debt_repay_description'), null, ['kind' => 'debt_repayment']
+                );
+            }
+
+            $debtEngine->repay((int) $user->id, $amount, null, __('orders.debt_repay_description'));
+        });
+
+        return success([
+            'repaid' => (string) $amount,
+            'debt_balance' => (string) $debtEngine->balanceFor((int) $user->id),
+        ], __('orders.debt_repaid'));
     }
 }
