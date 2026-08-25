@@ -804,6 +804,31 @@ completable, which is both a rule violation and what made the race above reachab
 Pinned by `Order/BuyerCancelWindowTest` (incl. a case asserting the cron refuses a reserve
 still inside its grace window, and one asserting admin force-cancel is unaffected).
 
+### A supplier cannot be rejected while an order is unsettled
+
+Management decision. `AdminSupplierController::reject` removes the `supplier` role, and
+`OrderPolicy::manageAsSupplier` checks `hasRole('supplier')` **first** — so a supplier
+rejected mid-flight can no longer register a waybill, submit their Moadian invoice (Doc O),
+or record a return damage on their own **paid** order. The order locks and its VAT hold
+stays in `balance_hold` forever. Nothing errors; it is a 403 on a path nobody calls again.
+
+**`Order::query()->unsettledForSupplier($id)` is the only definition of "settled".** Both
+`reject` and the supplier's own `DELETE /profile/supplier` go through it. Three
+independent conditions block:
+
+1. status is not terminal (`delivered`/`cancelled`) — the load is still moving;
+2. `supplier_debt_pending` — they owe Saze, and leaving strands the buyer's refund in
+   `balance_hold`;
+3. `weighing_completed_at` set while `supplier_hold_released_at` is null — Doc O never
+   arrived, so their VAT is still held.
+
+> ⚠️ Conditions 2 and 3 are **not** implied by condition 1. The self-withdrawal guard used
+> to check status alone, so a `delivered` order with an unreleased VAT hold or a pending
+> debt let the supplier walk away with money stuck. Never reduce this back to a status test.
+
+Pinned by `Admin/SupplierRejectionBlockedTest` (7 cases, including one asserting another
+supplier's open order is irrelevant).
+
 ### Debt is repayable, and the ledgers cannot be deleted
 
 **`POST /api/profile/debts/repay`.** Debt blocks order placement and withdrawal, but the
