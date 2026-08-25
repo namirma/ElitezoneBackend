@@ -125,9 +125,7 @@ class UserBankAccountController extends Controller
      */
     public function destroy(UserBankAccount $bankAccount): JsonResponse
     {
-        if ($bankAccount->{UserBankAccount::USER_ID} !== Auth::id()) {
-            return error(__('auth.forbidden'), [], 403);
-        }
+        $this->authorize('delete', $bankAccount);
 
         $bankAccount->delete();
 

@@ -19,6 +19,11 @@ use Tests\TestCase;
  *
  * Spec ("پروسه خرید"): the total lifetime commission paid to a gold/silver/bronze
  * eliteYAR may not exceed `cap_multiplier × the invoice they paid for their badge`.
+ * ⚠️ `forceFill()->save()` و نه `update()`: `badge_purchase_amount` عمداً از
+ * `$fillable` بیرون است (مبنای سقفِ مادام‌العمر است، مثل `credit_limit`). با
+ * `update()` مقدار بی‌صدا دور ریخته می‌شد و سقف **uncapped** می‌ماند — که
+ * دقیقاً همان چیزی است که این تست باید بگیرد، پس فیکسچر باید صریح بنویسد.
+ *
  * A eliteYAR with no recorded badge purchase (users.badge_purchase_amount = NULL)
  * is uncapped.
  *
@@ -105,7 +110,7 @@ class EliteYARLifetimeCapTest extends TestCase
     #[Test]
     public function consultant_with_no_badge_purchase_is_uncapped(): void
     {
-        $this->eliteYAR->update([User::BADGE_PURCHASE_AMOUNT => null]);
+        $this->eliteYAR->forceFill([User::BADGE_PURCHASE_AMOUNT => null])->save();
 
         $gross = $this->router->route($this->order->fresh(), $this->resultWithPool());
 
@@ -117,7 +122,7 @@ class EliteYARLifetimeCapTest extends TestCase
     public function consultant_gross_is_clamped_to_two_times_badge_purchase(): void
     {
         // Badge invoice 10M → ceiling = 2 × 10M = 20M, well below the 62.5M candidate.
-        $this->eliteYAR->update([User::BADGE_PURCHASE_AMOUNT => 10_000_000]);
+        $this->eliteYAR->forceFill([User::BADGE_PURCHASE_AMOUNT => 10_000_000])->save();
 
         $gross = $this->router->route($this->order->fresh(), $this->resultWithPool());
 
@@ -128,7 +133,7 @@ class EliteYARLifetimeCapTest extends TestCase
     public function prior_payouts_consume_the_lifetime_headroom(): void
     {
         // Ceiling 20M, but 15M already paid on a prior settled order → only 5M headroom.
-        $this->eliteYAR->update([User::BADGE_PURCHASE_AMOUNT => 10_000_000]);
+        $this->eliteYAR->forceFill([User::BADGE_PURCHASE_AMOUNT => 10_000_000])->save();
 
         Order::create([
             Order::PLACER_USER_ID => $this->order->placer_user_id,
@@ -159,7 +164,7 @@ class EliteYARLifetimeCapTest extends TestCase
     #[Test]
     public function the_lifetime_ceiling_is_read_under_a_row_lock(): void
     {
-        $this->eliteYAR->update([User::BADGE_PURCHASE_AMOUNT => 10_000_000]);
+        $this->eliteYAR->forceFill([User::BADGE_PURCHASE_AMOUNT => 10_000_000])->save();
 
         DB::enableQueryLog();
         DB::flushQueryLog();

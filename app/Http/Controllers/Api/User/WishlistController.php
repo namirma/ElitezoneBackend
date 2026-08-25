@@ -46,9 +46,7 @@ class WishlistController extends Controller
 
     public function show(Wishlist $wishlist): JsonResponse
     {
-        if (Auth::id() !== $wishlist->{Wishlist::USER_ID}) {
-            return error('global.unauthorized', [], 403);
-        }
+        $this->authorize('view', $wishlist);
         $variants = $wishlist->variants()
             ->with([
                 'product:id,name,slug',
@@ -67,9 +65,7 @@ class WishlistController extends Controller
 
     public function update(UpdateWishlistRequest $request, Wishlist $wishlist): JsonResponse
     {
-        if (Auth::id() !== $wishlist->{Wishlist::USER_ID}) {
-            return error('global.unauthorized', [], 403);
-        }
+        $this->authorize('update', $wishlist);
         if ($wishlist->{Wishlist::IS_DEFAULT}) {
             return error('wishlist.update.default_denied', [], 403);
         }
@@ -80,9 +76,7 @@ class WishlistController extends Controller
 
     public function destroy(Wishlist $wishlist): JsonResponse
     {
-        if (Auth::id() !== $wishlist->{Wishlist::USER_ID}) {
-            return error('global.unauthorized', [], 403);
-        }
+        $this->authorize('delete', $wishlist);
         if ($wishlist->{Wishlist::IS_DEFAULT}) {
             return error('wishlist.destroy.default_denied', [], 403);
         }
@@ -93,9 +87,7 @@ class WishlistController extends Controller
 
     public function addVariant(Wishlist $wishlist, ProductVariant $variant): JsonResponse
     {
-        if (Auth::id() !== $wishlist->{Wishlist::USER_ID}) {
-            return error('global.unauthorized', [], 403);
-        }
+        $this->authorize('update', $wishlist);
         if ($wishlist->variants()->where('product_variant_id', $variant->id)->exists()) {
             return error('wishlist.variants.store.duplicate', [], 409);
         }
@@ -106,9 +98,7 @@ class WishlistController extends Controller
 
     public function removeVariant(Wishlist $wishlist, ProductVariant $variant): JsonResponse
     {
-        if (Auth::id() !== $wishlist->{Wishlist::USER_ID}) {
-            return error('global.unauthorized', [], 403);
-        }
+        $this->authorize('update', $wishlist);
         if (! $wishlist->variants()->where('product_variant_id', $variant->id)->exists()) {
             return error('wishlist.variants.destroy.not_found', [], 404);
         }
