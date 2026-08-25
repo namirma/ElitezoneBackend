@@ -24,12 +24,26 @@ class CancelOrderAction
     ) {}
 
     /**
-     * اجرای عملیات لغو سفارش
+     * اجرای عملیات لغو سفارش.
      *
-     * @param  bool  $isSystemCron  آیا این درخواست توسط کرون‌جاب سیستم ارسال شده است؟
+     * @param  bool  $isSystemCron  پنجره‌ی لغوِ خریدار را رد می‌کند. نامش تاریخی
+     *                              است: **ادمین هم** آن را می‌فرستد
+     *                              (`AdminOrderController::forceCancel`)، پس
+     *                              معنایش «من کرانم» نیست، «این لغو مشمول
+     *                              محدودیتِ خریدار نیست» است.
+     * @param  bool  $requireExpiredReserve  فقط کرانِ انقضا. سفارش باید هنوز
+     *                                       `RESERVED` و مهلت+ارفاقش گذشته باشد، وگرنه
+     *                                       بی‌صدا رد می‌شود. جدا از `$isSystemCron` است
+     *                                       چون آن پرچم دو مصرف‌کننده دارد و بستنِ این
+     *                                       قاعده رویش، لغوِ اجباریِ ادمین را می‌شکست.
      */
-    public function execute(Order $order, ?string $reason = 'لغو سیستمی', bool $refundWallet = true, bool $isSystemCron = false): Order
-    {
+    public function execute(
+        Order $order,
+        ?string $reason = 'لغو سیستمی',
+        bool $refundWallet = true,
+        bool $isSystemCron = false,
+        bool $requireExpiredReserve = false,
+    ): Order {
         // === گارد رزرو — بند ۳.۴ سند ===
         //
         // ⚠️ نسخه‌ی قبلی این گارد **پنجره‌ی لغو خریدار را کاملاً می‌بست.**
@@ -49,7 +63,7 @@ class CancelOrderAction
             throw new Exception(__('orders.reserve_deadline.cancel_window_closed'));
         }
 
-        $cancelled = DB::transaction(function () use ($order, $reason, $refundWallet, $isSystemCron) {
+        $cancelled = DB::transaction(function () use ($order, $reason, $refundWallet, $isSystemCron, $requireExpiredReserve) {
 
             // Re-fetch + lock the order row. Admin routes have no idempotency middleware
             // and the system cron can race a manual cancel, so without this a concurrent
@@ -61,8 +75,37 @@ class CancelOrderAction
                 throw new Exception(__('orders.internal_order_not_found'));
             }
 
+            // larastan نتیجهٔ `lockForUpdate()->first()` را `Model` می‌بیند نه
+            // `Order`؛ بعد از گاردِ بالا این تنگ‌سازی درست است و گاردِ کرانِ
+            // پایین‌تر را بدون افزودن ورودی به baseline ممکن می‌کند.
+            /** @var Order $locked */
+
             // Idempotency guard: already cancelled → nothing to do.
             if ($locked->status === Order::STATUS_CANCELLED) {
+                return $locked;
+            }
+
+            // ⚠️ گاردِ کران — بین انتخابِ ردیف و قفل‌شدنش دنیا عوض می‌شود.
+            //
+            // کران فهرستِ رزروهای منقضی را می‌گیرد و بعد یکی‌یکی قفل می‌کند.
+            // در همان فاصله خریدار می‌تواند رزرو را **تکمیل و پرداخت** کند
+            // (`ProcessReservationCompletionAction`) یا مهلتش را **تمدید** کند.
+            // گاردِ بالا فقط `CANCELLED` را می‌گرفت، پس سفارشِ تازه‌پرداخت‌شده
+            // لغو می‌شد: موجودی به انبار برمی‌گشت (فروشِ دوباره‌ی همان کالا) و
+            // پولِ تأمین‌کننده پس گرفته می‌شد — بی‌آنکه دفتر نامتوازن شود، پس
+            // `financial:doctor` هم چیزی نمی‌دید.
+            //
+            // فقط کرانِ انقضا این پرچم را می‌فرستد. لغوِ اجباریِ ادمین عمداً
+            // می‌تواند سفارشِ `processing` را هم ببندد.
+            if ($requireExpiredReserve && (
+                $locked->{Order::STATUS} !== Order::STATUS_RESERVED
+                || ! $locked->isReserveWindowExpired()
+            )) {
+                Log::channel('orders')->info(
+                    "لغو خودکار سفارش {$locked->order_number} رد شد — وضعیت یا مهلت پیش از قفل تغییر کرده بود.",
+                    ['status' => $locked->{Order::STATUS}]
+                );
+
                 return $locked;
             }
 

@@ -112,7 +112,7 @@ jobs:
       # سخت‌گیرتر است و baselineِ بزرگ‌تری دارد. دو عدد عمداً مستقل‌اند.
       - name: PHPStan baseline must not grow
         run: |
-          CEILING=442
+          CEILING=379
           COUNT=$(grep -c 'message:' phpstan-baseline.neon)
           echo "baseline entries: ${COUNT} (ceiling ${CEILING})"
           if [ "$COUNT" -gt "$CEILING" ]; then

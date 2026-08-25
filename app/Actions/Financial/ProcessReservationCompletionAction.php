@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Financial;
 
 use App\Constants\FinancialCodes;
+use App\Exceptions\BusinessException;
 use App\Exceptions\InsufficientBalanceException;
 use App\Models\Order;
 use App\Models\SupplierProfile;
@@ -41,10 +42,32 @@ class ProcessReservationCompletionAction
                 throw new \RuntimeException(__('orders.internal_order_not_found'));
             }
 
+            // larastan نتیجهٔ `lockForUpdate()->first()` را `Model` می‌بیند نه
+            // `Order`؛ بعد از گاردِ بالا این تنگ‌سازی درست است. شاخه‌ی L10 همین
+            // خط را دارد و اینجا نبودش یعنی هر متدِ تازه‌ی `Order` (مثل
+            // `isReserveWindowExpired`) روی این شاخه خطای ایستا می‌دهد.
+            /** @var Order $locked */
             if ($this->isAlreadyProcessed($locked)) {
                 Log::channel('financial')->warning("Race detected: order {$locked->id} already completed.");
 
                 return;
+            }
+
+            // ⚠️ رزروِ منقضی قابل تکمیل نیست — بند ۳.۴.
+            //
+            // تنها گاردِ مسیر پرداخت `PAYABLE_STATUSES` بود، که فقط وضعیت را
+            // می‌سنجد نه مهلت را. بدون این، خریدار می‌توانست ساعت‌ها پس از
+            // پایانِ مهلت و ارفاق، رزرو را تکمیل کند — درست وقتی کالا باید
+            // آزاد شده باشد. بدتر: همان لحظه کرانِ انقضا هم روی همین ردیف کار
+            // می‌کرد، و برنده‌ی مسابقه تعیین می‌کرد سفارش تکمیل شود یا لغو.
+            //
+            // گارد **داخل قفل** است تا تمدیدِ هم‌زمان مهلت هم دیده شود.
+            if ($locked->isReserveWindowExpired()) {
+                Log::channel('financial')->warning(
+                    "ProcessReservationCompletionAction refused: order {$locked->id} reserve window expired."
+                );
+
+                throw new BusinessException(__('orders.reserve_expired_cannot_complete'), 422);
             }
 
             $locked->load('items', 'eliteYAR.badge');

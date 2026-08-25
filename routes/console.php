@@ -47,13 +47,6 @@ Schedule::command('orders:expire-overweight')
     ->runInBackground()
     ->onOneServer();
 
-// لغو سفارشات منقضی‌شده — هر دقیقه
-Schedule::command('orders:cancel-expired')
-    ->everyMinute()
-    ->withoutOverlapping()
-    ->runInBackground()
-    ->onOneServer();
-
 // سینک محصولات کویر — هر ساعت
 Schedule::command('products:sync-kavir')
     ->hourly()

@@ -248,12 +248,43 @@ final class LedgerReconciler
             return [];
         }
 
+        // ⚠️ دفترِ بدهی هم بخشی از همین معادله است.
+        //
+        // وقتی شرکت اضافه‌بار را به‌صورت اعتبار جلو می‌اندازد، کیف پول عمداً
+        // نامتوازن می‌شود: `creditSystem(deltaPOO)` کامل خورده ولی از خریدار
+        // فقط `available` کسر شده و مابقی به `debt_entries` رفته. آن اختلاف
+        // «پولِ خلق‌شده» نیست — طلبی است که ثبت شده.
+        //
+        // بدون این تفریق، هر سفارشِ اعتباری برای همیشه در گزارشِ
+        // `financial:doctor` به‌عنوان فساد دفتر می‌نشست، و هشداری که همیشه
+        // روشن است دیگر هشدار نیست: مغایرتِ واقعی لای همین‌ها گم می‌شد.
+        $debt = DB::table('debt_entries')
+            ->selectRaw('order_id, SUM(amount) AS owed')
+            ->whereNotNull('order_id')
+            ->whereIn('order_id', $rows->pluck('order_id')->all())
+            ->groupBy('order_id')
+            ->pluck('owed', 'order_id');
+
+        $rows = $rows->filter(
+            fn ($row) => bccomp(
+                (string) $row->net,
+                (string) ($debt[$row->order_id] ?? '0'),
+                2
+            ) !== 0
+        )->values();
+
+        if ($rows->isEmpty()) {
+            return [];
+        }
+
         $numbers = $this->orderNumbers($rows->pluck('order_id')->all());
 
         return $rows->map(fn ($row) => [
             'order_id' => (int) $row->order_id,
             'order_number' => $numbers[(int) $row->order_id] ?? null,
             'net' => (string) $row->net,
+            // طلبِ ثبت‌شده‌ی همین سفارش، تا گزارش بگوید چقدرِ اختلاف توضیح دارد.
+            'debt' => (string) ($debt[$row->order_id] ?? '0'),
         ])->all();
     }
 

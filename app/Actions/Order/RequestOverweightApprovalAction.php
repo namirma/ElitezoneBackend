@@ -169,8 +169,16 @@ class RequestOverweightApprovalAction
      */
     public function settleShortfall(Order $order): Order
     {
-        if ($order->{Order::STATUS} !== Order::STATUS_AWAITING_WEIGHT_CORRECTION
-            || $order->{Order::WEIGHING_COMPLETED_AT} === null) {
+        // ⚠️ گارد عمداً وضعیت را **شرط لازم نمی‌داند**، فقط بدهیِ همین سفارش را.
+        //
+        // نسخه‌ی اول فقط `AWAITING_WEIGHT_CORRECTION` را می‌پذیرفت، ولی
+        // `chargeOverweight` دو خروجی دارد: خریدارِ فراتر از سقف اعتبار به آن
+        // وضعیت می‌رود، و خریدارِ **درونِ** سقف مستقیم `SHIPPED` می‌شود در حالی
+        // که بدهی‌اش ثبت شده. یعنی همان کسی که اعتبار داشت هیچ راهی برای
+        // تسویه نداشت: سفارش‌گذاری و برداشتش قفل می‌ماند و لِگِ نامتوازنِ کیف
+        // پول (`creditSystem(deltaPOO)` در برابر `debitBuyer(available)`) برای
+        // همیشه در گزارشِ `financial:doctor` می‌ماند.
+        if ($order->{Order::WEIGHING_COMPLETED_AT} === null) {
             throw new BusinessException(__('orders.overweight_no_shortfall'), 422);
         }
 
@@ -178,10 +186,14 @@ class RequestOverweightApprovalAction
         $outstanding = $this->outstandingForOrder($payerId, $order);
 
         if ($outstanding <= 0.0) {
-            // بدهی از راه دیگری تسویه شده — بار را همان‌جا آزاد کن.
-            $order->forceFill([Order::STATUS => Order::STATUS_SHIPPED])->save();
+            // بدهی از راه دیگری تسویه شده — اگر بار هنوز متوقف است آزادش کن.
+            if ($order->{Order::STATUS} === Order::STATUS_AWAITING_WEIGHT_CORRECTION) {
+                $order->forceFill([Order::STATUS => Order::STATUS_SHIPPED])->save();
 
-            return $order;
+                return $order;
+            }
+
+            throw new BusinessException(__('orders.overweight_no_shortfall'), 422);
         }
 
         DB::transaction(function () use ($order, $payerId, $outstanding) {
@@ -198,7 +210,12 @@ class RequestOverweightApprovalAction
                 "تسویه‌ی بدهی اضافه‌بار سفارش {$order->order_number}"
             );
 
-            $order->forceFill([Order::STATUS => Order::STATUS_SHIPPED])->save();
+            // فقط بارِ **متوقف** آزاد می‌شود. حالا که گارد وضعیت‌های دیگر را هم
+            // می‌پذیرد، نوشتنِ بی‌قیدِ `SHIPPED` سفارشِ تحویل‌شده را به عقب
+            // برمی‌گرداند — بدهی تسویه می‌شد و وضعیت خراب.
+            if ($order->{Order::STATUS} === Order::STATUS_AWAITING_WEIGHT_CORRECTION) {
+                $order->forceFill([Order::STATUS => Order::STATUS_SHIPPED])->save();
+            }
         });
 
         Log::channel('financial')->info(

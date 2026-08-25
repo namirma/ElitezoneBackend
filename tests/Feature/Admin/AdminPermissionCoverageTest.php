@@ -43,7 +43,14 @@ class AdminPermissionCoverageTest extends TestCase
         foreach (Route::getRoutes() as $route) {
             $uri = $route->uri();
 
-            if (! str_starts_with($uri, 'api/admin') && ! str_starts_with($uri, 'api/v1/podium')) {
+            // ‏`api/data` هم جارو می‌شود. تا امروز فقط `/admin` و `/v1/podium`
+            // دیده می‌شدند، و دو روتِ آنالیتیکس که بیرونِ هر دو پیشوند بودند
+            // ماه‌ها بدون `admin.permission` ماندند — همان دادهٔ درآمد و CLV که
+            // `/admin/dashboard` پشتِ `manage-financial` قفلش کرده بود. شکافی
+            // که تستِ پوششْ ساختاراً نمی‌توانست ببیند.
+            if (! str_starts_with($uri, 'api/admin')
+                && ! str_starts_with($uri, 'api/v1/podium')
+                && ! str_starts_with($uri, 'api/data')) {
                 continue;
             }
 

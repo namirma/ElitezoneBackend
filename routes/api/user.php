@@ -76,11 +76,26 @@ Route::middleware(['auth:sanctum'])->group(function () {
 });
 
 // ── Analytics & inventory ─────────────────────────────────────────────────
-// داده‌های درآمد، سگمنت‌های RFM و پیش‌بینی موجودی، اطلاعات تجاری حساس‌اند — فقط ادمین
-Route::prefix('data')->middleware(['auth:sanctum', 'role.admin'])->group(function () {
-    Route::get('analytics/dashboard', [AnalyticsController::class, 'dashboard']);
-    Route::get('inventory/predictions', [InventoryController::class, 'predictions']);
-});
+//
+// ⚠️ `role.admin` به‌تنهایی کافی نبود و یک تشدید امتیازِ افقی می‌ساخت.
+//
+// ‏`GET /admin/dashboard` عمداً پشتِ `admin.permission:manage-financial` است
+// چون درآمد و CLV برمی‌گرداند. این دو روت **همان کلاسِ داده** را می‌دهند
+// (`revenue_chart`, `rfm_segments`, `customer_value`, `top_products`) ولی فقط
+// `role.admin` داشتند — پس ادمینی با مجوزِ محدود (مثلاً فقط `manage-content`)
+// روی `/admin/dashboard` ۴۰۳ می‌گرفت و همان اعداد را از اینجا می‌خواند.
+//
+// `admin.ip` هم اضافه شد: این‌ها بیرونِ گروهِ `/admin` بودند، پس از allowlistِ
+// IP هم بیرون می‌ماندند — دقیقاً وقتی که سازمان آن را روشن می‌کند.
+//
+// ‏`AdminPermissionCoverageTest` فقط `/admin` و `/v1/podium` را جارو می‌کرد،
+// پس ساختاراً نمی‌توانست این شکاف را ببیند؛ آن تست هم گسترش یافت.
+Route::prefix('data')
+    ->middleware(['auth:sanctum', 'role.admin', 'admin.ip', 'admin.permission:manage-financial'])
+    ->group(function () {
+        Route::get('analytics/dashboard', [AnalyticsController::class, 'dashboard']);
+        Route::get('inventory/predictions', [InventoryController::class, 'predictions']);
+    });
 
 // ── Products (authenticated — needs pricing role) ─────────────────────────
 Route::prefix('products')->middleware(['auth:sanctum', 'attach.price.category'])->group(function () {

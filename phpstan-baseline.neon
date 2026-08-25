@@ -37,19 +37,7 @@ parameters:
 			path: app/Actions/Cart/UpdateCartItemAction.php
 
 		-
-			message: '#^Method App\\Actions\\Financial\\DebitWalletAction\:\:execute\(\) should return App\\Models\\WalletTransaction but returns Illuminate\\Database\\Eloquent\\Model\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Actions/Financial/DebitWalletAction.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$family\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Financial/ProcessPodiumDepositAction.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Actions/Financial/ProcessPodiumDepositAction.php
@@ -79,12 +67,6 @@ parameters:
 			path: app/Actions/Financial/ProcessPodiumDepositAction.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$elite_yar_user_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Financial/ProcessPreScalePaymentAction.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
 			identifier: property.notFound
 			count: 3
@@ -100,12 +82,6 @@ parameters:
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$order_number\.$#'
 			identifier: property.notFound
 			count: 5
-			path: app/Actions/Financial/ProcessPreScalePaymentAction.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$placer_user_id\.$#'
-			identifier: property.notFound
-			count: 1
 			path: app/Actions/Financial/ProcessPreScalePaymentAction.php
 
 		-
@@ -163,99 +139,21 @@ parameters:
 			path: app/Actions/Financial/ProcessPreScalePaymentAction.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 6
-			path: app/Actions/Financial/ProcessReservationCompletionAction.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$items\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$badge\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Actions/Financial/ProcessReservationCompletionAction.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$official_price\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$code\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Actions/Financial/ProcessReservationCompletionAction.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$order_number\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$supplier_user_id\.$#'
 			identifier: property.notFound
-			count: 7
-			path: app/Actions/Financial/ProcessReservationCompletionAction.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$payment_to_reserve\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Financial/ProcessReservationCompletionAction.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$placer_user_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Financial/ProcessReservationCompletionAction.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$shipping_cost\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Financial/ProcessReservationCompletionAction.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$vat_rate\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Financial/ProcessReservationCompletionAction.php
-
-		-
-			message: '#^Parameter \#1 \$order of method App\\Actions\\Financial\\ProcessReservationCompletionAction\:\:isAlreadyProcessed\(\) expects App\\Models\\Order, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Actions/Financial/ProcessReservationCompletionAction.php
-
-		-
-			message: '#^Parameter \#1 \$order of method App\\Services\\Financial\\WalletTransactionEngine\:\:creditBuyer\(\) expects App\\Models\\Order, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
 			count: 2
-			path: app/Actions/Financial/ProcessReservationCompletionAction.php
-
-		-
-			message: '#^Parameter \#1 \$order of method App\\Services\\Financial\\WalletTransactionEngine\:\:creditSupplier\(\) expects App\\Models\\Order, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Actions/Financial/ProcessReservationCompletionAction.php
-
-		-
-			message: '#^Parameter \#1 \$order of method App\\Services\\Financial\\WalletTransactionEngine\:\:creditSystem\(\) expects App\\Models\\Order, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Actions/Financial/ProcessReservationCompletionAction.php
-
-		-
-			message: '#^Parameter \#1 \$order of method App\\Services\\Financial\\WalletTransactionEngine\:\:debitBuyer\(\) expects App\\Models\\Order, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Actions/Financial/ProcessReservationCompletionAction.php
-
-		-
-			message: '#^Parameter \#1 \$order of method App\\Services\\Financial\\WalletTransactionEngine\:\:debitSystem\(\) expects App\\Models\\Order, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 3
-			path: app/Actions/Financial/ProcessReservationCompletionAction.php
-
-		-
-			message: '#^Parameter \#1 \$order of method App\\Services\\Invoice\\InvoiceGenerator\:\:generateReservationCompletionDocs\(\) expects App\\Models\\Order, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Actions/Financial/ProcessReservationCompletionAction.php
-
-		-
-			message: '#^Parameter \#3 \$order of method App\\Services\\Financial\\WalletTransactionEngine\:\:releaseHold\(\) expects App\\Models\\Order, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
 			path: app/Actions/Financial/ProcessReservationCompletionAction.php
 
 		-
@@ -309,12 +207,6 @@ parameters:
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
 			identifier: property.notFound
-			count: 2
-			path: app/Actions/Financial/ProcessWeighbridgeResultAction.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$items\.$#'
-			identifier: property.notFound
 			count: 1
 			path: app/Actions/Financial/ProcessWeighbridgeResultAction.php
 
@@ -326,12 +218,6 @@ parameters:
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Actions/Financial/ProcessWeighbridgeResultAction.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$weight_before_scale\.$#'
 			identifier: property.notFound
 			count: 2
 			path: app/Actions/Financial/ProcessWeighbridgeResultAction.php
@@ -349,37 +235,7 @@ parameters:
 			path: app/Actions/Financial/ProcessWeighbridgeResultAction.php
 
 		-
-			message: '#^Parameter \#1 \$order of method App\\Services\\Financial\\SupplierDebtHandler\:\:handle\(\) expects App\\Models\\Order, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Actions/Financial/ProcessWeighbridgeResultAction.php
-
-		-
-			message: '#^Parameter \#1 \$order of method App\\Services\\Financial\\WeighbridgeReconciler\:\:reconcile\(\) expects App\\Models\\Order, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Actions/Financial/ProcessWeighbridgeResultAction.php
-
-		-
-			message: '#^Parameter \#1 \$order of method App\\Services\\Financial\\WeighbridgeVatRouter\:\:route\(\) expects App\\Models\\Order, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Actions/Financial/ProcessWeighbridgeResultAction.php
-
-		-
-			message: '#^Parameter \#1 \$order of method App\\Services\\Invoice\\InvoiceGenerator\:\:generateWeighbridgeDocs\(\) expects App\\Models\\Order, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Actions/Financial/ProcessWeighbridgeResultAction.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Financial/RecordSupplierMoadianInvoiceAction.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$order_number\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Actions/Financial/RecordSupplierMoadianInvoiceAction.php
@@ -387,18 +243,6 @@ parameters:
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$supplier_moadian_ref\.$#'
 			identifier: property.notFound
-			count: 1
-			path: app/Actions/Financial/RecordSupplierMoadianInvoiceAction.php
-
-		-
-			message: '#^Parameter \#1 \$order of method App\\Services\\Financial\\WalletTransactionEngine\:\:creditVat\(\) expects App\\Models\\Order, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Actions/Financial/RecordSupplierMoadianInvoiceAction.php
-
-		-
-			message: '#^Parameter \#1 \$order of method App\\Services\\Financial\\WalletTransactionEngine\:\:debitVat\(\) expects App\\Models\\Order, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
 			count: 1
 			path: app/Actions/Financial/RecordSupplierMoadianInvoiceAction.php
 
@@ -515,108 +359,6 @@ parameters:
 			identifier: nullCoalesce.property
 			count: 1
 			path: app/Actions/Order/CalculateOrderEstimateAction.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Order\:\:\$reservation_expires_at\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Order/CancelOrderAction.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$order_number\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Order/CancelOrderAction.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$payment_status\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Order/CancelOrderAction.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Order/CancelOrderAction.php
-
-		-
-			message: '#^Method App\\Actions\\Order\\CancelOrderAction\:\:execute\(\) should return App\\Models\\Order but returns Illuminate\\Database\\Eloquent\\Model\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Actions/Order/CancelOrderAction.php
-
-		-
-			message: '#^Parameter \#1 \$order of event class App\\Events\\Order\\OrderCancelled constructor expects App\\Models\\Order in App\\Events\\Order\\OrderCancelled\:\:dispatch\(\), Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Actions/Order/CancelOrderAction.php
-
-		-
-			message: '#^Parameter \#1 \$order of method App\\Actions\\Order\\CancelOrderAction\:\:processRefund\(\) expects App\\Models\\Order, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Actions/Order/CancelOrderAction.php
-
-		-
-			message: '#^Parameter \#1 \$order of method App\\Actions\\Order\\CancelOrderAction\:\:resolvePaymentStatus\(\) expects App\\Models\\Order, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Actions/Order/CancelOrderAction.php
-
-		-
-			message: '#^Parameter \#1 \$order of method App\\Services\\InventoryService\:\:restoreStock\(\) expects App\\Models\\Order, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Actions/Order/CancelOrderAction.php
-
-		-
-			message: '#^Parameter \#1 \$order of method App\\Services\\Invoice\\InvoiceGenerator\:\:generateCancellationDocs\(\) expects App\\Models\\Order, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Actions/Order/CancelOrderAction.php
-
-		-
-			message: '#^Parameter \#1 \$order of method App\\Services\\Marketing\\CouponService\:\:releaseForOrder\(\) expects App\\Models\\Order, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Actions/Order/CancelOrderAction.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Order\:\:\$elite_yar_user_id\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Actions/Order/FinalizeInvoiceAction.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\User\:\:\$wallet\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Order/FinalizeInvoiceAction.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Actions/Order/FinalizeInvoiceAction.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$order_number\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Order/FinalizeInvoiceAction.php
-
-		-
-			message: '#^Method App\\Actions\\Order\\FinalizeInvoiceAction\:\:resolveFee\(\) should return array\{float\|int\|null, int\|null\} but returns array\{numeric\-string, mixed\}\.$#'
-			identifier: return.type
-			count: 2
-			path: app/Actions/Order/FinalizeInvoiceAction.php
-
-		-
-			message: '#^Parameter \#1 \$order of method App\\Actions\\Order\\FinalizeInvoiceAction\:\:resolveFee\(\) expects App\\Models\\Order, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Actions/Order/FinalizeInvoiceAction.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$payment_status\.$#'
@@ -829,12 +571,6 @@ parameters:
 			path: app/Actions/Profile/SyncUserRolesAction.php
 
 		-
-			message: '#^Method App\\Actions\\User\\UpdateUserProfileAction\:\:execute\(\) should return App\\Models\\UserProfile but returns Illuminate\\Database\\Eloquent\\Model\|null\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Actions/User/UpdateUserProfileAction.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Agreement\:\:\$pivot\.$#'
 			identifier: property.notFound
 			count: 2
@@ -887,24 +623,6 @@ parameters:
 			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Http/Controllers/Api/Admin/AdminOrderController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$amount\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Api/Admin/AdminPodiumDepositController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Api/Admin/AdminPodiumDepositController.php
-
-		-
-			message: '#^Parameter \#2 \$transaction of event class App\\Events\\Financial\\WalletFunded constructor expects App\\Models\\WalletTransaction in App\\Events\\Financial\\WalletFunded\:\:dispatch\(\), Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/Admin/AdminPodiumDepositController.php
 
 		-
 			message: '#^Dead catch \- Illuminate\\Database\\QueryException is never thrown in the try block\.$#'
@@ -1225,15 +943,9 @@ parameters:
 			path: app/Http/Controllers/Api/User/SupplierOrderController.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Api/User/SupplierOrderController.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
 			identifier: property.notFound
-			count: 4
+			count: 2
 			path: app/Http/Controllers/Api/User/SupplierOrderController.php
 
 		-
@@ -1315,42 +1027,6 @@ parameters:
 			path: app/Http/Controllers/Payment/WalletPaymentController.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\>\|Illuminate\\Database\\Eloquent\\Model\:\:\$final_amount\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Payment/WalletPaymentController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\>\|Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/Payment/WalletPaymentController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\>\|Illuminate\\Database\\Eloquent\\Model\:\:\$payment_status\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Payment/WalletPaymentController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\>\|Illuminate\\Database\\Eloquent\\Model\:\:\$placer_user_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Payment/WalletPaymentController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\>\|Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Payment/WalletPaymentController.php
-
-		-
-			message: '#^Parameter \#1 \$order of method App\\Actions\\Financial\\ProcessPreScalePaymentAction\:\:execute\(\) expects App\\Models\\Order, Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\>\|Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Payment/WalletPaymentController.php
-
-		-
 			message: '#^Parameter \#2 \$replace of function str_replace expects array\<string\>\|string, array\<int, int\> given\.$#'
 			identifier: argument.type
 			count: 2
@@ -1361,30 +1037,6 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: app/Http/Middleware/AttachActivePriceCategory.php
-
-		-
-			message: '#^Negated boolean expression is always false\.$#'
-			identifier: booleanNot.alwaysFalse
-			count: 1
-			path: app/Http/Middleware/EnsureRoleIsSelected.php
-
-		-
-			message: '#^Strict comparison using \!\=\= between int\<0, max\> and null will always evaluate to true\.$#'
-			identifier: notIdentical.alwaysTrue
-			count: 1
-			path: app/Http/Middleware/EnsureRoleIsSelected.php
-
-		-
-			message: '#^Unreachable statement \- code above always terminates\.$#'
-			identifier: deadCode.unreachable
-			count: 1
-			path: app/Http/Middleware/EnsureRoleIsSelected.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$slug\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Middleware/EnsureUserIsExpert.php
 
 		-
 			message: '#^PHPDoc tag @return has invalid value \(array\<string,\)\: Unexpected token "\*/", expected type at offset 104 on line 5$#'
@@ -1657,12 +1309,6 @@ parameters:
 			path: app/Http/Resources/Profile/EliteYARRelationResource.php
 
 		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\Profile\\EliteYARRelationResource\:\:\$national_code\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/Profile/EliteYARRelationResource.php
-
-		-
 			message: '#^Access to an undefined property App\\Http\\Resources\\Profile\\EliteYARRelationResource\:\:\$pivot\.$#'
 			identifier: property.notFound
 			count: 2
@@ -1684,12 +1330,6 @@ parameters:
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_verified\.$#'
 			identifier: property.notFound
 			count: 2
-			path: app/Http/Resources/Profile/UserResource.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$slug\.$#'
-			identifier: property.notFound
-			count: 1
 			path: app/Http/Resources/Profile/UserResource.php
 
 		-
@@ -1751,13 +1391,6 @@ parameters:
 			identifier: property.notFound
 			count: 1
 			path: app/Jobs/Financial/CheckSupplierBalancesJob.php
-
-		-
-			message: '#^Parameter \#3 \$order of method App\\Services\\Financial\\WalletTransactionEngine\:\:releaseHold\(\) expects App\\Models\\Order, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Jobs/Financial/CheckSupplierBalancesJob.php
-
 
 		-
 			message: '#^Using nullsafe property access on non\-nullable type App\\Models\\User\. Use \-\> instead\.$#'
@@ -1936,7 +1569,7 @@ parameters:
 		-
 			message: '#^Access to an undefined property App\\Models\\Order\:\:\$elite_yar_hold_released_at\.$#'
 			identifier: property.notFound
-			count: 2
+			count: 1
 			path: app/Models/Order.php
 
 		-
@@ -2288,12 +1921,6 @@ parameters:
 			path: app/Services/Financial/WeighbridgeReconciler.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$supplier_user_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Financial/WeighbridgeVatRouter.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\ProductVariant\:\:\$weight\.$#'
 			identifier: property.notFound
 			count: 1
@@ -2498,15 +2125,9 @@ parameters:
 			path: app/Services/PodiumServices/PodiumWithdrawalService.php
 
 		-
-			message: '#^Call to function is_array\(\) with array\<mixed\> will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: app/Services/Pricing/CartPricingCalculator.php
-
-		-
 			message: '#^Call to function is_string\(\) with array\<mixed\> will always evaluate to false\.$#'
 			identifier: function.impossibleType
-			count: 2
+			count: 1
 			path: app/Services/Pricing/CartPricingCalculator.php
 
 		-

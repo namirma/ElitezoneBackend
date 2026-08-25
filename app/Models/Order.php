@@ -433,6 +433,29 @@ class Order extends Model
     }
 
     /**
+     * مهلتِ رزرو **و** بازه‌ی ارفاقش هر دو تمام شده‌اند؟
+     *
+     * تنها مرجعِ این سؤال. پیش از این، منطقِ ارفاق فقط داخل `ExpireReserves`
+     * بود و `CancelExpiredOrders` بدون آن روی همان ردیف‌ها کار می‌کرد — پس
+     * رزرو دقیقاً سرِ `reserve_deadline` لغو می‌شد و **ارفاق هرگز اعمال
+     * نمی‌شد**. با یک‌جا شدنِ قاعده، هر لغوکننده‌ای همان جواب را می‌گیرد.
+     *
+     * مهلتِ خالی یعنی «رزروی در کار نیست» → منقضی حساب نمی‌شود.
+     */
+    public function isReserveWindowExpired(): bool
+    {
+        $deadline = $this->{self::RESERVE_DEADLINE};
+
+        if ($deadline === null) {
+            return false;
+        }
+
+        $grace = max(0, (int) ($this->{self::RESERVE_GRACE_HOURS} ?? 0));
+
+        return $deadline->copy()->addHours($grace)->isPast();
+    }
+
+    /**
      * کیف پولی که پولِ این سفارش از آن می‌آید و استرداد به آن برمی‌گردد.
      *
      * `??` و نه `?:` — و برای سفارش‌های پیش از فاز ۶ که ستون خالی است، به
