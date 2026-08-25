@@ -475,7 +475,7 @@ All financial constants live in `config/financial.php` — **never hardcode amou
 | `financial.hold_fee` | `HOLD_FEE_RIALS` | `50_000_000` | Fee to extend a reservation (5M Tomans). `PayHoldFeeAction` debits WO **and** credits WSSG (Saze) so the ledger stays balanced — double-entry, never a bare debit |
 | `financial.system_user_id` | `FINANCIAL_SYSTEM_USER_ID` | `1` | User ID of the platform's central "Saze" (WSSG) wallet |
 | `financial.vat_user_id` | `FINANCIAL_VAT_USER_ID` | *(falls back to system_user_id)* | User ID of the dedicated VAT escrow (WVAT) wallet; set in .env once a separate VAT user is created |
-| `financial.pending_order_ttl_hours` | `PENDING_ORDER_TTL_HOURS` | `2` | Hours before an unpaid PENDING order auto-cancels (`orders:cancel-expired` — `CancelExpiredOrders`) |
+| `financial.pending_order_ttl_hours` | `PENDING_ORDER_TTL_HOURS` | `2` | Legacy TTL for unpaid PENDING orders. **Inert** — that status no longer exists and `orders:cancel-expired` was deleted; expiry runs via `orders:expire-reserves`. |
 | `financial.reservation_validity_hours` | `RESERVATION_VALIDITY_HOURS` | `2` | Hours a paid reservation stays valid before it must be completed/extended |
 | `financial.hold_fee_extension_hours` | `HOLD_FEE_EXTENSION_HOURS` | `24` | Hours that paying the hold fee extends a reservation (`PayHoldFeeAction::extensionHours()`) |
 | `financial.deposit_min` | `DEPOSIT_MIN_RIALS` | `10_000` | Min per wallet deposit (read by `WalletDepositRequest`) |
@@ -771,6 +771,108 @@ too. **The order was locked forever.**
   `DebtEngine::balanceFor()` — the person-level balance would charge the buyer for debt
   from unrelated orders.
 - Pinned by `Order/OverweightApprovalTest`.
+
+### Reservation expiry: one cron, one grace rule, one guard
+
+Four defects lived here at once and only surfaced by tracing.
+
+**`orders:cancel-expired` is deleted.** It ran every minute filtering on
+`reservation_expires_at` with no grace check, while `orders:expire-reserves` ran every
+minute on `reserve_deadline` *with* `reserve_grace_hours`. `ProcessReservationPaymentAction`
+writes **both columns the same value**, so the first cron always won and cancelled the
+instant the deadline passed — `reserve_grace_hours` was snapshotted, read by the other
+cron, and structurally unable to ever matter.
+
+**`Order::isReserveWindowExpired()` is the only grace rule.** It lives on the model so the
+cron and `CancelOrderAction` cannot answer the question differently.
+
+**`CancelOrderAction` re-checks under the lock.** The only early-out used to be
+`=== CANCELLED`, so a buyer who completed payment between the cron's SELECT and the row
+lock had their **paid** order cancelled and refunded: stock restored (the same goods
+sellable twice) and the supplier's payment clawed back. Every leg reversed cleanly, so
+`financial:doctor` saw nothing.
+
+> ⚠️ **`$isSystemCron` does not mean "the cron sent this".** It means "skip the buyer
+> cancel window", and `AdminOrderController::forceCancel` passes it too. Binding the
+> expiry re-check to that flag broke admin force-cancel. The re-check has its own
+> parameter, **`requireExpiredReserve`**, sent only by `ExpireReserves`.
+
+**`ProcessReservationCompletionAction` rejects an expired reservation.** Its only gate was
+`PAYABLE_STATUSES`, which checks status, not time — an expired reservation stayed
+completable, which is both a rule violation and what made the race above reachable.
+
+Pinned by `Order/BuyerCancelWindowTest` (incl. a case asserting the cron refuses a reserve
+still inside its grace window, and one asserting admin force-cancel is unaffected).
+
+### Debt is repayable, and the ledgers cannot be deleted
+
+**`POST /api/profile/debts/repay`.** Debt blocks order placement and withdrawal, but the
+only ways to clear it were three event-driven paths (overweight, return damage, damage
+cap). A user whose debt came from one of those, where the event never recurred, was locked
+out permanently — they could not clear it and neither could an admin, who can set
+`credit_limit` but never zero a balance. Order of legs matters: debit the wallet, credit
+Saze (the company fronted the money, so repayment must return there or the wallet ledger
+stays unbalanced), then close the debt ledger. An insufficient balance therefore rolls
+back **without** zeroing the debt. Omitting `amount` repays everything; a larger amount is
+clamped to the balance. Uses `DebitWalletAction`/`FundWalletAction`, not
+`WalletTransactionEngine` — the engine is order-scoped and a debt row may have no order.
+
+**Financial ledgers are `restrictOnDelete`.** `wallet_transactions.wallet_id`,
+`debt_entries.user_id` and `invoices.order_id/user_id` were `cascadeOnDelete`, and none of
+the parents use `SoftDeletes` — so one `$user->delete()` erased that person's whole
+financial history: balance, the append-only transaction ledger, the debt ledger and their
+tax documents. Both ledgers exist so `financial:doctor` can replay balances from them,
+which a cascade defeats. The delete now fails loudly instead.
+
+**`financial:doctor` nets `debt_entries`.** `unbalancedOrders()` summed only
+`wallet_transactions`, so every credit-fronted overweight (where `creditSystem(deltaPOO)`
+exceeds `debitBuyer(available)` by the shortfall) was reported as money created —
+permanently. An alert that always fires is not an alert.
+
+**`settleShortfall()` is no longer gated on `AWAITING_WEIGHT_CORRECTION`.**
+`chargeOverweight()` has two outcomes: a buyer over their credit limit lands in that
+status, but a buyer **within** it goes straight to `SHIPPED` carrying a debt — and could
+never reach the settle path. The gate is now the order's own outstanding debt; the status
+write back to `SHIPPED` is guarded so a delivered order is never dragged backwards.
+
+Pinned by `Financial/DebtRepaymentTest`.
+
+### Mass-assignment: what moved out of `$fillable`, and what deliberately did not
+
+`users.badge_id` / `badge_purchase_amount` are **out**. They pick the commission tier and
+set the lifetime-cap basis — the same class of column as `debt_balance`/`credit_limit`,
+which were already excluded. Three `EliteYARLifetimeCapTest` cases failed on this and that
+was the proof, not a nuisance: the fixture used `update()`, the value was silently
+dropped, and the cap read as **uncapped**. Fixtures must use `forceFill()->save()`.
+
+`Invoice` replaced `$guarded = ['id']` with an explicit `$fillable` — the broadest possible
+policy on a tax document, in a codebase with tight `$fillable` everywhere else.
+
+`Order::$fillable` **keeps** `status`, `payment_status`, `paid_at`, `final_amount`, and the
+reason is recorded in the model. They are just as sensitive as the 23 snapshot columns, but
+unlike those they are needed at creation and written by dozens of explicit
+`->update([...])` call sites; removing them broke 72 tests. Rewriting the whole money path
+to `forceFill` carries more risk than the latent issue. The real guard is that **no
+controller may pass request input to `$order->update()`** — none do today.
+
+### The four owner-only policies are load-bearing now
+
+`CartPolicy`, `AddressPolicy`, `WishlistPolicy` and `UserBankAccountPolicy` were registered
+in `AuthServiceProvider`, unit-tested, and **never invoked** — their controllers hand-rolled
+`if ($model->user_id !== Auth::id())`. So the policy tests proved nothing about the HTTP
+layer, and any new action on those controllers shipped with no backstop. Nine guards now
+call `$this->authorize()`. This also removed `WishlistController` returning the raw key
+`global.unauthorized` as the user-facing message.
+
+### `/api/data/*` carries the admin permission tier
+
+`GET /data/analytics/dashboard` and `/data/inventory/predictions` return the same class of
+data as `GET /admin/dashboard` (`revenue_chart`, `rfm_segments`, `customer_value`,
+`top_products`) but carried only `role.admin` — so an admin restricted to, say,
+`manage-content` was 403'd on the panel home and read the same numbers here. They also sat
+outside the `/admin` group, hence outside `admin.ip`. Both now carry `admin.ip` +
+`admin.permission:manage-financial`, and `AdminPermissionCoverageTest` sweeps `api/data`
+too — it previously could not see the gap at all.
 
 ### Admin force-cancel requires a ticket AND a reason
 
@@ -1137,8 +1239,9 @@ Jobs/
 ```
 
 > `Order/CheckReservationExpiryJob` was DELETED — it was dead code with zero call
-> sites; expired-order cancellation actually runs via the `orders:cancel-expired`
-> artisan command (`Console/Commands/CancelExpiredOrders`, scheduled every minute).
+> sites; reservation expiry runs via the `orders:expire-reserves` artisan command
+> (`Console/Commands/ExpireReserves`, scheduled every minute). The older
+> `orders:cancel-expired` was deleted — it ignored `reserve_grace_hours`.
 
 ### Queue worker is a silent single point of failure — `queue:health` watches it
 
@@ -1176,7 +1279,8 @@ deliberately excluded (`--only-db`); the uploaded receipts/invoices need their o
 
 Scheduled jobs (crons, wired in `Console/Kernel.php`) — **all** use
 `withoutOverlapping()->onOneServer()`:
-- `orders:cancel-expired` command — cancels expired pending/reserved orders
+- `orders:expire-reserves` command — cancels reservations whose deadline **and** grace
+  window have both passed (`Order::isReserveWindowExpired()`)
 - `Financial/CheckSupplierBalancesJob` — polls `supplier_debt_pending = true` orders;
   when supplier balance ≥ debt, reclaims it and releases buyer's HOLD refund to AVAILABLE
 - `Analytics/CalculateCustomerRfm` — customer segmentation analytics (03:00)
@@ -1442,7 +1546,7 @@ Performance-critical indexes added across multiple migrations:
 |---|---|---|---|
 | `orders` | `orders_status_idx` | `2026_05_23_*` | scope queries (`current`/`delivered`/`cancelled`) |
 | `orders` | `orders_payment_status_idx` | `2026_05_23_*` | admin filtering |
-| `orders` | `orders_reservation_expires_at_idx` | `2026_05_23_*` | `orders:cancel-expired` cron |
+| `orders` | `orders_reservation_expires_at_idx` | `2026_05_23_*` | legacy — the cron that used it is deleted; `reserve_deadline` is the live column |
 | `orders` | `orders_placer_status_idx` (composite) | `2026_05_23_*` | "my orders" lists |
 | `users` | `users_national_code_idx` | `2026_05_23_*` | admin back-office search |
 | `wallet_transactions` | `wt_order_type_status_idx` (composite) | `2026_06_22_000000_*` | financial report filters |
