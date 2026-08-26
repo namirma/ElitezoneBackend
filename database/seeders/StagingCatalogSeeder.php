@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Factory;
 use App\Models\FactoryLocation;
 use App\Models\FactoryStock;
+use App\Models\OrderUnit;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\ProductImage;
@@ -199,6 +200,55 @@ class StagingCatalogSeeder extends Seeder
         ];
     }
 
+    /**
+     * واحدهای سفارش — بدون این، صفحه‌ی محصول می‌گوید «واحد سفارشی برای این
+     * محصول تعریف نشده است و فعلاً قابل خرید نیست» و دکمه‌ی خرید کار نمی‌کند.
+     *
+     * نسخه‌ی اولِ این سیدر همین را جا انداخته بود: محصول، قیمت، عکس و موجودی
+     * همه درست بودند و صفحه کامل به نظر می‌رسید، ولی جدولِ `product_order_units`
+     * خالی بود. کاتالوگ دیده می‌شد و **هیچ‌کدام قابل خرید نبودند**.
+     *
+     * واحدها per-دسته‌اند چون منطقِ فروش فرق دارد: فولاد با ظرفیت کامیون و
+     * بندیل هم فروخته می‌شود، شیرآلات فقط تکی.
+     */
+    private function attachOrderUnits(Product $product, string $categorySlug): void
+    {
+        $codes = match ($categorySlug) {
+            'rebar', 'steel' => ['capacity' => 5, 'bundle' => 30, 'retail' => 2_000_000],
+            'brick' => ['bundle' => 40, 'retail' => 500_000],
+            default => ['retail' => 5_000],
+        };
+
+        foreach ($codes as $code => $maxQuantity) {
+            $unit = OrderUnit::where(OrderUnit::CODE, $code)->first();
+
+            if ($unit === null) {
+                $this->command?->warn("StagingCatalogSeeder: OrderUnit '{$code}' missing — run ProductSeeder first.");
+
+                continue;
+            }
+
+            $product->orderUnits()->syncWithoutDetaching([$unit->id => ['max_quantity' => $maxQuantity]]);
+        }
+    }
+
+    /**
+     * کف و سقفِ مقدار سفارش per-دسته.
+     *
+     * فولاد بر حسب کیلوگرم است و کمتر از دو تن عملاً حمل نمی‌شود؛ شیرآلات تکی
+     * است و کفِ ۲۰۰۰ روی آن بی‌معنا می‌شد.
+     *
+     * @return array{0: int, 1: int}
+     */
+    private function orderBounds(string $categorySlug): array
+    {
+        return match ($categorySlug) {
+            'rebar', 'steel' => [2_000, 200_000],
+            'brick' => [1_000, 500_000],
+            default => [1, 5_000],
+        };
+    }
+
     /** یک محصول با واریانت، قیمتِ هر انبار، موجودی و تصویر. */
     private function seedProduct(string $slug, array $spec, $factories): bool
     {
@@ -221,6 +271,8 @@ class StagingCatalogSeeder extends Seeder
             ],
         );
 
+        $this->attachOrderUnits($product, $spec['category']);
+
         ProductImage::updateOrCreate(
             [ProductImage::PRODUCT_ID => $product->id],
             [ProductImage::IMAGE_PATH => "products/placeholder-{$spec['category']}.png"],
@@ -234,6 +286,9 @@ class StagingCatalogSeeder extends Seeder
                     ProductVariant::NAME => $v['name'],
                     ProductVariant::IS_ACTIVE => true,
                     ProductVariant::STOCK_QUANTITY => $v['stock'],
+                    // بدون کف/سقف، فرم سفارش مقدار مجاز را نمی‌داند.
+                    ProductVariant::MIN_ORDER_VALUE => $this->orderBounds($spec['category'])[0],
+                    ProductVariant::MAX_ORDER_VALUE => $this->orderBounds($spec['category'])[1],
                 ],
             );
 
