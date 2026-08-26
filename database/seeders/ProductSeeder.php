@@ -41,7 +41,11 @@ class ProductSeeder extends Seeder
         }
 
         $attributeTypesData = [
-            [AttributeType::NAME => 'type', AttributeType::DISPLAY_NAME => 'نوع', AttributeType::INPUT_TYPE => 'select'],
+            // ⚠️ عنوان‌ها باید با `StagingCatalogSeeder::VOCABULARY` یکی بمانند —
+            // هر دو سیدر `updateOrCreate` روی همین ردیف‌ها می‌زنند، پس اگر فرق
+            // کنند، عنوانِ سایدبار به این بستگی پیدا می‌کند که کدام سیدر آخر
+            // اجرا شده است.
+            [AttributeType::NAME => 'type', AttributeType::DISPLAY_NAME => 'نوع محصول', AttributeType::INPUT_TYPE => 'select'],
             [AttributeType::NAME => 'grade', AttributeType::DISPLAY_NAME => 'گرید', AttributeType::INPUT_TYPE => 'select'],
             [AttributeType::NAME => 'size', AttributeType::DISPLAY_NAME => 'سایز', AttributeType::INPUT_TYPE => 'select'],
         ];

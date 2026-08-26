@@ -2,6 +2,9 @@
 
 namespace Database\Seeders;
 
+use App\Models\Attribute;
+use App\Models\AttributeType;
+use App\Models\AttributeValue;
 use App\Models\Factory;
 use App\Models\FactoryLocation;
 use App\Models\FactoryStock;
@@ -11,6 +14,8 @@ use App\Models\ProductCategory;
 use App\Models\ProductImage;
 use App\Models\ProductPrice;
 use App\Models\ProductVariant;
+use App\Models\ProductVariantAttribute;
+use App\Models\Role;
 use App\Models\SupplierProfile;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -46,6 +51,44 @@ class StagingCatalogSeeder extends Seeder
     /** موبایلِ تأمین‌کننده‌ی نمایشی — کلید idempotency این سیدر. */
     private const DEMO_SUPPLIER_MOBILE = '09120000001';
 
+    /**
+     * واژگانِ ویژگی‌ها — گروه ← گزینه‌ها.
+     *
+     * ‏**سه سطح داریم و نقش‌شان را نباید جابه‌جا کرد** (قرارداد `ProductSeeder`):
+     *
+     *   `attribute_types`  → عنوانِ گروه در سایدبار  («گرید»)
+     *   `attributes`       → گزینه‌ی قابلِ تیک‌زدن     («A3»)
+     *   `attribute_values` → مقداری که روی چیپِ واریانت چاپ می‌شود («A3»)
+     *
+     * ‏`FilterProductVariantsAction` روی **`attributes.id`** فیلتر می‌کند، پس
+     * گزینه باید attribute باشد نه attribute_value؛ اگر گزینه‌ها را یک سطح
+     * پایین‌تر مدل کنیم، تیک زدنِ «A3» به «هر واریانتی که اصلاً گرید دارد»
+     * ترجمه می‌شود و فیلتر عملاً بی‌اثر است.
+     *
+     * ردیفِ `attribute_values` هم اختیاری نیست:
+     * ‏`product_variant_attributes.attribute_value_id` ستونِ NOT NULL است، پس
+     * بدون آن اصلاً نمی‌شود ویژگی را به واریانت وصل کرد.
+     *
+     * ⚠️ عنوان‌های `type`/`grade`/`size` باید با `ProductSeeder` یکی بماند —
+     * هر دو `updateOrCreate` روی همین ردیف‌ها می‌زنند.
+     *
+     * عنوانِ «سایز» عمداً «سایز (قطر)» نیست: این ستون برای آجر و شیرفلکه هم
+     * استفاده می‌شود و «قطر» آنجا دروغ است.
+     */
+    private const VOCABULARY = [
+        'type' => ['label' => 'نوع محصول', 'options' => [
+            'شاخه', 'کلاف', 'IPE', 'نبشی', 'ورق', 'سفال', 'نسوز', 'کشویی', 'پروانه‌ای',
+        ]],
+        'surface' => ['label' => 'نوع سطح', 'options' => ['ساده', 'آجدار']],
+        'grade' => ['label' => 'گرید', 'options' => ['A1', 'A2', 'A3', 'A4', 'ST37']],
+        'size' => ['label' => 'سایز', 'options' => [
+            '2', '3', '8', '10', '12', '14', '16', '18', '50', '60',
+            '۱۰×۲۰×۲۰', '۱۵×۲۰×۲۰', '۲۲×۱۱×۵٫۵', '۲ اینچ', '۳ اینچ', '۴ اینچ',
+        ]],
+        'length' => ['label' => 'طول شاخه', 'options' => ['۶ متر', '۱۲ متر']],
+        'packaging' => ['label' => 'بسته‌بندی', 'options' => ['نرمال', 'بندیل', 'پالت']],
+    ];
+
     public function run(): void
     {
         $supplier = $this->demoSupplier();
@@ -58,6 +101,7 @@ class StagingCatalogSeeder extends Seeder
         }
 
         $this->ensurePlaceholderImages();
+        $this->ensureAttributeVocabulary();
 
         $created = 0;
         foreach ($this->catalogue() as $slug => $spec) {
@@ -99,8 +143,16 @@ class StagingCatalogSeeder extends Seeder
 
         // نقش برای کاتالوگ لازم نیست (گاردِ نمایش فقط `reserve_time` را
         // می‌بیند) ولی بدون آن پنل تأمین‌کننده روی همین کاربر باز نمی‌شود.
-        if (! $user->hasRole('supplier')) {
-            $user->addRole('supplier');
+        //
+        // وجودِ ردیفِ نقش چک می‌شود چون `addRole` روی دیتابیسی که
+        // `UserTypeSeeder` رویش نرفته، با `ModelNotFoundException` می‌میرد و
+        // کلِ کاتالوگ را با پیامی که هیچ ربطی به کاتالوگ ندارد می‌خواباند.
+        if (Role::where('name', 'supplier')->exists()) {
+            if (! $user->hasRole('supplier')) {
+                $user->addRole('supplier');
+            }
+        } else {
+            $this->command?->warn('StagingCatalogSeeder: role "supplier" missing — run UserTypeSeeder to enable the supplier panel.');
         }
 
         return $user->refresh();
@@ -166,36 +218,39 @@ class StagingCatalogSeeder extends Seeder
     {
         return [
             'rebar-plain-a1' => ['desc' => 'میلگرد ساده A1 با سطح صاف، مناسب خاموت‌زنی و کارهای بتنی سبک. تحویل از درب کارخانه یا انبارهای اصفهان، تهران و شیراز.', 'category' => 'rebar', 'name' => 'میلگرد ساده A1', 'variants' => [
-                ['name' => 'سایز ۸ کلاف', 'sku' => 'DEMO-RBP-A1-08', 'stock' => 180_000, 'general' => 41_500],
-                ['name' => 'سایز ۱۰ کلاف', 'sku' => 'DEMO-RBP-A1-10', 'stock' => 220_000, 'general' => 41_000],
-                ['name' => 'سایز ۱۲ شاخه', 'sku' => 'DEMO-RBP-A1-12', 'stock' => 160_000, 'general' => 42_000],
+                // کلاف طولِ شاخه ندارد — عمداً بدون `length`. یک ویژگیِ بی‌معنا
+                // بدتر از نبودنش است: در سایدبار گزینه‌ای می‌سازد که هیچ‌چیزِ
+                // درستی را فیلتر نمی‌کند.
+                ['name' => 'سایز ۸ کلاف', 'sku' => 'DEMO-RBP-A1-08', 'stock' => 180_000, 'general' => 41_500, 'attrs' => ['type' => 'کلاف', 'surface' => 'ساده', 'grade' => 'A1', 'size' => '8', 'packaging' => 'نرمال']],
+                ['name' => 'سایز ۱۰ کلاف', 'sku' => 'DEMO-RBP-A1-10', 'stock' => 220_000, 'general' => 41_000, 'attrs' => ['type' => 'کلاف', 'surface' => 'ساده', 'grade' => 'A1', 'size' => '10', 'packaging' => 'نرمال']],
+                ['name' => 'سایز ۱۲ شاخه', 'sku' => 'DEMO-RBP-A1-12', 'stock' => 160_000, 'general' => 42_000, 'attrs' => ['type' => 'شاخه', 'surface' => 'ساده', 'grade' => 'A1', 'size' => '12', 'length' => '۱۲ متر', 'packaging' => 'بندیل']],
             ]],
             'beam-ipe' => ['desc' => 'تیرآهن IPE با مقطع I، پرکاربردترین پروفیل باربر در اسکلت فلزی ساختمان. مطابق استاندارد ملی ایران.', 'category' => 'steel', 'name' => 'تیرآهن IPE', 'variants' => [
-                ['name' => 'IPE 14', 'sku' => 'DEMO-IPE-14', 'stock' => 90_000, 'general' => 52_000],
-                ['name' => 'IPE 16', 'sku' => 'DEMO-IPE-16', 'stock' => 85_000, 'general' => 51_500],
-                ['name' => 'IPE 18', 'sku' => 'DEMO-IPE-18', 'stock' => 70_000, 'general' => 51_000],
+                ['name' => 'IPE 14', 'sku' => 'DEMO-IPE-14', 'stock' => 90_000, 'general' => 52_000, 'attrs' => ['type' => 'IPE', 'grade' => 'ST37', 'size' => '14', 'length' => '۱۲ متر', 'packaging' => 'نرمال']],
+                ['name' => 'IPE 16', 'sku' => 'DEMO-IPE-16', 'stock' => 85_000, 'general' => 51_500, 'attrs' => ['type' => 'IPE', 'grade' => 'ST37', 'size' => '16', 'length' => '۱۲ متر', 'packaging' => 'نرمال']],
+                ['name' => 'IPE 18', 'sku' => 'DEMO-IPE-18', 'stock' => 70_000, 'general' => 51_000, 'attrs' => ['type' => 'IPE', 'grade' => 'ST37', 'size' => '18', 'length' => '۱۲ متر', 'packaging' => 'نرمال']],
             ]],
             'angle-bar' => ['desc' => 'نبشی فولادی نورد گرم برای بادبند، اتصالات و قاب‌بندی. ابعاد متنوع با ضخامت‌های استاندارد.', 'category' => 'steel', 'name' => 'نبشی فولادی', 'variants' => [
-                ['name' => 'نبشی ۵×۵', 'sku' => 'DEMO-ANG-50', 'stock' => 120_000, 'general' => 48_500],
-                ['name' => 'نبشی ۶×۶', 'sku' => 'DEMO-ANG-60', 'stock' => 110_000, 'general' => 48_000],
+                ['name' => 'نبشی ۵×۵', 'sku' => 'DEMO-ANG-50', 'stock' => 120_000, 'general' => 48_500, 'attrs' => ['type' => 'نبشی', 'grade' => 'ST37', 'size' => '50', 'length' => '۶ متر', 'packaging' => 'بندیل']],
+                ['name' => 'نبشی ۶×۶', 'sku' => 'DEMO-ANG-60', 'stock' => 110_000, 'general' => 48_000, 'attrs' => ['type' => 'نبشی', 'grade' => 'ST37', 'size' => '60', 'length' => '۶ متر', 'packaging' => 'بندیل']],
             ]],
             'steel-sheet' => ['desc' => 'ورق سیاه نورد گرم، مناسب مخزن‌سازی، سازه‌های صنعتی و ورق‌کاری ساختمانی.', 'category' => 'steel', 'name' => 'ورق سیاه', 'variants' => [
-                ['name' => 'ضخامت ۲ میل', 'sku' => 'DEMO-SHT-02', 'stock' => 140_000, 'general' => 56_000],
-                ['name' => 'ضخامت ۳ میل', 'sku' => 'DEMO-SHT-03', 'stock' => 130_000, 'general' => 55_500],
+                ['name' => 'ضخامت ۲ میل', 'sku' => 'DEMO-SHT-02', 'stock' => 140_000, 'general' => 56_000, 'attrs' => ['type' => 'ورق', 'grade' => 'ST37', 'size' => '2', 'packaging' => 'نرمال']],
+                ['name' => 'ضخامت ۳ میل', 'sku' => 'DEMO-SHT-03', 'stock' => 130_000, 'general' => 55_500, 'attrs' => ['type' => 'ورق', 'grade' => 'ST37', 'size' => '3', 'packaging' => 'نرمال']],
             ]],
             'brick-sofal' => ['desc' => 'آجر سفال تیغه‌ای با وزن سبک و عایق حرارتی مناسب، برای دیوارچینی داخلی و پرکننده.', 'category' => 'brick', 'name' => 'آجر سفال', 'variants' => [
-                ['name' => 'سفال ۱۰×۲۰×۲۰', 'sku' => 'DEMO-BRK-SF1', 'stock' => 400_000, 'general' => 12_500],
-                ['name' => 'سفال ۱۵×۲۰×۲۰', 'sku' => 'DEMO-BRK-SF2', 'stock' => 350_000, 'general' => 13_500],
+                ['name' => 'سفال ۱۰×۲۰×۲۰', 'sku' => 'DEMO-BRK-SF1', 'stock' => 400_000, 'general' => 12_500, 'attrs' => ['type' => 'سفال', 'size' => '۱۰×۲۰×۲۰', 'packaging' => 'پالت']],
+                ['name' => 'سفال ۱۵×۲۰×۲۰', 'sku' => 'DEMO-BRK-SF2', 'stock' => 350_000, 'general' => 13_500, 'attrs' => ['type' => 'سفال', 'size' => '۱۵×۲۰×۲۰', 'packaging' => 'پالت']],
             ]],
             'brick-fire' => ['desc' => 'آجر نسوز نما با مقاومت حرارتی بالا، مناسب نماکاری، شومینه و کوره.', 'category' => 'brick', 'name' => 'آجر نسوز', 'variants' => [
-                ['name' => 'نسوز نما قرمز', 'sku' => 'DEMO-BRK-FR1', 'stock' => 200_000, 'general' => 21_000],
+                ['name' => 'نسوز نما قرمز', 'sku' => 'DEMO-BRK-FR1', 'stock' => 200_000, 'general' => 21_000, 'attrs' => ['type' => 'نسوز', 'size' => '۲۲×۱۱×۵٫۵', 'packaging' => 'پالت']],
             ]],
             'valve-gate' => ['desc' => 'شیر فلکه کشویی چدنی با آب‌بندی کامل، مناسب خطوط انتقال آب و تأسیسات ساختمانی.', 'category' => 'taps', 'name' => 'شیر فلکه کشویی', 'variants' => [
-                ['name' => 'سایز ۲ اینچ', 'sku' => 'DEMO-VLV-GT2', 'stock' => 4_000, 'general' => 148_000],
-                ['name' => 'سایز ۳ اینچ', 'sku' => 'DEMO-VLV-GT3', 'stock' => 3_200, 'general' => 186_000],
+                ['name' => 'سایز ۲ اینچ', 'sku' => 'DEMO-VLV-GT2', 'stock' => 4_000, 'general' => 148_000, 'attrs' => ['type' => 'کشویی', 'size' => '۲ اینچ', 'packaging' => 'نرمال']],
+                ['name' => 'سایز ۳ اینچ', 'sku' => 'DEMO-VLV-GT3', 'stock' => 3_200, 'general' => 186_000, 'attrs' => ['type' => 'کشویی', 'size' => '۳ اینچ', 'packaging' => 'نرمال']],
             ]],
             'valve-butterfly' => ['desc' => 'شیر پروانه‌ای ویفری با اهرم دستی، سبک و کم‌فضا برای خطوط لوله با قطر بالا.', 'category' => 'taps', 'name' => 'شیر پروانه‌ای', 'variants' => [
-                ['name' => 'سایز ۴ اینچ', 'sku' => 'DEMO-VLV-BF4', 'stock' => 2_500, 'general' => 232_000],
+                ['name' => 'سایز ۴ اینچ', 'sku' => 'DEMO-VLV-BF4', 'stock' => 2_500, 'general' => 232_000, 'attrs' => ['type' => 'پروانه‌ای', 'size' => '۴ اینچ', 'packaging' => 'نرمال']],
             ]],
         ];
     }
@@ -250,6 +305,79 @@ class StagingCatalogSeeder extends Seeder
     }
 
     /** یک محصول با واریانت، قیمتِ هر انبار، موجودی و تصویر. */
+    /**
+     * گروه‌ها، گزینه‌ها و ردیفِ مقدارِ هر گزینه را می‌سازد.
+     *
+     * `ProductSeeder` گزینه‌های `type`/`grade`/`size` را می‌سازد ولی **ردیفِ
+     * مقدار نمی‌سازد** — یعنی همان گزینه‌ها قابلِ وصل‌شدن به هیچ واریانتی
+     * نیستند. این متد آن شکاف را هم پر می‌کند، نه فقط برای گزینه‌های تازه.
+     */
+    private function ensureAttributeVocabulary(): void
+    {
+        foreach (self::VOCABULARY as $typeName => $group) {
+            $type = AttributeType::updateOrCreate(
+                [AttributeType::NAME => $typeName],
+                [
+                    AttributeType::DISPLAY_NAME => $group['label'],
+                    AttributeType::INPUT_TYPE => 'select',
+                ],
+            );
+
+            foreach ($group['options'] as $option) {
+                $attribute = Attribute::updateOrCreate(
+                    [Attribute::ATTRIBUTE_TYPE_ID => $type->id, Attribute::NAME => $option],
+                    [Attribute::DISPLAY_NAME => $option],
+                );
+
+                AttributeValue::updateOrCreate(
+                    [
+                        AttributeValue::ATTRIBUTE_ID => $attribute->id,
+                        AttributeValue::VALUE => $option,
+                    ],
+                    [AttributeValue::DISPLAY_VALUE => $option],
+                );
+            }
+        }
+    }
+
+    /**
+     * ویژگی‌های یک واریانت را می‌نشاند.
+     *
+     * `sync` و نه `syncWithoutDetaching`: نقشه‌ی این سیدر مرجع است، پس اگر
+     * گزینه‌ای از نقشه حذف شد باید از دیتابیس هم برود.
+     *
+     * @param  array<string,string>  $map  نامِ گروه ← گزینه
+     */
+    private function attachAttributes(ProductVariant $variant, array $map): void
+    {
+        $pivot = [];
+
+        foreach ($map as $typeName => $option) {
+            $attribute = Attribute::query()
+                ->whereHas('attributeType', fn ($q) => $q->where(AttributeType::NAME, $typeName))
+                ->where(Attribute::NAME, $option)
+                ->first();
+
+            $value = $attribute === null
+                ? null
+                : AttributeValue::where(AttributeValue::ATTRIBUTE_ID, $attribute->id)->first();
+
+            // نبودِ گزینه یا مقدارش یعنی نقشه و `VOCABULARY` از هم پاشیده‌اند.
+            // رد شدن با هشدار، چون خرابیِ یک ویژگی نباید کلِ کاتالوگ را بخواباند.
+            if ($value === null) {
+                $this->command?->warn(
+                    "StagingCatalogSeeder: attribute {$typeName}/{$option} is not in VOCABULARY — skipped."
+                );
+
+                continue;
+            }
+
+            $pivot[$attribute->id] = [ProductVariantAttribute::ATTRIBUTE_VALUE_ID => $value->id];
+        }
+
+        $variant->variantAttributes()->sync($pivot);
+    }
+
     private function seedProduct(string $slug, array $spec, $factories): bool
     {
         $category = ProductCategory::where(ProductCategory::SLUG, $spec['category'])->first();
@@ -292,6 +420,7 @@ class StagingCatalogSeeder extends Seeder
                 ],
             );
 
+            $this->attachAttributes($variant, $v['attrs'] ?? []);
             $this->priceVariantEverywhere($variant, $v['general'], $factories);
         }
 
