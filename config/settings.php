@@ -19,6 +19,11 @@ return [
         'telegram_url',
         'linkedin_url',
         'whatsapp_number',
+        // پیام‌رسان‌های داخلی — فوتر برای هرکدام آیکونِ اختصاصی دارد و کلیدِ
+        // پرنشده اصلاً رندر نمی‌شود.
+        'eitaa_url',
+        'rubika_url',
+        'bale_url',
         'about_short',
         'footer_text',
         'maintenance_banner',
@@ -30,11 +35,15 @@ return [
         'enamad_link',
         'samandehi_image_url',
         'samandehi_link',
+        // مبالغ پیشنهادی شارژ کیف پول — فهرست اعداد ریالی جداشده با کاما.
+        // خالی/نامعتبر = هیچ دکمه‌ی پیشنهادی نمایش داده نمی‌شود و کاربر مبلغ را
+        // دستی وارد می‌کند (قاعده‌ی صداقت: عددِ جعلی نشان نده).
+        'wallet_preset_amounts',
 
         /*
         | پارامترهای مسیر فروش (سند بازطراحی، بند ۲.۱).
         |
-        | ⚠️ این شش کلید عمداً **در `public_keys` نیستند** و نباید اضافه شوند —
+        | ⚠️ این کلیدها عمداً **در `public_keys` نیستند** و نباید اضافه شوند —
         | داخلی‌اند. پیش‌فرض‌هایشان در `config/sales.php` است و تنها راهِ
         | خواندنشان `App\Services\Sales\SalesSettings` است.
         */
@@ -67,6 +76,11 @@ return [
         'telegram_url',
         'linkedin_url',
         'whatsapp_number',
+        // پیام‌رسان‌های داخلی — فوتر برای هرکدام آیکونِ اختصاصی دارد و کلیدِ
+        // پرنشده اصلاً رندر نمی‌شود.
+        'eitaa_url',
+        'rubika_url',
+        'bale_url',
         'about_short',
         'footer_text',
         'maintenance_banner',
@@ -78,5 +92,9 @@ return [
         'enamad_link',
         'samandehi_image_url',
         'samandehi_link',
+        // مبالغ پیشنهادی شارژ کیف پول — فهرست اعداد ریالی جداشده با کاما.
+        // خالی/نامعتبر = هیچ دکمه‌ی پیشنهادی نمایش داده نمی‌شود و کاربر مبلغ را
+        // دستی وارد می‌کند (قاعده‌ی صداقت: عددِ جعلی نشان نده).
+        'wallet_preset_amounts',
     ],
 ];

@@ -33,6 +33,9 @@ class FactoryResource extends BaseJsonResource
             Factory::UPDATED_AT => $this->updated_at ? Carbon::parse($this->updated_at)->format('Y-m-d H:i:s') : null,
 
             'locations' => FactoryLocationResource::collection($this->whenLoaded('locations')),
+            // دو کلیدِ جدا — مصرف‌کننده‌ها عمداً نمی‌توانند اشتباهی دسته‌ی دیگر را نشان دهند.
+            'product_features' => FactoryFeatureResource::collection($this->whenLoaded('activeProductFeatures')),
+            'shipping_features' => FactoryFeatureResource::collection($this->whenLoaded('activeShippingFeatures')),
         ];
     }
 }

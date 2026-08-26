@@ -35,7 +35,7 @@ final class BackupHealthService
         $folder = (string) config('backup.backup.name', 'elitezone');
 
         if ($disk === '') {
-            return $this->emptyReport($disk, ['هیچ دیسکی برای پشتیبان‌گیری تنظیم نشده (BACKUP_DISKS).']);
+            return $this->emptyReport($disk, ['هیچ دیسکی برای پشتیبان‌گیری تنظیم نشده (BACKUP_DISKS).'], configured: false);
         }
 
         try {
@@ -44,11 +44,20 @@ final class BackupHealthService
         } catch (\Throwable $e) {
             // دیسکِ تنظیم‌نشده یا غیرقابل‌دسترس نباید کلِ صفحهٔ سلامت را بیندازد —
             // خودِ همین وضعیت یک یافته است، نه یک خطای برنامه.
-            return $this->emptyReport($disk, ["دیسک «{$disk}» قابل خواندن نیست: ".$e->getMessage()]);
+            return $this->emptyReport($disk, ["دیسک «{$disk}» قابل خواندن نیست: ".$e->getMessage()], configured: false);
         }
 
         if ($files->isEmpty()) {
-            return $this->emptyReport($disk, ['هیچ نسخهٔ پشتیبانی روی دیسک پیدا نشد — `backup:run --only-db` هرگز موفق نبوده.']);
+            // ⚠️ اینجا پیکربندی **درست است** — دیسک تنظیم شده و خوانده می‌شود، فقط
+            // هنوز نسخه‌ای گرفته نشده. تا نشست ۲۲ این حالت هم `configured: false`
+            // برمی‌گرداند و پنل می‌گفت «پشتیبان‌گیری پیکربندی نشده»، که ادمین را
+            // دنبال یک مشکلِ پیکربندیِ ناموجود می‌فرستاد. حالتِ واقعی این است:
+            // «پیکربندی شده، ولی هرگز اجرا نشده» — اقدامِ لازمش کاملاً متفاوت است.
+            return $this->emptyReport(
+                $disk,
+                ['هیچ نسخهٔ پشتیبانی روی دیسک پیدا نشد — `backup:run --only-db` هرگز موفق نبوده.'],
+                configured: true,
+            );
         }
 
         $latestPath = $files
@@ -86,10 +95,12 @@ final class BackupHealthService
      * @param  array<int, string>  $problems
      * @return array{configured: bool, disk: string, latest: null, count: int, healthy: bool, problems: array<int, string>}
      */
-    private function emptyReport(string $disk, array $problems): array
+    private function emptyReport(string $disk, array $problems, bool $configured): array
     {
         return [
-            'configured' => false,
+            // «پیکربندی شده؟» و «نسخه‌ای دارد؟» دو پرسشِ جدا هستند. count === 0
+            // به‌تنهایی می‌گوید نسخه‌ای نیست؛ configured نباید همان را تکرار کند.
+            'configured' => $configured,
             'disk' => $disk,
             'latest' => null,
             'count' => 0,

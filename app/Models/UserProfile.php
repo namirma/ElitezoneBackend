@@ -29,6 +29,21 @@ class UserProfile extends Model
 
     const AVATAR = 'avatar';
 
+    /**
+     * تصویرِ در انتظارِ تأیید — عمداً ستونی جدا از AVATAR.
+     *
+     * تا لحظه‌ی تأیید، آنچه منتشر می‌شود همان AVATAR است؛ یعنی انتشارِ تصویرِ
+     * تأییدنشده مستلزمِ خواندنِ عمدیِ این ستون است و «فراموش‌کردنِ چکِ وضعیت»
+     * نمی‌تواند به انتشارِ ناخواسته منجر شود.
+     */
+    const AVATAR_PENDING = 'avatar_pending';
+
+    const AVATAR_REJECTION_REASON = 'avatar_rejection_reason';
+
+    const AVATAR_REVIEWED_AT = 'avatar_reviewed_at';
+
+    const AVATAR_REVIEWED_BY = 'avatar_reviewed_by';
+
     const EMAIL = 'email';
 
     const EMAIL_VERIFICATION_TOKEN = 'email_verification_token';
@@ -69,6 +84,10 @@ class UserProfile extends Model
         self::NAME,
         self::FAMILY,
         self::AVATAR,
+        self::AVATAR_PENDING,
+        self::AVATAR_REJECTION_REASON,
+        self::AVATAR_REVIEWED_AT,
+        self::AVATAR_REVIEWED_BY,
         self::EMAIL,
         self::EMAIL_VERIFICATION_TOKEN,
         self::EMAIL_VERIFIED_AT,

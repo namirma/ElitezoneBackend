@@ -51,7 +51,7 @@ trait PersianDate
     }
 
     /**
-     * @return string|void
+     * @return int|void
      */
     public function getExpireAtDaysAttribute()
     {
@@ -60,7 +60,7 @@ trait PersianDate
                 return 0;
             }
 
-            return Carbon::make(@$this->attributes['expire_at'])->diffInDays();
+            return (int) Carbon::make(@$this->attributes['expire_at'])?->diffInDays();
         }
     }
 }

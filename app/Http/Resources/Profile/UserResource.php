@@ -55,6 +55,12 @@ class UserResource extends BaseJsonResource
             // اینکه endpointها را صدا بزند و ۴۰۳ بگیرد.
             $this->mergeWhen($this->shouldExposePermissions($viewer), fn () => [
                 'permissions' => $this->permissions->pluck('name')->values(),
+                // سطحِ اختیار هم با همان قاعده‌ی مجوزها بیرون می‌رود: فقط برای
+                // خودِ ادمین روی پروفایلِ خودش. پنل بدون این نمی‌داند کدام گزینه‌ی
+                // «فقط مدیر ارشد» را نشان بدهد و ناچار بود با گرفتنِ ۴۰۳ بفهمد.
+                User::ADMIN_LEVEL => $this->{User::ADMIN_LEVEL} !== null
+                    ? (int) $this->{User::ADMIN_LEVEL}
+                    : null,
             ]),
             User::RELATION_BADGE => $selectedBadge ? new BadgeResource($selectedBadge) : null,
             User::RELATION_EDUIX_RECORDS => EduixRecordResource::collection($this->whenLoaded(User::RELATION_EDUIX_RECORDS)),

@@ -37,6 +37,7 @@ class FilterProductsAction
             'category',
             'images',
             'variants.prices.factory',
+            'variants.prices.factory.activeProductFeatures',
             'variants.prices.factoryLocation',
             'orderUnits',
         ];

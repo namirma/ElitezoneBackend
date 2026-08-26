@@ -37,6 +37,8 @@ class CartResponseBuilder
         'items.productVariant.prices.factory',
         'items.productVariant.prices.factoryLocation',
         'items.factory',
+        'items.factory.activeShippingFeatures',
+        'items.factory.activeProductFeatures',
         'items.factoryLocation',
         'items.shippingMethod',
         'customerType',

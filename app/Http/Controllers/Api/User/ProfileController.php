@@ -12,6 +12,7 @@ use App\Http\Requests\Profile\UpdateRealProfileRequest;
 use App\Http\Requests\Profile\UpdateUserProfileRequest;
 use App\Http\Resources\Profile\BadgeResource;
 use App\Http\Resources\Profile\UserResource;
+use App\Models\EmployerEliteYAR;
 use App\Models\User;
 use App\Models\UserProfile;
 use App\Models\UserType;
@@ -91,6 +92,20 @@ class ProfileController extends Controller
         $payload['is_pioneer'] = $badge['is_pioneer'];
         $payload['is_saze90_user'] = $badge['is_saze90_user'];
         $payload['badges'] = BadgeResource::collection($badge['badges'])->resolve($request);
+
+        // «این کارفرما الیت یارِ تأییدشده دارد؟» — فقط یک EXISTS، نه لودِ کلِ رابطه.
+        // سایت اصلی این را برای گیتِ اورلیِ «الیت یار خود را تعیین کنید» لازم دارد و
+        // آن اورلی در صفحهٔ خرید (بیرونِ پروفایل) نمایش داده می‌شود؛ بدون این فیلد،
+        // فرانت مجبور بود کلِ فهرستِ الیت یارها را در صفحه‌ای که اصلاً به آن نیاز
+        // ندارد واکشی کند.
+        //
+        // برای کاربری که اصلاً کارفرما نیست `null` است — «کارفرما نیست» و «کارفرمای
+        // بدون الیت یار» دو ادعای متفاوت‌اند و نباید هر دو false باشند.
+        $payload['has_elite_yar'] = $roleNames->contains('employer') || $typeSlug === 'employer'
+            ? $user->technicalEliteYARs()
+                ->wherePivot(EmployerEliteYAR::STATUS, EmployerEliteYAR::STATUS_APPROVED)
+                ->exists()
+            : null;
 
         return success($payload, __('global.received_successfully'));
     }

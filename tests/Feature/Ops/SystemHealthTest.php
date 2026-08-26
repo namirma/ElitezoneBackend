@@ -9,6 +9,7 @@ use App\Models\Wallet;
 use App\Services\Ops\SystemHealthService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\Concerns\GrantsAdminPermissions;
@@ -165,6 +166,29 @@ class SystemHealthTest extends TestCase
 
         $this->assertFalse($section['healthy']);
         $this->assertNotSame([], $section['problems']);
+        $this->assertNull($section['latest']);
+        // دیسکِ غیرقابل‌خواندن = واقعاً پیکربندی خراب است.
+        $this->assertFalse($section['configured']);
+    }
+
+    #[Test]
+    public function a_configured_disk_with_no_backups_is_not_reported_as_unconfigured(): void
+    {
+        // «پیکربندی نشده» و «پیکربندی شده ولی هرگز اجرا نشده» دو مشکلِ متفاوت با دو
+        // اقدامِ متفاوت‌اند. هر سه حالتِ خالی `configured: false` برمی‌گرداندند، پس پنل
+        // می‌گفت «پشتیبان‌گیری پیکربندی نشده» و ادمین را دنبال یک خرابیِ پیکربندیِ
+        // ناموجود می‌فرستاد، در حالی که فقط باید یک بار `backup:run` اجرا می‌شد.
+        Storage::fake('backup-test-disk');
+        config([
+            'backup.backup.destination.disks' => ['backup-test-disk'],
+            'backup.backup.name' => 'elitezone',
+        ]);
+
+        $section = $this->health->report()['sections']['backup'];
+
+        $this->assertTrue($section['configured'], 'دیسکِ سالمِ خالی نباید «پیکربندی‌نشده» گزارش شود.');
+        $this->assertSame(0, $section['count']);
+        $this->assertFalse($section['healthy']);
         $this->assertNull($section['latest']);
     }
 

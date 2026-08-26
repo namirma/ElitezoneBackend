@@ -122,6 +122,7 @@ class Kernel extends HttpKernel
         'role.employer' => EnsureUserIsEmployer::class,
         'role.supplier' => EnsureUserIsSupplier::class,
         'admin.permission' => \App\Http\Middleware\EnsureAdminHasPermission::class,
+        'admin.level' => \App\Http\Middleware\EnsureAdminHasLevel::class,
         'admin.ip' => \App\Http\Middleware\RestrictAdminByIp::class,
         'track' => TrackDashboardUsage::class,
         'idempotency' => Idempotency::class,

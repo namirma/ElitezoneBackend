@@ -1543,6 +1543,128 @@
                 }
             }
         },
+        "/admin/avatar-requests": {
+            "get": {
+                "operationId": "adminAvatarModeration.index",
+                "summary": "GET /admin/avatar-requests \u2014 \u0641\u0647\u0631\u0633\u062a\u0650 \u062a\u0635\u0627\u0648\u06cc\u0631\u0650 \u062f\u0631 \u0627\u0646\u062a\u0638\u0627\u0631\u0650 \u062a\u0623\u06cc\u06cc\u062f",
+                "tags": [
+                    "AdminAvatarModeration"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/admin/avatar-requests/{user}/approve": {
+            "post": {
+                "operationId": "adminAvatarModeration.approve",
+                "summary": "POST /admin/avatar-requests/{user}/approve \u2014 \u0627\u0646\u062a\u0634\u0627\u0631\u0650 \u062a\u0635\u0648\u06cc\u0631",
+                "tags": [
+                    "AdminAvatarModeration"
+                ],
+                "parameters": [
+                    {
+                        "name": "user",
+                        "in": "path",
+                        "required": true,
+                        "description": "The user ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/admin/avatar-requests/{user}/reject": {
+            "post": {
+                "operationId": "adminAvatarModeration.reject",
+                "summary": "POST /admin/avatar-requests/{user}/reject \u2014 \u0631\u062f\u0650 \u062a\u0635\u0648\u06cc\u0631 \u0628\u0627 \u062f\u0644\u06cc\u0644",
+                "tags": [
+                    "AdminAvatarModeration"
+                ],
+                "parameters": [
+                    {
+                        "name": "user",
+                        "in": "path",
+                        "required": true,
+                        "description": "The user ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "reason": {
+                                        "type": "string",
+                                        "maxLength": 500
+                                    }
+                                },
+                                "required": [
+                                    "reason"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
         "/admin/badges": {
             "get": {
                 "operationId": "adminBadge.index",
@@ -3235,6 +3357,309 @@
                         "in": "path",
                         "required": true,
                         "description": "The factory ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/admin/factory-features": {
+            "get": {
+                "operationId": "adminFactoryFeature.index",
+                "tags": [
+                    "AdminFactoryFeature"
+                ],
+                "parameters": [
+                    {
+                        "name": "factory_id",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "integer",
+                                "null"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "category",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "enum": [
+                                "product",
+                                "shipping"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "is_active",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "boolean",
+                                "null"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "integer",
+                                "null"
+                            ],
+                            "minimum": 1,
+                            "maximum": 200
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "adminFactoryFeature.store",
+                "tags": [
+                    "AdminFactoryFeature"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "factory_id": {
+                                        "type": "integer"
+                                    },
+                                    "category": {
+                                        "type": "string",
+                                        "enum": [
+                                            "product",
+                                            "shipping"
+                                        ]
+                                    },
+                                    "icon_key": {
+                                        "type": "string",
+                                        "enum": [
+                                            "water-saving",
+                                            "dust-reduction",
+                                            "clean-production"
+                                        ]
+                                    },
+                                    "label": {
+                                        "type": "string",
+                                        "maxLength": 255
+                                    },
+                                    "order": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ],
+                                        "minimum": 0
+                                    },
+                                    "is_active": {
+                                        "type": "boolean"
+                                    }
+                                },
+                                "required": [
+                                    "factory_id",
+                                    "category",
+                                    "icon_key",
+                                    "label"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/admin/factory-features/{factoryFeature}": {
+            "put": {
+                "operationId": "adminFactoryFeature.update",
+                "tags": [
+                    "AdminFactoryFeature"
+                ],
+                "parameters": [
+                    {
+                        "name": "factoryFeature",
+                        "in": "path",
+                        "required": true,
+                        "description": "The factory feature ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "factory_id": {
+                                        "type": "integer"
+                                    },
+                                    "category": {
+                                        "type": "string",
+                                        "enum": [
+                                            "product",
+                                            "shipping"
+                                        ]
+                                    },
+                                    "icon_key": {
+                                        "type": "string",
+                                        "enum": [
+                                            "water-saving",
+                                            "dust-reduction",
+                                            "clean-production"
+                                        ]
+                                    },
+                                    "label": {
+                                        "type": "string",
+                                        "maxLength": 255
+                                    },
+                                    "order": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ],
+                                        "minimum": 0
+                                    },
+                                    "is_active": {
+                                        "type": "boolean"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "adminFactoryFeature.destroy",
+                "tags": [
+                    "AdminFactoryFeature"
+                ],
+                "parameters": [
+                    {
+                        "name": "factoryFeature",
+                        "in": "path",
+                        "required": true,
+                        "description": "The factory feature ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/admin/factory-features/{factoryFeature}/toggle": {
+            "post": {
+                "operationId": "adminFactoryFeature.toggle",
+                "tags": [
+                    "AdminFactoryFeature"
+                ],
+                "parameters": [
+                    {
+                        "name": "factoryFeature",
+                        "in": "path",
+                        "required": true,
+                        "description": "The factory feature ID",
                         "schema": {
                             "type": "integer"
                         }
@@ -9843,6 +10268,311 @@
                 }
             }
         },
+        "/admin/promo-overlays": {
+            "get": {
+                "operationId": "adminPromoOverlay.index",
+                "tags": [
+                    "AdminPromoOverlay"
+                ],
+                "parameters": [
+                    {
+                        "name": "is_active",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean",
+                            "default": false
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "adminPromoOverlay.store",
+                "tags": [
+                    "AdminPromoOverlay"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StorePromoOverlayRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/admin/promo-overlays/{promoOverlay}": {
+            "get": {
+                "operationId": "adminPromoOverlay.show",
+                "tags": [
+                    "AdminPromoOverlay"
+                ],
+                "parameters": [
+                    {
+                        "name": "promoOverlay",
+                        "in": "path",
+                        "required": true,
+                        "description": "The promo overlay ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            },
+            "put": {
+                "operationId": "admin.adminPromoOverlay.update_1",
+                "tags": [
+                    "AdminPromoOverlay"
+                ],
+                "parameters": [
+                    {
+                        "name": "promoOverlay",
+                        "in": "path",
+                        "required": true,
+                        "description": "The promo overlay ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StorePromoOverlayRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "admin.adminPromoOverlay.update_2",
+                "tags": [
+                    "AdminPromoOverlay"
+                ],
+                "parameters": [
+                    {
+                        "name": "promoOverlay",
+                        "in": "path",
+                        "required": true,
+                        "description": "The promo overlay ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StorePromoOverlayRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "adminPromoOverlay.destroy",
+                "tags": [
+                    "AdminPromoOverlay"
+                ],
+                "parameters": [
+                    {
+                        "name": "promoOverlay",
+                        "in": "path",
+                        "required": true,
+                        "description": "The promo overlay ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/admin/promo-overlays/{promoOverlay}/toggle": {
+            "post": {
+                "operationId": "adminPromoOverlay.toggle",
+                "tags": [
+                    "AdminPromoOverlay"
+                ],
+                "parameters": [
+                    {
+                        "name": "promoOverlay",
+                        "in": "path",
+                        "required": true,
+                        "description": "The promo overlay ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/admin/promo-overlays/{id}/restore": {
+            "post": {
+                "operationId": "adminPromoOverlay.restore",
+                "tags": [
+                    "AdminPromoOverlay"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
         "/admin/reports/orders": {
             "get": {
                 "operationId": "adminReport.orders",
@@ -10371,6 +11101,218 @@
                     },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/admin/shipping-methods": {
+            "get": {
+                "operationId": "adminShippingMethod.index",
+                "tags": [
+                    "AdminShippingMethod"
+                ],
+                "parameters": [
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "integer",
+                                "null"
+                            ],
+                            "minimum": 1,
+                            "maximum": 200
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "adminShippingMethod.store",
+                "tags": [
+                    "AdminShippingMethod"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "maxLength": 255
+                                    },
+                                    "code": {
+                                        "type": "string",
+                                        "maxLength": 255
+                                    },
+                                    "delivery_notice": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ],
+                                        "maxLength": 255
+                                    },
+                                    "delivery_days": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ],
+                                        "minimum": 0,
+                                        "maximum": 365
+                                    }
+                                },
+                                "required": [
+                                    "name",
+                                    "code"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/admin/shipping-methods/{shippingMethod}": {
+            "put": {
+                "operationId": "adminShippingMethod.update",
+                "tags": [
+                    "AdminShippingMethod"
+                ],
+                "parameters": [
+                    {
+                        "name": "shippingMethod",
+                        "in": "path",
+                        "required": true,
+                        "description": "The shipping method ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "maxLength": 255
+                                    },
+                                    "code": {
+                                        "type": "string",
+                                        "maxLength": 255
+                                    },
+                                    "delivery_notice": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ],
+                                        "maxLength": 255
+                                    },
+                                    "delivery_days": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ],
+                                        "minimum": 0,
+                                        "maximum": 365
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "adminShippingMethod.destroy",
+                "tags": [
+                    "AdminShippingMethod"
+                ],
+                "parameters": [
+                    {
+                        "name": "shippingMethod",
+                        "in": "path",
+                        "required": true,
+                        "description": "The shipping method ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
@@ -16307,6 +17249,41 @@
                 }
             }
         },
+        "/products/variants/{variant}": {
+            "get": {
+                "operationId": "product.showVariant",
+                "summary": "\u062c\u0632\u0626\u06cc\u0627\u062a\u0650 \u06cc\u06a9 \u0648\u0627\u0631\u06cc\u0627\u0646\u062a\u0650 \u062e\u0627\u0635 \u0628\u0627 \u0634\u0646\u0627\u0633\u0647 \u2014 \u0645\u0633\u062a\u0642\u0644 \u0627\u0632 \u0635\u0641\u062d\u0647\u200c\u0628\u0646\u062f\u06cc \u0648 \u0627\u0632 \u0627\u06cc\u0646\u06a9\u0647 \u0628\u0647 \u06a9\u062f\u0627\u0645\n\u0645\u062d\u0635\u0648\u0644\u0650 \u0627\u0635\u0644\u06cc \u062a\u0639\u0644\u0642 \u062f\u0627\u0631\u062f. \u062f\u06cc\u067e\u200c\u0644\u06cc\u0646\u06a9\u0650 `/product/{id}` \u062f\u0631 \u0641\u0631\u0627\u0646\u062a \u0642\u0628\u0644\u0627\u064b \u0641\u0642\u0637 \u062f\u0627\u062e\u0644\u0650\n\u0644\u06cc\u0633\u062a\u0650 \u0627\u0632-\u067e\u06cc\u0634-\u06af\u0631\u0641\u062a\u0647\u200c\u0634\u062f\u0647 (\u0635\u0641\u062d\u0647\u200c\u06cc \u0627\u0648\u0644\u0650 \u0648\u0627\u0631\u06cc\u0627\u0646\u062a\u200c\u0647\u0627\u06cc \u06cc\u06a9 \u0645\u062d\u0635\u0648\u0644\u0650 \u0627\u0635\u0644\u06cc\u0650 \u062e\u0627\u0635) \u062c\u0633\u062a\u200c\u0648\u062c\u0648\n\u0645\u06cc\u200c\u06a9\u0631\u062f\u061b \u0648\u0627\u0631\u06cc\u0627\u0646\u062a\u06cc \u06a9\u0647 \u062f\u0631 \u0635\u0641\u062d\u0647\u200c\u06cc \u0628\u0639\u062f\u06cc \u0628\u0648\u062f \u06cc\u0627 \u0628\u0647 \u0645\u062d\u0635\u0648\u0644\u0650 \u0627\u0635\u0644\u06cc\u0650 \u062f\u06cc\u06af\u0631\u06cc \u062a\u0639\u0644\u0642 \u062f\u0627\u0634\u062a \u0647\u0631\u06af\u0632\n\u067e\u06cc\u062f\u0627 \u0646\u0645\u06cc\u200c\u0634\u062f \u0648 \u00ab\u0645\u062d\u0635\u0648\u0644 \u0645\u0648\u0631\u062f\u0646\u0638\u0631 \u06cc\u0627\u0641\u062a \u0646\u0634\u062f\u00bb \u0646\u0634\u0627\u0646 \u062f\u0627\u062f\u0647 \u0645\u06cc\u200c\u0634\u062f",
+                "tags": [
+                    "Product"
+                ],
+                "parameters": [
+                    {
+                        "name": "variant",
+                        "in": "path",
+                        "required": true,
+                        "description": "The variant ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                }
+            }
+        },
         "/products/{product}": {
             "get": {
                 "operationId": "product.show",
@@ -16926,6 +17903,26 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/promo-overlays": {
+            "get": {
+                "operationId": "promoOverlay.index",
+                "tags": [
+                    "PromoOverlay"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -21736,6 +22733,13 @@
                         "type": "string",
                         "maxLength": 255
                     },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 1000
+                    },
                     "code": {
                         "type": "string",
                         "maxLength": 255
@@ -22459,6 +23463,183 @@
                 ],
                 "title": "StorePasswordRequest"
             },
+            "StorePromoOverlayRequest": {
+                "type": "object",
+                "description": "\u0627\u0639\u062a\u0628\u0627\u0631\u0633\u0646\u062c\u06cc\u0650 \u0633\u0627\u062e\u062a/\u0648\u06cc\u0631\u0627\u06cc\u0634\u0650 \u0627\u0648\u0631\u0644\u06cc.\n\n\u0648\u0627\u0698\u06af\u0627\u0646\u0650 \u0627\u06a9\u0634\u0646 \u0648 \u0634\u0631\u0637 \u0639\u0645\u062f\u0627\u064b \u0628\u0633\u062a\u0647 \u0627\u0633\u062a: \u0647\u0631 \u0645\u0642\u062f\u0627\u0631\u06cc \u06a9\u0647 \u0641\u0631\u0627\u0646\u062a \u0646\u062a\u0648\u0627\u0646\u062f \u0628\u0647 \u0631\u0641\u062a\u0627\u0631\u0650 \u0645\u0634\u062e\u0635\u06cc\n\u0646\u06af\u0627\u0634\u062a \u06a9\u0646\u062f\u060c \u0628\u0627\u06cc\u062f \u0647\u0645\u06cc\u0646\u200c\u062c\u0627 \u0631\u062f \u0634\u0648\u062f \u2014 \u0648\u06af\u0631\u0646\u0647 \u0627\u062f\u0645\u06cc\u0646 \u062f\u06a9\u0645\u0647\u200c\u0627\u06cc \u0645\u06cc\u200c\u0633\u0627\u0632\u062f \u06a9\u0647 \u062f\u0631 \u0633\u0627\u06cc\u062a\n\u0628\u06cc\u200c\u0635\u062f\u0627 \u0647\u06cc\u0686 \u06a9\u0627\u0631\u06cc \u0646\u0645\u06cc\u200c\u06a9\u0646\u062f.",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "body": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 2000
+                    },
+                    "image": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "binary",
+                        "contentMediaType": "application/octet-stream",
+                        "description": "\u062a\u0635\u0648\u06cc\u0631: svg \u0645\u0645\u0646\u0648\u0639 \u2014 \u0631\u0648\u06cc \u062f\u06cc\u0633\u06a9\u0650 public \u0633\u0631\u0648 \u0645\u06cc\u200c\u0634\u0648\u062f \u0648 SVG\u0650 \u062d\u0627\u0648\u06cc\n<script> \u06cc\u0639\u0646\u06cc XSS\u0650 \u0630\u062e\u06cc\u0631\u0647\u200c\u0634\u062f\u0647 (\u0642\u0627\u0639\u062f\u0647\u200c\u06cc \u0633\u0631\u0627\u0633\u0631\u06cc\u0650 \u0627\u06cc\u0646 \u0631\u06cc\u067e\u0648).",
+                        "maxLength": 4096
+                    },
+                    "remove_image": {
+                        "type": [
+                            "boolean",
+                            "null"
+                        ]
+                    },
+                    "delay_seconds": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "description": "\u2500\u2500 \u0632\u0645\u0627\u0646\u200c\u0628\u0646\u062f\u06cc \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500",
+                        "minimum": 0,
+                        "maximum": 3600
+                    },
+                    "frequency": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "enum": [
+                            "once",
+                            "day",
+                            "session",
+                            "ttl",
+                            "always"
+                        ]
+                    },
+                    "frequency_ttl_hours": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "minimum": 1,
+                        "maximum": 8760
+                    },
+                    "priority": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "minimum": -1000,
+                        "maximum": 1000
+                    },
+                    "is_active": {
+                        "type": [
+                            "boolean",
+                            "null"
+                        ]
+                    },
+                    "audience": {
+                        "type": "object",
+                        "description": "\u2500\u2500 \u0634\u0631\u0637\u0650 \u0645\u062e\u0627\u0637\u0628 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500",
+                        "properties": {
+                            "op": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "enum": [
+                                    "and",
+                                    "or"
+                                ]
+                            },
+                            "rules": {
+                                "type": [
+                                    "array",
+                                    "null"
+                                ],
+                                "items": {
+                                    "type": "string"
+                                },
+                                "maxItems": 20
+                            }
+                        }
+                    },
+                    "routes": {
+                        "type": "object",
+                        "description": "\u2500\u2500 \u0645\u0633\u06cc\u0631\u0647\u0627 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500",
+                        "properties": {
+                            "include": {
+                                "type": [
+                                    "array",
+                                    "null"
+                                ],
+                                "items": {
+                                    "type": "string",
+                                    "maxLength": 120
+                                },
+                                "maxItems": 50
+                            },
+                            "exclude": {
+                                "type": [
+                                    "array",
+                                    "null"
+                                ],
+                                "items": {
+                                    "type": "string",
+                                    "maxLength": 120
+                                },
+                                "maxItems": 50
+                            }
+                        }
+                    },
+                    "buttons": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "description": "\u2500\u2500 \u062f\u06a9\u0645\u0647\u200c\u0647\u0627 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "label": {
+                                    "type": "string",
+                                    "maxLength": 60
+                                },
+                                "style": {
+                                    "type": "string",
+                                    "enum": [
+                                        "primary",
+                                        "secondary",
+                                        "link"
+                                    ]
+                                },
+                                "action": {
+                                    "type": "string",
+                                    "enum": [
+                                        "navigate",
+                                        "dismiss",
+                                        "auth",
+                                        "more_info",
+                                        "external"
+                                    ]
+                                },
+                                "value": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "maxLength": 255
+                                }
+                            }
+                        },
+                        "maxItems": 4
+                    }
+                },
+                "required": [
+                    "title"
+                ],
+                "title": "StorePromoOverlayRequest"
+            },
             "StoreQuestionRequest": {
                 "type": "object",
                 "properties": {
@@ -22944,6 +24125,13 @@
                     "name": {
                         "type": "string",
                         "maxLength": 255
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 1000
                     },
                     "code": {
                         "type": "string",

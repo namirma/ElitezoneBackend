@@ -60,17 +60,61 @@ class AvatarController extends Controller
             ]
         );
 
-        // Remove the previous avatar (skip legacy full-URL values).
-        $old = $profile->{UserProfile::AVATAR};
-        if ($old && ! str_starts_with($old, 'http')) {
-            Storage::disk('public')->delete($old);
+        // ── ادمین‌ها از صفِ تأیید رد می‌شوند، کاربرانِ عادی نه ────────────────
+        // تصویرِ ادمین در تیکت‌های پشتیبانی کنارِ نامش به مشتری نشان داده می‌شود،
+        // پس چهره‌ی برند است. مدیرِ ارشد از این قاعده مستثناست؛ کسی بالادستِ او
+        // نیست که تأیید کند و صفی که هیچ‌کس تأییدش نمی‌کند یعنی قفلِ دائمی.
+        if ($user->hasRole('admin') && ! $user->isOwnerAdmin()) {
+            $this->deleteStoredFile($profile->{UserProfile::AVATAR_PENDING});
+
+            $profile->update([
+                UserProfile::AVATAR_PENDING => $path,
+                // تصمیمِ قبلی دیگر معتبر نیست: تصویرِ تازه یعنی درخواستِ تازه.
+                UserProfile::AVATAR_REJECTION_REASON => null,
+                UserProfile::AVATAR_REVIEWED_AT => null,
+                UserProfile::AVATAR_REVIEWED_BY => null,
+            ]);
+
+            return success(
+                [
+                    'pending' => true,
+                    // آدرسِ تصویرِ در انتظار فقط به خودِ ادمین برمی‌گردد تا در پنل
+                    // پیش‌نمایشش را ببیند؛ هیچ مصرف‌کننده‌ی عمومی‌ای آن را نمی‌گیرد.
+                    'pending_avatar_url' => Storage::disk('public')->url($path),
+                    'avatar_url' => $this->publicAvatarUrl($profile),
+                ],
+                __('profile.avatar_pending_review')
+            );
         }
+
+        // Remove the previous avatar (skip legacy full-URL values).
+        $this->deleteStoredFile($profile->{UserProfile::AVATAR});
 
         $profile->update([UserProfile::AVATAR => $path]);
 
         return success(
-            ['avatar_url' => Storage::disk('public')->url($path)],
+            ['pending' => false, 'avatar_url' => Storage::disk('public')->url($path)],
             __('profile.avatar_uploaded')
         );
+    }
+
+    /**
+     * حذفِ امنِ فایلِ ذخیره‌شده — مقادیرِ لگاسیِ full-URL را دست نمی‌زند.
+     */
+    private function deleteStoredFile(?string $path): void
+    {
+        if ($path && ! str_starts_with($path, 'http')) {
+            Storage::disk('public')->delete($path);
+        }
+    }
+
+    private function publicAvatarUrl(UserProfile $profile): ?string
+    {
+        $avatar = $profile->{UserProfile::AVATAR};
+        if (! $avatar) {
+            return null;
+        }
+
+        return str_starts_with($avatar, 'http') ? $avatar : Storage::disk('public')->url($avatar);
     }
 }
