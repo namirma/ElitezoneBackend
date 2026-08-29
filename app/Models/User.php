@@ -151,6 +151,14 @@ class User extends Authenticatable
 
     protected $casts = [
         self::PASSWORD => 'hashed',
+        // مهلتِ OTP یک ستونِ زمانی است که همه‌جا با `isPast()` سنجیده می‌شود.
+        // بدون cast، هر خواننده باید خودش `Carbon::parse` کند و اولین کسی که
+        // یادش برود، روی رشته `isPast()` صدا می‌زند.
+        //
+        // ⚠️ `birth_date` عمداً cast نمی‌شود: مقدارش **شمسی** است
+        // (`StoreUserRequest` با regex می‌پذیردش) و cast `date` آن را
+        // میلادی تفسیر می‌کند.
+        self::SECRET_EXPIRES_AT => 'datetime',
         self::IS_ACTIVE => 'boolean',
         self::COUPON_ENABLED => 'boolean',
         self::BADGE_PURCHASE_AMOUNT => 'decimal:2',
