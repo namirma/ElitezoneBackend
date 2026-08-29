@@ -24,9 +24,24 @@ class FilterProductVariantsAction
             ->with(['prices.factory', 'prices.factory.activeProductFeatures', 'prices.factoryLocation', 'variantAttributes.attributeType', 'limitOrderUnit']);
 
         // ۲. اعمال فیلتر ویژگی‌ها
+        //
+        // ⚠️ دو سطحِ متفاوت، و سایدبار با **دومی** کار می‌کند:
+        //   `filter_categories` → id گروه («گرید») — یعنی «هر واریانتی که اصلاً
+        //      گرید دارد». به‌تنهایی تقریباً هیچ‌چیز را محدود نمی‌کند.
+        //   `filter_values`     → id گزینه («A3») — چیزی که کاربر تیک می‌زند.
+        //
+        // پیش از این فقط اولی وجود داشت، پس تیکِ «A3» یا ۴۲۲ می‌گرفت (id در
+        // جدولِ attributes نبود) یا بی‌اثر بود.
         if (! empty($filters['filter_categories'])) {
             $query->whereHas('variantAttributes', fn ($q) => $q->whereIn(ProductVariantAttribute::ATTRIBUTE_ID, $filters['filter_categories'])
             );
+        }
+
+        if (! empty($filters['filter_values'])) {
+            $query->whereHas('variantAttributes', fn ($q) => $q->whereIn(
+                'product_variant_attributes.'.ProductVariantAttribute::ATTRIBUTE_VALUE_ID,
+                $filters['filter_values']
+            ));
         }
 
         // ۳. دریافت و محاسبه قیمت

@@ -3,7 +3,7 @@
 namespace Tests\Feature\Product;
 
 use App\Models\Attribute;
-use App\Models\AttributeType;
+use App\Models\AttributeValue;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use Database\Seeders\ProductSeeder;
@@ -75,35 +75,40 @@ class StagingCatalogAttributesTest extends TestCase
     }
 
     #[Test]
-    public function the_filters_endpoint_returns_groups_with_their_options(): void
+    public function the_sidebar_gets_one_group_per_property_not_one_group_per_option(): void
     {
         $product = $this->demoProduct('rebar-plain-a1');
 
-        $groups = collect(
-            $this->getJson("/api/products/{$product->cuid}/filters")
-                ->assertOk()
-                ->json('data')
-        )->keyBy(AttributeType::NAME);
+        $types = $this->getJson("/api/products/{$product->cuid}/filters")
+            ->assertOk()
+            ->json('data');
 
-        // عنوانِ گروه از `attribute_types` می‌آید و گزینه‌ها از `attributes` —
-        // اگر این دو سطح جابه‌جا شوند فیلتر بی‌اثر می‌شود (تستِ بعدی).
-        $this->assertSame('نوع محصول', $groups['type'][AttributeType::DISPLAY_NAME]);
+        // سایدبار `attributes[]` را سرتیتر و `values[]` را گزینه می‌خواند.
+        $groups = collect($types)
+            ->flatMap(fn (array $type) => $type['attributes'] ?? [])
+            ->keyBy(Attribute::DISPLAY_NAME);
+
+        // ✗ رگرسیونی که این تست می‌گیرد: وقتی گزینه‌ها روی سطحِ `attributes`
+        // ساخته شوند، سایدبار به‌جای گروهِ «نوع محصول» دو گروهِ «شاخه» و «کلاف»
+        // نشان می‌دهد که هرکدام فقط خودشان را دارند.
+        $this->assertFalse($groups->has('شاخه'), 'گزینه نباید خودش یک گروهِ سایدبار باشد.');
+        $this->assertFalse($groups->has('کلاف'), 'گزینه نباید خودش یک گروهِ سایدبار باشد.');
+
+        $this->assertTrue($groups->has('نوع محصول'));
         $this->assertEqualsCanonicalizing(
             ['شاخه', 'کلاف'],
-            collect($groups['type']['attributes'])->pluck(Attribute::DISPLAY_NAME)->all(),
+            collect($groups['نوع محصول']['values'])->pluck('display_value')->all(),
         );
 
-        $this->assertSame('گرید', $groups['grade'][AttributeType::DISPLAY_NAME]);
-        $this->assertSame(
+        // فقط مقادیری که این محصول واقعاً واریانتشان را دارد.
+        $this->assertEqualsCanonicalizing(
             ['A1'],
-            collect($groups['grade']['attributes'])->pluck(Attribute::DISPLAY_NAME)->all(),
-            'فقط گریدهایی باید بیایند که این محصول واقعاً واریانتشان را دارد.'
+            collect($groups['گرید']['values'])->pluck('display_value')->all(),
         );
-
-        // هر گزینه باید ردیفِ مقدار داشته باشد، وگرنه اصلاً به واریانت وصل نمی‌شود.
-        foreach ($groups['size']['attributes'] as $option) {
-            $this->assertNotEmpty($option['values'], "گزینه‌ی سایز {$option['name']} ردیفِ مقدار ندارد.");
-        }
+        $this->assertEqualsCanonicalizing(
+            ['8', '10', '12'],
+            collect($groups['سایز (قطر)']['values'])->pluck('display_value')->all(),
+        );
     }
 
     #[Test]
@@ -111,19 +116,19 @@ class StagingCatalogAttributesTest extends TestCase
     {
         $product = $this->demoProduct('rebar-plain-a1');
 
-        $coil = Attribute::query()
-            ->whereHas('attributeType', fn ($q) => $q->where(AttributeType::NAME, 'type'))
-            ->where(Attribute::NAME, 'کلاف')
+        $coil = AttributeValue::query()
+            ->whereHas('attribute', fn ($q) => $q->where(Attribute::NAME, 'نوع محصول'))
+            ->where(AttributeValue::VALUE, 'کلاف')
             ->firstOrFail();
 
         $skus = collect(
-            $this->getJson("/api/products/{$product->cuid}/variants?filter_categories[]={$coil->id}")
+            $this->getJson("/api/products/{$product->cuid}/variants?filter_values[]={$coil->id}")
                 ->assertOk()
                 ->json('data.data')
         )->pluck('sku');
 
-        // اگر گزینه‌ها یک سطح پایین‌تر (روی `attribute_values`) مدل می‌شدند،
-        // این فیلتر هر سه واریانت را برمی‌گرداند — یعنی عملاً بی‌اثر بود.
+        // با `filter_categories` (id گروه) هر سه واریانت برمی‌گشتند — چون همه
+        // «نوع محصول» دارند. تفکیک فقط در سطحِ مقدار ممکن است.
         $this->assertEqualsCanonicalizing(
             ['DEMO-RBP-A1-08', 'DEMO-RBP-A1-10'],
             $skus->all(),

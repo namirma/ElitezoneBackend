@@ -29,6 +29,9 @@ class ProductIndexRequest extends FormRequest
             'per_page' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:100'],
             'sort' => ['sometimes', 'nullable', 'string', Rule::in($validSortOptions)],
             'filter_categories' => ['sometimes', 'array'],
+            // گزینه‌ی مشخص («A3») — سطحی که سایدبار تیک می‌زند.
+            'filter_values' => ['sometimes', 'array'],
+            'filter_values.*' => ['integer', 'exists:attribute_values,id'],
             'debug_prices' => ['sometimes', 'boolean'],
         ];
     }
