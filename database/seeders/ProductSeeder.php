@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use App\Models\Attribute;
 use App\Models\AttributeType;
-use App\Models\AttributeValue;
 use App\Models\Badge;
 use App\Models\CategoryAttribute;
 use App\Models\CustomerType;
@@ -24,10 +23,13 @@ use App\Models\ProductPrice;
 use App\Models\ProductVariant;
 use App\Models\ShippingMethod;
 use Carbon\Carbon;
+use Database\Seeders\Concerns\SeedsProductAttributes;
 use Illuminate\Database\Seeder;
 
 class ProductSeeder extends Seeder
 {
+    use SeedsProductAttributes;
+
     public function run(): void
     {
         $categoriesData = [
@@ -41,10 +43,15 @@ class ProductSeeder extends Seeder
         }
 
         $attributeTypesData = [
-            // ⚠️ عنوان‌ها باید با `StagingCatalogSeeder::VOCABULARY` یکی بمانند —
-            // هر دو سیدر `updateOrCreate` روی همین ردیف‌ها می‌زنند، پس اگر فرق
-            // کنند، عنوانِ سایدبار به این بستگی پیدا می‌کند که کدام سیدر آخر
-            // اجرا شده است.
+            // ⚠️ **این سه گروه و گزینه‌هایشان دیگر به هیچ واریانتی وصل نیستند.**
+            // شکلِ قدیمی بود: گزینه («شاخه») روی سطحِ `attributes` می‌نشست، پس
+            // سایدبار هر گزینه را یک گروهِ جدا نشان می‌داد. شکلِ درست در
+            // `Concerns\SeedsProductAttributes::VOCABULARY` است.
+            //
+            // نگه داشته شده‌اند چون `category_attributes` به همین
+            // `attribute_type`ها FK دارد؛ حذفشان یک پاک‌سازیِ جداست. چون هیچ
+            // واریانتی به آن‌ها وصل نیست، `/products/{cuid}/filters` هرگز
+            // برنمی‌گرداندشان و در سایدبار دیده نمی‌شوند.
             [AttributeType::NAME => 'type', AttributeType::DISPLAY_NAME => 'نوع محصول', AttributeType::INPUT_TYPE => 'select'],
             [AttributeType::NAME => 'grade', AttributeType::DISPLAY_NAME => 'گرید', AttributeType::INPUT_TYPE => 'select'],
             [AttributeType::NAME => 'size', AttributeType::DISPLAY_NAME => 'سایز', AttributeType::INPUT_TYPE => 'select'],
@@ -177,19 +184,14 @@ class ProductSeeder extends Seeder
                 $rebarProduct->orderUnits()->syncWithoutDetaching([$kgUnit->id => ['max_quantity' => 2000000]]);
             }
 
-            $shakhehAttr = Attribute::where(Attribute::ATTRIBUTE_TYPE_ID, $typeAttributeType?->id)->where(Attribute::NAME, 'شاخه')->first();
-            $kalafAttr = Attribute::where(Attribute::ATTRIBUTE_TYPE_ID, $typeAttributeType?->id)->where(Attribute::NAME, 'کلاف')->first();
-            $gradeA1Attr = Attribute::where(Attribute::ATTRIBUTE_TYPE_ID, $gradeAttributeType?->id)->where(Attribute::NAME, 'A1')->first();
-            $gradeA2Attr = Attribute::where(Attribute::ATTRIBUTE_TYPE_ID, $gradeAttributeType?->id)->where(Attribute::NAME, 'A2')->first();
-            $gradeA3Attr = Attribute::where(Attribute::ATTRIBUTE_TYPE_ID, $gradeAttributeType?->id)->where(Attribute::NAME, 'A3')->first();
-            $size8Attr = Attribute::where(Attribute::ATTRIBUTE_TYPE_ID, $sizeAttributeType?->id)->where(Attribute::NAME, '8')->first();
-            $size12Attr = Attribute::where(Attribute::ATTRIBUTE_TYPE_ID, $sizeAttributeType?->id)->where(Attribute::NAME, '12')->first();
-            $size16Attr = Attribute::where(Attribute::ATTRIBUTE_TYPE_ID, $sizeAttributeType?->id)->where(Attribute::NAME, '16')->first();
+            // واژگانِ مشترک — گروه/گزینه/مقدار. باید پیش از حلقه‌ی واریانت‌ها
+            // ساخته شود چون `attachAttributes()` روی همان ردیف‌ها جست‌وجو می‌کند.
+            $this->ensureAttributeVocabulary();
 
             $variantsSeedData = [
-                [ProductVariant::SKU => 'RBR-A2-12-SH', ProductVariant::NAME => 'میلگرد شاخه A2 سایز 12', 'attrs_ids' => [$shakhehAttr?->id, $gradeA2Attr?->id, $size12Attr?->id], ProductVariant::STOCK_QUANTITY => 200000, ProductVariant::MIN_ORDER_VALUE => 2000, ProductVariant::MAX_ORDER_VALUE => 100000, ProductVariant::DISCOUNT_VALUE => 10.00, ProductVariant::DISCOUNT_TYPE => 'percentage', ProductVariant::DISCOUNT_START_DATE => Carbon::now(), ProductVariant::DISCOUNT_END_DATE => Carbon::now()->addMonth()],
-                [ProductVariant::SKU => 'RBR-A3-16-SH', ProductVariant::NAME => 'میلگرد شاخه A3 سایز 16', 'attrs_ids' => [$shakhehAttr?->id, $gradeA3Attr?->id, $size16Attr?->id], ProductVariant::STOCK_QUANTITY => 150000, ProductVariant::MIN_ORDER_VALUE => 2000, ProductVariant::MAX_ORDER_VALUE => 100000, ProductVariant::DISCOUNT_VALUE => 10.00, ProductVariant::DISCOUNT_TYPE => 'percentage', ProductVariant::DISCOUNT_START_DATE => Carbon::now(), ProductVariant::DISCOUNT_END_DATE => Carbon::now()->addDays(15)],
-                [ProductVariant::SKU => 'RBR-A1-8-KL', ProductVariant::NAME => 'میلگرد کلاف A1 سایز 8', 'attrs_ids' => [$kalafAttr?->id, $gradeA1Attr?->id, $size8Attr?->id], ProductVariant::STOCK_QUANTITY => 300000, ProductVariant::MIN_ORDER_VALUE => 2000, ProductVariant::MAX_ORDER_VALUE => 2000000, ProductVariant::DISCOUNT_VALUE => null, ProductVariant::DISCOUNT_TYPE => null, ProductVariant::DISCOUNT_START_DATE => null, ProductVariant::DISCOUNT_END_DATE => null],
+                [ProductVariant::SKU => 'RBR-A2-12-SH', ProductVariant::NAME => 'میلگرد شاخه A2 سایز 12', 'attrs' => ['نوع محصول' => 'شاخه', 'نوع سطح' => 'آجدار', 'گرید' => 'A2', 'سایز (قطر)' => '12'], ProductVariant::STOCK_QUANTITY => 200000, ProductVariant::MIN_ORDER_VALUE => 2000, ProductVariant::MAX_ORDER_VALUE => 100000, ProductVariant::DISCOUNT_VALUE => 10.00, ProductVariant::DISCOUNT_TYPE => 'percentage', ProductVariant::DISCOUNT_START_DATE => Carbon::now(), ProductVariant::DISCOUNT_END_DATE => Carbon::now()->addMonth()],
+                [ProductVariant::SKU => 'RBR-A3-16-SH', ProductVariant::NAME => 'میلگرد شاخه A3 سایز 16', 'attrs' => ['نوع محصول' => 'شاخه', 'نوع سطح' => 'آجدار', 'گرید' => 'A3', 'سایز (قطر)' => '16'], ProductVariant::STOCK_QUANTITY => 150000, ProductVariant::MIN_ORDER_VALUE => 2000, ProductVariant::MAX_ORDER_VALUE => 100000, ProductVariant::DISCOUNT_VALUE => 10.00, ProductVariant::DISCOUNT_TYPE => 'percentage', ProductVariant::DISCOUNT_START_DATE => Carbon::now(), ProductVariant::DISCOUNT_END_DATE => Carbon::now()->addDays(15)],
+                [ProductVariant::SKU => 'RBR-A1-8-KL', ProductVariant::NAME => 'میلگرد کلاف A1 سایز 8', 'attrs' => ['نوع محصول' => 'کلاف', 'نوع سطح' => 'آجدار', 'گرید' => 'A1', 'سایز (قطر)' => '8'], ProductVariant::STOCK_QUANTITY => 300000, ProductVariant::MIN_ORDER_VALUE => 2000, ProductVariant::MAX_ORDER_VALUE => 2000000, ProductVariant::DISCOUNT_VALUE => null, ProductVariant::DISCOUNT_TYPE => null, ProductVariant::DISCOUNT_START_DATE => null, ProductVariant::DISCOUNT_END_DATE => null],
             ];
             foreach ($variantsSeedData as $data) {
                 // Lookup key must be `sku` ALONE — product_variants.sku has a global unique
@@ -213,19 +215,10 @@ class ProductSeeder extends Seeder
                         ProductVariant::DISCOUNT_END_DATE => $data[ProductVariant::DISCOUNT_END_DATE],
                     ]
                 );
-                // Build pivot data with attribute_value_id (required by new schema)
-                $syncData = [];
-                foreach (array_filter($data['attrs_ids']) as $attrId) {
-                    $attr = Attribute::find($attrId);
-                    if ($attr) {
-                        $av = AttributeValue::firstOrCreate(
-                            ['attribute_id' => $attrId, 'value' => $attr->name],
-                            ['display_value' => $attr->display_name ?? $attr->name]
-                        );
-                        $syncData[$attrId] = ['attribute_value_id' => $av->id];
-                    }
-                }
-                $variant->variantAttributes()->sync($syncData);
+                // گروه ← گزینه، از واژگانِ مشترک. پیش از این ویژگی‌ها از
+                // سطحِ `attributes` می‌آمدند (یعنی «شاخه» خودش یک attribute
+                // بود)، و سایدبار هر گزینه را یک گروهِ جدا نشان می‌داد.
+                $this->attachAttributes($variant, $data['attrs']);
             }
         }
 

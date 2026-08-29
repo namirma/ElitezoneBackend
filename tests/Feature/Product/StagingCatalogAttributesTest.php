@@ -62,7 +62,12 @@ class StagingCatalogAttributesTest extends TestCase
     #[Test]
     public function every_seeded_variant_carries_attributes(): void
     {
-        $variants = ProductVariant::where(ProductVariant::SKU, 'like', 'DEMO-%')->get();
+        // هر دو سیدر: کاتالوگِ نمایشی (`DEMO-*`) و میلگردِ پایه‌ی `ProductSeeder`
+        // (`RBR-*`). دومی روی استیجینگ صفر ویژگی داشت و سایدبارش خالی بود.
+        $variants = ProductVariant::query()
+            ->where(ProductVariant::SKU, 'like', 'DEMO-%')
+            ->orWhere(ProductVariant::SKU, 'like', 'RBR-%')
+            ->get();
 
         $this->assertNotEmpty($variants, 'سیدرِ کاتالوگ هیچ واریانتی نساخت.');
 
@@ -72,6 +77,31 @@ class StagingCatalogAttributesTest extends TestCase
                 "واریانت {$variant->sku} هیچ ویژگی‌ای ندارد — سایدبارش خالی می‌ماند."
             );
         }
+    }
+
+    #[Test]
+    public function the_base_rebar_product_gets_the_same_group_shape(): void
+    {
+        // `ProductSeeder` ویژگی‌ها را از سطحِ `attributes` می‌گرفت، پس محصولِ
+        // «میلگرد آجدار» یا سایدبارِ خالی داشت یا هر گزینه را یک گروه نشان
+        // می‌داد. حالا از همان واژگانِ مشترک می‌آید.
+        $product = $this->demoProduct('rebar');
+
+        $groups = collect(
+            $this->getJson("/api/products/{$product->cuid}/filters")->assertOk()->json('data')
+        )->flatMap(fn (array $type) => $type['attributes'] ?? [])
+            ->keyBy(Attribute::DISPLAY_NAME);
+
+        $this->assertFalse($groups->has('شاخه'), 'گزینه نباید خودش یک گروهِ سایدبار باشد.');
+
+        $this->assertEqualsCanonicalizing(
+            ['شاخه', 'کلاف'],
+            collect($groups['نوع محصول']['values'])->pluck('display_value')->all(),
+        );
+        $this->assertEqualsCanonicalizing(
+            ['A1', 'A2', 'A3'],
+            collect($groups['گرید']['values'])->pluck('display_value')->all(),
+        );
     }
 
     #[Test]
