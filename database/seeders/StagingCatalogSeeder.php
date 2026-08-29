@@ -2,9 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\Attribute;
-use App\Models\AttributeType;
-use App\Models\AttributeValue;
 use App\Models\Factory;
 use App\Models\FactoryLocation;
 use App\Models\FactoryStock;
@@ -14,10 +11,10 @@ use App\Models\ProductCategory;
 use App\Models\ProductImage;
 use App\Models\ProductPrice;
 use App\Models\ProductVariant;
-use App\Models\ProductVariantAttribute;
 use App\Models\Role;
 use App\Models\SupplierProfile;
 use App\Models\User;
+use Database\Seeders\Concerns\SeedsProductAttributes;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Storage;
 
@@ -48,56 +45,10 @@ use Illuminate\Support\Facades\Storage;
  */
 class StagingCatalogSeeder extends Seeder
 {
+    use SeedsProductAttributes;
+
     /** موبایلِ تأمین‌کننده‌ی نمایشی — کلید idempotency این سیدر. */
     private const DEMO_SUPPLIER_MOBILE = '09120000001';
-
-    /**
-     * گروهِ کلانی که سایدبار زیرِ آن ساخته می‌شود.
-     *
-     * نامش دلبخواه نیست — داده‌ی واقعیِ کاتالوگ (سینکِ کویر) از قبل زیرِ همین
-     * `technical_specs` نشسته است. هر نامِ دیگری یک گروهِ رقیب می‌ساخت و
-     * سایدبار دو «گرید» نشان می‌داد.
-     */
-    private const ATTRIBUTE_TYPE = ['name' => 'technical_specs', 'label' => 'مشخصات فنی'];
-
-    /**
-     * واژگانِ ویژگی‌ها — گروهِ سایدبار ← گزینه‌ها.
-     *
-     * ‏**سه سطح داریم و نقش‌شان قابلِ جابه‌جایی نیست.** نگاشتِ درست — که هم
-     * داده‌ی واقعیِ کاتالوگ و هم فرانت از آن پیروی می‌کنند — این است:
-     *
-     *   `attribute_types`  → گروهِ کلان («مشخصات فنی») — سایدبار نادیده می‌گیردش
-     *   `attributes`       → **سرتیترِ گروه در سایدبار** («گرید»)
-     *   `attribute_values` → **گزینه‌ی قابلِ تیک‌زدن** («A3») و مقدارِ چیپِ واریانت
-     *
-     * ‏`ProductSeeder` گزینه‌ها را یک سطح بالاتر (روی `attributes`) می‌سازد —
-     * آن شکلِ متروکی است که هیچ واریانتی به آن وصل نیست. دنبال‌کردنش باعث شد
-     * سایدبارِ استیجینگ به‌جای گروهِ «نوع محصول» با دو گزینه، دو گروهِ جدا به
-     * نامِ «شاخه» و «کلاف» نشان بدهد که هرکدام فقط خودشان را داشتند.
-     *
-     * نام‌ها عمداً **عینِ داده‌ی واقعی** است تا `updateOrCreate` همان ردیف‌ها را
-     * بازاستفاده کند، نه اینکه کنارشان ردیفِ تازه بسازد. به همین دلیل «سایز
-     * (قطر)» است و نه «سایز» — برای آجر و شیرفلکه «قطر» دقیق نیست، ولی داشتنِ
-     * دو گروهِ سایزِ موازی در سایدبار بدتر است.
-     *
-     * ارقام هم لاتین می‌مانند («۱۲ متر» نه): داده‌ی واقعی «12 متر» دارد و شکلِ
-     * فارسی یک ردیفِ مقدارِ دومِ تقریباً یکسان می‌ساخت.
-     *
-     * ردیفِ `attribute_values` اختیاری نیست:
-     * ‏`product_variant_attributes.attribute_value_id` ستونِ NOT NULL است، پس
-     * بدون آن اصلاً نمی‌شود ویژگی را به واریانت وصل کرد.
-     */
-    private const VOCABULARY = [
-        'نوع محصول' => ['شاخه', 'کلاف', 'IPE', 'نبشی', 'ورق', 'سفال', 'نسوز', 'کشویی', 'پروانه‌ای'],
-        'نوع سطح' => ['ساده', 'آجدار'],
-        'گرید' => ['A1', 'A2', 'A3', 'A4', 'ST37'],
-        'سایز (قطر)' => [
-            '2', '3', '8', '10', '12', '14', '16', '18', '50', '60',
-            '10×20×20', '15×20×20', '22×11×5.5', '2 اینچ', '3 اینچ', '4 اینچ',
-        ],
-        'طول شاخه' => ['6 متر', '12 متر'],
-        'بسته‌بندی' => ['نرمال', 'بندیل', 'پالت'],
-    ];
 
     public function run(): void
     {
@@ -322,77 +273,6 @@ class StagingCatalogSeeder extends Seeder
      * مقدار نمی‌سازد** — یعنی همان گزینه‌ها قابلِ وصل‌شدن به هیچ واریانتی
      * نیستند. این متد آن شکاف را هم پر می‌کند، نه فقط برای گزینه‌های تازه.
      */
-    private function ensureAttributeVocabulary(): void
-    {
-        $type = AttributeType::updateOrCreate(
-            [AttributeType::NAME => self::ATTRIBUTE_TYPE['name']],
-            [
-                AttributeType::DISPLAY_NAME => self::ATTRIBUTE_TYPE['label'],
-                AttributeType::INPUT_TYPE => 'select',
-            ],
-        );
-
-        foreach (self::VOCABULARY as $group => $options) {
-            $attribute = Attribute::updateOrCreate(
-                [Attribute::ATTRIBUTE_TYPE_ID => $type->id, Attribute::NAME => $group],
-                [Attribute::DISPLAY_NAME => $group],
-            );
-
-            foreach ($options as $option) {
-                AttributeValue::updateOrCreate(
-                    [
-                        AttributeValue::ATTRIBUTE_ID => $attribute->id,
-                        AttributeValue::VALUE => $option,
-                    ],
-                    [AttributeValue::DISPLAY_VALUE => $option],
-                );
-            }
-        }
-    }
-
-    /**
-     * ویژگی‌های یک واریانت را می‌نشاند.
-     *
-     * `sync` و نه `syncWithoutDetaching`: نقشه‌ی این سیدر مرجع است، پس اگر
-     * گزینه‌ای از نقشه حذف شد باید از دیتابیس هم برود.
-     *
-     * @param  array<string,string>  $map  سرتیترِ گروه ← گزینه
-     */
-    private function attachAttributes(ProductVariant $variant, array $map): void
-    {
-        $pivot = [];
-
-        foreach ($map as $group => $option) {
-            $attribute = Attribute::query()
-                ->whereHas('attributeType', fn ($q) => $q->where(AttributeType::NAME, self::ATTRIBUTE_TYPE['name']))
-                ->where(Attribute::NAME, $group)
-                ->first();
-
-            // مقدارِ **همین** گزینه، نه اولین مقدارِ گروه: هر گروه حالا چند
-            // گزینه دارد، پس `first()` بی‌قید یعنی همه‌ی واریانت‌ها یک مقدار
-            // بگیرند.
-            $value = $attribute === null
-                ? null
-                : AttributeValue::where(AttributeValue::ATTRIBUTE_ID, $attribute->id)
-                    ->where(AttributeValue::VALUE, $option)
-                    ->first();
-
-            // نبودِ گزینه یا مقدارش یعنی نقشه و `VOCABULARY` از هم پاشیده‌اند.
-            // رد شدن با هشدار، چون خرابیِ یک ویژگی نباید کلِ کاتالوگ را بخواباند.
-            if ($value === null) {
-                $this->command?->warn(
-                    "StagingCatalogSeeder: option {$group}/{$option} is not in VOCABULARY — skipped."
-                );
-
-                continue;
-            }
-
-            $pivot[$attribute->id] = [ProductVariantAttribute::ATTRIBUTE_VALUE_ID => $value->id];
-        }
-
-        $variant->variantAttributes()->sync($pivot);
-    }
-
     private function seedProduct(string $slug, array $spec, $factories): bool
     {
         $category = ProductCategory::where(ProductCategory::SLUG, $spec['category'])->first();
