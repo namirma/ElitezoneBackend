@@ -103,7 +103,7 @@ class ProcessPodiumDepositAction
             // در نبودِ IBAN، به جستجوی کد ملی برمی‌گردیم (رفتار قبلی).
             $user = ! empty($senderIban)
                 ? $this->resolveDepositUserByIban($nationalCode, $senderIban)
-                : User::where('national_code', $nationalCode)->first();
+                : $this->resolveDepositUserByNationalCode($nationalCode);
 
             if ($user) {
                 // اگر IBAN فرستنده قابل استخراج است، باید با حساب ثبت‌شده تطبیق داشته باشد
@@ -146,8 +146,9 @@ class ProcessPodiumDepositAction
                 return;
             }
 
-            // شناسه واریز معتبر ولی کاربری با این کد ملی وجود ندارد
-            Log::warning('ProcessPodiumDepositAction: Pass1 — کاربری با این کد ملی یافت نشد', [
+            // شناسه واریز معتبر ولی کاربر قطعی نیست — یا کسی با این کد ملی نیست،
+            // یا بیش از یک نفر هست و انتخاب بینشان حدس زدن است.
+            Log::warning('ProcessPodiumDepositAction: Pass1 — کاربر قطعیِ این کد ملی پیدا نشد', [
                 'national_code' => $nationalCode,
                 'shenaseh' => $shenasehVariz,
                 'amount' => $creditorAmount,
@@ -161,7 +162,7 @@ class ProcessPodiumDepositAction
                 PodiumDepositRecord::NATIONAL_CODE => $nationalCode,
                 PodiumDepositRecord::CREDITOR_AMOUNT => $creditorAmount,
                 PodiumDepositRecord::DEPOSITED_AT_JALALI => $depositedAt ?: null,
-                PodiumDepositRecord::NOTE => 'کاربری با این کد ملی در سیستم یافت نشد',
+                PodiumDepositRecord::NOTE => $this->unmatchedNationalCodeNote($nationalCode, $senderIban),
             ]);
 
             return;
@@ -466,6 +467,65 @@ class ProcessPodiumDepositAction
      * و فقط زمانی برمی‌گرداند که کد ملیِ صاحبِ حساب با کد ملیِ شناسهٔ واریز یکی باشد
      * (رفعِ ابهامِ چند-حسابیِ یک کد ملی + حفظِ لایهٔ امنیتیِ تطابقِ هویت).
      */
+    /**
+     * کاربر را **فقط وقتی** برمی‌گرداند که کد ملی به یک نفر برسد.
+     *
+     * ‏`users.national_code` ایندکس دارد ولی **unique نیست** (یکتایی فقط روی
+     * `user_profiles.national_code` است)، و همین متد جایی است که تصمیم می‌گیرد
+     * پولِ یک واریز به کیف‌پولِ چه کسی بنشیند. `->first()` قبلی یعنی وقتی دو
+     * ردیف با یک کد ملی وجود داشت، واریز به هرکدام که اول می‌آمد می‌نشست —
+     * پولِ یک نفر در کیف‌پولِ دیگری، بی‌هیچ خطایی.
+     *
+     * مسیرِ IBAN این مشکل را ندارد (شبا سراسراً یکتاست و کد ملی هم کراس‌چک
+     * می‌شود)؛ این fallback فقط وقتی اجرا می‌شود که IBANی در کار نباشد.
+     *
+     * ‏`null` یعنی «قطعی نیست»، و فراخوان همان کاری را می‌کند که برای کاربرِ
+     * پیدانشده می‌کرد: واریز را برای تأیید دستیِ ادمین پارک می‌کند. همان اصلی
+     * که گاردهای `official_price` و `weight_before_scale` دارند — **داده‌ی
+     * مبهم متوقف می‌شود، پول جابه‌جا نمی‌کند.**
+     */
+    private function resolveDepositUserByNationalCode(?string $nationalCode): ?User
+    {
+        if ($nationalCode === null || $nationalCode === '') {
+            return null;
+        }
+
+        // limit(2) کافی است: فقط باید بدانیم «یکی» یا «بیش از یکی».
+        $matches = User::where(User::NATIONAL_CODE, $nationalCode)->limit(2)->get();
+
+        if ($matches->count() > 1) {
+            Log::warning('ProcessPodiumDepositAction: کد ملی به بیش از یک کاربر می‌رسد — واریز پارک شد', [
+                'national_code' => $nationalCode,
+                'user_ids' => $matches->pluck('id')->all(),
+            ]);
+
+            return null;
+        }
+
+        return $matches->first();
+    }
+
+    /**
+     * چرا واریز پارک شد — «نبودِ کاربر» و «چند کاربر» دو مشکلِ متفاوت با دو
+     * راه‌حلِ متفاوت‌اند و ادمین باید در پنل بتواند تشخیصشان بدهد.
+     *
+     * وقتی IBAN در کار بوده، انتخابِ کاربر اصلاً از روی کد ملی نبوده، پس
+     * «چند کاربر» توضیحِ درستی برای آن شکست نیست (آنجا مشکل این است که هیچ
+     * حسابِ تأییدشده‌ای با آن شبا پیدا نشد).
+     *
+     * کوئریِ اضافه فقط روی مسیرِ شکست اجرا می‌شود.
+     */
+    private function unmatchedNationalCodeNote(?string $nationalCode, ?string $senderIban): string
+    {
+        if (empty($senderIban)
+            && $nationalCode !== null && $nationalCode !== ''
+            && User::where(User::NATIONAL_CODE, $nationalCode)->count() > 1) {
+            return 'چند کاربر با این کد ملی ثبت شده‌اند — واریز باید دستی به صاحب حساب نسبت داده شود';
+        }
+
+        return 'کاربری با این کد ملی در سیستم یافت نشد';
+    }
+
     private function resolveDepositUserByIban(?string $nationalCode, string $senderIban): ?User
     {
         $normalizedIban = strtoupper(preg_replace('/\s+/', '', $senderIban));

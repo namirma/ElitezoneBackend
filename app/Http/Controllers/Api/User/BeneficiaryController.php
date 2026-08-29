@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\UserProfile;
 use App\Models\UserType;
 use App\Services\PodiumClient;
+use App\Support\OtpSecret;
 use App\Support\PhoneNumber;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -119,9 +120,12 @@ class BeneficiaryController extends Controller
         // users.secret ذی‌نفع. نوشتن در secret، کد OTP لاگینِ خودِ آن شخص را باطل
         // می‌کرد (و برعکس، لاگین او این کد را می‌سوزاند)؛ ستون secret فقط متعلق به
         // جریان‌های احراز هویت خود کاربر است.
+        // هَش و نه خودِ کد: قاعده‌ی سراسری پروژه («OTP/reset-token storage is
+        // hashed») به محلِ ذخیره کاری ندارد — کشِ پروژه درایورِ `database` است،
+        // پس کدِ خام در جدولِ `cache` می‌نشیند، نه در حافظه‌ی فرّار.
         Cache::put(
             $this->verificationSessionKey((int) $buyer->id, (int) $beneficiaryUser->id),
-            (string) $verifyCode,
+            OtpSecret::hash((string) $verifyCode),
             now()->addMinutes(3)
         );
 
@@ -153,7 +157,9 @@ class BeneficiaryController extends Controller
             return error(__('beneficiary.verification_not_initiated'), [], 403);
         }
 
-        if (! $beneficiaryUser || ! hash_equals((string) $expectedCode, (string) $data['code'])) {
+        // `OtpSecret::matches` خودش زمان‌ثابت است (bcrypt verify) — جایگزینِ
+        // `hash_equals` روی مقدارِ خام.
+        if (! $beneficiaryUser || ! OtpSecret::matches((string) $expectedCode, (string) $data['code'])) {
             return error(__('auth.verification_code_not_match'), [], 400);
         }
 
