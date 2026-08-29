@@ -63,6 +63,17 @@ class FilterProductsAction
             });
         });
 
+        // گزینه‌ی مشخص («A3») — همان سطحی که سایدبار تیک می‌زند. `filter_categories`
+        // فقط گروه است و به‌تنهایی چیزی را محدود نمی‌کند.
+        $query->when(! empty($filters->filterValues), function ($q) use ($filters) {
+            $q->whereHas('variants.variantAttributes', function ($sub) use ($filters) {
+                $sub->whereIn(
+                    'product_variant_attributes.'.ProductVariantAttribute::ATTRIBUTE_VALUE_ID,
+                    $filters->filterValues
+                );
+            });
+        });
+
         $query->when($filters->availability === 'in_stock', function ($q) {
             $q->whereHas('variants', function ($variantQuery) {
                 // ستون واقعی «stock_quantity» است؛ «stock» وجود ندارد و باعث کرشِ

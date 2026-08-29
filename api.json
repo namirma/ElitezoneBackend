@@ -15043,6 +15043,16 @@
                         }
                     },
                     {
+                        "name": "filter_values[]",
+                        "in": "query",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "integer"
+                            }
+                        }
+                    },
+                    {
                         "name": "debug_prices",
                         "in": "query",
                         "schema": {
@@ -15130,9 +15140,18 @@
                         }
                     },
                     {
+                        "name": "filter_values[]",
+                        "in": "query",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "integer"
+                            }
+                        }
+                    },
+                    {
                         "name": "sort",
                         "in": "query",
-                        "description": "'filter_categories.*' => 'exists:price_filter_categories,id',",
                         "schema": {
                             "type": [
                                 "string",

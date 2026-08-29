@@ -22,9 +22,13 @@ class ProductVariantFilterRequest extends FormRequest
     public function rules(): array
     {
         return [
+            // گروهِ ویژگی («گرید»). تیک‌زدنِ یک گزینه‌ی مشخص با این ممکن نیست —
+            // برای آن `filter_values` هست.
             'filter_categories' => 'nullable|array',
             'filter_categories.*' => 'integer|exists:attributes,id',
-            // 'filter_categories.*' => 'exists:price_filter_categories,id',
+            // گزینه‌ی مشخص («A3») — چیزی که سایدبار واقعاً تیک می‌خورد.
+            'filter_values' => 'nullable|array',
+            'filter_values.*' => 'integer|exists:attribute_values,id',
             'sort' => 'nullable|in:newest,oldest,cheapest,most_expensive,best_selling',
             'page' => 'nullable|integer|min:1',
             'per_page' => 'nullable|integer|min:1|max:100',

@@ -12,6 +12,8 @@ readonly class ProductFilterData
         public readonly ?string $sortKey,
         public readonly ?string $roleCode,
         public readonly ?array $filterCategories,
+        /** id گزینه‌ها («A3») — سطحی که سایدبار واقعاً تیک می‌زند. */
+        public readonly ?array $filterValues,
         public readonly bool $debugPrices,
         public readonly int $perPage,
         public readonly ?string $availability,
@@ -26,6 +28,7 @@ readonly class ProductFilterData
             sortKey: $request->input('sort', 'newest'),
             roleCode: $activeRoleCode,
             filterCategories: $request->input('filter_categories'),
+            filterValues: $request->input('filter_values'),
             debugPrices: $request->boolean('debug_prices'),
             perPage: $request->integer('per_page', 12),
             availability: $request->input('availability', 'all'),
@@ -41,6 +44,7 @@ readonly class ProductFilterData
             'sort' => $this->sortKey,
             'role_code' => $this->roleCode,
             'filter_categories' => $this->filterCategories,
+            'filter_values' => $this->filterValues,
             'availability' => $this->availability,
             'with_vat' => $this->withVat,
         ], fn ($value) => ! is_null($value));
