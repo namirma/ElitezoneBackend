@@ -71,10 +71,10 @@ class CartItem extends Model
         self::WITH_VAT => 'boolean',
         self::WEIGHT => 'decimal:3',
         self::QUANTITY => 'decimal:2',
-        self::PRICE => 'decimal:2',
-        self::FINAL_PRICE => 'decimal:2',
-        self::VAT_AMOUNT => 'decimal:2',
-        self::TOTAL_WITH_VAT => 'decimal:2',
+        self::PRICE => 'decimal:0',
+        self::FINAL_PRICE => 'decimal:0',
+        self::VAT_AMOUNT => 'decimal:0',
+        self::TOTAL_WITH_VAT => 'decimal:0',
     ];
 
     // ... (روابط تغییری نکردند) ...

@@ -75,7 +75,7 @@ class SupplierSettlementVisibilityTest extends TestCase
 
         $row = $this->getJson('/api/profile/supplier/orders')->assertOk()->json('data.0');
 
-        $this->assertSame('2900000000.00', $row['financial']['supplier_settlement']['payment_to_supplier']);
+        $this->assertSame('2900000000', $row['financial']['supplier_settlement']['payment_to_supplier']);
         $this->assertFalse($row['financial']['supplier_settlement']['is_post_weighbridge']);
         $this->assertFalse($row['financial']['supplier_settlement']['moadian_submitted']);
         $this->assertFalse($row['financial']['supplier_settlement']['debt_pending']);
@@ -115,7 +115,7 @@ class SupplierSettlementVisibilityTest extends TestCase
         // پس از باسکول رقم دیگر PTS نیست، PTSM است — پنل باید بتواند بگوید کدام.
         $this->assertTrue($settlement['is_post_weighbridge']);
         $this->assertTrue($settlement['debt_pending']);
-        $this->assertSame('120000.00', $settlement['supplier_debt_amount']);
+        $this->assertSame('120000', $settlement['supplier_debt_amount']);
     }
 
     #[Test]

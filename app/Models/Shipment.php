@@ -150,7 +150,7 @@ class Shipment extends Model
         self::WEIGHT => 'decimal:3',
         self::BILLED_COUNT => 'decimal:3',
         self::COST_BASIS => ShippingCostBasis::class,
-        self::SHIPPING_COST => 'decimal:2',
+        self::SHIPPING_COST => 'decimal:0',
         self::ACTUAL_WEIGHT => 'decimal:3',
         self::REGISTERED_AT => 'datetime',
         self::IS_FINAL => 'boolean',

@@ -63,7 +63,7 @@ class ReturnDamage extends Model
     ];
 
     protected $casts = [
-        self::AMOUNT => 'decimal:2',
+        self::AMOUNT => 'decimal:0',
         self::BACKOFFICE_APPROVED_AT => 'datetime',
         self::BUYER_APPROVED_AT => 'datetime',
         self::SETTLED_AT => 'datetime',

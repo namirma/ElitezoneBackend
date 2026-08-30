@@ -40,6 +40,30 @@ class SettlementCalculatorService
     private const TC_PERCENTAGE = 1.0;
 
     /**
+     * مرزِ خروجیِ هر مبلغ: **ریالِ صحیح**.
+     *
+     * ریال زیرواحد ندارد، و مهم‌تر: هر ستونی که این اعداد در آن می‌نشیند —
+     * `wallets.balance`, `wallets.balance_hold`, `wallet_transactions.amount` و
+     * (از این پس) ستون‌های مبلغیِ `orders` — `decimal(20,0)` است.
+     *
+     * ‏`Money::toFloat()` پیش‌فرضش **دو رقم اعشار** است، پس POO/PTS می‌توانستند
+     * `1234567.89` برگردانند: سفارش آن را با اعشار ذخیره می‌کرد و کیف پول همان
+     * لِگ را به `1234568` گرد می‌کرد. اسنپ‌شاتِ سفارش و دفترِ کیف پول تا یک ریال
+     * از هم فاصله می‌گرفتند — و چون هر دو طرف با خودشان سازگار بودند،
+     * ‏`financial:doctor` هم چیزی نمی‌دید.
+     *
+     * همان استدلالی که `extractVatInRials()` را ساخت، فقط این‌بار سراسری:
+     * **در دقتی حساب کن که واقعاً ذخیره می‌شود.**
+     *
+     * ⚠️ `extractVat()` عمداً بیرونِ این قاعده است — قراردادِ دورقمی‌اش مستند و
+     * تست‌شده است و نسخه‌ی ریالی‌اش `extractVatInRials()` است.
+     */
+    private static function rial(string|float $value): float
+    {
+        return Money::toFloat($value, 0);
+    }
+
+    /**
      * نرخِ مؤثرِ %TC: از تنظیمِ سراسریِ قابل‌ویرایش (PriceSetting: tc_percentage) خوانده
      * می‌شود و در نبودِ آن به پیش‌فرضِ ۱٪ برمی‌گردد. static است تا از متدهای static و
      * instanceِ این سرویس یکسان قابل‌فراخوانی باشد. مقدار کش‌شده است (کشِ PriceSetting).
@@ -155,12 +179,12 @@ class SettlementCalculatorService
 
         if ($transCommission && $transVat) {
             // +TC +VAT: [Trans + OP×W] × (1−%OW) × (1+VAT)
-            return Money::toFloat(Money::mul(Money::mul(Money::add($trans, $productBase), $owFactor), $vatFactor));
+            return self::rial(Money::mul(Money::mul(Money::add($trans, $productBase), $owFactor), $vatFactor));
         }
 
         if ($transCommission) {
             // +TC −VAT: [OP×W × (1−%OW) × (1+VAT)] + [Trans × (1−%OW)]
-            return Money::toFloat(Money::add(
+            return self::rial(Money::add(
                 Money::mul(Money::mul($productBase, $owFactor), $vatFactor),
                 Money::mul($trans, $owFactor)
             ));
@@ -168,11 +192,11 @@ class SettlementCalculatorService
 
         if ($transVat) {
             // −TC +VAT: [Trans + OP×W × (1−%OW)] × (1+VAT)
-            return Money::toFloat(Money::mul(Money::add($trans, Money::mul($productBase, $owFactor)), $vatFactor));
+            return self::rial(Money::mul(Money::add($trans, Money::mul($productBase, $owFactor)), $vatFactor));
         }
 
         // −TC −VAT: [OP×W × (1−%OW) × (1+VAT)] + Trans
-        return Money::toFloat(Money::add(Money::mul(Money::mul($productBase, $owFactor), $vatFactor), $trans));
+        return self::rial(Money::add(Money::mul(Money::mul($productBase, $owFactor), $vatFactor), $trans));
     }
 
     /**
@@ -215,12 +239,12 @@ class SettlementCalculatorService
 
         if ($transCommission && $transVat) {
             // +TC +VAT: [Trans + OP×W] × (1−TC) × (1+VAT)
-            return Money::toFloat(Money::mul(Money::mul(Money::add($trans, $productBase), $deductFactor), $vatFactor));
+            return self::rial(Money::mul(Money::mul(Money::add($trans, $productBase), $deductFactor), $vatFactor));
         }
 
         if ($transCommission) {
             // +TC −VAT: [OP×W × (1−TC) × (1+VAT)] + [Trans × (1−TC)]
-            return Money::toFloat(Money::add(
+            return self::rial(Money::add(
                 Money::mul(Money::mul($productBase, $deductFactor), $vatFactor),
                 Money::mul($trans, $deductFactor)
             ));
@@ -228,11 +252,11 @@ class SettlementCalculatorService
 
         if ($transVat) {
             // −TC +VAT: [Trans + OP×W × (1−TC)] × (1+VAT)
-            return Money::toFloat(Money::mul(Money::add($trans, Money::mul($productBase, $deductFactor)), $vatFactor));
+            return self::rial(Money::mul(Money::add($trans, Money::mul($productBase, $deductFactor)), $vatFactor));
         }
 
         // −TC −VAT: [OP×W × (1−TC) × (1+VAT)] + Trans
-        return Money::toFloat(Money::add(Money::mul(Money::mul($productBase, $deductFactor), $vatFactor), $trans));
+        return self::rial(Money::add(Money::mul(Money::mul($productBase, $deductFactor), $vatFactor), $trans));
     }
 
     /**
@@ -385,7 +409,7 @@ class SettlementCalculatorService
             return 0.0;
         }
 
-        return Money::toFloat(Money::mul($trans, Money::div($vatPercent, '100')));
+        return self::rial(Money::mul($trans, Money::div($vatPercent, '100')));
     }
 
     /**

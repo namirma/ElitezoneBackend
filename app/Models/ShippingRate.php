@@ -51,9 +51,9 @@ class ShippingRate extends Model
     ];
 
     protected $casts = [
-        self::FLAT_COST => 'decimal:2',
-        self::PER_KG_COST => 'decimal:2',
-        self::PER_COUNT_COST => 'decimal:2',
+        self::FLAT_COST => 'decimal:0',
+        self::PER_KG_COST => 'decimal:0',
+        self::PER_COUNT_COST => 'decimal:0',
         self::COST_BASIS => ShippingCostBasis::class,
         self::IS_ACTIVE => 'boolean',
     ];

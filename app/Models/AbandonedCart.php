@@ -45,7 +45,7 @@ class AbandonedCart extends Model
 
     protected $casts = [
         self::ITEMS => 'array',
-        self::TOTAL_AMOUNT => 'decimal:2',
+        self::TOTAL_AMOUNT => 'decimal:0',
         self::CART_CREATED_AT => 'datetime',
         self::EXPIRED_AT => 'datetime',
     ];

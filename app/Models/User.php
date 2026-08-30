@@ -161,9 +161,9 @@ class User extends Authenticatable
         self::SECRET_EXPIRES_AT => 'datetime',
         self::IS_ACTIVE => 'boolean',
         self::COUPON_ENABLED => 'boolean',
-        self::BADGE_PURCHASE_AMOUNT => 'decimal:2',
-        self::DEBT_BALANCE => 'decimal:2',
-        self::CREDIT_LIMIT => 'decimal:2',
+        self::BADGE_PURCHASE_AMOUNT => 'decimal:0',
+        self::DEBT_BALANCE => 'decimal:0',
+        self::CREDIT_LIMIT => 'decimal:0',
     ];
 
     protected $appends = ['created_at_p', 'created_at_diff', 'updated_at_p', 'updated_at_diff'];

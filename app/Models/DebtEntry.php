@@ -64,7 +64,7 @@ class DebtEntry extends Model
     ];
 
     protected $casts = [
-        self::AMOUNT => 'decimal:2',
+        self::AMOUNT => 'decimal:0',
         self::META => 'array',
     ];
 
