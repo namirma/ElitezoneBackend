@@ -47,7 +47,7 @@ class AdminDebtReportTest extends TestCase
             ->firstWhere('user_id', $debtor->id);
 
         $this->assertNotNull($row, 'بدهکار باید در گزارش باشد');
-        $this->assertSame('2000000.00', $row['debt_balance']);
+        $this->assertSame('2000000', $row['debt_balance']);
         $this->assertSame('3000000', $row['headroom'],
             'فاصله تا سقف همان چیزی است که تصمیمِ توقفِ سفارش به آن تکیه می‌کند');
     }
@@ -78,7 +78,7 @@ class AdminDebtReportTest extends TestCase
         Sanctum::actingAs($this->admin);
         $response = $this->getJson("/api/admin/users/{$debtor->id}/debt-entries")->assertOk();
 
-        $this->assertSame('600000.00', $response->json('data.balance'));
+        $this->assertSame('600000', $response->json('data.balance'));
         $this->assertCount(2, $response->json('data.entries'));
     }
 
@@ -104,7 +104,7 @@ class AdminDebtReportTest extends TestCase
             ->firstWhere('user.id', $user->id);
 
         $this->assertNotNull($row);
-        $this->assertSame('7500000.00', $row['total_amount']);
+        $this->assertSame('7500000', $row['total_amount']);
         $this->assertSame('میلگرد ۱۴', $row['items'][0]['product_name'],
             'اسنپ‌شات تنها روایتِ درستِ آن سبد است — محصول ممکن است بعداً حذف شود');
     }

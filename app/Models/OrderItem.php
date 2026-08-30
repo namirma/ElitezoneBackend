@@ -120,9 +120,9 @@ class OrderItem extends Model
 
     protected $casts = [
         self::QUANTITY_DETAILS => 'array',
-        self::UNIT_PRICE => 'decimal:2',
-        self::TOTAL_PRICE => 'decimal:2',
-        self::SHIPPING_COST => 'decimal:2',
+        self::UNIT_PRICE => 'decimal:0',
+        self::TOTAL_PRICE => 'decimal:0',
+        self::SHIPPING_COST => 'decimal:0',
         self::WEIGHT => 'decimal:3',
         self::QUANTITY => 'decimal:2',
     ];

@@ -78,9 +78,9 @@ class ProductPrice extends Model
     // ستون‌های پولی decimal هستند — cast float خطای نمایش IEEE-754 وارد می‌کرد
     protected $casts = [
         self::LAST_UPDATED_AT => 'datetime',
-        self::GENERAL_PRICE => 'decimal:2',
-        self::SPECIAL_PRICE => 'decimal:2',
-        self::GOLDEN_FIGURE => 'decimal:2',
+        self::GENERAL_PRICE => 'decimal:0',
+        self::SPECIAL_PRICE => 'decimal:0',
+        self::GOLDEN_FIGURE => 'decimal:0',
     ];
 
     protected static function booted(): void
