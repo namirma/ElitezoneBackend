@@ -107,7 +107,7 @@ class StagingCatalogAttributesTest extends TestCase
     #[Test]
     public function the_sidebar_gets_one_group_per_property_not_one_group_per_option(): void
     {
-        $product = $this->demoProduct('rebar-plain-a1');
+        $product = $this->demoProduct('rebar-rolled');
 
         $types = $this->getJson("/api/products/{$product->cuid}/filters")
             ->assertOk()
@@ -131,20 +131,24 @@ class StagingCatalogAttributesTest extends TestCase
         );
 
         // فقط مقادیری که این محصول واقعاً واریانتشان را دارد.
+        // مقادیر عینِ کاتالوگِ مرجع — سایدبارِ استیجینگ باید همان چیزی را نشان
+        // بدهد که سایتِ اصلی نشان می‌دهد، نه زیرمجموعه‌ای از آن.
         $this->assertEqualsCanonicalizing(
-            ['A1'],
+            ['A0', 'A2', 'A3', 'A4', 'A5'],
             collect($groups['گرید']['values'])->pluck('display_value')->all(),
         );
         $this->assertEqualsCanonicalizing(
-            ['8', '10', '12'],
+            ['65', '80', '100', '120', '140', '160', '180', '200',
+                '220', '250', '260', '280', '300', '320', '360', '400'],
             collect($groups['سایز (قطر)']['values'])->pluck('display_value')->all(),
         );
+        $this->assertSame(['آجدار'], collect($groups['نوع سطح']['values'])->pluck('display_value')->all());
     }
 
     #[Test]
     public function filtering_by_an_option_narrows_the_variant_list(): void
     {
-        $product = $this->demoProduct('rebar-plain-a1');
+        $product = $this->demoProduct('rebar-rolled');
 
         $coil = AttributeValue::query()
             ->whereHas('attribute', fn ($q) => $q->where(Attribute::NAME, 'نوع محصول'))
@@ -157,12 +161,40 @@ class StagingCatalogAttributesTest extends TestCase
                 ->json('data.data')
         )->pluck('sku');
 
-        // با `filter_categories` (id گروه) هر سه واریانت برمی‌گشتند — چون همه
+        // با `filter_categories` (id گروه) همه‌ی واریانت‌ها برمی‌گشتند — چون همه
         // «نوع محصول» دارند. تفکیک فقط در سطحِ مقدار ممکن است.
-        $this->assertEqualsCanonicalizing(
-            ['DEMO-RBP-A1-08', 'DEMO-RBP-A1-10'],
-            $skus->all(),
+        $this->assertNotEmpty($skus);
+        $this->assertLessThan($this->variantCount($product), $skus->count());
+        $this->assertTrue(
+            $skus->every(fn (string $sku) => str_contains($sku, 'DEMO-RBR-')),
+            'فیلترِ «کلاف» نباید واریانتِ محصولِ دیگری را برگرداند.'
         );
+    }
+
+    #[Test]
+    public function the_label_form_the_sidebar_actually_sends_filters_too(): void
+    {
+        // سایدبارِ فعلی به‌جای `filter_values[]` برچسبِ گروه را به‌عنوان نامِ
+        // پارامتر می‌فرستد — در URL دیده می‌شود:
+        //   ?category=2&page=1&سایز+%28قطر%29=3
+        // بک‌اند این را نادیده می‌گرفت، پس تیک زدنِ یک گزینه هیچ‌چیز را محدود
+        // نمی‌کرد و کاربر همه‌ی واریانت‌ها را می‌دید.
+        $product = $this->demoProduct('rebar-rolled');
+        $total = $this->variantCount($product);
+
+        $skus = collect(
+            $this->getJson("/api/products/{$product->cuid}/variants?".urlencode('سایز (قطر)').'=100&per_page=100')
+                ->assertOk()
+                ->json('data.data')
+        )->pluck('sku');
+
+        $this->assertNotEmpty($skus, 'فیلترِ برچسبی باید نتیجه بدهد، نه صفر.');
+        $this->assertLessThan($total, $skus->count(), 'و باید واقعاً محدود کند، نه اینکه همه را برگرداند.');
+    }
+
+    private function variantCount(Product $product): int
+    {
+        return $product->variants()->count();
     }
 
     #[Test]

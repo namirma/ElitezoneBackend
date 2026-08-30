@@ -26,6 +26,7 @@ use App\Models\ProductVariant;
 use App\Repositories\Contracts\ProductRepositoryInterface;
 use App\Services\Cart\CartResolver;
 use App\Services\PriceCalculationService;
+use App\Services\Product\AttributeFilterResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 
@@ -34,12 +35,19 @@ class ProductController extends Controller
     public function __construct(
         private readonly CartResolver $cartResolver,
         private readonly ProductRepositoryInterface $productRepo,
-        private readonly PriceCalculationService $priceService
+        private readonly PriceCalculationService $priceService,
+        private readonly AttributeFilterResolver $attributeFilters,
     ) {}
 
     public function index(ProductIndexRequest $request, FilterProductsAction $action): JsonResponse
     {
         $activeCode = $this->cartResolver->activeCode();
+
+        // سایدبار ممکن است به‌جای `filter_values[]` برچسبِ گروه را به‌عنوان نامِ
+        // پارامتر بفرستد؛ هر دو به idِ مقدار می‌رسند.
+        $request->merge([
+            'filter_values' => $this->attributeFilters->resolve($request, $request->input('filter_values', [])),
+        ]);
 
         $filterData = $request->toDto($activeCode);
 
@@ -92,9 +100,18 @@ class ProductController extends Controller
     {
         $activeCode = $this->cartResolver->activeCode();
 
+        $filters = $request->validated();
+
+        // همان قاعده‌ی لیستِ محصول: سایدبار ممکن است برچسبِ گروه را به‌عنوان نامِ
+        // پارامتر بفرستد (`?سایز (قطر)=100`) به‌جای `filter_values[]`.
+        $filters['filter_values'] = $this->attributeFilters->resolve(
+            $request,
+            $filters['filter_values'] ?? []
+        );
+
         $paginator = $action->execute(
             product: $product,
-            filters: $request->validated(),
+            filters: $filters,
             roleCode: $activeCode
         );
 
