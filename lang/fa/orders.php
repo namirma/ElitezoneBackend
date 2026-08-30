@@ -92,10 +92,6 @@ return [
     'weighbridge_weight_numeric' => 'وزن باسکول باید یک عدد معتبر باشد.',
     'weighbridge_weight_min' => 'وزن باسکول نمی‌تواند کمتر از ۱ کیلوگرم باشد.',
 
-    // ── PayFullOrder (PayFullOrderRequest) ─────────────────────────────────
-    'payment_type_required' => 'نوع پرداخت الزامی است.',
-    'payment_type_invalid' => 'نوع پرداخت انتخاب‌شده معتبر نیست.',
-
     // ── Survey ─────────────────────────────────────────────────────────────
     'survey_not_allowed_for_status' => 'ثبت نظرسنجی فقط برای سفارش‌های تحویل‌داده‌شده امکان‌پذیر است.',
     'survey_already_submitted' => 'نظرسنجی این سفارش قبلاً ثبت شده است.',
