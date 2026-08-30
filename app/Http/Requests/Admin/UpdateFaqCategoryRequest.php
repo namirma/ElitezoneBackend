@@ -18,7 +18,10 @@ class UpdateFaqCategoryRequest extends FormRequest
 
     public function rules(): array
     {
-        $category = $this->route('faq_category');
+        // نامِ پارامتر باید عینِ `routes/api/admin.php` باشد: `{faqCategory}`.
+        // با `faq_category` این `null` برمی‌گشت، `ignore(null)` می‌شد، و ویرایشِ
+        // یک دسته بدونِ تغییرِ slug با «تکراری است» رد می‌شد.
+        $category = $this->route('faqCategory');
         $id = $category instanceof FaqCategory ? $category->getKey() : null;
 
         return [
