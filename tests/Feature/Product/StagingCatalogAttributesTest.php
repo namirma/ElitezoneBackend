@@ -10,6 +10,7 @@ use Database\Seeders\ProductSeeder;
 use Database\Seeders\StagingCatalogSeeder;
 use Database\Seeders\UserTypeSeeder;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\Test;
@@ -233,7 +234,7 @@ class StagingCatalogAttributesTest extends TestCase
     }
 
     /** @param  list<int>  $valueIds */
-    private function skusFor(Product $product, array $valueIds): \Illuminate\Support\Collection
+    private function skusFor(Product $product, array $valueIds): Collection
     {
         $query = collect($valueIds)->map(fn (int $id) => "filter_values[]={$id}")->implode('&');
 
