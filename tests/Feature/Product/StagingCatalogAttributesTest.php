@@ -4,6 +4,7 @@ namespace Tests\Feature\Product;
 
 use App\Models\Attribute;
 use App\Models\AttributeValue;
+use App\Models\FactoryStock;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use Database\Seeders\ProductSeeder;
@@ -39,7 +40,7 @@ class StagingCatalogAttributesTest extends TestCase
         // آن سیدر روی L13 از قبل و مستقل از این تغییر خراب است. همان قراردادی
         // که تست‌های `LedgerReconciler` دارند: skip به‌جای فورک‌کردنِ فایل، تا
         // این تست بین دو برنچ بایت‌به‌بایت یکی بماند.
-        if (! class_exists(\App\Models\FactoryStock::class)) {
+        if (! class_exists(FactoryStock::class)) {
             $this->markTestSkipped('factory_stocks is not on this branch — StagingCatalogSeeder cannot run.');
         }
 
