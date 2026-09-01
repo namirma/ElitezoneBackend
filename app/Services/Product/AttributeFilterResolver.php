@@ -85,6 +85,33 @@ class AttributeFilterResolver
         return array_values(array_unique($ids));
     }
 
+    /**
+     * idهای انتخاب‌شده را بر اساس **گروهی که به آن تعلق دارند** دسته می‌کند.
+     *
+     * سایدبار وقتی دو تیک در دو گروه می‌خورد، «هم A3 **و** هم سایز ۱۰۰» را
+     * می‌خواهد؛ ولی یک `whereIn` روی همه‌ی idها یعنی «A3 **یا** سایز ۱۰۰» —
+     * انتخابِ دوم به‌جای باریک‌ترکردنِ نتیجه، پهن‌ترش می‌کرد. با یک `whereHas`
+     * به‌ازای هر گروه، داخلِ گروه OR می‌ماند (طبیعی: «A3 یا A4») و بینِ
+     * گروه‌ها AND می‌شود — همان چیزی که هر فیلترِ facetدار می‌کند.
+     *
+     * @param  list<int>  $valueIds
+     * @return list<list<int>> یک دسته به‌ازای هر گروه
+     */
+    public function groupByAttribute(array $valueIds): array
+    {
+        if ($valueIds === []) {
+            return [];
+        }
+
+        return AttributeValue::query()
+            ->whereIn(AttributeValue::ID, $valueIds)
+            ->get([AttributeValue::ID, AttributeValue::ATTRIBUTE_ID])
+            ->groupBy(AttributeValue::ATTRIBUTE_ID)
+            ->map(fn ($rows) => $rows->pluck(AttributeValue::ID)->map('intval')->all())
+            ->values()
+            ->all();
+    }
+
     /** همان تبدیلی که PHP سرِ ساختِ `$_GET` روی نامِ پارامتر انجام می‌دهد. */
     private function mangle(string $name): string
     {

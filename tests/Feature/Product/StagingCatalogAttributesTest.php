@@ -192,6 +192,58 @@ class StagingCatalogAttributesTest extends TestCase
         $this->assertLessThan($total, $skus->count(), 'و باید واقعاً محدود کند، نه اینکه همه را برگرداند.');
     }
 
+    #[Test]
+    public function two_ticks_in_two_groups_narrow_together_instead_of_widening(): void
+    {
+        // یک `whereIn` روی همه‌ی idهای انتخاب‌شده یعنی OR: تیکِ دوم نتیجه را
+        // **پهن‌تر** می‌کرد نه باریک‌تر. کاربر «گریدِ A3» را می‌زد، بعد «سایز ۱۰۰»
+        // را هم می‌زد و ناگهان واریانتِ بیشتری می‌دید — دقیقاً خلافِ کاری که
+        // یک فیلتر می‌کند.
+        $product = $this->demoProduct('rebar-rolled');
+
+        $grade = $this->valueId('گرید', 'A3');
+        $size = $this->valueId('سایز (قطر)', '100');
+
+        $byGrade = $this->skusFor($product, [$grade]);
+        $byBoth = $this->skusFor($product, [$grade, $size]);
+
+        $this->assertNotEmpty($byGrade);
+        $this->assertLessThanOrEqual(
+            $byGrade->count(),
+            $byBoth->count(),
+            'افزودنِ تیکِ دوم هرگز نباید نتیجه را بزرگ‌تر کند.'
+        );
+
+        // و هرچه برگشت باید واقعاً هر دو شرط را داشته باشد.
+        foreach ($byBoth as $sku) {
+            $this->assertTrue($byGrade->contains($sku));
+        }
+
+        // دو تیک در **یک** گروه اما OR می‌ماند: «A3 یا A4».
+        $twoGrades = $this->skusFor($product, [$grade, $this->valueId('گرید', 'A4')]);
+        $this->assertGreaterThan($byGrade->count(), $twoGrades->count());
+    }
+
+    private function valueId(string $group, string $option): int
+    {
+        return (int) AttributeValue::query()
+            ->whereHas('attribute', fn ($q) => $q->where(Attribute::NAME, $group))
+            ->where(AttributeValue::VALUE, $option)
+            ->value(AttributeValue::ID);
+    }
+
+    /** @param  list<int>  $valueIds */
+    private function skusFor(Product $product, array $valueIds): \Illuminate\Support\Collection
+    {
+        $query = collect($valueIds)->map(fn (int $id) => "filter_values[]={$id}")->implode('&');
+
+        return collect(
+            $this->getJson("/api/products/{$product->cuid}/variants?{$query}&per_page=100")
+                ->assertOk()
+                ->json('data.data')
+        )->pluck('sku');
+    }
+
     private function variantCount(Product $product): int
     {
         return $product->variants()->count();

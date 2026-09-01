@@ -5,13 +5,15 @@ namespace App\Actions\Product;
 use App\Models\Product;
 use App\Models\ProductVariantAttribute;
 use App\Services\Pricing\VariantPriceHydrator;
+use App\Services\Product\AttributeFilterResolver;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 
 class FilterProductVariantsAction
 {
     public function __construct(
-        private readonly VariantPriceHydrator $priceHydrator
+        private readonly VariantPriceHydrator $priceHydrator,
+        private readonly AttributeFilterResolver $attributeFilters,
     ) {}
 
     public function execute(Product $product, array $filters, string $roleCode): LengthAwarePaginator
@@ -37,10 +39,11 @@ class FilterProductVariantsAction
             );
         }
 
-        if (! empty($filters['filter_values'])) {
+        // یک `whereHas` به‌ازای هر گروه: داخلِ گروه OR، بینِ گروه‌ها AND.
+        foreach ($this->attributeFilters->groupByAttribute($filters['filter_values'] ?? []) as $group) {
             $query->whereHas('variantAttributes', fn ($q) => $q->whereIn(
                 'product_variant_attributes.'.ProductVariantAttribute::ATTRIBUTE_VALUE_ID,
-                $filters['filter_values']
+                $group
             ));
         }
 

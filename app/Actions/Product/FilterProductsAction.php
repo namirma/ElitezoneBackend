@@ -9,6 +9,7 @@ use App\Models\ProductVariantAttribute;
 use App\Models\SupplierProfile;
 use App\Repositories\Contracts\ProductRepositoryInterface;
 use App\Services\PriceCalculationService;
+use App\Services\Product\AttributeFilterResolver;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 
@@ -16,7 +17,8 @@ class FilterProductsAction
 {
     public function __construct(
         private readonly ProductRepositoryInterface $productRepo,
-        private readonly PriceCalculationService $priceService
+        private readonly PriceCalculationService $priceService,
+        private readonly AttributeFilterResolver $attributeFilters,
     ) {}
 
     /**
@@ -66,14 +68,16 @@ class FilterProductsAction
 
         // گزینه‌ی مشخص («A3») — همان سطحی که سایدبار تیک می‌زند. `filter_categories`
         // فقط گروه است و به‌تنهایی چیزی را محدود نمی‌کند.
-        $query->when(! empty($filters->filterValues), function ($q) use ($filters) {
-            $q->whereHas('variants.variantAttributes', function ($sub) use ($filters) {
+        // یک `whereHas` به‌ازای هر گروه: داخلِ گروه OR، بینِ گروه‌ها AND — وگرنه
+        // تیکِ دوم نتیجه را پهن‌تر می‌کرد به‌جای باریک‌تر.
+        foreach ($this->attributeFilters->groupByAttribute($filters->filterValues ?? []) as $group) {
+            $query->whereHas('variants.variantAttributes', function ($sub) use ($group) {
                 $sub->whereIn(
                     'product_variant_attributes.'.ProductVariantAttribute::ATTRIBUTE_VALUE_ID,
-                    $filters->filterValues
+                    $group
                 );
             });
-        });
+        }
 
         $query->when($filters->availability === 'in_stock', function ($q) {
             $q->whereHas('variants', function ($variantQuery) {
