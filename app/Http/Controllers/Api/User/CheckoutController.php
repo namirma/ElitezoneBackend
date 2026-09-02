@@ -176,6 +176,24 @@ class CheckoutController extends Controller
             return error(__('checkout.elite_yar_cannot_pay_for_beneficiary'), [], 422);
         }
 
+        $branch = $branchResolver->resolve($user, $totals->finalAmountFor($cart, $user));
+
+        // ⚠️ قرینه‌ی گاردهای `pay()` — و تا امروز غایب بود.
+        //
+        // ‏`PaymentBranch` خودش قاعده را می‌نویسد: «رزرو راهِ گریز از ناتوانیِ
+        // پرداخت است، نه یک انتخابِ دلخواه که هر کسی بتواند با آن موجودی را قفل
+        // کند» — و `reserveAvailable()` را هم برایش دارد. ولی این اندپوینت
+        // هرگز صدایش نمی‌زد و تنها چیزی که می‌سنجید «آیا کیف پول بیعانه را
+        // پوشش می‌دهد» بود. یعنی خریداری که در شاخه‌ی الف/ب است و باید کل مبلغ
+        // را بپردازد، با صدا زدنِ همین اندپوینت سفارشِ `reserved` می‌گرفت:
+        // موجودی کسر و کالا قفل می‌شد و باقیِ پول به بعد می‌افتاد — روی سفارشی
+        // که اصلاً واجدِ شرایطِ رزرو نبود.
+        //
+        // بدونِ خطا و بدونِ لاگ، چون هر دو طرف با خودشان سازگار می‌ماندند.
+        if (! $branch->reserveAvailable()) {
+            return error(__('checkout.reserve_not_available'), ['branch' => $branch->toArray()], 422);
+        }
+
         // الحاقیه‌ی ۱، تغییر ۲: در پنجره‌ی کوتاه، تأییدِ صریحِ خریدار الزامی است.
         $warning = $warningResolver->forCart($cart);
 
@@ -206,7 +224,6 @@ class CheckoutController extends Controller
         }
 
         $reserveAmount = $settings->reserveValue();
-        $branch = $branchResolver->resolve($user, $totals->finalAmountFor($cart, $user));
 
         // بیعانه هم از کیف پول پرداخت می‌شود؛ کسری باید اول شارژ شود.
         if ($branch->walletBalance < $reserveAmount) {
