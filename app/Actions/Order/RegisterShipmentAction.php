@@ -7,6 +7,7 @@ namespace App\Actions\Order;
 use App\Actions\Financial\ProcessWeighbridgeResultAction;
 use App\Exceptions\BusinessException;
 use App\Jobs\Notification\SendSmsJob;
+use App\Models\Driver;
 use App\Models\Order;
 use App\Models\Shipment;
 use Illuminate\Support\Facades\DB;
@@ -39,8 +40,12 @@ class RegisterShipmentAction
     ) {}
 
     /**
-     * @param  array{waybill_ref: string, driver_name: string, driver_national_code?: ?string,
-     *               driver_mobile?: ?string, vehicle_plate: string, vehicle_type?: ?string,
+     * ‏`driver_name` و `vehicle_plate` وقتی `driver_id` بیاید اختیاری‌اند —
+     * اسنپ‌شاتشان از دفترچه پر می‌شود (`required_without` در FormRequest).
+     *
+     * @param  array{waybill_ref: string, driver_id?: ?int, driver_name?: ?string,
+     *               driver_national_code?: ?string, driver_mobile?: ?string,
+     *               vehicle_plate?: ?string, vehicle_type?: ?string,
      *               actual_weight: float, is_final?: bool}  $data
      * @return array{shipment: Shipment, order_completed: bool, settlement: ?array}
      *
@@ -72,14 +77,24 @@ class RegisterShipmentAction
                 throw new BusinessException(__('shipments.order_not_shippable'), 422);
             }
 
+            // راننده‌ی انتخاب‌شده از دفترچه (مالکیتش در FormRequest سنجیده شده).
+            // مقادیرِ صریحِ فرم اولویت دارند تا «همان راننده، این‌بار با پلاکِ
+            // دیگر» بدون ویرایشِ دفترچه ممکن بماند.
+            $book = isset($data['driver_id'])
+                ? Driver::find($data['driver_id'])
+                : null;
+
             $lockedShipment->forceFill([
                 Shipment::IS_FINAL => (bool) ($data['is_final'] ?? false),
                 Shipment::WAYBILL_REF => $data['waybill_ref'],
-                Shipment::DRIVER_NAME => $data['driver_name'],
-                Shipment::DRIVER_NATIONAL_CODE => $data['driver_national_code'] ?? null,
-                Shipment::DRIVER_MOBILE => $data['driver_mobile'] ?? null,
-                Shipment::VEHICLE_PLATE => $data['vehicle_plate'],
-                Shipment::VEHICLE_TYPE => $data['vehicle_type'] ?? null,
+                // پیوندِ نرم به دفترچه؛ ستون‌های زیر همچنان **اسنپ‌شات**اند، چون
+                // ویرایشِ بعدیِ دفترچه نباید بارنامه‌ی صادرشده را بازنویسی کند.
+                Shipment::DRIVER_ID => $book?->getKey(),
+                Shipment::DRIVER_NAME => $data['driver_name'] ?? $book?->{Driver::FULL_NAME},
+                Shipment::DRIVER_NATIONAL_CODE => $data['driver_national_code'] ?? $book?->{Driver::NATIONAL_CODE},
+                Shipment::DRIVER_MOBILE => $data['driver_mobile'] ?? $book?->{Driver::MOBILE},
+                Shipment::VEHICLE_PLATE => $data['vehicle_plate'] ?? $book?->{Driver::PLATE_NUMBER},
+                Shipment::VEHICLE_TYPE => $data['vehicle_type'] ?? $book?->{Driver::VEHICLE_TYPE},
                 Shipment::ACTUAL_WEIGHT => $data['actual_weight'],
                 Shipment::REGISTERED_AT => now(),
                 Shipment::STATUS => Shipment::STATUS_SHIPPED,

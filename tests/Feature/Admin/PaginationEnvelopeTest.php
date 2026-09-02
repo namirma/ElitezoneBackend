@@ -75,9 +75,11 @@ class PaginationEnvelopeTest extends TestCase
     #[Test]
     public function a_non_paginated_list_gets_no_envelope(): void
     {
-        // ‏`GET /api/faq-categories` مجموعه‌ی ساده برمی‌گرداند (بدون paginate).
-        // نباید `meta` بگیرد، وگرنه شکلِ پاسخ بی‌دلیل عوض می‌شود.
-        $body = $this->getJson('/api/faq-categories')->assertOk()->json();
+        // ‏`GET /api/province` مجموعه‌ی ساده برمی‌گرداند (بدون paginate) و روی هر
+        // دو برنچ هست. نباید `meta` بگیرد، وگرنه شکلِ پاسخ بی‌دلیل عوض می‌شود.
+        Sanctum::actingAs($this->admin());
+
+        $body = $this->getJson('/api/province')->assertOk()->json();
 
         $this->assertArrayNotHasKey('meta', $body);
         $this->assertArrayNotHasKey('links', $body);
