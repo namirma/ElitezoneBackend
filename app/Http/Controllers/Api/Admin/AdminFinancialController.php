@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Admin;
 
+use App\Constants\FinancialCodes;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\FinancialFilterRequest;
 use App\Http\Resources\Financial\WalletTransactionResource;
@@ -27,8 +28,22 @@ class AdminFinancialController extends Controller
         $invoices = Order::query()
             ->with(['placer.profile', 'items.productVariant'])
             // فیلتر فاکتور اولیه
+            //
+            // ⚠️ این شرط `whereNotNull(Order::INITIAL_INVOICE_REF)` بود و
+            // **هیچ‌کس آن ستون را نمی‌نویسد** — نه اکشنی، نه سیدری، نه مهاجرتی.
+            // یعنی تبِ «فاکتور اولیه»، که تبِ **پیش‌فرضِ** همین اندپوینت است،
+            // همیشه خالی برمی‌گشت. نه خطایی، نه صفر-با-توضیح: فقط یک فهرستِ تهی
+            // که شبیهِ «هنوز فاکتوری صادر نشده» به نظر می‌رسید.
+            //
+            // ستونِ ref برای فاکتورِ اولیه اصلاً منبعی ندارد: برخلافِ
+            // `final_invoice_ref` که مرجعی است که کاربر ثبت می‌کند، فاکتورِ اولیه
+            // را خودمان تولید می‌کنیم و در جدولِ `invoices` می‌نشیند. پس همان‌جا
+            // پرسیده می‌شود — سند A (خریدِ مستقیم) یا E (رزرو).
             ->when($type === 'initial', function (Builder $query) use ($request) {
-                $query->whereNotNull(Order::INITIAL_INVOICE_REF)
+                $query->whereHas('invoices', fn ($q) => $q->whereIn('document_code', [
+                    FinancialCodes::DOC_RECEIPT_OWNER,
+                    FinancialCodes::DOC_RESERVE_RECEIPT,
+                ]))
                     ->when($request->filled('payment_status'), fn ($q) => $q->where(Order::PAYMENT_STATUS, $request->payment_status));
             })
             // فیلتر فاکتور نهایی
@@ -43,7 +58,11 @@ class AdminFinancialController extends Controller
             // فیلتر دستور سفارش
             ->when($type === 'command', fn (Builder $query) => $query->whereNotNull(Order::ESPADANA_ORDER_REF))
             // فیلتر فاکتور رسمی/مالیاتی
-            ->when($type === 'tax', fn (Builder $query) => $query->whereNotNull(Order::TAX_INVOICE_REF))
+            //
+            // ⚠️ همان داستان: `tax_invoice_ref` هم هیچ نویسنده‌ای ندارد. جانشینش
+            // در بازطراحی `system_moadian_ref` است — سند P، فاکتورِ مودیانِ شرکت
+            // برای خریدار، که `RecordSystemMoadianInvoiceAction` ثبتش می‌کند.
+            ->when($type === 'tax', fn (Builder $query) => $query->whereNotNull(Order::SYSTEM_MOADIAN_REF))
             ->latest(Order::CREATED_AT)
             ->paginate($this->perPage());
 
