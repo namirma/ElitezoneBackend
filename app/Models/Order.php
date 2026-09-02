@@ -626,6 +626,19 @@ class Order extends Model
         return $this->hasMany(OrderSurvey::class, OrderSurvey::ORDER_ID);
     }
 
+    /**
+     * اسنادِ تولیدشده‌ی این سفارش (`invoices`).
+     *
+     * ‏`Invoice` از ابتدا `order()` را داشت ولی سمتِ معکوس نبود، پس «کدام
+     * سفارش‌ها فاکتورِ اولیه دارند؟» از روی رابطه قابلِ پرسیدن نبود — و همان
+     * خلأ باعث شد گزارشِ ادمین به‌جایش روی ستونِ بی‌نویسنده‌ی
+     * `initial_invoice_ref` فیلتر کند و همیشه خالی برگردد.
+     */
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class, 'order_id');
+    }
+
     public function shippingMethod(): BelongsTo
     {
         return $this->belongsTo(ShippingMethod::class, 'shipping_method_id');
