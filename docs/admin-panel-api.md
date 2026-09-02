@@ -11,7 +11,7 @@
 - **Success envelope:** `{ "status": true, "message": "…", "data": <payload> }`
 - **Error envelope:** `{ "status": false, "message": "…", "errors": <…> }`
 - **Paginated endpoints:** `data` is the standard Laravel structure
-  `{ "data": [ … ], "links": { … }, "meta": { … } }`.
+  `{ "status": true, "message": "…", "data": [ … ], "meta": { … }, "links": { … } }` — `meta` و `links` **هم‌سطحِ** `data` هستند، نه داخلِ آن. تا ۱۴۰۵/۰۶/۱۱ هیچ‌کدام ساخته نمی‌شدند.
 - **Raw vs Resource:** most endpoints return shaped *Resources*. A few (marked **RAW**)
   paginate the Eloquent model directly, so you receive raw DB column names.
 

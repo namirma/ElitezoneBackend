@@ -3,11 +3,59 @@
 namespace App\Providers;
 
 use App\Http\Classes\Response as SzResponse;
+use Illuminate\Http\Resources\Json\ResourceCollection;
+use Illuminate\Pagination\AbstractPaginator;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\ServiceProvider;
 
 class ResponseServiceProvider extends ServiceProvider
 {
+    /**
+     * اطلاعاتِ صفحه‌بندی را در کنارِ `data` بیرون می‌دهد.
+     *
+     * ## باگ
+     *
+     * وقتی یک `ResourceCollection` **تودرتو** سریالایز شود (نه به‌عنوان پاسخِ
+     * اصلی)، لاراول فقط `toArray()` را صدا می‌زند؛ `links`/`meta` را
+     * `toResponse()` اضافه می‌کند که هرگز اجرا نمی‌شود. پس
+     * `success(XResource::collection($paginator))` — الگوی **۴۹ اندپوینتِ
+     * فهرست** در پنل ادمین و پنل تأمین‌کننده — شمارشِ کل و شماره‌ی صفحه را دور
+     * می‌ریخت، در حالی که کوئریِ `COUNT` و `LIMIT/OFFSET` هر دو اجرا شده بودند.
+     *
+     * یعنی هیچ فهرستی در هیچ‌کدام از دو پنل صفحه‌بندی نداشت: کلاینت صفحه‌ی اول
+     * را می‌گرفت و هیچ راهی نداشت بفهمد صفحه‌ی دومی هست یا نه.
+     *
+     * ## چرا کنارِ `data` و نه داخلش
+     *
+     * هر دو سندِ منتشرشده شکلِ `data: {data, links, meta}` را وعده داده‌اند، ولی
+     * کد هرگز آن را نداده و کلاینت‌ها روی شکلِ واقعی (آرایه‌ی مستقیم در `data`)
+     * نوشته شده‌اند. تودرتوکردن یعنی شکستنِ ۴۹ اندپوینت برای قراردادی که امروز
+     * هیچ مصرف‌کننده‌ای ندارد.
+     *
+     * پس `data` همان آرایه می‌ماند و `meta`/`links` **هم‌سطحِ** آن اضافه
+     * می‌شوند: کلاینتِ فعلی دست‌نخورده کار می‌کند و صفحه‌بندی — که تا امروز
+     * غایب بود — در دسترس قرار می‌گیرد. سندها باید با همین هم‌راستا شوند.
+     *
+     * فقط وقتی دخالت می‌کند که مجموعه **واقعاً صفحه‌بندی‌شده** باشد؛ مجموعه‌ی
+     * ساده هیچ تغییری نمی‌کند.
+     *
+     * @return array{data: mixed, meta?: array<string, mixed>, links?: array<string, mixed>}
+     */
+    public static function paginationEnvelope(mixed $data): array
+    {
+        if (! $data instanceof ResourceCollection || ! $data->resource instanceof AbstractPaginator) {
+            return ['data' => $data];
+        }
+
+        $payload = $data->response()->getData(true);
+
+        return array_filter([
+            'data' => $payload['data'] ?? [],
+            'meta' => $payload['meta'] ?? null,
+            'links' => $payload['links'] ?? null,
+        ], static fn ($v) => $v !== null);
+    }
+
     /**
      * Register services.
      */
@@ -17,7 +65,7 @@ class ResponseServiceProvider extends ServiceProvider
             return new SzResponse([
                 'status' => true,
                 'message' => $message,
-                'data' => $data,
+                ...ResponseServiceProvider::paginationEnvelope($data),
             ], $status, array_merge(
                 [
                     'version' => config('app.version'),
