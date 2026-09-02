@@ -218,7 +218,20 @@ class StockDeductedAtPaymentTest extends TestCase
     {
         // رزرو برخلافِ سبد واقعاً کالا را کنار می‌گذارد (بند ۳.۴).
         $this->fillCart();
-        $this->fundWallet(3_000_000_000);
+
+        // ⚠️ فیکسچر عمداً عوض شد. قبلاً کیف پول ۳ میلیارد بود در حالی که سبد
+        // ۹۹ میلیون است — یعنی شاخه‌ی الف، جایی که رزرو اصلاً نباید در دسترس
+        // باشد. آن نسخه دقیقاً همان باگی را assert می‌کرد که `reserve()` حالا
+        // می‌بندد: خریداری که توان پرداختِ کامل دارد سفارشِ `reserved` می‌گرفت.
+        //
+        // برای رسیدن به شاخه‌ی ج (`Final > Wallet + Shaparak`) سقفِ درگاه پایین
+        // آورده شده، نه مبلغِ سبد — موضوعِ این تست کسرِ موجودی است و باید
+        // دست‌نخورده بماند.
+        Setting::updateOrCreate([Setting::KEY => 'shaparak_value'], [Setting::VALUE => '20000000']);
+        Setting::updateOrCreate([Setting::KEY => 'reserve_value'], [Setting::VALUE => '20000000']);
+        Cache::forget(Setting::CACHE_KEY);
+
+        $this->fundWallet(50_000_000);
         Sanctum::actingAs($this->user);
 
         $this->postJson('/api/checkout/reserve', [
