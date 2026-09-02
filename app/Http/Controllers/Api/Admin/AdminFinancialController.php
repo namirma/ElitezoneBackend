@@ -76,23 +76,33 @@ class AdminFinancialController extends Controller
     {
         $mode = $request->input('mode', 'allocation');
 
+        // ⚠️ هر دو حالتِ این گزارش روی نوع‌هایی فیلتر می‌کردند که مسیرِ الیت‌یار
+        // **هرگز نمی‌نویسد**:
+        //
+        //   allocation → `fee_hold`     تنها نویسنده‌اش `placeHold()` است و هر دو
+        //                               فراخوانش hold را روی کیف پولِ **تأمین‌کننده**
+        //                               می‌گذارند؛ تأمین‌کننده هم نقشِ engineer/contractor
+        //                               ندارد، پس اشتراکِ دو شرط همیشه تهی بود.
+        //   payment    → `fee_release`  هیچ نویسنده‌ای ندارد، و `withdraw` هر برداشتی
+        //                               را می‌گیرد نه کمیسیون را.
+        //
+        // فیلترِ نقش هم کهنه بود: مهاجرتِ `add_elite_yar_role_and_backfill` صراحتاً
+        // `engineer`/`contractor` را از معنیِ «الیت‌یار» جدا کرد.
+        //
+        // تعریفِ دقیقِ «لِگِ کیف پولِ الیت‌یار» خودِ کدِ کیف پول است:
+        // `WalletTransactionEngine::process()` روی هر ردیف `meta.code` می‌گذارد و
+        // برای این مسیر همیشه `WEY` است. این هم مستقل از نقش است و هم دقیقاً همان
+        // چیزی که گزارش می‌خواهد.
         $shares = WalletTransaction::query()
-            // دسترسی به اطلاعات کاربر از طریق رابطه کیف پول
             ->with(['wallet.user.profile', 'order'])
+            ->where(WalletTransaction::META.'->code', FinancialCodes::WALLET_ELITE_YAR);
 
-            // فیلتر کردن بر اساس نقش کاربر (مهندس یا پیمانکار)
-            ->whereHas('wallet.user.roles', function (Builder $query) {
-                $query->whereIn('name', ['engineer', 'contractor']);
-            });
-
-        // فیلتر بر اساس حالت (تخصیص یا پرداخت)
         if ($mode === 'allocation') {
-            $shares->where(WalletTransaction::TYPE, WalletTransaction::TYPE_FEE_HOLD);
+            // کمیسیونی که سرِ باسکول امانی پارک شده و هنوز سند Q نیامده.
+            $shares->where(WalletTransaction::STATUS, FinancialCodes::STATUS_HOLD);
         } elseif ($mode === 'payment') {
-            $shares->whereIn(WalletTransaction::TYPE, [
-                WalletTransaction::TYPE_FEE_RELEASE,
-                WalletTransaction::TYPE_WITHDRAW,
-            ]);
+            // آزادسازی با ثبتِ فاکتور مودیانِ الیت‌یار (`ReleaseEliteYARHoldAction`).
+            $shares->where(WalletTransaction::TYPE, WalletTransaction::TYPE_HOLD_RELEASE);
         }
 
         $data = $shares->latest(WalletTransaction::CREATED_AT)->paginate($this->perPage());
@@ -110,7 +120,12 @@ class AdminFinancialController extends Controller
         $documents = Order::query()
             ->with(['items.supplier.profile', 'items.factory'])
             ->when($docType === 'waybill', fn (Builder $query) => $query->whereNotNull(Order::WAYBILL_REF))
-            ->when($docType === 'tax', fn (Builder $query) => $query->whereNotNull('payment_receipt_ref'))
+            // ⚠️ این شرط `payment_receipt_ref` بود — ستونی که واقعاً نوشته می‌شود،
+            // ولی مسیرِ فیشِ **تصویریِ پرداخت** است نه سندِ مالیاتی. پس تبِ
+            // «فاکتور رسمی» سفارش‌هایی را می‌آورد که فیش آپلود کرده‌اند و دقیقاً
+            // همان سفارش‌هایی را که فاکتور مودیانِ تأمین‌کننده دارند جا می‌انداخت.
+            // سندِ مالیاتیِ تأمین‌کننده سند O است و مرجعش این ستون است.
+            ->when($docType === 'tax', fn (Builder $query) => $query->whereNotNull(Order::SUPPLIER_MOADIAN_REF))
             ->latest(Order::UPDATED_AT)
             ->paginate($this->perPage());
 
@@ -122,14 +137,22 @@ class AdminFinancialController extends Controller
      */
     public function getExpertDocuments(FinancialFilterRequest $request): JsonResponse
     {
-        $documents = WalletTransaction::query()
-            ->with('wallet.user.profile')
-            ->where(WalletTransaction::TYPE, WalletTransaction::TYPE_WITHDRAW)
-            ->whereNotNull(WalletTransaction::META.'->invoice_path') // چک کردن وجود فایل فاکتور در متادیتا
-            ->latest(WalletTransaction::CREATED_AT)
+        // ⚠️ این اندپوینت **همیشه تهی** برمی‌گشت. شرطش
+        // `whereNotNull(meta->invoice_path)` بود و `invoice_path` در کلِ مخزن —
+        // شاملِ تست‌ها — فقط در همین یک خط ظاهر می‌شود: هیچ‌چیز هرگز آن کلید را
+        // در `wallet_transactions.meta` نمی‌نویسد. (قرینه‌اش `receipt_path` است
+        // که واقعاً نوشته می‌شود.) نه یک تبِ خالی، کلِ اندپوینت.
+        //
+        // سندِ مالیِ الیت‌یار همان سند Q است و مرجعش روی سفارش می‌نشیند، نه روی
+        // تراکنشِ کیف پول. پس این گزارش قرینه‌ی `getSupplierDocuments` می‌شود:
+        // سفارش‌هایی که فاکتور مودیانِ الیت‌یار برایشان ثبت شده.
+        $documents = Order::query()
+            ->with(['eliteYAR.profile', 'items.productVariant'])
+            ->whereNotNull(Order::ELITE_YAR_MOADIAN_REF)
+            ->latest(Order::UPDATED_AT)
             ->paginate($this->perPage());
 
-        return success(WalletTransactionResource::collection($documents), __('admin.elite_yar_docs_success'));
+        return success(OrderResource::collection($documents), __('admin.elite_yar_docs_success'));
     }
 
     // ─────────────────────────────────────────────────────────────────────────

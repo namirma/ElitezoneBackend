@@ -12,6 +12,7 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 /**
  * پنل مدیریت — مدیریت سوپلایرها
@@ -166,12 +167,22 @@ class AdminSupplierController extends Controller
             return error(__('admin.suppliers.already_approved'), [], 409);
         }
 
+        // ⚠️ وضعیت و نقش باید **با هم** بروند یا هیچ‌کدام.
+        //
+        // این دو نوشتن جدا بودند، و شکستِ بینشان دقیقاً همان قفل‌شدنی را می‌سازد
+        // که کامنتِ `reject()` پایین‌تر درباره‌اش هشدار می‌دهد: پروفایل
+        // `approved` می‌شود ولی نقش نمی‌چسبد، و `OrderPolicy::manageAsSupplier`
+        // که **اول** نقش را می‌سنجد، تأمین‌کننده را از پنلِ خودش بیرون نگه
+        // می‌دارد — در حالی که هر گزارشی می‌گوید تأییدشده است.
+        //
         // STATUS عمداً fillable نیست — تغییر وضعیت فقط از همین مسیر ادمین مجاز است.
-        $profile->forceFill([SupplierProfile::STATUS => SupplierProfile::STATUS_APPROVED])->save();
+        DB::transaction(function () use ($profile, $user) {
+            $profile->forceFill([SupplierProfile::STATUS => SupplierProfile::STATUS_APPROVED])->save();
 
-        if (! $user->hasRole('supplier')) {
-            $user->addRole('supplier');
-        }
+            if (! $user->hasRole('supplier')) {
+                $user->addRole('supplier');
+            }
+        });
 
         activity()
             ->performedOn($profile)
@@ -211,11 +222,15 @@ class AdminSupplierController extends Controller
             );
         }
 
-        $profile->forceFill([SupplierProfile::STATUS => SupplierProfile::STATUS_REJECTED])->save();
+        // قرینه‌ی `approve()` — وضعیت و نقش با هم، وگرنه نقشِ باقی‌مانده روی
+        // پروفایلِ ردشده یعنی کسی که رد شده هنوز به پنل دسترسی دارد.
+        DB::transaction(function () use ($profile, $user) {
+            $profile->forceFill([SupplierProfile::STATUS => SupplierProfile::STATUS_REJECTED])->save();
 
-        if ($user->hasRole('supplier')) {
-            $user->removeRole('supplier');
-        }
+            if ($user->hasRole('supplier')) {
+                $user->removeRole('supplier');
+            }
+        });
 
         activity()
             ->performedOn($profile)
