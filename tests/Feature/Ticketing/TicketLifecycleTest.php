@@ -3,6 +3,7 @@
 namespace Tests\Feature\Ticketing;
 
 use App\DataTransferObjects\Ticket\TicketDTO;
+use App\Jobs\Notification\SendSmsJob;
 use App\Models\Department;
 use App\Models\Order;
 use App\Models\Ticket;
@@ -13,6 +14,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
@@ -137,6 +139,45 @@ class TicketLifecycleTest extends TestCase
         $reopened = $ticket->fresh();
         $this->assertSame(1, (int) $reopened->reopened_count);
         $this->assertNull($reopened->resolved_at);
+    }
+
+    #[Test]
+    public function every_status_in_the_sms_list_actually_notifies_the_owner(): void
+    {
+        // ⚠️ رگرسیونی که این می‌گیرد: فهرستِ `ticketing.sms_on_status` سه وضعیت
+        // داشت ولی هیچ‌کس نمی‌خواندش — کنترلر دو شاخه‌ی هاردکد داشت و
+        // `resolved` را جا انداخته بود. تیکتِ کاربر حل می‌شد و خودش نمی‌فهمید.
+        //
+        // سوئیپ است نه نمونه‌ای: هر وضعیتی که فردا به فهرست اضافه شود باید
+        // پیامک بدهد، وگرنه همین‌جا قرمز می‌شود.
+        foreach ((array) config('ticketing.sms_on_status') as $status) {
+            Queue::fake();
+
+            $ticket = $this->makeTicket();
+            $this->service->changeStatus($ticket, $status);
+
+            $this->assertNotEmpty(
+                Queue::pushed(SendSmsJob::class),
+                "گذار به «{$status}» در فهرستِ sms_on_status هست ولی پیامکی نفرستاد."
+            );
+        }
+    }
+
+    #[Test]
+    public function a_status_outside_the_list_stays_silent_and_a_no_op_transition_too(): void
+    {
+        Queue::fake();
+        $ticket = $this->makeTicket();
+
+        // خارج از فهرست.
+        $this->service->changeStatus($ticket, Ticket::STATUS_WAITING_CUSTOMER);
+        Queue::assertNotPushed(SendSmsJob::class);
+
+        // و ذخیره‌ی دوباره‌ی همان وضعیت پیامکِ تکراری نمی‌سازد.
+        $this->service->changeStatus($ticket, Ticket::STATUS_CLOSED);
+        Queue::assertPushed(SendSmsJob::class, 1);
+        $this->service->changeStatus($ticket, Ticket::STATUS_CLOSED);
+        Queue::assertPushed(SendSmsJob::class, 1);
     }
 
     #[Test]

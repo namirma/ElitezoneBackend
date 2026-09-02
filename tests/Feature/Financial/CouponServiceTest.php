@@ -5,9 +5,11 @@ namespace Tests\Feature\Financial;
 use App\Exceptions\BusinessException;
 use App\Models\Coupon;
 use App\Models\Order;
+use App\Models\Setting;
 use App\Models\User;
 use App\Services\Marketing\CouponService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Facades\Cache;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -49,6 +51,54 @@ class CouponServiceTest extends TestCase
         $this->assertTrue(
             $this->service->validateForCheckout($this->user, $coupon->code)->is($coupon)
         );
+    }
+
+    #[Test]
+    public function the_coupon_visibility_setting_actually_gates_a_valid_coupon(): void
+    {
+        // ⚠️ رگرسیونی که این می‌گیرد: `coupon_visibility` پیش‌فرض داشت، در
+        // `allowed_keys` بود، اعتبارسنجی داشت، ستونِ `users.coupon_enabled`
+        // مهاجرت داشت و `couponVisibleFor()` تست داشت — ولی **هیچ‌جای مسیرِ
+        // کوپن صدا زده نمی‌شد**. ادمین روی `none` می‌گذاشت و کوپن‌ها کار
+        // می‌کردند.
+        $coupon = $this->makeCoupon();
+
+        $this->setVisibility('none');
+        $this->assertRejected($coupon->code);
+
+        $this->setVisibility('all');
+        $this->assertTrue($this->service->validateForCheckout($this->user, $coupon->code)->is($coupon));
+    }
+
+    #[Test]
+    public function in_selected_mode_only_the_flagged_user_may_use_a_coupon(): void
+    {
+        $coupon = $this->makeCoupon();
+        $this->setVisibility('selected');
+
+        // ‏`null` یعنی «تصمیم گرفته نشده» و مثل خاموش رفتار می‌کند.
+        $this->assertRejected($coupon->code);
+
+        $this->user->forceFill([User::COUPON_ENABLED => true])->save();
+        $this->assertTrue(
+            app(CouponService::class)->validateForCheckout($this->user->fresh(), $coupon->code)->is($coupon)
+        );
+    }
+
+    private function setVisibility(string $mode): void
+    {
+        Setting::updateOrCreate([Setting::KEY => 'coupon_visibility'], [Setting::VALUE => $mode]);
+        Cache::forget(Setting::CACHE_KEY);
+    }
+
+    private function assertRejected(string $code): void
+    {
+        try {
+            app(CouponService::class)->validateForCheckout($this->user->fresh(), $code);
+            $this->fail("کوپن [{$code}] باید رد می‌شد.");
+        } catch (BusinessException) {
+            $this->assertTrue(true);
+        }
     }
 
     #[Test]

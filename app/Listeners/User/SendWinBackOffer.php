@@ -7,6 +7,7 @@ use App\Models\Coupon;
 use App\Models\CustomerStat;
 use App\Models\UserProfile;
 use App\Services\Marketing\CouponService;
+use App\Services\Sales\SalesSettings;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Log;
@@ -19,12 +20,15 @@ class SendWinBackOffer implements ShouldQueue
 
     protected CouponService $couponService;
 
+    private SalesSettings $settings;
+
     /**
      * تزریق سرویس کوپن به لیسنر
      */
-    public function __construct(CouponService $couponService)
+    public function __construct(CouponService $couponService, SalesSettings $settings)
     {
         $this->couponService = $couponService;
+        $this->settings = $settings;
     }
 
     /**
@@ -46,6 +50,13 @@ class SendWinBackOffer implements ShouldQueue
 
     private function sendWinBackSms($user)
     {
+        // وقتی کوپن برای این کاربر خاموش است، ساختنش فقط ولخرجی نیست — پیامکی
+        // می‌فرستد که تخفیفی وعده می‌دهد و `validateForCheckout` همان را رد
+        // می‌کند. بی‌پیامک‌ماندن بهتر از وعده‌ی رد‌شده است.
+        if (! $this->settings->couponVisibleFor($user)) {
+            return;
+        }
+
         // گاردِ ایدمپوتنسی: این لیسنر ShouldQueue است و در صورت شکستِ گذرا (مثلاً
         // throw شدنِ Log در ادامه) دوباره تلاش می‌شود. بدون این گارد هر retry یک کوپنِ
         // تخفیفِ واقعیِ جدید می‌ساخت (نشتِ درآمد). اگر کوپنِ win-backِ استفاده‌نشده و

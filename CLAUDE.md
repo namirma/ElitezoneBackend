@@ -245,9 +245,16 @@ Actions/
 wallet (DB::transaction + lockForUpdate + WalletFunded dispatch). `PaymentController`
 delegates entirely to this action; it holds no DB or financial logic itself.
 
-`FinalizeInvoiceAction` — atomically updates `final_invoice_ref` and holds the
-elite yar fee (TYPE_FEE_HOLD WalletTransaction + balance_hold increment) inside a
-single DB::transaction. `OrderActionController::finalizeInvoice()` delegates to it.
+`FinalizeInvoiceAction` — records `final_invoice_ref` under a row lock, idempotently
+(already-set ref → no-op). **It moves no money, and must not be made to.** It used to
+place a `TYPE_FEE_HOLD` on `engineer_fee_amount`/`contractor_fee_amount` — a *place-time
+estimate* of the very commission the weighbridge later parks in WEY `balance_hold` from
+the **actual** delivered amounts. Since finalize-invoice runs at `PROCESSING`, before the
+weighbridge, that hold double-counted the one commission and was a bare `balance_hold++`
+with no offsetting debit, i.e. an unbalanced hold nothing ever released. The elite yar is
+paid through the WEY → Doc Q path only. The removal reason is recorded in the action's own
+docblock; this entry described the deleted behaviour until 2026-09-02.
+`OrderActionController::finalizeInvoice()` delegates to it.
 
 `ReleaseEliteYARHoldAction` — Doc Q post-weighbridge: when the elite yar submits
 their Moadian invoice, releases WEY hold→available (elite yar net) and WVAT
@@ -1943,8 +1950,9 @@ yar buys for). `StoreOrderRequest` validates each per role (closure rules, never
   the elite yar (`associatedEmployers()`).
 
 All commission-context code reads `elite_yar_user_id` (auth guard for Doc Q, badge lookup,
-`WeighbridgeVatRouter`, `ReleaseEliteYARHoldAction`, `FinalizeInvoiceAction` fee hold,
+`WeighbridgeVatRouter`, `ReleaseEliteYARHoldAction`,
 `WalletTransactionEngine::resolveUserId` WEY fallback) — **never** `beneficiary_user_id`.
+(`FinalizeInvoiceAction` was in this list for its fee hold; that hold is deleted — see above.)
 
 ### Badge codes are `gold` / `silver` / `bronze` / `pioneer`
 
