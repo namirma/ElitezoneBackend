@@ -22,9 +22,33 @@ use Illuminate\Support\Facades\DB;
 
 class SupplierController extends Controller
 {
-    public function getActivityCategoryId()
+    /**
+     * دسته‌های فعالیتِ **خودِ کاربر جاری**.
+     *
+     * ⚠️ پیش از این `getSupplierCategoryId()` را صدا می‌زد، که یک
+     * `DB::table('supplier_activities')->pluck('activity_category_id')` بدونِ
+     * هیچ شرطی بود — یعنی **کلِ جدولِ واسطِ همه‌ی تأمین‌کننده‌ها** به هر کاربرِ
+     * احرازشده‌ای برمی‌گشت، حتی کسی که اصلاً تأمین‌کننده نیست. با پارامترِ
+     * `activity_category_id` هم فقط همان مقدار را بازتاب می‌داد، پس عملاً یک
+     * «آیا کسی این دسته را دارد؟» عمومی بود.
+     *
+     * نامِ متد از ابتدا «دسته‌های من» را وعده می‌داد؛ حالا همان را می‌دهد.
+     * پاسخ هم مثل هر اندپوینتِ دیگری داخلِ پاکتِ `success()` است — قبلاً یک
+     * Collectionِ خام بیرون از قرارداد برمی‌گشت.
+     */
+    public function getActivityCategoryId(): JsonResponse
     {
-        return getSupplierCategoryId();
+        // ‏`supplier_activities.supplier_id` به `supplier_profiles.id` اشاره
+        // می‌کند نه به `users.id` — پس شناسه‌ی پروفایل لازم است، نه شناسه‌ی کاربر.
+        $profileId = SupplierProfile::where(SupplierProfile::USER_ID, Auth::id())->value('id');
+
+        $ids = $profileId === null
+            ? collect()
+            : DB::table('supplier_activities')
+                ->where('supplier_id', $profileId)
+                ->pluck('activity_category_id');
+
+        return success($ids);
     }
 
     // `index()` حذف شد: هیچ روتی به آن اشاره نمی‌کرد و کارش هم تکراری بود —
@@ -151,6 +175,24 @@ class SupplierController extends Controller
         );
         if ($request->has('activity_category_id')) {
             $supplierProfile->activities()->sync($request->validated('activity_category_id'));
+        }
+
+        // ⚠️ بن‌بستِ متقاضیِ ردشده.
+        //
+        // `status` عمداً fillable نیست، پس `updateOrCreate` بالا هرگز لمسش
+        // نمی‌کند. نتیجه: کسی که ردش کرده‌اند می‌توانست پروفایلش را اصلاح کند —
+        // همان کاری که انتظار داریم بعد از رد بکند — و برای همیشه `rejected`
+        // بماند. صفِ ادمین او را نشان نمی‌داد (چون `pending` نبود) و خودش هم
+        // هیچ راهی برای بازگشت نداشت. نه خطایی، نه پیامی؛ فقط یک درخواست که
+        // دیگر هیچ‌وقت بررسی نمی‌شد.
+        //
+        // ویرایشِ پروفایل پس از رد **یعنی** درخواستِ دوباره، پس همان‌جا به صف
+        // برمی‌گردد. عمداً فقط از `rejected`: پروفایلِ `approved` نباید با یک
+        // ویرایشِ ساده تأییدش را از دست بدهد، و `pending` از قبل در صف است.
+        if ($supplierProfile->{SupplierProfile::STATUS} === SupplierProfile::STATUS_REJECTED) {
+            $supplierProfile->forceFill([
+                SupplierProfile::STATUS => SupplierProfile::STATUS_PENDING,
+            ])->save();
         }
 
         return success(new UserResource(User::with('supplier')->find(Auth::id())));

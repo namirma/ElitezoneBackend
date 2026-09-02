@@ -5,6 +5,7 @@ namespace App\Http\Resources\Order;
 use App\Enums\Shared\StatusTone;
 use App\Http\Resources\BaseJsonResource;
 use App\Models\Order;
+use App\Support\Money;
 use App\Support\OrderDocumentCatalog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -206,6 +207,25 @@ class OrderResource extends BaseJsonResource
                         'is_post_weighbridge' => $this->{Order::WEIGHING_COMPLETED_AT} !== null,
                         'debt_pending' => (bool) $this->{Order::SUPPLIER_DEBT_PENDING},
                         Order::SUPPLIER_DEBT_AMOUNT => (string) ($this->{Order::SUPPLIER_DEBT_AMOUNT} ?? '0'),
+                        // مالیاتِ معلق در مسیرِ کسریِ کیف‌پولِ خالی. ستونش از فاز ۸
+                        // وجود داشت ولی **در هیچ پاسخی به تأمین‌کننده نمی‌آمد**.
+                        Order::SUPPLIER_VAT_PENDING_AMOUNT => (string) ($this->{Order::SUPPLIER_VAT_PENDING_AMOUNT} ?? '0'),
+                        // ⚠️ عددی که واقعاً به کار تأمین‌کننده می‌آید.
+                        //
+                        // تصمیمِ مدیریت (پرسش ۲ دور دوم) این است که عودتِ خریدار تا
+                        // شارژِ کیف‌پولِ تأمین‌کننده معلق بماند، و
+                        // `CheckSupplierBalancesJob` تنها وقتی آزاد می‌کند که
+                        // `balance ≥ debt + suspendedVat` باشد. یعنی کلِ مسیر منتظرِ
+                        // یک شارژ است که **مبلغش هیچ‌جا به تأمین‌کننده گفته نمی‌شد**:
+                        // دو جزءِ جمع در دو ستون بودند و یکی‌شان اصلاً سریالایز
+                        // نمی‌شد. حالا خودِ جمع برمی‌گردد.
+                        'required_top_up' => (string) Money::toFloat(
+                            Money::add(
+                                (string) ($this->{Order::SUPPLIER_DEBT_AMOUNT} ?? '0'),
+                                (string) ($this->{Order::SUPPLIER_VAT_PENDING_AMOUNT} ?? '0')
+                            ),
+                            0
+                        ),
                         // Doc O — تا وقتی ثبت نشده، هولدِ مالیاتِ تأمین‌کننده باز است.
                         'moadian_submitted' => $this->{Order::SUPPLIER_MOADIAN_REF} !== null,
                     ],

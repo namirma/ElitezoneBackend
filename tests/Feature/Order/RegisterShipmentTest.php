@@ -3,6 +3,7 @@
 namespace Tests\Feature\Order;
 
 use App\Actions\Financial\ProcessWeighbridgeResultAction;
+use App\Models\Driver;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Shipment;
@@ -115,6 +116,84 @@ class RegisterShipmentTest extends TestCase
         $this->assertSame('12ب345-11', $fresh->{Shipment::VEHICLE_PLATE});
         $this->assertSame(990.0, (float) $fresh->{Shipment::ACTUAL_WEIGHT});
         $this->assertSame(Shipment::STATUS_SHIPPED, $fresh->{Shipment::STATUS});
+    }
+
+    #[Test]
+    public function a_driver_from_the_book_fills_the_waybill_and_is_linked_to_the_shipment(): void
+    {
+        // ⚠️ رگرسیونی که این می‌گیرد: جدولِ `drivers` و ستونِ
+        // `shipments.driver_id` از فاز ۹ وجود داشتند و تأمین‌کننده می‌توانست
+        // راننده ثبت و موبایلش را با OTP تأیید کند — ولی هیچ‌چیز در کلِ `app/`
+        // هرگز `driver_id` را نمی‌نوشت. دفترچه ساخته شده بود و به هیچ‌جا وصل
+        // نبود؛ هر بارنامه راننده را از نو تایپ می‌کرد.
+        $this->muteSettlement();
+        $shipment = $this->makeShipment();
+
+        $driver = Driver::create([
+            Driver::CARRIER_USER_ID => $this->supplier->id,
+            Driver::FULL_NAME => 'کریم رضایی',
+            Driver::MOBILE => '09129998877',
+            Driver::NATIONAL_CODE => '0987654321',
+            Driver::PLATE_NUMBER => '44الف222-33',
+            Driver::VEHICLE_TYPE => 'تریلی',
+            Driver::IS_ACTIVE => true,
+        ]);
+
+        Sanctum::actingAs($this->supplier);
+        $this->postJson($this->url($shipment), [
+            'waybill_ref' => 'WB-BOOK-1',
+            'driver_id' => $driver->id,
+            'actual_weight' => 990,
+        ])->assertOk();
+
+        $fresh = $shipment->fresh();
+
+        $this->assertSame($driver->id, (int) $fresh->{Shipment::DRIVER_ID});
+        // ستون‌ها اسنپ‌شات‌اند: ویرایشِ بعدیِ دفترچه نباید بارنامه‌ی صادرشده را
+        // بازنویسی کند.
+        $this->assertSame('کریم رضایی', $fresh->{Shipment::DRIVER_NAME});
+        $this->assertSame('09129998877', $fresh->{Shipment::DRIVER_MOBILE});
+        $this->assertSame('44الف222-33', $fresh->{Shipment::VEHICLE_PLATE});
+    }
+
+    #[Test]
+    public function another_carriers_driver_cannot_be_used(): void
+    {
+        $this->muteSettlement();
+        $shipment = $this->makeShipment();
+
+        $foreign = Driver::create([
+            Driver::CARRIER_USER_ID => User::factory()->create()->id,
+            Driver::FULL_NAME => 'راننده‌ی دیگری',
+            Driver::MOBILE => '09120000001',
+            Driver::PLATE_NUMBER => '11ب111-11',
+            Driver::VEHICLE_TYPE => 'کمپرسی',
+            Driver::IS_ACTIVE => true,
+        ]);
+
+        Sanctum::actingAs($this->supplier);
+        $this->postJson($this->url($shipment), [
+            'waybill_ref' => 'WB-FOREIGN',
+            'driver_id' => $foreign->id,
+            'actual_weight' => 990,
+        ])->assertStatus(422);
+
+        $this->assertNull($shipment->fresh()->{Shipment::REGISTERED_AT});
+    }
+
+    #[Test]
+    public function the_free_text_path_still_works_without_a_driver_id(): void
+    {
+        // مسیرِ متنی عمداً نشکسته: بارنامه‌ی کاغذی همیشه راننده‌ی ثبت‌شده ندارد.
+        $this->muteSettlement();
+        $shipment = $this->makeShipment();
+
+        Sanctum::actingAs($this->supplier);
+        $this->postJson($this->url($shipment), $this->payload())->assertOk();
+
+        $fresh = $shipment->fresh();
+        $this->assertNull($fresh->{Shipment::DRIVER_ID});
+        $this->assertSame('رضا محمدی', $fresh->{Shipment::DRIVER_NAME});
     }
 
     #[Test]
