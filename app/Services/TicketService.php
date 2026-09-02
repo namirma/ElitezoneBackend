@@ -3,11 +3,13 @@
 namespace App\Services;
 
 use App\DataTransferObjects\Ticket\TicketDTO;
+use App\Jobs\Notification\SendSmsJob;
 use App\Models\Order;
 use App\Models\Ticket;
 use App\Models\TicketFile;
 use App\Models\TicketNote;
 use App\Models\TicketReply;
+use App\Models\User;
 use App\Repositories\Contracts\TicketRepositoryInterface;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Auth;
@@ -15,6 +17,18 @@ use Illuminate\Support\Facades\DB;
 
 class TicketService
 {
+    /**
+     * پیامکِ هر گذارِ وضعیت — کلیدِ `lang/fa/sms.php` به‌ازای هر وضعیتِ فهرستِ
+     * `ticketing.sms_on_status`.
+     *
+     * @var array<string, string>
+     */
+    private const STATUS_SMS_KEYS = [
+        Ticket::STATUS_ANSWERED => 'ticket_admin_replied',
+        Ticket::STATUS_RESOLVED => 'ticket_resolved',
+        Ticket::STATUS_CLOSED => 'ticket_closed',
+    ];
+
     public function __construct(protected TicketRepositoryInterface $repository) {}
 
     public function list()
@@ -99,8 +113,12 @@ class TicketService
     /**
      * Transition a ticket's status, stamping the matching lifecycle timestamp and
      * counting re-openings for the KPI reopen-rate.
+     *
+     * @param  bool  $notify  ‏`false` فقط برای `reply()`: آنجا پیامکِ خودِ پاسخ
+     *                        فرستاده می‌شود و گذارِ همزمان به `answered` نباید
+     *                        پیامکِ دومی بسازد.
      */
-    public function changeStatus(Ticket $ticket, string $newStatus): Ticket
+    public function changeStatus(Ticket $ticket, string $newStatus, bool $notify = true): Ticket
     {
         $previous = $ticket->{Ticket::STATUS};
 
@@ -130,7 +148,51 @@ class TicketService
 
         $ticket->forceFill($attrs)->save();
 
+        // ⚠️ `ticketing.sms_on_status` تا امروز **هیچ خواننده‌ای نداشت**.
+        //
+        // فهرست با ارجاعِ صریح به سند نوشته شده بود («اعلان‌ها فقط برای تغییر
+        // وضعیت‌های مهم») و سه وضعیت داشت، ولی کنترلر به‌جای خواندنش دو شاخه‌ی
+        // هاردکد داشت: پیامکِ پاسخ، و `=== STATUS_CLOSED`. یعنی از سه وضعیتِ
+        // فهرست، **`resolved` هیچ‌وقت به کاربر خبر نمی‌داد** — تیکتش حل می‌شد و
+        // خودش نمی‌فهمید.
+        //
+        // اینجا زندگی می‌کند چون تنها نویسنده‌ی وضعیتِ تیکت همین متد است؛ در
+        // کنترلر یعنی هر مسیرِ تازه باید یادش بماند.
+        if ($notify && $previous !== $newStatus) {
+            $this->notifyOwnerOfStatusChange($ticket, $newStatus);
+        }
+
         return $ticket;
+    }
+
+    private function notifyOwnerOfStatusChange(Ticket $ticket, string $newStatus): void
+    {
+        /** @var list<string> $notifiable */
+        $notifiable = (array) config('ticketing.sms_on_status', []);
+
+        if (! in_array($newStatus, $notifiable, true)) {
+            return;
+        }
+
+        $smsKey = self::STATUS_SMS_KEYS[$newStatus] ?? null;
+
+        // وضعیتی که به فهرست اضافه شده ولی متنِ پیامک ندارد: سکوت، نه ارسالِ
+        // کلیدِ خام. `Localization/TranslationKeysResolveTest` نبودِ کلید را
+        // جداگانه می‌گیرد.
+        if ($smsKey === null) {
+            return;
+        }
+
+        $mobile = $ticket->loadMissing('user')->user?->{User::MOBILE};
+
+        if (! $mobile) {
+            return;
+        }
+
+        SendSmsJob::dispatch(
+            $mobile,
+            __("sms.{$smsKey}", ['code' => $ticket->{Ticket::CODE}])
+        );
     }
 
     /** Record the first staff response timestamp (called when an admin replies). */

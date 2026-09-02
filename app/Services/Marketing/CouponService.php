@@ -6,6 +6,7 @@ use App\Exceptions\BusinessException;
 use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\User;
+use App\Services\Sales\SalesSettings;
 use Carbon\Carbon;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Log;
@@ -19,6 +20,10 @@ class CouponService
     /** حداکثر تلاش برای یافتن یک کدِ بلااستفاده پیش از خطا. */
     private const CODE_MAX_ATTEMPTS = 5;
 
+    public function __construct(
+        private readonly SalesSettings $settings,
+    ) {}
+
     /**
      * اعتبارسنجی کد تخفیف برای استفاده در checkout.
      *
@@ -26,6 +31,25 @@ class CouponService
      */
     public function validateForCheckout(User $user, string $code, bool $lock = false): Coupon
     {
+        // ⚠️ تنظیمِ `coupon_visibility` تا امروز **هیچ خواننده‌ای نداشت**.
+        //
+        // پیش‌فرضش در `config/sales.php` بود، در `allowed_keys` ثبت شده بود،
+        // `SalesSettings::validationRules()` اعتبارش را می‌سنجید، ستونِ
+        // `users.coupon_enabled` مهاجرتِ اختصاصی داشت، و `couponVisibleFor()`
+        // کامل نوشته و تست شده بود — ولی هیچ‌جای مسیرِ کوپن صدایش نمی‌زد. یعنی
+        // ادمین می‌توانست روی `none` بگذارد و کوپن‌ها برای همه کار کنند، بدون
+        // هیچ نشانه‌ای که تنظیم بی‌اثر است.
+        //
+        // جایش اینجاست چون هر سه مسیرِ کوپن (پیش‌نمایش، محاسبه‌ی سبد، ثبت
+        // سفارش) از همین متد رد می‌شوند؛ گارد در هر کدام جداگانه یعنی سه نسخه
+        // از یک قاعده.
+        //
+        // پیش از هر بررسیِ دیگری اجرا می‌شود: وقتی کوپن برای کاربر خاموش است،
+        // پاسخِ متفاوت برای کدِ موجود و ناموجود یک oracle می‌سازد.
+        if (! $this->settings->couponVisibleFor($user)) {
+            throw new BusinessException(__('coupons.not_available'));
+        }
+
         $query = Coupon::where(Coupon::CODE, $code);
 
         if ($lock) {

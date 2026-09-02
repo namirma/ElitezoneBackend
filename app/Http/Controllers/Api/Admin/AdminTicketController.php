@@ -108,8 +108,12 @@ class AdminTicketController extends Controller
 
         // Assign to the responding admin (stamps assigned_at once) and move the
         // status to "answered" — which stamps first_responded_at for the SLA KPI.
+        //
+        // `notify: false` چون پیامکِ خودِ پاسخ چند خط پایین‌تر فرستاده می‌شود و
+        // باید **همیشه** برود — حتی وقتی تیکت از قبل `answered` است (پاسخِ دوم
+        // گذارِ وضعیت نیست ولی خبرِ تازه‌ای هست).
         $this->service->assignTo($ticket, (int) Auth::id());
-        $this->service->changeStatus($ticket, Ticket::STATUS_ANSWERED);
+        $this->service->changeStatus($ticket, Ticket::STATUS_ANSWERED, notify: false);
 
         $ticket->load([
             'user.profile', 'department', 'files',
@@ -147,12 +151,9 @@ class AdminTicketController extends Controller
             default => __('global.updated_successfully'),
         };
 
-        // SMS فقط وقتی تیکت بسته می‌شود — رویداد پایانی برای کاربر
-        if ($newStatus === Ticket::STATUS_CLOSED) {
-            $ticket->loadMissing('user');
-            $this->notifyTicketUser($ticket, 'ticket_closed');
-        }
-
+        // پیامک را دیگر اینجا نمی‌فرستیم: `TicketService::changeStatus` آن را از
+        // `ticketing.sms_on_status` می‌خواند. شاخه‌ی هاردکدِ قبلی فقط `closed` را
+        // پوشش می‌داد و `resolved` را — که در همان فهرست بود — جا انداخته بود.
         return success(null, $message);
     }
 
