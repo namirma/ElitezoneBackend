@@ -5,6 +5,7 @@ namespace Tests\Feature\Checkout;
 use App\Models\Address;
 use App\Models\Cart;
 use App\Models\CartItem;
+use App\Models\FactoryStock;
 use App\Models\Order;
 use App\Models\OrderUnit;
 use App\Models\ProductVariant;
@@ -17,6 +18,7 @@ use App\Services\Invoice\InvoiceGenerator;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
+use Illuminate\Testing\TestResponse;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\Feature\Pricing\CreatesPricingFixtures;
@@ -81,8 +83,8 @@ class ReserveBranchGuardTest extends TestCase
         $this->makePrice($this->variant, $this->factory, $this->location, general: 1_000_000, special: 900_000);
         $this->supplierId = $supplier->id;
 
-        if (class_exists(\App\Models\FactoryStock::class)) {
-            \App\Models\FactoryStock::updateOrCreate([
+        if (class_exists(FactoryStock::class)) {
+            FactoryStock::updateOrCreate([
                 'product_variant_id' => $this->variant->id,
                 'factory_id' => $this->factory->id,
                 'factory_location_id' => $this->location->id,
@@ -146,7 +148,7 @@ class ReserveBranchGuardTest extends TestCase
         );
     }
 
-    private function reserve(): \Illuminate\Testing\TestResponse
+    private function reserve(): TestResponse
     {
         Sanctum::actingAs($this->buyer);
 
