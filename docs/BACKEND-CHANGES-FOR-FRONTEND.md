@@ -3,7 +3,8 @@
 > **مخاطب:** تیم فرانت (پنل کاربر، بک‌آفیس، پنل تأمین‌کننده)
 > **برنچ:** `redesign/order-flow-l10` · قرینه: `redesign/order-flow-l13`
 > **پوشش:** همه‌ی تغییراتی که از `03dfd54` تا امروز روی قرارداد API اثر دارند
-> **وضعیت تست:** L10 ۱۰۷۰ سبز · L13 سبز · PHPStan تمیز روی هر دو
+> **وضعیت تست:** L10 ۱۰۷۰ سبز · L13 ۸۴۴ سبز/۱۲ skip · PHPStan تمیز روی هر دو
+> **نسخه‌ی خواندنی:** https://claude.ai/code/artifact/02262907-5e56-4149-ac60-60967de86782
 > **قرارداد ماشین‌خوان:** `api.json` در ریشه‌ی ریپو (CI بایت‌به‌بایت گیتش می‌کند)
 
 این سند جای همه‌ی پیام‌های پراکنده را می‌گیرد. ترتیبش بر اساس **کاری که شما باید
@@ -430,3 +431,90 @@ POST /api/admin/supplier-requests/{id}/reject    { "note": "…" }   ← note ا
 | `GET /faq-categories` | سایت‌کانتنت پورت نشده |
 
 بقیه‌ی موارد این سند روی هر دو برنچ یکسان‌اند.
+
+---
+
+## بخش ۱۰ — مرجع اندپوینت‌ها
+
+همه زیر `auth:sanctum`. مسیرهای `/profile/supplier/*` نقشِ `supplier` می‌خواهند و هر
+لیست به `supplier_user_id = Auth::id()` محدود است؛ id غریبه **۴۰۳** می‌گیرد نه ۴۰۴.
+
+### پنل تأمین‌کننده
+
+| متد | مسیر | نکته |
+|---|---|---|
+| GET/POST/DELETE | `/api/profile/supplier` | `GET` روی L13 نیست |
+| PUT | `/api/profile/supplier/reserve-time` | پنجره‌ی اعتبار قیمت |
+| GET | `/api/profile/supplier/dashboard` | آمار سفارش |
+| GET | `/api/profile/supplier/earnings?from=&to=` | تاریخ **جلالی** |
+| GET/POST | `/api/profile/supplier/documents` | حداکثر ۱۰ مدرک |
+| GET | `/api/profile/supplier/documents/{document}/file` | دیسک خصوصی |
+| DELETE | `/api/profile/supplier/documents/{document}` | |
+| GET | `/api/profile/supplier/requests` | صف درخواست‌ها |
+| POST | `/api/profile/supplier/requests/catalog-addition` | |
+| DELETE | `/api/profile/supplier/requests/{supplierRequest}` | پس‌گرفتن |
+| POST | `/api/profile/orders/{order}/cancellation-request` | `reason` ۱۰–۱۰۰۰ |
+| POST | `/api/profile/supplier/prices/bulk` | ≤۵۰۰ ردیف، همه‌یا‌هیچ |
+| POST | `/api/profile/supplier/stocks/bulk` | **L10 فقط** |
+| PATCH | `/api/profile/orders/{order}/shipments/{shipment}/weight` | اصلاح وزن |
+| GET | `/api/profile/supplier/orders/pending-debts` | |
+| GET | `/api/profile/supplier/orders/pending-moadian` | |
+| GET | `/api/profile/supplier/{factories,factory-locations,prices,stocks,shipping-rates,drivers}` | هرکدام CRUD + `toggle` |
+
+آپلود مدرک: `mimes:pdf,jpg,jpeg,png,webp` · `max:5120` (۵ مگابایت) · سقف ۱۰ مدرک.
+**svg عمداً نیست** — همان قاعده‌ی سراسری آپلودها.
+
+### بک‌آفیس
+
+| متد | مسیر | نکته |
+|---|---|---|
+| GET | `/api/admin/supplier-requests` | فیلتر `status`, `type` |
+| POST | `/api/admin/supplier-requests/{id}/approve` | `note` اختیاری |
+| POST | `/api/admin/supplier-requests/{id}/reject` | `note` **اجباری** ≤۱۰۰۰ |
+| POST | `/api/admin/suppliers/{user}/reject` | `reason` **اجباری** |
+| PUT | `/api/admin/suppliers/{user}/formula` | دو پرچم تسویه |
+| POST | `/api/admin/shipments/{shipment}/weight` | اصلاح وزن |
+| GET | `/api/admin/financial/supplier/documents` | قبلاً خالی بود |
+| GET | `/api/admin/financial/expert/documents` | قبلاً خالی بود |
+
+### پاسخ `earnings`
+
+```json
+{
+  "range":   { "from": "…", "to": "…", "basis": "weighing_completed_at" },
+  "settled": { "orders": 12, "net_payout": …, "buyer_value": …, "delivered_weight": … },
+  "in_progress": { "orders": 3, "estimated_payout": … },
+  "obligations": { "debt": 0, "suspended_vat": 0, "awaiting_moadian": 2 },
+  "monthly":    [ { "period": "1403-05", "orders": 4, "net_payout": … } ],
+  "by_factory": [ { "factory_id": 3, "factory_name": "…", "orders": 7, "net_payout": … } ]
+}
+```
+
+> **`basis` را در UI بنویسید.** بازه روی **تاریخ تسویه** بریده می‌شود نه تاریخ ثبت سفارش،
+> وگرنه کاربر با دفتر خودش اختلاف می‌بیند و فکر می‌کند عدد غلط است.
+
+---
+
+## بخش ۱۱ — قرارداد خطاها
+
+```json
+{ "status": false, "message": "پیام فارسی آماده‌ی نمایش", "data": null,
+  "errors": { "field": ["…"] } }
+```
+
+| کد | معنا در این API | رفتار UI |
+|---|---|---|
+| ۴۰۱ | توکن نامعتبر/منقضی | خروج + هدایت به ورود |
+| ۴۰۳ | نقش یا مالکیت — **id غریبه هم ۴۰۳ است نه ۴۰۴** | پیام سرور را نشان بدهید |
+| ۴۰۹ | تضاد وضعیت: درخواست تکراری، بررسی دوباره، وزنِ تسویه‌شده | رفرش داده، نه retry |
+| ۴۲۲ | اعتبارسنجی یا قاعده‌ی کسب‌وکار | پایین را ببینید |
+| ۴۲۹ | throttle (OTP، پیامک، استعلام) | شمارنده‌ی معکوس |
+| ۵۰۳ | سرویس بیرونی در دسترس نیست | «بعداً تلاش کنید» |
+
+**۴۲۲ دو جور است.** `errors` پر ⇒ خطای فیلدی، کنار همان ورودی. `errors` خالی و فقط
+`message` ⇒ یک قاعده‌ی کسب‌وکار رد کرده (مثل «رزرو در دسترس نیست») و جایش بالای فرم است،
+نه زیر یک فیلد بی‌ربط.
+
+**Idempotency:** کلید به **متد + مسیر** مقید است. استفاده‌ی دوباره روی همان اندپوینت با
+بدنه‌ی متفاوت **۴۲۲ با کد `IDEMPOTENCY_KEY_REUSED`** می‌گیرد، نه پاسخ کش‌شده. برای هر
+تلاش پرداخت تازه یک UUID تازه بسازید.
