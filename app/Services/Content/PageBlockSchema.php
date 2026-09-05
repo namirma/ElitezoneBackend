@@ -198,6 +198,16 @@ final class PageBlockSchema
                 'label' => 'هیرو با دکمه',
                 'hint' => 'هیروِ عکس‌دار با چند جمله و یک یا دو دکمه‌ی فراخوان روی آن.',
                 'fields' => [
+                    // اختیاری. اگر پر شود، همان مقدار روی `<section id="...">`ی
+                    // خودِ سایت می‌نشیند (`PdHero.jsx:22`) تا لینکی مثلِ
+                    // `/podium#overview` بتواند با `HashScroll` (که در
+                    // `AppLayout` نصب است) به همین بخش اسکرول کند. این فیلد
+                    // فقط روی نوع‌هایی اضافه شده که کامپوننتشان واقعاً `id`
+                    // می‌گیرد و آن را روی `<section>` می‌گذارد — بلوک‌های هوم
+                    // (`hero_media`, `video`, `story_card`, `image_glass_band`,
+                    // `callout_list`, `glass_cards`, `faq`) اصلاً پراپِ id
+                    // نمی‌گیرند، پس این فیلد آن‌جا نیست.
+                    'id' => ['type' => 'text', 'max' => 190],
                     'image' => ['type' => 'image', 'required' => true],
                     'alt' => ['type' => 'text'],
                     'title' => ['type' => 'text', 'required' => true],
@@ -214,6 +224,9 @@ final class PageBlockSchema
                 'label' => 'شبکه‌ی کارت',
                 'hint' => 'چند کارتِ عکس + عنوان + زیرنویس، با تونِ روشن/تیره و جهتِ چیدمان.',
                 'fields' => [
+                    // anchor id اختیاری — توضیحِ کامل بالای `hero_actions`.
+                    // `PdCardGrid.jsx:19` آن را روی `<section>` می‌گذارد.
+                    'id' => ['type' => 'text', 'max' => 190],
                     'title' => ['type' => 'text', 'required' => true, 'max' => 160],
                     'tone' => ['type' => 'select', 'options' => ['light', 'dark'], 'required' => true],
                     'flow' => ['type' => 'select', 'options' => ['rtl', 'ltr'], 'required' => true],
@@ -225,6 +238,10 @@ final class PageBlockSchema
                 'label' => 'عکس و متن',
                 'hint' => 'عکس در یک سو و عنوان با چند پاراگراف در سوی دیگر.',
                 'fields' => [
+                    // anchor id اختیاری — توضیحِ کامل بالای `hero_actions`.
+                    // این نوع را هم `PdIntro.jsx:20` هم `SkStory.jsx:24`
+                    // می‌خوانند؛ هر دو آن را روی `<section>` می‌گذارند.
+                    'id' => ['type' => 'text', 'max' => 190],
                     'image' => ['type' => 'image', 'required' => true],
                     'alt' => ['type' => 'text'],
                     'title' => ['type' => 'text', 'required' => true],
@@ -241,6 +258,9 @@ final class PageBlockSchema
                 'label' => 'کارتِ برگردان',
                 'hint' => 'یک کارتِ عکس که با کلیک برمی‌گردد و پاراگراف‌های پشتش را نشان می‌دهد.',
                 'fields' => [
+                    // anchor id اختیاری — توضیحِ کامل بالای `hero_actions`.
+                    // `PdScale.jsx:19` آن را روی `<section>` می‌گذارد.
+                    'id' => ['type' => 'text', 'max' => 190],
                     'image' => ['type' => 'image', 'required' => true],
                     'alt' => ['type' => 'text'],
                     'title' => ['type' => 'text', 'required' => true],
@@ -252,6 +272,9 @@ final class PageBlockSchema
                 'label' => 'نوارِ پایانی',
                 'hint' => 'عکسِ تمام‌عرض با متن و یک دکمه روی آن.',
                 'fields' => [
+                    // anchor id اختیاری — توضیحِ کامل بالای `hero_actions`.
+                    // `PdClosing.jsx:21` آن را روی `<section>` می‌گذارد.
+                    'id' => ['type' => 'text', 'max' => 190],
                     'image' => ['type' => 'image', 'required' => true],
                     'alt' => ['type' => 'text', 'max' => 160],
                     'title' => ['type' => 'text', 'required' => true, 'max' => 160],
@@ -269,6 +292,9 @@ final class PageBlockSchema
                 'label' => 'هیروِ فولاد کویر',
                 'hint' => 'هیروِ عکس‌دار با نوارِ شیشه‌ای؛ یک کپشنِ لاتینِ اختیاری زیرِ تیتر و یک پاراگراف. «ظاهرشدن با اسکرول» را برای بلوکِ بالای صفحه خاموش بگذارید.',
                 'fields' => [
+                    // anchor id اختیاری — توضیحِ کامل بالای `hero_actions`.
+                    // `SkHero.jsx:28` آن را روی `<section>` می‌گذارد.
+                    'id' => ['type' => 'text', 'max' => 190],
                     'image' => ['type' => 'image', 'required' => true],
                     'alt' => ['type' => 'text'],
                     'title' => ['type' => 'text', 'required' => true],
@@ -283,6 +309,9 @@ final class PageBlockSchema
                 'label' => 'چرخ‌وفلکِ کارت',
                 'hint' => 'کارت‌های عددی که افقی می‌چرخند: هر کارت یک عکس، یک عدد، یک برچسب، یک زیرنویسِ کوتاه و یک پاراگراف زیرِ عکس.',
                 'fields' => [
+                    // anchor id اختیاری — توضیحِ کامل بالای `hero_actions`.
+                    // `SkGlance.jsx:18` آن را روی `<section>` می‌گذارد.
+                    'id' => ['type' => 'text', 'max' => 190],
                     'title' => ['type' => 'text', 'required' => true],
                     'cards' => ['type' => 'list', 'of' => 'stat', 'required' => true],
                 ],
@@ -292,6 +321,9 @@ final class PageBlockSchema
                 'label' => 'دو کارتِ محصول',
                 'hint' => 'کارت‌های بزرگِ محصول؛ نوشته روی خودِ عکس می‌نشیند، پس رنگِ تیتر و زیرتیترِ هر کارت جدا انتخاب می‌شود.',
                 'fields' => [
+                    // anchor id اختیاری — توضیحِ کامل بالای `hero_actions`.
+                    // `SkProducts.jsx:31` آن را روی `<section>` می‌گذارد.
+                    'id' => ['type' => 'text', 'max' => 190],
                     'title' => ['type' => 'text', 'required' => true],
                     'cards' => ['type' => 'list', 'of' => 'feature', 'required' => true],
                 ],
@@ -308,6 +340,9 @@ final class PageBlockSchema
                 'label' => 'چرخ‌وفلکِ کارتِ عنوان‌دار',
                 'hint' => 'کارت‌های عکس‌دار که افقی می‌چرخند: هر کارت یک عکس با نوارِ عنوان/زیرعنوان روی آن و یک پاراگراف زیرِ عکس؛ یک یادداشتِ اختیاری هم می‌توان فقط به کارت‌های خاصی اضافه کرد.',
                 'fields' => [
+                    // anchor id اختیاری — توضیحِ کامل بالای `hero_actions`.
+                    // `SkQuality.jsx:27` آن را روی `<section>` می‌گذارد.
+                    'id' => ['type' => 'text', 'max' => 190],
                     'title' => ['type' => 'text', 'required' => true],
                     'cards' => ['type' => 'list', 'of' => 'banner_card', 'required' => true],
                 ],
@@ -324,6 +359,9 @@ final class PageBlockSchema
                 'label' => 'چند کارتِ برگردان',
                 'hint' => 'چند کارتِ عکس که هرکدام جدا با کلیک برمی‌گردد و پاراگراف‌های خودش را نشان می‌دهد — برخلافِ «کارتِ برگردان» که فقط یک کارتِ تنها دارد.',
                 'fields' => [
+                    // anchor id اختیاری — توضیحِ کامل بالای `hero_actions`.
+                    // `SkTechnology.jsx:25` آن را روی `<section>` می‌گذارد.
+                    'id' => ['type' => 'text', 'max' => 190],
                     'title' => ['type' => 'text', 'required' => true],
                     'cards' => ['type' => 'list', 'of' => 'flip_panel', 'required' => true],
                 ],

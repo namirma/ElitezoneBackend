@@ -398,6 +398,9 @@ class PageBlocksSeeder extends Seeder
     private function podiumHero(): array
     {
         return [
+            // anchor id — `content.jsx` → `HERO.id`. `PdHero` می‌گذاردش روی
+            // `<section>`؛ `/podium#overview` با آن اسکرول می‌کند.
+            'id' => 'overview',
             'image' => '/media/podium/b1-hero.jpg',
             'alt' => 'نشان پادیوم بانک پاسارگاد روی سکوی نمایش',
             'title' => 'بانکداری، در مسیر خرید شما',
@@ -427,6 +430,8 @@ class PageBlocksSeeder extends Seeder
     private function podiumBenefits(): array
     {
         return [
+            // anchor id — `content.jsx` → `BENEFITS.id`.
+            'id' => 'benefits',
             'title' => 'یک حساب، تجربه‌ای ساده‌تر',
             'tone' => 'light',
             'flow' => 'rtl',
@@ -466,6 +471,8 @@ class PageBlocksSeeder extends Seeder
     private function podiumIntro(): array
     {
         return [
+            // anchor id — `content.jsx` → `INTRO.id`.
+            'id' => 'what-is-podium',
             'image' => '/media/podium/b3-infra.jpg',
             'alt' => 'زیرساخت خدمات دیجیتال پادیوم',
             'title' => 'پادیوم؛ زیرساختی برای بانکداری دیجیتال',
@@ -486,6 +493,8 @@ class PageBlocksSeeder extends Seeder
     private function podiumServices(): array
     {
         return [
+            // anchor id — `content.jsx` → `SERVICES.id`.
+            'id' => 'services',
             'title' => 'خدماتی که پشت یک خرید ساده قرار گرفته‌اند.',
             'tone' => 'dark',
             'flow' => 'ltr',
@@ -504,6 +513,8 @@ class PageBlocksSeeder extends Seeder
     private function podiumScale(): array
     {
         return [
+            // anchor id — `content.jsx` → `SCALE.id`.
+            'id' => 'large-orders',
             'image' => '/media/podium/b5-scale.jpg',
             'alt' => 'انتقال وجه از حساب الیت زون به حساب مقصد در سطوح میلیونی تا میلیاردی',
             'title' => 'برای خریدهایی که اعدادشان کوچک نیست.',
@@ -523,6 +534,8 @@ class PageBlocksSeeder extends Seeder
     private function podiumTrust(): array
     {
         return [
+            // anchor id — `content.jsx` → `TRUST.id`.
+            'id' => 'trust',
             'title' => 'اعتماد، بخشی از زیرساخت است.',
             'tone' => 'light',
             'flow' => 'rtl',
@@ -546,6 +559,8 @@ class PageBlocksSeeder extends Seeder
     private function podiumClosing(): array
     {
         return [
+            // anchor id — `content.jsx` → `CLOSING.id`.
+            'id' => 'open-account',
             'image' => '/media/podium/b7-cta.jpg',
             'alt' => '',
             'title' => 'یک حساب برای خریدی ساده‌تر',
@@ -561,6 +576,8 @@ class PageBlocksSeeder extends Seeder
     private function skHero(): array
     {
         return [
+            // anchor id — `content.jsx` → `HERO.id`.
+            'id' => 'overview',
             'image' => '/media/steel-kavir/b1-hero.webp',
             'alt' => 'مجتمع فولاد کویر کاشان',
             'title' => 'فولاد کویر؛ ارزش برای آینده',
@@ -574,6 +591,8 @@ class PageBlocksSeeder extends Seeder
     private function skGlance(): array
     {
         return [
+            // anchor id — `content.jsx` → `GLANCE.id`.
+            'id' => 'figures',
             'title' => 'فولاد کویر کاشان در یک نگاه',
             'cards' => [
                 ['id' => 'capacity', 'image' => '/media/steel-kavir/b2-card1.webp', 'alt' => 'میلگردهای تولیدی فولاد کویر', 'stat' => '۹۰۰ هزار تن', 'label' => 'ظرفیت سالانه تولید میلگرد', 'caption' => 'توان تولیدی در مقیاسی که پاسخ گوی پروژه های بزرگ و نیاز بازار است.', 'body' => 'ظرفیت تولید بالای فولاد کویر، امکان پاسخ‌گویی به سفارش‌های گسترده و تأمین مستمر نیاز پروژه‌های بزرگ را فراهم می‌کند؛ مزیتی که در بازار پرنوسان فولاد، به معنی اطمینان بیشتر در برنامه‌ریزی و تأمین است.'],
@@ -608,6 +627,8 @@ class PageBlocksSeeder extends Seeder
     private function skWhy(): array
     {
         return [
+            // anchor id — `content.jsx` → `WHY.id`.
+            'id' => 'why',
             'title' => 'چرا فولاد کویر!',
             'image' => '/media/steel-kavir/b3-why.webp',
             'alt' => 'خط تولید فولاد کویر',
@@ -642,6 +663,8 @@ class PageBlocksSeeder extends Seeder
     private function skProducts(): array
     {
         return [
+            // anchor id — `content.jsx` → `PRODUCTS.id`.
+            'id' => 'products',
             'title' => 'یک کارخانه؛ صدها انتخاب',
             'cards' => [
                 [
@@ -674,6 +697,8 @@ class PageBlocksSeeder extends Seeder
     private function skTransport(): array
     {
         return [
+            // anchor id — `content.jsx` → `TRANSPORT.id`.
+            'id' => 'transport',
             'title' => 'حمل و نقل',
             'image' => '/media/steel-kavir/b5-transport.webp',
             'alt' => 'ناوگان حمل‌ونقل فولاد کویر',
@@ -706,6 +731,8 @@ class PageBlocksSeeder extends Seeder
     private function skQuality(): array
     {
         return [
+            // anchor id — `content.jsx` → `QUALITY.id`.
+            'id' => 'quality-control',
             'title' => 'کیفیتی که قابل اندازه‌گیری است',
             'cards' => [
                 [
@@ -759,6 +786,8 @@ class PageBlocksSeeder extends Seeder
     private function skTechnology(): array
     {
         return [
+            // anchor id — `content.jsx` → `TECHNOLOGY.id`.
+            'id' => 'technology',
             'title' => 'تکنولوژی های فولاد کویر',
             'cards' => [
                 [
@@ -844,6 +873,8 @@ class PageBlocksSeeder extends Seeder
     private function skLusail(): array
     {
         return [
+            // anchor id — `content.jsx` → `LUSAIL.id`.
+            'id' => 'lusail',
             'image' => '/media/steel-kavir/b8-lusail.webp',
             'alt' => 'ورزشگاه لوسیل قطر',
             'title' => 'میلگردهای فولاد کویر در ستون‌های بزرگ‌ترین ورزشگاه خاورمیانه',

@@ -187,6 +187,33 @@ class PageBlockSchemaTest extends TestCase
     }
 
     #[Test]
+    public function only_the_types_whose_component_takes_an_id_prop_declare_it(): void
+    {
+        // فقط بلوک‌های پادیوم/فولاد کویر روی `<section id="...">` امکانِ
+        // anchor دارند — `HashScroll` (که در `AppLayout` نصب است) با همین
+        // id به `/podium#...`/`/steel-kavirCo#...` اسکرول می‌کند. بلوک‌های
+        // هوم (`hero_media`, `video`, `story_card`, `image_glass_band`,
+        // `callout_list`, `glass_cards`, `faq`) کامپوننتشان اصلاً پراپِ id
+        // نمی‌گیرد، پس نباید اسکیما هم این فیلد را رویشان اعلام کند — یک
+        // فیلدِ اضافه که هیچ کامپوننتی نمی‌خواندش، فرمِ ادمین را با
+        // ورودیِ بی‌اثر پر می‌کرد.
+        $withId = [
+            'hero_actions', 'card_grid', 'media_text', 'flip_card', 'cta_band',
+            'sk_hero', 'stat_carousel', 'feature_cards', 'banner_carousel', 'flip_cards',
+        ];
+
+        foreach ($this->schema->all() as $type => $definition) {
+            $hasId = array_key_exists('id', $definition['fields']);
+
+            if (in_array($type, $withId, true)) {
+                $this->assertTrue($hasId, "«{$type}» باید فیلدِ id داشته باشد — کامپوننتش آن را روی <section> می‌گذارد");
+            } else {
+                $this->assertFalse($hasId, "«{$type}» نباید فیلدِ id داشته باشد — کامپوننتش این پراپ را نمی‌گیرد");
+            }
+        }
+    }
+
+    #[Test]
     public function the_type_list_is_pinned_so_the_site_cannot_fall_behind_it(): void
     {
         // سایت رجیستریِ خودش را دارد (`blockRegistry.jsx`) و **نمی‌تواند** این
