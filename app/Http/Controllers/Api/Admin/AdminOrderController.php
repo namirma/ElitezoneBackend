@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Actions\Financial\RecordSystemMoadianInvoiceAction;
 use App\Actions\Order\CancelOrderAction;
+use App\Actions\Order\CorrectShipmentWeightAction;
 use App\Actions\Shipping\RecordShipmentArrivalAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\OrderFilterRequest;
@@ -14,7 +15,6 @@ use App\Models\Order;
 use App\Models\Shipment;
 // ‏`OrderTimelineService` عمداً نیامد: روی این شاخه وجود ندارد (اندپوینت
 // timeline هنوز پورت نشده) و importِ بی‌مصرف، PHPStan را قرمز می‌کرد.
-use App\Services\Weighbridge\WeightSourceResolver;
 use Exception;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -188,28 +188,33 @@ class AdminOrderController extends Controller
     public function recordShipmentWeight(
         Request $request,
         Shipment $shipment,
-        WeightSourceResolver $resolver,
+        CorrectShipmentWeightAction $action,
     ): JsonResponse {
         $data = $request->validate([
             'actual_weight' => ['required', 'numeric', 'min:0.001'],
             'source' => ['sometimes', 'string', 'in:manual,ocr,api'],
         ]);
 
-        $source = $resolver->for($data['source'] ?? 'manual');
-        $weight = $source->readWeight($shipment, $data);
-
-        $shipment->forceFill([
-            Shipment::ACTUAL_WEIGHT => $weight,
-            Shipment::WEIGHT_SOURCE => $source->code(),
-        ])->save();
+        // ⚠️ این متد وزن را با یک `forceFill()->save()` بدونِ تراکنش، بدونِ
+        // `lockForUpdate` و بدونِ هیچ بررسیِ وضعیتی می‌نوشت. یعنی دو ثبتِ
+        // هم‌زمان با هم مسابقه می‌دادند، و بدتر: وزن می‌توانست **پس از** اجرای
+        // تسویه بازنویسی شود — سفارش عددی نشان می‌داد که با دفترِ کیف پول
+        // نمی‌خواند، بی‌آنکه هیچ لِگی برگردانده شود.
+        //
+        // حالا از همان اکشنی رد می‌شود که مسیرِ تأمین‌کننده استفاده می‌کند، پس
+        // قفل و مرزِ «پیش از تسویه» یک تعریف دارند نه دو تا.
+        $corrected = $action->execute($shipment->order, $shipment, $data);
 
         activity()
-            ->performedOn($shipment)
+            ->performedOn($corrected)
             ->causedBy(Auth::user())
-            ->withProperties(['actual_weight' => $weight, 'source' => $source->code()])
+            ->withProperties([
+                'actual_weight' => $corrected->{Shipment::ACTUAL_WEIGHT},
+                'source' => $corrected->{Shipment::WEIGHT_SOURCE},
+            ])
             ->log('admin.shipment.weight_recorded');
 
-        return success(new ShipmentResource($shipment->fresh()), __('shipments.weight_recorded'));
+        return success(new ShipmentResource($corrected), __('shipments.weight_recorded'));
     }
 
     public function confirmShipmentArrival(

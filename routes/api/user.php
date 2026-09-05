@@ -341,6 +341,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
                 Route::post('/{order}/shipments/{shipment}/waybill', 'registerWaybill')
                     ->whereNumber('order')->whereNumber('shipment')
                     ->middleware(['idempotency', 'throttle:financial']);
+
+                // اصلاحِ وزنِ اشتباه — فقط پیش از تسویه. ثبتِ بارنامه عمداً
+                // ۴۰۹ می‌دهد (شماره‌ی راننده نباید باطل شود)، ولی همان گارد
+                // وزنِ غلط را هم قفل می‌کرد و اصلاحش فقط از ادمین برمی‌آمد.
+                Route::patch('/{order}/shipments/{shipment}/weight', 'correctShipmentWeight')
+                    ->whereNumber('order')->whereNumber('shipment')
+                    ->middleware('throttle:financial');
             });
 
             // Detail view (MUST be the last route in the orders group — wildcard)
@@ -480,6 +487,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
                 Route::controller(SupplierProductPriceController::class)->prefix('prices')->group(function () {
                     Route::get('/', 'index');
                     Route::post('/', 'store');
+                    // آپلودِ گروهی — پیش از این هر قیمت یک POST بود، که برای
+                    // فهرستِ چندده‌واریانتی سقفِ عملیِ پنل می‌شد. ورودی آرایه‌ی
+                    // JSON است؛ پارسِ CSV سمتِ کلاینت انجام می‌شود، چون
+                    // BOM/جداکننده/انکودینگِ اکسلِ فارسی آنجا بهتر حل می‌شود و
+                    // خطا می‌تواند کنارِ همان سطرِ جدول بنشیند.
+                    Route::post('/bulk', 'bulkStore')->middleware('throttle:10,1');
                     Route::put('/{price}', 'update');
                     Route::delete('/{price}', 'destroy');
                 });

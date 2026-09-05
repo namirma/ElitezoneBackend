@@ -3,14 +3,17 @@
 namespace App\Http\Controllers\Api\User;
 
 use App\Actions\Financial\RecordSupplierMoadianInvoiceAction;
+use App\Actions\Order\CorrectShipmentWeightAction;
 use App\Actions\Order\ExtendReserveDeadlineAction;
 use App\Actions\Order\RegisterShipmentAction;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Order\CorrectShipmentWeightRequest;
 use App\Http\Requests\Order\ExtendReserveDeadlineRequest;
 use App\Http\Requests\Order\RegisterShipmentRequest;
 use App\Http\Requests\Order\SubmitMoadianInvoiceRequest;
 use App\Http\Requests\Order\UploadOrderReceiptRequest;
 use App\Http\Resources\Order\OrderResource;
+use App\Http\Resources\Order\ShipmentResource;
 use App\Models\Order;
 use App\Models\Shipment;
 use App\Models\SupplierProfile;
@@ -185,6 +188,47 @@ class SupplierOrderController extends Controller
         );
     }
 
+    /**
+     * PATCH /profile/orders/{order}/shipments/{shipment}/weight — اصلاحِ وزن.
+     *
+     * ثبتِ بارنامه عمداً idempotent است (شماره‌ی داده‌شده به راننده نباید باطل
+     * شود)، ولی همان گارد وزنِ اشتباه‌تایپ‌شده را هم قفل می‌کرد و تنها راهِ
+     * اصلاح یک اندپوینتِ ادمین بود — روی عددی که مستقیماً مبلغِ تسویه را
+     * تعیین می‌کند.
+     *
+     * مرزش در `CorrectShipmentWeightAction` است: پیش از تسویه ویرایشِ داده،
+     * پس از آن ۴۰۹ — چون پول روی همان عدد جابه‌جا شده.
+     */
+    public function correctShipmentWeight(
+        CorrectShipmentWeightRequest $request,
+        Order $order,
+        Shipment $shipment,
+        CorrectShipmentWeightAction $action,
+    ): JsonResponse {
+        $this->authorize('manageAsSupplier', $order);
+
+        $corrected = $action->execute($order, $shipment, $request->validated());
+
+        activity()
+            ->performedOn($corrected)
+            ->causedBy(Auth::user())
+            ->withProperties(['actual_weight' => $corrected->{Shipment::ACTUAL_WEIGHT}])
+            ->log('supplier.shipment.weight_corrected');
+
+        return success(
+            new ShipmentResource($corrected),
+            __('shipments.weight_corrected')
+        );
+    }
+
+    /**
+     * صدور دستور بارگیری اسپادانا.
+     *
+     * تنها متدِ این کنترلر بود که **هیچ گاردی نداشت**: نه وضعیت را چک می‌کرد و نه
+     * idempotent بود، پس روی سفارشِ لغوشده هم اجرا می‌شد و هر بار صدا زدن، شناسه را
+     * با `time()`ِ تازه بازنویسی می‌کرد — یعنی مرجعی که به سیستم بیرونی داده شده
+     * بی‌صدا بی‌اعتبار می‌شد. حالا مثل بقیهٔ گذارها زیر قفل بررسی می‌شود.
+     */
     /**
      * PUT /profile/orders/{order}/reserve-deadline — تمدید مهلت رزرو (بند ۳.۴).
      *

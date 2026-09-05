@@ -3,14 +3,17 @@
 namespace App\Http\Controllers\Api\User;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Supplier\BulkPriceRequest;
 use App\Http\Resources\Product\ProductPriceResource;
 use App\Models\Factory;
 use App\Models\FactoryLocation;
 use App\Models\ProductPrice;
+use App\Services\Supplier\SupplierOriginGuard;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 /**
  * پنل خودسرویس سوپلایر — مدیریت قیمت محصولات، فقط برای کارخانه/انبارهای خودش.
@@ -78,6 +81,75 @@ class SupplierProductPriceController extends Controller
         }
 
         return created(new ProductPriceResource($price->load(['factory', 'factoryLocation'])), __('admin.prices.created'));
+    }
+
+    /**
+     * POST /profile/supplier/prices/bulk — آپلودِ گروهی.
+     *
+     * تا امروز هر قیمت یک POST بود. برای تأمین‌کننده‌ای با ده‌ها واریانت × چند
+     * مبدأ این سقفِ عملیِ پنل بود: به‌روزرسانیِ یک فهرستِ قیمت یعنی صدها
+     * درخواست، و هر ردیفِ تکراری هم ۴۲۲ می‌گرفت.
+     *
+     * سه تصمیم:
+     *
+     * ۱. **upsert است نه insert.** فهرستِ قیمت را دوباره می‌فرستند تا به‌روز
+     *    شود؛ اجبار به دانستنِ اینکه کدام ردیف از قبل هست، خودِ کار را
+     *    غیرممکن می‌کرد.
+     * ۲. **همه یا هیچ.** فهرستی که نیمه اعمال شود بدتر از ردشده است — کاربر
+     *    نمی‌داند کدام سطر نشست و کدام نه، و قیمتِ نیمه‌به‌روز مستقیم روی
+     *    فروش می‌نشیند.
+     * ۳. **خطا به‌ازای شماره‌ی ردیف.** «یکی از ردیف‌ها غلط است» در فایلِ
+     *    ۳۰۰ سطری بی‌فایده است.
+     */
+    public function bulkStore(BulkPriceRequest $request, SupplierOriginGuard $guard): JsonResponse
+    {
+        $rows = $request->validated('rows');
+
+        $errors = $guard->validate($rows, (int) Auth::id());
+
+        if ($errors !== []) {
+            return error(__('supplier.bulk.rows_rejected'), ['rows' => $errors], 422);
+        }
+
+        $summary = DB::transaction(function () use ($rows) {
+            $created = 0;
+            $updated = 0;
+
+            foreach ($rows as $row) {
+                $identity = [
+                    ProductPrice::PRODUCT_VARIANT_ID => $row['product_variant_id'],
+                    ProductPrice::FACTORY_ID => $row['factory_id'],
+                    ProductPrice::FACTORY_LOCATION_ID => $row['factory_location_id'],
+                ];
+
+                $existing = ProductPrice::query()->where($identity)->lockForUpdate()->first();
+
+                // نه `?->` : larastan روی برنچِ L13 `$existing` را non-nullable
+                // می‌بیند و nullsafe را «بی‌مورد» خطا می‌گیرد. شرطِ صریح روی هر
+                // دو برنچ یکسان می‌گذرد.
+                $keepSpecial = $existing !== null ? $existing->{ProductPrice::SPECIAL_PRICE} : 0;
+                $keepGolden = $existing !== null ? $existing->{ProductPrice::GOLDEN_FIGURE} : 0;
+
+                $values = [
+                    ProductPrice::GENERAL_PRICE => $row['general_price'],
+                    ProductPrice::SPECIAL_PRICE => $row['special_price'] ?? $keepSpecial,
+                    ProductPrice::GOLDEN_FIGURE => $row['golden_figure'] ?? $keepGolden,
+                    ProductPrice::LAST_UPDATED_AT => now(),
+                ];
+
+                if ($existing) {
+                    $existing->update($values);
+                    $updated++;
+                } else {
+                    ProductPrice::create($identity + $values);
+                    $created++;
+                }
+            }
+
+            return ['created' => $created, 'updated' => $updated, 'total' => $created + $updated];
+        });
+
+        return success($summary, __('supplier.bulk.prices_saved'));
     }
 
     /** Update only mutates the price values — the (variant,factory,location) triple is the row identity. */
