@@ -66,6 +66,13 @@ final class PageBlockSchema
             'title' => 'text',
             'subtitle' => 'text',
             'body' => 'textarea',
+            // اندیسِ اعضای فهرستِ ران‌های *همین کارت* که باید بولد شوند
+            // (`SkProducts.jsx`، `resolveBodyRuns` مصرف می‌کند) — برخلافِ
+            // `media_text.bodyStrong` که روی ران‌های تخت‌شده‌ی *همه‌ی
+            // پاراگراف‌ها* شمرده می‌شود، یک کارتِ `feature` یک پاراگرافِ
+            // تنهاست، پس اندیس مستقیماً روی فهرستِ رانِ همان کارت است — با
+            // `captionEnBold`/`media_text.bodyStrong` یکی نیست.
+            'bodyStrong' => ['type' => 'list', 'of' => 'number'],
             'titleInk' => 'color',
             'subInk' => 'color',
         ],

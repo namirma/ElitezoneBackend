@@ -96,6 +96,23 @@ class PageBlockSchemaTest extends TestCase
     }
 
     #[Test]
+    public function a_shape_number_list_member_gets_a_numeric_member_rule_not_a_string_one(): void
+    {
+        // `feature.bodyStrong` (کارت‌های `feature_cards`) هم مثلِ
+        // `story_card.captionEnBold`/`media_text.bodyStrong` یک
+        // `['type' => 'list', 'of' => 'number']` است — با این تفاوت که این‌جا
+        // عضوِ یک SHAPE است، نه فیلدِ سطحِ بالا، پس مسیرِ کد فرق دارد:
+        // `listRules()` باید برای این عضو، بازگشتی دوباره خودش را صدا بزند
+        // (همان مسیرِ `flip_panel.paragraphs`) و در آن فراخوانیِ بازگشتی هم
+        // قاعده‌ی عددی را بدهد، نه رشته‌ای.
+        $rules = $this->schema->rulesFor('feature_cards');
+        $memberRule = $rules['data.cards.*.bodyStrong.*'];
+
+        $this->assertContains('numeric', $memberRule);
+        $this->assertNotContains('string', $memberRule);
+    }
+
+    #[Test]
     public function a_required_list_field_becomes_a_required_array_rule(): void
     {
         // این فیلدها در اسکیما `required => true` دارند اما listRules() تا پیش از
