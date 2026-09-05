@@ -4,6 +4,7 @@ namespace Tests\Feature\Navigation;
 
 use App\Actions\Profile\ProfileNavigationAction;
 use App\Models\Order;
+use App\Services\Cart\CartPaymentLinkService;
 use App\Services\DashboardAlertsService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use PHPUnit\Framework\Attributes\Test;
@@ -90,7 +91,7 @@ class EmittedUrlsMatchSpaRoutesTest extends TestCase
         // **پیامک** می‌شد به روتی می‌رفت که وجود نداشت، و ادعای پوشش بی‌صدا
         // غلط بود.
         $source = file_get_contents(
-            (new ReflectionClass(\App\Services\Cart\CartPaymentLinkService::class))->getFileName()
+            (new ReflectionClass(CartPaymentLinkService::class))->getFileName()
         );
 
         preg_match_all("#'(/[a-z0-9\-/_]*)'#i", $source, $matches);

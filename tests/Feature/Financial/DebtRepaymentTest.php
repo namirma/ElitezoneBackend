@@ -7,7 +7,9 @@ namespace Tests\Feature\Financial;
 use App\Models\DebtEntry;
 use App\Models\User;
 use App\Models\Wallet;
+use App\Models\WalletTransaction;
 use App\Services\Financial\DebtEngine;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
@@ -106,6 +108,17 @@ class DebtRepaymentTest extends TestCase
             ->sum(Wallet::BALANCE);
 
         $this->assertSame($before, $after, 'مجموعِ موجودی‌ها نباید عوض شود.');
+
+        // و ردیفِ بستانکار باید به رویدادِ خودش قابلِ ردیابی باشد. `$extraMeta`
+        // پارامتر بود ولی بی‌صدا دور ریخته می‌شد (فقط `receipt_info` جان سالم
+        // به در می‌برد)، پس تگِ `kind` هرگز به ردیف نمی‌رسید و در گزارشِ مالی
+        // فقط یک واریزِ بی‌نشان دیده می‌شد.
+        $credit = WalletTransaction::query()
+            ->whereHas('wallet', fn ($q) => $q->where('user_id', $this->systemUser->id))
+            ->latest('id')
+            ->firstOrFail();
+
+        $this->assertSame('debt_repayment', $credit->meta['kind'] ?? null);
     }
 
     #[Test]
@@ -176,7 +189,7 @@ class DebtRepaymentTest extends TestCase
     {
         $this->incurDebt(1_000_000);
 
-        $this->expectException(\Illuminate\Database\QueryException::class);
+        $this->expectException(QueryException::class);
 
         DB::table('users')->where('id', $this->user->id)->delete();
     }

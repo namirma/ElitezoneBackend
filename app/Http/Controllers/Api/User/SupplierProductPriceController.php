@@ -124,10 +124,16 @@ class SupplierProductPriceController extends Controller
 
                 $existing = ProductPrice::query()->where($identity)->lockForUpdate()->first();
 
+                // نه `?->` : larastan روی برنچِ L13 `$existing` را non-nullable
+                // می‌بیند و nullsafe را «بی‌مورد» خطا می‌گیرد. شرطِ صریح روی هر
+                // دو برنچ یکسان می‌گذرد.
+                $keepSpecial = $existing !== null ? $existing->{ProductPrice::SPECIAL_PRICE} : 0;
+                $keepGolden = $existing !== null ? $existing->{ProductPrice::GOLDEN_FIGURE} : 0;
+
                 $values = [
                     ProductPrice::GENERAL_PRICE => $row['general_price'],
-                    ProductPrice::SPECIAL_PRICE => $row['special_price'] ?? $existing?->{ProductPrice::SPECIAL_PRICE} ?? 0,
-                    ProductPrice::GOLDEN_FIGURE => $row['golden_figure'] ?? $existing?->{ProductPrice::GOLDEN_FIGURE} ?? 0,
+                    ProductPrice::SPECIAL_PRICE => $row['special_price'] ?? $keepSpecial,
+                    ProductPrice::GOLDEN_FIGURE => $row['golden_figure'] ?? $keepGolden,
                     ProductPrice::LAST_UPDATED_AT => now(),
                 ];
 

@@ -45,10 +45,18 @@ class FundWalletAction
             $wallet = $user->wallet()->firstOrCreate([]);
             $wallet = $user->wallet()->where('id', $wallet->id)->lockForUpdate()->first();
 
-            $meta = [
+            // ⚠️ `$extraMeta` پارامتر بود ولی **بی‌صدا دور ریخته می‌شد** — فقط
+            // `receipt_info` جان سالم به در می‌برد. پس تگی مثل
+            // `kind => debt_repayment` که فراخوان می‌فرستاد هرگز به ردیف
+            // نمی‌رسید و آن تراکنش به رویدادِ خودش قابلِ ردیابی نبود؛ در گزارش
+            // مالی فقط یک واریزِ بی‌نشان دیده می‌شد.
+            //
+            // ترتیبِ merge عمدی است: کلیدهای پایه آخر می‌آیند تا فراخوان نتواند
+            // `payment_method` را بازنویسی کند.
+            $meta = array_merge($extraMeta, [
                 'payment_method' => $paymentMethod,
                 'receipt_info' => $extraMeta['receipt_info'] ?? [],
-            ];
+            ]);
 
             // 2. مدیریت آپلود فایل (اگر فایل ارسال شده باشد)
             if ($receiptFile) {
