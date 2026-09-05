@@ -90,6 +90,9 @@ Route::controller(\App\Http\Controllers\ContentController::class)->group(functio
     Route::get('/faq-categories', 'faqCategories');
     // مگامنوی نوار بالای سایت
     Route::get('/menu', 'menu');
+    // بلوک‌های صفحاتِ محتواییِ سه‌گانه — قبل از pages/{slug} تا ترتیب موضوعِ بحث نشود
+    // (سه سگمنت در برابر دو تا، تداخلی هم نیست)
+    Route::get('/pages/{page}/blocks', 'pageBlocks');
     Route::get('/pages/{slug}', 'page');
     Route::get('/settings/public', 'publicSettings');
 });
