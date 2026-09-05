@@ -35,5 +35,7 @@ class DatabaseSeeder extends Seeder
         // محتوایی که تا امروز در کدِ فرانت هاردکد بود (FAQ/مگامنو/فوتر) — idempotent
         $this->call(SiteContentSeeder::class);
         $this->call(PromoOverlaySeeder::class);
+        // محتوای امروزِ صفحه‌ی هوم — idempotent، بدونش فاز ۳ صفحه‌ی هوم را خالی می‌کند
+        $this->call(PageBlocksSeeder::class);
     }
 }
