@@ -161,6 +161,22 @@ class OrderResource extends BaseJsonResource
                 ];
             }, null),
 
+            // --- پرداخت‌کننده ---
+            //
+            // ⚠️ نه `beneficiary_user_id` و نه `payer_user_id` در پاسخ نبودند، در
+            // حالی که **تأیید تحویل payer-only است** (نه placer). یعنی فرانت
+            // هیچ راهی نداشت بفهمد دکمه‌ی «تأیید تحویل» را نشان بدهد یا نه، و
+            // مجبور بود از روی ذی‌نفع **حدس** بزند — که در خرید-برای-دیگری
+            // اتفاقاً درست درمی‌آید ولی قرارداد نیست.
+            //
+            // ‏`payer_user_id` روی سفارشِ معمولی خالی است و پرداخت‌کننده همان
+            // ثبت‌کننده است؛ `is_self` همین را یکجا جواب می‌دهد تا کلاینت
+            // مجبور به بازسازیِ قاعده نشود.
+            'payer' => [
+                'id' => $this->{Order::PAYER_USER_ID} ?? $this->{Order::PLACER_USER_ID},
+                'is_self' => ($this->{Order::PAYER_USER_ID} ?? $this->{Order::PLACER_USER_ID}) === $viewerId,
+            ],
+
             // --- EliteYAR Info (الیت یارِ سفارش — مستقیم از elite_yar_user_id) ---
             'elite_yar' => $eliteYARUser ? [
                 'id' => $eliteYARUser->id,

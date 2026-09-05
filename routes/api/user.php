@@ -36,11 +36,13 @@ use App\Http\Controllers\Api\User\ProfileController;
 use App\Http\Controllers\Api\User\ProfileSearchController;
 use App\Http\Controllers\Api\User\StockSubscriptionController;
 use App\Http\Controllers\Api\User\SupplierController;
+use App\Http\Controllers\Api\User\SupplierDocumentController;
 use App\Http\Controllers\Api\User\SupplierDriverController;
 use App\Http\Controllers\Api\User\SupplierFactoryController;
 use App\Http\Controllers\Api\User\SupplierFactoryLocationController;
 use App\Http\Controllers\Api\User\SupplierOrderController;
 use App\Http\Controllers\Api\User\SupplierProductPriceController;
+use App\Http\Controllers\Api\User\SupplierRequestController;
 use App\Http\Controllers\Api\User\SupplierShippingRateController;
 use App\Http\Controllers\Api\User\SupplierStockController;
 use App\Http\Controllers\Api\User\UserBankAccountController;
@@ -355,6 +357,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
                 // اصلاحِ وزنِ اشتباه — فقط پیش از تسویه. ثبتِ بارنامه عمداً
                 // ۴۰۹ می‌دهد (شماره‌ی راننده نباید باطل شود)، ولی همان گارد
                 // وزنِ غلط را هم قفل می‌کرد و اصلاحش فقط از ادمین برمی‌آمد.
+                // درخواستِ لغو — تأمین‌کننده خودش لغو نمی‌کند (بند ۵.۳).
+                Route::post('/{order}/cancellation-request', [SupplierRequestController::class, 'cancelOrder'])
+                    ->whereNumber('order')->middleware('throttle:10,1');
+
                 Route::patch('/{order}/shipments/{shipment}/weight', 'correctShipmentWeight')
                     ->whereNumber('order')->whereNumber('shipment')
                     ->middleware('throttle:financial');
@@ -459,6 +465,19 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::get('/activity-categories', [SupplierController::class, 'getCategories']);
             Route::get('/activityCategory-getId', [SupplierController::class, 'getActivityCategoryId']);
 
+            // مدارکِ پیوستِ درخواست — عمداً **بیرونِ `role.supplier`**: مدرک را
+            // متقاضی می‌فرستد، یعنی کسی که هنوز نقش ندارد. پشتِ آن میان‌افزار
+            // یعنی فقط پذیرفته‌شده‌ها بتوانند مدرک بدهند، که برعکسِ کارِ این
+            // مسیر است. فایل روی دیسکِ خصوصی می‌نشیند و URL مستقیم ندارد.
+            Route::prefix('documents')->controller(SupplierDocumentController::class)->group(function () {
+                Route::get('/', 'index');
+                Route::post('/', 'store')->middleware('throttle:20,1');
+                Route::delete('/{document}', 'destroy')->whereNumber('document');
+                Route::get('/{document}/file', 'download')
+                    ->whereNumber('document')
+                    ->name('supplier-document.download');
+            });
+
             // Self-service panel — approved suppliers only (role.supplier)
             Route::middleware('role.supplier')->group(function () {
                 // اعلامِ اعتبارِ قیمت‌ها — تا وقتی ثبت نشود، کالاهای این
@@ -477,6 +496,20 @@ Route::middleware(['auth:sanctum'])->group(function () {
                 Route::get('/orders/pending-debts', [SupplierOrderController::class, 'pendingDebts']);
                 Route::get('/orders/pending-moadian', [SupplierOrderController::class, 'pendingMoadian']);
                 Route::get('/dashboard', [SupplierOrderController::class, 'dashboard']);
+                // گزارشِ درآمد با بازه — داشبورد فقط بر اساس وضعیت گروه می‌کرد،
+                // پس «مردادِ امسال چقدر فروختم» اصلاً قابلِ پرسیدن نبود.
+                Route::get('/earnings', [SupplierOrderController::class, 'earnings']);
+
+                // درخواست‌های تأمین‌کننده به بک‌آفیس — **درخواست**، نه اقدام.
+                //
+                // لغوِ اجباری طبق بند ۵.۳ تنها اختیارِ وضعیتیِ ادمین است و بند
+                // ۳.۶ آن را به تیکت و دلیل مشروط می‌کند؛ کاتالوگ هم عمداً
+                // ادمین‌محور می‌ماند. پس اینجا فقط صف ثبت می‌شود.
+                Route::get('/requests', [SupplierRequestController::class, 'index']);
+                Route::post('/requests/catalog-addition', [SupplierRequestController::class, 'catalogAddition'])
+                    ->middleware('throttle:10,1');
+                Route::delete('/requests/{supplierRequest}', [SupplierRequestController::class, 'destroy'])
+                    ->whereNumber('supplierRequest');
 
                 // Factories — CRUD scoped to factories.supplier_user_id = خودم
                 Route::controller(SupplierFactoryController::class)->prefix('factories')->group(function () {

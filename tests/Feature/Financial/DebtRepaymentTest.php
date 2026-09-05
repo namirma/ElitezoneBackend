@@ -33,11 +33,14 @@ class DebtRepaymentTest extends TestCase
 
     private DebtEngine $debtEngine;
 
+    private User $systemUser;
+
     protected function setUp(): void
     {
         parent::setUp();
 
         $system = User::factory()->create();
+        $this->systemUser = $system;
         config(['financial.system_user_id' => $system->id]);
         Wallet::create([Wallet::USER_ID => $system->id, Wallet::BALANCE => 0, Wallet::BALANCE_HOLD => 0]);
 
@@ -71,6 +74,38 @@ class DebtRepaymentTest extends TestCase
             3_000_000.0,
             (float) Wallet::where(Wallet::USER_ID, $this->user->id)->value(Wallet::BALANCE)
         );
+
+        // ⚠️ رگرسیونی که این می‌گیرد و تستِ قبلی نمی‌گرفت: `FundWalletAction`
+        // پیش‌فرضش یک ردیفِ `deposit/pending` می‌ساخت که موجودی را **تکان
+        // نمی‌داد**. یعنی کیف پولِ بدهکار کسر می‌شد، کیف پولِ سازه چیزی
+        // نمی‌گرفت، بدهی هم بسته می‌شد — و پول از سیستم ناپدید می‌شد.
+        //
+        // ‏`financial:doctor` هم نمی‌دیدش: `deposit/pending` سهمِ صفر دارد، پس
+        // هر دو کیف پول با دفترِ خودشان می‌خواندند. ناترازی بین‌کیف‌پولی بود.
+        $this->assertSame(
+            2_000_000.0,
+            (float) Wallet::where(Wallet::USER_ID, $this->systemUser->id)->value(Wallet::BALANCE),
+            'بازپرداخت باید به کیف پولِ سازه برسد، نه اینکه فقط یک درخواستِ واریز بسازد.'
+        );
+    }
+
+    #[Test]
+    public function no_money_disappears_from_the_system_during_a_repayment(): void
+    {
+        // جمعِ کلِ پولِ روی میز پیش و پس از بازپرداخت باید یکی بماند — بدهی
+        // جابه‌جا می‌شود، خلق یا نابود نمی‌شود.
+        $this->incurDebt(3_000_000);
+        Sanctum::actingAs($this->user);
+
+        $before = (float) Wallet::whereIn(Wallet::USER_ID, [$this->user->id, $this->systemUser->id])
+            ->sum(Wallet::BALANCE);
+
+        $this->postJson('/api/profile/debts/repay')->assertOk();
+
+        $after = (float) Wallet::whereIn(Wallet::USER_ID, [$this->user->id, $this->systemUser->id])
+            ->sum(Wallet::BALANCE);
+
+        $this->assertSame($before, $after, 'مجموعِ موجودی‌ها نباید عوض شود.');
     }
 
     #[Test]

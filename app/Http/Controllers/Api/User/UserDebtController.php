@@ -144,10 +144,17 @@ class UserDebtController extends Controller
 
             // بدهی یعنی شرکت پول را جلو انداخته بود؛ بازپرداخت باید به همان
             // کیف پول سازه برگردد وگرنه لِگِ کیف پول‌ها نامتوازن می‌ماند.
+            // ⚠️ `STATUS_CONFIRMED` صریح، و این پارامتر تا امروز اصلاً وجود
+            // نداشت. پیش‌فرضِ `FundWalletAction` یک ردیفِ `deposit/pending`
+            // می‌ساخت که موجودی را **تکان نمی‌داد** — یعنی کیف پولِ بدهکار
+            // فوراً کسر می‌شد، کیف پولِ سازه چیزی نمی‌گرفت، و بدهی هم بسته
+            // می‌شد: پول از سیستم ناپدید می‌شد. اینجا بازپرداخت است نه درخواستِ
+            // واریز، پس اعتبار باید همان لحظه بنشیند.
             if ($systemUser !== null) {
                 $fund->execute(
                     $systemUser, $amount, WalletTransaction::METHOD_BANK_TRANSFER,
-                    __('orders.debt_repay_description'), null, ['kind' => 'debt_repayment']
+                    __('orders.debt_repay_description'), null, ['kind' => 'debt_repayment'],
+                    WalletTransaction::STATUS_CONFIRMED
                 );
             }
 

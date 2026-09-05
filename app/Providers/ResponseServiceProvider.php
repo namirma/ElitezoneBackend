@@ -43,17 +43,37 @@ class ResponseServiceProvider extends ServiceProvider
      */
     public static function paginationEnvelope(mixed $data): array
     {
-        if (! $data instanceof ResourceCollection || ! $data->resource instanceof AbstractPaginator) {
-            return ['data' => $data];
+        if ($data instanceof ResourceCollection && $data->resource instanceof AbstractPaginator) {
+            $payload = $data->response()->getData(true);
+
+            return array_filter([
+                'data' => $payload['data'] ?? [],
+                'meta' => $payload['meta'] ?? null,
+                'links' => $payload['links'] ?? null,
+            ], static fn ($v) => $v !== null);
         }
 
-        $payload = $data->response()->getData(true);
+        // صفحه‌بندیِ خام (مثلاً `$paginator->through(...)`) شکلِ **تخت** دارد:
+        // `current_page`, `total`, `data`, `first_page_url`, … . یعنی سه شکلِ
+        // متفاوت برای یک مفهوم در یک API. اینجا به همان `{data, meta, links}`
+        // نگاشت می‌شود تا هر فهرستی در هر دو پنل یک قرارداد داشته باشد.
+        if ($data instanceof AbstractPaginator) {
+            $flat = $data->toArray();
 
-        return array_filter([
-            'data' => $payload['data'] ?? [],
-            'meta' => $payload['meta'] ?? null,
-            'links' => $payload['links'] ?? null,
-        ], static fn ($v) => $v !== null);
+            $links = array_intersect_key($flat, array_flip([
+                'first_page_url', 'last_page_url', 'prev_page_url', 'next_page_url',
+            ]));
+
+            $meta = array_diff_key($flat, $links + ['data' => null, 'links' => null]);
+
+            return [
+                'data' => $flat['data'] ?? [],
+                'meta' => $meta,
+                'links' => $links,
+            ];
+        }
+
+        return ['data' => $data];
     }
 
     /**
