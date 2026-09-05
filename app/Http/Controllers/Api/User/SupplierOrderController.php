@@ -208,6 +208,39 @@ class SupplierOrderController extends Controller
     }
 
     /**
+     * PATCH /profile/orders/{order}/shipments/{shipment}/weight — اصلاحِ وزن.
+     *
+     * ثبتِ بارنامه عمداً idempotent است (شماره‌ی داده‌شده به راننده نباید باطل
+     * شود)، ولی همان گارد وزنِ اشتباه‌تایپ‌شده را هم قفل می‌کرد و تنها راهِ
+     * اصلاح یک اندپوینتِ ادمین بود — روی عددی که مستقیماً مبلغِ تسویه را
+     * تعیین می‌کند.
+     *
+     * مرزش در `CorrectShipmentWeightAction` است: پیش از تسویه ویرایشِ داده،
+     * پس از آن ۴۰۹ — چون پول روی همان عدد جابه‌جا شده.
+     */
+    public function correctShipmentWeight(
+        \App\Http\Requests\Order\CorrectShipmentWeightRequest $request,
+        Order $order,
+        \App\Models\Shipment $shipment,
+        \App\Actions\Order\CorrectShipmentWeightAction $action,
+    ): JsonResponse {
+        $this->authorize('manageAsSupplier', $order);
+
+        $corrected = $action->execute($order, $shipment, $request->validated());
+
+        activity()
+            ->performedOn($corrected)
+            ->causedBy(Auth::user())
+            ->withProperties(['actual_weight' => $corrected->{\App\Models\Shipment::ACTUAL_WEIGHT}])
+            ->log('supplier.shipment.weight_corrected');
+
+        return success(
+            new \App\Http\Resources\Order\ShipmentResource($corrected),
+            __('shipments.weight_corrected')
+        );
+    }
+
+    /**
      * صدور دستور بارگیری اسپادانا.
      *
      * تنها متدِ این کنترلر بود که **هیچ گاردی نداشت**: نه وضعیت را چک می‌کرد و نه
