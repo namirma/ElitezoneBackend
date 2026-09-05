@@ -103,7 +103,7 @@ class PruneAndQueueHygieneTest extends TestCase
         ]);
 
         Sanctum::actingAs($this->admin());
-        $ids = collect($this->getJson('/api/admin/financial/pending-moadian?per_page=200')->json('data.data'))->pluck('id');
+        $ids = collect($this->getJson('/api/admin/financial/pending-moadian?per_page=200')->json('data'))->pluck('id');
 
         $this->assertNotContains(
             $done->id,
@@ -124,7 +124,7 @@ class PruneAndQueueHygieneTest extends TestCase
         ]);
 
         Sanctum::actingAs($this->admin());
-        $ids = collect($this->getJson('/api/admin/financial/pending-moadian?per_page=200')->json('data.data'))->pluck('id');
+        $ids = collect($this->getJson('/api/admin/financial/pending-moadian?per_page=200')->json('data'))->pluck('id');
 
         $this->assertContains($pending->id, $ids->all(), 'سند Q واقعاً جا مانده — باید در صف بماند.');
     }

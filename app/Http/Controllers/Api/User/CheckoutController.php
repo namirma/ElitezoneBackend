@@ -85,11 +85,31 @@ class CheckoutController extends Controller
             return error(__('checkout.cart_is_empty'), [], 400);
         }
 
-        $finalAmount = $totals->finalAmountFor($cart, $user);
-        $branch = $branchResolver->resolve($user, $finalAmount);
+        // ⚠️ پایه‌ی تصمیم تا امروز **کرایه و مالیاتِ کرایه را نداشت**، در حالی
+        // که سفارشی که ساخته می‌شود هر دو را دارد. یعنی `gateway_amount` به
+        // اندازه‌ی کرایه کم بود و — بدتر — خودِ `branch` می‌توانست غلط باشد:
+        // کسی که موجودی‌اش کالا را می‌پوشاند ولی کالا+کرایه را نه، شاخه‌ی
+        // `wallet` می‌گرفت و دکمه‌ای می‌دید که قطعاً ۴۲۲ می‌گیرد.
+        //
+        // کرایه بدونِ مقصد معنا ندارد، پس آدرس اختیاری پذیرفته می‌شود و در
+        // نبودش `carts.address_id` و بعد آدرسِ پیش‌فرضِ کاربر امتحان می‌شوند.
+        $data = $request->validate([
+            'address_id' => ['nullable', 'integer', 'exists:addresses,id'],
+        ]);
+
+        $breakdown = $totals->breakdownFor($cart, $user, $data['address_id'] ?? null);
+        $branch = $branchResolver->resolve($user, $breakdown['final_amount']);
 
         return success(array_merge($branch->toArray(), [
             'reserve_warning' => $warningResolver->forCart($cart),
+            // اجزای پایه، تا فرانت مجبور نباشد خودش دوباره جمع بزند —
+            // و `shipping_included` صریح می‌گوید کرایه شمرده شده یا نه.
+            'breakdown' => [
+                'goods_with_vat' => (string) $breakdown['gross'],
+                'shipping_with_vat' => (string) $breakdown['shipping'],
+                'coupon_discount' => (string) $breakdown['discount'],
+                'shipping_included' => $breakdown['shipping_included'],
+            ],
         ]), 'global.received_successfully');
     }
 
@@ -309,7 +329,8 @@ class CheckoutController extends Controller
             'prepared_by' => [
                 'id' => $cartOwner?->id,
                 // getAttribute — larastan بدون ide-helper این ستون را نمی‌شناسد.
-                'name' => $cartOwner?->getAttribute('name'),
+                // همان اشتباه: نام در `user_profiles.name` است نه `users.name`.
+                'name' => $cartOwner?->profile?->name,
             ],
         ], 'global.received_successfully');
     }

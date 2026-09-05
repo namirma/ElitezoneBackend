@@ -36,6 +36,7 @@ use App\Http\Controllers\Api\Admin\AdminSearchController;
 use App\Http\Controllers\Api\Admin\AdminSettingController;
 use App\Http\Controllers\Api\Admin\AdminShippingRateController;
 use App\Http\Controllers\Api\Admin\AdminSupplierController;
+use App\Http\Controllers\Api\Admin\AdminSupplierRequestController;
 use App\Http\Controllers\Api\Admin\AdminTicketController;
 use App\Http\Controllers\Api\Admin\AdminUserController;
 use App\Http\Controllers\Api\Admin\AdminWalletController;
@@ -144,6 +145,21 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
         Route::post('/{user}/verify-elite-yar', 'verifyEliteYAR');
         Route::post('/{user}/unverify-elite-yar', 'unverifyEliteYAR');
     });
+
+    // صفِ درخواست‌های تأمین‌کننده (لغوِ سفارش، افزودنِ کالا).
+    //
+    // ⚠️ `approve` اینجا فقط تصمیم را ثبت می‌کند و **هیچ لغوی انجام نمی‌دهد**:
+    // بند ۳.۶ لغوِ اجباری را به تیکت و دلیل مشروط کرده، پس اجرای واقعی از
+    // `POST /admin/orders/{order}/force-cancel` می‌گذرد تا آن دو شرط دور
+    // زده نشوند.
+    Route::controller(AdminSupplierRequestController::class)
+        ->prefix('supplier-requests')
+        ->middleware('admin.permission:manage-orders')
+        ->group(function () {
+            Route::get('/', 'index');
+            Route::post('/{supplierRequest}/approve', 'approve')->whereNumber('supplierRequest');
+            Route::post('/{supplierRequest}/reject', 'reject')->whereNumber('supplierRequest');
+        });
 
     // Suppliers — مدیریت سوپلایرها (+ صف تأیید درخواست‌های سوپلایری)
     Route::controller(AdminSupplierController::class)->prefix('suppliers')->middleware('admin.permission:manage-users')->group(function () {

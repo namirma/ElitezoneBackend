@@ -34,6 +34,9 @@ class SupplierProfileResource extends BaseJsonResource
             SupplierProfile::WEBSITE_NOT_RELATED => $this->website_not_related,
             SupplierProfile::COMPANY => $this->company,
             SupplierProfile::STATUS => $this->status,
+            // متقاضیِ ردشده باید بداند چه چیزی را اصلاح کند — بدونِ این،
+            // مسیرِ «ویرایش = درخواستِ دوباره» مقصدی ندارد.
+            SupplierProfile::REJECTION_REASON => $this->rejection_reason,
 
             // ⚠️ این چهار فیلد **در هیچ پاسخی نمی‌آمدند** — نه اینجا، نه در
             // داشبورد، نه در هیچ ریسورسِ دیگری (کلِ مخزن گرفته شد).

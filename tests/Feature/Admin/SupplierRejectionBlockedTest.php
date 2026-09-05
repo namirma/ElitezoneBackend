@@ -84,7 +84,11 @@ class SupplierRejectionBlockedTest extends TestCase
     {
         Sanctum::actingAs($this->admin);
 
-        return $this->postJson("/api/admin/suppliers/{$this->supplier->id}/reject");
+        // ردِ بی‌دلیل دیگر مجاز نیست: متقاضی باید بداند چه چیزی را اصلاح
+        // کند، مخصوصاً حالا که ویرایشِ پروفایل او را به صف برمی‌گرداند.
+        return $this->postJson("/api/admin/suppliers/{$this->supplier->id}/reject", [
+            'reason' => 'مدارک ارائه‌شده برای تأیید کافی نیست.',
+        ]);
     }
 
     #[Test]

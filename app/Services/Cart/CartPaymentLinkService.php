@@ -70,7 +70,11 @@ class CartPaymentLinkService
             // getAttribute و نه دسترسی جادویی — larastan بدون فایل‌های ide-helper
             // (که gitignore شده‌اند) این ستون را نمی‌شناسد و level 5 خطا می‌دهد.
             __('sms.cart_payment_link', [
-                'elite_yar_name' => trim((string) $eliteYar->getAttribute('name')) ?: __('global.elite_yar'),
+                // ⚠️ `users` هیچ ستونِ `name` ندارد — نام در `user_profiles.name` است.
+                // ‏`getAttribute('name')` همیشه null می‌داد و `(string)` آن را به
+                // رشته‌ی خالی تبدیل می‌کرد. در پیامک فالبک پنهانش می‌کرد؛ در
+                // پاسخِ API فالبکی نبود و فرانت نامِ خالی می‌گرفت.
+                'elite_yar_name' => trim((string) $eliteYar->profile?->name) ?: __('global.elite_yar'),
                 'link' => $link,
             ])
         );
@@ -78,7 +82,7 @@ class CartPaymentLinkService
         return [
             'link' => $link,
             'expires_at' => $cart->{Cart::PARKED_UNTIL}?->toIso8601String(),
-            'beneficiary_name' => (string) $beneficiary->getAttribute('name'),
+            'beneficiary_name' => (string) ($beneficiary->profile?->name ?? ''),
         ];
     }
 
