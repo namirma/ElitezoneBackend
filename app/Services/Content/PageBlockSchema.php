@@ -31,12 +31,20 @@ final class PageBlockSchema
     /**
      * شکلِ عضوِ فهرست‌های آبجکتی — `['of' => 'card']` یعنی هر عضو این کلیدها را دارد.
      *
-     * @var array<string, array<string, string>>
+     * هر مقدار یا نامِ یک ویجت است (رشته‌ی ساده، حالتِ رایج) یا — وقتی ویجت به
+     * گزینه نیاز دارد (مثلِ `select`) — همان شکلی که فیلدهای سطحِ بالا دارند:
+     * `['type' => ..., 'options' => [...]]`.
+     *
+     * @var array<string, array<string, string|array{type: string, options?: list<string>}>>
      */
     public const SHAPES = [
         'card' => ['id' => 'text', 'image' => 'image', 'heading' => 'text', 'note' => 'text'],
         'audience' => ['title' => 'text', 'sub' => 'text', 'body' => 'textarea', 'cta' => 'text', 'link' => 'link'],
-        'action' => ['label' => 'text', 'href' => 'text', 'tone' => 'select'],
+        'action' => [
+            'label' => 'text',
+            'href' => 'text',
+            'tone' => ['type' => 'select', 'options' => ['solid', 'stroke']],
+        ],
         'callout' => ['lead' => 'text', 'rest' => 'text'],
         'stat' => ['value' => 'text', 'label' => 'text', 'note' => 'text'],
         'feature' => ['image' => 'image', 'title' => 'text', 'body' => 'textarea', 'bg' => 'color', 'ink' => 'color'],
@@ -132,7 +140,7 @@ final class PageBlockSchema
                     'title' => ['type' => 'text', 'required' => true],
                     'subtitle' => ['type' => 'text'],
                     'lines' => ['type' => 'list', 'of' => 'textarea'],
-                    'actions' => ['type' => 'list', 'of' => 'action'],
+                    'actions' => ['type' => 'list', 'of' => 'action', 'max' => 2],
                     'glass' => ['type' => 'glass'],
                 ],
             ],
@@ -249,10 +257,11 @@ final class PageBlockSchema
 
         foreach ($this->for($type)['fields'] as $name => $field) {
             $key = 'data.'.$name;
-            $required = ($field['required'] ?? false) ? 'required' : 'nullable';
+            $isRequired = (bool) ($field['required'] ?? false);
+            $required = $isRequired ? 'required' : 'nullable';
 
             match ($field['type']) {
-                'list' => $rules += $this->listRules($key, $field),
+                'list' => $rules += $this->listRules($key, $field, $isRequired),
                 'link' => $rules += [
                     $key => [$required, 'array'],
                     $key.'.label' => ['nullable', 'string', 'max:120'],
@@ -261,7 +270,7 @@ final class PageBlockSchema
                 'glass' => $rules[$key] = [$required, 'array'],
                 'number' => $rules[$key] = [$required, 'numeric'],
                 'boolean' => $rules[$key] = [$required, 'boolean'],
-                'select' => $rules[$key] = [$required, 'string', Rule::in($field['options'])],
+                'select' => $rules[$key] = [$required, 'string', Rule::in($this->selectOptions($field, "{$type}.{$name}"))],
                 'image' => $rules[$key] = [$required, 'string', 'max:2048'],
                 default => $rules[$key] = [$required, 'string', 'max:'.($field['max'] ?? 5000)],
             };
@@ -270,23 +279,66 @@ final class PageBlockSchema
         return $rules;
     }
 
-    /** فهرستِ رشته‌ای یک قاعده می‌گیرد؛ فهرستِ آبجکتی، یکی به ازای هر کلیدِ شکل. */
-    private function listRules(string $key, array $field): array
+    /**
+     * فهرستِ رشته‌ای یک قاعده می‌گیرد؛ فهرستِ آبجکتی، یکی به ازای هر کلیدِ شکل.
+     *
+     * `$required` همان پرچمِ خودِ فیلد است — قاعده‌ی سطحِ آرایه باید دقیقاً همان
+     * چیزی را بگوید که اسکیما توصیف کرده، نه همیشه «nullable».
+     */
+    private function listRules(string $key, array $field, bool $required): array
     {
+        $outerRules = [$required ? 'required' : 'nullable', 'array'];
+
+        if (isset($field['max'])) {
+            $outerRules[] = 'max:'.$field['max'];
+        }
+
         $shape = self::SHAPES[$field['of']] ?? null;
 
         if ($shape === null) {
-            return [$key => ['nullable', 'array'], $key.'.*' => ['required', 'string', 'max:5000']];
+            return [$key => $outerRules, $key.'.*' => ['required', 'string', 'max:5000']];
         }
 
-        $rules = [$key => ['nullable', 'array']];
+        $rules = [$key => $outerRules];
 
-        foreach ($shape as $name => $type) {
-            $rules[$key.'.*.'.$name] = $type === 'link'
+        foreach ($shape as $name => $member) {
+            $memberKey = $key.'.*.'.$name;
+
+            if (is_array($member)) {
+                // تنها شکلِ آرایه‌ایِ فعلی، select با options است — همان‌طور که
+                // بالای SHAPES مستند شده. ویجتِ آرایه‌ایِ دیگری اضافه شد، این
+                // شاخه هم باید عمومی شود.
+                $rules[$memberKey] = ['nullable', 'string', Rule::in($this->selectOptions($member, "{$field['of']}.{$name}"))];
+
+                continue;
+            }
+
+            $rules[$memberKey] = $member === 'link'
                 ? ['nullable', 'array']
                 : ['nullable', 'string', 'max:5000'];
         }
 
         return $rules;
+    }
+
+    /**
+     * گزینه‌های یک فیلدِ select را برمی‌گرداند؛ نبودنشان خطای برنامه‌نویس است،
+     * نه ورودیِ کاربر — پس با استثنا متوقف می‌شود، نه با قاعده‌ای که خاموش
+     * همه‌چیز را رد می‌کند (`Rule::in(null)`).
+     *
+     * @param  array<string, mixed>  $field
+     * @return list<string>
+     */
+    private function selectOptions(array $field, string $context): array
+    {
+        $options = $field['options'] ?? null;
+
+        if (empty($options)) {
+            throw new \InvalidArgumentException(
+                "فیلدِ select با نامِ «{$context}» گزینه‌ای (options) تعریف نکرده — این خطای برنامه‌نویس است."
+            );
+        }
+
+        return $options;
     }
 }
