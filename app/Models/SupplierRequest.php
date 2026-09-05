@@ -77,11 +77,13 @@ class SupplierRequest extends Model
         self::REVIEWED_AT => 'datetime',
     ];
 
+    /** @return BelongsTo<User, $this> */
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(User::class, self::SUPPLIER_USER_ID);
     }
 
+    /** @return BelongsTo<Order, $this> */
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class, self::ORDER_ID);
