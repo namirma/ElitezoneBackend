@@ -80,4 +80,67 @@ class AdminPageBlockTest extends TestCase
         $this->assertContains('story_card', $types);
         $this->assertContains('card_grid', $types);
     }
+
+    /**
+     * نگهبانِ رگرسیون: `UpdatePageBlockRequest` وقتی `type` در بدنه نیست، آن را
+     * از نوعِ ذخیره‌شده روی ردیف می‌گیرد. اگر آن fallback بشکند (مثلاً به دلیلِ
+     * ناهم‌نامیِ پارامترِ روت — همان باگِ «route-parameter gotcha» که قبلاً در
+     * `UpdateMenuItemRequest` رخ داد)، `PageBlockSchema::rulesFor()` رشته‌ی
+     * خالی می‌گیرد، آرایه‌ی خالی برمی‌گرداند، و `data` بدونِ هیچ اعتبارسنجی‌ای
+     * مستقیم روی یک صفحه‌ی عمومی می‌نشیند. این تست دقیقاً همان مسیر را می‌بندد.
+     */
+    #[Test]
+    public function updating_without_a_type_still_validates_against_the_stored_type(): void
+    {
+        Sanctum::actingAs($this->admin);
+
+        $block = PageBlock::create([
+            PageBlock::PAGE => PageBlock::PAGE_HOME,
+            PageBlock::TYPE => 'story_card',
+            PageBlock::SORT_ORDER => 1,
+            PageBlock::DATA => ['image' => 'blocks/a.webp', 'alt' => 'الف', 'title' => 'عنوان'],
+        ]);
+
+        // `title` را حذف می‌کنیم و `type` را اصلاً نمی‌فرستیم — قاعده باید از
+        // نوعِ ذخیره‌شده (story_card) بیاید، نه از بدنه‌ی درخواست.
+        $this->putJson("/api/admin/page-blocks/{$block->id}", [
+            'data' => ['image' => 'blocks/a.webp', 'alt' => 'الف'],
+        ])->assertStatus(422)->assertJsonValidationErrors('data.title');
+    }
+
+    #[Test]
+    public function an_admin_updates_a_block(): void
+    {
+        Sanctum::actingAs($this->admin);
+
+        $block = PageBlock::create([
+            PageBlock::PAGE => PageBlock::PAGE_HOME,
+            PageBlock::TYPE => 'story_card',
+            PageBlock::SORT_ORDER => 1,
+            PageBlock::DATA => ['image' => 'blocks/a.webp', 'alt' => 'الف', 'title' => 'عنوانِ قدیم'],
+        ]);
+
+        $this->putJson("/api/admin/page-blocks/{$block->id}", [
+            'data' => ['image' => 'blocks/a.webp', 'alt' => 'الف', 'title' => 'عنوانِ جدید'],
+        ])->assertOk();
+
+        $this->assertSame('عنوانِ جدید', $block->fresh()->{PageBlock::DATA}['title']);
+    }
+
+    #[Test]
+    public function updating_with_an_unknown_type_in_the_body_is_refused(): void
+    {
+        Sanctum::actingAs($this->admin);
+
+        $block = PageBlock::create([
+            PageBlock::PAGE => PageBlock::PAGE_HOME,
+            PageBlock::TYPE => 'story_card',
+            PageBlock::SORT_ORDER => 1,
+            PageBlock::DATA => ['image' => 'blocks/a.webp', 'alt' => 'الف', 'title' => 'عنوان'],
+        ]);
+
+        $this->putJson("/api/admin/page-blocks/{$block->id}", [
+            'type' => 'not_a_block',
+        ])->assertStatus(422)->assertJsonValidationErrors('type');
+    }
 }

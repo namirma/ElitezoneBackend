@@ -58,6 +58,21 @@ class PageBlockTest extends TestCase
     }
 
     #[Test]
+    public function the_public_response_still_carries_page_and_is_active(): void
+    {
+        // `PageBlockResource` بینِ اندپوینتِ عمومی و ادمین مشترک است. این‌جا
+        // `page` زائد است (صفحه از قبل فیلتر شده) و `is_active` همیشه true است
+        // (ردیفِ غیرفعال اصلاً برنمی‌گردد) — عمداً پنهان نشده‌اند چون هیچ‌کدام
+        // محرمانه نیستند و شرطِ اضافه فقط برای این اندپوینت هیچ فایده‌ای ندارد.
+        PageBlock::create([PageBlock::PAGE => PageBlock::PAGE_STEEL_KAVIR, PageBlock::TYPE => 'sk_hero', PageBlock::SORT_ORDER => 1, PageBlock::DATA => ['image' => 'x.webp', 'title' => 'ت', 'body' => 'ب']]);
+
+        $block = $this->getJson('/api/pages/steel-kavir/blocks')->assertOk()->json('data.0');
+
+        $this->assertSame('steel-kavir', $block['page']);
+        $this->assertTrue($block['is_active']);
+    }
+
+    #[Test]
     public function saving_a_block_flushes_the_cached_page(): void
     {
         $this->getJson('/api/pages/home/blocks')->assertOk();

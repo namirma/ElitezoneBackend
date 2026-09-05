@@ -11,12 +11,21 @@ use Illuminate\Support\Facades\Storage;
  */
 class PageBlockResource extends BaseJsonResource
 {
+    /**
+     * `page`/`is_active` روی اندپوینتِ عمومی زائدند (صفحه از قبل فیلتر شده و
+     * ردیفِ غیرفعال اصلاً برنمی‌گردد) اما مخفی‌کردنشان فقط آن‌جا یعنی شرطِ
+     * اضافه بدونِ هیچ فایده‌ی امنیتی — هیچ‌کدام محرمانه نیستند. پس همیشه
+     * برگردانده می‌شوند؛ همین ریسورس هم پنلِ ادمین را (که به هردو نیاز دارد
+     * تا صفحه‌ی بلوک و وضعیتِ فعال/غیرفعال را نشان دهد) و هم سایت را سرویس می‌دهد.
+     */
     public function toArray($request): array
     {
         return [
             'id' => $this->{PageBlock::ID},
+            'page' => $this->{PageBlock::PAGE},
             'type' => $this->{PageBlock::TYPE},
             'sort_order' => $this->{PageBlock::SORT_ORDER},
+            'is_active' => $this->{PageBlock::IS_ACTIVE},
             'data' => $this->resolveMedia($this->{PageBlock::DATA} ?? []),
         ];
     }
