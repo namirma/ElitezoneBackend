@@ -160,6 +160,7 @@ class User extends Authenticatable
         return trim("{$profile->name} {$profile->family}");
     }
 
+    /** @return HasOne<UserProfile, $this> */
     public function profile(): HasOne
     {
         return $this->hasOne(UserProfile::class);
@@ -278,6 +279,7 @@ class User extends Authenticatable
     }
 
     /** مشتریانی که این الیت یار از طریق جریان «خرید برای دیگری» احراز هویت کرده */
+    /** @return BelongsToMany<User, $this> */
     public function registeredClients(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'elite_yar_registered_clients', 'elite_yar_user_id', 'client_user_id')

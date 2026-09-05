@@ -82,7 +82,7 @@ class CartPaymentLinkService
         return [
             'link' => $link,
             'expires_at' => $cart->{Cart::PARKED_UNTIL}?->toIso8601String(),
-            'beneficiary_name' => (string) ($beneficiary->profile?->name ?? ''),
+            'beneficiary_name' => (string) $beneficiary->profile?->name,
         ];
     }
 
