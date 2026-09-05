@@ -50,7 +50,7 @@ class PageBlocksSeederTest extends TestCase
         );
 
         $this->assertSame(
-            ['sk_hero', 'stat_carousel', 'media_text', 'feature_cards', 'media_text', 'stat_carousel', 'flip_card', 'sk_hero'],
+            ['sk_hero', 'stat_carousel', 'media_text', 'feature_cards', 'media_text', 'banner_carousel', 'flip_cards', 'sk_hero'],
             PageBlock::where(PageBlock::PAGE, PageBlock::PAGE_STEEL_KAVIR)
                 ->orderBy(PageBlock::SORT_ORDER)->pluck(PageBlock::TYPE)->all()
         );

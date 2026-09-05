@@ -91,6 +91,12 @@ class PageBlocksSeeder extends Seeder
      * پراپ می‌آیند. ترتیب دقیقاً همان چیزی است که `SteelKavir.jsx` رندر
      * می‌کند: `SkHero(HERO)`, `SkGlance`, `SkStory(WHY)`, `SkProducts`,
      * `SkStory(TRANSPORT)`, `SkQuality`, `SkTechnology`, `SkHero(LUSAIL)`.
+     *
+     * ✅ `SkQuality` و `SkTechnology` نوعِ خودشان را دارند (`banner_carousel`،
+     * `flip_cards`) — قبلاً به‌ترتیب زیرِ `stat_carousel`/`flip_card` سید
+     * می‌شدند چون شکلاً شبیه بودند، که یعنی `SkGlance`/`PdScale`
+     * (مصرف‌کننده‌های واقعیِ آن دو نوع) داده‌ی این‌ها را می‌گرفتند. جزئیات
+     * در تعریفِ هر نوعِ جدید در `PageBlockSchema`.
      */
     private function steelKavir(): array
     {
@@ -100,8 +106,8 @@ class PageBlocksSeeder extends Seeder
             ['type' => 'media_text', 'data' => $this->skWhy()],
             ['type' => 'feature_cards', 'data' => $this->skProducts()],
             ['type' => 'media_text', 'data' => $this->skTransport()],
-            ['type' => 'stat_carousel', 'data' => $this->skQuality()],
-            ['type' => 'flip_card', 'data' => $this->skTechnology()],
+            ['type' => 'banner_carousel', 'data' => $this->skQuality()],
+            ['type' => 'flip_cards', 'data' => $this->skTechnology()],
             ['type' => 'sk_hero', 'data' => $this->skLusail()],
         ];
     }
@@ -120,12 +126,20 @@ class PageBlocksSeeder extends Seeder
         ];
     }
 
-    /** منبع: `Block2Video/Block2Video.jsx`. `title` در اسکیما نیست — کامپوننت هیچ عنوانی رندر نمی‌کند. */
+    /**
+     * منبع: `Block2Video/Block2Video.jsx`. `title` در اسکیما نیست — کامپوننت هیچ عنوانی رندر نمی‌کند.
+     *
+     * ⚠️ این دو کلید قبلاً `src`/`poster` بودند — نامِ فیلدِ اسکیما
+     * (`videoSrc`/`posterSrc`، دقیقاً همان propهایی که کامپوننت می‌خواند)
+     * را نداشتند، پس نه اعتبارسنجی رد‌شان می‌کرد نه ادمین می‌توانست
+     * ویدیو را عوض کند: کامپوننت هرگز آن دو کلید را نمی‌خواند و بی‌صدا
+     * روی مقدارِ هاردکدِ پیش‌فرضِ خودش می‌ماند.
+     */
     private function fromVideo(): array
     {
         return [
-            'src' => '/media/promotion.mp4',
-            'poster' => '/media/block2-poster.webp',
+            'videoSrc' => '/media/promotion.mp4',
+            'posterSrc' => '/media/block2-poster.webp',
         ];
     }
 
@@ -675,19 +689,12 @@ class PageBlocksSeeder extends Seeder
     /**
      * منبع: `content.jsx` → `QUALITY` (پراپِ پیش‌فرضِ `SkQuality`).
      *
-     * ⚠️ همان چیزی که بریف از پیش هشدار داده بود: این بلوک با نوعِ
-     * `stat_carousel` سید می‌شود (فهرستِ نوع‌ها در تستِ این فایل ثابت
-     * است) ولی کارت‌های واقعیِ `SkQuality` هیچ ربطی به شکلِ `stat` اسکیما
-     * (`id/image/alt/stat/label/caption/body`) ندارند — فیلدهای واقعی
+     * نوعِ این بلوک `banner_carousel` است (شکلِ `banner_card`ی که
+     * `PageBlockSchema` تعریف می‌کند) — نه `stat_carousel`ی که پیش‌تر این‌جا
+     * سید می‌شد. کارت‌های واقعیِ `SkQuality` هیچ ربطی به شکلِ `stat`
+     * (`id/image/alt/stat/label/caption/body`) ندارند؛ فیلدهای واقعی
      * `id/image/alt/title/subtitle/body` به‌علاوه‌ی `note` (فقط روی کارتِ
-     * چهارم) هستند؛ دقیقاً سؤالِ باز ۴ در گزارشِ ممیزی («SkQuality cards are
-     * {title, subtitle, body, note}, nothing like the stat shape»).
-     * تغییرِ نامِ `title`→`label`/`subtitle`→`caption` معنیِ محتوا را عوض
-     * می‌کرد (بستنِ محتوا به یک اسکیمای غلط) — دقیقاً همان کاری که بریف
-     * گفته انجام نشود. پس کارت‌ها با نامِ فیلدِ *واقعی*شان ذخیره شدند
-     * (کلیدهایی که اسکیمای `stat` اعلام نکرده)، دقیقاً مثلِ `titleFeat` در
-     * `skProducts()`؛ فیلدهای `stat`/`label`/`caption` که برای این کارت‌ها
-     * معنی ندارند، پر نشدند — نه یک مقدارِ جعلی.
+     * چهارم) هستند، و اسکیمای `banner_card` دقیقاً همین‌ها را اعلام می‌کند.
      *
      * هر چهار `body` و `note`ی کارتِ چهارم هم در فایلِ اصلی JSX با رانِ
      * `<b>`/`<i>`/`<span className="sk-lat">` تودرتوست. متن به‌طورِ کامل
@@ -741,16 +748,13 @@ class PageBlocksSeeder extends Seeder
     /**
      * منبع: `content.jsx` → `TECHNOLOGY` (پراپِ پیش‌فرضِ `SkTechnology`).
      *
-     * ⚠️ دومین موردی که بریف از پیش هشدار داده بود: نوعِ `flip_card`
-     * (اسکیما: یک کارتِ تنها با `image/alt/title/paragraphs`) این‌جا باید
-     * **هفت** کارت حمل کند — دقیقاً سؤالِ باز ۴ در گزارشِ ممیزی
-     * («SkTechnology ... renders seven cards where flip_card describes
-     * one»). بستنِ محتوا به شکلِ تک‌کارتیِ اسکیما یعنی حذفِ شش کارت از
-     * هفت — این خودش «خم‌کردنِ محتوا» است، پس به‌جایش هر هفت کارت با
-     * نامِ فیلدِ واقعیِ کامپوننت (`id/image/alt/heading/paragraphs`) زیرِ
-     * یک کلیدِ `cards` که اسکیمای `flip_card` اصلاً اعلام نکرده ذخیره
-     * شدند. متنِ هر پاراگراف در فایلِ اصلی رشته‌ی ساده است — بدونِ JSX،
-     * بدونِ بولد — پس این‌جا هیچ افتِ محتوایی نیست، فقط ناسازگاریِ شکل.
+     * نوعِ این بلوک `flip_cards` است — `flip_card` (اسکیما: یک کارتِ تنها
+     * با `image/alt/title/paragraphs`، مصرف‌کننده‌ی واقعی‌اش `PdScale`)
+     * توانِ حملِ **هفت** کارت را ندارد. `flip_cards` هفت کارت را با نامِ
+     * فیلدِ واقعیِ کامپوننت (`id/image/alt/heading/paragraphs`، شکلِ
+     * `flip_panel`) زیرِ کلیدِ `cards` نگه می‌دارد. متنِ هر پاراگراف در
+     * فایلِ اصلی رشته‌ی ساده است — بدونِ JSX، بدونِ بولد — پس این‌جا هیچ
+     * افتِ محتوایی نیست.
      */
     private function skTechnology(): array
     {

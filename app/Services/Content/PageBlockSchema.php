@@ -69,6 +69,32 @@ final class PageBlockSchema
             'titleInk' => 'color',
             'subInk' => 'color',
         ],
+        // نامِ کلیدها دقیقاً همان چیزی است که `SkQuality.jsx` می‌خواند
+        // (`c.title`/`c.subtitle`/`c.body`/`c.note`؛ :44/:46/:51/:52) — این
+        // کارت‌ها نه شکلِ `stat` را دارند نه `feature` را (نه عدد، نه رنگِ
+        // تیتر/زیرتیتر؛ فقط یک نوارِ عنوان روی عکس). `note` روی همه‌ی
+        // کارت‌ها معنی ندارد (کامپوننت با `c.note &&` گاردش می‌کند)، پس
+        // اختیاری ماند.
+        'banner_card' => [
+            'id' => 'text',
+            'image' => 'image',
+            'alt' => 'text',
+            'title' => 'text',
+            'subtitle' => 'text',
+            'body' => 'textarea',
+            'note' => 'textarea',
+        ],
+        // نامِ کلیدها دقیقاً همان چیزی است که `SkTechnology.jsx` به
+        // `FlipCard` پاس می‌دهد (`c.image`/`c.alt`/`c.heading`/`c.paragraphs`؛
+        // :35-38) — `PdScale` (نوعِ `flip_card`) نه `heading` می‌خواند نه
+        // بیش از یک کارت.
+        'flip_panel' => [
+            'id' => 'text',
+            'image' => 'image',
+            'alt' => 'text',
+            'heading' => 'text',
+            'paragraphs' => ['type' => 'list', 'of' => 'textarea'],
+        ],
     ];
 
     /** @return array<string, array{label: string, hint: string, fields: array}> */
@@ -270,6 +296,38 @@ final class PageBlockSchema
                     'cards' => ['type' => 'list', 'of' => 'feature', 'required' => true],
                 ],
             ],
+
+            // ⚠️ قبلاً زیرِ نوعِ `stat_carousel` سید می‌شد چون هر دو یک
+            // چرخ‌وفلکِ کارت‌اند (شباهتِ ظاهری)، ولی `SkQuality.jsx` نه
+            // `stat`/`label`/`caption` می‌خواند نه هیچ عددی — کارت‌هایش
+            // `title`/`subtitle`/`body`/`note` هستند (شکلِ `banner_card`
+            // بالا). سیدِ قبلی این فیلدها را زیرِ اسکیمای `stat_carousel`
+            // ذخیره می‌کرد، یعنی `SkGlance` (مصرف‌کننده‌ی واقعیِ
+            // `stat_carousel`) داده‌ی `SkQuality` را می‌گرفت.
+            'banner_carousel' => [
+                'label' => 'چرخ‌وفلکِ کارتِ عنوان‌دار',
+                'hint' => 'کارت‌های عکس‌دار که افقی می‌چرخند: هر کارت یک عکس با نوارِ عنوان/زیرعنوان روی آن و یک پاراگراف زیرِ عکس؛ یک یادداشتِ اختیاری هم می‌توان فقط به کارت‌های خاصی اضافه کرد.',
+                'fields' => [
+                    'title' => ['type' => 'text', 'required' => true],
+                    'cards' => ['type' => 'list', 'of' => 'banner_card', 'required' => true],
+                ],
+            ],
+
+            // ⚠️ قبلاً زیرِ نوعِ `flip_card` سید می‌شد (هر دو کارتِ
+            // برگردان‌اند)، اما `flip_card`/`PdScale` یک کارتِ تنهاست و
+            // `heading` نمی‌خواند؛ `SkTechnology.jsx` هفت کارت با
+            // `heading`/`paragraphs` به `FlipCard` می‌دهد (شکلِ `flip_panel`
+            // بالا). سیدِ قبلی این هفت کارت را زیرِ اسکیمای تک‌کارتیِ
+            // `flip_card` ذخیره می‌کرد، یعنی `PdScale` (مصرف‌کننده‌ی واقعیِ
+            // `flip_card`) داده‌ی هفت‌کارتیِ `SkTechnology` را می‌گرفت.
+            'flip_cards' => [
+                'label' => 'چند کارتِ برگردان',
+                'hint' => 'چند کارتِ عکس که هرکدام جدا با کلیک برمی‌گردد و پاراگراف‌های خودش را نشان می‌دهد — برخلافِ «کارتِ برگردان» که فقط یک کارتِ تنها دارد.',
+                'fields' => [
+                    'title' => ['type' => 'text', 'required' => true],
+                    'cards' => ['type' => 'list', 'of' => 'flip_panel', 'required' => true],
+                ],
+            ],
         ];
     }
 
@@ -360,10 +418,19 @@ final class PageBlockSchema
         foreach ($shape as $name => $member) {
             $memberKey = $key.'.*.'.$name;
 
+            if (is_array($member) && $member['type'] === 'list') {
+                // عضوی از شکل که خودش فهرست است — مثلِ `flip_panel.paragraphs`
+                // (هر کارت چند پاراگراف دارد). با فراخوانیِ بازگشتیِ همین متد
+                // روی کلیدِ تودرتو، هم قاعده‌ی سطحِ آرایه و هم قاعده‌ی عضو را
+                // می‌گیریم — بدونِ کپیِ منطق. عضوِ فهرست هرگز خودش اجباری نیست؛
+                // اجباری‌بودنِ کلِ فهرستِ بیرونی (بالا) کافی است.
+                $rules += $this->listRules($memberKey, $member, false);
+
+                continue;
+            }
+
             if (is_array($member)) {
-                // تنها شکلِ آرایه‌ایِ فعلی، select با options است — همان‌طور که
-                // بالای SHAPES مستند شده. ویجتِ آرایه‌ایِ دیگری اضافه شد، این
-                // شاخه هم باید عمومی شود.
+                // تنها شکلِ آرایه‌ایِ دیگر، select با options است.
                 $rules[$memberKey] = ['nullable', 'string', Rule::in($this->selectOptions($member, "{$field['of']}.{$name}"))];
 
                 continue;
