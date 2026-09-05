@@ -183,7 +183,10 @@ class TicketService
             return;
         }
 
-        $mobile = $ticket->loadMissing('user')->user?->{User::MOBILE};
+        // نه `->user?->` : larastan روی برنچِ L13 رابطه را non-nullable
+        // می‌بیند و nullsafe را خطا می‌گیرد. خواندنِ مستقیمِ ستون هم همان
+        // نتیجه را می‌دهد، هم روی هر دو برنچ یکسان است.
+        $mobile = User::whereKey($ticket->{Ticket::USER_ID})->value(User::MOBILE);
 
         if (! $mobile) {
             return;
