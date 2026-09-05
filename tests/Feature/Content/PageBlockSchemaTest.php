@@ -83,18 +83,27 @@ class PageBlockSchemaTest extends TestCase
     #[Test]
     public function a_required_list_field_becomes_a_required_array_rule(): void
     {
-        // پنج فیلد در اسکیما `required => true` دارند اما listRules() تا پیش از
+        // این فیلدها در اسکیما `required => true` دارند اما listRules() تا پیش از
         // این، قاعده‌ی سطحِ آرایه را همیشه hardcode روی nullable می‌گذاشت — یعنی
         // یک feature_cards بدون هیچ کارتی هم قبول می‌شد.
+        //
+        // فهرست جفت‌جفت است، نه map: `hero_actions` دو فهرستِ اجباری دارد.
+        // هرکدام از این‌ها را کامپوننتِ سایت بدونِ گارد `map` می‌کند، پس آرایه‌ی
+        // خالی/غایب یعنی صفحه‌ی شکسته — نه یک بلوکِ ناقص.
         $cases = [
-            'glass_cards' => 'cards',
-            'media_text' => 'body',
-            'flip_card' => 'paragraphs',
-            'stat_carousel' => 'cards',
-            'feature_cards' => 'cards',
+            ['glass_cards', 'cards'],
+            ['media_text', 'body'],
+            ['flip_card', 'paragraphs'],
+            ['stat_carousel', 'cards'],
+            ['feature_cards', 'cards'],
+            ['callout_list', 'callouts'],
+            ['image_glass_band', 'body'],
+            ['hero_actions', 'lines'],
+            ['hero_actions', 'actions'],
+            ['card_grid', 'cards'],
         ];
 
-        foreach ($cases as $type => $field) {
+        foreach ($cases as [$type, $field]) {
             $rules = $this->schema->rulesFor($type);
 
             $this->assertContains(

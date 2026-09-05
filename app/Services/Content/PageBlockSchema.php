@@ -46,32 +46,57 @@ final class PageBlockSchema
             'tone' => ['type' => 'select', 'options' => ['solid', 'stroke']],
         ],
         'callout' => ['lead' => 'text', 'rest' => 'text'],
-        'stat' => ['value' => 'text', 'label' => 'text', 'note' => 'text'],
-        'feature' => ['image' => 'image', 'title' => 'text', 'body' => 'textarea', 'bg' => 'color', 'ink' => 'color'],
+        // نامِ کلیدها دقیقاً همان چیزی است که `SkGlance` می‌خواند
+        // (`c.stat` / `c.caption` / `c.body`) — نه value/note.
+        'stat' => [
+            'id' => 'text',
+            'image' => 'image',
+            'alt' => 'text',
+            'stat' => 'text',
+            'label' => 'text',
+            'caption' => 'text',
+            'body' => 'textarea',
+        ],
+        // `SkProducts` هر کارت را روی عکسِ خودش رنگ می‌کند: دو رنگِ جدا برای
+        // تیتر و زیرتیتر. پس‌زمینه‌ای در کار نیست — کارت خودش عکس است.
+        'feature' => [
+            'id' => 'text',
+            'image' => 'image',
+            'alt' => 'text',
+            'title' => 'text',
+            'subtitle' => 'text',
+            'body' => 'textarea',
+            'titleInk' => 'color',
+            'subInk' => 'color',
+        ],
     ];
 
     /** @return array<string, array{label: string, hint: string, fields: array}> */
     public function all(): array
     {
         return [
+            // ⚠️ کلیدِ `hero_media` عمداً عوض نشده (رجیستریِ سایت و تستِ پین‌شده به
+            // آن وابسته‌اند) اما این بلوک **هیچ عکسی ندارد**: `Block1Hero` دو
+            // لوگوی SVG، دو خطِ تیتر و یک دکمه رندر می‌کند و CSSاش هم عکسِ
+            // پس‌زمینه ندارد. اسکیمای قبلی یک `image` اجباری می‌خواست که هیچ‌جا
+            // مصرف نمی‌شد.
             'hero_media' => [
-                'label' => 'هیروِ صفحه‌ی اول',
-                'hint' => 'عکسِ تمام‌عرضِ بالای صفحه، با تیتر و زیرتیترِ روی آن. اولین چیزی که بازدیدکننده می‌بیند.',
+                'label' => 'هیروِ برند (بدونِ عکس)',
+                'hint' => 'دو خطِ تیتر زیرِ نشانِ الیت‌زون، با یک دکمه‌ی فراخوان. این بلوک عکس ندارد — پس‌زمینه‌اش در طراحی است.',
                 'fields' => [
-                    'image' => ['type' => 'image', 'required' => true],
-                    'alt' => ['type' => 'text'],
-                    'title' => ['type' => 'text', 'required' => true],
-                    'subtitle' => ['type' => 'textarea'],
+                    'headlineLine1' => ['type' => 'text', 'required' => true, 'max' => 160],
+                    'headlineLine2' => ['type' => 'text', 'required' => true, 'max' => 160],
+                    // دکمه همیشه رندر می‌شود، پس بدونِ مقصد یک لینکِ مرده است.
+                    'cta' => ['type' => 'link', 'required' => true],
                 ],
             ],
 
             'video' => [
                 'label' => 'ویدیو',
-                'hint' => 'ویدیوی تمام‌عرض؛ تا پیش از پخش، عکسِ پوستر دیده می‌شود.',
+                'hint' => 'ویدیوی تمام‌عرض؛ تا پیش از پخش، عکسِ پوستر دیده می‌شود. عنوانی روی آن نوشته نمی‌شود.',
                 'fields' => [
                     'src' => ['type' => 'text', 'required' => true],
                     'poster' => ['type' => 'image'],
-                    'title' => ['type' => 'text'],
                     'glass' => ['type' => 'glass'],
                 ],
             ],
@@ -100,7 +125,7 @@ final class PageBlockSchema
                     'alt' => ['type' => 'text'],
                     'eyebrow' => ['type' => 'text'],
                     'title' => ['type' => 'text', 'required' => true],
-                    'lines' => ['type' => 'list', 'of' => 'textarea'],
+                    'body' => ['type' => 'list', 'of' => 'textarea', 'required' => true],
                     'glass' => ['type' => 'glass'],
                 ],
             ],
@@ -109,7 +134,7 @@ final class PageBlockSchema
                 'label' => 'فهرستِ جملاتِ کوتاه',
                 'hint' => 'جمله‌ها یکی‌یکی با اسکرول ظاهر می‌شوند. کاراکترِ «ـ» داخلِ متن، کشیدگیِ طراحی است — پاکش نکنید.',
                 'fields' => [
-                    'lines' => ['type' => 'list', 'of' => 'callout'],
+                    'callouts' => ['type' => 'list', 'of' => 'callout', 'required' => true],
                 ],
             ],
 
@@ -124,10 +149,15 @@ final class PageBlockSchema
 
             'faq' => [
                 'label' => 'سؤالات متداول',
-                'hint' => 'آکاردئونِ سؤال‌ها. خودِ سؤال‌ها این‌جا نوشته نمی‌شوند — از دسته‌ی FAQ با همین اسلاگ خوانده می‌شوند.',
+                'hint' => 'آکاردئونِ سؤال‌ها. خودِ سؤال‌ها این‌جا نوشته نمی‌شوند — از دسته‌بندی‌های FAQ خوانده می‌شوند. اسلاگِ خالی یعنی «همه‌ی دسته‌ها»، که رفتارِ فعلیِ سایت است.',
                 'fields' => [
-                    'title' => ['type' => 'text'],
-                    'categorySlug' => ['type' => 'text', 'required' => true],
+                    'heading' => ['type' => 'text'],
+                    'intro' => ['type' => 'textarea', 'max' => 400],
+                    // ⚠️ `Block11Faq` امروز همه‌ی دسته‌ها را با فیلترِ pill نشان
+                    // می‌دهد و این اسلاگ را نمی‌خواند. اجباری‌بودنش یعنی وادارکردنِ
+                    // ادمین به پرکردنِ چیزی که کاری نمی‌کند؛ تا وقتی سایت فیلترِ
+                    // تک‌دسته را پیاده کند، اختیاری است.
+                    'categorySlug' => ['type' => 'text'],
                 ],
             ],
 
@@ -139,8 +169,10 @@ final class PageBlockSchema
                     'alt' => ['type' => 'text'],
                     'title' => ['type' => 'text', 'required' => true],
                     'subtitle' => ['type' => 'text'],
-                    'lines' => ['type' => 'list', 'of' => 'textarea'],
-                    'actions' => ['type' => 'list', 'of' => 'action', 'max' => 2],
+                    // هر دو را کامپوننت بدونِ گارد `map` می‌کند — خالی‌بودنشان
+                    // صفحه را می‌شکند، پس اجباری‌اند.
+                    'lines' => ['type' => 'list', 'of' => 'textarea', 'required' => true],
+                    'actions' => ['type' => 'list', 'of' => 'action', 'required' => true, 'max' => 2],
                     'glass' => ['type' => 'glass'],
                 ],
             ],
@@ -152,7 +184,7 @@ final class PageBlockSchema
                     'title' => ['type' => 'text', 'required' => true, 'max' => 160],
                     'tone' => ['type' => 'select', 'options' => ['light', 'dark'], 'required' => true],
                     'flow' => ['type' => 'select', 'options' => ['rtl', 'ltr'], 'required' => true],
-                    'cards' => ['type' => 'list', 'of' => 'card'],
+                    'cards' => ['type' => 'list', 'of' => 'card', 'required' => true],
                 ],
             ],
 
@@ -188,26 +220,28 @@ final class PageBlockSchema
                     'lead' => ['type' => 'textarea', 'max' => 400],
                     'action' => ['type' => 'link'],
                     'fineprint' => ['type' => 'textarea', 'max' => 400],
-                    'glass' => ['type' => 'glass'],
+                    // `PdClosing` هیچ سطحِ شیشه‌ای ندارد (نه GlassPanel، نه
+                    // backdrop-filter در CSSاش) — فیلدِ glass این‌جا مرده بود.
                 ],
             ],
 
             'sk_hero' => [
                 'label' => 'هیروِ فولاد کویر',
-                'hint' => 'هیروِ عکس‌دارِ صفحه‌ی فولاد کویر، با یک تیترِ لاتینِ کوچک بالای تیترِ اصلی.',
+                'hint' => 'هیروِ عکس‌دار با نوارِ شیشه‌ای؛ یک کپشنِ لاتینِ اختیاری زیرِ تیتر و یک پاراگراف. «ظاهرشدن با اسکرول» را برای بلوکِ بالای صفحه خاموش بگذارید.',
                 'fields' => [
                     'image' => ['type' => 'image', 'required' => true],
                     'alt' => ['type' => 'text'],
                     'title' => ['type' => 'text', 'required' => true],
-                    'eyebrowEn' => ['type' => 'text'],
-                    'lines' => ['type' => 'list', 'of' => 'textarea'],
+                    'captionEn' => ['type' => 'text'],
+                    'body' => ['type' => 'textarea', 'required' => true],
+                    'reveal' => ['type' => 'boolean'],
                     'glass' => ['type' => 'glass'],
                 ],
             ],
 
             'stat_carousel' => [
                 'label' => 'چرخ‌وفلکِ کارت',
-                'hint' => 'کارت‌های عددی که افقی می‌چرخند: هر کارت یک عدد، یک برچسب و یک توضیحِ کوتاه.',
+                'hint' => 'کارت‌های عددی که افقی می‌چرخند: هر کارت یک عکس، یک عدد، یک برچسب، یک زیرنویسِ کوتاه و یک پاراگراف زیرِ عکس.',
                 'fields' => [
                     'title' => ['type' => 'text', 'required' => true],
                     'cards' => ['type' => 'list', 'of' => 'stat', 'required' => true],
@@ -216,8 +250,9 @@ final class PageBlockSchema
 
             'feature_cards' => [
                 'label' => 'دو کارتِ محصول',
-                'hint' => 'کارت‌های بزرگِ محصول، هرکدام با رنگِ پس‌زمینه و رنگِ متنِ خودش.',
+                'hint' => 'کارت‌های بزرگِ محصول؛ نوشته روی خودِ عکس می‌نشیند، پس رنگِ تیتر و زیرتیترِ هر کارت جدا انتخاب می‌شود.',
                 'fields' => [
+                    'title' => ['type' => 'text', 'required' => true],
                     'cards' => ['type' => 'list', 'of' => 'feature', 'required' => true],
                 ],
             ],
