@@ -51,7 +51,7 @@ class SupplierDocument extends Model
         self::SIZE => 'integer',
     ];
 
-    /** @return BelongsTo<SupplierProfile, $this> */
+    /** @return BelongsTo<SupplierProfile, SupplierDocument> */
     public function supplierProfile(): BelongsTo
     {
         return $this->belongsTo(SupplierProfile::class, self::SUPPLIER_PROFILE_ID);
