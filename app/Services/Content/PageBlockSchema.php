@@ -95,8 +95,11 @@ final class PageBlockSchema
                 'label' => 'ویدیو',
                 'hint' => 'ویدیوی تمام‌عرض؛ تا پیش از پخش، عکسِ پوستر دیده می‌شود. عنوانی روی آن نوشته نمی‌شود.',
                 'fields' => [
-                    'src' => ['type' => 'text', 'required' => true],
-                    'poster' => ['type' => 'image'],
+                    // ⚠️ نامِ کلیدها دقیقاً همان propهایی است که `Block2Video`
+                    // می‌خواند (`videoSrc` / `posterSrc`، :22-23 و :191-192) —
+                    // `src`/`poster` هیچ‌جا مصرف نمی‌شدند.
+                    'videoSrc' => ['type' => 'text', 'required' => true],
+                    'posterSrc' => ['type' => 'image'],
                     'glass' => ['type' => 'glass'],
                 ],
             ],
@@ -109,6 +112,10 @@ final class PageBlockSchema
                     'alt' => ['type' => 'text', 'required' => true, 'max' => 160],
                     'captionFa' => ['type' => 'text', 'max' => 120],
                     'captionEn' => ['type' => 'text', 'max' => 120],
+                    // اندیس‌های کاراکتری داخلِ `captionEn` که باید بولد شوند
+                    // (`StoryCard.jsx:47` می‌خواند، `splitBoldChars` مصرف می‌کند) —
+                    // تنها راهِ ادمین برای بولدکردنِ بخشی از یک متنِ ساده، بدونِ JSX.
+                    'captionEnBold' => ['type' => 'list', 'of' => 'number'],
                     'title' => ['type' => 'text', 'required' => true, 'max' => 160],
                     'lede' => ['type' => 'textarea', 'max' => 600],
                     'paragraphs' => ['type' => 'list', 'of' => 'textarea'],
@@ -149,14 +156,14 @@ final class PageBlockSchema
 
             'faq' => [
                 'label' => 'سؤالات متداول',
-                'hint' => 'آکاردئونِ سؤال‌ها. خودِ سؤال‌ها این‌جا نوشته نمی‌شوند — از دسته‌بندی‌های FAQ خوانده می‌شوند. اسلاگِ خالی یعنی «همه‌ی دسته‌ها»، که رفتارِ فعلیِ سایت است.',
+                'hint' => 'آکاردئونِ سؤال‌ها. خودِ سؤال‌ها این‌جا نوشته نمی‌شوند — از دسته‌بندی‌های FAQ خوانده می‌شوند. فیلدِ اسلاگِ دسته فعلاً هیچ اثری روی صفحه‌ی سایت ندارد؛ سایت همیشه همه‌ی دسته‌ها را با فیلترِ pill نشان می‌دهد.',
                 'fields' => [
                     'heading' => ['type' => 'text'],
                     'intro' => ['type' => 'textarea', 'max' => 400],
-                    // ⚠️ `Block11Faq` امروز همه‌ی دسته‌ها را با فیلترِ pill نشان
-                    // می‌دهد و این اسلاگ را نمی‌خواند. اجباری‌بودنش یعنی وادارکردنِ
-                    // ادمین به پرکردنِ چیزی که کاری نمی‌کند؛ تا وقتی سایت فیلترِ
-                    // تک‌دسته را پیاده کند، اختیاری است.
+                    // ⚠️ `Block11Faq.jsx` اصلاً `categorySlug` را نمی‌خواند —
+                    // نه خالی یعنی «همه»، نه پرشده یعنی «یک دسته»؛ همیشه همه‌ی
+                    // دسته‌ها را با فیلترِ pill (پیش‌فرض «همه») نشان می‌دهد. این
+                    // فیلد فعلاً هیچ اثری روی صفحه‌ی رندرشده ندارد.
                     'categorySlug' => ['type' => 'text'],
                 ],
             ],
@@ -196,6 +203,11 @@ final class PageBlockSchema
                     'alt' => ['type' => 'text'],
                     'title' => ['type' => 'text', 'required' => true],
                     'body' => ['type' => 'list', 'of' => 'textarea', 'required' => true],
+                    // اندیسِ اعضای فهرستِ paragraphs/runsِ فلت‌شده‌ی `body` که باید
+                    // بولد شوند (`PdIntro.jsx:16`، `resolveBodyRuns` مصرف می‌کند) —
+                    // اندیسِ کاراکتر نیست، اندیسِ «ران» است؛ با `captionEnBold` بالا
+                    // یکی نیست.
+                    'bodyStrong' => ['type' => 'list', 'of' => 'number'],
                 ],
             ],
 
@@ -218,7 +230,9 @@ final class PageBlockSchema
                     'alt' => ['type' => 'text', 'max' => 160],
                     'title' => ['type' => 'text', 'required' => true, 'max' => 160],
                     'lead' => ['type' => 'textarea', 'max' => 400],
-                    'action' => ['type' => 'link'],
+                    // `PdClosing.jsx:27` بدونِ گارد `action.href` را می‌خواند —
+                    // نبودِ `action` استثنا پرت می‌کند و کلِ صفحه را سفید می‌کند.
+                    'action' => ['type' => 'link', 'required' => true],
                     'fineprint' => ['type' => 'textarea', 'max' => 400],
                     // `PdClosing` هیچ سطحِ شیشه‌ای ندارد (نه GlassPanel، نه
                     // backdrop-filter در CSSاش) — فیلدِ glass این‌جا مرده بود.
@@ -331,7 +345,14 @@ final class PageBlockSchema
         $shape = self::SHAPES[$field['of']] ?? null;
 
         if ($shape === null) {
-            return [$key => $outerRules, $key.'.*' => ['required', 'string', 'max:5000']];
+            // `of` این‌جا نامِ یک ویجتِ اسکالر است (نه کلیدِ SHAPES). پیش از این
+            // هر عضوی — حتی فهرستِ `number` مثلِ `captionEnBold`/`bodyStrong` —
+            // همیشه به‌عنوان رشته اعتبارسنجی می‌شد، یعنی هر اندیس رشته می‌خواست.
+            $memberRule = $field['of'] === 'number'
+                ? ['required', 'numeric']
+                : ['required', 'string', 'max:5000'];
+
+            return [$key => $outerRules, $key.'.*' => $memberRule];
         }
 
         $rules = [$key => $outerRules];

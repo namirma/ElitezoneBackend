@@ -81,15 +81,37 @@ class PageBlockSchemaTest extends TestCase
     }
 
     #[Test]
+    public function a_number_list_field_gets_a_numeric_member_rule_not_a_string_one(): void
+    {
+        // `captionEnBold` (story_card) و `bodyStrong` (media_text) هر دو
+        // `['type' => 'list', 'of' => 'number']` هستند — اندیس‌های عددی‌ای که
+        // StoryCard.jsx/PdIntro.jsx برای بولدکردنِ بخشی از متنِ ساده می‌خوانند.
+        // listRules() هر عضوِ فهرستِ بدونِ‌شکل را — صرف‌نظر از `of` — همیشه رشته
+        // اعتبارسنجی می‌کرد، یعنی هر اندیس باید یک رشته باشد، نه عدد.
+        $rules = $this->schema->rulesFor('story_card');
+        $memberRule = $rules['data.captionEnBold.*'];
+
+        $this->assertContains('numeric', $memberRule);
+        $this->assertNotContains('string', $memberRule);
+    }
+
+    #[Test]
     public function a_required_list_field_becomes_a_required_array_rule(): void
     {
         // این فیلدها در اسکیما `required => true` دارند اما listRules() تا پیش از
         // این، قاعده‌ی سطحِ آرایه را همیشه hardcode روی nullable می‌گذاشت — یعنی
         // یک feature_cards بدون هیچ کارتی هم قبول می‌شد.
         //
-        // فهرست جفت‌جفت است، نه map: `hero_actions` دو فهرستِ اجباری دارد.
-        // هرکدام از این‌ها را کامپوننتِ سایت بدونِ گارد `map` می‌کند، پس آرایه‌ی
-        // خالی/غایب یعنی صفحه‌ی شکسته — نه یک بلوکِ ناقص.
+        // فهرست جفت‌جفت است، نه map: `hero_actions` دو فهرستِ اجباری دارد. اما
+        // تنها چهارتای این ده مورد را کامپوننتِ سایت بدونِ گارد `map` می‌کند —
+        // `hero_actions.lines`، `hero_actions.actions`، `card_grid.cards` و
+        // `media_text.body` — که برایشان آرایه‌ی خالی/غایب یعنی صفحه‌ی شکسته.
+        // شش موردِ دیگر پارامترشان مقدارِ پیش‌فرض دارد (`Block8Audiences.jsx:31`،
+        // `FlipCard.jsx:30`، `SkGlance.jsx:15`، `SkProducts.jsx:16`،
+        // `Block7Callouts.jsx:15`، `Block6Trust.jsx:18`) پس غایب‌بودن به یک
+        // کپیِ هاردکد سقوط می‌کند، نه شکستنِ صفحه. با این‌همه `required` برای
+        // هر ده‌تا درست است: یک `null` صریح یا آرایه‌ی خالی هم رد می‌شود، و هر دو
+        // یا صفحه را می‌شکنند یا یک بلوکِ خالی رندر می‌کنند.
         $cases = [
             ['glass_cards', 'cards'],
             ['media_text', 'body'],
