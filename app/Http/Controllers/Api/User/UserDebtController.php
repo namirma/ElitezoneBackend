@@ -144,10 +144,18 @@ class UserDebtController extends Controller
 
             // بدهی یعنی شرکت پول را جلو انداخته بود؛ بازپرداخت باید به همان
             // کیف پول سازه برگردد وگرنه لِگِ کیف پول‌ها نامتوازن می‌ماند.
+            //
+            // ⚠️ CONFIRMED الزامی است. پیش‌فرضِ `FundWalletAction` مالِ فیشِ
+            // کاربر است (PENDING تا تأییدِ ادمین) و اینجا غلط بود: ردیفی
+            // می‌ساخت که هیچ‌کس تأییدش نمی‌کرد، پس کیفِ سازه هرگز شارژ نمی‌شد.
+            // و چون `LedgerReconciler` ترکیبِ (deposit/pending) را عمداً
+            // «صفر اثر» بازپخش می‌کند، `financial:doctor` هیچ مغایرتی نمی‌دید —
+            // مبلغِ کسرشده از خریدار بی‌سروصدا از دفتر ناپدید می‌شد.
             if ($systemUser !== null) {
                 $fund->execute(
                     $systemUser, $amount, WalletTransaction::METHOD_BANK_TRANSFER,
-                    __('orders.debt_repay_description'), null, ['kind' => 'debt_repayment']
+                    __('orders.debt_repay_description'), null, ['kind' => 'debt_repayment'],
+                    WalletTransaction::STATUS_CONFIRMED
                 );
             }
 
