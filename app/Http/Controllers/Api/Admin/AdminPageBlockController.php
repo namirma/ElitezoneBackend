@@ -60,4 +60,65 @@ class AdminPageBlockController extends Controller
 
         return success(null, __('page_blocks.deleted'));
     }
+
+    /**
+     * فقط ردیف‌هایی که فرستاده شده‌اند به‌روز می‌شوند.
+     *
+     * همان قراردادِ «منوی سایت»: پنل دیفِ خودش را می‌فرستد، نه کلِ صفحه را —
+     * پس دو ادمین که هم‌زمان دو بلوکِ متفاوت را جابه‌جا می‌کنند کارِ هم را
+     * پاک نمی‌کنند.
+     */
+    public function reorder(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'items' => ['required', 'array'],
+            'items.*.id' => ['required', 'integer', 'exists:page_blocks,id'],
+            'items.*.sort_order' => ['required', 'integer', 'min:0'],
+        ]);
+
+        foreach ($validated['items'] as $item) {
+            PageBlock::whereKey($item['id'])->update([PageBlock::SORT_ORDER => $item['sort_order']]);
+        }
+
+        // `update()` روی کوئری‌بیلدر رویدادِ مدل نمی‌زند، پس کش خودش فلاش نمی‌شود.
+        foreach (PageBlock::PAGES as $page) {
+            \Illuminate\Support\Facades\Cache::forget(PageBlock::cacheKeyFor($page));
+        }
+
+        return success(null, __('page_blocks.reordered'));
+    }
+
+    public function toggle(PageBlock $pageBlock): JsonResponse
+    {
+        $pageBlock->update([PageBlock::IS_ACTIVE => ! $pageBlock->{PageBlock::IS_ACTIVE}]);
+
+        return success(new PageBlockResource($pageBlock->fresh()), __('page_blocks.toggled'));
+    }
+
+    public function restore(int $id): JsonResponse
+    {
+        $block = PageBlock::onlyTrashed()->findOrFail($id);
+        $block->restore();
+
+        return success(new PageBlockResource($block), __('page_blocks.restored'));
+    }
+
+    /**
+     * یک فایل، یک پاسخ. عمداً از بدنه‌ی خودِ بلوک جداست: یک `card_grid` می‌تواند
+     * شش عکس داشته باشد و multipart با JSONِ تودرتو آن را به قراردادی شکننده
+     * تبدیل می‌کند. `data` فقط رشته‌ی `path` را نگه می‌دارد.
+     */
+    public function media(Request $request): JsonResponse
+    {
+        $request->validate([
+            'file' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,gif', 'max:8192'],
+        ]);
+
+        $path = $request->file('file')->store('page-blocks', 'public');
+
+        return success([
+            'path' => $path,
+            'url' => \Illuminate\Support\Facades\Storage::disk('public')->url($path),
+        ], __('page_blocks.media_uploaded'));
+    }
 }

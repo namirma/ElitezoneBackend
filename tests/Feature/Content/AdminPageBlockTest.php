@@ -143,4 +143,78 @@ class AdminPageBlockTest extends TestCase
             'type' => 'not_a_block',
         ])->assertStatus(422)->assertJsonValidationErrors('type');
     }
+
+    #[Test]
+    public function reorder_only_touches_the_rows_it_is_given(): void
+    {
+        Sanctum::actingAs($this->admin);
+
+        $a = PageBlock::create([PageBlock::PAGE => 'home', PageBlock::TYPE => 'faq', PageBlock::SORT_ORDER => 1, PageBlock::DATA => []]);
+        $b = PageBlock::create([PageBlock::PAGE => 'home', PageBlock::TYPE => 'faq', PageBlock::SORT_ORDER => 2, PageBlock::DATA => []]);
+        $untouched = PageBlock::create([PageBlock::PAGE => 'home', PageBlock::TYPE => 'faq', PageBlock::SORT_ORDER => 9, PageBlock::DATA => []]);
+
+        $this->postJson('/api/admin/page-blocks/reorder', [
+            'items' => [['id' => $a->id, 'sort_order' => 2], ['id' => $b->id, 'sort_order' => 1]],
+        ])->assertOk();
+
+        $this->assertSame(2, $a->fresh()->{PageBlock::SORT_ORDER});
+        $this->assertSame(1, $b->fresh()->{PageBlock::SORT_ORDER});
+        $this->assertSame(9, $untouched->fresh()->{PageBlock::SORT_ORDER});
+    }
+
+    /**
+     * نگهبانِ رگرسیون برای بندِ فلاشِ کش در `reorder()`.
+     *
+     * `update()` روی کوئری‌بیلدر رویدادِ مدل نمی‌زند، پس `PageBlock::booted()`
+     * هرگز اجرا نمی‌شود و کشِ صفحه‌ی عمومی تا یک ساعت با ترتیبِ قدیمی می‌ماند.
+     * این تست دقیقاً همان مسیرِ کاربر را طی می‌کند: اول صفحه‌ی عمومی را کش
+     * می‌کند، بعد ترتیب را عوض می‌کند، و دوباره صفحه‌ی عمومی را می‌خواند — اگر
+     * فلاشِ صریح در `reorder()` حذف شود این تست باید شکست بخورد.
+     */
+    #[Test]
+    public function reorder_flushes_the_public_page_cache(): void
+    {
+        Sanctum::actingAs($this->admin);
+
+        $a = PageBlock::create([PageBlock::PAGE => PageBlock::PAGE_HOME, PageBlock::TYPE => 'faq', PageBlock::SORT_ORDER => 1, PageBlock::DATA => []]);
+        $b = PageBlock::create([PageBlock::PAGE => PageBlock::PAGE_HOME, PageBlock::TYPE => 'faq', PageBlock::SORT_ORDER => 2, PageBlock::DATA => []]);
+
+        $before = $this->getJson('/api/pages/home/blocks')->assertOk()->json('data');
+        $this->assertSame($a->id, $before[0]['id']);
+        $this->assertSame($b->id, $before[1]['id']);
+
+        $this->postJson('/api/admin/page-blocks/reorder', [
+            'items' => [['id' => $a->id, 'sort_order' => 2], ['id' => $b->id, 'sort_order' => 1]],
+        ])->assertOk();
+
+        $after = $this->getJson('/api/pages/home/blocks')->assertOk()->json('data');
+        $this->assertSame($b->id, $after[0]['id']);
+        $this->assertSame($a->id, $after[1]['id']);
+    }
+
+    #[Test]
+    public function an_svg_is_refused_by_the_media_endpoint(): void
+    {
+        Sanctum::actingAs($this->admin);
+
+        // دیسکِ public از مبدأِ خودِ اپ سرو می‌شود، پس SVGِ حاوی <script>
+        // یعنی XSSِ ذخیره‌شده و `script-src 'self'` جلویش را نمی‌گیرد.
+        $this->postJson('/api/admin/page-blocks/media', [
+            'file' => \Illuminate\Http\UploadedFile::fake()->create('x.svg', 10, 'image/svg+xml'),
+        ])->assertStatus(422)->assertJsonValidationErrors('file');
+    }
+
+    #[Test]
+    public function a_png_is_stored_and_its_url_returned(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+        Sanctum::actingAs($this->admin);
+
+        $body = $this->postJson('/api/admin/page-blocks/media', [
+            'file' => \Illuminate\Http\UploadedFile::fake()->image('x.png'),
+        ])->assertOk()->json('data');
+
+        \Illuminate\Support\Facades\Storage::disk('public')->assertExists($body['path']);
+        $this->assertNotEmpty($body['url']);
+    }
 }

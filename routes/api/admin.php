@@ -658,6 +658,10 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
         Route::get('/schema', 'schema');
         Route::get('/', 'index');
         Route::post('/', 'store');
+        Route::post('/reorder', 'reorder');
+        Route::post('/media', 'media');
+        Route::post('/{pageBlock}/toggle', 'toggle');
+        Route::post('/{id}/restore', 'restore');
         Route::get('/{pageBlock}', 'show');
         Route::put('/{pageBlock}', 'update');
         Route::delete('/{pageBlock}', 'destroy');
