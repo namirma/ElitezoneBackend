@@ -37,4 +37,22 @@ class PageBlocksSeederTest extends TestCase
             'story_card', 'story_card', 'faq',
         ], $types);
     }
+
+    #[Test]
+    public function podium_and_steel_kavir_get_every_block_they_render_today(): void
+    {
+        $this->seed(PageBlocksSeeder::class);
+
+        $this->assertSame(
+            ['hero_actions', 'card_grid', 'media_text', 'card_grid', 'flip_card', 'card_grid', 'cta_band'],
+            PageBlock::where(PageBlock::PAGE, PageBlock::PAGE_PODIUM)
+                ->orderBy(PageBlock::SORT_ORDER)->pluck(PageBlock::TYPE)->all()
+        );
+
+        $this->assertSame(
+            ['sk_hero', 'stat_carousel', 'media_text', 'feature_cards', 'media_text', 'stat_carousel', 'flip_card', 'sk_hero'],
+            PageBlock::where(PageBlock::PAGE, PageBlock::PAGE_STEEL_KAVIR)
+                ->orderBy(PageBlock::SORT_ORDER)->pluck(PageBlock::TYPE)->all()
+        );
+    }
 }
