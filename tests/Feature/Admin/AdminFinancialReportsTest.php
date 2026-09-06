@@ -6,6 +6,7 @@ namespace Tests\Feature\Admin;
 
 use App\Constants\FinancialCodes;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
@@ -57,6 +58,15 @@ class AdminFinancialReportsTest extends TestCase
         if ($snapshot !== []) {
             $order->forceFill($snapshot)->save();
         }
+
+        // ⚠️ قلم عمدی است، تزئینی نیست. این سفارش‌ها تا امروز **بدون قلم** ساخته
+        // می‌شدند، و همین یک شکاف باعث شد `getSupplierDocuments` با
+        // `->with('items.factory')` — رابطه‌ای که روی `OrderItem` وجود ندارد —
+        // از دیدِ همین تست پنهان بماند: با صفر `OrderItem`، لاراول اصلاً به سطحِ
+        // دومِ eager-load نمی‌رسد و `addEagerConstraints()` هرگز صدا زده نمی‌شود.
+        // پس `assertOk()` سبز می‌ماند در حالی که اندپوینت روی دادهٔ واقعی ۵۰۰ است.
+        // هر تستی که یک اندپوینتِ لیستِ سفارش را می‌سنجد باید حداقل یک قلم داشته باشد.
+        OrderItem::factory()->create([OrderItem::ORDER_ID => $order->id]);
 
         return $order->fresh();
     }

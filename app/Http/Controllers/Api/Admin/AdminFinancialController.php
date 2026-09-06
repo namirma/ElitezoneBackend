@@ -118,7 +118,13 @@ class AdminFinancialController extends Controller
         $docType = $request->input('doc_type', 'waybill');
 
         $documents = Order::query()
-            ->with(['items.supplier.profile', 'items.factory'])
+            // ⚠️ `items.originFactory` و نه `items.factory`: روی `OrderItem` رابطه‌ای
+            // به نام `factory()` وجود ندارد و آن نام با متدِ استاتیکِ تریتِ
+            // `HasFactory` برخورد می‌کند — پس Eloquent فکتوری را برمی‌داشت و روی آن
+            // `addEagerConstraints()` صدا می‌زد. نتیجه یک ۵۰۰ بود که فقط چون کوئریِ
+            // فیلترشده صفر ردیف داشت دیده نمی‌شد. (متدِ خواهرش، `getExpertDocuments`،
+            // از همان اول نامِ درست را داشت.)
+            ->with(['items.supplier.profile', 'items.originFactory'])
             ->when($docType === 'waybill', fn (Builder $query) => $query->whereNotNull(Order::WAYBILL_REF))
             // ⚠️ این شرط `payment_receipt_ref` بود — ستونی که واقعاً نوشته می‌شود،
             // ولی مسیرِ فیشِ **تصویریِ پرداخت** است نه سندِ مالیاتی. پس تبِ
