@@ -10,6 +10,8 @@ use App\Models\PageBlock;
 use App\Services\Content\PageBlockSchema;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
 
 class AdminPageBlockController extends Controller
 {
@@ -111,7 +113,7 @@ class AdminPageBlockController extends Controller
 
         // `update()` روی کوئری‌بیلدر رویدادِ مدل نمی‌زند، پس کش خودش فلاش نمی‌شود.
         foreach (PageBlock::PAGES as $page) {
-            \Illuminate\Support\Facades\Cache::forget(PageBlock::cacheKeyFor($page));
+            Cache::forget(PageBlock::cacheKeyFor($page));
         }
 
         return success(null, __('page_blocks.reordered'));
@@ -147,7 +149,7 @@ class AdminPageBlockController extends Controller
 
         return success([
             'path' => $path,
-            'url' => \Illuminate\Support\Facades\Storage::disk('public')->url($path),
+            'url' => Storage::disk('public')->url($path),
         ], __('page_blocks.media_uploaded'));
     }
 }
