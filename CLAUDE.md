@@ -2,9 +2,33 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> ## ⚠️ You are on the **L13** branch (`redesign/order-flow-l13`)
+> 
+> This guide is maintained as a near-copy of the L10 branch's (`redesign/order-flow-l10`)
+> so the two do not drift into separate documents. Everything below applies to **both**
+> branches unless a paragraph says otherwise.
+> 
+> **What is genuinely different here — check these before trusting any version claim:**
+> 
+> | | L10 (`api/`) | L13 (this branch) |
+> |---|---|---|
+> | Framework | Laravel 10 | **Laravel 13** |
+> | larastan | `^2.11` (PHPStan 1.12) | **`^3.10` (PHPStan 2.x)** |
+> | App root | the `api/` subdirectory | **the repo root** |
+> | PHPStan baseline ceiling | 172 entries | **320 entries** |
+> 
+> The two ceilings are deliberately independent — larastan 3 is stricter, so the same
+> code produces more findings here. Do not "fix" one branch's number to match the other.
+> 
+> This file previously carried the L10 text verbatim, so on a Laravel 13 branch it
+> claimed to be Laravel 10 and told you PHPStan 2.x was unavailable — the exact
+> question you would open it to answer. If you find another such claim, correct it
+> here rather than working around it.
+
+
 ## Project Overview
 
-EliteZone Backend — a Laravel 10 API for a B2B construction materials marketplace (rebar, brick, etc.). The codebase lives entirely inside the `api/` directory. It handles user authentication (OTP-based), product catalog with dynamic pricing, shopping cart, order lifecycle (including reservation flow), wallet/financial operations, ticketing, and an admin panel.
+EliteZone Backend — a **Laravel 13** API for a B2B construction materials marketplace (rebar, brick, etc.). On this branch the application lives at the **repository root** (on L10 it sits inside `api/`). It handles user authentication (OTP-based), product catalog with dynamic pricing, shopping cart, order lifecycle (including reservation flow), wallet/financial operations, ticketing, and an admin panel.
 
 ## 🚨 Required local setup — SMS goes to real phones from dev
 
@@ -42,10 +66,9 @@ channel, so the cause is obvious instead of surfacing as a mysterious payment fa
 
 ## Common Commands
 
-All commands must be run from the `api/` directory:
+All commands run from the **repository root** on this branch (on L10 they run from `api/`):
 
 ```bash
-cd api
 
 # Install dependencies
 composer install
@@ -1488,7 +1511,22 @@ tests/
   Unit/          — (empty placeholder dir — kept so phpunit.xml works)
 ```
 
-**Total: 932 tests, 2403 assertions — all green. ✅**
+**Total on this branch: 928 tests, 2462 assertions — all green, none skipped. ✅**
+
+> ⚠️ **L10 runs 1070, and the difference is a real coverage gap, not extra surface.**
+> 23 test files exist on L10 and not here. Several pin behaviour this branch *does*
+> have — `Enums/EnumModelConstantParityTest` (the enum↔constant drift net),
+> `Database/SchemaMatchesMigrationsTest`, `Security/IdempotencyScopeTest`,
+> `Security/SmsDevAllowlistTest`, `Financial/CommissionRateSnapshotTest`,
+> `Financial/OrderPricingBasisTest`, `Order/OfficialPriceSnapshotTest` and
+> `Order/OrderStatusHistoryTimestampTest`. Get the full list with:
+> 
+> ```bash
+> comm -23 <(cd ../api && find tests -name '*Test.php' | sort) <(find tests -name '*Test.php' | sort)
+> ```
+> 
+> Porting them is its own change. Until then, a green run here proves less than a green
+> run on L10 — do not read the two numbers as equivalent.
 
 Round-5 audit additions: `Security/CorsAllowlistTest`,
 `Security/PublicDiskUploadRulesTest`, `Admin/AdminPermissionCoverageTest`,
@@ -1669,10 +1707,24 @@ Measured on 2026-07-26 before touching anything:
 - **Level 6 adds 816 errors** on top of the level-5 baseline (mostly missing iterable
   value types / param+return typehints). That is a dedicated typing project, not a config
   bump — baselining them instead would just hide 816 issues and defeat the point.
-- **PHPStan 2.x is blocked**, and not by us: it needs larastan 3.x, which requires
-  Laravel 11+. This app is Laravel 10 with `larastan/larastan ^2.11`. It becomes available
-  after the framework upgrade (see the `upgrade/laravel-13` branch) — until then the
-  1.12 line is the correct pin, so ignore the phar's own upgrade nag.
+- **PHPStan 2.x is already in use here.** That measurement was taken on L10, which is
+  Laravel 10 and pinned to `larastan/larastan ^2.11`. This branch is Laravel 13 with
+  **`larastan/larastan ^3.10`**, so the 1.12 pin and the "blocked" note do not apply —
+  ignore any advice to downgrade.
+- **larastan 3 is stricter, and the difference is not cosmetic.** Two forms that pass on
+  L10 fail here, and both cost real time before they were written down:
+  - A **bare relation return type resolves to `<Model, Model>`**, so `$user->wallet->id`
+    reads as a property on the base `Model`. Declare the generics:
+    `@return HasOne<Wallet, $this>`.
+  - **`?->` on a relation larastan considers non-nullable is an error**
+    (`nullsafe.neverNull`), even where the row genuinely can be absent at runtime. Use an
+    explicit null check instead — it is correct under both versions.
+- ⚠️ **The generic arity itself differs between the branches, so this annotation cannot
+  be identical across the pair.** Laravel 10's `HasOne`/`BelongsToMany` take one template
+  parameter and its `BelongsTo` takes `<TRelated, ConcreteChild>`; `$this` as a template
+  argument arrived with Laravel 11. Write the form that is true for the branch you are on
+  and re-run PHPStan on the other before committing. The byte-identical rule covers
+  **test files**, not model annotations.
 - Local runs need `--memory-limit=2G`; the default 128 M crashes the parallel workers.
 
 **Relation methods must declare a return type.** `User::wallet()` and
@@ -2152,12 +2204,15 @@ hold that a `hold_release` row points at. `orphanHolds()` never needed the rewri
 it nets `+hold` against `−hold_release` and already reached zero on its own.
 Pinned by `Financial/SupplierDebtReleaseTest`.
 
-> **`LedgerReconciler` exists only on this branch.** The class, the `financial:doctor`
-> command and `Financial/LedgerReconcilerTest` were never ported to
-> `fix/round3-audit-l13`, so that branch has no way to detect ledger/balance drift at all.
-> The two tests that assert reconciliation skip themselves there via `class_exists()` —
-> deliberately, so the test files stay **byte-identical across both branches** rather than
-> forking into two maintained copies. Porting the reconciler to L13 is its own change.
+> **`LedgerReconciler` is on both branches now.** This paragraph used to say it existed
+> only on L10 and had "never been ported" — written before the port, and left standing
+> after it. The class, the `financial:doctor` command (`Console/Commands/ReconcileLedger`)
+> and `Financial/LedgerReconcilerTest` are all present here.
+> 
+> The two reconciliation tests still guard themselves with `class_exists()`. That is not
+> dead weight: it is what lets the test files stay **byte-identical across both branches**
+> instead of forking into two maintained copies, and the same pattern (plus
+> route-existence guards) is how every other cross-branch gap is handled.
 
 ### Wallet status vocabulary — cover `hold` everywhere
 
