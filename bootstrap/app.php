@@ -15,7 +15,6 @@ use App\Http\Middleware\Idempotency;
 use App\Http\Middleware\OptionalSanctum;
 use App\Http\Middleware\RedirectIfAuthenticated;
 use App\Http\Middleware\RestrictAdminByIp;
-use App\Http\Middleware\Sanitizer;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\TrackDashboardUsage;
 use App\Http\Middleware\ValidateSignature;
@@ -42,12 +41,6 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        /*
-        |----------------------------------------------------------------------
-        | Global Middleware (every request)
-        |----------------------------------------------------------------------
-        */
-        $middleware->append(Sanitizer::class);
 
         /*
         |----------------------------------------------------------------------
@@ -113,6 +106,10 @@ return Application::configure(basePath: dirname(__DIR__))
         | TrimStrings exceptions
         |----------------------------------------------------------------------
         */
+        // ‏`TrimStrings` تنها trim‌کنندهٔ ورودی است. میدل‌ورِ `Sanitizer` که همین
+        // کار را تکرار می‌کرد حذف شد — یک پیمایشِ کاملِ اضافی از payload در هر
+        // درخواست، و بدتر: بدونِ هیچ استثنایی. یعنی همین فهرستِ زیر را بی‌اثر
+        // می‌کرد و رمز عبور را هم trim می‌کرد.
         $middleware->trimStrings(except: [
             'current_password',
             'password',
