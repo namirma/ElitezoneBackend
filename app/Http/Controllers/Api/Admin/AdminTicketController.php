@@ -45,7 +45,7 @@ class AdminTicketController extends Controller
         ]);
 
         $tickets = Ticket::query()
-            ->with(['user.profile', 'department', 'replies'])
+            ->with(['user.profile', 'department', 'replies', 'replies.admin.profile'])
             ->when(
                 $request->filled('status'),
                 fn (Builder $q) => $q->where('status', $request->status)

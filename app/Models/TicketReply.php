@@ -63,6 +63,7 @@ class TicketReply extends Model
      * سریالایز می‌کرد؛ نتیجه: `admin` همیشه null بود و هر پاسخِ پشتیبانی در
      * پنل و در چتِ کاربر به‌اسم خودِ کاربر نمایش داده می‌شد.
      */
+    /** @return BelongsTo<User, $this> */
     public function admin(): BelongsTo
     {
         return $this->belongsTo(User::class, 'admin_id');

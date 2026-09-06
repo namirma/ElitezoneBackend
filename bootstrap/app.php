@@ -4,6 +4,7 @@ use App\Exceptions\Handler;
 use App\Http\Middleware\AttachActivePriceCategory;
 use App\Http\Middleware\Authenticate;
 use App\Http\Middleware\CanSeeTicket;
+use App\Http\Middleware\EnsureAdminHasLevel;
 use App\Http\Middleware\EnsureAdminHasPermission;
 use App\Http\Middleware\EnsureRoleIsSelected;
 use App\Http\Middleware\EnsureUserIsActive;
@@ -93,6 +94,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role.employer' => EnsureUserIsEmployer::class,
             'role.supplier' => EnsureUserIsSupplier::class,
             'admin.permission' => EnsureAdminHasPermission::class,
+            'admin.level' => EnsureAdminHasLevel::class,
             'admin.ip' => RestrictAdminByIp::class,
             'track' => TrackDashboardUsage::class,
             'idempotency' => Idempotency::class,

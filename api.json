@@ -1543,6 +1543,128 @@
                 }
             }
         },
+        "/admin/avatar-requests": {
+            "get": {
+                "operationId": "adminAvatarModeration.index",
+                "summary": "GET /admin/avatar-requests \u2014 \u0641\u0647\u0631\u0633\u062a\u0650 \u062a\u0635\u0627\u0648\u06cc\u0631\u0650 \u062f\u0631 \u0627\u0646\u062a\u0638\u0627\u0631\u0650 \u062a\u0623\u06cc\u06cc\u062f",
+                "tags": [
+                    "AdminAvatarModeration"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/admin/avatar-requests/{user}/approve": {
+            "post": {
+                "operationId": "adminAvatarModeration.approve",
+                "summary": "POST /admin/avatar-requests/{user}/approve \u2014 \u0627\u0646\u062a\u0634\u0627\u0631\u0650 \u062a\u0635\u0648\u06cc\u0631",
+                "tags": [
+                    "AdminAvatarModeration"
+                ],
+                "parameters": [
+                    {
+                        "name": "user",
+                        "in": "path",
+                        "required": true,
+                        "description": "The user ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/admin/avatar-requests/{user}/reject": {
+            "post": {
+                "operationId": "adminAvatarModeration.reject",
+                "summary": "POST /admin/avatar-requests/{user}/reject \u2014 \u0631\u062f\u0650 \u062a\u0635\u0648\u06cc\u0631 \u0628\u0627 \u062f\u0644\u06cc\u0644",
+                "tags": [
+                    "AdminAvatarModeration"
+                ],
+                "parameters": [
+                    {
+                        "name": "user",
+                        "in": "path",
+                        "required": true,
+                        "description": "The user ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "reason": {
+                                        "type": "string",
+                                        "maxLength": 500
+                                    }
+                                },
+                                "required": [
+                                    "reason"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
         "/admin/badges": {
             "get": {
                 "operationId": "adminBadge.index",

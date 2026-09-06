@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\Admin\AdminArticleController;
 use App\Http\Controllers\Api\Admin\AdminAttributeController;
 use App\Http\Controllers\Api\Admin\AdminAttributeTypeController;
 use App\Http\Controllers\Api\Admin\AdminAttributeValueController;
+use App\Http\Controllers\Api\Admin\AdminAvatarModerationController;
 use App\Http\Controllers\Api\Admin\AdminBadgeController;
 use App\Http\Controllers\Api\Admin\AdminBannerController;
 use App\Http\Controllers\Api\Admin\AdminCouponController;
@@ -65,8 +66,10 @@ use Illuminate\Support\Facades\Route;
 */
 
 // ── Podium services (admin-only proxy) ────────────────────────────────────
+// سطح ۲ — این گروه پولِ واقعی از کیف پولِ شرکت بیرون می‌فرستد (تسویه‌ی PAYA/SATNA)
+// و استعلام‌های پولی می‌زند. کارشناس (سطح ۳) نباید به آن برسد.
 Route::prefix('v1/podium')
-    ->middleware(['auth:sanctum', 'role.admin', 'admin.ip', 'admin.permission:manage-financial'])
+    ->middleware(['auth:sanctum', 'role.admin', 'admin.ip', 'admin.permission:manage-financial', 'admin.level:2'])
     ->group(function () {
         Route::post('/settlements/single', [PodiumSettlementController::class, 'single']);
         Route::get('/balances', [PodiumBalanceController::class, 'index']);
@@ -149,7 +152,9 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
     Route::controller(AdminUserController::class)->prefix('users')->middleware('admin.permission:manage-users')->group(function () {
         Route::get('/', 'index');
         Route::get('/{user}', 'show');
-        Route::post('/{user}/toggle-status', 'toggleStatus');
+        // سطح ۲ — غیرفعال‌کردنِ حساب همه‌ی نشست‌های کاربر را می‌بندد و او را از
+        // سایت بیرون می‌اندازد؛ کارِ کارشناسِ پشتیبانی نیست.
+        Route::post('/{user}/toggle-status', 'toggleStatus')->middleware('admin.level:2');
         Route::post('/{user}/note', 'addNote');
         // سقف اعتبار — بند ۳.۱۲: تنها راهِ دادنِ اعتبار به یک خریدار.
         Route::post('/{user}/credit-limit', 'setCreditLimit');
@@ -178,14 +183,13 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
         Route::get('/{user}', 'show');
         Route::post('/{user}/approve', 'approve'); // اتصال نقش supplier — تنها مسیر مجاز
         Route::post('/{user}/reject', 'reject');
-        // فرمولِ تسویه پشتِ manage-financial، نه manage-users.
-        // `updateFormula` فلگ‌های trans_commission/trans_vat را می‌نویسد که تعیین
-        // می‌کنند کدام‌یک از چهار واریانتِ POO/PTS اجرا شود — و روی هر سفارشِ بعدیِ
-        // آن تأمین‌کننده snapshot می‌شوند. ادمینِ پشتیبانیِ کاربران نباید بتواند
-        // نحوهٔ محاسبهٔ کمیسیون و مالیات را عوض کند؛ هر تغییرِ ریاضیِ پولیِ دیگری
-        // در پنل هم زیر همین مجوز است.
+        // فرمولِ تسویه پشتِ manage-financial **و** سطح ۱. `updateFormula` فلگ‌های
+        // trans_commission/trans_vat را می‌نویسد که تعیین می‌کنند کدام‌یک از چهار
+        // واریانتِ POO/PTS اجرا شود — و روی هر سفارشِ بعدیِ آن تأمین‌کننده snapshot
+        // می‌شوند. ادمینِ پشتیبانیِ کاربران نباید بتواند نحوهٔ محاسبهٔ کمیسیون و
+        // مالیات را عوض کند.
         Route::put('/{user}/formula', 'updateFormula')
-            ->middleware('admin.permission:manage-financial');
+            ->middleware(['admin.permission:manage-financial', 'admin.level:1']);
         Route::get('/{user}/orders', 'orders');
     });
 
@@ -259,7 +263,9 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
     Route::controller(AdminWalletController::class)->prefix('wallet')->middleware('admin.permission:manage-financial')->group(function () {
         Route::get('/transactions', 'index');
         Route::get('/transactions/{transaction}', 'show');
-        Route::post('/transactions/{transaction}/status', 'changeStatus');
+        // تأیید/ردِ واریز و برداشت = جابه‌جاییِ واقعیِ پول → دستِ‌کم سطح ۲.
+        // خواندنِ فهرست برای کارشناس آزاد است تا بتواند به تیکت پاسخ دهد.
+        Route::post('/transactions/{transaction}/status', 'changeStatus')->middleware('admin.level:2');
     });
 
     // Shipping Rates — CRUD نرخ‌های حمل‌ونقل
@@ -530,9 +536,12 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
     });
 
     // Settings — تنظیمات key-value سایت
+    // خواندن برای هر ادمینِ محتوا آزاد است، ولی نوشتن سطح ۱ می‌خواهد: این کلیدها
+    // هویتِ عمومیِ برندند (تلفن، ایمیل، شبکه‌ها، نمادهای اعتماد) و یک مقدارِ غلط
+    // مستقیماً روی صفحه‌ی همه‌ی بازدیدکنندگان می‌نشیند.
     Route::controller(AdminSettingController::class)->prefix('settings')->middleware('admin.permission:manage-content')->group(function () {
         Route::get('/', 'index');
-        Route::put('/', 'update');
+        Route::put('/', 'update')->middleware('admin.level:1');
     });
 
     // Notifications — اعلان‌های درون‌برنامه‌ای (لیست + ارسال + آمار)
@@ -551,7 +560,19 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
     });
 
     // Admins — مدیران سیستم (destroy = فقط جداکردن نقش admin)
-    Route::controller(AdminManagerController::class)->prefix('admins')->middleware('admin.permission:manage-users')->group(function () {
+    // ⚠️ سطح ۱ (مدیر ارشد) — هرکس این گروه را در اختیار داشته باشد می‌تواند ادمین
+    // بسازد و به خودش هر مجوزی بدهد؛ یعنی کنترلِ این گروه عملاً کنترلِ کلِ پنل است.
+    // مجوزِ manage-users به‌تنهایی برای چنین اختیاری کافی نیست.
+    // صفِ تأییدِ تصویرِ ادمین‌ها — سطح ۱. تصویرِ ادمین در تیکت‌های پشتیبانی کنارِ
+    // نامش به مشتری نشان داده می‌شود، پس چهره‌ی برند است و تأییدش دستِ مالک است.
+    Route::controller(AdminAvatarModerationController::class)->prefix('avatar-requests')
+        ->middleware(['admin.permission:manage-users', 'admin.level:1'])->group(function () {
+            Route::get('/', 'index');
+            Route::post('/{user}/approve', 'approve');
+            Route::post('/{user}/reject', 'reject');
+        });
+
+    Route::controller(AdminManagerController::class)->prefix('admins')->middleware(['admin.permission:manage-users', 'admin.level:1'])->group(function () {
         Route::get('/', 'index');
         Route::get('/{user}', 'show');
         Route::post('/', 'store');
