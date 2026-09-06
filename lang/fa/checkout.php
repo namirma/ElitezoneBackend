@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'supplier_not_found_for_factory' => 'تامین‌کننده برای کارخانه :factory .یافت نشد. امکان ثبت سفارش وجود ندارد',
+    'supplier_not_found_for_factory' => 'تامین‌کننده برای کارخانه :factory یافت نشد؛ امکان ثبت سفارش وجود ندارد.',
     'order_placed_reserved' => '.سفارش شما با موفقیت ثبت و به مدت ۲ ساعت رزرو شد. لطفاً نسبت به پرداخت اقدام نمایید',
     'order_already_paid' => '.این سفارش قبلاً پرداخت شده است',
     'payment_info_received' => '.اطلاعات پرداخت با موفقیت دریافت شد',

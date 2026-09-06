@@ -39,6 +39,15 @@ Schedule::command('shipments:expire-delivery')
     ->runInBackground()
     ->onOneServer();
 
+// پایشِ سلامتِ صف — هر ۱۵ دقیقه. همهٔ listenerها ShouldQueue هستند، پس
+// خوابیدنِ worker هیچ خطایی تولید نمی‌کند و فقط پیامکِ OTP کاربر نمی‌رسد.
+// این دستور آن خرابیِ خاموش را به یک لاگِ error (و در نتیجه یک رویداد
+// Sentry، اگر DSN ست باشد) تبدیل می‌کند.
+Schedule::command('queue:health')
+    ->everyFifteenMinutes()
+    ->withoutOverlapping()
+    ->onOneServer();
+
 // درخواست‌های اضافه‌بارِ بی‌پاسخ (بند ۳.۷). مهلتش ساعتی است نه دقیقه‌ای،
 // پس ساعتی کافی است — و بارِ کوئری را روی جدول سفارش‌ها کم می‌کند.
 Schedule::command('orders:expire-overweight')

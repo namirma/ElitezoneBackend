@@ -179,7 +179,7 @@ class ProductVariant extends Model
         return $this->belongsTo(OrderUnit::class, self::LIMIT_ORDER_UNIT_ID);
     }
 
-    public function variantAttributes()
+    public function variantAttributes(): BelongsToMany
     {
         return $this->belongsToMany(Attribute::class, 'product_variant_attributes')
             ->using(ProductVariantAttribute::class)
