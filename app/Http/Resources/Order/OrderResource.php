@@ -111,15 +111,14 @@ class OrderResource extends BaseJsonResource
                 $val = (float) ($item->weight ?? 0);
                 $unit = 'کیلوگرم';
 
+                // ‏`quantity_details` روی مدل به array کست می‌شود، پس شاخهٔ رشته‌ایِ
+                // قبلی و چکِ `is_array` هرگز اجرا نمی‌شدند — و `! empty()` روی آرایه
+                // یعنی ناتهی، پس `count() > 0` هم همیشه درست بود. larastan روی L13
+                // هر سه را «همیشه‌ثابت» می‌گیرد؛ اینجا حذف شده‌اند، نه سرکوب.
                 if ($val <= 0 && ! empty($item->quantity_details)) {
-                    $details = is_string($item->quantity_details)
-                        ? json_decode($item->quantity_details, true)
-                        : $item->quantity_details;
-
-                    if (is_array($details) && count($details) > 0) {
-                        $val = (float) reset($details);
-                        $unit = 'عدد';
-                    }
+                    $details = $item->quantity_details;
+                    $val = (float) reset($details);
+                    $unit = 'عدد';
                 }
 
                 if ($val <= 0) {

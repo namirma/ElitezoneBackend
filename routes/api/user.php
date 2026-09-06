@@ -44,6 +44,7 @@ use App\Http\Controllers\Api\User\SupplierOrderController;
 use App\Http\Controllers\Api\User\SupplierProductPriceController;
 use App\Http\Controllers\Api\User\SupplierRequestController;
 use App\Http\Controllers\Api\User\SupplierShippingRateController;
+use App\Http\Controllers\Api\User\SupplierStockController;
 use App\Http\Controllers\Api\User\UserBankAccountController;
 use App\Http\Controllers\Api\User\UserDebtController;
 use App\Http\Controllers\Api\User\WalletController;
@@ -542,6 +543,18 @@ Route::middleware(['auth:sanctum'])->group(function () {
                     Route::post('/bulk', 'bulkStore')->middleware('throttle:10,1');
                     Route::put('/{price}', 'update');
                     Route::delete('/{price}', 'destroy');
+                });
+
+                // Stocks — موجودی به‌ازای کارخانه/انبارِ خودم.
+                // پیش از جدولِ factory_stocks این پنل ممکن نبود: موجودی یک ستونِ
+                // سراسری روی هر واریانت بود، پس نوشتنِ تأمین‌کنندهٔ A موجودیِ B را
+                // صفر می‌کرد.
+                Route::controller(SupplierStockController::class)->prefix('stocks')->group(function () {
+                    Route::get('/', 'index');
+                    Route::post('/', 'store');   // upsert روی سه‌تاییِ (واریانت، کارخانه، انبار)
+                    Route::post('/bulk', 'bulkStore')->middleware('throttle:10,1');
+                    Route::put('/{stock}', 'update');
+                    Route::delete('/{stock}', 'destroy');
                 });
 
                 // Shipping Rates — نرخ‌های حمل، فقط با مبدأ = انبارهای خودم

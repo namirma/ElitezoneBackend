@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Constants\FinancialCodes;
+use Tests\Feature\Order\OrderDocumentAccessTest;
 
 /**
  * تنها مرجعِ «کدام سندِ سفارش، با چه اسلاگی، مالِ کدام طرفِ معامله است».
@@ -20,7 +21,7 @@ use App\Constants\FinancialCodes;
  * می‌کرد — بی‌صدا غیرقابل‌دسترس شده بود. هر دو مصرف‌کننده حالا از همین کلاس
  * می‌خوانند، پس دیگر چیزی برای واگرا شدن نمانده.
  *
- * @see \Tests\Feature\Order\OrderDocumentAccessTest
+ * @see OrderDocumentAccessTest
  */
 final class OrderDocumentCatalog
 {

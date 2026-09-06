@@ -38,6 +38,10 @@ class ProcessPreScalePaymentAction
                 throw new \RuntimeException(__('orders.internal_order_not_found'));
             }
 
+            // larastan نتیجهٔ `lockForUpdate()->first()` را `Model` می‌بیند، نه `Order`؛
+            // بعد از گاردِ بالا این تنگ‌سازی درست است و `resolveVatRate(Order)` را
+            // بدون افزودن ورودی به baseline قابل فراخوانی می‌کند.
+            /** @var Order $locked */
             if ($this->isAlreadyProcessed($locked)) {
                 Log::channel('financial')->warning("Race detected: order {$locked->id} already paid.");
 

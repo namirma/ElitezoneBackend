@@ -9,6 +9,7 @@ use App\Listeners\Order\SendSupplierOrderNotification;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\User;
+use App\Providers\EventServiceProvider;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
@@ -123,7 +124,7 @@ class OrderPaidNotificationTest extends TestCase
         // بدون این، افزودنِ listener تازه بی‌صدا از EventServiceProvider جا می‌ماند.
         // مستقیم روی نگاشتِ provider خوانده می‌شود: getListeners() به Closureهای
         // پیچیده‌شده تبدیل می‌کند و کلاسِ اصلی از آن‌ها قابل بازیابی نیست.
-        $listen = (new \ReflectionClass(\App\Providers\EventServiceProvider::class))
+        $listen = (new \ReflectionClass(EventServiceProvider::class))
             ->getDefaultProperties()['listen'];
 
         $this->assertContains(SendOrderPaymentNotification::class, $listen[OrderPaid::class]);

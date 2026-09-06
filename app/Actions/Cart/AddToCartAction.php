@@ -89,11 +89,17 @@ class AddToCartAction
                 $itemFinalQuantities = $this->mergeQuantities($existingItem->quantities, $data['quantities']);
             }
 
-            if (! $this->inventoryService->checkStock($variant, $itemFinalQuantities)) {
+            // موجودی به‌ازای مبدأ نگه داشته می‌شود، پس همان کارخانه/انباری که کاربر
+            // انتخاب کرده باید مبنای چک باشد — نه عددِ سراسری، که فقط جمعِ نمایشی
+            // است و برای هیچ مبدأ خاصی درست نیست.
+            $factoryId = (int) $data['factory_id'] ?: null;
+            $locationId = (int) $data['location_id'] ?: null;
+
+            if (! $this->inventoryService->checkStock($variant, $itemFinalQuantities, $factoryId, $locationId)) {
                 throw ValidationException::withMessages([
                     'quantities' => __('cart.limits.insufficient_stock', [
                         'name' => $variant->product->name,
-                        'stock' => $variant->stock_quantity,
+                        'stock' => $this->inventoryService->availableAt($variant, $factoryId, $locationId),
                     ]),
                 ]);
             }

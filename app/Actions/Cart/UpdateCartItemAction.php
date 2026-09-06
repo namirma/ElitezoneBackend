@@ -50,9 +50,18 @@ class UpdateCartItemAction
             if (isset($data['quantities'])) {
                 $newQuantities = $data['quantities'];
 
-                if (! $this->inventoryService->checkStock($variant, $newQuantities)) {
+                // مبدأِ خودِ ردیف پاس داده می‌شود: موجودی به‌ازای کارخانه/انبار
+                // نگه داشته می‌شود و چکِ سراسری برای هیچ مبدأ خاصی درست نیست.
+                $stockOk = $this->inventoryService->checkStock(
+                    $variant,
+                    $newQuantities,
+                    (int) $cartItem->{CartItem::FACTORY_ID} ?: null,
+                    (int) $cartItem->{CartItem::FACTORY_LOCATION_ID} ?: null,
+                );
+
+                if (! $stockOk) {
                     throw ValidationException::withMessages([
-                        'quantities' => 'موجودی کالا برای تعداد درخواستی کافی نیست.',
+                        'quantities' => __('cart.limits.insufficient_stock_simple'),
                     ]);
                 }
 

@@ -8,6 +8,7 @@ use App\Models\FactoryLocation;
 use App\Models\ProductPrice;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 /**
  * پنل مدیریت — CRUD انبارها/مبادی کارخانه (FactoryLocation).
@@ -55,7 +56,9 @@ class AdminFactoryLocationController extends Controller
             return error(__('admin.factory_locations.in_use'), [], 422);
         }
 
-        $factoryLocation->delete();
+        // مثل نسخهٔ تأمین‌کننده — `FactoryLocation::booted()` موجودیِ مبدأ را پیش از
+        // حذف پاک و رول‌آپ را بازسازی می‌کند، پس هر دو باید یک‌جا اتفاق بیفتند.
+        DB::transaction(fn () => $factoryLocation->delete());
 
         return success(null, __('admin.factory_locations.deleted'));
     }

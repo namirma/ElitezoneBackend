@@ -7,6 +7,7 @@ use App\Models\Address;
 use App\Models\Cart;
 use App\Models\Factory;
 use App\Models\FactoryLocation;
+use App\Models\FactoryStock;
 use App\Models\Order;
 use App\Models\ProductPrice;
 use App\Models\ShippingRate;
@@ -16,6 +17,7 @@ use App\Policies\AddressPolicy;
 use App\Policies\CartPolicy;
 use App\Policies\FactoryLocationPolicy;
 use App\Policies\FactoryPolicy;
+use App\Policies\FactoryStockPolicy;
 use App\Policies\OrderPolicy;
 use App\Policies\ProductPricePolicy;
 use App\Policies\ShippingRatePolicy;
@@ -38,6 +40,7 @@ class AuthServiceProvider extends ServiceProvider
         UserBankAccount::class => UserBankAccountPolicy::class,
         Factory::class => FactoryPolicy::class,
         FactoryLocation::class => FactoryLocationPolicy::class,
+        FactoryStock::class => FactoryStockPolicy::class,
         ProductPrice::class => ProductPricePolicy::class,
         ShippingRate::class => ShippingRatePolicy::class,
     ];

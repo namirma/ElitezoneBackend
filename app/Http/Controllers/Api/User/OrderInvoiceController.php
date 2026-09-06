@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api\User;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
-use App\Models\OrderItem;
 use App\Services\Invoice\InvoiceGenerator;
 use App\Support\OrderDocumentCatalog;
 use Illuminate\Support\Facades\Auth;

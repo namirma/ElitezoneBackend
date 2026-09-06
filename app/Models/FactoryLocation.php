@@ -74,6 +74,21 @@ class FactoryLocation extends Model
         self::IS_ACTIVE => 'boolean',
     ];
 
+    /**
+     * حذفِ انبار باید موجودیِ همان مبدأ را هم ببرد — **از راه Eloquent**، نه با
+     * cascadeِ دیتابیس، وگرنه رول‌آپِ `product_variants.stock_quantity` به‌روز
+     * نمی‌شود. جزئیات در `FactoryStock::purgeForLocation()`.
+     *
+     * اینجا و نه در کنترلر، چون سه مسیرِ حذف وجود دارد (پنل تأمین‌کننده، پنل
+     * ادمین، و cascadeِ حذفِ کارخانه) و گاردِ کنترلری فقط دوتای اول را می‌گرفت.
+     */
+    protected static function booted(): void
+    {
+        static::deleting(function (self $location): void {
+            FactoryStock::purgeForLocation((int) $location->{self::ID});
+        });
+    }
+
     public function factory(): BelongsTo
     {
         return $this->belongsTo(Factory::class);

@@ -79,6 +79,22 @@ class Factory extends Model
         self::SUPPLIER_USER_ID,
     ];
 
+    /**
+     * هم‌الگو با `FactoryLocation::booted()` — موجودیِ مبادیِ این کارخانه با
+     * Eloquent می‌رود تا رول‌آپِ واریانت دوباره ساخته شود، نه با cascadeِ خاموشِ
+     * دیتابیس.
+     *
+     * امروز هر دو کنترلرِ حذف، کارخانهٔ دارای انبار را رد می‌کنند، پس عملاً
+     * کارخانه‌ای که به اینجا می‌رسد ردیف موجودی ندارد. این هوک برای وقتی است که
+     * آن گارد عوض شود — کلاسِ باگ بسته می‌شود، نه فقط نمونه‌اش.
+     */
+    protected static function booted(): void
+    {
+        static::deleting(function (self $factory): void {
+            FactoryStock::purgeForFactory((int) $factory->{self::ID});
+        });
+    }
+
     public function locations(): HasMany
     {
         return $this->hasMany(FactoryLocation::class);

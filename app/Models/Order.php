@@ -623,6 +623,7 @@ class Order extends Model
         return $this->belongsTo(Address::class, self::ADDRESS_ID);
     }
 
+    /** @return HasMany<OrderItem, $this> */
     public function items(): HasMany
     {
         return $this->hasMany(OrderItem::class, OrderItem::ORDER_ID);

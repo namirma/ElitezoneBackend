@@ -99,23 +99,11 @@ class ProcessWeighbridgeResultAction
 
             // Physical stock adjusts by the REAL weight delta (not the billing delta).
             //
-            // ⚠️ **این چند خط تنها تفاوتِ این فایل با شاخه‌ی L10 است.** آنجا اختلاف
-            // بین همه‌ی ردیف‌ها به‌نسبتِ وزنشان تقسیم می‌شود
-            // (`updateStockAfterWeighbridgeForOrder`)، ولی آن متد به زیرسیستمِ
-            // موجودیِ به‌ازای مبدأ (`factory_stocks`) تکیه دارد که روی این شاخه
-            // **هنوز پورت نشده** — نه جدولش هست و نه مدلش. تا آن پورت، همان
-            // رفتارِ قبلیِ این شاخه حفظ می‌شود: کلِ اختلاف روی ردیفِ اول.
-            //
-            // یعنی روی این شاخه موجودیِ سفارشِ چندردیفی پس از باسکول همچنان غلط
-            // اصلاح می‌شود. این یک واگراییِ **از پیش موجود** است، نه چیزی که فاز ۸
-            // آورده باشد؛ رفعش پورتِ جداگانه‌ی خودش را دارد.
+            // اختلاف بین **همهٔ** ردیف‌ها به‌نسبتِ وزنشان تقسیم می‌شود. پیش از این
+            // کلِ اختلاف روی `items->first()` می‌نشست، پس در سفارشِ چندردیفی
+            // موجودیِ ردیفِ اول بیش از حد و بقیه اصلاً اصلاح نمی‌شد.
             $weightDiff = $actualWeight - (float) $locked->weight_before_scale;
-            $firstStockItem = $locked->items->first();
-            /** @var OrderItem|null $firstStockItem */
-            $firstVariantId = $firstStockItem?->product_variant_id;
-            if ($firstVariantId) {
-                $this->inventoryService->updateStockAfterWeighbridge((int) $firstVariantId, $weightDiff);
-            }
+            $this->inventoryService->updateStockAfterWeighbridgeForOrder($locked, $weightDiff);
 
             $result = $this->reconciler->reconcile($locked, $actualWeight);
 
