@@ -37,13 +37,23 @@ class OrderRepository implements OrderRepositoryInterface
             ->where(function (Builder $query) use ($userId, $roleType) {
                 if ($roleType === 'beneficiary') {
                     $query->where(Order::BENEFICIARY_USER_ID, $userId);
-                } else {
-                    $query->where(Order::PLACER_USER_ID, $userId)
-                        ->where(function ($q) use ($userId) {
-                            $q->whereNull(Order::BENEFICIARY_USER_ID)
-                                ->orWhere(Order::BENEFICIARY_USER_ID, $userId);
-                        });
+
+                    return;
                 }
+
+                // «سفارش‌های من» = هر سفارشی که در سمتِ خریدارش طرف هستم.
+                //
+                // پیش از این یعنی `placer = me AND (beneficiary IS NULL OR = me)`،
+                // که در خرید-برای-دیگری **هیچ‌کدام از دو طرف** را برنمی‌گرداند:
+                // الیت‌یار با شرطِ ذی‌نفع بیرون می‌افتاد و کارفرما با شرطِ ثبت‌کننده.
+                // پس سفارشی که الیت‌یار برای کارفرما بسته در لیستِ هیچ‌کس نبود، و
+                // چون تأییدِ تحویل payer-only است، تنها راهِ باقی‌مانده برای
+                // پرداخت‌کننده لینکِ امضاشدهٔ پیامکی بود.
+                //
+                // همان مجموعه‌ای است که `OrderPolicy::view` سمتِ خریدار مجاز می‌داند.
+                $query->where(Order::PLACER_USER_ID, $userId)
+                    ->orWhere(Order::BENEFICIARY_USER_ID, $userId)
+                    ->orWhere(Order::PAYER_USER_ID, $userId);
             })
             // فیلتر بر اساس گروه‌های وضعیت — از OrderBuilder scopes استفاده می‌شود
             ->when($statusGroup === 'current', fn ($q) => $q->current())

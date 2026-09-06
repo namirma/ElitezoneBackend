@@ -59,6 +59,15 @@ class EmittedUrlsMatchSpaRoutesTest extends TestCase
         '#^/admin(/(suppliers(/\d+)?|orders|tickets(/\d+)?|financial))?$#',
         // لینکِ پیامکیِ «خرید برای دیگری» (`CartPaymentLinkService::linkFor`).
         '#^/checkout/pay-for/\d+$#',
+        // جزئیاتِ یک سفارش — روتِ router نیست: طبق گزارشِ تیم فرانت،
+        // `useOrderActionHandler` سه دسته لینک را پیش از navigate رهگیری می‌کند
+        // (دانلودِ سند، اورلیِ مودیان، پنلِ محموله‌ها) و این یکی همان دسته‌ی سوم
+        // است — «بارنامه و راننده» و «تأیید تحویل» هر دو پنلِ محموله را باز
+        // می‌کنند، و تأیید تحویل در کامیتِ 7ea24ad آن‌ها ساخته و تأیید شده.
+        //
+        // اگر روزی آن رهگیری برداشته شود این سه لینک به همان بن‌بستِ
+        // `/checkout/payment/{id}` می‌رسند، پس اینجا صریح ثبت می‌شود نه ضمنی.
+        '#^/profile/orders/\d+$#',
     ];
 
     private function assertIsSpaRoute(string $url, string $source): void
@@ -160,28 +169,61 @@ class EmittedUrlsMatchSpaRoutesTest extends TestCase
     #[Test]
     public function every_order_timeline_link_is_a_real_spa_route(): void
     {
-        $order = $this->cancelledOrderWithDeposit();
-
-        // هر سه تایم‌لاین، در وضعیت لغو (که دکمه‌ی «خرید مجدد» را می‌سازد —
-        // همان لینکی که به `/products`ِ ناموجود اشاره می‌کرد).
-        $progressSets = [
-            'dashboard_progress' => $order->dashboard_progress,
-            'supplier_progress' => $order->supplier_progress,
-            'elite_yar_progress' => $order->elite_yar_progress,
+        // ⚠️ چند وضعیت، نه یکی.
+        //
+        // این تست قبلاً فقط سفارشِ **لغوشده** را می‌گشت. روی آن، مرحلهٔ رزرو
+        // حالتِ `cancelled` می‌گیرد نه `current` — و شاخه‌ای که اکشنِ «پرداخت
+        // فاکتور» را می‌ساخت `if ($state === 'current')` بود. پس آن لینک هرگز
+        // تولید نمی‌شد، تست هرگز نمی‌دیدش، و یک مقصدِ مرده در SPA سبز رد می‌شد.
+        // تیم فرانت آن را در مرورگر پیدا کرد، نه اینجا.
+        //
+        // یک تستِ sweep که روی یک حالت اجرا شود sweep نیست.
+        $orders = [
+            'cancelled' => $this->cancelledOrderWithDeposit(),
+            'reserved' => $this->orderInState(Order::STATUS_RESERVED, [Order::PAYMENT_TO_RESERVE => 20_000_000]),
+            'processing' => $this->orderInState(Order::STATUS_PROCESSING),
+            'shipped' => $this->orderInState(Order::STATUS_SHIPPED),
+            'delivered' => $this->orderInState(Order::STATUS_DELIVERED),
         ];
 
-        foreach ($progressSets as $name => $progress) {
-            foreach ($progress['steps'] as $step) {
-                foreach ($step['actions'] as $action) {
-                    // لینک‌های `/api/...` دانلودِ سند هستند و روتِ SPA نیستند.
-                    if (str_starts_with($action['link'], '/api/')) {
-                        continue;
-                    }
+        $checked = 0;
 
-                    $this->assertIsSpaRoute($action['link'], "HasOrderProgress::{$name}");
+        foreach ($orders as $stateName => $order) {
+            $progressSets = [
+                'dashboard_progress' => $order->dashboard_progress,
+                'supplier_progress' => $order->supplier_progress,
+                'elite_yar_progress' => $order->elite_yar_progress,
+            ];
+
+            foreach ($progressSets as $name => $progress) {
+                foreach ($progress['steps'] as $step) {
+                    foreach ($step['actions'] as $action) {
+                        // لینک‌های `/api/...` دانلودِ سند هستند و روتِ SPA نیستند.
+                        if (str_starts_with($action['link'], '/api/')) {
+                            continue;
+                        }
+
+                        $checked++;
+                        $this->assertIsSpaRoute($action['link'], "HasOrderProgress::{$name} ({$stateName})");
+                    }
                 }
             }
         }
+
+        // بدونِ این، خالی‌شدنِ فیکسچر دوباره تست را بی‌صدا سبز می‌کند.
+        $this->assertGreaterThan(0, $checked, 'هیچ لینکِ SPAیی بررسی نشد — فیکسچر پوچ است.');
+    }
+
+    /** @param  array<string, mixed>  $snapshot */
+    private function orderInState(string $status, array $snapshot = []): Order
+    {
+        $order = Order::factory()->create([Order::STATUS => $status]);
+
+        if ($snapshot !== []) {
+            $order->forceFill($snapshot)->save();
+        }
+
+        return $order->fresh();
     }
 
     #[Test]
