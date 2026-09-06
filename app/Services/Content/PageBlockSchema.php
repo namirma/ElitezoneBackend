@@ -643,7 +643,7 @@ final class PageBlockSchema
      */
     private const GLASS_VARIANTS = ['clear', 'light', 'dark', 'control'];
 
-    private const GLASS_COLOR_FIELDS = ['fill', 'rimSide', 'rimFlat'];
+    private const GLASS_COLOR_FIELDS = ['fill', 'rimSide', 'rimFlat', 'shade', 'sheen'];
 
     private const GLASS_NUMBER_FIELDS = ['frost', 'depth', 'lightAngle', 'radius'];
 
