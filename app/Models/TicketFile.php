@@ -74,12 +74,14 @@ class TicketFile extends Model
     ];
 
     /** Set when the file is attached to a ticket's opening message. */
+    /** @return BelongsTo<Ticket, $this> */
     public function ticket(): BelongsTo
     {
         return $this->belongsTo(Ticket::class, self::TICKET_ID);
     }
 
     /** Set when the file is attached to a reply in the conversation thread. */
+    /** @return BelongsTo<TicketReply, $this> */
     public function ticketReply(): BelongsTo
     {
         return $this->belongsTo(TicketReply::class);

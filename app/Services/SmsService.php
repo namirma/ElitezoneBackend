@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Http\Classes\Constant;
+use App\Support\PhoneNumber;
 use Exception;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -35,6 +36,23 @@ class SmsService
         // در محیطِ بدون‌پیکربندی به‌اشتباه fail/retry نشوند.
         if (empty($this->link) || empty($this->from)) {
             Log::warning('SmsService: TSMS پیکربندی نشده، ارسال پیامک نادیده گرفته شد.', ['to' => $to]);
+
+            return true;
+        }
+
+        // ── گاردِ محیطِ غیرپروداکشن ──────────────────────────────────────────
+        // کردنشیالِ واقعیِ TSMS در `.env` توسعه هم هست، پس یک `queue:work` روی
+        // صفِ انباشته، پیامکِ واقعی به مشتریِ واقعی می‌فرستد. این دقیقاً اتفاق
+        // افتاد. بیرونِ پروداکشن فقط شماره‌های allowlist پیامک می‌گیرند.
+        //
+        // true برمی‌گردانیم (نه false) تا جاب retry/fail نشود — از دیدِ اپلیکیشن
+        // «ارسال شد»، فقط جایی نرفته است.
+        if (! app()->environment('production') && ! $this->allowedInNonProduction($to)) {
+            Log::info('SmsService: پیامک در محیط غیرپروداکشن ارسال نشد (خارج از allowlist).', [
+                'to' => $to,
+                'env' => app()->environment(),
+                'message' => $message,
+            ]);
 
             return true;
         }
@@ -72,5 +90,31 @@ class SmsService
 
             return false;
         }
+    }
+
+    /**
+     * آیا این شماره در محیطِ غیرپروداکشن اجازهٔ دریافت پیامک دارد؟
+     *
+     * مقایسه روی شکلِ نرمال‌شدهٔ `09xxxxxxxxx` انجام می‌شود تا `+98…`/`98…`/`0098…`
+     * در دو طرف یکسان دیده شوند. فهرستِ خالی یعنی «هیچ‌کس» — عمداً fail-safe.
+     */
+    private function allowedInNonProduction(string $to): bool
+    {
+        /** @var list<string> $allowlist */
+        $allowlist = (array) config('services.tsms.dev_allowlist', []);
+
+        if ($allowlist === []) {
+            return false;
+        }
+
+        $normalized = PhoneNumber::to09($to);
+
+        foreach ($allowlist as $allowed) {
+            if (PhoneNumber::to09($allowed) === $normalized) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

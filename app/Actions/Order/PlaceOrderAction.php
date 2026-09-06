@@ -26,6 +26,7 @@ use App\Services\PriceCalculationService;
 use App\Services\PricingRoleResolver;
 use App\Services\Shipping\CartShippingQuoteService;
 use App\Services\Shipping\ShippingCostCalculator;
+use App\Support\Money;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -82,6 +83,12 @@ class PlaceOrderAction
             $cart = $this->getCartOrFail($user);
 
             // ۱.۶ یک سفارش = یک مبدأ و یک مقصد (تصمیم مدیریت، بند ۳).
+            // گاردِ تک‌تأمین‌کننده — پیش از هر نوشتنی، و **پیش از** گاردِ مبدأ.
+            // ترتیب مهم است: سبدِ دو‌تأمین‌کننده‌ای همیشه دو مبدأ هم دارد، پس اگر
+            // اول مبدأ چک شود کاربر پیامِ «یک مبدأ» می‌گیرد در حالی که مشکلِ واقعی
+            // دو تأمین‌کننده است.
+            $this->assertSingleSupplier($cart);
+
             $this->assertSingleOriginAndDestination($cart, $data->addressId);
 
             // ۲. محاسبه مبالغ
@@ -172,6 +179,7 @@ class PlaceOrderAction
     private function calculateOrderFinancials(Cart $cart, User $user, PlaceOrderData $data): array
     {
         $subtotal = 0.0;
+        $goodsValue = 0.0;
         $totalVat = 0.0;
         $totalDiscount = 0.0;
         $totalWeight = 0.0;
@@ -224,6 +232,11 @@ class PlaceOrderAction
 
             // Subtotal should be the pre-discount value for correct accounting:
             $subtotal += ($lineTotal + $lineDiscount);
+
+            // ارزشِ خالصِ کالا (پس از تخفیف، بدون مالیات و حمل) — مبنای official_price.
+            // جدا از $subtotal انباشته می‌شود چون آن عمداً پیش-از-تخفیف است؛ گره‌زدنِ
+            // یک عددِ مالی به نحوهٔ حسابداریِ تخفیف، شکننده‌اش می‌کرد.
+            $goodsValue += $lineTotal;
             $totalVat += $lineVat;
             $totalDiscount += $lineDiscount;
 
@@ -304,6 +317,20 @@ class PlaceOrderAction
         $isEliteYARPlacer = $user->isEliteYAR();
         $effectiveEliteYARId = $isEliteYARPlacer ? $user->id : $data->eliteYARUserId;
 
+        // ── official_price: میانگینِ وزنیِ ردیف‌ها ─────────────────────────────
+        // تسویه با `OP × وزنِ کلِ سفارش` کار می‌کند، پس OP باید عددی باشد که این
+        // ضرب، ارزشِ واقعیِ کالا را بدهد: OP = Σ(قیمت×وزن) / Σوزن.
+        //
+        // تا پیش از این هیچ‌کس این ستون را نمی‌نوشت، و هر سه مسیرِ تسویه روی
+        // فالبکِ `items->first()->unit_price` می‌افتادند — یعنی **کلِ تناژِ سفارش
+        // به قیمتِ ردیفِ اول** حساب می‌شد. برای سفارشِ تک‌ردیفی درست بود؛ برای
+        // سبدی با دو سایز میلگرد از یک کارخانه اشتباه صورتحساب می‌داد.
+        //
+        // با یک ردیف، فرمول دقیقاً همان unit_price را می‌دهد.
+        $officialPrice = $totalWeight > 0
+            ? Money::toFloat(Money::div($goodsValue, $totalWeight))
+            : 0.0;
+
         $commissions = $this->calculateCommissions($user, $effectiveEliteYARId, $subtotal);
 
         return [
@@ -313,6 +340,7 @@ class PlaceOrderAction
             'shipping_cost' => $shippingCost,
             'final_amount' => $finalAmount,
             'total_weight' => $totalWeight,
+            'official_price' => $officialPrice,
             'commissions' => $commissions,
             'effective_elite_yar_id' => $effectiveEliteYARId,
             'items_data' => $itemsData,
@@ -375,7 +403,7 @@ class PlaceOrderAction
         );
 
         // ۳. ثبت نهایی در دیتابیس
-        return Order::create([
+        $order = Order::create([
             Order::PLACER_USER_ID => $user->id,
             // payer = صاحبِ کیف پولی که پول از آن می‌رود. صریح نوشته می‌شود حتی
             // وقتی با ثبت‌کننده یکی است، تا هیچ سفارشِ تازه‌ای به fallbackِ
@@ -412,6 +440,12 @@ class PlaceOrderAction
             Order::RESERVATION_EXPIRES_AT => now()->addHours((int) config('financial.pending_order_ttl_hours', 2)),
             Order::NOTES => $data->description,
         ]);
+
+        // `official_price` عمداً در $fillable نیست (ستونِ اسنپ‌شاتِ مالی)، پس
+        // گذاشتنش در آرایهٔ create بالا **بی‌صدا دور ریخته می‌شد**.
+        $order->forceFill([Order::OFFICIAL_PRICE => $fins['official_price']])->save();
+
+        return $order;
     }
 
     /**
@@ -524,6 +558,28 @@ class PlaceOrderAction
     {
         if ($this->debtEngine->isInDebt((int) $payer->id)) {
             throw new BusinessException(__('orders.blocked_by_debt'), 422);
+        }
+    }
+
+    /**
+     * یک سفارش = یک تأمین‌کننده.
+     *
+     * تسویه تک‌ردیفی است (`items->first()` در هر پنج مسیرِ مالی)، پس سفارشِ
+     * دوتأمین‌کننده‌ای کلِ PTS را به اولی می‌داد و به دومی هیچ — و خریدار را هم
+     * اشتباه صورتحساب می‌کرد. تا وقتی تسویهٔ چندردیفی نیامده، داده‌ی نامعتبر باید
+     * **متوقف** شود نه اینکه پول جابه‌جا کند.
+     */
+    private function assertSingleSupplier(Cart $cart): void
+    {
+        $supplierIds = $cart->items
+            // ‏`cart_items.factory_id` در اسکیما NOT NULL است.
+            ->map(fn ($item) => $item->factory->supplier_user_id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($supplierIds->count() > 1) {
+            throw new BusinessException(__('orders.multiple_suppliers_not_supported'));
         }
     }
 

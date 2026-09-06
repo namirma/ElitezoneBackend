@@ -18,6 +18,8 @@ use Illuminate\Support\Carbon;
  * @property int|null $province_id
  * @property int|null $city_id
  * @property int $department_id
+ * @property Carbon|null $admin_last_read_at
+ * @property Carbon|null $user_last_read_at
  * @property int|null $previous_department_id
  * @property int|null $admin_id
  * @property Carbon|null $assigned_at
@@ -118,7 +120,15 @@ class Ticket extends Model
 
     public const SLA_DUE_AT = 'sla_due_at';
 
+    public const ESCALATED_AT = 'escalated_at';
+
     public const REOPENED_COUNT = 'reopened_count';
+
+    /** آخرین باری که یک ادمین این تیکت را باز کرد (صف مشترک — نه per-admin). */
+    public const ADMIN_LAST_READ_AT = 'admin_last_read_at';
+
+    /** آخرین باری که صاحب تیکت آن را باز کرد. */
+    public const USER_LAST_READ_AT = 'user_last_read_at';
 
     // ── Status values (full helpdesk state machine) ───────────────────────
     public const STATUS_OPEN = 'open';              // New / باز
@@ -195,7 +205,10 @@ class Ticket extends Model
         self::RESOLVED_AT => 'datetime',
         self::CLOSED_AT => 'datetime',
         self::SLA_DUE_AT => 'datetime',
+        self::ESCALATED_AT => 'datetime',
         self::REOPENED_COUNT => 'integer',
+        self::ADMIN_LAST_READ_AT => 'datetime',
+        self::USER_LAST_READ_AT => 'datetime',
     ];
 
     // ── Relationships ─────────────────────────────────────────────────────
@@ -223,6 +236,75 @@ class Ticket extends Model
     public function replies(): HasMany
     {
         return $this->hasMany(TicketReply::class);
+    }
+
+    // ── «خوانده‌نشده» ─────────────────────────────────────────────────────
+    //
+    // یک تعریفِ واحد برای هر دو کلاینت. اگر پنل و سایت هرکدام منطق خودشان را
+    // بنویسند، دیر یا زود یکی «۲ پیام جدید» می‌گوید و دیگری هیچ.
+    //
+    // قاعده: پیامی که *طرفِ مقابل* فرستاده و بعد از آخرین بازدیدِ من ثبت شده.
+    // `null` یعنی هرگز باز نشده → همه‌چیز خوانده‌نشده است.
+
+    /** پاسخ‌های کاربر که ادمین هنوز ندیده است. */
+    public function unreadForAdminCount(): int
+    {
+        return $this->replies
+            ->filter(fn (TicketReply $r) => $r->{TicketReply::ADMIN_ID} === null
+                && $this->isAfterRead($r, $this->{self::ADMIN_LAST_READ_AT}))
+            ->count();
+    }
+
+    /** پاسخ‌های پشتیبانی که کاربر هنوز ندیده است. */
+    public function unreadForUserCount(): int
+    {
+        return $this->replies
+            ->filter(fn (TicketReply $r) => $r->{TicketReply::ADMIN_ID} !== null
+                && $this->isAfterRead($r, $this->{self::USER_LAST_READ_AT}))
+            ->count();
+    }
+
+    /**
+     * خودِ تیکتِ تازه هم برای ادمین «خوانده‌نشده» است — حتی وقتی هیچ پاسخی ندارد.
+     * بدون این، یک تیکتِ کاملاً جدید هیچ نشانه‌ای در پنل نمی‌گرفت.
+     */
+    public function isUnreadForAdmin(): bool
+    {
+        return $this->{self::ADMIN_LAST_READ_AT} === null || $this->unreadForAdminCount() > 0;
+    }
+
+    private function isAfterRead(TicketReply $reply, ?Carbon $readAt): bool
+    {
+        if ($readAt === null) {
+            return true;
+        }
+
+        $createdAt = $reply->{TicketReply::CREATED_AT};
+
+        return $createdAt !== null && $createdAt->greaterThan($readAt);
+    }
+
+    /**
+     * ادمین تیکت را باز کرد.
+     *
+     * ⚠️ عمداً فقط ردیفِ دیتابیس را به‌روز می‌کند و **مقدارِ در-حافظه را دست
+     * نمی‌زند**. دلیلش ترتیبِ ارزیابی است: `TicketResource` تنبل است و `toArray()`
+     * آن موقعِ سریالایزِ پاسخ اجرا می‌شود — یعنی *بعد* از این متد. اگر اینجا
+     * `$this` را هم به‌روز کنیم، همان پاسخی که قرار است بگوید «۲ پیام جدید»
+     * صفر برمی‌گرداند و ادمین هرگز نمی‌فهمد چه چیزی تازه بود.
+     *
+     * پس: پاسخِ همین درخواست شمارِ پیش‌از-خواندن را نشان می‌دهد، درخواست بعدی صفر.
+     * (این را `TicketUnreadTest::the_admin_show_response_still_reports_...` می‌گیرد.)
+     */
+    public function markReadByAdmin(): void
+    {
+        static::whereKey($this->getKey())->update([self::ADMIN_LAST_READ_AT => now()]);
+    }
+
+    /** صاحب تیکت آن را باز کرد. همان ملاحظه‌ی ترتیبِ ارزیابیِ بالا. */
+    public function markReadByUser(): void
+    {
+        static::whereKey($this->getKey())->update([self::USER_LAST_READ_AT => now()]);
     }
 
     /** Attachments on the ticket's opening message (پیوست‌های پیام اولیه). */

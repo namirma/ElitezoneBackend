@@ -2,50 +2,41 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Carbon;
 
-/**
- * @property int $id
- * @property int $ticket_id
- * @property int|null $user_id
- * @property int|null $admin_id
- * @property string $message
- * @property Carbon|null $created_at
- * @property Carbon|null $updated_at
- * @property-read Collection<int, TicketFile> $files
- * @property-read int|null $files_count
- * @property-read Ticket|null $ticket
- * @property-read User|null $user
- *
- * @method static \Illuminate\Database\Eloquent\Builder<static>|TicketReply newModelQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|TicketReply newQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|TicketReply query()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|TicketReply whereAdminId($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|TicketReply whereCreatedAt($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|TicketReply whereId($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|TicketReply whereMessage($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|TicketReply whereTicketId($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|TicketReply whereUpdatedAt($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|TicketReply whereUserId($value)
- *
- * @mixin \Eloquent
- */
 class TicketReply extends Model
 {
     use HasFactory;
 
+    // ثابت‌های نام ستون — قرارداد پروژه (`Order::STATUS` و…). این مدل تنها مدلی
+    // در مسیر تیکت بود که نداشت، و منطقِ «خوانده‌نشده» روی `admin_id` تصمیم
+    // می‌گیرد؛ رشته‌ی خام در آن مسیر یعنی یک تایپو = شمارشِ بی‌صدا غلط.
+    public const ID = 'id';
+
+    public const TICKET_ID = 'ticket_id';
+
+    public const USER_ID = 'user_id';
+
+    /** NULL یعنی پاسخِ کاربر؛ مقدارِ غیر NULL یعنی پاسخِ پشتیبانی. */
+    public const ADMIN_ID = 'admin_id';
+
+    public const MESSAGE = 'message';
+
+    public const CREATED_AT = 'created_at';
+
+    public const UPDATED_AT = 'updated_at';
+
     protected $fillable = [
-        'ticket_id',
-        'user_id',
-        'admin_id',
-        'message',
+        self::TICKET_ID,
+        self::USER_ID,
+        self::ADMIN_ID,
+        self::MESSAGE,
     ];
 
+    /** @return BelongsTo<Ticket, $this> */
     public function ticket(): BelongsTo
     {
         return $this->belongsTo(Ticket::class);
