@@ -3382,6 +3382,309 @@
                 }
             }
         },
+        "/admin/factory-features": {
+            "get": {
+                "operationId": "adminFactoryFeature.index",
+                "tags": [
+                    "AdminFactoryFeature"
+                ],
+                "parameters": [
+                    {
+                        "name": "factory_id",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "integer",
+                                "null"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "category",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "enum": [
+                                "product",
+                                "shipping"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "is_active",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "boolean",
+                                "null"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "integer",
+                                "null"
+                            ],
+                            "minimum": 1,
+                            "maximum": 200
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "adminFactoryFeature.store",
+                "tags": [
+                    "AdminFactoryFeature"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "factory_id": {
+                                        "type": "integer"
+                                    },
+                                    "category": {
+                                        "type": "string",
+                                        "enum": [
+                                            "product",
+                                            "shipping"
+                                        ]
+                                    },
+                                    "icon_key": {
+                                        "type": "string",
+                                        "enum": [
+                                            "water-saving",
+                                            "dust-reduction",
+                                            "clean-production"
+                                        ]
+                                    },
+                                    "label": {
+                                        "type": "string",
+                                        "maxLength": 255
+                                    },
+                                    "order": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ],
+                                        "minimum": 0
+                                    },
+                                    "is_active": {
+                                        "type": "boolean"
+                                    }
+                                },
+                                "required": [
+                                    "factory_id",
+                                    "category",
+                                    "icon_key",
+                                    "label"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/admin/factory-features/{factoryFeature}": {
+            "put": {
+                "operationId": "adminFactoryFeature.update",
+                "tags": [
+                    "AdminFactoryFeature"
+                ],
+                "parameters": [
+                    {
+                        "name": "factoryFeature",
+                        "in": "path",
+                        "required": true,
+                        "description": "The factory feature ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "factory_id": {
+                                        "type": "integer"
+                                    },
+                                    "category": {
+                                        "type": "string",
+                                        "enum": [
+                                            "product",
+                                            "shipping"
+                                        ]
+                                    },
+                                    "icon_key": {
+                                        "type": "string",
+                                        "enum": [
+                                            "water-saving",
+                                            "dust-reduction",
+                                            "clean-production"
+                                        ]
+                                    },
+                                    "label": {
+                                        "type": "string",
+                                        "maxLength": 255
+                                    },
+                                    "order": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ],
+                                        "minimum": 0
+                                    },
+                                    "is_active": {
+                                        "type": "boolean"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "adminFactoryFeature.destroy",
+                "tags": [
+                    "AdminFactoryFeature"
+                ],
+                "parameters": [
+                    {
+                        "name": "factoryFeature",
+                        "in": "path",
+                        "required": true,
+                        "description": "The factory feature ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/admin/factory-features/{factoryFeature}/toggle": {
+            "post": {
+                "operationId": "adminFactoryFeature.toggle",
+                "tags": [
+                    "AdminFactoryFeature"
+                ],
+                "parameters": [
+                    {
+                        "name": "factoryFeature",
+                        "in": "path",
+                        "required": true,
+                        "description": "The factory feature ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
         "/admin/factory-locations": {
             "get": {
                 "operationId": "adminFactoryLocation.index",
@@ -10463,6 +10766,218 @@
                     },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/admin/shipping-methods": {
+            "get": {
+                "operationId": "adminShippingMethod.index",
+                "tags": [
+                    "AdminShippingMethod"
+                ],
+                "parameters": [
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "integer",
+                                "null"
+                            ],
+                            "minimum": 1,
+                            "maximum": 200
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "adminShippingMethod.store",
+                "tags": [
+                    "AdminShippingMethod"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "maxLength": 255
+                                    },
+                                    "code": {
+                                        "type": "string",
+                                        "maxLength": 255
+                                    },
+                                    "delivery_notice": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ],
+                                        "maxLength": 255
+                                    },
+                                    "delivery_days": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ],
+                                        "minimum": 0,
+                                        "maximum": 365
+                                    }
+                                },
+                                "required": [
+                                    "name",
+                                    "code"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/admin/shipping-methods/{shippingMethod}": {
+            "put": {
+                "operationId": "adminShippingMethod.update",
+                "tags": [
+                    "AdminShippingMethod"
+                ],
+                "parameters": [
+                    {
+                        "name": "shippingMethod",
+                        "in": "path",
+                        "required": true,
+                        "description": "The shipping method ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "maxLength": 255
+                                    },
+                                    "code": {
+                                        "type": "string",
+                                        "maxLength": 255
+                                    },
+                                    "delivery_notice": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ],
+                                        "maxLength": 255
+                                    },
+                                    "delivery_days": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ],
+                                        "minimum": 0,
+                                        "maximum": 365
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "adminShippingMethod.destroy",
+                "tags": [
+                    "AdminShippingMethod"
+                ],
+                "parameters": [
+                    {
+                        "name": "shippingMethod",
+                        "in": "path",
+                        "required": true,
+                        "description": "The shipping method ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"

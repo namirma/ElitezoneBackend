@@ -108,11 +108,11 @@ jobs:
       # این مرحله آن نیت را به قانون تبدیل می‌کند — سقف فقط با ویرایشِ عمدیِ همین
       # عدد بالا می‌رود، و پایین‌آوردنش هر وقت خطایی واقعاً رفع شد تشویق می‌شود.
       #
-      # سقفِ این شاخه ۳۲۰ است و نه سقفِ شاخهٔ L10: larastan 3 روی لاراول ۱۳
+      # سقفِ این شاخه ۳۱۳ است و نه سقفِ شاخهٔ L10: larastan 3 روی لاراول ۱۳
       # سخت‌گیرتر است و baselineِ بزرگ‌تری دارد. دو عدد عمداً مستقل‌اند.
       - name: PHPStan baseline must not grow
         run: |
-          CEILING=320
+          CEILING=313
           COUNT=$(grep -c 'message:' phpstan-baseline.neon)
           echo "baseline entries: ${COUNT} (ceiling ${CEILING})"
           if [ "$COUNT" -gt "$CEILING" ]; then

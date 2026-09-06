@@ -685,12 +685,6 @@ parameters:
 			path: app/Http/Controllers/Api/User/ProfileController.php
 
 		-
-			message: '#^Relation ''variantAttributes'' is not found in App\\Models\\ProductVariant model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/Api/User/StockSubscriptionController.php
-
-		-
 			message: '#^Using nullsafe property access "\?\-\>brands_not_related" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
@@ -835,12 +829,6 @@ parameters:
 			path: app/Http/Resources/Financial/WalletTransactionResource.php
 
 		-
-			message: '#^Ternary operator condition is always true\.$#'
-			identifier: ternary.alwaysTrue
-			count: 1
-			path: app/Http/Resources/Financial/WalletTransactionResource.php
-
-		-
 			message: '#^Access to an undefined property App\\Http\\Resources\\Order\\OrderResource\:\:\$elite_yar_user_id\.$#'
 			identifier: property.notFound
 			count: 1
@@ -925,12 +913,6 @@ parameters:
 			path: app/Http/Resources/Order/ShipmentResource.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\ProvinceCity\:\:\$name\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/Order/ShipmentResource.php
-
-		-
 			message: '#^Using nullsafe method call on non\-nullable type App\\Enums\\Shipping\\ShippingCostBasis\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
@@ -953,12 +935,6 @@ parameters:
 			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Http/Resources/Order/ShippingRateResource.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\OrderUnit\:\:\$pivot\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/Product/ProductResource.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
@@ -1009,7 +985,7 @@ parameters:
 			path: app/Http/Resources/Product/ProductVariantAttributeResource.php
 
 		-
-			message: '#^Anonymous function should return Illuminate\\Support\\Collection\<int, array\{price_id\: string, factory\: array\{id\: string, name\: mixed\}, factory_location\: array\{id\: string, name\: mixed\}, general_price\: string, special_price\: string, golden_figure\: string, final_price\: numeric\-string&uppercase\-string, role_special_price\: string\|null, role_general_price\: string\|null, role_golden_figure\: string\|null, pricing_debug\?\: array\<mixed, mixed\>\}\> but returns Illuminate\\Support\\Collection\<int, array\{price_id\: string, factory\: array\{id\: string, name\: mixed\}, factory_location\: array\{id\: string, name\: mixed\}, general_price\: string, special_price\: string, golden_figure\: string, final_price\: numeric\-string&uppercase\-string, role_special_price\: string\|null, role_general_price\: string\|null, role_golden_figure\: string\|null, pricing_debug\?\: array\<mixed, mixed\>\}\>\.$#'
+			message: '#^Anonymous function should return Illuminate\\Support\\Collection\<int, array\{price_id\: string, factory\: array\{id\: string, name\: mixed, product_features\: array\{\}\|Illuminate\\Http\\Resources\\Json\\AnonymousResourceCollection\}, factory_location\: array\{id\: string, name\: mixed\}, general_price\: string, special_price\: string, golden_figure\: string, final_price\: numeric\-string&uppercase\-string, role_special_price\: string\|null, role_general_price\: string\|null, role_golden_figure\: string\|null, pricing_debug\?\: array\<mixed, mixed\>\}\> but returns Illuminate\\Support\\Collection\<int, array\{price_id\: string, factory\: array\{id\: string, name\: mixed, product_features\: array\{\}\|Illuminate\\Http\\Resources\\Json\\AnonymousResourceCollection\}, factory_location\: array\{id\: string, name\: mixed\}, general_price\: string, special_price\: string, golden_figure\: string, final_price\: numeric\-string&uppercase\-string, role_special_price\: string\|null, role_general_price\: string\|null, role_golden_figure\: string\|null, pricing_debug\?\: array\<mixed, mixed\>\}\>\.$#'
 			identifier: return.type
 			count: 1
 			path: app/Http/Resources/Product/ProductVariantResource.php
@@ -1085,12 +1061,6 @@ parameters:
 			identifier: argument.type
 			count: 4
 			path: app/Http/Resources/Shared/UserMessageResource.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\Ticket\\TicketReplyResource\:\:\$admin\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/Ticket/TicketReplyResource.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\ProductView\:\:\$unique_sessions\.$#'
@@ -1799,18 +1769,6 @@ parameters:
 			identifier: nullCoalesce.variable
 			count: 1
 			path: app/Services/Pricing/CartPricingCalculator.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$general_price\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Pricing/Pipes/SetBasePrice.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$special_price\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Pricing/Pipes/SetBasePrice.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\ProductPrice\:\:\$final_price\.$#'

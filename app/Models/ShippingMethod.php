@@ -39,6 +39,8 @@ class ShippingMethod extends Model
 
     const DELIVERY_NOTICE = 'delivery_notice';
 
+    const DELIVERY_DAYS = 'delivery_days';
+
     const CREATED_AT = 'created_at';
 
     const UPDATED_AT = 'updated_at';
@@ -47,6 +49,11 @@ class ShippingMethod extends Model
         self::NAME,
         self::CODE,
         self::DELIVERY_NOTICE,
+        self::DELIVERY_DAYS,
+    ];
+
+    protected $casts = [
+        self::DELIVERY_DAYS => 'integer',
     ];
 
     public function cartItems(): HasMany

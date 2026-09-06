@@ -187,6 +187,7 @@ class ProductVariant extends Model
             ->as('details');
     }
 
+    /** @return HasMany<ProductPrice, $this> */
     public function prices(): HasMany
     {
         return $this->hasMany(ProductPrice::class, ProductPrice::PRODUCT_VARIANT_ID, self::ID);

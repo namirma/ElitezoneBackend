@@ -26,6 +26,7 @@ use App\Models\ProductVariant;
 use App\Repositories\Contracts\ProductRepositoryInterface;
 use App\Services\Cart\CartResolver;
 use App\Services\PriceCalculationService;
+use App\Services\Pricing\VariantPriceHydrator;
 use App\Services\Product\AttributeFilterResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -119,6 +120,34 @@ class ProductController extends Controller
             ProductVariantResource::collection($paginator)->response()->getData(true),
             'global.received_successfully'
         );
+    }
+
+    /**
+     * جزئیاتِ یک واریانتِ خاص با شناسه — مستقل از صفحه‌بندی و از اینکه به کدام
+     * محصولِ اصلی تعلق دارد. دیپ‌لینکِ `/product/{id}` در فرانت قبلاً فقط داخلِ
+     * لیستِ از-پیش-گرفته‌شده (صفحه‌ی اولِ واریانت‌های یک محصولِ اصلیِ خاص) جست‌وجو
+     * می‌کرد؛ واریانتی که در صفحه‌ی بعدی بود یا به محصولِ اصلیِ دیگری تعلق داشت هرگز
+     * پیدا نمی‌شد و «محصول موردنظر یافت نشد» نشان داده می‌شد.
+     */
+    public function showVariant(ProductVariant $variant, VariantPriceHydrator $priceHydrator): JsonResponse
+    {
+        $variant->load([
+            'prices.factory',
+            'prices.factory.activeProductFeatures',
+            'prices.factoryLocation',
+            'variantAttributes.attributeType',
+            'limitOrderUnit',
+            'product.category',
+            'product.images',
+            'product.orderUnits',
+        ]);
+
+        $priceHydrator->hydrate($variant, $this->cartResolver->activeCode());
+
+        return success([
+            'variant' => new ProductVariantResource($variant),
+            'product' => new ProductResource($variant->product),
+        ], 'global.received_successfully');
     }
 
     /**
