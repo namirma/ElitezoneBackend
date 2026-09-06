@@ -30,8 +30,9 @@ class AdminAvatarModerationController extends Controller
             ->map(fn (UserProfile $p) => [
                 'user_id' => $p->{UserProfile::USER_ID},
                 'name' => trim(($p->{UserProfile::NAME} ?? '').' '.($p->{UserProfile::FAMILY} ?? '')) ?: null,
-                'mobile' => $p->user?->{User::MOBILE},
-                'admin_level' => $p->user?->{User::ADMIN_LEVEL},
+                // ‏`user_profiles.user_id` در اسکیما NOT NULL است.
+                'mobile' => $p->user->{User::MOBILE},
+                'admin_level' => $p->user->{User::ADMIN_LEVEL},
                 'pending_avatar_url' => $this->url($p->{UserProfile::AVATAR_PENDING}),
                 'current_avatar_url' => $this->url($p->{UserProfile::AVATAR}),
             ])

@@ -73,13 +73,16 @@ class CartItemResource extends BaseJsonResource
      */
     private function loadedOrderUnits(): ?\Illuminate\Support\Collection
     {
+        // ‏`cart_items.product_variant_id` و `product_variants.product_id` هر دو در
+        // اسکیما NOT NULL‌اند، پس هیچ‌کدام از این دو رابطه نمی‌تواند غایب باشد و
+        // nullsafe اینجا هرگز کاری نمی‌کرد. لود‌نشدنِ رابطه همچنان چک می‌شود.
         $variant = $this->productVariant;
-        if (! $variant?->relationLoaded('product')) {
+        if (! $variant->relationLoaded('product')) {
             return null;
         }
 
         $product = $variant->product;
 
-        return $product?->relationLoaded('orderUnits') ? $product->orderUnits : null;
+        return $product->relationLoaded('orderUnits') ? $product->orderUnits : null;
     }
 }

@@ -137,13 +137,11 @@ trait HasOrderProgress
                             'type' => 'secondary',
                             'downloadable' => true,
                         ];
-                        if ($state === 'current') {
-                            $actions[] = [
-                                'label' => __('orders.actions.pay_invoice'),
-                                'link' => "/checkout/payment/{$id}",
-                                'type' => 'primary',
-                            ];
-                        }
+                        // اکشنِ «پرداخت فاکتور» برداشته شد: `/checkout/payment/{id}`
+                        // هیچ‌وقت روتی در SPA نداشته و react-router برای مسیرِ
+                        // بی‌تطابق هیچ‌چیز رندر نمی‌کند — نه ۴۰۴، نه خطای کنسول —
+                        // پس کاربر به یک پوسته‌ی خالی می‌رسید. زائد هم بود:
+                        // تکمیلِ پرداخت از `OrderResource.payment_url` انجام می‌شود.
                         if ($state === 'cancelled') {
                             $actions[] = [
                                 'label' => __('orders.actions.buy_again'),
@@ -225,6 +223,11 @@ trait HasOrderProgress
 
             $steps[] = [
                 'step' => $index + 1,
+                // کلیدِ پایدارِ مرحله. داک‌بلاکِ همین تریت می‌گوید «همهٔ شاخه‌زدن‌ها
+                // روی کلید است نه عنوانِ فارسی» — ولی کلید سریالایز نمی‌شد، پس
+                // کلاینت چاره‌ای جز تطبیق روی همان عنوان نداشت و بازطراحیِ
+                // برچسب‌ها بی‌صدا آیکونِ سه مرحله را خاموش کرد.
+                'key' => $blueprint['key'],
                 'title' => $blueprint['title'],
                 'state' => $state,
                 'actions' => $actions,
@@ -340,6 +343,11 @@ trait HasOrderProgress
 
             $steps[] = [
                 'step' => $index + 1,
+                // کلیدِ پایدارِ مرحله. داک‌بلاکِ همین تریت می‌گوید «همهٔ شاخه‌زدن‌ها
+                // روی کلید است نه عنوانِ فارسی» — ولی کلید سریالایز نمی‌شد، پس
+                // کلاینت چاره‌ای جز تطبیق روی همان عنوان نداشت و بازطراحیِ
+                // برچسب‌ها بی‌صدا آیکونِ سه مرحله را خاموش کرد.
+                'key' => $blueprint['key'],
                 'title' => $blueprint['title'],
                 'state' => $state,
                 'actions' => $actions,
@@ -474,6 +482,11 @@ trait HasOrderProgress
 
             $steps[] = [
                 'step' => $index + 1,
+                // کلیدِ پایدارِ مرحله. داک‌بلاکِ همین تریت می‌گوید «همهٔ شاخه‌زدن‌ها
+                // روی کلید است نه عنوانِ فارسی» — ولی کلید سریالایز نمی‌شد، پس
+                // کلاینت چاره‌ای جز تطبیق روی همان عنوان نداشت و بازطراحیِ
+                // برچسب‌ها بی‌صدا آیکونِ سه مرحله را خاموش کرد.
+                'key' => $blueprint['key'],
                 'title' => $blueprint['title'],
                 'state' => $state,
                 'actions' => $actions,
