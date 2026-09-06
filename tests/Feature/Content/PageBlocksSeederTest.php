@@ -44,13 +44,13 @@ class PageBlocksSeederTest extends TestCase
         $this->seed(PageBlocksSeeder::class);
 
         $this->assertSame(
-            ['hero_actions', 'card_grid', 'media_text', 'card_grid', 'flip_card', 'card_grid', 'cta_band'],
+            ['hero_actions', 'card_row', 'media_text', 'card_grid', 'flip_card', 'card_grid', 'cta_band'],
             PageBlock::where(PageBlock::PAGE, PageBlock::PAGE_PODIUM)
                 ->orderBy(PageBlock::SORT_ORDER)->pluck(PageBlock::TYPE)->all()
         );
 
         $this->assertSame(
-            ['sk_hero', 'stat_carousel', 'media_text', 'feature_cards', 'media_text', 'banner_carousel', 'flip_cards', 'sk_hero'],
+            ['sk_hero', 'stat_carousel', 'latin_media_text', 'feature_cards', 'latin_media_text', 'banner_carousel', 'flip_cards', 'sk_hero'],
             PageBlock::where(PageBlock::PAGE, PageBlock::PAGE_STEEL_KAVIR)
                 ->orderBy(PageBlock::SORT_ORDER)->pluck(PageBlock::TYPE)->all()
         );
@@ -98,7 +98,7 @@ class PageBlocksSeederTest extends TestCase
     }
 
     /**
-     * ✅ بستنِ گپِ بولد: `SkStory` (`media_text`) و `SkProducts`
+     * ✅ بستنِ گپِ بولد: `SkStory` (`latin_media_text`) و `SkProducts`
      * (`feature_cards`) تازه به قراردادِ ران‌ایندکسیِ `bodyStrong` تبدیل
      * شده‌اند؛ پیش از این هر دو فقط با ثابتِ هاردکدِ خودشان درست به‌نظر
      * می‌رسیدند. این تست خودِ منطقِ `resolveBodyRuns` را (هم نسخه‌ی

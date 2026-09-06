@@ -73,7 +73,7 @@ class PageBlocksSeeder extends Seeder
     {
         return [
             ['type' => 'hero_actions', 'data' => $this->podiumHero()],
-            ['type' => 'card_grid', 'data' => $this->podiumBenefits()],
+            ['type' => 'card_row', 'data' => $this->podiumBenefits()],
             ['type' => 'media_text', 'data' => $this->podiumIntro()],
             ['type' => 'card_grid', 'data' => $this->podiumServices()],
             ['type' => 'flip_card', 'data' => $this->podiumScale()],
@@ -92,20 +92,21 @@ class PageBlocksSeeder extends Seeder
      * می‌کند: `SkHero(HERO)`, `SkGlance`, `SkStory(WHY)`, `SkProducts`,
      * `SkStory(TRANSPORT)`, `SkQuality`, `SkTechnology`, `SkHero(LUSAIL)`.
      *
-     * ✅ `SkQuality` و `SkTechnology` نوعِ خودشان را دارند (`banner_carousel`،
-     * `flip_cards`) — قبلاً به‌ترتیب زیرِ `stat_carousel`/`flip_card` سید
-     * می‌شدند چون شکلاً شبیه بودند، که یعنی `SkGlance`/`PdScale`
-     * (مصرف‌کننده‌های واقعیِ آن دو نوع) داده‌ی این‌ها را می‌گرفتند. جزئیات
-     * در تعریفِ هر نوعِ جدید در `PageBlockSchema`.
+     * ✅ `SkQuality`, `SkTechnology` و `SkStory` نوعِ خودشان را دارند
+     * (`banner_carousel`، `flip_cards`، `latin_media_text`) — قبلاً به‌ترتیب
+     * زیرِ `stat_carousel`/`flip_card`/`media_text` سید می‌شدند چون شکلاً
+     * شبیه بودند، که یعنی `SkGlance`/`PdScale`/`PdIntro` (مصرف‌کننده‌های
+     * واقعیِ آن سه نوع) داده‌ی این‌ها را می‌گرفتند. جزئیات در تعریفِ هر نوعِ
+     * جدید در `PageBlockSchema`.
      */
     private function steelKavir(): array
     {
         return [
             ['type' => 'sk_hero', 'data' => $this->skHero()],
             ['type' => 'stat_carousel', 'data' => $this->skGlance()],
-            ['type' => 'media_text', 'data' => $this->skWhy()],
+            ['type' => 'latin_media_text', 'data' => $this->skWhy()],
             ['type' => 'feature_cards', 'data' => $this->skProducts()],
-            ['type' => 'media_text', 'data' => $this->skTransport()],
+            ['type' => 'latin_media_text', 'data' => $this->skTransport()],
             ['type' => 'banner_carousel', 'data' => $this->skQuality()],
             ['type' => 'flip_cards', 'data' => $this->skTechnology()],
             ['type' => 'sk_hero', 'data' => $this->skLusail()],
@@ -419,13 +420,12 @@ class PageBlocksSeeder extends Seeder
     /**
      * منبع: `content.jsx` → `BENEFITS`.
      *
-     * `PdBenefits` (`{ id, title, cards }`) نه `tone` می‌خواند نه `flow` —
-     * برخلافِ `PdCardGrid` که همین نوعِ اسکیما (`card_grid`) را هم مصرف
-     * می‌کند (سؤالِ باز ۴ در گزارشِ ممیزی: یک کلیدِ نوع، دو کامپوننتِ متفاوت).
-     * چون این دو فیلد در اسکیما اجباری‌اند، مقداری واقعی ولی بی‌اثر گذاشته
-     * شد: `flow: rtl` توصیفِ صادقِ جهتِ رندرِ فعلی است (کامپوننت توضیح داده
-     * «ردیف بدونِ override راست‌به‌چپ می‌رود»)، `tone` هیچ معادلِ بصری‌ای در
-     * این بلوک ندارد و صرفاً برای عبور از اعتبارسنجی است.
+     * ✅ نوعِ این بلوک `card_row` است — `PdBenefits` (`{ id, title, cards }`)
+     * نه `tone` می‌خواند نه `flow`؛ پیش از این زیرِ `card_grid` سید می‌شد و
+     * چون آن اسکیما این دو فیلد را اجباری اعلام می‌کرد، مقادیرِ بی‌اثرِ
+     * `tone: light` / `flow: rtl` این‌جا اضافه شده بودند تا از اعتبارسنجی
+     * عبور کنند. با نوعِ اختصاصیِ `card_row` این دو فیلد اصلاً در اسکیما
+     * نیستند، پس این‌جا هم حذف شدند.
      */
     private function podiumBenefits(): array
     {
@@ -433,8 +433,6 @@ class PageBlocksSeeder extends Seeder
             // anchor id — `content.jsx` → `BENEFITS.id`.
             'id' => 'benefits',
             'title' => 'یک حساب، تجربه‌ای ساده‌تر',
-            'tone' => 'light',
-            'flow' => 'rtl',
             'cards' => [
                 ['id' => 'signup', 'image' => '/media/podium/b2-card1.jpg', 'heading' => 'ثبت‌نام ساده‌تر', 'note' => 'ورود سریع، بدون پیچیدگی'],
                 ['id' => 'payment', 'image' => '/media/podium/b2-card2.jpg', 'heading' => 'پرداخت مطمئن‌تر', 'note' => 'پرداخت امن در بستری بانکی'],
@@ -608,26 +606,27 @@ class PageBlocksSeeder extends Seeder
     /**
      * منبع: `content.jsx` → `WHY` (پراپِ پیش‌فرضِ `SkStory`).
      *
-     * ✅ `SkStory` دیگر یک کامپوننتِ بدونِ تقسیمِ رانی نیست — به همان
-     * قراردادِ `PdIntro`/`resolveBodyRuns` تبدیل شده: `body` فهرستی از
+     * ✅ نوعِ این بلوک `latin_media_text` است — نه `media_text`ی که پیش‌تر
+     * این‌جا سید می‌شد (`PdIntro` مصرف‌کننده‌ی واقعیِ آن است، نه `SkStory`؛
+     * جزئیات در تعریفِ نوعِ جدید در `PageBlockSchema`). `body` فهرستی از
      * پاراگراف‌هاست، هر پاراگراف فهرستی از ران؛ `bodyStrong` اندیسِ
      * ران‌های تخت‌شده‌ی *همه‌ی پاراگراف‌ها* را نگه می‌دارد. این متن یک
      * پاراگرافِ تنها با هشت ران است (چهار رانِ ساده + چهار رانِ بولد به‌جای
      * هم)، دقیقاً همان تودرتویی که `content.jsx` → `WHY.body`/`WHY.bodyStrong`
      * دارد و `SkStory/resolveBodyRuns.test.js` («reproduces the WHY
      * paragraph's four bold runs») هم روی همین متن پین کرده — نه فهرستِ
-     * تختِ «list of textarea» که اسکیمای `media_text` رسماً اعلام کرده
-     * (همان سؤالِ باز ۲ در گزارشِ ممیزی که `podiumIntro()` بالا هم دارد).
-     * چهار رانِ زوج (اندیسِ ۰، ۲، ۴، ۶ — «فولاد کویر»، «نزدیک به دو دهه»،
-     * «نگاه توسعه‌محور»، «عملکرد، تداوم تأمین و ارزش بلندمدت») در فایلِ
-     * اصلی داخلِ `<b>` بودند؛ الحاقِ هشت رانِ زیر عیناً همان رشته‌ی واحدی
-     * است که پیش از این‌جا سید می‌شد — فقط مرزِ ران‌ها این‌بار نگه داشته
-     * شده تا `bodyStrong` معنا داشته باشد.
+     * تختِ «list of textarea» که اسکیمای `latin_media_text` (مثلِ
+     * `media_text`) رسماً اعلام کرده (همان سؤالِ باز ۲ در گزارشِ ممیزی که
+     * `podiumIntro()` بالا هم دارد). چهار رانِ زوج (اندیسِ ۰، ۲، ۴، ۶ —
+     * «فولاد کویر»، «نزدیک به دو دهه»، «نگاه توسعه‌محور»، «عملکرد، تداوم
+     * تأمین و ارزش بلندمدت») در فایلِ اصلی داخلِ `<b>` بودند؛ الحاقِ هشت
+     * رانِ زیر عیناً همان رشته‌ی واحدی است که پیش از این‌جا سید می‌شد —
+     * فقط مرزِ ران‌ها این‌بار نگه داشته شده تا `bodyStrong` معنا داشته باشد.
      *
-     * فیلد هم عمداً `body` نام‌گذاری شده (نامِ فیلدِ اسکیمای `media_text`)
-     * نه `paragraphs` (نامِ پراپِ `SkStory`) — طبقِ قاعده‌ی «اسکیما برنده
-     * است» که سیدِ هوم برای `story_card` هم رعایت کرد؛ وصل‌کردنِ
-     * `SkStory` به این نام تغییرِ فرانت است.
+     * فیلد هم عمداً `body` نام‌گذاری شده (نامِ فیلدِ اسکیما) نه `paragraphs`
+     * (نامِ پراپِ `SkStory`) — طبقِ قاعده‌ی «اسکیما برنده است» که سیدِ هوم
+     * برای `story_card` هم رعایت کرد؛ وصل‌کردنِ `SkStory` به این نام
+     * تغییرِ فرانت است.
      */
     private function skWhy(): array
     {
@@ -723,6 +722,9 @@ class PageBlocksSeeder extends Seeder
 
     /**
      * منبع: `content.jsx` → `TRANSPORT` (پراپِ پیش‌فرضِ `SkStory`).
+     *
+     * ✅ نوعِ این بلوک هم `latin_media_text` است، به همان دلیلِ `skWhy()`
+     * بالا — `SkStory`، نه `PdIntro`، مصرف‌کننده‌ی واقعی است.
      *
      * چهار پاراگراف، هرکدام یک رانِ ساده — بدونِ بولد، پس `bodyStrong: []`
      * (صریحاً سید شده، نه غایب؛ همانی که `SkStory`ی خودش هم پیش‌فرض
