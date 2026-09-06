@@ -36,15 +36,16 @@ final class PageBlockSchema
      * آن‌ها نیاز دارد — دقیقاً همان کلیدهایی که فیلدهای سطحِ بالا دارند. پیش
      * از این تسک بعضی اعضا رشته‌ی خام بودند (نامِ ویجت به‌تنهایی)؛ برای اینکه
      * هرکدام بتواند `label` داشته باشد همه به همین آرایه تبدیل شدند —
-     * `AdminPageBlockController::normalizedShapes()` (خارج از محدوده‌ی این
-     * تغییر) هنوز هر دو شکل را می‌پذیرد و آرایه را دست‌نخورده سرو می‌کند.
+     * دیگر هیچ عضوِ خامی در SHAPES نمانده، پس
+     * `AdminPageBlockController::normalizedShapes()` دیگر لازم نیست دو شکل
+     * را بپذیرد؛ همین آرایه را دست‌نخورده برمی‌گرداند.
      *
      * تکرارِ لیبلِ `id` روی چند شکل (`card`/`stat`/`feature`/`banner_card`/
      * `flip_panel`) عمدی است: در هرکدام همان معنیِ «شناسه‌ی داخلیِ این عضوِ
      * فهرست» را دارد، نه لنگرِ صفحه — نبایدِ آن‌ها را با فیلدِ سطحِ بالا به
      * نامِ `id` (لنگرِ `<section>`) اشتباه گرفت.
      *
-     * @var array<string, array<string, array{type: string, label: string, hint?: string, options?: list<string>, of?: string}>>
+     * @var array<string, array<string, array{type: string, label: string, hint?: string, options?: list<string>|list<array{value: string, label: string}>, of?: string}>>
      */
     public const SHAPES = [
         'card' => [
@@ -63,7 +64,10 @@ final class PageBlockSchema
         'action' => [
             'label' => ['type' => 'text', 'label' => 'متنِ دکمه'],
             'href' => ['type' => 'text', 'label' => 'آدرسِ دکمه', 'hint' => 'لینک همیشه در تبِ جدید باز می‌شود.'],
-            'tone' => ['type' => 'select', 'options' => ['solid', 'stroke'], 'label' => 'ظاهرِ دکمه', 'hint' => 'توپر (solid) یا خط‌دار (stroke).'],
+            'tone' => ['type' => 'select', 'options' => [
+                ['value' => 'solid', 'label' => 'توپر'],
+                ['value' => 'stroke', 'label' => 'خط‌دار'],
+            ], 'label' => 'ظاهرِ دکمه', 'hint' => 'توپر (solid) یا خط‌دار (stroke).'],
         ],
         'callout' => [
             'lead' => ['type' => 'text', 'label' => 'بخشِ برجسته‌ی جمله', 'hint' => 'قسمتِ اولِ جمله، که با رنگِ متفاوت نمایش داده می‌شود.'],
@@ -261,8 +265,14 @@ final class PageBlockSchema
                     // `PdCardGrid.jsx:19` آن را روی `<section>` می‌گذارد.
                     'id' => ['type' => 'text', 'max' => 190, 'label' => 'شناسه‌ی لنگر (anchor)', 'hint' => 'برای لینک‌هایی مثلِ «/podium#services» که با کلیک به همین بخش اسکرول می‌کنند. تغییرِ این مقدار هر لینکی را که به مقدارِ قبلی اشاره دارد می‌شکند.'],
                     'title' => ['type' => 'text', 'required' => true, 'max' => 160, 'label' => 'عنوانِ بخش'],
-                    'tone' => ['type' => 'select', 'options' => ['light', 'dark'], 'required' => true, 'label' => 'تمِ رنگیِ کارت‌ها', 'hint' => 'روشن یا تیره‌بودنِ ظاهرِ کارت‌ها.'],
-                    'flow' => ['type' => 'select', 'options' => ['rtl', 'ltr'], 'required' => true, 'label' => 'جهتِ چیدمانِ ردیف', 'hint' => 'راست‌به‌چپ یا چپ‌به‌راست‌بودنِ چیدمانِ کارت‌ها در ردیف.'],
+                    'tone' => ['type' => 'select', 'options' => [
+                        ['value' => 'light', 'label' => 'روشن'],
+                        ['value' => 'dark', 'label' => 'تیره'],
+                    ], 'required' => true, 'label' => 'تمِ رنگیِ کارت‌ها', 'hint' => 'روشن یا تیره‌بودنِ ظاهرِ کارت‌ها.'],
+                    'flow' => ['type' => 'select', 'options' => [
+                        ['value' => 'rtl', 'label' => 'راست‌به‌چپ'],
+                        ['value' => 'ltr', 'label' => 'چپ‌به‌راست'],
+                    ], 'required' => true, 'label' => 'جهتِ چیدمانِ ردیف', 'hint' => 'راست‌به‌چپ یا چپ‌به‌راست‌بودنِ چیدمانِ کارت‌ها در ردیف.'],
                     'cards' => ['type' => 'list', 'of' => 'card', 'required' => true, 'label' => 'کارت‌ها'],
                 ],
             ],
@@ -674,6 +684,11 @@ final class PageBlockSchema
             );
         }
 
-        return $options;
+        // گزینه‌ها یا فهرستِ رشته‌اند یا فهرستِ `{value,label}` — Rule::in فقط
+        // مقدارِ واقعی (value) را می‌خواهد، نه لیبلِ فارسیِ کنارِ آن.
+        return array_map(
+            static fn ($option) => is_array($option) ? $option['value'] : $option,
+            $options
+        );
     }
 }

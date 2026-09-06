@@ -274,6 +274,89 @@ class PageBlockSchemaTest extends TestCase
         }
     }
 
+    /**
+     * پیش از این، `data.glass` فقط `['nullable', 'array']` بود — بدونِ قاعده‌ی
+     * فرزند، لاراول نمی‌توانست کلیدهای ناشناخته را حذف کند و هر JSONای که
+     * ادمین می‌فرستاد همان‌طور ذخیره می‌شد.
+     */
+    #[Test]
+    public function glass_has_a_declared_child_rule_for_each_known_control(): void
+    {
+        $rules = $this->schema->rulesFor('video'); // ویدیو یک فیلدِ glass دارد
+
+        foreach (['variant', 'fill', 'frost', 'depth', 'lightAngle', 'radius', 'rimSide', 'rimFlat'] as $control) {
+            $this->assertArrayHasKey("data.glass.{$control}", $rules, "«data.glass.{$control}» قاعده ندارد");
+        }
+    }
+
+    #[Test]
+    public function an_unknown_glass_variant_is_rejected_by_rule_in(): void
+    {
+        $rules = $this->schema->rulesFor('video');
+
+        $inRule = null;
+        foreach ($rules['data.glass.variant'] as $rule) {
+            if ($rule instanceof \Illuminate\Validation\Rules\In) {
+                $inRule = $rule;
+            }
+        }
+
+        $this->assertNotNull($inRule, '«data.glass.variant» باید با Rule::in به واریانت‌های مجاز محدود شود');
+        $this->assertSame('in:"clear","light","dark","control"', (string) $inRule);
+    }
+
+    /**
+     * نگهبانِ رگرسیون: `link` سطحِ بالا همیشه `.to` را به ۲۰۴۸ کاراکتر محدود
+     * کرده، اما همین شکل وقتی عضوِ یک SHAPE بود (مثلِ `audience.link` زیرِ
+     * `glass_cards.cards`) هیچ قاعده‌ی فرزندی نداشت — یعنی تنها مسیرِ باقی‌مانده
+     * که ستون هر JSONای را بدونِ توصیفِ اسکیما قبول می‌کرد.
+     */
+    #[Test]
+    public function a_shape_level_link_member_caps_its_to_field_like_the_top_level_link(): void
+    {
+        $rules = $this->schema->rulesFor('glass_cards');
+
+        $this->assertContains('max:2048', $rules['data.cards.*.link.to']);
+        $this->assertContains('max:120', $rules['data.cards.*.link.label']);
+    }
+
+    #[Test]
+    public function the_three_select_fields_serve_persian_labelled_options(): void
+    {
+        $cardGridFields = $this->schema->for('card_grid')['fields'];
+
+        $this->assertSame([
+            ['value' => 'light', 'label' => 'روشن'],
+            ['value' => 'dark', 'label' => 'تیره'],
+        ], $cardGridFields['tone']['options']);
+
+        $this->assertSame([
+            ['value' => 'rtl', 'label' => 'راست‌به‌چپ'],
+            ['value' => 'ltr', 'label' => 'چپ‌به‌راست'],
+        ], $cardGridFields['flow']['options']);
+
+        $this->assertSame([
+            ['value' => 'solid', 'label' => 'توپر'],
+            ['value' => 'stroke', 'label' => 'خط‌دار'],
+        ], PageBlockSchema::SHAPES['action']['tone']['options']);
+    }
+
+    #[Test]
+    public function rule_in_still_validates_bare_values_after_labelling_the_options(): void
+    {
+        $rules = $this->schema->rulesFor('card_grid');
+
+        $inRule = null;
+        foreach ($rules['data.tone'] as $rule) {
+            if ($rule instanceof \Illuminate\Validation\Rules\In) {
+                $inRule = $rule;
+            }
+        }
+
+        $this->assertNotNull($inRule);
+        $this->assertSame('in:"light","dark"', (string) $inRule);
+    }
+
     #[Test]
     public function every_member_of_every_shape_has_a_non_empty_label(): void
     {
