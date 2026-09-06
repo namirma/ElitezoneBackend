@@ -480,6 +480,38 @@ final class PageBlockSchema
         return array_key_exists($type, $this->all());
     }
 
+    /**
+     * هر کلیدی که در هرجای اسکیما — فیلدِ سطحِ بالای یک نوع، یا عضوِ یک
+     * SHAPE — با `type: image` اعلام شده. تنها منبعِ حقیقتِ کلیدهای مدیا
+     * برای `PageBlockResource::resolveMedia()`؛ فهرستِ دستیِ جداگانه دقیقاً
+     * همان واگرایی‌ای است که این متد را لازم کرد (تغییرِ نامِ `poster` به
+     * `posterSrc` بی‌صدا از یک فهرستِ دستیِ جدا عقب افتاد).
+     *
+     * @return list<string>
+     */
+    public function imageKeys(): array
+    {
+        $keys = [];
+
+        foreach ($this->all() as $definition) {
+            foreach ($definition['fields'] as $name => $field) {
+                if ($field['type'] === 'image') {
+                    $keys[] = $name;
+                }
+            }
+        }
+
+        foreach (self::SHAPES as $members) {
+            foreach ($members as $name => $member) {
+                if ($member['type'] === 'image') {
+                    $keys[] = $name;
+                }
+            }
+        }
+
+        return array_values(array_unique($keys));
+    }
+
     /** @return array{label: string, hint: string, fields: array} */
     public function for(string $type): array
     {

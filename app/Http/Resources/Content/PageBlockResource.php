@@ -4,6 +4,7 @@ namespace App\Http\Resources\Content;
 
 use App\Http\Resources\BaseJsonResource;
 use App\Models\PageBlock;
+use App\Services\Content\PageBlockSchema;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -33,20 +34,26 @@ class PageBlockResource extends BaseJsonResource
     /**
      * مسیرهای ذخیره‌شده به URL کامل تبدیل می‌شوند، در هر عمقی.
      *
-     * کلیدهای مدیا با نامشان شناخته می‌شوند (`image`, `poster`) — نه با حدس زدنِ
-     * محتوای رشته. مقداری که از قبل `http` یا `/` است دست نمی‌خورد، تا محتوای
-     * سیدشده که به `/media/...`ِ خودِ سایت اشاره می‌کند سالم بماند.
+     * کلیدهای مدیا با نامشان شناخته می‌شوند — نه با حدس زدنِ محتوای رشته —
+     * ولی فهرستِ این نام‌ها دیگر این‌جا دستی نگه داشته نمی‌شود:
+     * `PageBlockSchema::imageKeys()` هر کلیدی که در اسکیما `type: image`
+     * دارد را برمی‌گرداند. یک فهرستِ دستیِ جدا از اسکیما همان چیزی بود که
+     * تغییرِ نامِ `poster` به `posterSrc` را بی‌صدا از قلم انداخت. مقداری که
+     * از قبل `http` یا `/` است دست نمی‌خورد، تا محتوای سیدشده که به
+     * `/media/...`ِ خودِ سایت اشاره می‌کند سالم بماند.
      */
-    private function resolveMedia(array $data): array
+    private function resolveMedia(array $data, ?array $mediaKeys = null): array
     {
+        $mediaKeys ??= app(PageBlockSchema::class)->imageKeys();
+
         foreach ($data as $key => $value) {
             if (is_array($value)) {
-                $data[$key] = $this->resolveMedia($value);
+                $data[$key] = $this->resolveMedia($value, $mediaKeys);
 
                 continue;
             }
 
-            if (! in_array($key, ['image', 'poster'], true) || ! is_string($value) || $value === '') {
+            if (! in_array($key, $mediaKeys, true) || ! is_string($value) || $value === '') {
                 continue;
             }
 

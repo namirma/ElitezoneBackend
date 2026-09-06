@@ -81,4 +81,37 @@ class PageBlockTest extends TestCase
 
         $this->assertCount(1, $this->getJson('/api/pages/home/blocks')->json('data'));
     }
+
+    /**
+     * نگهبانِ رگرسیون: `posterSrc` (نوعِ `image`) باید مثلِ `image` به URLِ
+     * کاملِ دیسکِ public تبدیل شود. پیش از این، `PageBlockResource` یک
+     * فهرستِ دستیِ `['image', 'poster']` داشت — `posterSrc` هیچ‌وقت با آن
+     * مچ نمی‌شد، پس پوسترِ آپلودی به‌جای URL کامل، همان مسیرِ خامِ ذخیره‌شده
+     * برمی‌گشت (۴۰۴ روی سایت). `videoSrc` (نوعِ `text`) عمداً یک URLِ کامل
+     * است که خودِ ادمین وارد می‌کند، نه یک آپلود — نباید دست بخورد.
+     */
+    #[Test]
+    public function an_uploads_shaped_poster_src_comes_back_as_an_absolute_url(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+
+        PageBlock::create([
+            PageBlock::PAGE => PageBlock::PAGE_HOME,
+            PageBlock::TYPE => 'video',
+            PageBlock::SORT_ORDER => 1,
+            PageBlock::DATA => [
+                'videoSrc' => 'https://cdn.example.com/v.mp4',
+                'posterSrc' => 'page-blocks/uploaded.png',
+            ],
+        ]);
+
+        $data = $this->getJson('/api/pages/home/blocks')->assertOk()->json('data.0.data');
+
+        // خودِ منطقِ resolveMedia مقدارِ حل‌شده را با `http`/`/` می‌شناسد —
+        // دیسکِ فیک بسته به تنظیمِ APP_URL ممکن است URL را نسبی (`/storage/...`)
+        // بدهد، نه لزوماً با هاستِ کامل؛ نکته‌ی تست، تبدیل‌شدنِ مسیرِ خام است.
+        $this->assertNotSame('page-blocks/uploaded.png', $data['posterSrc']);
+        $this->assertStringContainsString('/storage/', $data['posterSrc']);
+        $this->assertSame('https://cdn.example.com/v.mp4', $data['videoSrc']);
+    }
 }
