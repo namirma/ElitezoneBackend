@@ -250,4 +250,53 @@ class PageBlockSchemaTest extends TestCase
             'banner_carousel', 'flip_cards', 'card_row', 'latin_media_text',
         ], $this->schema->types());
     }
+
+    #[Test]
+    public function every_field_of_every_type_has_a_non_empty_label(): void
+    {
+        // بک‌آفیس فرم را از همین آرایه می‌سازد — بدونِ `label` روی هر فیلد،
+        // ادمین به‌جای متنِ فارسی، کلیدِ خامِ فیلد (`headlineLine1`,
+        // `posterSrc`, ...) را کنارِ ورودی می‌بیند. این تست دقیقاً همان شکافی
+        // را می‌گیرد که این تسک برای پرکردنش باز شد.
+        foreach ($this->schema->all() as $type => $definition) {
+            foreach ($definition['fields'] as $fieldName => $field) {
+                $this->assertArrayHasKey(
+                    'label',
+                    $field,
+                    "«{$type}.{$fieldName}» هیچ label ندارد"
+                );
+                $this->assertNotSame(
+                    '',
+                    trim((string) ($field['label'] ?? '')),
+                    "«{$type}.{$fieldName}» label خالی دارد"
+                );
+            }
+        }
+    }
+
+    #[Test]
+    public function every_member_of_every_shape_has_a_non_empty_label(): void
+    {
+        // همان شکاف، برای اعضای فهرست‌های آبجکتی (`SHAPES`) — یک کارتِ
+        // `card_grid` بدونِ لیبل روی `heading`/`note` هم همین مشکل را دارد،
+        // فقط یک لایه پایین‌تر.
+        foreach (PageBlockSchema::SHAPES as $shape => $members) {
+            foreach ($members as $name => $member) {
+                $this->assertIsArray(
+                    $member,
+                    "«{$shape}.{$name}» آرایه نیست — نمی‌تواند label داشته باشد"
+                );
+                $this->assertArrayHasKey(
+                    'label',
+                    $member,
+                    "«{$shape}.{$name}» هیچ label ندارد"
+                );
+                $this->assertNotSame(
+                    '',
+                    trim((string) ($member['label'] ?? '')),
+                    "«{$shape}.{$name}» label خالی دارد"
+                );
+            }
+        }
+    }
 }
