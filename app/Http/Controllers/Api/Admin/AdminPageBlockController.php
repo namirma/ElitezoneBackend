@@ -32,25 +32,19 @@ class AdminPageBlockController extends Controller
     }
 
     /**
-     * `PageBlockSchema::SHAPES` بدونِ لمس‌کردنِ خودِ ثابت، نرمال می‌شود: هر عضوِ
-     * شکل، چه در ثابت رشته باشد (نامِ ویجت) چه آرایه (`select` با `options`)،
-     * این‌جا همیشه آرایه‌ی `{type, options?}` می‌شود — دقیقاً همان قالبی که
-     * فیلدهای سطحِ بالای `types[*].fields` از قبل دارند. بک‌آفیس این‌طور مجبور
-     * نیست حدس بزند کدام حالت را می‌بیند. `SHAPES` عمداً دست‌نخورده می‌ماند:
-     * `PageBlockSchema::listRules()` به شکلِ خامِ آن (رشته یا آرایه) وابسته است
-     * و این نرمال‌سازی فقط برای پاسخِ همین اندپوینت است.
+     * اعضای شکل‌ها همان‌طور که هستند سرو می‌شوند: `{type, label, options?}` —
+     * دقیقاً همان قالبی که فیلدهای سطحِ بالای `types[*].fields` دارند، پس
+     * بک‌آفیس یک ویجت‌سازِ واحد دارد و مجبور نیست حدس بزند کدام قالب را می‌بیند.
      *
-     * @return array<string, array<string, array{type: string, options?: list<string>}>>
+     * تا پیش از افزودنِ لیبل‌ها، عضوِ شکل می‌توانست رشته‌ی خالیِ نامِ ویجت باشد و
+     * این متد آن حالت را هم نرمال می‌کرد. حالا هر عضو ناچار آرایه است (جایی
+     * برای `label` لازم داشت)، پس آن شاخه مرده شد و PHPStan درست گرفتش.
+     *
+     * @return array<string, array<string, array{type: string, label: string, options?: list<string>}>>
      */
     private function normalizedShapes(): array
     {
-        return array_map(
-            static fn (array $shape): array => array_map(
-                static fn (string|array $member): array => is_array($member) ? $member : ['type' => $member],
-                $shape,
-            ),
-            PageBlockSchema::SHAPES,
-        );
+        return PageBlockSchema::SHAPES;
     }
 
     public function index(Request $request): JsonResponse
