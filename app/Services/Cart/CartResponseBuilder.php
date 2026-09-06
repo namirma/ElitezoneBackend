@@ -26,6 +26,11 @@ class CartResponseBuilder
         'items.productVariant.product.images',
         'items.productVariant.variantAttributes.attributeType',
         'items.productVariant.product.orderUnits',
+        // حدود سفارشِ واریانت بر حسب «واحد محدودیت» سنجیده می‌شوند
+        // (`checkVariantAggregateLimits`). بدون این لود، `limit_order_unit` در پاسخ
+        // نیست و ویرایشگرِ سبد نمی‌تواند حداقل/حداکثر را نشان دهد — قبلاً این اعداد در
+        // فرانت هاردکد بودند و این گپ دیده نمی‌شد.
+        'items.productVariant.limitOrderUnit',
         // Prices + their sub-relations must be eager-loaded so CartItemResource →
         // ProductVariantResource can render role-based final_price / role_* fields
         // without N+1 queries and without falling back to the raw DB special_price.
