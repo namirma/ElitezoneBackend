@@ -206,7 +206,12 @@ class SupplierStockController extends Controller
                 function ($attribute, $value, $fail) {
                     $location = FactoryLocation::find($value);
 
-                    if (! $location || (int) $location->factory?->{Factory::SUPPLIER_USER_ID} !== (int) Auth::id()) {
+                    // نه `?->` روی رابطه: larastan روی برنچِ L13 آن را non-nullable
+                    // می‌بیند و nullsafe را «بی‌مورد» خطا می‌گیرد. در عمل می‌تواند null
+                    // باشد (انبارِ یتیم)، پس چکِ صریح می‌ماند — روی هر دو برنچ یکسان.
+                    $owner = $location?->factory;
+
+                    if (! $location || $owner === null || (int) $owner->{Factory::SUPPLIER_USER_ID} !== (int) Auth::id()) {
                         $fail(__('auth.policy.factory_access_denied'));
 
                         return;
