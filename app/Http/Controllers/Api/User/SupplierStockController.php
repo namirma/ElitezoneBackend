@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Api\User;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Supplier\BulkStockRequest;
 use App\Http\Resources\Supplier\FactoryStockResource;
 use App\Models\Factory;
 use App\Models\FactoryLocation;
 use App\Models\FactoryStock;
+use App\Services\Supplier\SupplierOriginGuard;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -85,6 +87,60 @@ class SupplierStockController extends Controller
             new FactoryStockResource($stock->refresh()->load(['productVariant', 'originFactory', 'originFactoryLocation'])),
             __('admin.stocks.saved')
         );
+    }
+
+    /**
+     * POST /profile/supplier/stocks/bulk — قرینه‌ی آپلودِ گروهیِ قیمت.
+     *
+     * همان سه تصمیم: upsert، همه‌یا‌هیچ، و خطا به‌ازای شماره‌ی ردیف.
+     *
+     * ‏`syncVariantRollup()` **یک‌بار به‌ازای هر واریانت** صدا زده می‌شود نه هر
+     * ردیف: رول‌آپ مجموعِ همه‌ی مبدأهای آن واریانت است، پس اجرای دوباره‌اش برای
+     * ردیفِ دومِ همان واریانت فقط همان عدد را دوباره حساب می‌کند.
+     */
+    public function bulkStore(BulkStockRequest $request, SupplierOriginGuard $guard): JsonResponse
+    {
+        $rows = $request->validated('rows');
+
+        $errors = $guard->validate($rows, (int) Auth::id());
+
+        if ($errors !== []) {
+            return error(__('supplier.bulk.rows_rejected'), ['rows' => $errors], 422);
+        }
+
+        $summary = DB::transaction(function () use ($rows) {
+            $created = 0;
+            $updated = 0;
+            $variantIds = [];
+
+            foreach ($rows as $row) {
+                $identity = [
+                    FactoryStock::PRODUCT_VARIANT_ID => $row['product_variant_id'],
+                    FactoryStock::FACTORY_ID => $row['factory_id'],
+                    FactoryStock::FACTORY_LOCATION_ID => $row['factory_location_id'],
+                ];
+
+                $existing = FactoryStock::query()->where($identity)->lockForUpdate()->first();
+
+                if ($existing) {
+                    $existing->update([FactoryStock::QUANTITY => $row['quantity']]);
+                    $updated++;
+                } else {
+                    FactoryStock::create($identity + [FactoryStock::QUANTITY => $row['quantity']]);
+                    $created++;
+                }
+
+                $variantIds[(int) $row['product_variant_id']] = true;
+            }
+
+            foreach (array_keys($variantIds) as $variantId) {
+                FactoryStock::syncVariantRollup($variantId);
+            }
+
+            return ['created' => $created, 'updated' => $updated, 'total' => $created + $updated];
+        });
+
+        return success($summary, __('supplier.bulk.stocks_saved'));
     }
 
     /** فقط مقدار عوض می‌شود — سه‌تاییِ هویت، هویتِ ردیف است. */

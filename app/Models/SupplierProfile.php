@@ -65,6 +65,9 @@ class SupplierProfile extends Model
      * محصولات از فروش خارج می‌شوند. `null` هم یعنی «هنوز اعلام نشده» و
      * همان اثر را دارد.
      */
+    /** دلیلِ ردِ ادمین. عمداً fillable نیست — فقط از مسیرِ ادمین نوشته می‌شود. */
+    const REJECTION_REASON = 'rejection_reason';
+
     const RESERVE_TIME = 'reserve_time';
 
     /** تمدید خودکار برای رزروِ دیرهنگام، به دقیقه (بند ۲.۲). */
@@ -142,6 +145,11 @@ class SupplierProfile extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function documents()
+    {
+        return $this->hasMany(SupplierDocument::class, SupplierDocument::SUPPLIER_PROFILE_ID);
     }
 
     public function activities(): BelongsToMany

@@ -4,83 +4,44 @@ declare(strict_types=1);
 
 namespace App\Services\Product;
 
-use App\Models\Attribute;
 use App\Models\AttributeValue;
 use Illuminate\Http\Request;
 
 /**
- * فیلترِ ویژگی را از درخواست بیرون می‌کشد و همیشه به **idِ مقدار**
- * (`attribute_values.id`) می‌رساند — تنها سطحی که واقعاً تفکیک می‌کند.
+ * فیلترِ ویژگی: `filter_values[]` → idِ مقدار (`attribute_values.id`).
  *
- * دو شکل پذیرفته می‌شود:
+ * تنها سطحی که واقعاً تفکیک می‌کند همین است. `filter_categories[]` روی **گروه**
+ * فیلتر می‌کند («هر واریانتی که اصلاً گرید دارد»)، پس به‌تنهایی تقریباً هیچ‌چیز
+ * را محدود نمی‌کند.
  *
- *   ۱. `filter_values[]=57`            ← **قرارداد رسمی**
- *   ۲. `سایز (قطر)=100&گرید=A3`        ← سازگاری با فرانتِ فعلی
+ * ## لایه‌ی سازگاریِ برچسبی حذف شد — چون هرگز کار نمی‌کرد
  *
- * شکلِ دوم اختراعِ ما نیست: سایدبارِ فعلی همین را می‌فرستد (در URL دیده می‌شود:
- * `?category=2&page=1&سایز+%28قطر%29=3`). بک‌اند پارامترِ ناشناس را نادیده
- * می‌گرفت، پس تیک زدنِ «۳» هیچ‌چیز را محدود نمی‌کرد و کاربر همه‌ی واریانت‌ها را
- * می‌دید — بدون هیچ خطایی که سرنخ بدهد.
+ * قبلاً اینجا شکلِ دومی هم پذیرفته می‌شد: برچسبِ گروه به‌عنوان نامِ پارامتر
+ * (`?سایز (قطر)=100`)، چون سایدبارِ آن‌روزِ فرانت همین را می‌فرستاد. آن کد
+ * نامِ پارامتر را با `attributes.name` تطبیق می‌داد.
  *
- * ⚠️ **این لایه‌ی سازگاری است، نه قراردادِ بلندمدت.** برچسبِ فارسی به‌عنوان
- * نامِ پارامتر یعنی تغییرِ یک عنوان در پنل ادمین، فیلترِ فرانت را می‌شکند.
- * وقتی فرانت به `filter_values[]` مهاجرت کرد، این مسیر می‌تواند برود.
+ * تیمِ فرانت روی کاتالوگِ واقعی اندازه‌گیری کرد و نشان داد **هیچ‌وقت محدود
+ * نمی‌کرده**: در کاتالوگِ واقعی `attributes.name` نامِ ماشینیِ انگلیسی است
+ * (`size`, `grade`) و `display_name` فارسی — و آنچه سایدبار می‌فرستاد
+ * `display_name` بود. تطبیق همیشه شکست می‌خورد و پاسخ، کلِ فهرست بود.
  *
- * محدود و ارزان است: تا وقتی هیچ پارامتری با نامِ یک ویژگیِ واقعی نیامده
- * باشد، **هیچ کوئریِ اضافه‌ای زده نمی‌شود**.
+ * تستِ آن مسیر سبز بود چون داده‌ی سیدرِ نمایشی `name` و `display_name` را یکی
+ * می‌گذارد — یعنی تست روی داده‌ای می‌گذشت که شکلِ داده‌ی واقعی را نداشت.
+ *
+ * مسیر **حذف** شد نه اینکه روی `display_name` هم سوار شود: فرانت به
+ * `filter_values[]` مهاجرت کرده، و مسیری که ادعا می‌کند کار می‌کند ولی نمی‌کند
+ * از نبودنش بدتر است. ضمناً برچسبِ فارسی به‌عنوان نامِ پارامتر یعنی تغییرِ یک
+ * عنوان در پنل ادمین فیلترِ فرانت را می‌شکند.
  */
 class AttributeFilterResolver
 {
     /**
-     * پارامترهایی که هرگز نامِ ویژگی نیستند — تا نامِ تصادفیِ یکسان،
-     * صفحه‌بندی یا مرتب‌سازی را به فیلتر تبدیل نکند.
-     *
-     * @var list<string>
-     */
-    private const RESERVED = [
-        'category', 'search', 'sort', 'page', 'per_page', 'availability',
-        'with_vat', 'debug_prices', 'filter_categories', 'filter_values',
-    ];
-
-    /**
-     * @param  list<int|string>  $explicit  مقدارهای `filter_values[]` که از قبل آمده‌اند
+     * @param  list<int|string>  $explicit  مقدارهای `filter_values[]`
      * @return list<int>
      */
     public function resolve(Request $request, array $explicit = []): array
     {
         $ids = array_map('intval', array_filter($explicit, 'is_numeric'));
-
-        $pairs = $this->labelPairs($request);
-
-        if ($pairs === []) {
-            return array_values(array_unique($ids));
-        }
-
-        // ⚠️ PHP در ساختِ `$_GET` نامِ پارامتر را **مثله می‌کند**: فاصله و نقطه
-        // به `_` تبدیل می‌شوند. پس `سایز (قطر)` به‌صورت `سایز_(قطر)` می‌رسد و
-        // جست‌وجوی مستقیم در `attributes.name` هرگز مطابقت پیدا نمی‌کند.
-        // به‌جای تلاش برای برگرداندنِ نام (که یک‌طرفه است)، نامِ ویژگی‌ها را با
-        // همان قاعده مثله می‌کنیم و از آن سمت نگاشت می‌سازیم.
-        $byMangledName = Attribute::query()
-            ->get([Attribute::ID, Attribute::NAME])
-            ->keyBy(fn (Attribute $a) => $this->mangle((string) $a->{Attribute::NAME}));
-
-        foreach ($pairs as $key => $option) {
-            $attribute = $byMangledName->get($key);
-
-            if ($attribute === null) {
-                continue;
-            }
-
-            $id = AttributeValue::query()
-                ->where(AttributeValue::ATTRIBUTE_ID, $attribute->id)
-                ->where(AttributeValue::VALUE, $option)
-                ->value(AttributeValue::ID);
-
-            if ($id !== null) {
-                $ids[] = (int) $id;
-            }
-        }
 
         return array_values(array_unique($ids));
     }
@@ -110,37 +71,5 @@ class AttributeFilterResolver
             ->map(fn ($rows) => $rows->pluck(AttributeValue::ID)->map('intval')->all())
             ->values()
             ->all();
-    }
-
-    /** همان تبدیلی که PHP سرِ ساختِ `$_GET` روی نامِ پارامتر انجام می‌دهد. */
-    private function mangle(string $name): string
-    {
-        return str_replace([' ', '.'], '_', $name);
-    }
-
-    /**
-     * جفت‌های «نامِ گروه ← گزینه» از query string.
-     *
-     * فقط رشته‌ها؛ آرایه‌ها و پارامترهای رزروشده رد می‌شوند.
-     *
-     * @return array<string, string>
-     */
-    private function labelPairs(Request $request): array
-    {
-        $pairs = [];
-
-        foreach ($request->query() as $key => $value) {
-            if (! is_string($key) || ! is_string($value) || $value === '') {
-                continue;
-            }
-
-            if (in_array($key, self::RESERVED, true)) {
-                continue;
-            }
-
-            $pairs[$key] = $value;
-        }
-
-        return $pairs;
     }
 }

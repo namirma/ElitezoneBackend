@@ -4,6 +4,7 @@ namespace Tests\Feature\Navigation;
 
 use App\Actions\Profile\ProfileNavigationAction;
 use App\Models\Order;
+use App\Services\Cart\CartPaymentLinkService;
 use App\Services\DashboardAlertsService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use PHPUnit\Framework\Attributes\Test;
@@ -56,6 +57,8 @@ class EmittedUrlsMatchSpaRoutesTest extends TestCase
         '#^/profile/professional(/(education|job))?$#',
         '#^/profile/(employers|support|messages|addresses|account_settings|agreements|others|supplier_info)$#',
         '#^/admin(/(suppliers(/\d+)?|orders|tickets(/\d+)?|financial))?$#',
+        // لینکِ پیامکیِ «خرید برای دیگری» (`CartPaymentLinkService::linkFor`).
+        '#^/checkout/pay-for/\d+$#',
     ];
 
     private function assertIsSpaRoute(string $url, string $source): void
@@ -79,6 +82,38 @@ class EmittedUrlsMatchSpaRoutesTest extends TestCase
      * `payment_to_reserve > 0` باشد (بند ۱۱.۱). بدون بیعانه، تایم‌لاین اصلاً
      * لینکِ SPAیی تولید نمی‌کند و تست بی‌صدا هیچ‌چیز را نمی‌سنجد.
      */
+    #[Test]
+    public function the_buy_for_others_sms_link_points_at_a_real_spa_route(): void
+    {
+        // ⚠️ داک‌بلاکِ `CartPaymentLinkService::linkFor()` ادعا می‌کرد همین تست
+        // پوششش می‌دهد — ولی این کلاس جزوِ منابعِ سوئیپ نبود و `SPA_ROUTES` هم
+        // الگویی برای `checkout/pay-for/{id}` نداشت. یعنی لینکی که واقعاً
+        // **پیامک** می‌شد به روتی می‌رفت که وجود نداشت، و ادعای پوشش بی‌صدا
+        // غلط بود.
+        $source = file_get_contents(
+            (new ReflectionClass(CartPaymentLinkService::class))->getFileName()
+        );
+
+        preg_match_all("#'(/[a-z0-9\-/_]*)'#i", $source, $matches);
+
+        $this->assertNotEmpty($matches[1], 'هیچ مسیری در CartPaymentLinkService پیدا نشد — الگو کهنه شده؟');
+
+        $checked = 0;
+
+        foreach ($matches[1] as $path) {
+            // `'/'` تنها آرگومانِ `rtrim` است، نه یک مسیر.
+            if (trim($path, '/') === '') {
+                continue;
+            }
+
+            // بخش‌های پویا با یک شناسه‌ی نمونه پر می‌شوند، مثل بقیه‌ی منابع.
+            $this->assertIsSpaRoute(rtrim($path, '/').'/1', 'CartPaymentLinkService');
+            $checked++;
+        }
+
+        $this->assertGreaterThan(0, $checked, 'هیچ مسیرِ واقعی سنجیده نشد — الگو کهنه شده؟');
+    }
+
     private function cancelledOrderWithDeposit(): Order
     {
         $order = Order::factory()->create([Order::STATUS => Order::STATUS_CANCELLED]);

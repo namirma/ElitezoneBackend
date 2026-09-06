@@ -12,10 +12,13 @@ use App\Http\Requests\Order\UploadOrderReceiptRequest;
 use App\Http\Resources\Order\OrderResource;
 use App\Models\Order;
 use App\Models\SupplierProfile;
+use App\Services\Supplier\SupplierEarningsReport;
 use Exception;
+use Hekmatinasser\Verta\Verta;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -130,6 +133,59 @@ class SupplierOrderController extends Controller
     }
 
     /**
+     * GET /profile/supplier/earnings — گزارشِ درآمد با بازه‌ی زمانی.
+     *
+     * تنها دیدِ مالیِ تأمین‌کننده `dashboard.order_stats` بود که فقط بر اساس
+     * **وضعیت** گروه می‌کرد — هیچ راهی برای «مردادِ امسال چقدر فروختم» یا
+     * «کدام کارخانه‌ام بیشتر آورده» نبود.
+     *
+     * مبنای تاریخ `weighing_completed_at` است نه `created_at`: درآمد وقتی قطعی
+     * می‌شود که باسکول تسویه شود. جزئیاتش در `SupplierEarningsReport`.
+     */
+    public function earnings(Request $request, SupplierEarningsReport $report): JsonResponse
+    {
+        $data = $request->validate([
+            // جلالی، مثل بقیه‌ی ورودی‌های تاریخِ پروژه — `date_format:Y-m-d`
+            // تاریخ‌های معتبرِ جلالی مثل ۱۴۰۲-۰۶-۳۱ را رد می‌کند.
+            'from' => ['nullable', 'string', 'regex:/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/'],
+            'to' => ['nullable', 'string', 'regex:/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/'],
+        ]);
+
+        return success(
+            $report->build(
+                (int) Auth::id(),
+                $this->jalaliToCarbon($data['from'] ?? null)?->startOfDay(),
+                $this->jalaliToCarbon($data['to'] ?? null)?->endOfDay(),
+            ),
+            __('global.received_successfully')
+        );
+    }
+
+    /**
+     * تاریخِ جلالیِ `YYYY-MM-DD` → Carbon میلادی.
+     *
+     * ورودیِ تاریخِ کاربر در کلِ پروژه جلالی است و با regex اعتبارسنجی می‌شود
+     * نه `date_format:Y-m-d` — آن قاعده تاریخ‌های معتبرِ جلالی مثل ۱۴۰۲-۰۶-۳۱
+     * را رد می‌کند (شهریور ۳۱ روز دارد).
+     */
+    private function jalaliToCarbon(?string $value): ?Carbon
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        [$y, $m, $d] = array_map('intval', explode('-', $value));
+
+        // ورودیِ خارج از تقویم (مثلاً ماهِ ۱۳) نباید ۵۰۰ بدهد؛ فیلترِ بی‌اثر
+        // بهتر از خطای سرور است و اعتبارسنجیِ شکلی از قبل انجام شده.
+        try {
+            return Carbon::instance(Verta::createDate($y, $m, $d)->datetime());
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /**
      * سفارشاتی که بدهی معلق سوپلایر روی آن‌هاست (drill-down برای dashboard.pending_debt).
      *
      * معادل خودسرویسِ AdminFinancialController::pendingDebts()، محدود به سفارشاتی
@@ -204,6 +260,39 @@ class SupplierOrderController extends Controller
             $result['order_completed']
                 ? __('shipments.registered_and_settled')
                 : __('shipments.registered')
+        );
+    }
+
+    /**
+     * PATCH /profile/orders/{order}/shipments/{shipment}/weight — اصلاحِ وزن.
+     *
+     * ثبتِ بارنامه عمداً idempotent است (شماره‌ی داده‌شده به راننده نباید باطل
+     * شود)، ولی همان گارد وزنِ اشتباه‌تایپ‌شده را هم قفل می‌کرد و تنها راهِ
+     * اصلاح یک اندپوینتِ ادمین بود — روی عددی که مستقیماً مبلغِ تسویه را
+     * تعیین می‌کند.
+     *
+     * مرزش در `CorrectShipmentWeightAction` است: پیش از تسویه ویرایشِ داده،
+     * پس از آن ۴۰۹ — چون پول روی همان عدد جابه‌جا شده.
+     */
+    public function correctShipmentWeight(
+        \App\Http\Requests\Order\CorrectShipmentWeightRequest $request,
+        Order $order,
+        \App\Models\Shipment $shipment,
+        \App\Actions\Order\CorrectShipmentWeightAction $action,
+    ): JsonResponse {
+        $this->authorize('manageAsSupplier', $order);
+
+        $corrected = $action->execute($order, $shipment, $request->validated());
+
+        activity()
+            ->performedOn($corrected)
+            ->causedBy(Auth::user())
+            ->withProperties(['actual_weight' => $corrected->{\App\Models\Shipment::ACTUAL_WEIGHT}])
+            ->log('supplier.shipment.weight_corrected');
+
+        return success(
+            new \App\Http\Resources\Order\ShipmentResource($corrected),
+            __('shipments.weight_corrected')
         );
     }
 

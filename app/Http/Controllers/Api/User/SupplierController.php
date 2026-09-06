@@ -192,6 +192,9 @@ class SupplierController extends Controller
         if ($supplierProfile->{SupplierProfile::STATUS} === SupplierProfile::STATUS_REJECTED) {
             $supplierProfile->forceFill([
                 SupplierProfile::STATUS => SupplierProfile::STATUS_PENDING,
+                // دلیلِ ردِ قبلی مالِ نسخه‌ی قبلیِ پروفایل است؛ نگه‌داشتنش روی
+                // درخواستِ تازه یعنی ادمین متنی را ببیند که دیگر صدق نمی‌کند.
+                SupplierProfile::REJECTION_REASON => null,
             ])->save();
         }
 

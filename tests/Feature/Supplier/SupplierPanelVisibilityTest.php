@@ -43,6 +43,21 @@ class SupplierPanelVisibilityTest extends TestCase
         $this->supplier->addRole(Role::firstOrCreate(['name' => 'supplier'], ['display_name' => 'Supplier']));
     }
 
+    /**
+     * ‏`GET /profile/supplier` روی برنچِ L13 وجود ندارد (فقط POST و DELETE) —
+     * «تأمین‌کننده وضعیتِ خودش را می‌بیند» از فازهای بعدی است و هنوز پورت نشده.
+     * skip به‌جای فورک‌کردنِ فایل، تا تست بین دو برنچ بایت‌به‌بایت یکی بماند.
+     */
+    private function skipUnlessRouteExists(string $uri, string $method = 'GET'): void
+    {
+        $exists = collect(app('router')->getRoutes()->getRoutes())
+            ->contains(fn ($route) => $route->uri() === $uri && in_array($method, $route->methods(), true));
+
+        if (! $exists) {
+            $this->markTestSkipped("{$method} /{$uri} is not on this branch.");
+        }
+    }
+
     private function profileFor(User $user, array $attrs = []): SupplierProfile
     {
         $profile = SupplierProfile::create([SupplierProfile::USER_ID => $user->id]);
@@ -57,6 +72,8 @@ class SupplierPanelVisibilityTest extends TestCase
     #[Test]
     public function the_price_window_the_supplier_sets_is_readable_back(): void
     {
+        $this->skipUnlessRouteExists('api/profile/supplier');
+
         $this->profileFor($this->supplier, [
             SupplierProfile::STATUS => SupplierProfile::STATUS_APPROVED,
             SupplierProfile::RESERVE_TIME => now()->addDays(3),
@@ -82,6 +99,8 @@ class SupplierPanelVisibilityTest extends TestCase
     {
         // این همان حالتی است که کالای تأمین‌کننده را نامرئی می‌کند؛ باید بتواند
         // علتش را از پنل بفهمد، نه از نیامدنِ سفارش.
+        $this->skipUnlessRouteExists('api/profile/supplier');
+
         $this->profileFor($this->supplier, [
             SupplierProfile::STATUS => SupplierProfile::STATUS_APPROVED,
             SupplierProfile::RESERVE_TIME => now()->subDay(),

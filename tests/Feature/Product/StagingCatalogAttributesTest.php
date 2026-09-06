@@ -174,13 +174,17 @@ class StagingCatalogAttributesTest extends TestCase
     }
 
     #[Test]
-    public function the_label_form_the_sidebar_actually_sends_filters_too(): void
+    public function the_label_form_is_gone_and_no_longer_pretends_to_filter(): void
     {
-        // سایدبارِ فعلی به‌جای `filter_values[]` برچسبِ گروه را به‌عنوان نامِ
-        // پارامتر می‌فرستد — در URL دیده می‌شود:
-        //   ?category=2&page=1&سایز+%28قطر%29=3
-        // بک‌اند این را نادیده می‌گرفت، پس تیک زدنِ یک گزینه هیچ‌چیز را محدود
-        // نمی‌کرد و کاربر همه‌ی واریانت‌ها را می‌دید.
+        // لایه‌ی سازگاریِ برچسبی حذف شد چون **هرگز کار نمی‌کرد**: در کاتالوگِ
+        // واقعی `attributes.name` نامِ ماشینیِ انگلیسی است (`size`, `grade`) و
+        // سایدبار `display_name` فارسی را می‌فرستاد، پس تطبیق همیشه شکست
+        // می‌خورد و کلِ فهرست برمی‌گشت.
+        //
+        // تستِ قبلی سبز بود چون سیدرِ نمایشی `name` و `display_name` را یکی
+        // می‌گذارد — یعنی روی داده‌ای می‌گذشت که شکلِ داده‌ی واقعی را نداشت.
+        // این کیس همان اشتباه را برعکس پین می‌کند: پارامترِ ناشناس باید بی‌اثر
+        // باشد، نه اینکه وانمود کند فیلتر است.
         $product = $this->demoProduct('rebar-rolled');
         $total = $this->variantCount($product);
 
@@ -190,8 +194,7 @@ class StagingCatalogAttributesTest extends TestCase
                 ->json('data.data')
         )->pluck('sku');
 
-        $this->assertNotEmpty($skus, 'فیلترِ برچسبی باید نتیجه بدهد، نه صفر.');
-        $this->assertLessThan($total, $skus->count(), 'و باید واقعاً محدود کند، نه اینکه همه را برگرداند.');
+        $this->assertCount($total, $skus, 'پارامترِ برچسبی نباید فیلتر کند — قراردادش `filter_values[]` است.');
     }
 
     #[Test]

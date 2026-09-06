@@ -177,7 +177,12 @@ class AdminSupplierController extends Controller
         //
         // STATUS عمداً fillable نیست — تغییر وضعیت فقط از همین مسیر ادمین مجاز است.
         DB::transaction(function () use ($profile, $user) {
-            $profile->forceFill([SupplierProfile::STATUS => SupplierProfile::STATUS_APPROVED])->save();
+            $profile->forceFill([
+                SupplierProfile::STATUS => SupplierProfile::STATUS_APPROVED,
+                // دلیلِ ردِ قبلی باید برود، وگرنه پروفایلِ تأییدشده هنوز
+                // متنِ «چرا ردت کردیم» را نشان می‌دهد.
+                SupplierProfile::REJECTION_REASON => null,
+            ])->save();
 
             if (! $user->hasRole('supplier')) {
                 $user->addRole('supplier');
@@ -196,8 +201,22 @@ class AdminSupplierController extends Controller
     /**
      * رد درخواست سوپلایری — وضعیت rejected + جداکردن نقش (اگر متصل بود)
      */
-    public function reject(User $user): JsonResponse
+    public function reject(Request $request, User $user): JsonResponse
     {
+        // ⚠️ ادمین می‌توانست رد کند ولی هیچ‌جا نمی‌توانست بگوید **چرا**.
+        // متقاضی فقط `status: rejected` می‌دید و نمی‌دانست چه چیزی را اصلاح
+        // کند — و حالا که ویرایشِ پروفایل او را به صف برمی‌گرداند، این
+        // نیمه‌کاره‌بودن بدتر هم هست: راهِ بازگشت باز شده و مقصد معلوم نیست.
+        //
+        // `min:10` همان قاعده‌ی لغوِ اجباری است: «دلیل» باید جمله باشد نه یک
+        // کلمه، وگرنه ثبتش عملاً اختیاری می‌شود.
+        $data = $request->validate([
+            'reason' => ['required', 'string', 'min:10', 'max:1000'],
+        ], [
+            'reason.required' => __('admin.suppliers.reject_reason_required'),
+            'reason.min' => __('admin.suppliers.reject_reason_too_short'),
+        ]);
+
         $profile = $user->supplier;
 
         if (! $profile) {
@@ -224,8 +243,11 @@ class AdminSupplierController extends Controller
 
         // قرینه‌ی `approve()` — وضعیت و نقش با هم، وگرنه نقشِ باقی‌مانده روی
         // پروفایلِ ردشده یعنی کسی که رد شده هنوز به پنل دسترسی دارد.
-        DB::transaction(function () use ($profile, $user) {
-            $profile->forceFill([SupplierProfile::STATUS => SupplierProfile::STATUS_REJECTED])->save();
+        DB::transaction(function () use ($profile, $user, $data) {
+            $profile->forceFill([
+                SupplierProfile::STATUS => SupplierProfile::STATUS_REJECTED,
+                SupplierProfile::REJECTION_REASON => $data['reason'],
+            ])->save();
 
             if ($user->hasRole('supplier')) {
                 $user->removeRole('supplier');
@@ -235,7 +257,7 @@ class AdminSupplierController extends Controller
         activity()
             ->performedOn($profile)
             ->causedBy(auth()->user())
-            ->withProperties(['supplier_user_id' => $user->id])
+            ->withProperties(['supplier_user_id' => $user->id, 'reason' => $data['reason']])
             ->log('درخواست سوپلایری رد شد.');
 
         return success(['supplier_status' => SupplierProfile::STATUS_REJECTED], __('admin.suppliers.rejected'));
