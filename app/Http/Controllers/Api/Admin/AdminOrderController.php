@@ -13,8 +13,7 @@ use App\Http\Resources\Order\OrderResource;
 use App\Http\Resources\Order\ShipmentResource;
 use App\Models\Order;
 use App\Models\Shipment;
-// ‏`OrderTimelineService` عمداً نیامد: روی این شاخه وجود ندارد (اندپوینت
-// timeline هنوز پورت نشده) و importِ بی‌مصرف، PHPStan را قرمز می‌کرد.
+use App\Services\Order\OrderTimelineService;
 use Exception;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -43,6 +42,17 @@ class AdminOrderController extends Controller
         });
 
         return success($history, __('admin.order_history_received'));
+    }
+
+    /**
+     * روایتِ کاملِ سفارش — ادغامِ چرخهٔ عمر، گذارهای وضعیت، حرکت‌های پول و اسناد.
+     *
+     * مکملِ `history()` است نه جایگزینش: آن لاگِ spatie را می‌دهد (چه فیلدی عوض شد)،
+     * این پنج منبع را کنار هم می‌چیند و فاصلهٔ زمانیِ بینشان را هم نشان می‌دهد.
+     */
+    public function timeline(Order $order, OrderTimelineService $timeline): JsonResponse
+    {
+        return success($timeline->build($order), __('admin.order_timeline_received'));
     }
 
     public function index(OrderFilterRequest $request): JsonResponse

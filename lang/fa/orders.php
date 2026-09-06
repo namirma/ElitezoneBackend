@@ -1,5 +1,6 @@
 <?php
 
+use App\Constants\FinancialCodes;
 use App\Models\Order;
 
 /*
@@ -101,6 +102,34 @@ return [
     'survey_submitted_successfully' => 'نظرسنجی شما با موفقیت ثبت شد.',
 
     /*
+    | نامِ خوانای اسنادِ مالی. کدها در App\Constants\FinancialCodes تعریف
+    | شده‌اند و در ستون `invoices.document_code` ذخیره می‌شوند؛ «سند LO» به‌تنهایی
+    | برای کسی که سندِ طراحی را ندیده معنایی ندارد.
+    */
+    'document_codes' => [
+        FinancialCodes::DOC_PRE_INVOICE => 'پیش‌فاکتور خریدار',
+        FinancialCodes::DOC_RECEIPT_OWNER => 'رسید پرداخت خریدار',
+        FinancialCodes::DOC_REPORT_SUPPLIER => 'گزارش پرداخت برای تأمین‌کننده',
+        FinancialCodes::DOC_LOADING_ORDER => 'دستور بارگیری',
+        FinancialCodes::DOC_ELITE_YAR_REPORT => 'گزارش پرداخت به الیت یار',
+        FinancialCodes::DOC_RESERVE_RECEIPT => 'رسید پرداخت رزرو',
+        FinancialCodes::DOC_RESERVE_REPORT => 'گزارش رزرو برای تأمین‌کننده',
+        FinancialCodes::DOC_FINAL_RECEIPT_OWNER => 'رسید تکمیل پرداخت خریدار',
+        FinancialCodes::DOC_FINAL_REPORT_SUPPLIER => 'گزارش تکمیل پرداخت برای تأمین‌کننده',
+        FinancialCodes::DOC_REFUND_RECEIPT => 'رسید بازگشت مبلغ رزرو',
+        FinancialCodes::DOC_CANCEL_REPORT => 'گزارش لغو رزرو',
+        FinancialCodes::DOC_BILL_OF_LADING => 'بارنامه / مجوز خروج',
+        FinancialCodes::DOC_MODIFIED_INVOICE_OWNER => 'فاکتور اصلاح‌شده خریدار (وزن بارنامه)',
+        FinancialCodes::DOC_MODIFIED_INVOICE_SUPPLIER => 'فاکتور اصلاح‌شده تأمین‌کننده (وزن بارنامه)',
+        FinancialCodes::DOC_TAX_INVOICE_SUPPLIER => 'فاکتور مودیان: تأمین‌کننده ← سازه',
+        FinancialCodes::DOC_TAX_INVOICE_BUYER => 'فاکتور مودیان: سازه ← خریدار',
+        FinancialCodes::DOC_TAX_INVOICE_ELITE_YAR => 'فاکتور مودیان: الیت یار ← سازه',
+        FinancialCodes::DOC_SURVEY => 'نظرسنجی خریدار',
+        FinancialCodes::DOC_SURVEY_ELITE_YAR => 'نظرسنجی الیت یار',
+    ],
+
+    /*
+
     | ⚠️ این آرایه هنوز سه واژگان را با هم نگه می‌دارد (وضعیت سفارش + وضعیت
     | پرداخت + وضعیت پرداخت سهم) و چون `pending`/`paid` در بیش از یک خانواده
     | تکرار می‌شوند، ردیف‌های بعدی روی قبلی‌ها می‌افتند. شاخهٔ L10 این را به سه
@@ -115,6 +144,22 @@ return [
     | آرایه می‌خواند، پس روی `pending` باید ردیفِ پرداخت برنده شود. با `+` طرفِ
     | چپ برنده می‌شد و «در انتظار پرداخت» بی‌صدا به «در انتظار تایید» تغییر می‌کرد.
     */
+    /*
+    | برچسبِ وضعیتِ *سفارش* — فقط و فقط وضعیت‌های چرخهٔ سفارش.
+    |
+    | جدا از آرایهٔ `status` پایین است، چون آن یکی هم‌زمان وضعیتِ سفارش، وضعیتِ
+    | پرداخت و وضعیتِ پرداختِ سهم را در یک فضای نام نگه می‌دارد و این سه کلیدهای
+    | مشترک دارند (`pending`، `paid`، `failed`). چون در آرایهٔ PHP کلیدِ بعدی روی
+    | قبلی می‌نشیند، `orders.status.pending` عملاً «در انتظار پرداخت سهم» می‌شود
+    | نه «در انتظار تایید». هر جا فقط وضعیتِ سفارش لازم است باید از این آرایه
+    | خوانده شود — `OrderTimelineService` همین کار را می‌کند.
+    |
+    | همان `$orderStatusLabels` است، نه یک کپیِ دوم: شاخهٔ L10 اینجا هشت وضعیتِ
+    | خودش را دوباره فهرست می‌کند و بعضی از آن‌ها (`preparing`،
+    | `weighbridge_done`، `reserved_extended`) روی این شاخه اصلاً وجود ندارند.
+    */
+    'order_status' => $orderStatusLabels,
+
     'status' => array_merge($orderStatusLabels, [
         Order::PAYMENT_PENDING => 'در انتظار پرداخت',
         Order::PAYMENT_PAID => 'پرداخت شده',
