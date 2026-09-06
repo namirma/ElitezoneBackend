@@ -6,6 +6,7 @@ namespace Tests\Feature\Admin;
 
 use App\Constants\FinancialCodes;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
@@ -57,6 +58,19 @@ class AdminFinancialReportsTest extends TestCase
         if ($snapshot !== []) {
             $order->forceFill($snapshot)->save();
         }
+
+        // ⚠️ سفارش باید **حداقل یک ردیف** داشته باشد.
+        //
+        // این فیکسچر قبلاً سفارشِ بی‌ردیف می‌ساخت، و چون لاراول رابطهٔ تودرتو را
+        // وقتی رابطهٔ والد خالی است اصلاً حل نمی‌کند، یک eager-loadِ غلط مثل
+        // `items.factory` (که روی `OrderItem` وجود ندارد — نامش `originFactory`
+        // است) هرگز اجرا نمی‌شد. تست سبز می‌ماند و اندپوینت ۲۰۰ می‌داد، تا اولین
+        // سفارشِ واقعی که شرطِ فیلتر را پاس کند و ۵۰۰ بگیرد. تیم فرانت همین را
+        // روی dev بازتولید کرد.
+        OrderItem::factory()->create([
+            OrderItem::ORDER_ID => $order->id,
+            OrderItem::SUPPLIER_USER_ID => User::factory()->create()->id,
+        ]);
 
         return $order->fresh();
     }

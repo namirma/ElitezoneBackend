@@ -4,11 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Http\Resources\Content\ArticleResource;
 use App\Http\Resources\Content\BannerResource;
+use App\Http\Resources\Content\FaqCategoryResource;
 use App\Http\Resources\Content\FaqResource;
+use App\Http\Resources\Content\MenuItemResource;
 use App\Http\Resources\Content\PageResource;
 use App\Models\Article;
 use App\Models\Banner;
 use App\Models\Faq;
+use App\Models\FaqCategory;
+use App\Models\MenuItem;
 use App\Models\Page;
 use App\Models\Setting;
 use Illuminate\Http\JsonResponse;
@@ -94,6 +98,66 @@ class ContentController extends Controller
         }
 
         return success(FaqResource::collection($faqs), __('content.faq_received'));
+    }
+
+    /**
+     * GET /faq-categories — دسته‌ها به‌همراه سوالاتشان (درختی).
+     *
+     * کشوی پشتیبانیِ سایت اصلی دقیقاً همین شکل را می‌خواهد: منوی دسته‌ها با
+     * عنوان/زیرعنوان، و با کلیک روی هر دسته، سوالاتش. یک درخواست به‌جای N+1.
+     * فقط دسته‌های فعال و فقط سوالات فعال — و ترتیب هر دو از `sort_order` پنل.
+     */
+    public function faqCategories(): JsonResponse
+    {
+        $categories = Cache::remember(FaqCategory::CACHE_KEY, 3600, fn () => FaqCategory::query()
+            ->where(FaqCategory::IS_ACTIVE, true)
+            ->with(['faqs' => fn ($q) => $q
+                ->where(Faq::IS_ACTIVE, true)
+                ->orderBy(Faq::SORT_ORDER)
+                ->orderBy(Faq::ID),
+            ])
+            ->orderBy(FaqCategory::SORT_ORDER)
+            ->orderBy(FaqCategory::ID)
+            ->get());
+
+        return success(FaqCategoryResource::collection($categories), __('content.faq_received'));
+    }
+
+    /**
+     * GET /menu?location=header|footer — درختِ منوی سایت.
+     *
+     * `header` = مگامنوی نوار بالا، `footer` = ستون‌های لینکِ پایین صفحه.
+     * تا سه سطح eager-load می‌شود (اصلی → سرستون → گزینه) و فقط شاخه‌های فعال.
+     * آیتمی که `url` ندارد یک «عنوانِ بدون لینک» است، نه لینکِ مرده.
+     */
+    public function menu(Request $request): JsonResponse
+    {
+        $location = (string) $request->string('location', MenuItem::LOCATION_HEADER);
+        if (! in_array($location, MenuItem::LOCATIONS, true)) {
+            $location = MenuItem::LOCATION_HEADER;
+        }
+
+        $activeOrdered = fn ($q) => $q
+            ->where(MenuItem::IS_ACTIVE, true)
+            ->orderBy(MenuItem::SORT_ORDER)
+            ->orderBy(MenuItem::ID);
+
+        $tree = Cache::remember(
+            MenuItem::cacheKeyFor($location),
+            3600,
+            fn () => MenuItem::query()
+                ->where(MenuItem::LOCATION, $location)
+                ->whereNull(MenuItem::PARENT_ID)
+                ->where(MenuItem::IS_ACTIVE, true)
+                ->with(['children' => fn ($q) => $activeOrdered($q)
+                    ->with(['children' => $activeOrdered]),
+                ])
+                ->orderBy(MenuItem::SORT_ORDER)
+                ->orderBy(MenuItem::ID)
+                ->get()
+        );
+
+        return success(MenuItemResource::collection($tree), __('content.menu_received'));
     }
 
     // GET /pages/{slug}

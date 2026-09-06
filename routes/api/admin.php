@@ -15,10 +15,12 @@ use App\Http\Controllers\Api\Admin\AdminEduixController;
 use App\Http\Controllers\Api\Admin\AdminFactoryController;
 use App\Http\Controllers\Api\Admin\AdminFactoryLocationController;
 use App\Http\Controllers\Api\Admin\AdminFactoryStockController;
+use App\Http\Controllers\Api\Admin\AdminFaqCategoryController;
 use App\Http\Controllers\Api\Admin\AdminFaqController;
 use App\Http\Controllers\Api\Admin\AdminFinancialController;
 use App\Http\Controllers\Api\Admin\AdminJobExperienceController;
 use App\Http\Controllers\Api\Admin\AdminManagerController;
+use App\Http\Controllers\Api\Admin\AdminMenuItemController;
 use App\Http\Controllers\Api\Admin\AdminNotificationController;
 use App\Http\Controllers\Api\Admin\AdminOrderController;
 use App\Http\Controllers\Api\Admin\AdminPageController;
@@ -480,6 +482,28 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
         Route::post('/{faq}/toggle', 'toggle');
         Route::post('/{id}/restore', 'restore')->whereNumber('id');
         Route::delete('/{faq}', 'destroy');
+    });
+
+    // FAQ categories — دسته‌بندی سوالات (منوی کشوی پشتیبانیِ سایت اصلی)
+    Route::controller(AdminFaqCategoryController::class)->prefix('faq-categories')->middleware('admin.permission:manage-content')->group(function () {
+        Route::get('/', 'index');
+        Route::get('/{faqCategory}', 'show');
+        Route::post('/', 'store');
+        Route::put('/{faqCategory}', 'update');
+        Route::post('/{faqCategory}/toggle', 'toggle');
+        Route::post('/{id}/restore', 'restore')->whereNumber('id');
+        Route::delete('/{faqCategory}', 'destroy');
+    });
+
+    // Menu items — مگامنوی نوار بالای سایت اصلی
+    Route::controller(AdminMenuItemController::class)->prefix('menu-items')->middleware('admin.permission:manage-content')->group(function () {
+        Route::get('/', 'index');
+        Route::get('/{menuItem}', 'show');
+        Route::post('/', 'store');
+        Route::put('/{menuItem}', 'update');
+        Route::post('/{menuItem}/toggle', 'toggle');
+        Route::post('/{id}/restore', 'restore')->whereNumber('id');
+        Route::delete('/{menuItem}', 'destroy');
     });
 
     // Settings — تنظیمات key-value سایت

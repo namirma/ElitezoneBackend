@@ -18,6 +18,7 @@ class UpdateFaqRequest extends FormRequest
     public function rules(): array
     {
         return [
+            Faq::FAQ_CATEGORY_ID => ['nullable', 'integer', 'exists:faq_categories,id'],
             Faq::QUESTION => ['sometimes', 'required', 'string', 'max:500'],
             Faq::ANSWER => ['sometimes', 'required', 'string'],
             Faq::CATEGORY => ['nullable', 'string', 'max:100'],

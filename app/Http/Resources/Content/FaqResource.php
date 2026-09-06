@@ -18,6 +18,7 @@ class FaqResource extends BaseJsonResource
     {
         return [
             Faq::ID => $this->id,
+            Faq::FAQ_CATEGORY_ID => $this->faq_category_id,
             Faq::QUESTION => $this->question,
             Faq::ANSWER => $this->answer,
             Faq::CATEGORY => $this->category,

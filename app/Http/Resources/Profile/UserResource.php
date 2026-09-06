@@ -61,7 +61,7 @@ class UserResource extends BaseJsonResource
             // relation را لود می‌کند (متن کامل). برای کاربر عادی هیچ‌کدام ظاهر
             // نمی‌شود، چون نه eager-load می‌شوند نه withCount.
             'notes_count' => $this->when(
-                $viewerIsAdmin && $this->notes_count !== null,
+                $viewerIsAdmin && isset($this->resource->notes_count),
                 fn () => (int) $this->notes_count
             ),
             'notes' => $this->when(
