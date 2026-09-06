@@ -2806,8 +2806,15 @@ and the whole settlement. Now:
 
 ### The API contract is a CI gate, and it pushes itself to the team
 
-Two jobs in `.github/workflows/ci.yml` replace the hand-written frontend handoff docs
-that kept going stale.
+On L10, two jobs in `.github/workflows/ci.yml` replace the hand-written frontend handoff
+docs that kept going stale.
+
+> ⚠️ **On this branch there is no `notify` job — only `tests` and `contract`.** It was
+> deliberately not ported, and `ci.yml` says why at the point where it would have gone:
+> the front end integrates against the **L10** contract only, and posting two contracts
+> into one chat group would leave the team unsure which is authoritative. The drift gate
+> below is still needed here and is present. The `notify` section further down describes
+> L10's job — read it as background, not as something you can configure on this branch.
 
 **`contract` — the drift gate.** Runs `php artisan scramble:export` and byte-compares
 the result against the committed `api.json`. If they differ the build fails: the
@@ -2827,7 +2834,7 @@ changelog into the job summary and an artifact.
 > labelled every push a breaking change — an alert that always fires gets muted.
 > `--format json` returns `[]` when empty, which is unambiguous.
 
-**`notify` — push, not pull.** Posts branch, commit, test result and the contract
+**`notify` — push, not pull (L10 only; see the note above).** Posts branch, commit, test result and the contract
 changelog to the team chat group. Runs `if: always()` on purpose — a failed build is
 exactly when the notification matters most.
 
