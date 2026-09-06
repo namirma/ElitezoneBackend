@@ -58,6 +58,38 @@ class AdminPageBlockTest extends TestCase
         ])->assertStatus(422)->assertJsonValidationErrors('type');
     }
 
+    /**
+     * نگهبانِ رگرسیون: `(string) $this->input('type')` روی یک آرایه هشدارِ PHP
+     * می‌دهد که هندلرِ لاراول به استثنا تبدیلش می‌کند — ۵۰۰ به‌جای ۴۲۲ برای یک
+     * ورودیِ بدشکل که باید فقط رد شود.
+     */
+    #[Test]
+    public function a_non_string_type_on_store_is_a_422_not_a_500(): void
+    {
+        Sanctum::actingAs($this->admin);
+
+        $this->postJson('/api/admin/page-blocks', [
+            'page' => 'home', 'type' => [], 'data' => [],
+        ])->assertStatus(422)->assertJsonValidationErrors('type');
+    }
+
+    #[Test]
+    public function a_non_string_type_on_update_is_a_422_not_a_500(): void
+    {
+        Sanctum::actingAs($this->admin);
+
+        $block = PageBlock::create([
+            PageBlock::PAGE => PageBlock::PAGE_HOME,
+            PageBlock::TYPE => 'story_card',
+            PageBlock::SORT_ORDER => 1,
+            PageBlock::DATA => ['image' => 'blocks/a.webp', 'alt' => 'الف', 'title' => 'عنوان'],
+        ]);
+
+        $this->putJson("/api/admin/page-blocks/{$block->id}", [
+            'type' => [],
+        ])->assertStatus(422)->assertJsonValidationErrors('type');
+    }
+
     #[Test]
     public function a_required_field_from_the_schema_is_enforced(): void
     {
@@ -177,6 +209,108 @@ class AdminPageBlockTest extends TestCase
         $this->assertSame('عنوانِ جدید', $block->fresh()->{PageBlock::DATA}['title']);
     }
 
+    /**
+     * نگهبانِ رگرسیون: `data` روی این ریکوئست «sometimes» است، اما قواعدِ
+     * ادغام‌شده از اسکیما implicit-required بودند — یعنی حذف‌کردنِ `data` از
+     * بدنه هنوز روی `data.title` شکست می‌خورد. یک آپدیتِ جزئی که فقط
+     * `sort_order` را عوض می‌کند باید موفق شود و `data` را دست‌نخورده بگذارد.
+     */
+    #[Test]
+    public function omitting_data_on_update_leaves_it_untouched_and_still_succeeds(): void
+    {
+        Sanctum::actingAs($this->admin);
+
+        $block = PageBlock::create([
+            PageBlock::PAGE => PageBlock::PAGE_HOME,
+            PageBlock::TYPE => 'story_card',
+            PageBlock::SORT_ORDER => 1,
+            PageBlock::DATA => ['image' => 'blocks/a.webp', 'alt' => 'الف', 'title' => 'عنوان'],
+        ]);
+
+        $this->putJson("/api/admin/page-blocks/{$block->id}", [
+            'sort_order' => 3,
+        ])->assertOk();
+
+        $fresh = $block->fresh();
+        $this->assertSame(3, $fresh->{PageBlock::SORT_ORDER});
+        $this->assertSame('عنوان', $fresh->{PageBlock::DATA}['title']);
+    }
+
+    #[Test]
+    public function sending_data_incomplete_on_update_still_422s(): void
+    {
+        Sanctum::actingAs($this->admin);
+
+        $block = PageBlock::create([
+            PageBlock::PAGE => PageBlock::PAGE_HOME,
+            PageBlock::TYPE => 'story_card',
+            PageBlock::SORT_ORDER => 1,
+            PageBlock::DATA => ['image' => 'blocks/a.webp', 'alt' => 'الف', 'title' => 'عنوان'],
+        ]);
+
+        $this->putJson("/api/admin/page-blocks/{$block->id}", [
+            'data' => ['image' => 'blocks/a.webp'],
+        ])->assertStatus(422)->assertJsonValidationErrors('data.alt');
+    }
+
+    /**
+     * نگهبانِ رگرسیون: پیش از این `data.glass` بدونِ قاعده‌ی فرزند بود، پس
+     * لاراول نمی‌توانست کلیدِ ناشناخته را از آرایه حذف کند و هر JSONای که
+     * ادمین می‌فرستاد همان‌طور ذخیره می‌شد.
+     */
+    #[Test]
+    public function an_unknown_glass_key_is_stripped_from_what_gets_stored(): void
+    {
+        Sanctum::actingAs($this->admin);
+
+        $this->postJson('/api/admin/page-blocks', [
+            'page' => 'home', 'type' => 'video',
+            'data' => [
+                'videoSrc' => 'https://cdn.example.com/v.mp4',
+                'glass' => ['variant' => 'clear', 'evil' => '<script>alert(1)</script>'],
+            ],
+        ])->assertCreated();
+
+        $stored = PageBlock::latest('id')->first()->{PageBlock::DATA};
+        $this->assertSame('clear', $stored['glass']['variant']);
+        $this->assertArrayNotHasKey('evil', $stored['glass']);
+    }
+
+    #[Test]
+    public function an_unknown_glass_variant_is_refused(): void
+    {
+        Sanctum::actingAs($this->admin);
+
+        $this->postJson('/api/admin/page-blocks', [
+            'page' => 'home', 'type' => 'video',
+            'data' => [
+                'videoSrc' => 'https://cdn.example.com/v.mp4',
+                'glass' => ['variant' => 'not-a-real-variant'],
+            ],
+        ])->assertStatus(422)->assertJsonValidationErrors('data.glass.variant');
+    }
+
+    /**
+     * نگهبانِ رگرسیون: `link` سطحِ بالا همیشه `.to` را به ۲۰۴۸ کاراکتر محدود
+     * کرده؛ همین شکل وقتی عضوِ یک SHAPE بود (این‌جا `audience.link` زیرِ
+     * `glass_cards.cards`) هیچ سقفی نداشت.
+     */
+    #[Test]
+    public function a_shape_level_link_too_long_is_refused(): void
+    {
+        Sanctum::actingAs($this->admin);
+
+        $this->postJson('/api/admin/page-blocks', [
+            'page' => 'home', 'type' => 'glass_cards',
+            'data' => [
+                'cards' => [[
+                    'title' => 'ت', 'sub' => 'ز', 'body' => 'ب', 'cta' => 'ک',
+                    'link' => ['to' => str_repeat('a', 2049), 'label' => 'x'],
+                ]],
+            ],
+        ])->assertStatus(422)->assertJsonValidationErrors('data.cards.0.link.to');
+    }
+
     #[Test]
     public function updating_with_an_unknown_type_in_the_body_is_refused(): void
     {
@@ -210,6 +344,25 @@ class AdminPageBlockTest extends TestCase
         $this->assertSame(2, $a->fresh()->{PageBlock::SORT_ORDER});
         $this->assertSame(1, $b->fresh()->{PageBlock::SORT_ORDER});
         $this->assertSame(9, $untouched->fresh()->{PageBlock::SORT_ORDER});
+    }
+
+    /**
+     * نگهبانِ رگرسیون: `exists:page_blocks,id` یک کوئریِ خامِ دیتابیس است و
+     * اسکوپِ SoftDeletes مدل را نمی‌بیند، پس ردیفِ حذف‌شده هم اعتبارسنجی را رد
+     * می‌کرد — و بعد `whereKey()->update()` (که همان اسکوپ را *دارد*) بی‌صدا
+     * هیچ ردیفی را عوض نمی‌کرد: یک ۲۰۰ که کاری نکرده.
+     */
+    #[Test]
+    public function reorder_rejects_a_soft_deleted_id_instead_of_silently_doing_nothing(): void
+    {
+        Sanctum::actingAs($this->admin);
+
+        $a = PageBlock::create([PageBlock::PAGE => 'home', PageBlock::TYPE => 'faq', PageBlock::SORT_ORDER => 1, PageBlock::DATA => []]);
+        $a->delete();
+
+        $this->postJson('/api/admin/page-blocks/reorder', [
+            'items' => [['id' => $a->id, 'sort_order' => 5]],
+        ])->assertStatus(422)->assertJsonValidationErrors('items.0.id');
     }
 
     /**

@@ -544,7 +544,7 @@ final class PageBlockSchema
                     $key.'.label' => ['nullable', 'string', 'max:120'],
                     $key.'.to' => ['nullable', 'string', 'max:2048'],
                 ],
-                'glass' => $rules[$key] = [$required, 'array'],
+                'glass' => $rules += $this->glassRules($key, $required),
                 'number' => $rules[$key] = [$required, 'numeric'],
                 'boolean' => $rules[$key] = [$required, 'boolean'],
                 'select' => $rules[$key] = [$required, 'string', Rule::in($this->selectOptions($field, "{$type}.{$name}"))],
@@ -609,9 +609,53 @@ final class PageBlockSchema
                 continue;
             }
 
-            $rules[$memberKey] = $member['type'] === 'link'
-                ? ['nullable', 'array']
-                : ['nullable', 'string', 'max:5000'];
+            if ($member['type'] === 'link') {
+                // همان دو قاعده‌ی سطحِ بالای `link` (بالای همین فایل) —
+                // بدونِ آن‌ها `.to` هیچ سقفی نداشت، برخلافِ `link` سطحِ بالا
+                // که همیشه به ۲۰۴۸ محدود بوده.
+                $rules[$memberKey] = ['nullable', 'array'];
+                $rules[$memberKey.'.label'] = ['nullable', 'string', 'max:120'];
+                $rules[$memberKey.'.to'] = ['nullable', 'string', 'max:2048'];
+
+                continue;
+            }
+
+            $rules[$memberKey] = ['nullable', 'string', 'max:5000'];
+        }
+
+        return $rules;
+    }
+
+    /**
+     * کلیدهای مجازِ آبجکتِ `glass` — همان‌هایی که ادمین در ویرایشگرِ شیشه‌ی
+     * بک‌آفیس می‌بیند (`variant` + هفت کنترل) و سایت به متغیرِ CSS ترجمه
+     * می‌کند. تنها منبعِ این فهرست همین‌جاست.
+     */
+    private const GLASS_VARIANTS = ['clear', 'light', 'dark', 'control'];
+
+    private const GLASS_COLOR_FIELDS = ['fill', 'rimSide', 'rimFlat'];
+
+    private const GLASS_NUMBER_FIELDS = ['frost', 'depth', 'lightAngle', 'radius'];
+
+    /**
+     * پیش از این، `data.glass` فقط `['nullable', 'array']` بود — بدونِ قاعده‌ی
+     * فرزند، لاراول نمی‌تواند کلیدِ ناشناخته را از آرایه حذف کند
+     * (`excludeUnvalidatedArrayKeys`)، پس هر JSONای که ادمین می‌فرستاد
+     * دقیقاً همان‌طور ذخیره می‌شد.
+     */
+    private function glassRules(string $key, string $required): array
+    {
+        $rules = [
+            $key => [$required, 'array'],
+            $key.'.variant' => ['nullable', 'string', Rule::in(self::GLASS_VARIANTS)],
+        ];
+
+        foreach (self::GLASS_COLOR_FIELDS as $field) {
+            $rules[$key.'.'.$field] = ['nullable', 'string', 'max:255'];
+        }
+
+        foreach (self::GLASS_NUMBER_FIELDS as $field) {
+            $rules[$key.'.'.$field] = ['nullable', 'numeric'];
         }
 
         return $rules;

@@ -16,7 +16,12 @@ class StorePageBlockRequest extends FormRequest
     public function rules(): array
     {
         $schema = app(PageBlockSchema::class);
-        $type = (string) $this->input('type');
+        // `(string) $this->input('type')` روی یک آرایه (مثلِ `type: []`) هشدارِ
+        // PHP «Array to string conversion» می‌دهد که هندلرِ لاراول به استثنا
+        // تبدیلش می‌کند — یعنی ۵۰۰ به‌جای ۴۲۲. مقدارِ غیررشته‌ای همان‌طور که
+        // هست رد می‌شود تا `Rule::in()` پایین با یک ۴۲۲ معمولی جوابش بدهد.
+        $rawType = $this->input('type');
+        $type = is_string($rawType) ? $rawType : '';
 
         return array_merge([
             'page' => ['required', Rule::in(PageBlock::PAGES)],

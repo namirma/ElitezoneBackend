@@ -12,6 +12,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class AdminPageBlockController extends Controller
 {
@@ -103,7 +104,11 @@ class AdminPageBlockController extends Controller
     {
         $validated = $request->validate([
             'items' => ['required', 'array'],
-            'items.*.id' => ['required', 'integer', 'exists:page_blocks,id'],
+            // `exists` یک کوئریِ خامِ دیتابیس است و اسکوپِ SoftDeletes مدل را
+            // نمی‌بیند، پس بدونِ `withoutTrashed()` ردیفِ حذف‌شده هم قبول
+            // می‌شد — و بعد `whereKey()->update()` پایین (که همان اسکوپ را
+            // *دارد*) بی‌صدا هیچ ردیفی را عوض نمی‌کرد: یک ۲۰۰ که کاری نکرده.
+            'items.*.id' => ['required', 'integer', Rule::exists(PageBlock::TABLE, PageBlock::ID)->withoutTrashed()],
             'items.*.sort_order' => ['required', 'integer', 'min:0'],
         ]);
 
