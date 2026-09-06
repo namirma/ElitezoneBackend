@@ -51,6 +51,7 @@ use App\Http\Controllers\Api\User\WishlistController;
 use App\Http\Controllers\Payment\WalletPaymentController;
 use App\Http\Controllers\ProductController;
 use App\Http\Middleware\EnsureRoleIsSelected;
+use App\Support\OrderDocumentCatalog;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -316,9 +317,17 @@ Route::middleware(['auth:sanctum'])->group(function () {
             });
 
             // Invoice downloads
+            //
+            // فهرست از `OrderDocumentCatalog` می‌آید، نه دستی. نسخهٔ دستیِ قبلی
+            // (`['initial', 'final', 'tax']`) با نقشهٔ مخاطبانِ کنترلر واگرا شده بود:
+            // آن سه اسلاگ همگی buyer-only بودند و هشت سندِ سوپلایر — از جمله Doc K
+            // «بارنامه/مجوز خروج» و Doc C «دستور بارگیری» — اصلاً با روت نمی‌خواندند.
+            // نتیجه: سوپلایر و الیت‌یار هیچ سندی نمی‌توانستند دانلود کنند (۴۰۴/۴۰۳).
+            // مجوز همچنان کارِ نقشهٔ مخاطبان است؛ این قید فقط تعیین می‌کند درخواست به
+            // کنترلر برسد یا نه.
             Route::get('/{order}/invoice/{type}', [OrderInvoiceController::class, 'download'])
                 ->whereNumber('order')
-                ->whereIn('type', ['initial', 'final', 'tax'])
+                ->whereIn('type', OrderDocumentCatalog::downloadableSlugs())
                 ->name('api.user.orders.invoice');
 
             // Survey — پشت فلگ features.order_surveys، پیش‌فرض خاموش
@@ -445,6 +454,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::delete('/employer', [EmployerController::class, 'destroy']);
         Route::prefix('supplier')->group(function () {
             // Open to any authenticated user applying to become a supplier (pre-approval)
+            //
+            // GET عمداً بیرونِ `role.supplier` است: نقش فقط با تأییدِ ادمین وصل می‌شود،
+            // پس متقاضیِ در انتظار و کاربرِ ردشده (که نقشش جدا شده) هم باید بتوانند
+            // وضعیتِ خودشان را بخوانند. کنترلر خودش روی Auth::id() قفل است.
+            Route::get('/', [SupplierController::class, 'show']);
             Route::post('/', [SupplierController::class, 'store']);
             Route::delete('/', [SupplierController::class, 'destroy']);
             Route::get('/activity-categories', [SupplierController::class, 'getCategories']);

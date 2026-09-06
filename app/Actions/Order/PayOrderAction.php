@@ -9,6 +9,19 @@ use App\Models\User;
 use App\Services\Payment\PaymentGatewayFactory;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * ⚠️ داربستِ مسیرِ درگاه — **هیچ فراخوانی‌ای ندارد** و هیچ‌جا رجیستر نشده.
+ *
+ * تا وقتی مجوزِ درگاه نیامده، پرداختِ واقعی از مسیرِ کیف پول انجام می‌شود
+ * (`ProcessFullOrderPaymentAction` → `ProcessPreScalePaymentAction` /
+ * `ProcessReservationCompletionAction`). این کلاس عمداً نگه داشته شده تا وقتی
+ * درگاه وصل شد نقطهٔ شروع داشته باشد.
+ *
+ * تا امروز این **تنها** جایی بود که `OrderPaid` را dispatch می‌کرد، و چون هرگز
+ * اجرا نمی‌شد، رویداد در هیچ مسیرِ زنده‌ای شلیک نمی‌شد و پیامکِ پرداخت برای هیچ‌کس
+ * نمی‌رفت. آن dispatch حالا در هر دو اکشنِ پرداختِ واقعی هست — پس اگر روزی این
+ * مسیر وصل شد، مراقب باشید رویداد **دوبار** شلیک نشود.
+ */
 class PayOrderAction
 {
     public function __construct(

@@ -201,6 +201,9 @@ return [
         'pay_invoice' => 'پرداخت فاکتور',
         'get_receipt' => 'دریافت رسید',
         'download_initial_invoice' => 'دانلود فاکتور اولیه',
+        // سندِ «فاکتور» برای هر طرفِ معامله فرق می‌کند؛ برچسبش هم باید فرق کند.
+        'download_supplier_report' => 'دانلود گزارش تأمین‌کننده',
+        'download_elite_yar_report' => 'دانلود گزارش الیت یار',
         'view_details' => 'مشاهده جزئیات',
         'final_invoice_settlement' => 'فاکتور نهایی (تسویه)',
         'get_final_invoice' => 'دریافت فاکتور نهایی',

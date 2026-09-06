@@ -29,6 +29,24 @@ class OrderPolicy
         if ($order->placer_user_id === $user->id || $order->beneficiary_user_id === $user->id) {
             return Response::allow();
         }
+
+        // ۲. الیت یارِ سفارش — کسی که کمیسیون WEY به او تعلق دارد.
+        //
+        // این شرط جا افتاده بود و در یکی از دو سناریوی معمول کاملاً می‌شکست: وقتی
+        // **کارفرما** سفارش می‌دهد و الیت یار را نام می‌برد، `beneficiary_user_id`
+        // ممنوع است (StoreOrderRequest) و الیت یار نه ثبت‌کننده است نه ذی‌نفع — پس
+        // سفارشی را که روی آن کمیسیون می‌گیرد اصلاً نمی‌توانست ببیند.
+        //
+        // تناقضش هم آشکار بود: `submitEliteYARMoadianInvoice` (سند Q) گاردِ خودش را
+        // مستقیم روی `elite_yar_user_id` دارد، یعنی همین کاربر مجاز است هولدِ
+        // کمیسیونِ خودش را آزاد کند ولی مجاز نبود سفارش یا سندش را ببیند.
+        // getAttribute و نه دسترسی جادویی: larastan بدون فایل‌های ide-helper این
+        // ستون را نمی‌شناسد و level 5 خطا می‌دهد.
+        $eliteYarUserId = $order->getAttribute(Order::ELITE_YAR_USER_ID);
+
+        if ($eliteYarUserId !== null && (int) $eliteYarUserId === (int) $user->id) {
+            return Response::allow();
+        }
         if ($user->hasRole('supplier')) {
             $isSupplier = $order->items()->where('supplier_user_id', $user->id)->exists();
 

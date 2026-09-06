@@ -6,6 +6,7 @@ use App\Actions\Financial\RecordSupplierMoadianInvoiceAction;
 use App\Actions\Order\CorrectShipmentWeightAction;
 use App\Actions\Order\ExtendReserveDeadlineAction;
 use App\Actions\Order\RegisterShipmentAction;
+use App\Enums\Order\OrderStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Order\CorrectShipmentWeightRequest;
 use App\Http\Requests\Order\ExtendReserveDeadlineRequest;
@@ -26,6 +27,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class SupplierOrderController extends Controller
 {
@@ -38,8 +41,14 @@ class SupplierOrderController extends Controller
     {
         $user = Auth::user();
 
+        // وضعیت با فهرستِ واقعی محدود می‌شود: پیش از این هر رشته‌ای پذیرفته می‌شد و
+        // یک تایپو به‌جای ۴۲۲ یک لیستِ خالی برمی‌گرداند — که از دید پنل با «سفارشی
+        // نداری» یکسان است.
         $request->validate([
-            'status' => ['nullable', 'string'],
+            // فهرست از enum می‌آید نه یک آرایهٔ دستیِ تازه: `EnumModelConstantParityTest`
+            // تضمین می‌کند OrderStatus با `Order::STATUS_*` هم‌گام می‌ماند. مقدارِ
+            // اعتبارسنجی‌شده همچنان string است، پس هیچ مقایسه‌ای در کد عوض نمی‌شود.
+            'status' => ['nullable', 'string', Rule::in(array_column(OrderStatus::cases(), 'value'))],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
@@ -72,13 +81,27 @@ class SupplierOrderController extends Controller
 
         $orderStats = Order::query()
             ->whereHas('items', $myItems)
-            ->selectRaw('status, COUNT(*) as count, SUM(final_amount) as total_amount')
+            // `total_amount` عمداً مجموعِ `payment_to_supplier` است، نه `final_amount`.
+            //
+            // `final_amount` رقمِ خریدار است (کالا + کمیسیون + مالیات + کرایه) و
+            // به‌عنوان «درآمدِ من» در داشبوردِ تأمین‌کننده گمراه‌کننده بود — عددی که
+            // هرگز دریافت نمی‌کند. `payment_to_supplier` همان است که به کیف پولش
+            // می‌رود (پس از باسکول با PTSM بازنویسی می‌شود). سفارشِ پرداخت‌نشده هنوز
+            // اسنپ‌شات ندارد، پس `COALESCE` آن را صفر می‌کند نه NULL؛ `order_value`
+            // هم نگه داشته شده تا ارزشِ کلِ سفارش در دسترس بماند، ولی حالا اسمش
+            // دروغ نمی‌گوید.
+            ->selectRaw(
+                'status, COUNT(*) as count,'
+                .' SUM(COALESCE(payment_to_supplier, 0)) as total_amount,'
+                .' SUM(COALESCE(final_amount, 0)) as order_value'
+            )
             ->groupBy('status')
             ->get()
             ->map(fn ($row) => [
                 'status' => $row->status,
                 'count' => (int) $row->count,
                 'total_amount' => (float) $row->total_amount,
+                'order_value' => (float) $row->getAttribute('order_value'),
             ]);
 
         $pendingMoadianCount = Order::query()
@@ -342,14 +365,27 @@ class SupplierOrderController extends Controller
     {
         $this->authorize('manageAsSupplier', $order);
 
+        if ($order->{Order::PAYMENT_STATUS} !== Order::PAYMENT_PAID) {
+            return error(__('orders.cannot_attach_receipt_unpaid'), [], 400);
+        }
+
         // آپلود فایل خارج از تراکنش انجام می‌شود تا قفل DB روی I/O دیسک نگه داشته نشود.
         // Private disk — supplier payment receipts must not be reachable via a public URL.
         $path = $request->file('receipt')->store('supplier_receipts', 'financial');
 
         return DB::transaction(function () use ($order, $path) {
+            /** @var Order $locked */
             $locked = Order::where(Order::ID, $order->id)->lockForUpdate()->first();
 
+            $previous = $locked->{Order::PAYMENT_RECEIPT_REF};
+
             $locked->update([Order::PAYMENT_RECEIPT_REF => $path]);
+
+            // فایلِ جایگزین‌شده پاک می‌شود — ولی فقط بعد از اینکه ردیف با موفقیت
+            // به‌روز شد، وگرنه rollback رسیدی را پاک کرده بود که هنوز مرجعش زنده است.
+            if ($previous && $previous !== $path && Storage::disk('financial')->exists($previous)) {
+                Storage::disk('financial')->delete($previous);
+            }
 
             $locked->loadMissing(Order::resourceRelations());
 

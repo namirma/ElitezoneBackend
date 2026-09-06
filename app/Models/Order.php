@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Builders\OrderBuilder;
 use App\Models\Concerns\HasOrderProgress;
+use App\Support\OrderDocumentCatalog;
 use App\Traits\PersianDate;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -491,6 +492,74 @@ class Order extends Model
     public function payer(): BelongsTo
     {
         return $this->belongsTo(User::class, self::PAYER_USER_ID);
+    }
+
+    /**
+     * این کاربر در این سفارش چه نقش‌هایی دارد — خریدار / تأمین‌کننده / الیت‌یار.
+     *
+     * تنها مرجعِ این سؤال. هم مجوزِ دانلودِ سند (`OrderInvoiceController`) و هم
+     * انتخابِ سندِ دکمهٔ دانلود (`OrderResource`) از همین می‌خوانند، تا «چه کسی
+     * می‌تواند ببیند» و «به چه چیزی لینک می‌دهیم» نتوانند با هم اختلاف پیدا کنند —
+     * دقیقاً همان اختلافی که دکمهٔ دانلودِ سوپلایر را به یک لینکِ ۴۰۳ تبدیل کرده بود.
+     *
+     * یک کاربر می‌تواند هم‌زمان چند نقش داشته باشد (الیت‌یاری که برای خودش می‌خرد).
+     *
+     * @return list<string>
+     */
+    public function partyRolesFor(?int $userId): array
+    {
+        if ($userId === null) {
+            return [];
+        }
+
+        $roles = [];
+
+        if ((int) $this->{self::PLACER_USER_ID} === $userId) {
+            $roles[] = OrderDocumentCatalog::AUDIENCE_BUYER;
+        }
+
+        // ذی‌نفع و الیت‌یار **دو نفرِ متفاوت‌اند** و نباید یک مخاطب حساب شوند.
+        //
+        // این دو ستون قبلاً هر دو به `AUDIENCE_ELITE_YAR` نگاشت می‌شدند. در مسیرِ
+        // «الیت‌یار سفارش می‌دهد و کارفرما را نام می‌برد» — که `StoreOrderRequest`
+        // اجباری‌اش می‌کند — ذی‌نفع همان کارفرما/مشتری است. نتیجه دو طرفه غلط بود:
+        //
+        //   • کارفرما سند D (گزارش پرداخت به الیت‌یار) و سند Q (فاکتور مودیانِ
+        //     شخصیِ الیت‌یار، به مبلغ `payment_to_elite_yar`) را دانلود می‌کرد —
+        //     یعنی سند مالیاتیِ مشاورش به دستِ خودِ مشتری می‌رسید.
+        //   • و روی همهٔ اسناد خریدارِ خودش ۴۰۳ می‌گرفت، از جمله سند P (فاکتور
+        //     مودیانی که *به نامِ او* صادر شده) و سند K (بارنامه).
+        //
+        // هر گاردِ دیگری ذی‌نفع را خریدار می‌داند (`OrderPolicy::view/pay/cancel/
+        // finalizeInvoice` — او حتی می‌تواند پرداخت کند)، پس تنها همین‌جا ناسازگار بود.
+        //
+        // getAttribute و نه دسترسی جادویی: larastan بدون فایل‌های ide-helper (که
+        // gitignore شده‌اند) این ستون‌ها را نمی‌شناسد و level 5 خطا می‌دهد.
+        // مقایسه پس از null-check است تا ستونِ NULL با userId صفر جفت نشود.
+        $beneficiaryId = $this->getAttribute(self::BENEFICIARY_USER_ID);
+        $eliteYarId = $this->getAttribute(self::ELITE_YAR_USER_ID);
+
+        if ($beneficiaryId !== null && (int) $beneficiaryId === $userId) {
+            $roles[] = OrderDocumentCatalog::AUDIENCE_BUYER;
+        }
+
+        if ($eliteYarId !== null && (int) $eliteYarId === $userId) {
+            $roles[] = OrderDocumentCatalog::AUDIENCE_ELITE_YAR;
+        }
+
+        // وقتی آیتم‌ها از قبل eager-load شده‌اند (که OrderResource همیشه می‌کند) در
+        // حافظه چک می‌کنیم؛ وگرنه هر ردیفِ لیستِ سفارش‌ها یک کوئریِ اضافه می‌زد.
+        $isSupplier = $this->relationLoaded('items')
+            ? $this->items->contains(
+                fn (OrderItem $item) => (int) $item->{OrderItem::SUPPLIER_USER_ID} === $userId
+            )
+            : $this->items()->where(OrderItem::SUPPLIER_USER_ID, $userId)->exists();
+
+        if ($isSupplier) {
+            $roles[] = OrderDocumentCatalog::AUDIENCE_SUPPLIER;
+        }
+
+        return $roles;
     }
 
     /**
