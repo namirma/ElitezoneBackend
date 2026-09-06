@@ -74,7 +74,13 @@ class AdminTicketController extends Controller
      */
     public function show(Ticket $ticket): JsonResponse
     {
-        $ticket->load(['user.profile', 'department', 'files', 'replies.user.profile', 'replies.files']);
+        $ticket->load([
+            'user.profile', 'department', 'files',
+            // admin هم لود می‌شود تا TicketReplyResource بتواند «پاسخ پشتیبانی» را از
+            // «پاسخ کاربر» تشخیص دهد (قبلاً relation اصلاً وجود نداشت).
+            'replies.user.profile', 'replies.admin.profile', 'replies.files',
+            'notes.admin.profile',
+        ]);
 
         return success(new TicketResource($ticket), __('global.received_successfully'));
     }
@@ -103,7 +109,13 @@ class AdminTicketController extends Controller
         $this->service->assignTo($ticket, (int) Auth::id());
         $this->service->changeStatus($ticket, Ticket::STATUS_ANSWERED, notify: false);
 
-        $ticket->load(['user.profile', 'department', 'files', 'replies.user.profile', 'replies.files']);
+        $ticket->load([
+            'user.profile', 'department', 'files',
+            // admin هم لود می‌شود تا TicketReplyResource بتواند «پاسخ پشتیبانی» را از
+            // «پاسخ کاربر» تشخیص دهد (قبلاً relation اصلاً وجود نداشت).
+            'replies.user.profile', 'replies.admin.profile', 'replies.files',
+            'notes.admin.profile',
+        ]);
 
         // SMS اطلاع‌رسانی به کاربر تیکت
         $this->notifyTicketUser($ticket, 'ticket_admin_replied');
@@ -148,7 +160,37 @@ class AdminTicketController extends Controller
 
         $this->service->addNote($ticket, (int) Auth::id(), $request->string('note')->toString());
 
-        return success(null, __('ticket.note_added'));
+        // تیکتِ تازه با یادداشت‌ها برگردانده می‌شود تا پنل بتواند بلافاصله لیست
+        // یادداشت‌های داخلی را به‌روز کند (قبلاً null برمی‌گشت و یادداشت هیچ‌جا دیده نمی‌شد).
+        $ticket->load([
+            'user.profile', 'department', 'files',
+            'replies.user.profile', 'replies.admin.profile', 'replies.files',
+            'notes.admin.profile',
+        ]);
+
+        return success(new TicketResource($ticket), __('ticket.note_added'));
+    }
+
+    /**
+     * فهرست کارشناسانِ قابل‌ارجاع (کاربران دارای نقش admin).
+     *
+     * زیر همین گروهِ مجوزِ «manage-tickets» است تا ادمینی که فقط دسترسی تیکت دارد
+     * هم بتواند ارجاع بدهد — بدون نیاز به مجوزِ «manage-users» روی /admin/admins.
+     */
+    public function agents(): JsonResponse
+    {
+        $agents = User::query()
+            ->whereHas('roles', fn ($q) => $q->where('name', 'admin'))
+            ->with('profile')
+            ->orderBy(User::ID)
+            ->get()
+            ->map(fn (User $u) => [
+                'id' => $u->id,
+                'name' => trim(($u->profile->name ?? '').' '.($u->profile->family ?? '')) ?: $u->{User::MOBILE},
+            ])
+            ->values();
+
+        return success($agents, __('global.received_successfully'));
     }
 
     /**

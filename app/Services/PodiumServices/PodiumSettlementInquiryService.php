@@ -2,12 +2,20 @@
 
 namespace App\Services\PodiumServices;
 
+use App\Services\PodiumServices\Concerns\TranslatesPodiumFailures;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class PodiumSettlementInquiryService
 {
+    use TranslatesPodiumFailures;
+
     public function search(array $filters): array
+    {
+        return $this->guardPodiumCall('settlement-inquiry', fn () => $this->runSearch($filters));
+    }
+
+    private function runSearch(array $filters): array
     {
         $url = rtrim(config('podium.base_url'), '/').config('podium.endpoints.do_service_call');
 

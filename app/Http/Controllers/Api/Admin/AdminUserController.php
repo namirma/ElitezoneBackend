@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\UserBackOfficeSearchRequest;
 use App\Http\Requests\Admin\UserSearchRequest;
 use App\Http\Resources\Financial\WalletTransactionResource;
 use App\Http\Resources\Order\OrderResource;
+use App\Http\Resources\Profile\UserNoteResource;
 use App\Http\Resources\Profile\UserResource;
 use App\Models\ContractorProfile;
 use App\Models\EngineerProfile;
@@ -25,7 +26,11 @@ class AdminUserController extends Controller
     public function index(UserSearchRequest $request): JsonResponse
     {
         $users = User::query()
-            ->with(['profile', 'roles'])
+            // type لود می‌شود تا UserResource بتواند «نوع کاربر» (مثلاً مشتری) را برای
+            // کاربرانی که هنوز نقش Laratrust خاصی انتخاب نکرده‌اند نمایش دهد.
+            ->with(['profile', 'roles', User::RELATION_TYPE])
+            // ستون «یادداشت‌ها» در لیست بک‌آفیس فقط به تعداد نیاز دارد، نه متن.
+            ->withCount('notes')
             ->when(
                 $request->filled('role'),
                 fn (Builder $q) => $q->whereHas('roles', fn ($r) => $r->where('name', $request->role))
@@ -49,7 +54,13 @@ class AdminUserController extends Controller
 
     public function show(User $user): JsonResponse
     {
-        $user->load(['engineer', 'employer', 'supplier', 'contractor', 'wallet', 'profile']);
+        $user->load([
+            'engineer', 'employer', 'supplier', 'contractor', 'wallet', 'profile',
+            User::RELATION_ROLES, User::RELATION_TYPE,
+            // یادداشت‌های ادمین (تازه‌ترین اول) — پنل بک‌آفیس آن‌ها را زیر فرم ثبت
+            // یادداشت نمایش می‌دهد؛ قبلاً ثبت می‌شدند ولی هیچ‌جا برنمی‌گشتند.
+            'notes' => fn ($q) => $q->with('admin.profile')->latest(),
+        ])->loadCount('notes');
 
         return success(new UserResource($user));
     }
@@ -116,12 +127,17 @@ class AdminUserController extends Controller
     {
         $validated = $request->validate(['note' => 'required|string|max:1000']);
 
-        $user->notes()->create([
+        $note = $user->notes()->create([
             UserNote::ADMIN_ID => Auth::id(),
             UserNote::NOTE => $validated['note'],
         ]);
 
-        return success(null, __('admin.users.note_added'));
+        // یادداشتِ ساخته‌شده برگردانده می‌شود تا پنل بتواند بدون رفچِ کامل صفحه
+        // آن را به لیست اضافه کند (قبلاً null برمی‌گشت و کاربر فقط توست موفقیت
+        // می‌دید بدون اینکه یادداشتش را جایی ببیند).
+        $note->load('admin.profile');
+
+        return success(new UserNoteResource($note), __('admin.users.note_added'));
     }
 
     public function getUserProfileForBackOffice(UserBackOfficeSearchRequest $request): JsonResponse

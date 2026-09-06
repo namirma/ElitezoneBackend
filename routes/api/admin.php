@@ -232,6 +232,7 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
         Route::get('/', 'index');
         Route::get('/kpis', 'kpis'); // باید پیش از wildcard /{ticket} باشد
         Route::get('/departments', 'departments'); // باید پیش از wildcard /{ticket} باشد
+        Route::get('/agents', 'agents');           // کارشناسانِ قابل‌ارجاع — پیش از wildcard
         Route::get('/{ticket}', 'show');
         Route::post('/{ticket}/reply', 'reply');
         Route::post('/{ticket}/status', 'changeStatus');
@@ -244,6 +245,7 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
     // Wallet
     Route::controller(AdminWalletController::class)->prefix('wallet')->middleware('admin.permission:manage-financial')->group(function () {
         Route::get('/transactions', 'index');
+        Route::get('/transactions/{transaction}', 'show');
         Route::post('/transactions/{transaction}/status', 'changeStatus');
     });
 

@@ -45,6 +45,9 @@ class WalletTransactionResource extends BaseJsonResource
             'id' => $this->id,
             'amount' => (string) $this->amount,
             'type' => $typeText,
+            // کدِ ماشین‌خوانِ نوع — فرانت تا امروز مجبور بود لیبلِ فارسی را با رشته
+            // مقایسه کند (شکننده). فیلدِ `type` برای سازگاری عقب‌رو دست‌نخورده ماند.
+            'type_key' => $this->type,
 
             // status_info — ساختار یکپارچه
             'status_info' => [
@@ -74,11 +77,18 @@ class WalletTransactionResource extends BaseJsonResource
             'user' => $this->whenLoaded('wallet', function () {
                 $user = $this->wallet->user;
 
-                return $user ? [
+                if (! $user) {
+                    return null;
+                }
+
+                $profile = $user->profile;
+
+                return [
                     'id' => $user->id,
-                    'name' => $user->profile?->name,
+                    // نام + نام خانوادگی (قبلاً فقط name بود و ستون «کاربر» ناقص می‌آمد)
+                    'name' => trim(($profile->name ?? '').' '.($profile->family ?? '')) ?: null,
                     'mobile' => $user->mobile,
-                ] : null;
+                ];
             }),
         ];
     }

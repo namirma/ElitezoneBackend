@@ -26,7 +26,8 @@ class UserResource extends BaseJsonResource
         // موبایل فقط برای خود شخص و ادمین کامل برمی‌گردد — در نمایش به دیگران
         // (مثل تأمین‌کننده در آیتم سفارش) mask می‌شود.
         $viewer = $request->user();
-        $canSeeMobile = $viewer && ((int) $viewer->id === (int) $this->{User::ID} || $viewer->hasRole('admin'));
+        $viewerIsAdmin = (bool) $viewer?->hasRole('admin');
+        $canSeeMobile = $viewer && ((int) $viewer->id === (int) $this->{User::ID} || $viewerIsAdmin);
 
         return [
             User::ID => $this->{User::ID},
@@ -55,6 +56,18 @@ class UserResource extends BaseJsonResource
             User::RELATION_BADGE => $selectedBadge ? new BadgeResource($selectedBadge) : null,
             User::RELATION_EDUIX_RECORDS => EduixRecordResource::collection($this->whenLoaded(User::RELATION_EDUIX_RECORDS)),
             User::RELATION_JOB_EXPERIENCES => JobExperienceResource::collection($this->whenLoaded(User::RELATION_JOB_EXPERIENCES)),
+            // یادداشت‌های داخلیِ ادمین — فقط برای ادمین (بک‌آفیس). لیستِ کاربران
+            // withCount می‌کند (فقط تعداد، برای ستون جدول) و صفحه‌ی جزئیات
+            // relation را لود می‌کند (متن کامل). برای کاربر عادی هیچ‌کدام ظاهر
+            // نمی‌شود، چون نه eager-load می‌شوند نه withCount.
+            'notes_count' => $this->when(
+                $viewerIsAdmin && $this->notes_count !== null,
+                fn () => (int) $this->notes_count
+            ),
+            'notes' => $this->when(
+                $viewerIsAdmin,
+                fn () => UserNoteResource::collection($this->whenLoaded('notes'))
+            ),
             'created_at_p' => $this->created_at_p,
             'created_at_diff' => $this->created_at_diff,
             'is_verified' => $this->getIsVerified(),
