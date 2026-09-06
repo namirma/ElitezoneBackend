@@ -24,6 +24,13 @@ readonly class ShipmentGroup
         /** Which basis priced this leg (weight vs count). */
         public readonly ShippingCostBasis $costBasis,
         public readonly float $cost,
+        /**
+         * آیا ردیفِ نرخی برای این مسیر پیدا شد.
+         *
+         * ‏`false` یعنی «نرخ وارد نشده» و هزینه‌ی صفر یک تنزلِ آرام است، نه
+         * کرایه‌ی رایگان. بدون این پرچم، آن دو حالت در پاسخ یکی دیده می‌شدند.
+         */
+        public readonly bool $ratePriced,
         /** The line keys (e.g. cart item ids) that belong to this shipment. */
         public readonly array $lineKeys,
     ) {}

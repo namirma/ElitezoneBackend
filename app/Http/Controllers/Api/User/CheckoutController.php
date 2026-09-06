@@ -148,7 +148,16 @@ class CheckoutController extends Controller
             return error(__('checkout.elite_yar_cannot_pay_for_beneficiary'), [], 422);
         }
 
-        $branch = $branchResolver->resolve($user, $totals->finalAmountFor($cart, $user));
+        // ‏`address_id` همان درخواست باید به پایه‌ی تصمیم برسد.
+        //
+        // بدونش `breakdownFor` به `carts.address_id` و بعد آدرسِ پیش‌فرض
+        // برمی‌گشت، در حالی که `PlaceOrderAction` کرایه را برای آدرسی حساب
+        // می‌کند که در **بدنه‌ی همین درخواست** آمده. خریداری که سرِ تسویه
+        // مقصدی غیر از پیش‌فرض انتخاب می‌کرد روی کرایه‌ی اشتباه گیت می‌شد —
+        // همان واگرایی که `payment-options` یک اندپوینت آن‌طرف‌تر بست.
+        $addressId = $request->filled('address_id') ? $request->integer('address_id') : null;
+
+        $branch = $branchResolver->resolve($user, $totals->finalAmountFor($cart, $user, $addressId));
 
         if ($branch->branch === PaymentBranch::RESERVE) {
             return error(__('checkout.reserve_only'), ['branch' => $branch->toArray()], 422);
@@ -196,7 +205,16 @@ class CheckoutController extends Controller
             return error(__('checkout.elite_yar_cannot_pay_for_beneficiary'), [], 422);
         }
 
-        $branch = $branchResolver->resolve($user, $totals->finalAmountFor($cart, $user));
+        // ‏`address_id` همان درخواست باید به پایه‌ی تصمیم برسد.
+        //
+        // بدونش `breakdownFor` به `carts.address_id` و بعد آدرسِ پیش‌فرض
+        // برمی‌گشت، در حالی که `PlaceOrderAction` کرایه را برای آدرسی حساب
+        // می‌کند که در **بدنه‌ی همین درخواست** آمده. خریداری که سرِ تسویه
+        // مقصدی غیر از پیش‌فرض انتخاب می‌کرد روی کرایه‌ی اشتباه گیت می‌شد —
+        // همان واگرایی که `payment-options` یک اندپوینت آن‌طرف‌تر بست.
+        $addressId = $request->filled('address_id') ? $request->integer('address_id') : null;
+
+        $branch = $branchResolver->resolve($user, $totals->finalAmountFor($cart, $user, $addressId));
 
         // ⚠️ قرینه‌ی گاردهای `pay()` — و تا امروز غایب بود.
         //
