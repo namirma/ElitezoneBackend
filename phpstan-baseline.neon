@@ -1123,18 +1123,6 @@ parameters:
 			path: app/Listeners/User/SendWinBackOffer.php
 
 		-
-			message: '#^Method App\\Models\\Article\:\:getExpireAtDaysAttribute\(\) should return string\|void but returns float\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Models/Article.php
-
-		-
-			message: '#^Method App\\Models\\Article\:\:getExpireAtDaysAttribute\(\) should return string\|void but returns int\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Models/Article.php
-
-		-
 			message: '#^Parameter \#1 \$datetime of function verta expects null, mixed given\.$#'
 			identifier: argument.type
 			count: 2
@@ -1145,18 +1133,6 @@ parameters:
 			identifier: property.phpDocType
 			count: 1
 			path: app/Models/Attribute.php
-
-		-
-			message: '#^Method App\\Models\\Banner\:\:getExpireAtDaysAttribute\(\) should return string\|void but returns float\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Models/Banner.php
-
-		-
-			message: '#^Method App\\Models\\Banner\:\:getExpireAtDaysAttribute\(\) should return string\|void but returns int\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Models/Banner.php
 
 		-
 			message: '#^Parameter \#1 \$datetime of function verta expects null, mixed given\.$#'
@@ -1177,18 +1153,6 @@ parameters:
 			path: app/Models/Concerns/HasSocialRelations.php
 
 		-
-			message: '#^Method App\\Models\\ContractorProfile\:\:getExpireAtDaysAttribute\(\) should return string\|void but returns float\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Models/ContractorProfile.php
-
-		-
-			message: '#^Method App\\Models\\ContractorProfile\:\:getExpireAtDaysAttribute\(\) should return string\|void but returns int\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Models/ContractorProfile.php
-
-		-
 			message: '#^PHPDoc type array\<int, string\> of property App\\Models\\ContractorProfile\:\:\$fillable is not covariant with PHPDoc type list\<string\> of overridden property Illuminate\\Database\\Eloquent\\Model\:\:\$fillable\.$#'
 			identifier: property.phpDocType
 			count: 1
@@ -1201,52 +1165,16 @@ parameters:
 			path: app/Models/ContractorProfile.php
 
 		-
-			message: '#^Method App\\Models\\Coupon\:\:getExpireAtDaysAttribute\(\) should return string\|void but returns float\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Models/Coupon.php
-
-		-
-			message: '#^Method App\\Models\\Coupon\:\:getExpireAtDaysAttribute\(\) should return string\|void but returns int\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Models/Coupon.php
-
-		-
 			message: '#^Parameter \#1 \$datetime of function verta expects null, mixed given\.$#'
 			identifier: argument.type
 			count: 2
 			path: app/Models/Coupon.php
 
 		-
-			message: '#^Method App\\Models\\EmployerProfile\:\:getExpireAtDaysAttribute\(\) should return string\|void but returns float\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Models/EmployerProfile.php
-
-		-
-			message: '#^Method App\\Models\\EmployerProfile\:\:getExpireAtDaysAttribute\(\) should return string\|void but returns int\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Models/EmployerProfile.php
-
-		-
 			message: '#^Parameter \#1 \$datetime of function verta expects null, mixed given\.$#'
 			identifier: argument.type
 			count: 2
 			path: app/Models/EmployerProfile.php
-
-		-
-			message: '#^Method App\\Models\\EngineerProfile\:\:getExpireAtDaysAttribute\(\) should return string\|void but returns float\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Models/EngineerProfile.php
-
-		-
-			message: '#^Method App\\Models\\EngineerProfile\:\:getExpireAtDaysAttribute\(\) should return string\|void but returns int\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Models/EngineerProfile.php
 
 		-
 			message: '#^PHPDoc type array\<int, string\> of property App\\Models\\EngineerProfile\:\:\$fillable is not covariant with PHPDoc type list\<string\> of overridden property Illuminate\\Database\\Eloquent\\Model\:\:\$fillable\.$#'
@@ -1273,34 +1201,10 @@ parameters:
 			path: app/Models/Order.php
 
 		-
-			message: '#^Method App\\Models\\Order\:\:getExpireAtDaysAttribute\(\) should return string\|void but returns float\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Models/Order.php
-
-		-
-			message: '#^Method App\\Models\\Order\:\:getExpireAtDaysAttribute\(\) should return string\|void but returns int\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Models/Order.php
-
-		-
 			message: '#^Parameter \#1 \$datetime of function verta expects null, mixed given\.$#'
 			identifier: argument.type
 			count: 2
 			path: app/Models/Order.php
-
-		-
-			message: '#^Method App\\Models\\Product\:\:getExpireAtDaysAttribute\(\) should return string\|void but returns float\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Models/Product.php
-
-		-
-			message: '#^Method App\\Models\\Product\:\:getExpireAtDaysAttribute\(\) should return string\|void but returns int\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Models/Product.php
 
 		-
 			message: '#^Parameter \#1 \$datetime of function verta expects null, mixed given\.$#'
@@ -1309,40 +1213,22 @@ parameters:
 			path: app/Models/Product.php
 
 		-
-			message: '#^Method App\\Models\\ProductReview\:\:getExpireAtDaysAttribute\(\) should return string\|void but returns float\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Models/ProductReview.php
-
-		-
-			message: '#^Method App\\Models\\ProductReview\:\:getExpireAtDaysAttribute\(\) should return string\|void but returns int\.$#'
-			identifier: return.type
-			count: 1
+			message: '#^Parameter \#1 \$datetime of function verta expects null, mixed given\.$#'
+			identifier: argument.type
+			count: 2
 			path: app/Models/ProductReview.php
 
 		-
 			message: '#^Parameter \#1 \$datetime of function verta expects null, mixed given\.$#'
 			identifier: argument.type
 			count: 2
-			path: app/Models/ProductReview.php
+			path: app/Models/PromoOverlay.php
 
 		-
 			message: '#^Unsafe usage of new static\(\)\.$#'
 			identifier: new.static
 			count: 3
 			path: app/Models/SupplierActivityCategory.php
-
-		-
-			message: '#^Method App\\Models\\SupplierProfile\:\:getExpireAtDaysAttribute\(\) should return string\|void but returns float\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Models/SupplierProfile.php
-
-		-
-			message: '#^Method App\\Models\\SupplierProfile\:\:getExpireAtDaysAttribute\(\) should return string\|void but returns int\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Models/SupplierProfile.php
 
 		-
 			message: '#^PHPDoc type array\<int, string\> of property App\\Models\\SupplierProfile\:\:\$fillable is not covariant with PHPDoc type list\<string\> of overridden property Illuminate\\Database\\Eloquent\\Model\:\:\$fillable\.$#'
@@ -1363,34 +1249,10 @@ parameters:
 			path: app/Models/Ticket.php
 
 		-
-			message: '#^Method App\\Models\\User\:\:getExpireAtDaysAttribute\(\) should return string\|void but returns float\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Models/User.php
-
-		-
-			message: '#^Method App\\Models\\User\:\:getExpireAtDaysAttribute\(\) should return string\|void but returns int\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Models/User.php
-
-		-
 			message: '#^Parameter \#1 \$datetime of function verta expects null, mixed given\.$#'
 			identifier: argument.type
 			count: 2
 			path: app/Models/User.php
-
-		-
-			message: '#^Method App\\Models\\UserNote\:\:getExpireAtDaysAttribute\(\) should return string\|void but returns float\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Models/UserNote.php
-
-		-
-			message: '#^Method App\\Models\\UserNote\:\:getExpireAtDaysAttribute\(\) should return string\|void but returns int\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Models/UserNote.php
 
 		-
 			message: '#^Parameter \#1 \$datetime of function verta expects null, mixed given\.$#'
@@ -1403,18 +1265,6 @@ parameters:
 			identifier: property.phpDocType
 			count: 1
 			path: app/Models/UserNotification.php
-
-		-
-			message: '#^Method App\\Models\\UserProfile\:\:getExpireAtDaysAttribute\(\) should return string\|void but returns float\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Models/UserProfile.php
-
-		-
-			message: '#^Method App\\Models\\UserProfile\:\:getExpireAtDaysAttribute\(\) should return string\|void but returns int\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Models/UserProfile.php
 
 		-
 			message: '#^PHPDoc type array\<int, string\> of property App\\Models\\UserProfile\:\:\$fillable is not covariant with PHPDoc type list\<string\> of overridden property Illuminate\\Database\\Eloquent\\Model\:\:\$fillable\.$#'

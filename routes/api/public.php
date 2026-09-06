@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AgreementController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\PromoOverlayController;
 use App\Http\Controllers\Api\QuestionController;
 use App\Http\Controllers\Api\Shipping\ShipmentDeliveryController;
 use App\Http\Controllers\Api\User\ProductReviewController;
@@ -92,6 +93,12 @@ Route::controller(ContentController::class)->group(function () {
     Route::get('/pages/{slug}', 'page');
     Route::get('/settings/public', 'publicSettings');
 });
+
+// اورلی‌های ترغیب که برای کاربرِ فعلی واجد شرایط‌اند.
+// عمومی است (مهمان هم اورلیِ خوش‌آمد را می‌گیرد)، ولی `auth:sanctum` به‌صورت
+// اختیاری اعمال می‌شود تا اگر توکن آمد، شرط‌های وابسته به کاربر هم ارزیابی شوند.
+Route::get('/promo-overlays', [PromoOverlayController::class, 'index'])
+    ->middleware('optional.sanctum');
 
 Route::prefix('customer-types')->group(function () {
     Route::get('/', [CustomerTypeController::class, 'index']);

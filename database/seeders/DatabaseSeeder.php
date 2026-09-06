@@ -29,5 +29,6 @@ class DatabaseSeeder extends Seeder
         $this->call(PurchaseParameterSeeder::class);
         // محتوایی که تا امروز در کدِ فرانت هاردکد بود (FAQ/مگامنو/فوتر) — idempotent
         $this->call(SiteContentSeeder::class);
+        $this->call(PromoOverlaySeeder::class);
     }
 }

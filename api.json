@@ -10268,6 +10268,311 @@
                 }
             }
         },
+        "/admin/promo-overlays": {
+            "get": {
+                "operationId": "adminPromoOverlay.index",
+                "tags": [
+                    "AdminPromoOverlay"
+                ],
+                "parameters": [
+                    {
+                        "name": "is_active",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean",
+                            "default": false
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "adminPromoOverlay.store",
+                "tags": [
+                    "AdminPromoOverlay"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StorePromoOverlayRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/admin/promo-overlays/{promoOverlay}": {
+            "get": {
+                "operationId": "adminPromoOverlay.show",
+                "tags": [
+                    "AdminPromoOverlay"
+                ],
+                "parameters": [
+                    {
+                        "name": "promoOverlay",
+                        "in": "path",
+                        "required": true,
+                        "description": "The promo overlay ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            },
+            "put": {
+                "operationId": "admin.adminPromoOverlay.update_1",
+                "tags": [
+                    "AdminPromoOverlay"
+                ],
+                "parameters": [
+                    {
+                        "name": "promoOverlay",
+                        "in": "path",
+                        "required": true,
+                        "description": "The promo overlay ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StorePromoOverlayRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "admin.adminPromoOverlay.update_2",
+                "tags": [
+                    "AdminPromoOverlay"
+                ],
+                "parameters": [
+                    {
+                        "name": "promoOverlay",
+                        "in": "path",
+                        "required": true,
+                        "description": "The promo overlay ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StorePromoOverlayRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "adminPromoOverlay.destroy",
+                "tags": [
+                    "AdminPromoOverlay"
+                ],
+                "parameters": [
+                    {
+                        "name": "promoOverlay",
+                        "in": "path",
+                        "required": true,
+                        "description": "The promo overlay ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/admin/promo-overlays/{promoOverlay}/toggle": {
+            "post": {
+                "operationId": "adminPromoOverlay.toggle",
+                "tags": [
+                    "AdminPromoOverlay"
+                ],
+                "parameters": [
+                    {
+                        "name": "promoOverlay",
+                        "in": "path",
+                        "required": true,
+                        "description": "The promo overlay ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/admin/promo-overlays/{id}/restore": {
+            "post": {
+                "operationId": "adminPromoOverlay.restore",
+                "tags": [
+                    "AdminPromoOverlay"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
         "/admin/reports/orders": {
             "get": {
                 "operationId": "adminReport.orders",
@@ -17730,6 +18035,26 @@
                 }
             }
         },
+        "/promo-overlays": {
+            "get": {
+                "operationId": "promoOverlay.index",
+                "tags": [
+                    "PromoOverlay"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/purchase-parameters/groups": {
             "get": {
                 "operationId": "purchaseParameter.groups",
@@ -24002,6 +24327,183 @@
                     "password_confirmation"
                 ],
                 "title": "StorePasswordRequest"
+            },
+            "StorePromoOverlayRequest": {
+                "type": "object",
+                "description": "\u0627\u0639\u062a\u0628\u0627\u0631\u0633\u0646\u062c\u06cc\u0650 \u0633\u0627\u062e\u062a/\u0648\u06cc\u0631\u0627\u06cc\u0634\u0650 \u0627\u0648\u0631\u0644\u06cc.\n\n\u0648\u0627\u0698\u06af\u0627\u0646\u0650 \u0627\u06a9\u0634\u0646 \u0648 \u0634\u0631\u0637 \u0639\u0645\u062f\u0627\u064b \u0628\u0633\u062a\u0647 \u0627\u0633\u062a: \u0647\u0631 \u0645\u0642\u062f\u0627\u0631\u06cc \u06a9\u0647 \u0641\u0631\u0627\u0646\u062a \u0646\u062a\u0648\u0627\u0646\u062f \u0628\u0647 \u0631\u0641\u062a\u0627\u0631\u0650 \u0645\u0634\u062e\u0635\u06cc\n\u0646\u06af\u0627\u0634\u062a \u06a9\u0646\u062f\u060c \u0628\u0627\u06cc\u062f \u0647\u0645\u06cc\u0646\u200c\u062c\u0627 \u0631\u062f \u0634\u0648\u062f \u2014 \u0648\u06af\u0631\u0646\u0647 \u0627\u062f\u0645\u06cc\u0646 \u062f\u06a9\u0645\u0647\u200c\u0627\u06cc \u0645\u06cc\u200c\u0633\u0627\u0632\u062f \u06a9\u0647 \u062f\u0631 \u0633\u0627\u06cc\u062a\n\u0628\u06cc\u200c\u0635\u062f\u0627 \u0647\u06cc\u0686 \u06a9\u0627\u0631\u06cc \u0646\u0645\u06cc\u200c\u06a9\u0646\u062f.",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "body": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 2000
+                    },
+                    "image": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "binary",
+                        "contentMediaType": "application/octet-stream",
+                        "description": "\u062a\u0635\u0648\u06cc\u0631: svg \u0645\u0645\u0646\u0648\u0639 \u2014 \u0631\u0648\u06cc \u062f\u06cc\u0633\u06a9\u0650 public \u0633\u0631\u0648 \u0645\u06cc\u200c\u0634\u0648\u062f \u0648 SVG\u0650 \u062d\u0627\u0648\u06cc\n<script> \u06cc\u0639\u0646\u06cc XSS\u0650 \u0630\u062e\u06cc\u0631\u0647\u200c\u0634\u062f\u0647 (\u0642\u0627\u0639\u062f\u0647\u200c\u06cc \u0633\u0631\u0627\u0633\u0631\u06cc\u0650 \u0627\u06cc\u0646 \u0631\u06cc\u067e\u0648).",
+                        "maxLength": 4096
+                    },
+                    "remove_image": {
+                        "type": [
+                            "boolean",
+                            "null"
+                        ]
+                    },
+                    "delay_seconds": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "description": "\u2500\u2500 \u0632\u0645\u0627\u0646\u200c\u0628\u0646\u062f\u06cc \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500",
+                        "minimum": 0,
+                        "maximum": 3600
+                    },
+                    "frequency": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "enum": [
+                            "once",
+                            "day",
+                            "session",
+                            "ttl",
+                            "always"
+                        ]
+                    },
+                    "frequency_ttl_hours": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "minimum": 1,
+                        "maximum": 8760
+                    },
+                    "priority": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "minimum": -1000,
+                        "maximum": 1000
+                    },
+                    "is_active": {
+                        "type": [
+                            "boolean",
+                            "null"
+                        ]
+                    },
+                    "audience": {
+                        "type": "object",
+                        "description": "\u2500\u2500 \u0634\u0631\u0637\u0650 \u0645\u062e\u0627\u0637\u0628 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500",
+                        "properties": {
+                            "op": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "enum": [
+                                    "and",
+                                    "or"
+                                ]
+                            },
+                            "rules": {
+                                "type": [
+                                    "array",
+                                    "null"
+                                ],
+                                "items": {
+                                    "type": "string"
+                                },
+                                "maxItems": 20
+                            }
+                        }
+                    },
+                    "routes": {
+                        "type": "object",
+                        "description": "\u2500\u2500 \u0645\u0633\u06cc\u0631\u0647\u0627 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500",
+                        "properties": {
+                            "include": {
+                                "type": [
+                                    "array",
+                                    "null"
+                                ],
+                                "items": {
+                                    "type": "string",
+                                    "maxLength": 120
+                                },
+                                "maxItems": 50
+                            },
+                            "exclude": {
+                                "type": [
+                                    "array",
+                                    "null"
+                                ],
+                                "items": {
+                                    "type": "string",
+                                    "maxLength": 120
+                                },
+                                "maxItems": 50
+                            }
+                        }
+                    },
+                    "buttons": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "description": "\u2500\u2500 \u062f\u06a9\u0645\u0647\u200c\u0647\u0627 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "label": {
+                                    "type": "string",
+                                    "maxLength": 60
+                                },
+                                "style": {
+                                    "type": "string",
+                                    "enum": [
+                                        "primary",
+                                        "secondary",
+                                        "link"
+                                    ]
+                                },
+                                "action": {
+                                    "type": "string",
+                                    "enum": [
+                                        "navigate",
+                                        "dismiss",
+                                        "auth",
+                                        "more_info",
+                                        "external"
+                                    ]
+                                },
+                                "value": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "maxLength": 255
+                                }
+                            }
+                        },
+                        "maxItems": 4
+                    }
+                },
+                "required": [
+                    "title"
+                ],
+                "title": "StorePromoOverlayRequest"
             },
             "StoreQuestionRequest": {
                 "type": "object",

@@ -36,6 +36,7 @@ use App\Http\Controllers\Api\Admin\AdminProductCategoryController;
 use App\Http\Controllers\Api\Admin\AdminProductController;
 use App\Http\Controllers\Api\Admin\AdminProductPriceController;
 use App\Http\Controllers\Api\Admin\AdminProductVariantController;
+use App\Http\Controllers\Api\Admin\AdminPromoOverlayController;
 use App\Http\Controllers\Api\Admin\AdminReportController;
 use App\Http\Controllers\Api\Admin\AdminReviewController;
 use App\Http\Controllers\Api\Admin\AdminSearchController;
@@ -507,6 +508,20 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
         Route::post('/{banner}/toggle', 'toggle');
         Route::post('/{id}/restore', 'restore')->whereNumber('id');
         Route::delete('/{banner}', 'destroy');
+    });
+
+    // Promo overlays — اورلی‌های ترغیب/تبلیغاتی (آپلود تصویر با POST/multipart).
+    // اورلی‌های سیستمی (welcome / select_role / select_elite_yar) ویرایش‌پذیرند
+    // ولی destroy رویشان ۴۲۲ می‌دهد — خاموش‌کردنشان با toggle است.
+    Route::controller(AdminPromoOverlayController::class)->prefix('promo-overlays')->middleware('admin.permission:manage-content')->group(function () {
+        Route::get('/', 'index');
+        Route::get('/{promoOverlay}', 'show');
+        Route::post('/', 'store');
+        Route::put('/{promoOverlay}', 'update');
+        Route::post('/{promoOverlay}', 'update'); // multipart image replace
+        Route::post('/{promoOverlay}/toggle', 'toggle');
+        Route::post('/{id}/restore', 'restore')->whereNumber('id');
+        Route::delete('/{promoOverlay}', 'destroy');
     });
 
     // Articles — CRUD مقالات (آپلود کاور با POST/multipart)
