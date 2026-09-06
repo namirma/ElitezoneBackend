@@ -68,6 +68,12 @@ final class CartCheckoutTotals
      * `false` است — پایه‌ی ناقص که **می‌گوید** ناقص است، به‌جای عددی که وانمود
      * می‌کند کامل است.
      *
+     * ‏`shipping_included` دو حالتِ ناقص را پوشش می‌دهد و نه بیشتر:
+     * مقصدی پیدا نشد، **یا** مقصد پیدا شد ولی هیچ نرخی برای آن مسیر وارد نشده.
+     * تیم فرانت درست گفت که این دومی قبلاً `true` با کرایه‌ی صفر گزارش می‌شد و از
+     * کرایه‌ی واقعاً رایگان جدا نبود؛ حالا `ShipmentGroup::$ratePriced` تفکیکش
+     * می‌کند. کرایه‌ی صفرِ **قیمت‌گذاری‌شده** همچنان `true` است.
+     *
      * @return array{final_amount: float, gross: float, shipping: float, shipping_included: bool, discount: float}
      */
     public function breakdownFor(Cart $cart, ?User $user, ?int $addressId = null): array
@@ -121,7 +127,14 @@ final class CartCheckoutTotals
             )
         );
 
-        return [Money::toFloat(Money::add((string) $quote->total, (string) $vat)), true];
+        // «مقصد پیدا شد» کافی نیست: `ShippingCostCalculator` وقتی هیچ ردیفِ نرخی
+        // برای مسیر نباشد بدونِ خطا صفر برمی‌گرداند (تنزلِ آرام، تا وقتی نرخ‌ها
+        // وارد شوند). پس صفرِ «نرخ وارد نشده» از کرایه‌ی واقعاً رایگان قابلِ
+        // تشخیص نبود. حالا هر محموله می‌گوید آیا نرخی قیمتش گذاشته یا نه.
+        $priced = $quote->shipments !== []
+            && collect($quote->shipments)->every(fn ($g) => $g->ratePriced);
+
+        return [Money::toFloat(Money::add((string) $quote->total, (string) $vat)), $priced];
     }
 
     /** جمعِ سبد پیش از کوپن. */

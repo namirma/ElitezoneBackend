@@ -86,6 +86,7 @@ class ShippingCostCalculator
                 weight: round($group['weight'], 3),
                 count: round($group['count'], 3),
                 costBasis: $basis,
+                ratePriced: $rate !== null,
                 cost: $cost,
                 lineKeys: $group['line_keys'],
             );

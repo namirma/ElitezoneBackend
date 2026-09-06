@@ -30,6 +30,7 @@ class OrderResource extends BaseJsonResource
         $viewerRoles = $this->partyRolesFor($viewerId);
         $isSupplier = in_array(OrderDocumentCatalog::AUDIENCE_SUPPLIER, $viewerRoles, true);
         $isAdmin = $user ? $user->hasRole('admin') : false;
+        $isEliteYar = in_array(OrderDocumentCatalog::AUDIENCE_ELITE_YAR, $viewerRoles, true);
 
         // الیت یارِ سفارش — مستقیماً از elite_yar_user_id خوانده می‌شود.
         // (قبلاً از placer.type یا beneficiary_user_id استنتاج می‌شد — حالا ستون جداست)
@@ -185,6 +186,25 @@ class OrderResource extends BaseJsonResource
 
             // --- Financial Info ---
             'financial' => [
+                // شماره‌های سند — تب‌های «اسناد مالی» بک‌آفیس دقیقاً برای نشان‌دادنِ
+                // همین‌اند و هیچ‌کدام سریالایز نمی‌شد، پس آن گزارش‌ها فقط فهرستی از
+                // شماره‌ی سفارش بودند و تیم فرانت ستون‌های همیشه-`—` را برداشت.
+                //
+                // گیت به همان قاعده‌ی `partyRolesFor()` گره خورده است: ادمین همه را
+                // می‌بیند، و هر طرف فقط سندهای خودش را. سندِ مالیاتیِ الیت‌یار به
+                // دستِ خریدار نمی‌رسد — همان نشتی که در `partyRolesFor` بسته شد.
+                'refs' => array_filter([
+                    Order::INITIAL_INVOICE_REF => ($isAdmin || ! $isSupplier) ? $this->{Order::INITIAL_INVOICE_REF} : null,
+                    Order::FINAL_INVOICE_REF => ($isAdmin || ! $isSupplier) ? $this->{Order::FINAL_INVOICE_REF} : null,
+                    Order::SYSTEM_MOADIAN_REF => ($isAdmin || ! $isSupplier) ? $this->{Order::SYSTEM_MOADIAN_REF} : null,
+                    Order::WAYBILL_REF => $this->{Order::WAYBILL_REF},
+                    Order::ESPADANA_ORDER_REF => ($isAdmin || $isSupplier) ? $this->{Order::ESPADANA_ORDER_REF} : null,
+                    Order::SUPPLIER_MOADIAN_REF => ($isAdmin || $isSupplier) ? $this->{Order::SUPPLIER_MOADIAN_REF} : null,
+                    // getAttribute و نه دسترسی جادویی: larastan بدون فایل‌های
+                    // ide-helper (که gitignore شده‌اند) این یک ستون را نمی‌شناسد.
+                    Order::ELITE_YAR_MOADIAN_REF => ($isAdmin || $isEliteYar) ? $this->getAttribute(Order::ELITE_YAR_MOADIAN_REF) : null,
+                ], static fn ($v) => $v !== null),
+
                 Order::FINAL_AMOUNT => (string) $this->{Order::FINAL_AMOUNT},
                 Order::PAYMENT_STATUS => $paymentStatusKey,
                 'payment_status_text' => $paymentStatusLabel,
