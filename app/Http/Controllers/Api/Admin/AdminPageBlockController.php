@@ -13,9 +13,44 @@ use Illuminate\Http\Request;
 
 class AdminPageBlockController extends Controller
 {
+    /**
+     * `types` تنها چیزی است که پیش‌تر برمی‌گشت. `shapes` تعریفِ همان اعضایی است
+     * که یک فیلدِ `list` با `of` به آن‌ها اشاره می‌کند (مثلِ `card_grid.cards` →
+     * `of: 'card'`) — بدونِ آن، بک‌آفیس نامِ شکل را می‌داند ولی نمی‌داند شکل چه
+     * کلیدهایی دارد و نمی‌تواند زیرفرمش را بسازد. دو کلیدِ هم‌سطح (نه تودرتو زیرِ
+     * هر فیلد) چون یک شکل را چند نوع/فیلدِ متفاوت می‌توانند به اشتراک بگذارند
+     * (مثلاً `card` هم زیرِ `card_grid` است)؛ تکرارِ آن در هر فیلد یعنی چند کپی
+     * از یک شکل در یک پاسخ، دقیقاً همان مشکلی که SHAPES/all() برای خودِ نوع‌ها
+     * حل کرده‌اند.
+     */
     public function schema(PageBlockSchema $schema): JsonResponse
     {
-        return success($schema->all(), __('page_blocks.schema_received'));
+        return success([
+            'types' => $schema->all(),
+            'shapes' => $this->normalizedShapes(),
+        ], __('page_blocks.schema_received'));
+    }
+
+    /**
+     * `PageBlockSchema::SHAPES` بدونِ لمس‌کردنِ خودِ ثابت، نرمال می‌شود: هر عضوِ
+     * شکل، چه در ثابت رشته باشد (نامِ ویجت) چه آرایه (`select` با `options`)،
+     * این‌جا همیشه آرایه‌ی `{type, options?}` می‌شود — دقیقاً همان قالبی که
+     * فیلدهای سطحِ بالای `types[*].fields` از قبل دارند. بک‌آفیس این‌طور مجبور
+     * نیست حدس بزند کدام حالت را می‌بیند. `SHAPES` عمداً دست‌نخورده می‌ماند:
+     * `PageBlockSchema::listRules()` به شکلِ خامِ آن (رشته یا آرایه) وابسته است
+     * و این نرمال‌سازی فقط برای پاسخِ همین اندپوینت است.
+     *
+     * @return array<string, array<string, array{type: string, options?: list<string>}>>
+     */
+    private function normalizedShapes(): array
+    {
+        return array_map(
+            static fn (array $shape): array => array_map(
+                static fn (string|array $member): array => is_array($member) ? $member : ['type' => $member],
+                $shape,
+            ),
+            PageBlockSchema::SHAPES,
+        );
     }
 
     public function index(Request $request): JsonResponse

@@ -4,6 +4,7 @@ namespace Tests\Feature\Content;
 
 use App\Models\PageBlock;
 use App\Models\User;
+use App\Services\Content\PageBlockSchema;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Laratrust\Models\Role;
 use Laravel\Sanctum\Sanctum;
@@ -75,10 +76,59 @@ class AdminPageBlockTest extends TestCase
     {
         Sanctum::actingAs($this->admin);
 
-        $types = array_keys($this->getJson('/api/admin/page-blocks/schema')->assertOk()->json('data'));
+        $body = $this->getJson('/api/admin/page-blocks/schema')->assertOk()->json('data');
+        $types = array_keys($body['types']);
 
         $this->assertContains('story_card', $types);
         $this->assertContains('card_grid', $types);
+    }
+
+    /**
+     * نگهبانِ رگرسیون برای همان شکافی که این تست را عوض کرد: یک فیلدِ `list`
+     * می‌تواند `of => 'card'` بگوید، ولی تا پیش از این `card` هیچ‌جای پاسخ
+     * تعریف نمی‌شد — بک‌آفیس نامِ شکل را می‌دید و نمی‌توانست زیرفرمش را بسازد.
+     * این تست هر هفده نوع را می‌گردد، هر `of` را که واقعاً کلیدی در
+     * `PageBlockSchema::SHAPES` است (همان تشخیصی که `listRules()` خودش برای
+     * «فهرستِ شکل‌دار در برابرِ فهرستِ اسکالر» به کار می‌برد) جمع می‌کند، و
+     * مطمئن می‌شود همان کلید در `data.shapes` هم سرو می‌شود.
+     */
+    #[Test]
+    public function every_shaped_list_reference_resolves_to_a_shape_the_panel_can_see(): void
+    {
+        Sanctum::actingAs($this->admin);
+
+        $body = $this->getJson('/api/admin/page-blocks/schema')->assertOk()->json('data');
+        $shapeKeysInResponse = array_keys($body['shapes']);
+
+        foreach ($body['types'] as $typeName => $definition) {
+            foreach ($definition['fields'] as $fieldName => $field) {
+                if (($field['type'] ?? null) !== 'list' || ! isset($field['of'])) {
+                    continue;
+                }
+
+                $of = $field['of'];
+
+                if (! array_key_exists($of, PageBlockSchema::SHAPES)) {
+                    // اسکالر است (مثلِ `textarea`/`number`) — شکل نمی‌خواهد. ولی
+                    // «شکل نیست» به‌تنهایی کافی نیست: یک `of` غلط‌املایی هم شکل
+                    // نیست و بدونِ این ادعا بی‌صدا از تست رد می‌شد، در حالی که
+                    // بک‌آفیس نه شکلی برایش پیدا می‌کند نه ویجتی.
+                    $this->assertContains(
+                        $of,
+                        PageBlockSchema::WIDGETS,
+                        "«{$typeName}.{$fieldName}» با «of => {$of}» به چیزی اشاره می‌کند که نه شکلِ تعریف‌شده است نه نامِ ویجت."
+                    );
+
+                    continue;
+                }
+
+                $this->assertContains(
+                    $of,
+                    $shapeKeysInResponse,
+                    "«{$typeName}.{$fieldName}» با «of => {$of}» به شکلی اشاره می‌کند که پاسخِ اسکیما سرو نمی‌کند."
+                );
+            }
+        }
     }
 
     /**
