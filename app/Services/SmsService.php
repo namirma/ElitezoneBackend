@@ -93,6 +93,45 @@ class SmsService
     }
 
     /**
+     * آیا این محیط پیامکی تحویل نمی‌دهد، در حالی که باید بدهد؟
+     *
+     * `send()` بیرونِ production هر شماره‌ی خارج از allowlist را بی‌صدا کنار
+     * می‌گذارد و **`true`** برمی‌گرداند — از دیدِ صف «ارسال شد». روی لپ‌تاپ همین
+     * درست است: فهرستِ خالی پیش‌فرضِ عمدیِ یک کلونِ تازه است. ولی روی یک محیطِ
+     * **دیپلوی‌شده‌ی غیرپروداکشن** (استیجینگ) نتیجه‌اش قطعیِ کاملِ ورود است —
+     * کدِ OTP هرگز نمی‌رسد، jobها موفق علامت می‌خورند، و هیچ لاگِ خطایی تولید
+     * نمی‌شود. این همان تله‌ای است که `APP_ENV=staging` را با فراموش‌کردنِ
+     * `TSMS_DEV_ALLOWLIST` جفت می‌کند.
+     *
+     * `local`/`testing` عمداً مستثنا هستند. هشداری که روی هر لپ‌تاپی شلیک کند
+     * خاموش می‌شود، و آن‌وقت روی استیجینگ هم کسی نگاهش نمی‌کند.
+     *
+     * @return string|null متنِ مشکل برای لاگ/هشدار، یا null اگر مشکلی نیست
+     */
+    public static function deliveryProblem(): ?string
+    {
+        if (app()->environment('production', 'local', 'testing')) {
+            return null;
+        }
+
+        if (empty(config('services.tsms.link')) || empty(config('services.tsms.number'))) {
+            return sprintf(
+                'TSMS در محیط «%s» پیکربندی نشده — پیامکِ OTP ارسال نمی‌شود و کسی نمی‌تواند وارد شود.',
+                app()->environment()
+            );
+        }
+
+        if ((array) config('services.tsms.dev_allowlist', []) === []) {
+            return sprintf(
+                'TSMS_DEV_ALLOWLIST در محیط «%s» خالی است — هیچ پیامکی تحویل نمی‌شود و ورود با OTP ممکن نیست.',
+                app()->environment()
+            );
+        }
+
+        return null;
+    }
+
+    /**
      * آیا این شماره در محیطِ غیرپروداکشن اجازهٔ دریافت پیامک دارد؟
      *
      * مقایسه روی شکلِ نرمال‌شدهٔ `09xxxxxxxxx` انجام می‌شود تا `+98…`/`98…`/`0098…`

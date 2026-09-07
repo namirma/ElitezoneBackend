@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Services\Ops\QueueHealthService;
+use App\Services\SmsService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -33,18 +34,28 @@ class CheckQueueHealth extends Command
     {
         $report = $queueHealth->report();
 
-        if (! $report['applicable']) {
-            $this->info('queue:health فقط برای درایور database است؛ رد شد (درایور فعلی: '.$report['driver'].').');
-
-            return self::SUCCESS;
-        }
+        // تحویلِ پیامک، نه صف — ولی همین‌جا زندگی می‌کند چون *همان* خرابی است که
+        // این دستور برایش ساخته شد: کاربر کدِ ورود نمی‌گیرد و هیچ‌جا خطایی ثبت
+        // نمی‌شود. یک cron، یک کانالِ هشدار، یک exit code — به‌جای دستورِ دومی که
+        // زمان‌بندی‌اش یادِ کسی نمی‌ماند.
+        //
+        // عمداً **بیرونِ** گاردِ `applicable` است: آن گارد به درایورِ صف مربوط
+        // است و اگر روزی QUEUE_CONNECTION روی redis برود، این بررسی نباید با آن
+        // بی‌صدا ناپدید شود.
+        $smsProblem = SmsService::deliveryProblem();
+        $problems = $smsProblem === null ? [] : [$smsProblem];
 
         $stats = $report['stats'];
-        $problems = $report['problems'];
+
+        if ($report['applicable']) {
+            $problems = array_merge($problems, $report['problems']);
+        } elseif (! $this->option('json')) {
+            $this->info('بخشِ صف رد شد — queue:health فقط برای درایور database است (درایور فعلی: '.$report['driver'].').');
+        }
 
         if ($this->option('json')) {
             $this->line((string) json_encode(
-                $stats + ['healthy' => $report['healthy'], 'problems' => $problems],
+                $stats + ['healthy' => $problems === [], 'problems' => $problems],
                 JSON_UNESCAPED_UNICODE
             ));
         }
@@ -52,7 +63,7 @@ class CheckQueueHealth extends Command
         if ($problems === []) {
             if (! $this->option('json')) {
                 $this->info(sprintf(
-                    'صف سالم است — منتظر: %d، قدیمی‌ترین: %s، شکست‌ها: %d.',
+                    'سالم است — منتظر: %d، قدیمی‌ترین: %s، شکست‌ها: %d.',
                     $stats['pending'],
                     $stats['oldest_pending_age'] === null ? '—' : $stats['oldest_pending_age'].'s',
                     $stats['failed_total']

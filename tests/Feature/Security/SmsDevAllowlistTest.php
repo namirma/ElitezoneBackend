@@ -78,6 +78,65 @@ class SmsDevAllowlistTest extends TestCase
         Http::assertNothingSent();
     }
 
+    /** `deliveryProblem()` را در محیطی دیگر بخوان و محیط را در هر حالت برگردان. */
+    private function deliveryProblemIn(string $env): ?string
+    {
+        app()->detectEnvironment(fn () => $env);
+
+        try {
+            return SmsService::deliveryProblem();
+        } finally {
+            app()->detectEnvironment(fn () => 'testing');
+        }
+    }
+
+    #[Test]
+    public function a_deployed_non_production_environment_with_an_empty_allowlist_is_a_reported_problem(): void
+    {
+        // همان تله‌ای که `APP_ENV=staging` را با فراموش‌کردنِ allowlist جفت می‌کند:
+        // پیامکِ OTP نمی‌رود، jobها موفق علامت می‌خورند، و هیچ خطایی لاگ نمی‌شود.
+        $this->configureGateway();
+        config()->set('services.tsms.dev_allowlist', []);
+
+        $problem = $this->deliveryProblemIn('staging');
+
+        $this->assertNotNull($problem);
+        $this->assertStringContainsString('staging', $problem);
+    }
+
+    #[Test]
+    public function an_unconfigured_gateway_outside_production_is_the_same_outage_and_is_also_reported(): void
+    {
+        // علتش فرق دارد، نتیجه‌اش یکی است: کسی نمی‌تواند وارد شود.
+        config()->set('services.tsms.link', '');
+        config()->set('services.tsms.number', '');
+        config()->set('services.tsms.dev_allowlist', ['09130603199']);
+
+        $this->assertNotNull($this->deliveryProblemIn('staging'));
+    }
+
+    #[Test]
+    public function a_developer_laptop_is_deliberately_not_flagged(): void
+    {
+        // فهرستِ خالی روی `local` حالتِ **درست** است (پیش‌فرضِ یک clone تازه).
+        // هشداری که روی هر لپ‌تاپی شلیک کند خاموش می‌شود، و آن‌وقت روی استیجینگ
+        // هم کسی نگاهش نمی‌کند.
+        $this->configureGateway();
+        config()->set('services.tsms.dev_allowlist', []);
+
+        $this->assertNull($this->deliveryProblemIn('local'));
+        $this->assertNull($this->deliveryProblemIn('production'));
+    }
+
+    #[Test]
+    public function a_staging_with_the_allowlist_filled_reports_nothing(): void
+    {
+        $this->configureGateway();
+        config()->set('services.tsms.dev_allowlist', ['09130603199']);
+
+        $this->assertNull($this->deliveryProblemIn('staging'));
+    }
+
     #[Test]
     public function production_ignores_the_allowlist_entirely(): void
     {
