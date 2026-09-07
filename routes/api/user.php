@@ -222,9 +222,15 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/email', [AccountSecurityController::class, 'setEmail'])->middleware('throttle:3,1');              // add/change email + send verify link
         Route::post('/email/resend', [AccountSecurityController::class, 'resendEmailVerification'])->middleware('throttle:3,1');
         Route::delete('/email', [AccountSecurityController::class, 'deleteEmail']);
-        Route::post('/password/otp', [AccountSecurityController::class, 'changePasswordFirstAttempt']);          // step 1: send code
+        // ⚠️ سقف روی **مرحله‌ی درست** باشد. تا پیش از این تنها گامِ ۲ throttle داشت —
+        // همان گامی که فقط می‌خوانَد و چیزی را مصرف نمی‌کند. گامِ ۱ یک پیامکِ واقعی
+        // می‌فرستد و گامِ ۳ کدِ ۶ رقمی را مصرف می‌کند، رمز را می‌نویسد و بقیهٔ توکن‌ها
+        // را باطل می‌کند؛ یعنی گامِ تصاحبِ حساب بی‌سقف‌ترین‌شان بود. `AccountSecurity`
+        // برخلافِ `AuthController` قفلِ تجمعی هم ندارد، پس تنها گاردِ باقی‌مانده
+        // `throttle:api` سراسری بود. هم‌ردیفِ change-mobile پایین.
+        Route::post('/password/otp', [AccountSecurityController::class, 'changePasswordFirstAttempt'])->middleware('throttle:sms');          // step 1: send code
         Route::post('/password/verify', [AccountSecurityController::class, 'verifyPasswordOtp'])->middleware('throttle:otp-verify'); // step 2: verify code (non-consuming)
-        Route::post('/password', [AccountSecurityController::class, 'setPassword']);                            // step 3: set new password
+        Route::post('/password', [AccountSecurityController::class, 'setPassword'])->middleware('throttle:otp-verify');              // step 3: set new password
 
         Route::prefix('change-mobile')->controller(AccountSecurityController::class)->group(function () {
             Route::get('/', 'updateMobile');
@@ -393,7 +399,17 @@ Route::middleware(['auth:sanctum'])->group(function () {
             });
 
             // Bank accounts
-            Route::apiResource('accounts', UserBankAccountController::class)->except(['show', 'update']);
+            //
+            // throttle روی `store` — هر ثبتِ حساب یک استعلامِ *پولیِ* کارت و یک
+            // تبدیلِ کارت→شبا (یا استعلامِ شبا) به Podium می‌زند، هر کدام یک
+            // فراخوانِ HTTP همزمان با timeout ۳۰ ثانیه. همان شکلی که برای
+            // `/education/fetch` و `/profile/legal/fetch` بسته شد؛ این یکی جا
+            // مانده بود. `index`/`destroy` استعلامی ندارند و آزادند.
+            Route::apiResource('accounts', UserBankAccountController::class)
+                ->except(['show', 'update', 'store']);
+            Route::post('accounts', [UserBankAccountController::class, 'store'])
+                ->middleware('throttle:5,1')
+                ->name('accounts.store');
         });
 
         // Addresses
@@ -435,7 +451,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::prefix('elite-yars')->controller(EliteYARRelationController::class)->group(function () {
             Route::middleware('role.employer')->group(function () {
                 Route::get('/', 'listMyEliteYARs')->middleware('track:relations');
-                Route::post('/invite', 'inviteEliteYAR');
+                // throttle — هر فراخوانی یک پیامکِ دعوت می‌فرستد، و پاسخِ
+                // `not_registered` عملاً یک اوراکلِ «این شماره ثبت‌نام کرده؟» است.
+                // هم‌ردیفِ `elite-yar-invites/sms` که همین حالا throttle:3,1 دارد.
+                Route::post('/invite', 'inviteEliteYAR')->middleware('throttle:3,1');
                 Route::delete('/{eliteYAR}', 'removeEliteYAR');
             });
             Route::middleware('role.elite_yar')->group(function () {
@@ -482,7 +501,17 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::middleware('role.supplier')->group(function () {
                 // اعلامِ اعتبارِ قیمت‌ها — تا وقتی ثبت نشود، کالاهای این
                 // تأمین‌کننده قابل سفارش نیستند (بند ۳.۲).
-                Route::put('/reserve-time', [SupplierController::class, 'updateReserveTime']);
+                // throttle — این یکی «یک پیامک» نمی‌فرستد: `notifyWaitingCarts()`
+                // به **همهٔ** کاربرانی که سبدِ پارک‌شده روی این تأمین‌کننده دارند
+                // پیامک می‌دهد و مهلتشان را هم تمدید می‌کند.
+                //
+                // سقفِ `sms` (۲ در دقیقه) عمداً به کار نرفت: تنظیمِ مهلتِ اعتبار یک
+                // کارِ عادیِ پنل است و تأمین‌کننده ممکن است چند بار پشتِ‌هم اصلاحش
+                // کند. گاردِ اصلی `wasChanged()` در کنترلر است — ارسالِ دوبارهٔ همان
+                // مقدار دیگر هیچ پیامکی تولید نمی‌کند؛ این سقف فقط جلوی تغییرِ
+                // پیاپیِ عمدی را می‌گیرد.
+                Route::put('/reserve-time', [SupplierController::class, 'updateReserveTime'])
+                    ->middleware('throttle:6,1');
 
                 // دفترچه‌ی رانندگان (بند ۳.۹ و §۷.۳). `destroy` غیرفعال می‌کند
                 // و حذف نمی‌کند — بارنامه‌های قبلی به این ردیف‌ها اشاره دارند.
@@ -490,7 +519,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
                 Route::post('/drivers', [SupplierDriverController::class, 'store']);
                 Route::put('/drivers/{driver}', [SupplierDriverController::class, 'update'])->whereNumber('driver');
                 Route::delete('/drivers/{driver}', [SupplierDriverController::class, 'destroy'])->whereNumber('driver');
-                Route::post('/drivers/{driver}/verify', [SupplierDriverController::class, 'verify'])->whereNumber('driver');
+                // throttle:sms — شمارهٔ راننده ورودیِ آزادِ خودِ تأمین‌کننده است، پس
+                // این مسیر به شماره‌ای که او انتخاب می‌کند پیامک می‌فرستد؛ و شاخهٔ
+                // `code` هم یک کدِ ۶ رقمی را بی‌سقف مقایسه می‌کند، در حالی که همان
+                // فلگِ `verified` چیزی است که ثبتِ بارنامه به آن اعتماد می‌کند.
+                Route::post('/drivers/{driver}/verify', [SupplierDriverController::class, 'verify'])
+                    ->whereNumber('driver')
+                    ->middleware('throttle:sms');
 
                 Route::get('/orders', [SupplierOrderController::class, 'index']);
                 Route::get('/orders/pending-debts', [SupplierOrderController::class, 'pendingDebts']);
