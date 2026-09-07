@@ -122,6 +122,31 @@ class SupplierEarningsReportTest extends TestCase
     }
 
     #[Test]
+    public function the_jalali_range_is_converted_before_it_filters(): void
+    {
+        // این تست وجود دارد چون تستِ بالا `from`/`to` نمی‌فرستد و بنابراین
+        // تبدیلِ تاریخ را اصلاً لمس نمی‌کند — یک فیلترِ کاملاً **وارونه** از
+        // زیرش سبز رد شد: `Verta::createDate()` ورودی را میلادی می‌گیرد، پس
+        // `1405-06-01` همان سالِ ۱۴۰۵ پس از میلاد می‌شد و هر سفارشی از آن
+        // جلوتر بود. شکلِ پاسخ درست می‌ماند و خطایی هم نمی‌داد.
+        //
+        // ۱۴۰۵/۰۵/۰۴ = ۲۰۲۶-۰۷-۲۶ میلادی.
+        $order = $this->order([
+            Order::PAYMENT_TO_SUPPLIER => 5_000_000,
+        ]);
+        $order->forceFill([Order::WEIGHING_COMPLETED_AT => '2026-07-26 12:00:00'])->save();
+
+        // بازه‌ای که آن روز داخلش است باید سفارش را بیاورد.
+        $inside = $this->report('?from=1405-04-01&to=1405-05-31');
+        $this->assertSame(1, $inside['settled']['orders']);
+        $this->assertSame(5_000_000.0, (float) $inside['settled']['net_payout']);
+
+        // بازه‌ای که از آن روز جلوتر شروع می‌شود نباید چیزی بیاورد.
+        $after = $this->report('?from=1405-06-01');
+        $this->assertSame(0, $after['settled']['orders']);
+    }
+
+    #[Test]
     public function another_suppliers_orders_never_appear(): void
     {
         $other = User::factory()->create();
