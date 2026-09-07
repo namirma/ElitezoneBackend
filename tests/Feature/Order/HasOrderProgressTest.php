@@ -69,9 +69,12 @@ class HasOrderProgressTest extends TestCase
         $this->assertSame('inactive', $progress['steps'][2]['state']);
         $this->assertSame('inactive', $progress['steps'][3]['state']);
 
-        // مرحله ۱ باید لینک دانلود فاکتور داشته باشد
+        // مرحله ۱ باید لینکِ سندِ **خودِ الیت یار** را داشته باشد (Doc D).
+        // پیش از این سندِ خریدار (`initial`) لینک می‌شد که مخاطبش فقط buyer است،
+        // پس تنها دکمه‌ی این مرحله برای الیت یار ۴۰۳ می‌داد؛ برچسب هم با سندِ
+        // جدید عوض شد.
         $this->assertCount(1, $progress['steps'][0]['actions']);
-        $this->assertSame('دانلود فاکتور کالای خریداری شده', $progress['steps'][0]['actions'][0]['label']);
+        $this->assertSame('دانلود گزارش الیت یار', $progress['steps'][0]['actions'][0]['label']);
         $this->assertTrue($progress['steps'][0]['actions'][0]['downloadable']);
     }
 

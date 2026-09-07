@@ -4,6 +4,7 @@ namespace App\Models\Concerns;
 
 use App\Models\Order;
 use App\Models\Shipment;
+use App\Support\OrderDocumentCatalog;
 use Illuminate\Support\Facades\Lang;
 
 /**
@@ -13,6 +14,27 @@ use Illuminate\Support\Facades\Lang;
  * روی عنوانِ فارسی**. پیش از این، منطق با `$blueprint['title'] === 'بارنامه…'`
  * مقایسه می‌شد؛ یعنی اصلاحِ یک نیم‌فاصله در برچسب، بی‌صدا دکمه‌های آن مرحله را
  * خاموش می‌کرد. عنوان‌ها از `lang/fa/orders.php` می‌آیند (قید ۱۴.۷).
+ *
+ * ⚠️ **دو قاعده‌ی غیرقابل‌مذاکره، هر دو از باگ‌های زنده آمده‌اند:**
+ *
+ * ۱. **مرحله‌ی جاری فقط از پیشرفتِ واقعیِ سفارش می‌آید** — `status` و وضعیتِ تحویلِ
+ *    محموله‌ها (`hasShipmentAwaitingConfirmation()`). ارجاعِ یک سند هرگز
+ *    `currentIndex` را جلو نمی‌برد؛ حداکثر دایره‌ی **خودش** را کامل می‌کند. سند
+ *    مالیاتی جای بار را عوض نمی‌کند: Doc P روتین درست بعد از باسکول صادر می‌شود،
+ *    وقتی بار هنوز روی کامیون و سفارش `shipped` است. کدِ قبلی با دیدنش
+ *    `currentIndex` را به آخر می‌پراند، پس «تحویل» برای باری در راه `completed`
+ *    می‌شد و دکمه‌ی «تأیید تحویل» — که به `state === 'current'` گره خورده — دیگر
+ *    هرگز رندر نمی‌شد. نتیجه: خریدار نمی‌توانست تأیید کند،
+ *    `shipments:expire-delivery` بار را عودت می‌داد، و آن عودت برای تحویلی که
+ *    واقعاً انجام شده بود **بدهی** روی خریدار می‌ساخت.
+ *
+ * ۲. **اسلاگِ سند از `OrderDocumentCatalog` می‌آید، نه از رشته‌ی خام.** این‌جا سه
+ *    اسلاگِ ساختگی تایپ شده بود — `tax_buyer`، `exit_permit`، `loading_order` —
+ *    که هیچ‌کدام در کاتالوگ نبودند و روی روت ۴۰۴ می‌دادند؛ و لینکِ الیت‌یار به
+ *    سندِ خریدار می‌رفت که برایش ۴۰۳ است. لینک را فقط با
+ *    `OrderDocumentCatalog::downloadPath()` بساز.
+ *
+ * @see \Tests\Feature\Order\OrderTimelineDocumentLinksTest
  */
 trait HasOrderProgress
 {
@@ -112,19 +134,21 @@ trait HasOrderProgress
 
         $moadianIssued = $this->{Order::SYSTEM_MOADIAN_REF} !== null;
 
-        $currentIndex = 0;
-        if (! $isCancelled) {
-            $currentIndex = $this->currentProgressIndex($stepsBlueprint, $status);
-
-            if ($moadianIssued) {
-                $currentIndex = count($stepsBlueprint) - 1;
-            }
-        }
+        // قاعده‌ی ۱ داک‌بلاک: فقط `status`. صدور Doc P این عدد را تکان نمی‌دهد.
+        $currentIndex = $isCancelled ? 0 : $this->currentProgressIndex($stepsBlueprint, $status);
 
         $steps = [];
 
         foreach ($stepsBlueprint as $index => $blueprint) {
             $state = $this->progressState($index, $currentIndex, $isCancelled);
+
+            // …ولی دایره‌ی خودِ «مودیان» ماشه‌ای جز همین ستون ندارد، پس با صدورِ
+            // سند کامل می‌شود — پیش از ساختِ اکشن‌ها، وگرنه لینکِ دانلودِ همان سند
+            // (که تنها روی دایره‌ی غیرخاکستری ساخته می‌شود) هرگز تولید نمی‌شد.
+            if ($moadianIssued && ! $isCancelled && $blueprint['key'] === 'moadian') {
+                $state = 'completed';
+            }
+
             $actions = [];
 
             // لینک‌ها فقط روی دایره‌ای که خاکستری نیست
@@ -133,7 +157,7 @@ trait HasOrderProgress
                     case 'reserved':
                         $actions[] = [
                             'label' => __('orders.actions.get_receipt'),
-                            'link' => "/api/profile/orders/{$id}/invoice/initial",
+                            'link' => OrderDocumentCatalog::downloadPath($id, OrderDocumentCatalog::SLUG_INITIAL),
                             'type' => 'secondary',
                             'downloadable' => true,
                         ];
@@ -158,7 +182,7 @@ trait HasOrderProgress
                     case 'placed':
                         $actions[] = [
                             'label' => __('orders.actions.paid_initial_invoice'),
-                            'link' => "/api/profile/orders/{$id}/invoice/initial",
+                            'link' => OrderDocumentCatalog::downloadPath($id, OrderDocumentCatalog::SLUG_INITIAL),
                             'type' => 'secondary',
                             'downloadable' => true,
                         ];
@@ -167,7 +191,7 @@ trait HasOrderProgress
                     case 'shipped':
                         $actions[] = [
                             'label' => __('orders.actions.final_invoice'),
-                            'link' => "/api/profile/orders/{$id}/invoice/bill_of_lading",
+                            'link' => OrderDocumentCatalog::downloadPath($id, OrderDocumentCatalog::SLUG_BILL_OF_LADING),
                             'type' => 'secondary',
                             'downloadable' => true,
                         ];
@@ -213,7 +237,7 @@ trait HasOrderProgress
                     case 'moadian':
                         $actions[] = [
                             'label' => __('orders.actions.download_moadian_invoice'),
-                            'link' => "/api/profile/orders/{$id}/invoice/tax_buyer",
+                            'link' => OrderDocumentCatalog::downloadPath($id, OrderDocumentCatalog::SLUG_TAX),
                             'type' => 'secondary',
                             'downloadable' => true,
                         ];
@@ -232,11 +256,6 @@ trait HasOrderProgress
                 'state' => $state,
                 'actions' => $actions,
             ];
-        }
-
-        // وقتی آخرین ماشه هم خورده، آخرین دایره باید سبز شود نه آبی.
-        if ($moadianIssued) {
-            $steps[count($steps) - 1]['state'] = 'completed';
         }
 
         return [
@@ -308,9 +327,13 @@ trait HasOrderProgress
             if ($state === 'completed' || $state === 'current') {
                 switch ($blueprint['key']) {
                     case 'purchased':
+                        // سندِ الیت‌یار، نه سندِ خریدار. این‌جا `initial` لینک
+                        // می‌شد که مخاطبش فقط `buyer` است — یعنی یک الیت‌یارِ خالص
+                        // روی تنها دکمه‌ی این مرحله ۴۰۳ می‌گرفت، در حالی که Doc D
+                        // (گزارشِ خودش) اصلاً لینک نداشت.
                         $actions[] = [
-                            'label' => __('orders.actions.download_purchased_invoice'),
-                            'link' => "/api/profile/orders/{$id}/invoice/initial",
+                            'label' => __('orders.actions.download_elite_yar_report'),
+                            'link' => OrderDocumentCatalog::downloadPath($id, OrderDocumentCatalog::SLUG_ELITE_YAR_REPORT),
                             'type' => 'secondary',
                             'downloadable' => true,
                         ];
@@ -334,6 +357,14 @@ trait HasOrderProgress
                             'label' => __('orders.actions.submit_service_invoice'),
                             'link' => "/api/profile/orders/{$id}/elite-yar-moadian-invoice",
                             'type' => 'secondary',
+                        ];
+                        // Doc Q — فاکتور مودیانِ خودِ الیت‌یار. همین مرحله یعنی ثبت
+                        // شده، پس سند وجود دارد؛ تا امروز هیچ‌جا لینک نمی‌شد.
+                        $actions[] = [
+                            'label' => __('orders.actions.download_moadian_invoice'),
+                            'link' => OrderDocumentCatalog::downloadPath($id, OrderDocumentCatalog::SLUG_TAX_ELITE_YAR),
+                            'type' => 'secondary',
+                            'downloadable' => true,
                         ];
                         break;
 
@@ -404,19 +435,20 @@ trait HasOrderProgress
 
         $moadianSubmitted = $this->{Order::SUPPLIER_MOADIAN_REF} !== null;
 
-        $currentIndex = 0;
-        if (! $isCancelled) {
-            $currentIndex = $this->currentProgressIndex($stepsBlueprint, $status);
-
-            if ($moadianSubmitted) {
-                $currentIndex = count($stepsBlueprint) - 1;
-            }
-        }
+        // همان قاعده‌ی تایم‌لاینِ خریدار، و به همان دلیل: Doc O هم درست بعد از
+        // باسکول ثبت می‌شود، وقتی بار هنوز در راه است. ثبتش نباید «تحویل و تسویه
+        // شد» را برای باری که تحویل نشده completed نشان دهد.
+        $currentIndex = $isCancelled ? 0 : $this->currentProgressIndex($stepsBlueprint, $status);
 
         $steps = [];
 
         foreach ($stepsBlueprint as $index => $blueprint) {
             $state = $this->progressState($index, $currentIndex, $isCancelled);
+
+            if ($moadianSubmitted && ! $isCancelled && $blueprint['key'] === 'moadian') {
+                $state = 'completed';
+            }
+
             $actions = [];
 
             if ($state !== 'inactive') {
@@ -424,7 +456,7 @@ trait HasOrderProgress
                     case 'reserved':
                         $actions[] = [
                             'label' => __('orders.actions.download_reserve_report'),
-                            'link' => "/api/profile/orders/{$id}/invoice/reserve_report",
+                            'link' => OrderDocumentCatalog::downloadPath($id, OrderDocumentCatalog::SLUG_RESERVE_REPORT),
                             'method' => 'GET',
                             'downloadable' => true,
                         ];
@@ -433,7 +465,7 @@ trait HasOrderProgress
                     case 'received':
                         $actions[] = [
                             'label' => __('orders.actions.download_loading_order'),
-                            'link' => "/api/profile/orders/{$id}/invoice/loading_order",
+                            'link' => OrderDocumentCatalog::downloadPath($id, OrderDocumentCatalog::SLUG_LOADING),
                             'method' => 'GET',
                             'downloadable' => true,
                         ];
@@ -442,7 +474,7 @@ trait HasOrderProgress
                     case 'shipped':
                         $actions[] = [
                             'label' => __('orders.actions.download_exit_permit'),
-                            'link' => "/api/profile/orders/{$id}/invoice/exit_permit",
+                            'link' => OrderDocumentCatalog::downloadPath($id, OrderDocumentCatalog::SLUG_BILL_OF_LADING),
                             'method' => 'GET',
                             'downloadable' => true,
                         ];
@@ -472,7 +504,7 @@ trait HasOrderProgress
                     case 'moadian':
                         $actions[] = [
                             'label' => __('orders.actions.download_moadian_invoice'),
-                            'link' => "/api/profile/orders/{$id}/invoice/tax_supplier",
+                            'link' => OrderDocumentCatalog::downloadPath($id, OrderDocumentCatalog::SLUG_TAX_SUPPLIER),
                             'method' => 'GET',
                             'downloadable' => true,
                         ];
@@ -491,10 +523,6 @@ trait HasOrderProgress
                 'state' => $state,
                 'actions' => $actions,
             ];
-        }
-
-        if ($moadianSubmitted) {
-            $steps[count($steps) - 1]['state'] = 'completed';
         }
 
         return [
