@@ -102,6 +102,15 @@ class Handler extends ExceptionHandler
                 $message = __('global.errors.unauthorized_action');
             }
 
+            // ۴۲۹ از دو جا می‌آید: limiterهایی که خودشان `response()` دارند (که
+            // اصلاً به اینجا نمی‌رسند)، و `throttle:N,1`های ساده که پیامِ
+            // پیش‌فرضِ لاراول را می‌آورند — «Too Many Attempts.»، انگلیسی، در
+            // اپی که `locale=fa` است و قاعده‌اش «هیچ رشتهٔ کاربرپسندی بدون
+            // __()» است. کلیدش از قبل وجود داشت و فقط این مسیر به آن وصل نبود.
+            if ($statusCode === 429) {
+                $message = __('global.too_many_requests');
+            }
+
             // اگر پیام خالی بود (مثلا abort(500))
             if (empty($message)) {
                 $message = match ($statusCode) {

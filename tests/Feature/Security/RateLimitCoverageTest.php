@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Security;
 
+use App\Models\User;
 use Illuminate\Routing\Route as RoutingRoute;
 use Illuminate\Support\Facades\Route;
+use Laratrust\Models\Role;
+use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
 use ReflectionClass;
 use ReflectionMethod;
@@ -159,5 +162,45 @@ class RateLimitCoverageTest extends TestCase
             "این مسیرها پیامک/سرویسِ پولی/مقایسهٔ راز دارند ولی throttle ندارند:\n  ".
             implode("\n  ", $unthrottled)
         );
+    }
+
+    #[Test]
+    public function a_throttled_request_answers_in_the_projects_own_envelope(): void
+    {
+        // ۴۲۹ از دو مسیرِ متفاوت می‌آید و فرانت باید بتواند هر دو را یکسان بخواند:
+        //
+        //   * limiterهایی که خودشان `response()` دارند (`sms`, `otp-verify`,
+        //     `financial`) — پیامِ فارسیِ خودشان را می‌دهند.
+        //   * `throttle:N,1`های ساده — استثنای لاراول را بالا می‌دهند، که
+        //     `Handler::handleApiException()` به همان پاکت تبدیلش می‌کند.
+        //
+        // شاخهٔ دوم تا امروز پیامِ پیش‌فرضِ **انگلیسیِ** لاراول را می‌داد
+        // («Too Many Attempts.») در اپی که `locale=fa` است. کلیدِ ترجمه‌اش
+        // (`global.too_many_requests`) از قبل وجود داشت و فقط وصل نبود.
+        // نقش لازم است: `role.employer` پیش از سقفِ روت اجرا می‌شود، پس کاربرِ
+        // بی‌نقش ۴۰۳ می‌گیرد و هرگز به ۴۲۹ نمی‌رسد.
+        $user = User::factory()->create();
+        $user->addRole(Role::firstOrCreate(['name' => 'employer'], ['display_name' => 'Employer']));
+
+        Sanctum::actingAs($user);
+
+        // `/profile/elite-yars/invite` سقفِ سادهٔ ۳ در دقیقه دارد. بدنهٔ نامعتبر
+        // می‌فرستیم: هدف رسیدن به ۴۲۹ است، نه موفق‌شدنِ خودِ دعوت.
+        $last = null;
+        for ($i = 0; $i < 6; $i++) {
+            $last = $this->postJson('/api/profile/elite-yars/invite', []);
+
+            if ($last->getStatusCode() === 429) {
+                break;
+            }
+        }
+
+        $this->assertSame(429, $last->getStatusCode(), 'سقف باید پس از چند تلاش فعال شود.');
+
+        $body = $last->json();
+
+        $this->assertArrayHasKey('status', $body, 'پاسخِ ۴۲۹ باید همان پاکتِ استانداردِ پروژه باشد.');
+        $this->assertFalse($body['status']);
+        $this->assertSame(__('global.too_many_requests'), $body['message']);
     }
 }
