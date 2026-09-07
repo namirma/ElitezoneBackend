@@ -70,8 +70,27 @@ return [
             'root' => env('FILESYSTEM_PUBLIC_DRIVER', 'local') === 's3'
                 ? env('FILESYSTEM_PUBLIC_ROOT', '')
                 : storage_path('app/public'),
-            // local → APP_URL/storage ; cloud → the public bucket / CDN base URL
-            'url' => env('FILESYSTEM_PUBLIC_URL', env('APP_URL').'/storage'),
+            // local → APP_URL/storage ; cloud → FILESYSTEM_PUBLIC_URL, or null so the
+            // S3 adapter derives it from endpoint+bucket.
+            //
+            // ⚠️ The `APP_URL.'/storage'` fallback must NEVER apply to the s3 driver.
+            // It did, and it produced a silent, total failure: with
+            // FILESYSTEM_PUBLIC_DRIVER=s3 and FILESYSTEM_PUBLIC_URL unset, every upload
+            // was written to the bucket while `Storage::disk('public')->url()` handed
+            // out `http://localhost:8000/storage/...` — a path that cannot exist,
+            // because nothing was ever written there. Measured on the dev box: three
+            // real avatars sitting safely in the bucket, every one of them a 404 for
+            // the user who uploaded it. Nothing errored; the upload endpoint returned
+            // 200 with a URL, and the image simply never appeared. The same broke
+            // page-block images and every other public upload at once.
+            //
+            // Leaving it null for s3 is the correct default: flysystem builds the URL
+            // from the endpoint and bucket it is already configured with, so a bare
+            // driver switch works, and FILESYSTEM_PUBLIC_URL stays available for a CDN
+            // domain in front of the bucket.
+            'url' => env('FILESYSTEM_PUBLIC_DRIVER', 'local') === 's3'
+                ? env('FILESYSTEM_PUBLIC_URL')
+                : env('FILESYSTEM_PUBLIC_URL', env('APP_URL').'/storage'),
             'visibility' => 'public',
             'throw' => false,
             // ── S3 / ArvanCloud (used only when driver=s3) — PUBLIC bucket ──
