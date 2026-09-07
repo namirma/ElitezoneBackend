@@ -112,7 +112,15 @@ class SupplierController extends Controller
 
         // خارج از تراکنش عمداً نیست — این یک به‌روزرسانیِ تکی است و پیامک‌ها
         // صف‌شده‌اند، پس چیزی برای rollback نمی‌ماند.
-        $this->notifyWaitingCarts($parkService, $userId);
+        //
+        // ⚠️ فقط وقتی واقعاً چیزی عوض شده. `notifyWaitingCarts()` به **همهٔ**
+        // سبدهای پارک‌شدهٔ این تأمین‌کننده پیامک می‌دهد و مهلتشان را هم تمدید
+        // می‌کند. `UpdateSupplierReserveTimeRequest` فقط *کاهش* را رد می‌کند، پس
+        // ارسالِ دوبارهٔ همان مقدار اعتبارسنجی را رد می‌کرد و بی‌سروصدا یک موجِ
+        // پیامکِ دیگر به همان خریدارها می‌فرستاد — کافی بود فرم دو بار ذخیره شود.
+        if ($supplier->wasChanged()) {
+            $this->notifyWaitingCarts($parkService, $userId);
+        }
 
         return success(
             new SupplierProfileResource($supplier->fresh()),
