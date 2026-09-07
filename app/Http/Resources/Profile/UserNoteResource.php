@@ -27,7 +27,7 @@ class UserNoteResource extends BaseJsonResource
             UserNote::NOTE => $this->{UserNote::NOTE},
             'admin_id' => $this->{UserNote::ADMIN_ID},
             'admin_name' => $adminProfile
-                ? trim(($adminProfile->name ?? '').' '.($adminProfile->family ?? '')) ?: $admin?->mobile
+                ? trim(($adminProfile->name ?? '').' '.($adminProfile->family ?? '')) ?: $admin->mobile
                 : null,
             'created_at' => $this->{UserNote::CREATED_AT}?->toDateTimeString(),
             'created_at_p' => $this->created_at_p,

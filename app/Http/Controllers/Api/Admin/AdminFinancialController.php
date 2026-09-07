@@ -118,12 +118,13 @@ class AdminFinancialController extends Controller
         $docType = $request->input('doc_type', 'waybill');
 
         $documents = Order::query()
-            // ⚠️ `items.originFactory` و نه `items.factory`: روی `OrderItem` رابطه‌ای
-            // به نام `factory()` وجود ندارد و آن نام با متدِ استاتیکِ تریتِ
-            // `HasFactory` برخورد می‌کند — پس Eloquent فکتوری را برمی‌داشت و روی آن
-            // `addEagerConstraints()` صدا می‌زد. نتیجه یک ۵۰۰ بود که فقط چون کوئریِ
-            // فیلترشده صفر ردیف داشت دیده نمی‌شد. (متدِ خواهرش، `getExpertDocuments`،
-            // از همان اول نامِ درست را داشت.)
+            // ‏`OrderItem` رابطه‌ای به نام `factory()` ندارد و نمی‌تواند داشته باشد —
+            // با متدِ استاتیکِ `HasFactory::factory()` برخورد می‌کند، که همان قاعده‌ای
+            // است که در CLAUDE.md نوشته شده. نامش `originFactory()` است.
+            //
+            // این اندپوینت ۲۰۰ می‌داد فقط چون کوئریِ فیلترشده صفر ردیف داشت: با صفر
+            // ردیف هیچ eager-loadی اجرا نمی‌شود. اولین سفارشی که شرط را پاس کند
+            // `BadMethodCallException` و ۵۰۰ می‌گرفت. خطِ ۱۷۱ همین فایل از اول درست بود.
             ->with(['items.supplier.profile', 'items.originFactory'])
             ->when($docType === 'waybill', fn (Builder $query) => $query->whereNotNull(Order::WAYBILL_REF))
             // ⚠️ این شرط `payment_receipt_ref` بود — ستونی که واقعاً نوشته می‌شود،

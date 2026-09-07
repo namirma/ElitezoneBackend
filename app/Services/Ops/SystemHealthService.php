@@ -182,7 +182,11 @@ final class SystemHealthService
                 'id' => (int) $order->getAttribute(Order::ID),
                 'order_number' => $order->getAttribute(Order::ORDER_NUMBER),
                 'status' => (string) $order->getAttribute(Order::STATUS),
-                'idle_hours' => (int) now()->diffInHours($order->getAttribute(Order::UPDATED_AT)),
+                // ترتیبِ عملوندها عمدی است: Carbon 3 (لاراول ۱۳) عددِ **علامت‌دار**
+                // برمی‌گرداند و Carbon 2 قدرمطلق. با `now()->diffInHours($past)`
+                // روی این شاخه هر سفارشِ گیرکرده «−۲۴۰ ساعت» گزارش می‌شد. از گذشته
+                // به now هر دو نسخه مثبت می‌دهند.
+                'idle_hours' => (int) $order->getAttribute(Order::UPDATED_AT)->diffInHours(now()),
             ])
             ->all();
 

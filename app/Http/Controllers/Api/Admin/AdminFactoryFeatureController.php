@@ -81,8 +81,12 @@ class AdminFactoryFeatureController extends Controller
         $partial = $existing !== null;
         $req = $partial ? 'sometimes' : 'required';
 
+        // نه `?->` داخل زنجیرهٔ `??`: larastan روی برنچِ L13 آن را «بی‌مورد»
+        // خطا می‌گیرد. شرطِ صریح روی هر دو برنچ یکسان می‌گذرد و همان معنا را دارد.
+        $existingCategory = $existing !== null ? $existing->{FactoryFeature::CATEGORY} : null;
+
         $category = $request->input(FactoryFeature::CATEGORY)
-            ?? $existing?->{FactoryFeature::CATEGORY}
+            ?? $existingCategory
             ?? FactoryFeature::CATEGORY_PRODUCT;
 
         return [

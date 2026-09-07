@@ -591,7 +591,9 @@ class PlaceOrderAction
 
                 throw new BusinessException(
                     __('checkout.supplier_not_found_for_factory', [
-                        'factory' => $item->factory?->name ?? '—',
+                        // ‏`cart_items.factory_id` در اسکیما NOT NULL است، پس رابطه
+                        // هرگز غایب نیست — nullsafe اینجا هیچ‌وقت کاری نمی‌کرد.
+                        'factory' => (string) $item->factory->name ?: '—',
                     ]),
                     422
                 );
