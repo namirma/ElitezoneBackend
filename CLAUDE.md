@@ -478,13 +478,13 @@ All financial constants live in `config/financial.php` — **never hardcode amou
 
 | Key | Env var | Default | Meaning |
 |-----|---------|---------|---------|
-| `financial.reservation_threshold` | `RESERVATION_THRESHOLD_RIALS` | `2_000_000_000` | Orders above this require reservation flow (200M Tomans — matches the Passargad gateway per-payment limit in the spec) |
-| `financial.hold_fee` | `HOLD_FEE_RIALS` | `50_000_000` | Fee to extend a reservation (5M Tomans). `PayHoldFeeAction` debits WO **and** credits WSSG (Saze) so the ledger stays balanced — double-entry, never a bare debit |
+| ~~`financial.reservation_threshold`~~ | — | — | **DELETED.** The reservation branch is no longer an order-*size* threshold. See `PaymentBranchResolver` below. |
+| ~~`financial.hold_fee`~~ | — | — | **DELETED.** Extending a reservation is free now; `PayHoldFeeAction` and its route no longer exist. |
 | `financial.system_user_id` | `FINANCIAL_SYSTEM_USER_ID` | `1` | User ID of the platform's central "Saze" (WSSG) wallet |
 | `financial.vat_user_id` | `FINANCIAL_VAT_USER_ID` | *(falls back to system_user_id)* | User ID of the dedicated VAT escrow (WVAT) wallet; set in .env once a separate VAT user is created |
 | `financial.pending_order_ttl_hours` | `PENDING_ORDER_TTL_HOURS` | `2` | Legacy TTL for unpaid PENDING orders. **Inert** — that status no longer exists and `orders:cancel-expired` was deleted; expiry runs via `orders:expire-reserves`. |
 | `financial.reservation_validity_hours` | `RESERVATION_VALIDITY_HOURS` | `2` | Hours a paid reservation stays valid before it must be completed/extended |
-| `financial.hold_fee_extension_hours` | `HOLD_FEE_EXTENSION_HOURS` | `24` | Hours that paying the hold fee extends a reservation (`PayHoldFeeAction::extensionHours()`) |
+| ~~`financial.hold_fee_extension_hours`~~ | — | — | **DELETED** with the hold fee. |
 | `financial.deposit_min` | `DEPOSIT_MIN_RIALS` | `10_000` | Min per wallet deposit (read by `WalletDepositRequest`) |
 | `financial.deposit_max_shaparak` | `DEPOSIT_MAX_SHAPARAK_RIALS` | `200_000_000` | Max per Shaparak-gateway deposit (bank-set) |
 | `financial.deposit_max_podium` | `DEPOSIT_MAX_PODIUM_RIALS` | `2_000_000_000` | Max per Podium direct deposit |
@@ -497,13 +497,18 @@ All financial constants live in `config/financial.php` — **never hardcode amou
 
 ```php
 // ✅ correct
-config('financial.reservation_threshold')
-PayHoldFeeAction::fee()   // wraps config('financial.hold_fee')
+config('financial.weighbridge_tolerance')
+app(SalesSettings::class)->shaparakValue()
 
 // ❌ wrong — never hardcode
 2_000_000_000
-self::FEE_RIALS   // deprecated constant in PayHoldFeeAction, kept for BC only
 ```
+
+> ⚠️ **`financial.reservation_threshold` and `PayHoldFeeAction` are gone.** This block
+> used to hold them up as the correct pattern, which sent anyone following it to
+> reintroduce a global size threshold that the payment redesign deliberately removed —
+> and to call a class that no longer exists. Both mistakes are cheap to make and
+> expensive to find, so the examples were replaced with two that are real.
 
 ### Shipping — Shipments (multi-origin + multi-destination freight)
 
@@ -548,7 +553,18 @@ with its own cost and lifecycle status. An order has one or more shipments;
   `order_items.shipping_cost` (+ origin `factory_id`/`factory_location_id`).
 - **Relation naming gotcha**: `OrderItem`/`Shipment` use `originFactory()` /
   `originFactoryLocation()` — never name a relation `factory()`, it collides with the
-  `HasFactory` trait's static `factory()` (this broke 25 tests once).
+  `HasFactory` trait's static `factory()` (this broke 25 tests once). A class's own method
+  always wins over the trait's, so `factory()` stops being static and `Model::factory()`
+  fatals with "Non-static method cannot be called statically".
+
+  ⚠️ **The rule was only ever applied to those two models.** Five others still declare a
+  `factory()` relation today: `CartItem`, `FactoryFeature`, `FactoryLocation`,
+  `PriceHistory`, `ProductPrice`. It is **latent** — none of them has a factory class and
+  nothing calls `::factory()` on them — and the relation is read in ~20 places including
+  string eager-loads, so renaming it is its own refactor rather than something to fold into
+  an unrelated change. `Database/FactoryMethodCollisionTest` holds the line: it goes red the
+  moment a factory class appears for one of the five (collision becomes live), or a **new**
+  model takes the name. Adding to its `KNOWN_LATENT` list is not the fix — renaming is.
 - Still out of scope: **an admin/supplier CRUD panel to enter `shipping_rates`** (basis,
   per_kg/per_count, flat) — rates are currently inserted directly (seed/tinker); when the
   panel is built, validate `cost_basis` with `Rule::enum(ShippingCostBasis::class)`.
@@ -1095,8 +1111,23 @@ The system has a wallet-based payment model. Five wallet codes are in use:
 Payment entry points:
 
 1. **WalletPaymentController** — generic wallet payment for orders
-2. **OrderPaymentController::payFullOrder** — handles 3 scenarios: direct purchase, reservation (above `financial.reservation_threshold`, default 200M Tomans), and completion of reserved orders; protected by `idempotency` middleware. **Compare the threshold against `Order::reservationBasisAmount()`, never `final_amount`** — the threshold is an order-*size* cap (it mirrors the Pasargad per-payment limit), and `final_amount` is net of the coupon discount, so a coupon could push a large order under the line and silently strip the buyer's reservation option. Both `HasOrderProgress` timelines use the same method so the progress UI can never disagree with the payment router.
-3. **OrderPaymentController::payHoldFee** — hold fee extension; protected by `idempotency` middleware
+2. **OrderPaymentController::payFullOrder** — direct purchase, reservation, and completion of reserved orders; protected by `idempotency` middleware.
+
+   **`PaymentBranchResolver` is the single source of truth for which branch an order takes** — for the backend *and* the frontend. It reads three inputs and nothing else: the **post-coupon** `finalAmount`, this user's wallet balance, and the single-transaction Shaparak cap.
+
+   ```
+   Final ≤ Wallet                → WALLET   (no reserve option)
+   Final ≤ Wallet + Shaparak     → GATEWAY  (top up the difference; no reserve)
+   Final >  Wallet + Shaparak    → RESERVE  (reserve only)
+   ```
+
+   ⚠️ **The criterion is this buyer's ability to pay, not a global order-size threshold.**
+   The old `financial.reservation_threshold` model is **deleted**: it forced a large order
+   into reservation even for a buyer who could pay outright, and let a small order skip
+   reservation for a buyer who could not. The same order now legitimately takes different
+   branches for different users. Do **not** reintroduce a size threshold, and do not look
+   for `Order::reservationBasisAmount()` — it does not exist.
+   Pinned by `Payment/PaymentBranchResolverTest`.
 4. **OrderActionController::submitEliteYARMoadianInvoice** — Doc Q; releases WEY+WVAT holds
 5. **SupplierOrderController::submitSupplierMoadianInvoice** — Doc O; releases WVAT hold
 6. **AdminOrderController::submitSystemMoadianInvoice** — Doc P; releases sazeVat WVAT hold
@@ -1287,7 +1318,21 @@ days** on the dev database. No worker had ever picked them up and nothing had su
 `queue:health` (scheduled every 15 min) checks oldest-pending age, pending depth, recent
 failures and total `failed_jobs` against `config/ops.php`, logs `error` on breach (so a
 configured Sentry DSN turns it into an alert) and exits non-zero for external monitors.
-`--json` gives a machine-readable payload. It no-ops on non-`database` queue drivers.
+`--json` gives a machine-readable payload. The **queue** half no-ops on non-`database`
+drivers.
+
+**It also reports SMS delivery, via `SmsService::deliveryProblem()`** — deliberately, and
+deliberately *outside* the `applicable` driver guard. `send()` drops any number outside
+`TSMS_DEV_ALLOWLIST` whenever `APP_ENV !== production` and returns `true`, so from the
+queue's side "it was sent". On a laptop that is the intended default; on a **deployed**
+non-production environment it is a total, silent login outage — and staging must run
+`APP_ENV=staging` for the CORS allowlist to include its plain-http origin, so the two
+settings are a trap in pairs. `deliveryProblem()` returns non-null when the env is neither
+`production` nor `local`/`testing` **and** either TSMS is unconfigured or the allowlist is
+empty; `local`/`testing` are excluded because an alert that fires on every clone gets
+muted. It lives in this one command so there is one cron, one alert channel and one exit
+code rather than a second command nobody schedules. Pinned by
+`Security/SmsDevAllowlistTest`.
 
 Worker + scheduler supervision: `deploy/supervisor/elitezone-worker.conf`.
 Full runbook (incl. the backup restore drill and the deploy checklist):
@@ -1309,8 +1354,10 @@ codes, IBANs and card numbers. Set `BACKUP_DISKS=financial,s3` for a real off-si
 Retention and the notification email are env-driven (see `.env.example`). Files are
 deliberately excluded (`--only-db`); the uploaded receipts/invoices need their own cycle.
 
-Scheduled jobs (crons, wired in `Console/Kernel.php`) — **all** use
-`withoutOverlapping()->onOneServer()`:
+Scheduled jobs (crons, wired in `Console/Kernel.php`) — all use
+`withoutOverlapping()->onOneServer()` **except** `sanctum:prune-expired` and
+`backup:monitor`, which carry `onOneServer()` only (both are idempotent, so a
+concurrent run is harmless):
 - `orders:expire-reserves` command — cancels reservations whose deadline **and** grace
   window have both passed (`Order::isReserveWindowExpired()`)
 - `Financial/CheckSupplierBalancesJob` — polls `supplier_debt_pending = true` orders;
@@ -1360,7 +1407,7 @@ active/churned counts from `CustomerStat`; surfaced in the admin dashboard as
 
 ### Authorization (Policies)
 
-`app/Policies/` contains **nine** policies, all registered in `AuthServiceProvider`:
+`app/Policies/` contains **ten** policies, all registered in `AuthServiceProvider`:
 
 | Policy | Resource | Pattern |
 |---|---|---|
@@ -1496,6 +1543,35 @@ Round-5 audit additions: `Security/CorsAllowlistTest`,
 three are **sweep** tests — they walk the whole route table / every upload rule
 rather than asserting one case, so a newly added ungated admin route or a new
 `mimes:...,svg` fails the suite on its own.
+
+**Round-6 additions — two more sweeps, both written because the same gap recurred.**
+
+- **`Security/RateLimitCoverageTest`.** There was a route-table sweep for admin
+  *permissions* but none for *rate limits*, and five routes had drifted through five
+  hardening rounds with the same shape: `POST /profile/password` (consumed the OTP and
+  set the hash while the limiter sat on the read-only `password/verify` beside it),
+  `/profile/password/otp`, `/profile/supplier/reserve-time` (SMSes **every** parked cart
+  on that supplier), `/profile/supplier/drivers/{driver}/verify` (SMSes a number the
+  supplier types in), and `POST /profile/financial/accounts` (two paid Podium inquiries
+  per call). Each was found by hand, one per round. The sweep reads each route's
+  controller-method body and requires a `throttle` on anything containing `SendSmsJob`,
+  `OtpSecret::matches`, or a paid-inquiry service. Root cause for the reserve-time one is
+  in the controller, not the limiter: `updateReserveTime` now guards the fan-out with
+  `$supplier->wasChanged()`, because `UpdateSupplierReserveTimeRequest` only rejects a
+  *decrease*, so resubmitting the same value validated and silently re-SMSed everyone.
+- **`Database/FactoryMethodCollisionTest`** — see the `factory()` relation note above.
+
+**And one report was still broken after being "fixed".** `getExpertShares(mode=payment)`
+filtered `meta->code = 'WEY'` **and** `type = hold_release`, which is an empty
+intersection by construction: `releaseHold()` is the only writer of that type and it
+writes no `meta.code`, while the elite-yar path never calls it at all — it releases with a
+`debitEliteYAR(HOLD)` + `creditEliteYAR(AVAILABLE)` pair. So the previous fix swapped one
+impossible filter for another. Both modes now key on `status` plus `meta->op = '+'`; the
+`op` condition is load-bearing, or the release's debit leg (also `code=WEY`,
+`status=hold`) counts as a second *parked* commission and the panel doubles the figure.
+The test that missed it was hand-building `WalletTransaction` rows in a shape the engine
+cannot emit — it now drives `WalletTransactionEngine` itself, so the row shape can never
+drift away from the assertion again.
 
 Newer test files: `Auth/AuthControllerTest`, `Financial/EliteYARLifetimeCapTest`,
 `Financial/ReceiptPrivateDiskTest`, `Financial/ProcessTransactionRaceTest`,
@@ -1925,15 +2001,22 @@ Rules:
 
 ### Cancellable states — a buyer may only self-cancel a PENDING order
 
-`OrderActionController::cancel` allows **only `Order::STATUS_PENDING`** (no money moved).
-`RESERVED`/`RESERVED_EXTENDED` auto-cancel on expiry via the system cron (never by the
-user before expiry). `PROCESSING` and later are paid/settled and must go through the
-dedicated return/dispute flow (مرجوعی/داوری) — **never** self-cancel, which would
-trigger an incomplete refund.
+**`Order::isInBuyerCancelWindow()` is the only rule**, and both gates call it —
+`OrderActionController::cancel` and `OrderPolicy::cancel()`. It returns true only for
+`STATUS_RESERVED` inside the supplier-granted extension window. `PROCESSING` and later are
+paid/settled and must go through the dedicated return/dispute flow (مرجوعی/داوری) —
+**never** self-cancel, which would trigger an incomplete refund.
 
-`OrderPolicy::cancel()` enforces the **same** `STATUS_PENDING` restriction — never widen
-the policy to allow broader states than the controller accepts, or the defense-in-depth
-is broken (another caller of the policy would allow cancellation the controller forbids).
+Keep the two gates reading that one method. Never inline a status list into either: the
+defense-in-depth only holds while the policy and the controller cannot answer the question
+differently.
+
+> ⚠️ This section used to say "only `Order::STATUS_PENDING`", and that
+> `RESERVED`/`RESERVED_EXTENDED` can never be cancelled by the user before expiry. **Both
+> claims are false now** — neither constant exists on `Order` any more (the statuses are
+> reserved / processing / awaiting_weight_correction / shipped / partially_delivered /
+> delivered / returned_to_origin / cancelled), and cancelling a *reserved* order inside
+> the window is exactly what the code deliberately permits.
 
 ### Order commission routing — `elite_yar_user_id` drives WEY (NOT `beneficiary_user_id`)
 
@@ -2236,12 +2319,18 @@ order-financial escrow values `FinancialCodes::STATUS_HOLD = 'hold'` /
 - **Domain events implement `ShouldDispatchAfterCommit`.** All 7 events under `app/Events/*`
   defer delivery until the surrounding transaction commits, so queued listeners never see a
   not-yet-committed row. Keep the interface when adding events.
-- **Admin order status is a state machine.** `AdminOrderController::changeStatus` only allows
-  whitelisted forward transitions (no `pending → delivered` jumps); cancellation still routes
-  through `CancelOrderAction`. The `pending → processing` transition additionally requires
-  `payment_status = paid` — PENDING is pre-payment and PROCESSING starts the post-payment
-  pipeline, so moving an unpaid order forward would let it reach the supplier/weighbridge
-  with zero ledger entries.
+- **Admin status power is cancellation, and nothing else.** `AdminOrderController::changeStatus`
+  validates `status` as `in:cancelled` and delegates straight to `forceCancel` — there is no
+  transition whitelist because there are no other permitted transitions (redesign §5.3). Every
+  other status now has one owner that carries its financial and stock legs with it:
+  `processing` from the payment path, `shipped` from waybill registration,
+  `delivered`/`partially_delivered` from the buyer's confirmation, `returned_to_origin` from
+  the delivery-deadline cron. A raw `update([STATUS => ...])` from the admin panel would
+  produce the transition with none of those effects.
+
+  > ⚠️ This bullet used to describe "whitelisted forward transitions" and a
+  > `pending → processing` payment check. That state machine does not exist, and neither
+  > does `pending` — the description contradicted §5.3 two sections above it.
 - **`users.is_active` is enforced globally.** `EnsureUserIsActive` sits in the `api`
   middleware group (Kernel) and 403s any request whose sanctum user has `is_active === false`
   (NULL counts as active). `AdminUserController::toggleStatus` revokes all Sanctum tokens on
