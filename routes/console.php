@@ -130,6 +130,28 @@ Schedule::command('carts:warn-expiring')
     ->withoutOverlapping()
     ->onOneServer();
 
+// اعلانِ «دوباره موجود شد» به مشترکانِ اطلاع‌رسانیِ موجودی.
+//
+// ⚠️ تا پیش از این **هیچ‌چیز** این اعلان را نمی‌فرستاد: جدول و اندپوینتِ ثبتِ
+// اشتراک وجود داشت ولی هیچ کدی `notified_at` را نمی‌نوشت، پس قابلیت از دید
+// کاربر کار می‌کرد و در عمل هرگز چیزی نمی‌فرستاد.
+//
+// هر ۱۰ دقیقه: «موجود شد» مهلتِ دقیقه‌ای ندارد و کوئری‌اش روی کلِ مشترکانِ
+// منتظر اجرا می‌شود، پس اجرای هر دقیقه فقط بار اضافه است.
+Schedule::command('stock:notify-subscribers')
+    ->everyTenMinutes()
+    ->withoutOverlapping()
+    ->onOneServer();
+
+// نگهداشتِ لاگِ جستجو — `/api/search` عمومی است و به‌ازای هر درخواست یک ردیف
+// می‌نویسد (عبارت + user_id + IP + User-Agent). `product_views` و سبدِ مهمان
+// سیاستِ نگهداشت داشتند و این یکی جا مانده بود: هم رشدِ نامحدود، هم تاریخچه‌ی
+// جستجوی افراد که برای همیشه می‌ماند.
+Schedule::command('searches:prune')
+    ->dailyAt('01:40')
+    ->withoutOverlapping()
+    ->onOneServer();
+
 // اسکالیشن خودکار تیکت‌های عبورکرده از SLA (یک‌بار به ازای هر تیکت)
 Schedule::job(new EscalateOverdueTicketsJob)
     ->hourly()

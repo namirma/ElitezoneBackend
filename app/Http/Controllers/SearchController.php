@@ -9,7 +9,6 @@ use App\Models\SupplierActivityCategory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str;
 
 class SearchController extends Controller
 {
@@ -68,18 +67,40 @@ class SearchController extends Controller
                 $matches = collect();
 
                 // اگر اسم دسته اصلی شبیه بود
-                if (Str::contains($category->name, $query)) {
+                if ($this->nameMatches($category->name, $query)) {
                     $matches->push($category->name);
                 }
 
                 // اگر اسم زیرمجموعه‌ها شبیه بود
                 $childMatches = $category->children
-                    ->filter(fn ($child) => Str::contains($child->name, $query))
+                    ->filter(fn ($child) => $this->nameMatches($child->name, $query))
                     ->pluck('name');
 
                 return $matches->merge($childMatches);
             })
             ->unique();
+    }
+
+    /**
+     * آیا این نام با عبارتِ جستجو می‌خواند — با **همان حساسیتِ حروفی که SQL دارد**.
+     *
+     * ⚠️ فیلترِ قبلی `Str::contains()` بود که حساس به بزرگی/کوچکیِ حروف است، در
+     * حالی که کوئریِ `LIKE` روی collation‌ـی مثل `utf8mb4_unicode_ci` **نیست**.
+     * پس هر دسته‌ای با نامِ لاتین از دیتابیس برمی‌گشت و بعد در PHP دور ریخته
+     * می‌شد: جستجوی «steel» ردیفِ «Steel Co» را می‌آورد و همان‌جا حذفش می‌کرد.
+     * نتیجه صفر نتیجه بود و `results_count` هم صفر لاگ می‌شد — یعنی دادهٔ
+     * آنالیتیکس هم همراهش خراب می‌شد.
+     *
+     * `mb_stripos` و نه `Str::contains(..., ignoreCase: true)`: چندبایتی است
+     * (نامِ فارسی) و روی هر دو شاخه‌ی L10/L13 یکسان رفتار می‌کند.
+     */
+    private function nameMatches(?string $name, string $query): bool
+    {
+        if ($name === null || $query === '') {
+            return false;
+        }
+
+        return mb_stripos($name, $query) !== false;
     }
 
     /**
@@ -111,20 +132,27 @@ class SearchController extends Controller
     }
 
     /**
-     * دریافت آخرین جستجوها
+     * دریافت آخرین جستجوهای **خودِ کاربر**.
+     *
+     * ⚠️ `/search` عمومی است و برای مهمان هیچ فیلترِ `user_id` وجود نداشت، پس
+     * شرطِ `if (Auth::check())` یعنی مهمان **۵ جستجوی آخرِ کلِ سیستم** را
+     * می‌گرفت — یعنی عبارت‌هایی که کاربرانِ دیگر تایپ کرده بودند، زیر عنوانِ
+     * «آخرین جستجوهای شما». هم نشتِ داده‌ی بین‌کاربری بود هم صریحاً غلط.
+     *
+     * مهمان تاریخچه‌ی شخصی ندارد، پس جوابِ درست خالی است نه تاریخچه‌ی دیگران.
      */
     private function getLatestSearches(): Collection
     {
-        $query = Search::select(Search::QUERY)
-            ->distinct()
-            ->orderBy(Search::CREATED_AT, 'desc')
-            ->limit(5);
-
-        if (Auth::check()) {
-            $query->where(Search::USER_ID, Auth::id());
+        if (! Auth::check()) {
+            return collect();
         }
 
-        return $query->pluck(Search::QUERY);
+        return Search::select(Search::QUERY)
+            ->where(Search::USER_ID, Auth::id())
+            ->distinct()
+            ->orderBy(Search::CREATED_AT, 'desc')
+            ->limit(5)
+            ->pluck(Search::QUERY);
     }
 
     /**
