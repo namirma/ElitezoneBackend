@@ -93,16 +93,33 @@ class AdminFinancialController extends Controller
         // `WalletTransactionEngine::process()` روی هر ردیف `meta.code` می‌گذارد و
         // برای این مسیر همیشه `WEY` است. این هم مستقل از نقش است و هم دقیقاً همان
         // چیزی که گزارش می‌خواهد.
+        //
+        // ⚠️ فیلترِ `type = hold_release` هم غلط بود — و همان اشتباهِ قبلی را با
+        // ستونی دیگر تکرار می‌کرد. `releaseHold()` تنها نویسندهٔ آن نوع است، ولی
+        // اولاً `meta.code` **نمی‌نویسد** (متایش `{op, source_hold_id}` است) و
+        // ثانیاً مسیرِ الیت‌یار اصلاً صدایش نمی‌زند: `ReleaseEliteYARHoldAction`
+        // با جفتِ `debitEliteYAR(HOLD)` + `creditEliteYAR(AVAILABLE)` آزاد می‌کند.
+        // پس اشتراکِ دو شرط باز هم تهیِ همیشگی بود.
+        //
+        // فقط سه نویسنده برای WEY وجود دارد و همین سه، دو حالتِ گزارش را می‌سازند:
+        //   باسکول    creditEliteYAR(HOLD)       → op '+' , status hold
+        //   سند Q     debitEliteYAR(HOLD)        → op '-' , status hold
+        //             creditEliteYAR(AVAILABLE)  → op '+' , status confirmed
+        //
+        // شرطِ `op = '+'` لازم است، وگرنه لِگِ برداشتِ سند Q هم در «تخصیص» شمرده
+        // می‌شد و چون Resource مبلغ را بی‌علامت می‌دهد، کمیسیونِ آزادشده در پنل
+        // **دوباره** به‌عنوان امانی دیده می‌شد.
         $shares = WalletTransaction::query()
             ->with(['wallet.user.profile', 'order'])
-            ->where(WalletTransaction::META.'->code', FinancialCodes::WALLET_ELITE_YAR);
+            ->where(WalletTransaction::META.'->code', FinancialCodes::WALLET_ELITE_YAR)
+            ->where(WalletTransaction::META.'->op', '+');
 
         if ($mode === 'allocation') {
             // کمیسیونی که سرِ باسکول امانی پارک شده و هنوز سند Q نیامده.
             $shares->where(WalletTransaction::STATUS, FinancialCodes::STATUS_HOLD);
         } elseif ($mode === 'payment') {
-            // آزادسازی با ثبتِ فاکتور مودیانِ الیت‌یار (`ReleaseEliteYARHoldAction`).
-            $shares->where(WalletTransaction::TYPE, WalletTransaction::TYPE_HOLD_RELEASE);
+            // آزادشده با ثبتِ فاکتور مودیانِ الیت‌یار (`ReleaseEliteYARHoldAction`).
+            $shares->where(WalletTransaction::STATUS, FinancialCodes::STATUS_AVAILABLE);
         }
 
         $data = $shares->latest(WalletTransaction::CREATED_AT)->paginate($this->perPage());

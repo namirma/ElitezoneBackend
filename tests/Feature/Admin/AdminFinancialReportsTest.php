@@ -10,6 +10,7 @@ use App\Models\OrderItem;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
+use App\Services\Financial\WalletTransactionEngine;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Laratrust\Models\Role;
 use Laravel\Sanctum\Sanctum;
@@ -111,51 +112,78 @@ class AdminFinancialReportsTest extends TestCase
     #[Test]
     public function elite_yar_shares_find_the_real_commission_legs(): void
     {
+        // ⚠️ ردیف‌ها را **با خودِ موتورِ کیف پول** می‌سازیم، نه با
+        // `WalletTransaction::create()` دستی.
+        //
+        // نسخهٔ قبلیِ این تست ردیف‌ها را دستی می‌ساخت و به آن‌ها شکلی می‌داد که
+        // موتور اصلاً تولید نمی‌کند: `type = hold_release` همراهِ `meta.code = WEY`.
+        // `releaseHold()` تنها نویسندهٔ آن نوع است و `meta.code` **نمی‌نویسد**؛
+        // مسیرِ الیت‌یار هم هرگز صدایش نمی‌زند. پس تست سبز بود و گزارشِ «پرداخت‌شده»
+        // در پروداکشن برای همیشه تهی می‌ماند — همان کلاسِ باگی که قرار بود بسته شود.
+        //
+        // با فراخوانیِ موتور، هر تغییری در شکلِ ردیف‌ها خودبه‌خود به این تست می‌رسد.
         $eliteYar = User::factory()->create();
-        $wallet = Wallet::create([
+        Wallet::create([
             Wallet::USER_ID => $eliteYar->id,
             Wallet::BALANCE => 0,
             Wallet::BALANCE_HOLD => 0,
         ]);
+
+        $supplier = User::factory()->create();
+        Wallet::create([
+            Wallet::USER_ID => $supplier->id,
+            Wallet::BALANCE => 5_000,
+            Wallet::BALANCE_HOLD => 0,
+        ]);
+
         $order = $this->makeOrder();
+        $engine = app(WalletTransactionEngine::class);
+        $amount = 1_000_000.0;
 
-        // همان شکلی که `WeighbridgeVatRouter::creditEliteYAR()` می‌سازد:
-        // نوع `deposit`، وضعیت `hold`، و `meta.code = WEY`.
-        $held = WalletTransaction::create([
-            WalletTransaction::WALLET_ID => $wallet->id,
-            WalletTransaction::ORDER_ID => $order->id,
-            WalletTransaction::TYPE => WalletTransaction::TYPE_DEPOSIT,
-            WalletTransaction::STATUS => FinancialCodes::STATUS_HOLD,
-            WalletTransaction::AMOUNT => 1_000_000,
-            WalletTransaction::META => ['code' => FinancialCodes::WALLET_ELITE_YAR, 'op' => '+'],
-        ]);
+        // ۱) باسکول: کمیسیون امانی پارک می‌شود (WeighbridgeVatRouter).
+        $engine->creditEliteYAR($order, $amount, FinancialCodes::STATUS_HOLD, $eliteYar->id);
 
-        // و آزادسازیِ سند Q.
-        $released = WalletTransaction::create([
-            WalletTransaction::WALLET_ID => $wallet->id,
-            WalletTransaction::ORDER_ID => $order->id,
-            WalletTransaction::TYPE => WalletTransaction::TYPE_HOLD_RELEASE,
-            WalletTransaction::STATUS => FinancialCodes::STATUS_AVAILABLE,
-            WalletTransaction::AMOUNT => 1_000_000,
-            WalletTransaction::META => ['code' => FinancialCodes::WALLET_ELITE_YAR, 'op' => '+'],
-        ]);
+        // ۲) سند Q: هولد آزاد می‌شود — دقیقاً همان جفتی که
+        //    `ReleaseEliteYARHoldAction` می‌زند (debit HOLD سپس credit AVAILABLE).
+        $engine->debitEliteYAR($order, $amount, FinancialCodes::STATUS_HOLD, $eliteYar->id);
+        $engine->creditEliteYAR($order, $amount, FinancialCodes::STATUS_AVAILABLE, $eliteYar->id);
 
-        // یک لِگِ کیف پولِ دیگر که نباید در هیچ‌کدام از دو حالت بیاید.
-        $unrelated = WalletTransaction::create([
-            WalletTransaction::WALLET_ID => $wallet->id,
-            WalletTransaction::ORDER_ID => $order->id,
-            WalletTransaction::TYPE => WalletTransaction::TYPE_DEPOSIT,
-            WalletTransaction::STATUS => FinancialCodes::STATUS_HOLD,
-            WalletTransaction::AMOUNT => 500,
-            WalletTransaction::META => ['code' => FinancialCodes::WALLET_SUPPLIER, 'op' => '+'],
-        ]);
+        // ۳) یک لِگِ کیف پولِ دیگر که نباید در هیچ‌کدام از دو حالت بیاید.
+        //    credit است نه debit: برداشت از `balance_hold` موجودیِ قبلی می‌خواهد،
+        //    و اینجا فقط یک ردیفِ WS لازم داریم تا مطمئن شویم فیلترِ WEY آن را
+        //    نمی‌گیرد. این همان شکلی است که هولدِ مالیاتِ تأمین‌کننده ساخته می‌شود.
+        $engine->creditSupplier($order, 500.0, FinancialCodes::STATUS_HOLD, $supplier->id);
+
+        $legs = WalletTransaction::query()
+            ->where(WalletTransaction::ORDER_ID, $order->id)
+            ->get();
+
+        $held = $legs->first(fn ($t) => ($t->meta['code'] ?? null) === FinancialCodes::WALLET_ELITE_YAR
+            && ($t->meta['op'] ?? null) === '+'
+            && $t->status === FinancialCodes::STATUS_HOLD);
+        $releaseDebit = $legs->first(fn ($t) => ($t->meta['code'] ?? null) === FinancialCodes::WALLET_ELITE_YAR
+            && ($t->meta['op'] ?? null) === '-');
+        $released = $legs->first(fn ($t) => ($t->meta['code'] ?? null) === FinancialCodes::WALLET_ELITE_YAR
+            && ($t->meta['op'] ?? null) === '+'
+            && $t->status === FinancialCodes::STATUS_AVAILABLE);
+        $unrelated = $legs->first(fn ($t) => ($t->meta['code'] ?? null) === FinancialCodes::WALLET_SUPPLIER);
+
+        $this->assertNotNull($held, 'موتور باید لِگِ امانیِ WEY را نوشته باشد.');
+        $this->assertNotNull($releaseDebit, 'موتور باید لِگِ برداشتِ آزادسازی را نوشته باشد.');
+        $this->assertNotNull($released, 'موتور باید لِگِ آزادشدهٔ WEY را نوشته باشد.');
+        $this->assertNotNull($unrelated, 'لِگِ تأمین‌کننده باید ساخته شده باشد.');
 
         $allocation = $this->ids('/api/admin/financial/company/expert-shares?mode=allocation');
         $this->assertContains($held->id, $allocation, 'کمیسیونِ امانیِ الیت‌یار باید در حالتِ تخصیص بیاید.');
+        // ⚠️ لِگِ برداشتِ سند Q هم `code=WEY` و `status=hold` دارد. بدونِ شرطِ
+        // `op = '+'`، کمیسیونِ **آزادشده** دوباره به‌عنوان امانی شمرده می‌شد و چون
+        // Resource مبلغ را بی‌علامت می‌دهد، پنل رقم را دوبرابر نشان می‌داد.
+        $this->assertNotContains($releaseDebit->id, $allocation, 'لِگِ برداشتِ آزادسازی نباید دوباره امانی شمرده شود.');
         $this->assertNotContains($unrelated->id, $allocation, 'لِگِ کیف پولِ دیگری نباید بیاید.');
 
         $payment = $this->ids('/api/admin/financial/company/expert-shares?mode=payment');
-        $this->assertContains($released->id, $payment, 'آزادسازیِ سند Q باید در حالتِ پرداخت بیاید.');
+        $this->assertContains($released->id, $payment, 'کمیسیونِ آزادشده باید در حالتِ پرداخت بیاید.');
         $this->assertNotContains($held->id, $payment, 'مبلغِ هنوز امانی پرداخت‌شده نیست.');
+        $this->assertNotContains($unrelated->id, $payment, 'لِگِ کیف پولِ دیگری نباید بیاید.');
     }
 }
