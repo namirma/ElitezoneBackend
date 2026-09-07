@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Constants\FinancialCodes;
+use InvalidArgumentException;
 
 /**
  * تنها مرجعِ «کدام سندِ سفارش، با چه اسلاگی، مالِ کدام طرفِ معامله است».
@@ -31,6 +32,56 @@ final class OrderDocumentCatalog
     public const AUDIENCE_ELITE_YAR = 'elite_yar';
 
     /**
+     * اسلاگ‌ها ثابتِ کلاس‌اند، نه رشته‌ی خام — همان قاعده‌ای که برای نامِ ستون‌ها
+     * (`Order::STATUS`) رعایت می‌شود، و به همان دلیل.
+     *
+     * ⚠️ **هیچ‌جای دیگری اجازه ندارد اسلاگِ سند را دوباره تایپ کند.** تایم‌لاینِ
+     * سفارش این کار را کرده بود و سه اسلاگ ساخته بود که اصلاً وجود نداشتند —
+     * `tax_buyer`، `exit_permit`، `loading_order` — یعنی سه لینکِ ۴۰۴ روی سندهایی
+     * که بدونشان بار از کارخانه خارج نمی‌شود. با ثابت، همان اشتباه خطای PHP/PHPStan
+     * می‌شود نه یک ۴۰۴ خاموش در مرورگرِ کاربر.
+     */
+    public const SLUG_INITIAL = 'initial';
+
+    public const SLUG_RECEIPT = 'receipt';
+
+    public const SLUG_SUPPLIER_REPORT = 'supplier_report';
+
+    public const SLUG_LOADING = 'loading';
+
+    public const SLUG_ELITE_YAR_REPORT = 'elite_yar_report';
+
+    public const SLUG_RESERVE_RECEIPT = 'reserve_receipt';
+
+    public const SLUG_RESERVE_REPORT = 'reserve_report';
+
+    public const SLUG_FINAL = 'final';
+
+    public const SLUG_FINAL_SUPPLIER = 'final_supplier';
+
+    public const SLUG_REFUND = 'refund';
+
+    public const SLUG_CANCEL_REPORT = 'cancel_report';
+
+    /** Doc K — بارنامه / مجوز خروج. «مجوز خروج» سندِ جدایی نیست، همین است. */
+    public const SLUG_BILL_OF_LADING = 'bill_of_lading';
+
+    public const SLUG_MODIFIED_OWNER = 'modified_owner';
+
+    public const SLUG_MODIFIED_SUPPLIER = 'modified_supplier';
+
+    /** Doc P — فاکتور مودیانِ سیستم به نامِ خریدار. */
+    public const SLUG_TAX = 'tax';
+
+    public const SLUG_TAX_SUPPLIER = 'tax_supplier';
+
+    public const SLUG_TAX_ELITE_YAR = 'tax_elite_yar';
+
+    public const SLUG_SURVEY_BUYER = 'survey_buyer';
+
+    public const SLUG_SURVEY_ELITE_YAR = 'survey_elite_yar';
+
+    /**
      * اسلاگِ URL → کدِ سند. هیچ fallback ای وجود ندارد: اسلاگِ ناشناخته ۴۲۲ می‌گیرد،
      * نه یک سندِ نامرتبطِ دیگر.
      *
@@ -38,32 +89,32 @@ final class OrderDocumentCatalog
      */
     private const CODES = [
         // Stage 0
-        'initial' => FinancialCodes::DOC_PRE_INVOICE,
+        self::SLUG_INITIAL => FinancialCodes::DOC_PRE_INVOICE,
         // Stage 1 — direct purchase
-        'receipt' => FinancialCodes::DOC_RECEIPT_OWNER,
-        'supplier_report' => FinancialCodes::DOC_REPORT_SUPPLIER,
-        'loading' => FinancialCodes::DOC_LOADING_ORDER,
-        'elite_yar_report' => FinancialCodes::DOC_ELITE_YAR_REPORT,
+        self::SLUG_RECEIPT => FinancialCodes::DOC_RECEIPT_OWNER,
+        self::SLUG_SUPPLIER_REPORT => FinancialCodes::DOC_REPORT_SUPPLIER,
+        self::SLUG_LOADING => FinancialCodes::DOC_LOADING_ORDER,
+        self::SLUG_ELITE_YAR_REPORT => FinancialCodes::DOC_ELITE_YAR_REPORT,
         // Stage 2 — reservation
-        'reserve_receipt' => FinancialCodes::DOC_RESERVE_RECEIPT,
-        'reserve_report' => FinancialCodes::DOC_RESERVE_REPORT,
+        self::SLUG_RESERVE_RECEIPT => FinancialCodes::DOC_RESERVE_RECEIPT,
+        self::SLUG_RESERVE_REPORT => FinancialCodes::DOC_RESERVE_REPORT,
         // Stage 3 — reservation completion
-        'final' => FinancialCodes::DOC_FINAL_RECEIPT_OWNER,
-        'final_supplier' => FinancialCodes::DOC_FINAL_REPORT_SUPPLIER,
+        self::SLUG_FINAL => FinancialCodes::DOC_FINAL_RECEIPT_OWNER,
+        self::SLUG_FINAL_SUPPLIER => FinancialCodes::DOC_FINAL_REPORT_SUPPLIER,
         // Stage 4 — cancellation
-        'refund' => FinancialCodes::DOC_REFUND_RECEIPT,
-        'cancel_report' => FinancialCodes::DOC_CANCEL_REPORT,
+        self::SLUG_REFUND => FinancialCodes::DOC_REFUND_RECEIPT,
+        self::SLUG_CANCEL_REPORT => FinancialCodes::DOC_CANCEL_REPORT,
         // Stage 5 — post-weighbridge (K=بارنامه/مجوز خروج، LO/LS=فاکتور اصلاح‌شده)
-        'bill_of_lading' => FinancialCodes::DOC_BILL_OF_LADING,
-        'modified_owner' => FinancialCodes::DOC_MODIFIED_INVOICE_OWNER,
-        'modified_supplier' => FinancialCodes::DOC_MODIFIED_INVOICE_SUPPLIER,
+        self::SLUG_BILL_OF_LADING => FinancialCodes::DOC_BILL_OF_LADING,
+        self::SLUG_MODIFIED_OWNER => FinancialCodes::DOC_MODIFIED_INVOICE_OWNER,
+        self::SLUG_MODIFIED_SUPPLIER => FinancialCodes::DOC_MODIFIED_INVOICE_SUPPLIER,
         // Stage 6 — Moadian taxpayer system
-        'tax' => FinancialCodes::DOC_TAX_INVOICE_BUYER,
-        'tax_supplier' => FinancialCodes::DOC_TAX_INVOICE_SUPPLIER,
-        'tax_elite_yar' => FinancialCodes::DOC_TAX_INVOICE_ELITE_YAR,
+        self::SLUG_TAX => FinancialCodes::DOC_TAX_INVOICE_BUYER,
+        self::SLUG_TAX_SUPPLIER => FinancialCodes::DOC_TAX_INVOICE_SUPPLIER,
+        self::SLUG_TAX_ELITE_YAR => FinancialCodes::DOC_TAX_INVOICE_ELITE_YAR,
         // Stage 7 — surveys (خارج از whitelist روت — به `downloadableSlugs()` نگاه کن)
-        'survey_buyer' => FinancialCodes::DOC_SURVEY,
-        'survey_elite_yar' => FinancialCodes::DOC_SURVEY_ELITE_YAR,
+        self::SLUG_SURVEY_BUYER => FinancialCodes::DOC_SURVEY,
+        self::SLUG_SURVEY_ELITE_YAR => FinancialCodes::DOC_SURVEY_ELITE_YAR,
     ];
 
     /**
@@ -73,25 +124,25 @@ final class OrderDocumentCatalog
      * @var array<string, list<string>>
      */
     private const AUDIENCES = [
-        'initial' => [self::AUDIENCE_BUYER],
-        'receipt' => [self::AUDIENCE_BUYER],
-        'reserve_receipt' => [self::AUDIENCE_BUYER],
-        'final' => [self::AUDIENCE_BUYER],
-        'refund' => [self::AUDIENCE_BUYER],
-        'modified_owner' => [self::AUDIENCE_BUYER],
-        'tax' => [self::AUDIENCE_BUYER],
-        'survey_buyer' => [self::AUDIENCE_BUYER],
-        'bill_of_lading' => [self::AUDIENCE_BUYER, self::AUDIENCE_SUPPLIER],
-        'loading' => [self::AUDIENCE_BUYER, self::AUDIENCE_SUPPLIER],
-        'supplier_report' => [self::AUDIENCE_SUPPLIER],
-        'reserve_report' => [self::AUDIENCE_SUPPLIER],
-        'final_supplier' => [self::AUDIENCE_SUPPLIER],
-        'cancel_report' => [self::AUDIENCE_SUPPLIER],
-        'modified_supplier' => [self::AUDIENCE_SUPPLIER],
-        'tax_supplier' => [self::AUDIENCE_SUPPLIER],
-        'elite_yar_report' => [self::AUDIENCE_ELITE_YAR],
-        'tax_elite_yar' => [self::AUDIENCE_ELITE_YAR],
-        'survey_elite_yar' => [self::AUDIENCE_ELITE_YAR],
+        self::SLUG_INITIAL => [self::AUDIENCE_BUYER],
+        self::SLUG_RECEIPT => [self::AUDIENCE_BUYER],
+        self::SLUG_RESERVE_RECEIPT => [self::AUDIENCE_BUYER],
+        self::SLUG_FINAL => [self::AUDIENCE_BUYER],
+        self::SLUG_REFUND => [self::AUDIENCE_BUYER],
+        self::SLUG_MODIFIED_OWNER => [self::AUDIENCE_BUYER],
+        self::SLUG_TAX => [self::AUDIENCE_BUYER],
+        self::SLUG_SURVEY_BUYER => [self::AUDIENCE_BUYER],
+        self::SLUG_BILL_OF_LADING => [self::AUDIENCE_BUYER, self::AUDIENCE_SUPPLIER],
+        self::SLUG_LOADING => [self::AUDIENCE_BUYER, self::AUDIENCE_SUPPLIER],
+        self::SLUG_SUPPLIER_REPORT => [self::AUDIENCE_SUPPLIER],
+        self::SLUG_RESERVE_REPORT => [self::AUDIENCE_SUPPLIER],
+        self::SLUG_FINAL_SUPPLIER => [self::AUDIENCE_SUPPLIER],
+        self::SLUG_CANCEL_REPORT => [self::AUDIENCE_SUPPLIER],
+        self::SLUG_MODIFIED_SUPPLIER => [self::AUDIENCE_SUPPLIER],
+        self::SLUG_TAX_SUPPLIER => [self::AUDIENCE_SUPPLIER],
+        self::SLUG_ELITE_YAR_REPORT => [self::AUDIENCE_ELITE_YAR],
+        self::SLUG_TAX_ELITE_YAR => [self::AUDIENCE_ELITE_YAR],
+        self::SLUG_SURVEY_ELITE_YAR => [self::AUDIENCE_ELITE_YAR],
     ];
 
     /**
@@ -103,13 +154,13 @@ final class OrderDocumentCatalog
      *
      * @var list<string>
      */
-    private const OUT_OF_PRODUCT_SCOPE = ['survey_buyer', 'survey_elite_yar'];
+    private const OUT_OF_PRODUCT_SCOPE = [self::SLUG_SURVEY_BUYER, self::SLUG_SURVEY_ELITE_YAR];
 
     /** «فاکتور» برای هر طرف سندِ متفاوتی است — لینکِ خریدار برای سوپلایر ۴۰۳ می‌دهد. */
     private const PRIMARY_SLUG = [
-        self::AUDIENCE_BUYER => 'initial',
-        self::AUDIENCE_SUPPLIER => 'supplier_report',
-        self::AUDIENCE_ELITE_YAR => 'elite_yar_report',
+        self::AUDIENCE_BUYER => self::SLUG_INITIAL,
+        self::AUDIENCE_SUPPLIER => self::SLUG_SUPPLIER_REPORT,
+        self::AUDIENCE_ELITE_YAR => self::SLUG_ELITE_YAR_REPORT,
     ];
 
     /** آیا این اسلاگ اصلاً سندی می‌شناسد؟ */
@@ -145,6 +196,23 @@ final class OrderDocumentCatalog
     public static function downloadableSlugs(): array
     {
         return array_values(array_diff(array_keys(self::CODES), self::OUT_OF_PRODUCT_SCOPE));
+    }
+
+    /**
+     * مسیرِ دانلودِ یک سند برای یک سفارش — **تنها** راهِ ساختنِ این لینک.
+     *
+     * از خودِ روت ساخته می‌شود (`route(..., false)` → مسیرِ بدون دامنه)، پس شکلِ URL
+     * هم فقط یک جا تعریف شده است. اسلاگی که روت سرو نمی‌کند اینجا استثنا می‌اندازد
+     * به‌جای اینکه لینکِ ۴۰۴ تحویلِ کاربر شود؛ همان قاعده‌ی
+     * `InvoiceGenerator::getViewName()` که برای کدِ ناشناخته throw می‌کند.
+     */
+    public static function downloadPath(int $orderId, string $slug): string
+    {
+        if (! in_array($slug, self::downloadableSlugs(), true)) {
+            throw new InvalidArgumentException("Order document slug [{$slug}] is not downloadable.");
+        }
+
+        return route('api.user.orders.invoice', ['order' => $orderId, 'type' => $slug], false);
     }
 
     /** سندِ «فاکتورِ» پیش‌فرضِ هر نقش، برای دکمهٔ دانلود در پاسخِ سفارش. */
