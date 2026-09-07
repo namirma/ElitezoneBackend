@@ -3,11 +3,13 @@
 namespace Tests\Feature\Financial;
 
 use App\Actions\Financial\ProcessWeighbridgeResultAction;
+use App\Constants\FinancialCodes;
 use App\Models\Badge;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\User;
 use App\Models\Wallet;
+use App\Models\WalletTransaction;
 use App\Services\Financial\DebtEngine;
 use App\Services\Financial\SettlementCalculatorService;
 use App\Services\Invoice\InvoiceGenerator;
@@ -130,6 +132,86 @@ class ProcessWeighbridgeResultActionTest extends TestCase
         // می‌کرد. با این مقدارِ واقع‌بینانه، اگر کسی ترتیب legها را برگرداند
         // (عودت به خریدار پیش از بازپس‌گیری از سوپلایر) تست فوراً می‌شکند.
         $this->systemWallet->update([Wallet::BALANCE => $this->oldPOO - $oldPTS]);
+    }
+
+    // ─── سهم الیت‌یار ──────────────────────────────────────────
+    //
+    // ⚠️ فیکسچرِ setUp عمداً `beneficiary = buyer` و بدون `elite_yar_user_id`
+    // است، پس `routeEliteYAR()` روی همان گاردِ اولش برمی‌گشت و **هیچ‌کدام** از
+    // تست‌های این فایل شاخه‌ی پرداختِ کمیسیون را اجرا نمی‌کردند.
+    //
+    // نتیجه‌اش این بود که در کلِ مخزن هیچ تستی assert نمی‌کرد که
+    // `PAYMENT_TO_ELITE_YAR` اصلاً **نوشته** می‌شود — تنها جای دیگرش یک
+    // `forceFill` دستی در تستِ سقفِ مادام‌العمر بود. و همان ستون است که سقف،
+    // پرداخت‌های قبلی را از رویش جمع می‌زند: اگر نوشتنش از کار می‌افتاد،
+    // هر الیت‌یاری برای همیشه بی‌سقف می‌شد و هیچ‌چیز سرخ نمی‌شد.
+
+    #[Test]
+    public function the_elite_yar_commission_is_written_to_the_order(): void
+    {
+        $eliteYar = $this->attachEliteYar();
+
+        $this->action->execute($this->order, 10.0);
+
+        $this->order->refresh();
+
+        $gross = (float) $this->order->{Order::PAYMENT_TO_ELITE_YAR};
+        $this->assertGreaterThan(
+            0.0,
+            $gross,
+            'سهم الیت‌یار باید روی سفارش نوشته شود — سقف مادام‌العمر از همین ستون می‌خواند.'
+        );
+
+        // و پول واقعاً حرکت کرده باشد: کمیسیون امانی روی کیف پول الیت‌یار.
+        $held = WalletTransaction::query()
+            ->where(WalletTransaction::ORDER_ID, $this->order->id)
+            ->where(WalletTransaction::META.'->code', FinancialCodes::WALLET_ELITE_YAR)
+            ->where(WalletTransaction::STATUS, FinancialCodes::STATUS_HOLD)
+            ->first();
+
+        $this->assertNotNull($held, 'باید یک لِگِ امانیِ WEY ثبت شده باشد.');
+        $this->assertSame(
+            $eliteYar->id,
+            (int) $held->wallet->user_id,
+            'کمیسیون باید روی کیف پولِ خودِ الیت‌یار بنشیند.'
+        );
+    }
+
+    #[Test]
+    public function the_elite_yar_who_placed_the_order_is_still_paid_when_the_employer_pays(): void
+    {
+        // مسیرِ «الیت‌یار سبد را می‌بندد، کارفرما می‌پردازد» (فاز ۶). گاردِ
+        // `routeEliteYAR()` عمداً با **پرداخت‌کننده** مقایسه می‌کند و نه ثبت‌کننده:
+        // با `placer_user_id` این حالت همیشه فعال می‌شد — چون الیت‌یار خودش
+        // ثبت‌کننده است — و کمیسیونِ همان مسیری را که فاز ۶ ممکن می‌کند بی‌صدا
+        // صفر می‌کرد. هیچ تستی آن مرز را نگه نمی‌داشت.
+        $employer = User::factory()->create();
+        Wallet::create([Wallet::USER_ID => $employer->id, Wallet::BALANCE => 5_000_000, Wallet::BALANCE_HOLD => 0]);
+
+        $this->order->forceFill([
+            Order::PAYER_USER_ID => $employer->id,
+            // الیت‌یار **همان ثبت‌کننده** است — دقیقاً حالتی که گاردِ غلط می‌گرفت.
+            Order::ELITE_YAR_USER_ID => $this->buyer->id,
+        ])->save();
+
+        $this->action->execute($this->order, 10.0);
+
+        $this->assertGreaterThan(
+            0.0,
+            (float) $this->order->refresh()->{Order::PAYMENT_TO_ELITE_YAR},
+            'وقتی پرداخت‌کننده کارفرماست، الیت‌یارِ ثبت‌کننده باید کمیسیونش را بگیرد.'
+        );
+    }
+
+    /** یک الیت‌یارِ متمایز از خریدار، با کیف پول، روی همین سفارش. */
+    private function attachEliteYar(): User
+    {
+        $eliteYar = User::factory()->create();
+        Wallet::create([Wallet::USER_ID => $eliteYar->id, Wallet::BALANCE => 0, Wallet::BALANCE_HOLD => 0]);
+
+        $this->order->forceFill([Order::ELITE_YAR_USER_ID => $eliteYar->id])->save();
+
+        return $eliteYar;
     }
 
     /**

@@ -231,4 +231,72 @@ class SupplierDebtReleaseTest extends TestCase
             'بازپس‌گیری از سوپلایر باید با شکستِ آزادسازی برگردد — نه اینکه نیمه‌کاره بماند.'
         );
     }
+
+    #[Test]
+    public function the_suspended_vat_is_held_on_the_suppliers_own_wallet_when_the_debt_clears(): void
+    {
+        // ⚠️ فیکسچرِ setUp هرگز `supplier_vat_pending_amount` نمی‌گذاشت، پس
+        // `$vatPending > 0` در کرون هیچ‌وقت اجرا نمی‌شد و آستانه‌ی ترکیبی
+        // (`balance < debt + vatPending`) فقط با vatPending صفر سنجیده می‌شد.
+        //
+        // این همان لِگی است که سند O بعداً آزادش می‌کند؛ اگر اجرا نشود،
+        // مالیات هرگز هولد نمی‌شود و سند O چیزی برای آزادکردن ندارد.
+        $vat = 250_000.0;
+
+        $this->order->forceFill([Order::SUPPLIER_VAT_PENDING_AMOUNT => $vat])->save();
+
+        // موجودی باید هر دو را بپوشاند — بدهی *و* مالیات. با فقط بدهی، کرون
+        // عمداً کاری نمی‌کند.
+        $supplierWallet = Wallet::where(Wallet::USER_ID, $this->supplier->id)->firstOrFail();
+        $supplierWallet->update([
+            Wallet::BALANCE => self::DEBT + $vat,
+            Wallet::BALANCE_HOLD => 0,
+        ]);
+
+        $this->runJob();
+
+        $supplierWallet->refresh();
+
+        $this->assertEqualsWithDelta(
+            $vat,
+            (float) $supplierWallet->balance_hold,
+            0.01,
+            'مالیاتِ معلق باید روی کیف پولِ خودِ تأمین‌کننده هولد شود، نه نزد سازه.'
+        );
+
+        $this->assertNull(
+            $this->order->refresh()->{Order::SUPPLIER_VAT_PENDING_AMOUNT},
+            'پس از هولدشدن، مبلغِ معلق باید پاک شود.'
+        );
+    }
+
+    #[Test]
+    public function a_balance_that_covers_the_debt_but_not_the_vat_is_not_enough(): void
+    {
+        // آستانه `debt + vatPending` است و نه فقط `debt`. با موجودیِ بینِ آن دو،
+        // کرون نباید چیزی را تسویه کند — وگرنه بازپس‌گیری انجام می‌شد و بعد
+        // هولدِ مالیات با موجودیِ ناکافی می‌ترکید و کلِ تراکنش برمی‌گشت.
+        $vat = 250_000.0;
+
+        $this->order->forceFill([Order::SUPPLIER_VAT_PENDING_AMOUNT => $vat])->save();
+
+        $supplierWallet = Wallet::where(Wallet::USER_ID, $this->supplier->id)->firstOrFail();
+        $supplierWallet->update([
+            Wallet::BALANCE => self::DEBT,   // بدهی را می‌پوشاند، مالیات را نه
+            Wallet::BALANCE_HOLD => 0,
+        ]);
+
+        $this->runJob();
+
+        $this->assertTrue(
+            (bool) $this->order->refresh()->{Order::SUPPLIER_DEBT_PENDING},
+            'با موجودیِ ناکافی برای مالیات، کسری باید باز بماند.'
+        );
+        $this->assertEqualsWithDelta(
+            0.0,
+            (float) $supplierWallet->refresh()->balance_hold,
+            0.01,
+            'هیچ هولدی نباید گذاشته شده باشد.'
+        );
+    }
 }
