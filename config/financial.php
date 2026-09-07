@@ -96,16 +96,29 @@ return [
     | Wallet deposit limits (Rials)
     |--------------------------------------------------------------------------
     |
-    | Per-deposit min and per-method max. The Shaparak online-gateway cap is set
-    | by the bank (currently 20M Tomans = 200M Rials per transaction); the Podium
-    | direct-deposit cap is higher (200M Tomans = 2B Rials). Read by
-    | WalletDepositRequest — never hardcode these limits in the FormRequest.
+    | Per-deposit min, plus the Podium direct-deposit cap (200M Tomans = 2B
+    | Rials). Read by WalletDepositRequest — never hardcode a limit there.
+    |
+    | The Shaparak gateway cap is NOT here: it lives in the admin-editable
+    | `shaparak_value` sales setting, because the same number decides whether an
+    | order goes to the gateway or to the reservation flow. This comment used to
+    | claim the bank's cap was 20M Tomans; it is 200M, and the wrong figure here
+    | made every shortfall between the two unpayable on the gateway rail.
     |
     */
     'deposit_min' => (int) env('DEPOSIT_MIN_RIALS', 10_000),
 
-    'deposit_max_shaparak' => (int) env('DEPOSIT_MAX_SHAPARAK_RIALS', 200_000_000),
-
+    /*
+     * ⚠️ `deposit_max_shaparak` عمداً حذف شد — یک واقعیت دو تعریف داشت.
+     *
+     * سقفِ یک تراکنشِ درگاه از `SalesSettings::shaparakValue()` خوانده می‌شود
+     * (تنظیمِ `shaparak_value`، قابلِ ویرایش توسط ادمین) چون **همان مقدار از
+     * قبل تصمیم می‌گیرد سفارش به درگاه برود یا به رزرو**. این کلید مقدارِ
+     * متفاوتی داشت (۲۰۰٬۰۰۰٬۰۰۰ در برابرِ ۲٬۰۰۰٬۰۰۰٬۰۰۰) و نتیجه‌اش این بود
+     * که سایت مبلغی را برای شارژ پیشنهاد می‌داد که همین اعتبارسنجی ۴۲۲ می‌کرد.
+     * سقفِ واقعیِ بانک ۲۰۰ میلیون تومان است (تأییدِ علی)، پس این عدد اشتباه
+     * بود. آن را برنگردانید؛ افزودنِ دوباره‌اش یعنی بازگرداندنِ همان باگ.
+     */
     'deposit_max_podium' => (int) env('DEPOSIT_MAX_PODIUM_RIALS', 2_000_000_000),
 
     /*
