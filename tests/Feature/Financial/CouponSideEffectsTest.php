@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\User;
 use App\Services\Marketing\CouponService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -92,5 +93,44 @@ class CouponSideEffectsTest extends TestCase
         $second = $service->createPersonalCoupon($user, 10, 2, 'test-b');
 
         $this->assertNotSame($first->code, $second->code);
+    }
+
+    #[Test]
+    public function the_coupon_code_reaches_the_buyer_in_the_order_response(): void
+    {
+        // ⚠️ `OrderResource` این فیلد را پشتِ `whenLoaded('coupon')` می‌دهد، و
+        // رابطه‌ی `coupon` فقط چون یک‌بار به فهرستِ eager-loadِ پیش‌فرضِ
+        // `Order` اضافه شد true می‌شود. آن سطر عمداً اضافه شد چون تا پیش از آن
+        // `coupon_code` بی‌سروصدا از **هر** پاسخِ سفارشی غایب بود.
+        //
+        // ولی هیچ تستی آن را نگه نمی‌داشت: در کلِ مخزن یک assert روی
+        // `coupon_code` وجود نداشت، پس حذفِ همان یک سطر، فیلد را دوباره
+        // ناپدید می‌کرد و سوئیت سبز می‌ماند.
+        $buyer = User::factory()->create();
+
+        $coupon = Coupon::create([
+            Coupon::CODE => 'SIDE-'.uniqid(),
+            Coupon::TYPE => Coupon::TYPE_PERCENT,
+            Coupon::AMOUNT => 10,
+            Coupon::IS_ACTIVE => true,
+        ]);
+
+        $order = Order::create([
+            Order::PLACER_USER_ID => $buyer->id,
+            Order::ORDER_NUMBER => 'CC-'.uniqid(),
+            Order::STATUS => Order::STATUS_PROCESSING,
+            Order::PAYMENT_STATUS => Order::PAYMENT_PAID,
+            Order::FINAL_AMOUNT => 900_000,
+        ]);
+        $order->forceFill([
+            Order::COUPON_ID => $coupon->id,
+            Order::COUPON_DISCOUNT_AMOUNT => 100_000,
+        ])->save();
+
+        Sanctum::actingAs($buyer);
+
+        $this->getJson("/api/profile/orders/{$order->id}")
+            ->assertOk()
+            ->assertJsonPath('data.financial.coupon_code', $coupon->code);
     }
 }

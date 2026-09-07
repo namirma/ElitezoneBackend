@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Admin;
 
+use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Laratrust\Models\Role;
@@ -99,5 +101,47 @@ class PaginationEnvelopeTest extends TestCase
             $this->assertArrayHasKey('meta', $body, "{$path} متادیتای صفحه‌بندی ندارد.");
             $this->assertIsArray($body['data']);
         }
+    }
+
+    #[Test]
+    public function the_admin_order_list_actually_serialises_a_row(): void
+    {
+        // ⚠️ جاروی بالا عمداً اندپوینت‌هایی را می‌گیرد که بدونِ داده هم ۲۰۰
+        // می‌دهند، چون موضوعش پاکتِ صفحه‌بندی است. ولی نتیجه‌ی جانبی‌اش این بود
+        // که هیچ‌کدام از آن شش فهرست حتی **یک ردیف** سریالایز نمی‌کردند: نه
+        // `OrderResource::toArray()` اجرا می‌شد و نه eager-loadهایی که صدا می‌زند.
+        //
+        // این دقیقاً همان حالتی است که باگِ `items.factory` را ماه‌ها زنده نگه
+        // داشت — یک `with()` تودرتوی خراب روی فهرستِ خالی ۲۰۰ می‌دهد و روی
+        // اولین ردیفِ واقعی ۵۰۰. فهرستِ سفارش‌ها سنگین‌ترین eager-load پنل را
+        // دارد، پس همان یکی را با داده‌ی واقعی می‌سنجیم.
+        $admin = $this->admin();
+
+        $order = Order::create([
+            Order::PLACER_USER_ID => User::factory()->create()->id,
+            Order::ORDER_NUMBER => 'PG-'.uniqid(),
+            Order::STATUS => Order::STATUS_PROCESSING,
+            Order::PAYMENT_STATUS => Order::PAYMENT_PAID,
+            Order::FINAL_AMOUNT => 1_000_000,
+        ]);
+
+        // بدونِ خطِ سفارش، لاراول اصلاً وارد eager-loadهای تودرتوی `items.*`
+        // نمی‌شود و یک ریلیشنِ ناموجود باز هم نامرئی می‌ماند.
+        OrderItem::factory()->create([
+            OrderItem::ORDER_ID => $order->id,
+            OrderItem::SUPPLIER_USER_ID => User::factory()->create()->id,
+        ]);
+
+        Sanctum::actingAs($admin);
+
+        $body = $this->getJson('/api/admin/orders')->assertOk()->json();
+
+        $this->assertNotEmpty(
+            $body['data'],
+            'فهرستِ سفارش‌ها باید ردیفِ ساخته‌شده را برگرداند — وگرنه هیچ ریسورسی سریالایز نشده.'
+        );
+
+        $ids = array_column($body['data'], 'id');
+        $this->assertContains($order->id, $ids);
     }
 }

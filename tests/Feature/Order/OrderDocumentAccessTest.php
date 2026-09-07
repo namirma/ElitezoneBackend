@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Order;
 
+use App\Constants\FinancialCodes;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\User;
@@ -200,5 +201,90 @@ class OrderDocumentAccessTest extends TestCase
                 "اسلاگ «{$slug}» در whitelist روت هست ولی کدِ سندی ندارد."
             );
         }
+    }
+
+    #[Test]
+    public function every_slug_maps_to_the_document_it_is_named_after(): void
+    {
+        // ⚠️ نقشه‌ی اسلاگ→کد **معنای مجوزی** دارد، ولی هیچ‌چیز مقدارش را نگه
+        // نمی‌داشت. جاروی بالا فقط `not-null` بودنِ کد را می‌سنجید، و mockِ
+        // `InvoiceGenerator::download()` در setUp هیچ `with()` ندارد، پس آرگومانِ
+        // دومش — همان کدی که تعیین می‌کند کدام PDF ساخته شود — دیده نمی‌شد.
+        //
+        // یعنی جابه‌جا کردنِ دو ردیف در `CODES` (مثلاً `tax` و `tax_supplier`)
+        // باعث می‌شد **خریدار فاکتور مالیاتیِ تأمین‌کننده را با ۲۰۰ دانلود کند** —
+        // دقیقاً همان نشتِ بین‌طرفی که نقشه‌ی مخاطبان برای جلوگیری‌اش هست — و
+        // تمام تست‌های این فایل سبز می‌ماندند.
+        //
+        // این کپیِ دوم عمدی است: تکرارِ یک نقشه معمولاً بو می‌دهد، ولی برای
+        // نقشه‌ای که مقدارش قرارداد است، همان کپیِ دوم تنها چیزی است که یک
+        // جابه‌جاییِ بی‌صدا را قابلِ تشخیص می‌کند.
+        $expected = [
+            'initial' => FinancialCodes::DOC_PRE_INVOICE,
+            'receipt' => FinancialCodes::DOC_RECEIPT_OWNER,
+            'supplier_report' => FinancialCodes::DOC_REPORT_SUPPLIER,
+            'loading' => FinancialCodes::DOC_LOADING_ORDER,
+            'elite_yar_report' => FinancialCodes::DOC_ELITE_YAR_REPORT,
+            'reserve_receipt' => FinancialCodes::DOC_RESERVE_RECEIPT,
+            'reserve_report' => FinancialCodes::DOC_RESERVE_REPORT,
+            'final' => FinancialCodes::DOC_FINAL_RECEIPT_OWNER,
+            'final_supplier' => FinancialCodes::DOC_FINAL_REPORT_SUPPLIER,
+            'refund' => FinancialCodes::DOC_REFUND_RECEIPT,
+            'cancel_report' => FinancialCodes::DOC_CANCEL_REPORT,
+            'bill_of_lading' => FinancialCodes::DOC_BILL_OF_LADING,
+            'modified_owner' => FinancialCodes::DOC_MODIFIED_INVOICE_OWNER,
+            'modified_supplier' => FinancialCodes::DOC_MODIFIED_INVOICE_SUPPLIER,
+            'tax' => FinancialCodes::DOC_TAX_INVOICE_BUYER,
+            'tax_supplier' => FinancialCodes::DOC_TAX_INVOICE_SUPPLIER,
+            'tax_elite_yar' => FinancialCodes::DOC_TAX_INVOICE_ELITE_YAR,
+        ];
+
+        foreach ($expected as $slug => $code) {
+            $this->assertSame(
+                $code,
+                OrderDocumentCatalog::codeFor($slug),
+                "اسلاگ «{$slug}» باید دقیقاً به «{$code}» نگاشت شود."
+            );
+        }
+
+        // و دو اسلاگ نباید به یک کد برسند — یک جابه‌جاییِ تکراری هم همین‌جا
+        // گرفته می‌شود، حتی اگر کسی نقشه‌ی بالا را هم با آن هم‌راستا کند.
+        $codes = array_map(
+            static fn (string $slug): ?string => OrderDocumentCatalog::codeFor($slug),
+            array_keys($expected)
+        );
+        $this->assertSame(
+            count($codes),
+            count(array_unique($codes)),
+            'دو اسلاگ به یک کدِ سند نگاشت شده‌اند.'
+        );
+    }
+
+    #[Test]
+    public function the_download_endpoint_asks_for_the_code_the_slug_names(): void
+    {
+        // mockِ setUp آرگومان‌ها را نمی‌سنجد، پس اینجا یکی می‌سازیم که بسنجد:
+        // بدونِ این، کنترلر می‌توانست کدِ ثابتی به تولیدکننده بدهد و کسی نفهمد.
+        $captured = null;
+
+        $pdf = Mockery::mock();
+        $pdf->shouldReceive('download')->andReturn(response('%PDF-stub'));
+
+        $this->mock(InvoiceGenerator::class)
+            ->shouldReceive('download')
+            ->andReturnUsing(function ($order, $code) use (&$captured, $pdf) {
+                $captured = $code;
+
+                return $pdf;
+            });
+
+        Sanctum::actingAs($this->buyer);
+        $this->get($this->url('tax'))->assertOk();
+
+        $this->assertSame(
+            FinancialCodes::DOC_TAX_INVOICE_BUYER,
+            $captured,
+            'اسلاگِ «tax» باید فاکتور مودیانِ خریدار را بسازد، نه سندِ دیگری.'
+        );
     }
 }

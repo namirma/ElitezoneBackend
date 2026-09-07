@@ -2,8 +2,13 @@
 
 namespace Tests\Feature\Financial;
 
+use App\Models\Coupon;
+use App\Models\Factory;
+use App\Models\FactoryLocation;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Shipment;
+use App\Models\ShippingRate;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Services\Financial\SettlementCalculatorService;
@@ -24,6 +29,8 @@ class WeighbridgeReconcilerTest extends TestCase
     private const SHIPPING = 500_000.0;
 
     private const UNIT_PRICE = 500.0;
+
+    private const PROVINCE_ID = 8;
 
     private WeighbridgeReconciler $reconciler;
 
@@ -123,6 +130,147 @@ class WeighbridgeReconcilerTest extends TestCase
         $this->assertSame(9.0, $result->vat);
     }
 
+    // ─── بازمحاسبه‌ی کرایه و کوپن (بند ۸.۲ گام‌های ۲ و ۴) ─────
+    //
+    // ⚠️ تا پیش از این، `makeOrder()` نه محموله می‌ساخت و نه کوپن، پس
+    // `recalculateShipping()` همیشه روی `$shipments->isEmpty()` برمی‌گشت و
+    // `recalculateCoupon()` همیشه روی `! $couponId`. یعنی هر دو شاخه‌ی واقعی در
+    // هیچ تستی اجرا نمی‌شدند، و `newShippingCost`/`newCouponDiscount` هم در کلِ
+    // مخزن assert نمی‌شدند — در حالی که `ProcessWeighbridgeResultAction`
+    // هر دو را مستقیم روی سفارش می‌نویسد.
+
+    #[Test]
+    public function freight_is_repriced_from_the_actual_shipment_weights(): void
+    {
+        $location = $this->makeFreightRoute(flat: 100_000.0, perKg: 50.0);
+
+        $order = $this->makeOrder(wbs: 10_000.0);
+        $this->makeShipment($order, $location, 2_000.0);
+
+        $result = $this->reconciler->reconcile($order->fresh('items'), actualWeight: 2_000.0);
+
+        // 100_000 + 50 * 2_000 = 200_000 — نه کرایه‌ی اولیه‌ی 500_000.
+        $this->assertEqualsWithDelta(200_000.0, $result->newShippingCost, 0.01);
+        $this->assertNotEquals(
+            self::SHIPPING,
+            $result->newShippingCost,
+            'کرایه باید با وزنِ واقعی بازمحاسبه شود، نه اینکه مقدارِ اولیه برگردد.'
+        );
+    }
+
+    #[Test]
+    public function every_registered_leg_counts_towards_the_repriced_freight(): void
+    {
+        // ⚠️ نرخ عمداً طوری انتخاب شده که حاصل با `self::SHIPPING` **برابر نشود**.
+        // نسخه‌ی اولِ این تست 100_000 + 50×8_000 = 500_000 می‌داد، که اتفاقاً
+        // دقیقاً کرایه‌ی ذخیره‌شده بود — پس با غیرفعال‌کردنِ کلِ بازمحاسبه هم سبز
+        // می‌ماند. تساویِ تصادفی همان چیزی است که این دور دنبالش بود.
+        $location = $this->makeFreightRoute(flat: 80_000.0, perKg: 40.0);
+
+        $order = $this->makeOrder(wbs: 10_000.0);
+        $this->makeShipment($order, $location, 5_000.0);
+        $this->makeShipment($order, $location, 3_000.0);
+
+        $result = $this->reconciler->reconcile($order->fresh('items'), actualWeight: 8_000.0);
+
+        // دو لِگ با همان (مبدأ، مقصد) یک محموله‌ی تجمیعی‌اند:
+        // 80_000 + 40 * (5_000 + 3_000) = 400_000.
+        $this->assertEqualsWithDelta(400_000.0, $result->newShippingCost, 0.01);
+        $this->assertNotEquals(self::SHIPPING, $result->newShippingCost);
+    }
+
+    #[Test]
+    public function a_shipment_without_an_actual_weight_leaves_the_freight_untouched(): void
+    {
+        // مسیرِ باسکولِ ادمین: وزن کل مستقیم داده می‌شود و محموله‌ای
+        // وزن ندارد. حدس‌زدنِ کرایه در این حالت بدتر از دست‌نزدن است.
+        $location = $this->makeFreightRoute(flat: 100_000.0, perKg: 50.0);
+
+        $order = $this->makeOrder(wbs: 10_000.0);
+        $this->makeShipment($order, $location, null);
+
+        $result = $this->reconciler->reconcile($order->fresh('items'), actualWeight: 8_000.0);
+
+        $this->assertEqualsWithDelta(self::SHIPPING, $result->newShippingCost, 0.01);
+    }
+
+    #[Test]
+    public function a_percentage_coupon_is_rescaled_with_the_new_poo(): void
+    {
+        $order = $this->makeOrder(wbs: 10_000.0);
+        $coupon = Coupon::create([
+            Coupon::CODE => 'WR-'.Str::random(10),
+            Coupon::TYPE => Coupon::TYPE_PERCENT,
+            Coupon::AMOUNT => 10,
+            Coupon::IS_ACTIVE => true,
+        ]);
+        $order->forceFill([
+            Order::COUPON_ID => $coupon->id,
+            Order::COUPON_DISCOUNT_AMOUNT => 1_000.0,
+        ])->save();
+
+        $result = $this->reconciler->reconcile($order->fresh('items'), actualWeight: 12_000.0);
+
+        // ۱۰٪ از POOMِ تازه — نه از مبلغِ سفارشِ اولیه.
+        $this->assertEqualsWithDelta($result->newPOO * 0.10, $result->newCouponDiscount, 0.01);
+        $this->assertGreaterThan(1_000.0, $result->newCouponDiscount);
+    }
+
+    #[Test]
+    public function a_fixed_amount_coupon_is_left_alone(): void
+    {
+        $order = $this->makeOrder(wbs: 10_000.0);
+        $coupon = Coupon::create([
+            Coupon::CODE => 'WR-'.Str::random(10),
+            Coupon::TYPE => Coupon::TYPE_FIXED,
+            Coupon::AMOUNT => 250_000,
+            Coupon::IS_ACTIVE => true,
+        ]);
+        $order->forceFill([
+            Order::COUPON_ID => $coupon->id,
+            Order::COUPON_DISCOUNT_AMOUNT => 250_000.0,
+        ])->save();
+
+        $result = $this->reconciler->reconcile($order->fresh('items'), actualWeight: 12_000.0);
+
+        $this->assertEqualsWithDelta(250_000.0, $result->newCouponDiscount, 0.01);
+    }
+
+    // ─── پرچم‌های ±TC / ±VAT ──────────────────────────────────
+
+    #[Test]
+    public function the_reconciler_passes_the_orders_own_trans_flags_through(): void
+    {
+        // ⚠️ هر فیکسچری که به این‌جا می‌رسید هر دو پرچم را `true` می‌گذاشت،
+        // پس کارِ اصلیِ reconciler — خواندنِ اسنپ‌شاتِ سفارش و پاس‌دادنِ
+        // دو بولین در جای درست — قابلِ ابطال نبود.
+        $order = $this->makeOrder(wbs: 10_000.0);
+        $order->forceFill([
+            Order::TRANS_COMMISSION => false,
+            Order::TRANS_VAT => true,
+        ])->save();
+
+        $result = $this->reconciler->reconcile($order->fresh('items'), actualWeight: 10_000.0);
+
+        $calc = app(SettlementCalculatorService::class);
+        $rates = $calc->getCommissionRates('pioneer');
+
+        $expected = $calc->calculatePOO(
+            self::SHIPPING, self::UNIT_PRICE, 10_000.0,
+            $rates['ow_final_rate'], 10.0,
+            false,
+            true
+        );
+        $bothTrue = $calc->calculatePOO(
+            self::SHIPPING, self::UNIT_PRICE, 10_000.0,
+            $rates['ow_final_rate'], 10.0, true, true
+        );
+
+        $this->assertEqualsWithDelta($expected, $result->newPOO, 0.01);
+        // و assert بالا نباید با هر دو حالت سازگار باشد:
+        $this->assertNotEqualsWithDelta($bothTrue, $result->newPOO, 0.01);
+    }
+
     // ─── helpers ───────────────────────────────────────────────────────────────
 
     /**
@@ -171,5 +319,49 @@ class WeighbridgeReconcilerTest extends TestCase
         $order->load('items');
 
         return $order;
+    }
+
+    /** یک مسیرِ کرایه‌ی واقعی (مبدأ + نرخ) تا `quote()` چیزی برای قیمت‌گذاری داشته باشد. */
+    private function makeFreightRoute(float $flat, float $perKg): FactoryLocation
+    {
+        $factory = Factory::create([
+            'name' => 'کارخانه تست',
+            'slug' => 'wr-factory-'.Str::random(8),
+        ]);
+
+        $location = FactoryLocation::create([
+            'factory_id' => $factory->id,
+            'name' => 'انبار اصلی',
+            'type' => 'main',
+        ]);
+
+        ShippingRate::create([
+            ShippingRate::FACTORY_LOCATION_ID => $location->id,
+            ShippingRate::DESTINATION_PROVINCE_ID => self::PROVINCE_ID,
+            ShippingRate::DESTINATION_CITY_ID => null,
+            ShippingRate::FLAT_COST => $flat,
+            ShippingRate::PER_KG_COST => $perKg,
+            ShippingRate::IS_ACTIVE => true,
+        ]);
+
+        return $location;
+    }
+
+    /** `actual_weight` عمداً `forceFill` است — ستون fillable نیست. */
+    private function makeShipment(Order $order, FactoryLocation $location, ?float $actualWeight): Shipment
+    {
+        $shipment = Shipment::create([
+            Shipment::ORDER_ID => $order->id,
+            Shipment::STATUS => Shipment::STATUS_SHIPPED,
+        ]);
+
+        $shipment->forceFill([
+            Shipment::FACTORY_ID => $location->factory_id,
+            Shipment::FACTORY_LOCATION_ID => $location->id,
+            Shipment::DESTINATION_PROVINCE_ID => self::PROVINCE_ID,
+            Shipment::ACTUAL_WEIGHT => $actualWeight,
+        ])->save();
+
+        return $shipment;
     }
 }
