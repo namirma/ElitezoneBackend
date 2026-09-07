@@ -26,11 +26,23 @@ class AdminPageBlockController extends Controller
      * از یک شکل در یک پاسخ، دقیقاً همان مشکلی که SHAPES/all() برای خودِ نوع‌ها
      * حل کرده‌اند.
      */
+    /**
+     * `site_url` این‌جاست چون آدرسِ سایت یک واقعیتِ **زمانِ‌اجرا**ست، نه یک
+     * ثابتِ زمانِ‌بیلد.
+     *
+     * پیش از این بک‌آفیس آن را از `VITE_SITE_ORIGIN` خودش می‌خواند، که داخلِ
+     * باندل کامپایل می‌شد؛ یعنی انتشارِ سایت روی دامنه‌ی واقعی، **بیلدِ دوباره‌ی
+     * پنل** لازم داشت — و تا آن لحظه پیش‌نمایش به `localhost:5173` اشاره
+     * می‌کرد. بک‌اند از قبل این را به‌عنوان `FRONT_APP_URL` می‌شناسد (همان
+     * چیزی که ایمیل‌های تراکنشی هم با آن ساخته می‌شوند)، پس همان یک مقدار
+     * منبعِ حقیقتِ مشترک است: عوض‌کردنِ یک متغیرِ محیطی در بک‌اند کافی است.
+     */
     public function schema(PageBlockSchema $schema): JsonResponse
     {
         return success([
             'types' => $schema->all(),
             'shapes' => $this->normalizedShapes(),
+            'site_url' => rtrim((string) config('app.front_url'), '/') ?: null,
         ], __('page_blocks.schema_received'));
     }
 
