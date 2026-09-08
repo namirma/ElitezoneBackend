@@ -15,7 +15,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 > | Framework | Laravel 10 | **Laravel 13** |
 > | larastan | `^2.11` (PHPStan 1.12) | **`^3.10` (PHPStan 2.x)** |
 > | App root | the `api/` subdirectory | **the repo root** |
-> | PHPStan baseline ceiling | 172 entries | **320 entries** |
+> | PHPStan baseline ceiling | 172 entries | **288 entries** |
 > 
 > The two ceilings are deliberately independent — larastan 3 is stricter, so the same
 > code produces more findings here. Do not "fix" one branch's number to match the other.
@@ -24,6 +24,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 > claimed to be Laravel 10 and told you PHPStan 2.x was unavailable — the exact
 > question you would open it to answer. If you find another such claim, correct it
 > here rather than working around it.
+>
+> **Everything else is meant to be identical, and there is now a gate that proves it:**
+>
+> ```bash
+> php scripts/branch-parity.php ../api .          # two worktrees
+> php scripts/branch-parity.php redesign/order-flow-l10 redesign/order-flow-l13
+> ```
+>
+> It normalises comments, imports, fully-qualified names and whitespace, then compares
+> every PHP file. Anything that still differs in *meaning* must be listed with a reason
+> in `docs/branch-parity-allowlist.txt`; anything else fails the check (and the `parity`
+> job in CI). The 183 test files are byte-identical across the two branches — if you
+> touch a test here, mirror it there in the same commit.
 
 
 ## Project Overview
