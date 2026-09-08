@@ -26,6 +26,7 @@ use App\Http\Controllers\Api\Admin\AdminMenuItemController;
 use App\Http\Controllers\Api\Admin\AdminNotificationController;
 use App\Http\Controllers\Api\Admin\AdminOrderController;
 use App\Http\Controllers\Api\Admin\AdminOrderUnitController;
+use App\Http\Controllers\Api\Admin\AdminPageBlockController;
 use App\Http\Controllers\Api\Admin\AdminPageController;
 use App\Http\Controllers\Api\Admin\AdminPodiumDepositController;
 use App\Http\Controllers\Api\Admin\AdminPriceAdjustmentController;
@@ -664,6 +665,22 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
         Route::post('/{page}/toggle', 'toggle');
         Route::post('/{id}/restore', 'restore')->whereNumber('id');
         Route::delete('/{page}', 'destroy');
+    });
+
+    // Page blocks — بلوک‌های صفحات محتوایی (هوم/پودیوم/فولاد کویر).
+    // `/schema` باید پیش از `/{pageBlock}` بیاید، وگرنه لاراول «schema» را
+    // شناسه‌ی مدل می‌فهمد و ۴۰۴ می‌دهد.
+    Route::controller(AdminPageBlockController::class)->prefix('page-blocks')->middleware('admin.permission:manage-content')->group(function () {
+        Route::get('/schema', 'schema');
+        Route::get('/', 'index');
+        Route::post('/', 'store');
+        Route::post('/reorder', 'reorder');
+        Route::post('/media', 'media');
+        Route::post('/{pageBlock}/toggle', 'toggle');
+        Route::post('/{id}/restore', 'restore');
+        Route::get('/{pageBlock}', 'show');
+        Route::put('/{pageBlock}', 'update');
+        Route::delete('/{pageBlock}', 'destroy');
     });
 
 });
