@@ -100,7 +100,13 @@ return [
         'notifiable' => Notifiable::class,
 
         'mail' => [
-            'to' => env('BACKUP_NOTIFICATION_EMAIL'),
+            // ‏`?:` و نه آرگومانِ دومِ env(): مقدارِ خالی در .env رشتهٔ '' می‌دهد نه null.
+            // spatie/laravel-backup 10 (شاخهٔ لاراول ۱۳) این را با
+            // `filter_var(FILTER_VALIDATE_EMAIL)` اعتبارسنجی می‌کند و مقدارِ خالی
+            // **هر فرمانِ artisan را** با InvalidConfig می‌ترکاند — نه فقط backup را.
+            // پس همیشه یک نشانیِ معتبر لازم است؛ نبودِ نشانیِ اختصاصی یعنی هشدارِ
+            // شکستِ پشتیبان به نشانیِ فرستندهٔ خودِ برنامه می‌رود، نه به هیچ‌جا.
+            'to' => env('BACKUP_NOTIFICATION_EMAIL') ?: env('MAIL_FROM_ADDRESS', 'noreply@elitezone.me'),
             'from' => [
                 'address' => env('MAIL_FROM_ADDRESS', 'noreply@elitezone.me'),
                 'name' => env('MAIL_FROM_NAME', 'EliteZone Backup'),
