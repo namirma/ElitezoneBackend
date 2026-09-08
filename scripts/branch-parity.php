@@ -41,8 +41,15 @@ $allowlistPath = $root.'/docs/branch-parity-allowlist.txt';
 /** @return array<string, string> path => reason */
 function loadAllowlist(string $path): array
 {
+    // ⚠️ قبلاً اینجا `return []` بود — بی‌صدا. مسیر نسبت به **جای خودِ اسکریپت**
+    // حساب می‌شود (`dirname(__DIR__)`)، نه جایی که کاربر ایستاده؛ پس اجرای یک
+    // کپیِ اسکریپت از بیرونِ مخزن، allowlist را پیدا نمی‌کرد و **هر ۲۱ موردِ
+    // مجاز را «غیرمنتظره» می‌شمرد**: یک قرمزِ کاذبِ کامل، بدون هیچ نشانه‌ای.
+    // یک نفر واقعاً روی همین گزارش داد که گیت قرمز است.
     if (! is_file($path)) {
-        return [];
+        fwrite(STDERR, "branch-parity: فهرستِ مجاز پیدا نشد: {$path}\n");
+        fwrite(STDERR, "  مسیر نسبت به محلِ خودِ اسکریپت حساب می‌شود؛ اسکریپت را از داخلِ مخزن اجرا کنید.\n");
+        exit(2);
     }
 
     $out = [];
@@ -164,6 +171,26 @@ $listPhp = static function (string $ref, bool $isTree): array {
 
 $filesA = $listPhp($refA, $aIsTree);
 $filesB = $listPhp($refB, $bIsTree);
+
+// ⚠️ گاردِ قرینه‌ی بالا، در جهتِ مخالف. `git ls-tree` روی یک refِ **ناموجود**
+// خطا نمی‌دهد؛ رشتهٔ خالی برمی‌گرداند. پس اسکریپت «۰ فایلِ مشترک» می‌شمرد،
+// هیچ تفاوتی پیدا نمی‌کرد، و **سبز با exit 0** تمام می‌شد — یعنی گیت در حالتِ
+// ورودیِ غلط، عبورِ کاذب می‌داد. نامِ شاخهٔ محلی که فقط `origin/…`ـش موجود است
+// (مثل `redesign/order-flow-l13` روی یک چک‌اوتِ تازه) دقیقاً همین را می‌کند.
+//
+// این خطرناک‌ترین حالتِ ممکن برای یک گیت است: تنها محافظِ واگراییِ دو شاخه،
+// وقتی ورودی‌اش را نمی‌بیند، «سالم است» اعلام می‌کند.
+foreach ([[$refA, $filesA], [$refB, $filesB]] as [$ref, $files]) {
+    if ($files !== []) {
+        continue;
+    }
+
+    fwrite(STDERR, "branch-parity: «{$ref}» هیچ فایلِ PHPی نداد.\n");
+    fwrite(STDERR, "  یعنی این ref وجود ندارد یا این مسیر یک worktree نیست — نه اینکه تفاوتی نباشد.\n");
+    fwrite(STDERR, "  اگر نامِ شاخه است، شاید فقط نسخهٔ origin‌ش را دارید: origin/{$ref}\n");
+    exit(2);
+}
+
 $changed = array_values(array_intersect($filesA, $filesB));
 
 $onlyA = array_values(array_diff($filesA, $filesB));
@@ -195,7 +222,11 @@ foreach ($changed as $file) {
 $unexpected = array_values(array_filter($semantic, static fn (string $f): bool => ! isset($allowlist[$f])));
 $expected = array_values(array_filter($semantic, static fn (string $f): bool => isset($allowlist[$f])));
 
-printf("%s ↔ %s\n\n", $refA, $refB);
+printf("%s ↔ %s\n", $refA, $refB);
+// ورودیِ سوم را هم صریح می‌کنیم. هر دو گاردِ بالا از این درس آمده‌اند که یک
+// ورودیِ خوانده‌نشده بی‌صدا به نتیجهٔ غلط تبدیل می‌شود؛ پس خودِ خروجی باید
+// بگوید چه چیزی خوانده شد، نه فقط چه چیزی نتیجه شد.
+printf("فهرستِ مجاز: %s (%d ورودی)\n\n", $allowlistPath, count($allowlist));
 printf("  فایل‌های PHPِ مشترک: %d\n", count($changed));
 printf("  بایت‌به‌بایت یکسان: %d\n", $same);
 printf("  فقط سبک (import/داک‌بلاک/فاصله): %d\n", $cosmetic);
