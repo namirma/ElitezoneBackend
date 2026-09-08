@@ -119,4 +119,22 @@ return [
     */
     'weighbridge_tolerance' => (int) env('WEIGHBRIDGE_TOLERANCE_RIALS', 1_000),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Default VAT rate (percent)
+    |--------------------------------------------------------------------------
+    |
+    | Fallback used only when an order carries no `vat_rate` snapshot (legacy rows
+    | that pre-date the snapshot column). Every payment action snapshots the live
+    | rate onto `orders.vat_rate` and every later leg reads that snapshot, so this
+    | value must never be relied on for a normal order.
+    |
+    | The literal 10.0 used to be hardcoded in three places
+    | (ProcessPreScalePaymentAction, ProcessReservationCompletionAction,
+    | WeighbridgeReconciler). If Iran's VAT rate changes, change it HERE (or via
+    | env) — never re-inline it.
+    |
+    */
+    'default_vat_rate' => (float) env('DEFAULT_VAT_RATE', 10.0),
+
 ];
