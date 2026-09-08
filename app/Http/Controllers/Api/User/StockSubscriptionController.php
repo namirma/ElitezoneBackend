@@ -53,16 +53,30 @@ class StockSubscriptionController extends Controller
             ->where(StockSubscription::PRODUCT_VARIANT_ID, $variantId)
             ->first();
 
-        if ($subscription) {
-            $subscription->delete();
-            $isSubscribed = false;
-            $message = __('stock.unsubscribed');
-        } else {
+        // ⚠️ سه حالت، نه دو تا. `index()` فقط اشتراک‌های `notified_at = null` را
+        // نشان می‌دهد (اشتراکِ انجام‌شده دیگر «در انتظار» نیست)، ولی این متد
+        // ردیف را بدونِ آن فیلتر پیدا می‌کرد. یعنی بعد از یک‌بار اعلان، کاربر
+        // در فهرست «مشترک نیستم» می‌دید و با زدنِ دکمه — به قصدِ اشتراک —
+        // ردیف **حذف** می‌شد و پاسخ «اشتراک لغو شد» برمی‌گشت: دکمه وارونه.
+        //
+        // ساختنِ ردیفِ دوم هم ممکن نیست؛ `unique(user_id, product_variant_id)`
+        // آن را رد می‌کند. پس اشتراکِ انجام‌شده باید دوباره **مسلح** شود.
+        // larastan 3 نتیجهٔ رابطه را `Model` می‌بیند، نه `StockSubscription`.
+        /** @var StockSubscription|null $subscription */
+        if ($subscription === null) {
             $user->stockSubscriptions()->create([
                 StockSubscription::PRODUCT_VARIANT_ID => $variantId,
             ]);
             $isSubscribed = true;
             $message = __('stock.subscribed');
+        } elseif ($subscription->{StockSubscription::NOTIFIED_AT} !== null) {
+            $subscription->update([StockSubscription::NOTIFIED_AT => null]);
+            $isSubscribed = true;
+            $message = __('stock.subscribed');
+        } else {
+            $subscription->delete();
+            $isSubscribed = false;
+            $message = __('stock.unsubscribed');
         }
 
         return success(['is_subscribed' => $isSubscribed], $message);
