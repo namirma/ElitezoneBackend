@@ -44,7 +44,14 @@ class VariantPriceHydrator
                 customerType: null,
                 badge: null,
                 filterCategoryIds: null,
-                withVAT: false,
+                // withVAT: true فقط `vatAmount`/`vatRate`/`priceWithVat` را پر می‌کند؛
+                // `finalPrice` در هر دو حالت همان `payablePrice` است (ApplyVat اصلاً
+                // payablePrice را دست نمی‌زند)، پس قیمتِ بدونِ مالیات تغییری نمی‌کند.
+                //
+                // قبلاً false بود و در نتیجه `vatRate` صفر می‌ماند — یعنی خطِ
+                // `$price->vat_rate = $dto->vatRate` عملاً مرده بود و فرانت هیچ راهی
+                // برای دانستنِ نرخ نداشت، پس در باکس خرید `× ۱٫۱۰` هاردکد شده بود.
+                withVAT: true,
                 filterCategoryCode: $roleCode
             );
 
@@ -53,6 +60,8 @@ class VariantPriceHydrator
             $price->role_general_price = $dto->listPrice;
             $price->role_golden_figure = max(0.0, $dto->listPrice - $dto->payablePrice);
             $price->vat_rate = $dto->vatRate;
+            $price->vat_amount = $dto->vatAmount;
+            $price->price_with_vat = $dto->priceWithVat;
 
             if ($debug) {
                 $price->pricing_debug = $dto->toArray();

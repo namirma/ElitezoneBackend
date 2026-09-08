@@ -223,18 +223,21 @@ class InvoiceGenerator
             ? ($order->items->first()->supplier_user_id ?? $order->payerUserId())
             : $order->payerUserId();
 
-        // هر سند «موضوعِ واقعیِ» خودش را ثبت می‌کند؛ اگر آن فیلد هنوز مقدار ندارد به
-        // final_amount برمی‌گردیم تا invoices.amount هرگز NULL نشود. لِگ‌های کیف‌پول مستقل‌اند.
+        // مبلغِ ثبت‌شدهٔ هر سند باید «موضوعِ واقعیِ» همان سند باشد، نه همیشه final_amount.
+        // لِگ‌های کیف‌پول مستقل و درست‌اند؛ این فقط فیلدِ گزارشیِ invoices.amount را دقیق می‌کند.
+        // هر سند «موضوعِ واقعیِ» خودش را ثبت می‌کند؛ اگر آن فیلد هنوز مقدار ندارد (مثلاً
+        // سندی که پیش از مقداردهیِ آن فیلد تولید شود)، به final_amount برمی‌گردیم تا
+        // invoices.amount هرگز NULL نشود (ستون NOT NULL است). لِگ‌های کیف‌پول مستقل‌اند.
         $amount = match ($docType) {
             FinancialCodes::DOC_RESERVE_RECEIPT,
-            FinancialCodes::DOC_RESERVE_REPORT => $order->payment_to_reserve ?? $order->final_amount,
+            FinancialCodes::DOC_RESERVE_REPORT => $order->{Order::PAYMENT_TO_RESERVE} ?? $order->final_amount,
             // اسنادِ اصلاحیِ باسکول: مبلغِ اصلاح‌شدهٔ هر طرف (POOM خریدار / PTSM سوپلایر).
-            FinancialCodes::DOC_MODIFIED_INVOICE_OWNER => $order->payment_of_owner ?? $order->final_amount,
-            FinancialCodes::DOC_MODIFIED_INVOICE_SUPPLIER => $order->payment_to_supplier ?? $order->final_amount,
+            FinancialCodes::DOC_MODIFIED_INVOICE_OWNER => $order->{Order::PAYMENT_OF_OWNER} ?? $order->final_amount,
+            FinancialCodes::DOC_MODIFIED_INVOICE_SUPPLIER => $order->{Order::PAYMENT_TO_SUPPLIER} ?? $order->final_amount,
             // فاکتورهای مودیان: مبلغی که هر فاکتور دربارهٔ آن است.
-            FinancialCodes::DOC_TAX_INVOICE_SUPPLIER => $order->payment_to_supplier ?? $order->final_amount, // O
-            FinancialCodes::DOC_TAX_INVOICE_BUYER => $order->payment_of_owner ?? $order->final_amount,        // P
-            FinancialCodes::DOC_TAX_INVOICE_ELITE_YAR => $order->payment_to_elite_yar ?? $order->final_amount, // Q
+            FinancialCodes::DOC_TAX_INVOICE_SUPPLIER => $order->{Order::PAYMENT_TO_SUPPLIER} ?? $order->final_amount, // O
+            FinancialCodes::DOC_TAX_INVOICE_BUYER => $order->{Order::PAYMENT_OF_OWNER} ?? $order->final_amount,        // P
+            FinancialCodes::DOC_TAX_INVOICE_ELITE_YAR => $order->{Order::PAYMENT_TO_ELITE_YAR} ?? $order->final_amount, // Q
             default => $order->final_amount,
         };
 

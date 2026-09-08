@@ -43,10 +43,9 @@ class ProcessReservationCompletionAction
                 throw new \RuntimeException(__('orders.internal_order_not_found'));
             }
 
-            // larastan نتیجهٔ `lockForUpdate()->first()` را `Model` می‌بیند نه
-            // `Order`؛ بعد از گاردِ بالا این تنگ‌سازی درست است. شاخه‌ی L10 همین
-            // خط را دارد و اینجا نبودش یعنی هر متدِ تازه‌ی `Order` (مثل
-            // `isReserveWindowExpired`) روی این شاخه خطای ایستا می‌دهد.
+            // larastan نتیجهٔ `lockForUpdate()->first()` را `Model` می‌بیند، نه `Order`؛
+            // بعد از گاردِ بالا این تنگ‌سازی درست است و `resolveVatRate(Order)` را
+            // بدون افزودن ورودی به baseline قابل فراخوانی می‌کند.
             /** @var Order $locked */
             if ($this->isAlreadyProcessed($locked)) {
                 Log::channel('financial')->warning("Race detected: order {$locked->id} already completed.");
@@ -81,8 +80,20 @@ class ProcessReservationCompletionAction
             }
 
             $op = (float) ($locked->official_price ?: ($firstItem->unit_price ?? 0));
+
+            // قیمت صفر = دادهٔ خراب (هم‌الگو با گاردِ weight_before_scale پایین‌تر).
+            if ($op <= 0) {
+                Log::channel('financial')->critical(
+                    "Order {$order->id}: official_price and item unit_price are both zero — completion aborted."
+                );
+                throw new \RuntimeException(__('orders.invalid_official_price'));
+            }
             $trans = (float) ($locked->shipping_cost ?: 0);
-            $vat = (float) ($locked->vat_rate ?: 10.0);
+            // هر سه مسیر پرداخت از یک منبع می‌خوانند. این مسیر با `?:` هم درست
+            // کار می‌کرد، ولی دو مسیر دیگر `??` داشتند و روی ستونِ NOT NULL هرگز
+            // فالبک نمی‌گرفتند — یعنی یک سفارش بسته به مسیر پرداخت، مالیاتِ
+            // متفاوت می‌خورد. یکی‌سازی همان چیزی است که آن واگرایی را می‌بندد.
+            $vat = $this->calculator->resolveVatRate($locked);
 
             // وزن snapshot باید معتبر باشد — fallback بی‌صدا به ۱ کیلوگرم یعنی POO/PTS
             // روی یک کیلو محاسبه می‌شد و رزرو با مبلغ ناچیز «تکمیل» می‌شد. داده‌ی خراب
@@ -96,7 +107,12 @@ class ProcessReservationCompletionAction
             // نرخ کمیسیون از نشانِ الیت‌یارِ صاحب کمیسیون (elite_yar_user_id) خوانده می‌شود،
             // نه beneficiary (گیرندهٔ کالا) — هم‌راستا با ProcessWeighbridgeResultAction.
             $badgeCode = $locked->eliteYAR?->badge?->code ?? 'pioneer';
-            $rates = $this->calculator->getCommissionRates($badgeCode);
+
+            // %TC اسنپ‌شات می‌شود (هم‌الگو با ProcessPreScalePaymentAction) — این مسیر
+            // تا امروز هیچ‌کدام از ستون‌های نرخ را نمی‌نوشت، پس باسکول مجبور بود نرخ را
+            // زنده بخواند و با هر تغییرِ tc_percentage یک کسریِ کاذب می‌ساخت.
+            $tcPercentage = $this->calculator->currentTcPercentage();
+            $rates = $this->calculator->getCommissionRatesForTc($badgeCode, $tcPercentage);
 
             $ow = $rates['ow_final_rate'];
             $ssg = $rates['ssg_final_rate'];
@@ -218,6 +234,11 @@ class ProcessReservationCompletionAction
                 Order::PAYMENT_STATUS => Order::PAYMENT_PAID,
                 Order::PAYMENT_OF_OWNER => $POO,
                 Order::PAYMENT_TO_SUPPLIER => $PTS,
+                Order::COMMISSION_RATE => $tcPercentage,
+                Order::VAT_RATE => $vat,
+                Order::OWNER_DISCOUNT_RATE => $ow,
+                Order::SAZE_SHARE_RATE => $ssg,
+                Order::ELITE_YAR_SHARE_RATE => $co,
                 Order::TRANS_COMMISSION => $transCommission,
                 Order::TRANS_VAT => $transVat,
                 Order::PAID_AT => now(),

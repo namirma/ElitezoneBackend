@@ -74,7 +74,12 @@ class ReleaseEliteYARHoldAction
         // ── Recalculate the net / VAT split ───────────────────────────────────
         // Must use the SAME bcmath split as ProcessWeighbridgeResultAction held, so
         // the released net+VAT exactly equals what was parked (no balance_hold dust).
-        $vatRate = (float) ($order->{Order::VAT_RATE} ?? 10.0);
+        // `?? 10.0` هرگز شلیک نمی‌کرد: `orders.vat_rate` ستونِ
+        // `decimal(5,2) NOT NULL DEFAULT 0` است، پس مقدارش `0.00` بود نه null —
+        // همان شکلِ باگی که برای مسیرهای تسویه بسته شد و اینجا باقی مانده بود.
+        // سمتِ هولد (`WeighbridgeReconciler`) از `resolveVatRate()` می‌خواند، پس
+        // نرخِ آزادسازی با نرخِ هولد نمی‌خواند و هولد برای همیشه گیر می‌کرد.
+        $vatRate = $this->calculator->resolveVatRate($order);
         ['net' => $eliteYARNet, 'vat' => $eliteYARVat] = $this->calculator->extractVat($eliteYARGross, $vatRate);
 
         DB::transaction(function () use (

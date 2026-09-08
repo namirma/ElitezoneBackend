@@ -19,6 +19,15 @@ use Illuminate\Support\Facades\Log;
  * @property numeric $special_price
  * @property numeric $golden_figure
  * @property Carbon $last_updated_at
+ *
+ * ستون نیستند — `VariantPriceHydrator` این سه را در زمان اجرا روی مدل می‌نشاند و
+ * ‏`ProductVariantResource` می‌خواندشان؛ بدونشان باکس خرید مجبور بود نرخ مالیات را
+ * ‏`× ۱٫۱۰` هاردکد کند.
+ *
+ * @property float|null $vat_rate
+ * @property numeric-string|float|null $vat_amount
+ * @property numeric-string|float|null $price_with_vat
+ *
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read Factory $factory
