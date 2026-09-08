@@ -45,6 +45,26 @@ return Application::configure(basePath: dirname(__DIR__))
 
         /*
         |----------------------------------------------------------------------
+        | TrustHosts
+        |----------------------------------------------------------------------
+        | ⚠️ برخلافِ TrustProxies و HandleCors، این یکی در استکِ سراسریِ پیش‌فرضِ
+        | لاراول ۱۱ به بعد **نیست** و فقط با همین فراخوانی اضافه می‌شود
+        | (`Configuration\Middleware::getGlobalMiddleware()` را ببینید).
+        |
+        | روی شاخهٔ L10 این میدل‌ور در `app/Http/Kernel.php` فعال بود و در پورت جا
+        | ماند: کلاسِ `app/Http/Middleware/TrustHosts.php` هنوز اینجا هست ولی هیچ‌چیز
+        | صدایش نمی‌زند، چون Kernel دیگر خوانده نمی‌شود. یعنی اعتبارسنجیِ هدرِ Host
+        | بی‌صدا از بین رفته بود — همان چیزی که لینکِ بازیابی رمز را در برابر
+        | host-header poisoning نگه می‌دارد.
+        |
+        | بدونِ آرگومان یعنی «همان دامنهٔ APP_URL و زیردامنه‌هایش» — دقیقاً همان
+        | چیزی که `TrustHosts::hosts()` روی L10 برمی‌گرداند. خودِ فریم‌ورک در محیطِ
+        | local و هنگام اجرای تست‌ها اعمالش نمی‌کند.
+        */
+        $middleware->trustHosts();
+
+        /*
+        |----------------------------------------------------------------------
         | API Middleware Group
         |----------------------------------------------------------------------
         | SecurityHeaders قبل از middleware پیش‌فرض API اضافه می‌شود.
@@ -63,10 +83,16 @@ return Application::configure(basePath: dirname(__DIR__))
             SecurityHeaders::class,
             EnsureFrontendRequestsAreStateful::class,
             ThrottleRequests::class.':api',
-            SubstituteBindings::class,
             // کاربر غیرفعال‌شده (is_active=false) با هیچ توکنی نباید سرویس بگیرد —
             // بدون این، toggleStatus ادمین صرفاً یک فلگ بی‌اثر بود.
+            //
+            // ⚠️ **پیش از** SubstituteBindings، دقیقاً مثل شاخهٔ L10. اگر بعد از آن
+            // باشد، درخواستِ کاربرِ غیرفعال اول کوئریِ route-model-binding را می‌زند و
+            // برای شناسه‌ی ناموجود ۴۰۴ می‌گیرد به‌جای ۴۰۳ — یعنی هم پاسخ با آن شاخه
+            // فرق می‌کند و هم برای کاربری که اصلاً نباید سرویس بگیرد به دیتابیس
+            // می‌زنیم. این ترتیب در پورت جابه‌جا شده بود.
             EnsureUserIsActive::class,
+            SubstituteBindings::class,
         ]);
 
         /*
