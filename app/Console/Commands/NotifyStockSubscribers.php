@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\StockSubscription;
 use App\Models\UserNotification;
 use Illuminate\Console\Command;
@@ -65,11 +67,19 @@ class NotifyStockSubscribers extends Command
                 $ids = [];
 
                 foreach ($subscriptions as $subscription) {
-                    $product = $subscription->productVariant?->product;
-
                     // ردیفِ یتیم (واریانت یا محصولش حذف شده) نه اعلان می‌گیرد نه
                     // مهر می‌خورد — وگرنه «فرستاده شد» ثبت می‌شد بدون اینکه
                     // چیزی فرستاده شده باشد.
+                    //
+                    // ‏`@var` صریح چون larastan 3 روی این شاخه رابطه را
+                    // non-nullable می‌بیند و بدون آن هم `?->` را «بی‌مورد»
+                    // می‌خواند و هم `=== null` را «همیشه غلط» — یعنی همین گاردِ
+                    // یتیم را مرده اعلام می‌کند.
+                    /** @var ProductVariant|null $variant */
+                    $variant = $subscription->productVariant;
+                    /** @var Product|null $product */
+                    $product = $variant?->product;
+
                     if ($product === null) {
                         continue;
                     }

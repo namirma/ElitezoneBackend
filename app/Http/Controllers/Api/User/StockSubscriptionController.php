@@ -61,6 +61,8 @@ class StockSubscriptionController extends Controller
         //
         // ساختنِ ردیفِ دوم هم ممکن نیست؛ `unique(user_id, product_variant_id)`
         // آن را رد می‌کند. پس اشتراکِ انجام‌شده باید دوباره **مسلح** شود.
+        // larastan 3 نتیجهٔ رابطه را `Model` می‌بیند، نه `StockSubscription`.
+        /** @var StockSubscription|null $subscription */
         if ($subscription === null) {
             $user->stockSubscriptions()->create([
                 StockSubscription::PRODUCT_VARIANT_ID => $variantId,
