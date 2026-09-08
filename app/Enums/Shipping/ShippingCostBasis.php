@@ -2,6 +2,9 @@
 
 namespace App\Enums\Shipping;
 
+use App\Models\ShippingRate;
+use App\Services\Shipping\ShippingCostCalculator;
+
 /**
  * How a factory/supplier bills freight for a shipment leg.
  *
@@ -14,8 +17,8 @@ namespace App\Enums\Shipping;
  *            supplier charges per piece/pack regardless of weight, e.g. آجر (brick),
  *            وال‌مش (wall-mesh).
  *
- * @see \App\Services\Shipping\ShippingCostCalculator
- * @see \App\Models\ShippingRate
+ * @see ShippingCostCalculator
+ * @see ShippingRate
  */
 enum ShippingCostBasis: string
 {

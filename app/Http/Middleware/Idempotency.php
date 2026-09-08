@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use Closure;
+use Illuminate\Contracts\Cache\LockProvider;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Symfony\Component\HttpFoundation\Response;
@@ -95,7 +96,7 @@ class Idempotency
         // شرطِ لازم را صریح می‌کند: storeِ انتخاب‌شده باید LockProvider باشد
         // (database / redis / array همه هستند؛ file نیست — و اصلاً به همین دلیل
         // پیش‌فرض عوض شد).
-        /** @var \Illuminate\Contracts\Cache\LockProvider $lockProvider */
+        /** @var LockProvider $lockProvider */
         $lockProvider = $cache->getStore();
         $lock = $lockProvider->lock($lockKey, 10);
 

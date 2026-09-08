@@ -7,7 +7,7 @@ use App\Models\ProductVideo;
 use Illuminate\Http\Request;
 
 /**
- * @mixin \App\Models\ProductVideo
+ * @mixin ProductVideo
  */
 class ProductVideoResource extends BaseJsonResource
 {

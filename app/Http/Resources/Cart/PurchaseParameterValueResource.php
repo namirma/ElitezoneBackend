@@ -8,7 +8,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 /**
- * @mixin \App\Models\PurchaseParameterValue
+ * @mixin PurchaseParameterValue
  */
 class PurchaseParameterValueResource extends BaseJsonResource
 {

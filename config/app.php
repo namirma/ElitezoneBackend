@@ -1,10 +1,16 @@
 <?php
 
+use App\Providers\AppServiceProvider;
+use App\Providers\AuthServiceProvider;
+use App\Providers\EventServiceProvider;
 use App\Providers\RepositoryServiceProvider;
 use App\Providers\ResponseServiceProvider;
+use App\Providers\RouteServiceProvider;
 use Artisaninweb\SoapWrapper\SoapWrapper;
 use Illuminate\Support\Facades\Facade;
 use Illuminate\Support\ServiceProvider;
+use Mccarlosen\LaravelMpdf\Facades\LaravelMpdf;
+use Mccarlosen\LaravelMpdf\LaravelMpdfServiceProvider;
 
 return [
 
@@ -198,13 +204,13 @@ return [
         /*
          * Application Service Providers...
          */
-        App\Providers\AppServiceProvider::class,
-        App\Providers\AuthServiceProvider::class,
+        AppServiceProvider::class,
+        AuthServiceProvider::class,
         // App\Providers\BroadcastServiceProvider::class,
-        App\Providers\EventServiceProvider::class,
-        App\Providers\RouteServiceProvider::class,
+        EventServiceProvider::class,
+        RouteServiceProvider::class,
         ResponseServiceProvider::class,
-        Mccarlosen\LaravelMpdf\LaravelMpdfServiceProvider::class,
+        LaravelMpdfServiceProvider::class,
         RepositoryServiceProvider::class,
     ])->toArray(),
 
@@ -222,7 +228,7 @@ return [
     'aliases' => Facade::defaultAliases()->merge([
         // 'Example' => App\Facades\Example::class,
         'SoapWrapper' => SoapWrapper::class,
-        'PDF' => Mccarlosen\LaravelMpdf\Facades\LaravelMpdf::class,
+        'PDF' => LaravelMpdf::class,
     ])->toArray(),
 
 ];

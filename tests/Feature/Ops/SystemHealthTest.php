@@ -10,6 +10,7 @@ use App\Services\Ops\SystemHealthService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\Concerns\GrantsAdminPermissions;
@@ -199,7 +200,7 @@ class SystemHealthTest extends TestCase
         config(['ops.queue.max_failed_jobs' => 0, 'queue.default' => 'database']);
 
         DB::table('failed_jobs')->insert([
-            'uuid' => (string) \Illuminate\Support\Str::uuid(),
+            'uuid' => (string) Str::uuid(),
             'connection' => 'database',
             'queue' => 'default',
             'payload' => '{}',

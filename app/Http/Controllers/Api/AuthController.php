@@ -12,6 +12,7 @@ use App\Jobs\Notification\SendSmsJob;
 use App\Models\User;
 use App\Models\UserNotification;
 use App\Models\UserType;
+use App\Support\OtpSecret;
 use App\Support\PhoneNumber;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -281,7 +282,7 @@ class AuthController extends Controller
         if (
             ! $user
             || ! $user->{User::SECRET}
-            || ! \App\Support\OtpSecret::matches($user->{User::SECRET}, $submittedCode)
+            || ! OtpSecret::matches($user->{User::SECRET}, $submittedCode)
             || Carbon::parse($user->{User::SECRET_EXPIRES_AT})->isPast()
         ) {
             $this->recordFailure($mobile, self::SCOPE_OTP);
@@ -304,7 +305,7 @@ class AuthController extends Controller
             $resetToken = Str::random(64);
             $user->update([
                 // فقط هش توکن ذخیره می‌شود؛ مقدار خام تنها در پاسخ همین درخواست است
-                User::SECRET => \App\Support\OtpSecret::hash($resetToken),
+                User::SECRET => OtpSecret::hash($resetToken),
                 User::SECRET_EXPIRES_AT => now()->addMinutes(
                     (int) config('auth.password_reset_ttl_minutes', 15)
                 ),
@@ -462,7 +463,7 @@ class AuthController extends Controller
             ->where(User::PASSWORD, '!=', null)
             ->first();
 
-        if (! $user || ! \App\Support\OtpSecret::matches($user->{User::SECRET}, (string) $request->input('code'))) {
+        if (! $user || ! OtpSecret::matches($user->{User::SECRET}, (string) $request->input('code'))) {
             $this->recordFailure($mobile, self::SCOPE_OTP);
 
             return error(__('auth.invalid_reset_token'), [], 400);

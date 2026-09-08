@@ -2,10 +2,12 @@
 
 namespace Tests\Feature\Cart;
 
+use App\Actions\Cart\BuildCartPreInvoiceAction;
 use App\Models\Address;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Invoice;
+use App\Models\Order;
 use App\Models\OrderUnit;
 use App\Models\ShippingMethod;
 use App\Models\User;
@@ -129,7 +131,7 @@ class CartPreInvoiceTest extends TestCase
     {
         $cart = $this->cartWithOneLine();
 
-        $ordersBefore = \App\Models\Order::count();
+        $ordersBefore = Order::count();
         $invoicesBefore = Invoice::count();
 
         Sanctum::actingAs($this->user);
@@ -139,7 +141,7 @@ class CartPreInvoiceTest extends TestCase
         $response->assertOk();
         $this->assertSame('application/pdf', $response->headers->get('content-type'));
 
-        $this->assertSame($ordersBefore, \App\Models\Order::count(),
+        $this->assertSame($ordersBefore, Order::count(),
             'پیش‌فاکتور نباید سفارش بسازد — کلِ نکتهٔ این اندپوینت همین است');
         $this->assertSame($invoicesBefore, Invoice::count(),
             'پیش‌فاکتور نباید رکورد Invoice بسازد و شمارهٔ سند مصرف کند');
@@ -163,7 +165,7 @@ class CartPreInvoiceTest extends TestCase
             ->assertOk()
             ->json('data.totals.total');
 
-        $preInvoice = app(\App\Actions\Cart\BuildCartPreInvoiceAction::class)
+        $preInvoice = app(BuildCartPreInvoiceAction::class)
             ->previewOrderFor($cart->fresh(), $this->user->fresh());
 
         $this->assertEqualsWithDelta(

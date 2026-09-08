@@ -9,9 +9,10 @@ use App\Http\Resources\Product\ProductVariantResource;
 use App\Http\Resources\Supplier\FactoryLocationResource;
 use App\Http\Resources\Supplier\FactoryResource;
 use App\Models\CartItem;
+use Illuminate\Support\Collection;
 
 /**
- * @mixin \App\Models\CartItem
+ * @mixin CartItem
  */
 class CartItemResource extends BaseJsonResource
 {
@@ -71,7 +72,7 @@ class CartItemResource extends BaseJsonResource
      * صریح چک می‌شود تا این Resource هرگز یک کوئری N+1 راه نیندازد؛ فراخوانی از مسیری
      * که رابطه را لود نکرده، آرایهٔ خالی می‌گیرد نه یک لود پنهان.
      */
-    private function loadedOrderUnits(): ?\Illuminate\Support\Collection
+    private function loadedOrderUnits(): ?Collection
     {
         // ‏`cart_items.product_variant_id` و `product_variants.product_id` هر دو در
         // اسکیما NOT NULL‌اند، پس هیچ‌کدام از این دو رابطه نمی‌تواند غایب باشد و

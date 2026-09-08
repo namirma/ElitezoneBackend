@@ -3,6 +3,7 @@
 namespace App\Http\Resources\Profile;
 
 use App\Http\Resources\BaseJsonResource;
+use App\Models\User;
 use App\Models\UserNote;
 use Illuminate\Http\Request;
 
@@ -10,7 +11,7 @@ use Illuminate\Http\Request;
  * یادداشت داخلیِ ادمین روی یک کاربر (بک‌آفیس).
  * فقط در پاسخ‌های ادمین سریالایز می‌شود — هرگز به خود کاربر نشان داده نمی‌شود.
  *
- * @mixin \App\Models\UserNote
+ * @mixin UserNote
  */
 class UserNoteResource extends BaseJsonResource
 {
@@ -19,7 +20,7 @@ class UserNoteResource extends BaseJsonResource
      */
     public function toArray(Request $request): array
     {
-        $admin = $this->whenLoaded('admin') instanceof \App\Models\User ? $this->admin : null;
+        $admin = $this->whenLoaded('admin') instanceof User ? $this->admin : null;
         $adminProfile = $admin?->relationLoaded('profile') ? $admin->profile : null;
 
         return [

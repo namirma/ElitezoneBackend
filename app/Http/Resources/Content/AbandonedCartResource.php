@@ -7,7 +7,7 @@ use App\Models\AbandonedCart;
 use Illuminate\Http\Request;
 
 /**
- * @mixin \App\Models\AbandonedCart
+ * @mixin AbandonedCart
  */
 class AbandonedCartResource extends BaseJsonResource
 {

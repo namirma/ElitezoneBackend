@@ -7,7 +7,7 @@ use App\Models\OrderUnit;
 use Illuminate\Http\Request;
 
 /**
- * @mixin \App\Models\OrderUnit
+ * @mixin OrderUnit
  */
 class OrderUnitResource extends BaseJsonResource
 {

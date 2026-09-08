@@ -9,6 +9,7 @@ use App\Jobs\Analytics\PredictInventoryNeeds;
 use App\Jobs\Analytics\RollupProductViewsJob;
 use App\Jobs\Financial\CheckSupplierBalancesJob;
 use App\Jobs\Financial\PollPodiumDepositsJob;
+use App\Jobs\Ticketing\EscalateOverdueTicketsJob;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 
@@ -44,7 +45,7 @@ class Kernel extends ConsoleKernel
             ->onOneServer();
 
         // اسکالیشن خودکار تیکت‌های عبورکرده از SLA (یک‌بار به ازای هر تیکت)
-        $schedule->job(new \App\Jobs\Ticketing\EscalateOverdueTicketsJob)
+        $schedule->job(new EscalateOverdueTicketsJob)
             ->hourly()
             ->withoutOverlapping()
             ->onOneServer();

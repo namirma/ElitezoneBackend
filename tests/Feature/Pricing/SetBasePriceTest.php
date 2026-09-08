@@ -116,7 +116,7 @@ class SetBasePriceTest extends TestCase
 
         // Update the row and re-run
         $price->update(['general_price' => 1_500_000, 'special_price' => 1_200_000]);
-        \Illuminate\Support\Facades\Cache::flush();
+        Cache::flush();
 
         $ctx2 = new PricingContext(variant: $variant, factory: $factory, location: $location);
         $this->pipe->handle($ctx2, fn ($c) => $c);

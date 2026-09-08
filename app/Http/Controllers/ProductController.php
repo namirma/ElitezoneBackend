@@ -15,6 +15,7 @@ use App\Http\Resources\Product\ProductDetailResource;
 use App\Http\Resources\Product\ProductResource;
 use App\Http\Resources\Product\ProductVariantResource;
 use App\Http\Resources\Supplier\FactoryResource;
+use App\Jobs\Analytics\LogProductView;
 use App\Models\AttributeType;
 use App\Models\Badge;
 use App\Models\CustomerType;
@@ -75,7 +76,7 @@ class ProductController extends Controller
         ]);
 
         // ۲. ثبت بازدید و داده‌های تحلیلی (Async)
-        \App\Jobs\Analytics\LogProductView::dispatch(
+        LogProductView::dispatch(
             productId: $product->id,
             userId: Auth::id(),
             ipAddress: request()->ip(),

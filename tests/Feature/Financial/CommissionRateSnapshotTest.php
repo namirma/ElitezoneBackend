@@ -3,6 +3,7 @@
 namespace Tests\Feature\Financial;
 
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Services\Financial\SettlementCalculatorService;
 use App\Services\Financial\WeighbridgeReconciler;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
@@ -97,7 +98,7 @@ class CommissionRateSnapshotTest extends TestCase
             Order::SHIPPING_COST => 5_000_000,
         ]);
 
-        \App\Models\OrderItem::factory()->create([
+        OrderItem::factory()->create([
             'order_id' => $order->id,
             'unit_price' => 250_000,
         ]);

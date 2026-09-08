@@ -17,6 +17,7 @@ use App\Models\UserBankAccount;
 use App\Models\WalletTransaction;
 use App\Services\Financial\ShenasehVarizService;
 use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -215,7 +216,7 @@ class WalletController extends Controller
             return success(new WalletTransactionResource($transaction), __('wallet.withdrawal_created'));
         } catch (LockTimeoutException) {
             return error(__('global.system_busy_try_again'), [], 429);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+        } catch (ModelNotFoundException) {
             return error(__('wallet.bank_account_not_found'), [], 404);
         } catch (\Exception $e) {
             Log::error('Wallet withdrawal request failed', [

@@ -4,6 +4,7 @@ namespace Tests\Feature\Financial;
 
 use App\Exceptions\BusinessException;
 use App\Models\Coupon;
+use App\Models\Order;
 use App\Models\Setting;
 use App\Models\User;
 use App\Services\Marketing\CouponService;
@@ -153,13 +154,13 @@ class CouponServiceTest extends TestCase
         $this->service->redeem($coupon);
         $this->assertNotNull($coupon->fresh()->used_at);
 
-        $order = \App\Models\Order::create([
-            \App\Models\Order::PLACER_USER_ID => $this->user->id,
-            \App\Models\Order::ORDER_NUMBER => 'TEST-COUPON-'.uniqid(),
-            \App\Models\Order::STATUS => \App\Models\Order::STATUS_PROCESSING,
-            \App\Models\Order::PAYMENT_STATUS => \App\Models\Order::PAYMENT_PENDING,
-            \App\Models\Order::COUPON_ID => $coupon->id,
-            \App\Models\Order::FINAL_AMOUNT => 100_000,
+        $order = Order::create([
+            Order::PLACER_USER_ID => $this->user->id,
+            Order::ORDER_NUMBER => 'TEST-COUPON-'.uniqid(),
+            Order::STATUS => Order::STATUS_PROCESSING,
+            Order::PAYMENT_STATUS => Order::PAYMENT_PENDING,
+            Order::COUPON_ID => $coupon->id,
+            Order::FINAL_AMOUNT => 100_000,
         ]);
 
         $this->service->releaseForOrder($order);

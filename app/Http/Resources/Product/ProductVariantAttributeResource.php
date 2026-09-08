@@ -8,7 +8,7 @@ use App\Models\ProductVariantAttribute;
 use Illuminate\Http\Request;
 
 /**
- * @mixin \App\Models\ProductVariantAttribute
+ * @mixin ProductVariantAttribute
  */
 class ProductVariantAttributeResource extends BaseJsonResource
 {

@@ -2,8 +2,10 @@
 
 namespace Tests\Feature\Order;
 
+use App\Models\Address;
 use App\Models\Cart;
 use App\Models\CartItem;
+use App\Models\FactoryStock;
 use App\Models\Order;
 use App\Models\OrderUnit;
 use App\Models\ProductVariant;
@@ -107,8 +109,8 @@ class StockDeductedAtPaymentTest extends TestCase
      */
     private function stockNow(): float
     {
-        if (class_exists(\App\Models\FactoryStock::class)) {
-            return (float) \App\Models\FactoryStock::where('product_variant_id', $this->variant->id)
+        if (class_exists(FactoryStock::class)) {
+            return (float) FactoryStock::where('product_variant_id', $this->variant->id)
                 ->where('factory_location_id', $this->location->id)
                 ->value('quantity');
         }
@@ -118,8 +120,8 @@ class StockDeductedAtPaymentTest extends TestCase
 
     private function setStock(float $quantity): void
     {
-        if (class_exists(\App\Models\FactoryStock::class)) {
-            \App\Models\FactoryStock::updateOrCreate(
+        if (class_exists(FactoryStock::class)) {
+            FactoryStock::updateOrCreate(
                 [
                     'product_variant_id' => $this->variant->id,
                     'factory_id' => $this->factory->id,
@@ -175,12 +177,12 @@ class StockDeductedAtPaymentTest extends TestCase
 
     private function address(): int
     {
-        return \App\Models\Address::create([
-            \App\Models\Address::USER_ID => $this->user->id,
-            \App\Models\Address::TITLE => 'خانه',
-            \App\Models\Address::POSTAL_ADDRESS => 'آدرس تست',
-            \App\Models\Address::RECEIVER_NAME => 'گیرنده',
-            \App\Models\Address::RECEIVER_MOBILE => '09120000000',
+        return Address::create([
+            Address::USER_ID => $this->user->id,
+            Address::TITLE => 'خانه',
+            Address::POSTAL_ADDRESS => 'آدرس تست',
+            Address::RECEIVER_NAME => 'گیرنده',
+            Address::RECEIVER_MOBILE => '09120000000',
         ])->id;
     }
 

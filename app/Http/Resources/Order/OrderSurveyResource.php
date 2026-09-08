@@ -8,7 +8,7 @@ use App\Models\OrderSurvey;
 use Illuminate\Http\Request;
 
 /**
- * @mixin \App\Models\OrderSurvey
+ * @mixin OrderSurvey
  */
 class OrderSurveyResource extends BaseJsonResource
 {

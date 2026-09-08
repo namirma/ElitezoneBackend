@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Localization;
 
+use App\Http\Requests\Address\StoreAddressRequest;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -40,7 +42,7 @@ class TranslationKeysResolveTest extends TestCase
         ]);
     }
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('keyProvider')]
+    #[DataProvider('keyProvider')]
     #[Test]
     public function the_key_resolves_to_a_real_message(string $key): void
     {
@@ -72,7 +74,7 @@ class TranslationKeysResolveTest extends TestCase
     #[Test]
     public function the_address_request_messages_all_resolve(): void
     {
-        $request = new \App\Http\Requests\Address\StoreAddressRequest;
+        $request = new StoreAddressRequest;
 
         foreach ($request->messages() as $field => $message) {
             $this->assertStringNotContainsString(

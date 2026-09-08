@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Weighbridge;
 
+use App\Exceptions\BusinessException;
 use App\Models\Shipment;
 
 /**
@@ -43,7 +44,7 @@ interface WeightSourceInterface
      *                                         `manual` عددِ اپراتور، برای `ocr`
      *                                         مسیرِ تصویر، برای `api` چیزی لازم ندارد.
      *
-     * @throws \App\Exceptions\BusinessException وقتی منبع نتواند وزنِ معتبر بدهد.
+     * @throws BusinessException وقتی منبع نتواند وزنِ معتبر بدهد.
      */
     public function readWeight(Shipment $shipment, array $payload = []): float;
 }

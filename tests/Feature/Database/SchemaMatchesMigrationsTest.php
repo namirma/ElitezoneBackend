@@ -4,6 +4,7 @@ namespace Tests\Feature\Database;
 
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -55,7 +56,7 @@ class SchemaMatchesMigrationsTest extends TestCase
     }
 
     #[Test]
-    #[\PHPUnit\Framework\Attributes\DataProvider('columnExpectations')]
+    #[DataProvider('columnExpectations')]
     public function a_columns_nullability_matches_what_the_code_assumes(string $table, string $column, bool $shouldBeNullable): void
     {
         $row = DB::selectOne(

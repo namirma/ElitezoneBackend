@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Database;
 
+use App\Models\CartItem;
+use App\Models\FactoryFeature;
+use App\Models\FactoryLocation;
+use App\Models\PriceHistory;
+use App\Models\ProductPrice;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use PHPUnit\Framework\Attributes\Test;
 use ReflectionClass;
@@ -44,11 +49,11 @@ class FactoryMethodCollisionTest extends TestCase
      * @var list<string>
      */
     private const KNOWN_LATENT = [
-        \App\Models\CartItem::class,
-        \App\Models\FactoryFeature::class,
-        \App\Models\FactoryLocation::class,
-        \App\Models\PriceHistory::class,
-        \App\Models\ProductPrice::class,
+        CartItem::class,
+        FactoryFeature::class,
+        FactoryLocation::class,
+        PriceHistory::class,
+        ProductPrice::class,
     ];
 
     /** @return list<class-string> هر مدلی که `HasFactory` را به کار می‌برد. */

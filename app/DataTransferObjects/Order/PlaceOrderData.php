@@ -3,6 +3,8 @@
 namespace App\DataTransferObjects\Order;
 
 use App\Http\Requests\Order\StoreOrderRequest;
+use App\Models\Cart;
+use Illuminate\Http\Request;
 
 class PlaceOrderData
 {
@@ -46,16 +48,16 @@ class PlaceOrderData
      * سبد نشسته‌اند. اگر کارفرما می‌توانست این‌ها را در لحظه‌ی پرداخت عوض کند،
      * چیزی را می‌پرداخت که با آنچه در لینک دیده بود یکی نبود.
      */
-    public static function fromCart(\App\Models\Cart $cart, \Illuminate\Http\Request $request): self
+    public static function fromCart(Cart $cart, Request $request): self
     {
         return new self(
-            beneficiaryUserId: (int) $cart->{\App\Models\Cart::BENEFICIARY_USER_ID},
+            beneficiaryUserId: (int) $cart->{Cart::BENEFICIARY_USER_ID},
             // الیت‌یارِ مؤثر را خودِ `PlaceOrderAction` از نقشِ صاحبِ سبد درمی‌آورد.
             eliteYARUserId: null,
-            addressId: $cart->{\App\Models\Cart::ADDRESS_ID} ? (int) $cart->{\App\Models\Cart::ADDRESS_ID} : null,
-            shippingMethodId: $cart->{\App\Models\Cart::SHIPPING_METHOD_ID} ? (int) $cart->{\App\Models\Cart::SHIPPING_METHOD_ID} : null,
+            addressId: $cart->{Cart::ADDRESS_ID} ? (int) $cart->{Cart::ADDRESS_ID} : null,
+            shippingMethodId: $cart->{Cart::SHIPPING_METHOD_ID} ? (int) $cart->{Cart::SHIPPING_METHOD_ID} : null,
             description: null,
-            couponCode: $cart->{\App\Models\Cart::COUPON_CODE} ?: null,
+            couponCode: $cart->{Cart::COUPON_CODE} ?: null,
             ipAddress: $request->ip(),
             userAgent: $request->userAgent(),
         );

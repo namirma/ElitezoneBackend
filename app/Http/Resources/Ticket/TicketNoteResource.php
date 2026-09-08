@@ -11,7 +11,7 @@ use Illuminate\Http\Request;
  * یادداشت داخلی تیم پشتیبانی روی یک تیکت.
  * ⚠️ فقط در پاسخ‌های ادمین سریالایز می‌شود — هرگز برای صاحب تیکت.
  *
- * @mixin \App\Models\TicketNote
+ * @mixin TicketNote
  */
 class TicketNoteResource extends BaseJsonResource
 {

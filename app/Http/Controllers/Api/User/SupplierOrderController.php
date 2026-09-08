@@ -3,14 +3,20 @@
 namespace App\Http\Controllers\Api\User;
 
 use App\Actions\Financial\RecordSupplierMoadianInvoiceAction;
+use App\Actions\Order\CorrectShipmentWeightAction;
 use App\Actions\Order\ExtendReserveDeadlineAction;
+use App\Actions\Order\RegisterShipmentAction;
 use App\Enums\Order\OrderStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Order\CorrectShipmentWeightRequest;
 use App\Http\Requests\Order\ExtendReserveDeadlineRequest;
+use App\Http\Requests\Order\RegisterShipmentRequest;
 use App\Http\Requests\Order\SubmitMoadianInvoiceRequest;
 use App\Http\Requests\Order\UploadOrderReceiptRequest;
 use App\Http\Resources\Order\OrderResource;
+use App\Http\Resources\Order\ShipmentResource;
 use App\Models\Order;
+use App\Models\Shipment;
 use App\Models\SupplierProfile;
 use App\Services\Supplier\SupplierEarningsReport;
 use Exception;
@@ -244,10 +250,10 @@ class SupplierOrderController extends Controller
      * اجرا می‌شود و سفارش به `shipped` می‌رود.
      */
     public function registerWaybill(
-        \App\Http\Requests\Order\RegisterShipmentRequest $request,
+        RegisterShipmentRequest $request,
         Order $order,
-        \App\Models\Shipment $shipment,
-        \App\Actions\Order\RegisterShipmentAction $action,
+        Shipment $shipment,
+        RegisterShipmentAction $action,
     ): JsonResponse {
         $this->authorize('manageAsSupplier', $order);
 
@@ -275,10 +281,10 @@ class SupplierOrderController extends Controller
      * پس از آن ۴۰۹ — چون پول روی همان عدد جابه‌جا شده.
      */
     public function correctShipmentWeight(
-        \App\Http\Requests\Order\CorrectShipmentWeightRequest $request,
+        CorrectShipmentWeightRequest $request,
         Order $order,
-        \App\Models\Shipment $shipment,
-        \App\Actions\Order\CorrectShipmentWeightAction $action,
+        Shipment $shipment,
+        CorrectShipmentWeightAction $action,
     ): JsonResponse {
         $this->authorize('manageAsSupplier', $order);
 
@@ -287,11 +293,11 @@ class SupplierOrderController extends Controller
         activity()
             ->performedOn($corrected)
             ->causedBy(Auth::user())
-            ->withProperties(['actual_weight' => $corrected->{\App\Models\Shipment::ACTUAL_WEIGHT}])
+            ->withProperties(['actual_weight' => $corrected->{Shipment::ACTUAL_WEIGHT}])
             ->log('supplier.shipment.weight_corrected');
 
         return success(
-            new \App\Http\Resources\Order\ShipmentResource($corrected),
+            new ShipmentResource($corrected),
             __('shipments.weight_corrected')
         );
     }

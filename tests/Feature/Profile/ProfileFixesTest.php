@@ -7,6 +7,7 @@ use App\Models\JobExperience;
 use App\Models\Role;
 use App\Models\User;
 use App\Models\UserType;
+use App\Support\OtpSecret;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -176,7 +177,7 @@ class ProfileFixesTest extends TestCase
     {
         $user = $this->eliteYarUser();
         $user->forceFill([
-            User::SECRET => \App\Support\OtpSecret::hash('123456'),
+            User::SECRET => OtpSecret::hash('123456'),
             User::SECRET_EXPIRES_AT => now()->addMinutes(5),
         ])->save();
         Sanctum::actingAs($user);

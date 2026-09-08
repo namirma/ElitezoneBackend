@@ -9,6 +9,7 @@ use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\OrderStatusHistory;
 use App\Models\User;
+use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use Hekmatinasser\Verta\Verta;
 use Illuminate\Support\Carbon;
@@ -201,7 +202,7 @@ final class OrderTimelineService
                 meta: [
                     'wallet_code' => $txn->{WalletTransaction::META}['code'] ?? null,
                     'wallet_id' => $txn->{WalletTransaction::WALLET_ID},
-                    'user_id' => $txn->wallet?->{\App\Models\Wallet::USER_ID},
+                    'user_id' => $txn->wallet?->{Wallet::USER_ID},
                     'status' => $txn->{WalletTransaction::STATUS},
                 ],
             ));

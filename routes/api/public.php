@@ -2,9 +2,11 @@
 
 use App\Http\Controllers\AgreementController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\PromoOverlayController;
 use App\Http\Controllers\Api\QuestionController;
 use App\Http\Controllers\Api\Shipping\ShipmentDeliveryController;
 use App\Http\Controllers\Api\User\ProductReviewController;
+use App\Http\Controllers\ContentController;
 use App\Http\Controllers\CustomerTypeController;
 use App\Http\Controllers\FactoryController;
 use App\Http\Controllers\ParameterDetectionController;
@@ -81,7 +83,7 @@ Route::prefix('factories')->group(function () {
 Route::get('/shipping-methods', [ShippingMethodController::class, 'index']);
 
 // ── محتوای عمومی سایت (مدیریت‌شده در پنل ادمین، فقط رکوردهای فعال، کش‌شده) ──
-Route::controller(\App\Http\Controllers\ContentController::class)->group(function () {
+Route::controller(ContentController::class)->group(function () {
     Route::get('/banners', 'banners');
     Route::get('/articles', 'articles');
     Route::get('/articles/{slug}', 'article');
@@ -97,7 +99,7 @@ Route::controller(\App\Http\Controllers\ContentController::class)->group(functio
 // اورلی‌های ترغیب که برای کاربرِ فعلی واجد شرایط‌اند.
 // عمومی است (مهمان هم اورلیِ خوش‌آمد را می‌گیرد)، ولی `auth:sanctum` به‌صورت
 // اختیاری اعمال می‌شود تا اگر توکن آمد، شرط‌های وابسته به کاربر هم ارزیابی شوند.
-Route::get('/promo-overlays', [\App\Http\Controllers\Api\PromoOverlayController::class, 'index'])
+Route::get('/promo-overlays', [PromoOverlayController::class, 'index'])
     ->middleware('optional.sanctum');
 
 Route::prefix('customer-types')->group(function () {

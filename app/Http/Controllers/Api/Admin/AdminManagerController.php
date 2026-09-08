@@ -8,11 +8,13 @@ use App\Http\Requests\Admin\UpdateAdminRequest;
 use App\Http\Resources\Profile\UserResource;
 use App\Models\User;
 use App\Models\UserProfile;
+use Database\Seeders\AdminPermissionSeeder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Laratrust\Models\Permission;
 
 /**
  * پنل مدیریت — مدیران سیستم (ماژول ۷ نیازمندی فرانت BackOffice).
@@ -180,9 +182,9 @@ class AdminManagerController extends Controller
      */
     private function syncAdminPermissions(User $user, ?array $permissionNames): void
     {
-        $names = $permissionNames ?? array_keys(\Database\Seeders\AdminPermissionSeeder::PERMISSIONS);
+        $names = $permissionNames ?? array_keys(AdminPermissionSeeder::PERMISSIONS);
 
-        $ids = \Laratrust\Models\Permission::whereIn('name', $names)->pluck('id')->all();
+        $ids = Permission::whereIn('name', $names)->pluck('id')->all();
         $user->syncPermissions($ids);
     }
 

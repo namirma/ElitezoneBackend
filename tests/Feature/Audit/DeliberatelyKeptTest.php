@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Audit;
 
+use App\Enums\Survey\SurveyStatus;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -88,7 +89,7 @@ class DeliberatelyKeptTest extends TestCase
     public function the_survey_enum_survives_the_feature_being_switched_off(): void
     {
         $this->assertTrue(
-            enum_exists(\App\Enums\Survey\SurveyStatus::class),
+            enum_exists(SurveyStatus::class),
             <<<'WHY'
 
             App\Enums\Survey\SurveyStatus was deleted.

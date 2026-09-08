@@ -5,6 +5,7 @@ namespace Tests\Feature\Ticketing;
 use App\DataTransferObjects\Ticket\TicketDTO;
 use App\Jobs\Notification\SendSmsJob;
 use App\Models\Department;
+use App\Models\Order;
 use App\Models\Ticket;
 use App\Models\TicketFile;
 use App\Models\User;
@@ -12,6 +13,7 @@ use App\Services\TicketService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
@@ -88,7 +90,7 @@ class TicketLifecycleTest extends TestCase
     {
         config(['ticketing.business_hours' => [
             'enabled' => true, 'start_hour' => 9, 'end_hour' => 17,
-            'weekend_days' => [\Illuminate\Support\Carbon::FRIDAY],
+            'weekend_days' => [Carbon::FRIDAY],
         ]]);
 
         // پنجشنبه ۱۶:۰۰ **به وقت تهران** — از ۸ ساعت SLA فقط ۱ ساعت امروز جا دارد؛
@@ -99,8 +101,8 @@ class TicketLifecycleTest extends TestCase
         // (`app.timezone` = UTC). آن موقع با سناریوی بالا می‌خواند فقط به این دلیل
         // که تقویم هم ساعتِ UTC را ساعتِ کاری فرض می‌کرد. ۱۶:۰۰ UTC در واقع
         // ۱۹:۳۰ تهران است — یعنی بعد از پایان کار، نه «۱ ساعت مانده به تعطیلی».
-        \Illuminate\Support\Carbon::setTestNow(
-            \Illuminate\Support\Carbon::parse('2026-07-16 16:00:00', 'Asia/Tehran')->setTimezone('UTC')
+        Carbon::setTestNow(
+            Carbon::parse('2026-07-16 16:00:00', 'Asia/Tehran')->setTimezone('UTC')
         );
 
         try {
@@ -112,7 +114,7 @@ class TicketLifecycleTest extends TestCase
                 'موعد باید شنبه ۱۶:۰۰ به وقت تهران باشد.'
             );
         } finally {
-            \Illuminate\Support\Carbon::setTestNow();
+            Carbon::setTestNow();
         }
     }
 
@@ -204,11 +206,11 @@ class TicketLifecycleTest extends TestCase
     public function attaching_an_order_the_user_does_not_own_is_rejected(): void
     {
         $stranger = User::factory()->create();
-        $foreignOrder = \App\Models\Order::create([
-            \App\Models\Order::PLACER_USER_ID => $stranger->id,
-            \App\Models\Order::ORDER_NUMBER => 'TCK-ORD-'.uniqid(),
-            \App\Models\Order::STATUS => \App\Models\Order::STATUS_PROCESSING,
-            \App\Models\Order::PAYMENT_STATUS => 'pending',
+        $foreignOrder = Order::create([
+            Order::PLACER_USER_ID => $stranger->id,
+            Order::ORDER_NUMBER => 'TCK-ORD-'.uniqid(),
+            Order::STATUS => Order::STATUS_PROCESSING,
+            Order::PAYMENT_STATUS => 'pending',
         ]);
 
         Sanctum::actingAs($this->user);

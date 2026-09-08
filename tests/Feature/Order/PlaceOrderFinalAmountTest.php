@@ -8,6 +8,7 @@ use App\Events\Order\OrderPlaced;
 use App\Models\Address;
 use App\Models\Cart;
 use App\Models\CartItem;
+use App\Models\Factory;
 use App\Models\Order;
 use App\Models\OrderUnit;
 use App\Models\ShippingMethod;
@@ -52,7 +53,7 @@ class PlaceOrderFinalAmountTest extends TestCase
         $buyer = User::factory()->create();
 
         $factory = $this->makeFactory();
-        $factory->update([\App\Models\Factory::SUPPLIER_USER_ID => $supplier->id]);
+        $factory->update([Factory::SUPPLIER_USER_ID => $supplier->id]);
 
         $location = $this->makeLocation($factory);
         $product = $this->makeProduct();

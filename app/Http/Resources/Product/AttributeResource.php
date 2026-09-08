@@ -7,7 +7,7 @@ use App\Models\Attribute;
 use Illuminate\Http\Request;
 
 /**
- * @mixin \App\Models\Attribute
+ * @mixin Attribute
  */
 class AttributeResource extends BaseJsonResource
 {

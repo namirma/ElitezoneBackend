@@ -7,7 +7,7 @@ use App\Models\ProductCategory;
 use Illuminate\Http\Request;
 
 /**
- * @mixin \App\Models\ProductCategory
+ * @mixin ProductCategory
  */
 class ProductCategoryResource extends BaseJsonResource
 {

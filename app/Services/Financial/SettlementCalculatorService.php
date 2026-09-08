@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\PriceSetting;
 use App\Models\SupplierProfile;
 use App\Support\Money;
+use Tests\Feature\Financial\PooVersusDisplayedAmountTest;
 
 /**
  * Financial settlement calculator.
@@ -401,7 +402,7 @@ class SettlementCalculatorService
      * برمی‌گردند و تنها اختلافِ باقی‌مانده همان تخفیفِ `%OW` است — یک اختلافِ
      * توضیح‌دادنی، همیشه به سودِ خریدار.
      *
-     * @see \Tests\Feature\Financial\PooVersusDisplayedAmountTest
+     * @see PooVersusDisplayedAmountTest
      */
     public function vatOnTrans(float $trans, float $vatPercent, bool $transVat): float
     {

@@ -11,7 +11,9 @@ use App\Models\TicketNote;
 use App\Models\TicketReply;
 use App\Models\User;
 use App\Repositories\Contracts\TicketRepositoryInterface;
+use App\Support\BusinessHours;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -287,13 +289,13 @@ class TicketService
     //  Internals
     // =========================================================================
 
-    private function slaDeadlineFor(string $priority): \Illuminate\Support\Carbon
+    private function slaDeadlineFor(string $priority): Carbon
     {
         $hours = (int) config("ticketing.sla_hours.{$priority}", config('ticketing.sla_hours.normal', 24));
 
         // ساعت‌های SLA فقط داخل تقویم کاری مصرف می‌شوند (BusinessHours);
         // با business_hours.enabled=false همان wall-clock سابق است.
-        return \App\Support\BusinessHours::addWorkingHours(now(), $hours);
+        return BusinessHours::addWorkingHours(now(), $hours);
     }
 
     /**

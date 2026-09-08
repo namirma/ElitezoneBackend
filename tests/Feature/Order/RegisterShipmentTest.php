@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\Wallet;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Str;
+use Laratrust\Models\Role;
 use Laravel\Sanctum\Sanctum;
 use Mockery;
 use PHPUnit\Framework\Attributes\Test;
@@ -40,7 +41,7 @@ class RegisterShipmentTest extends TestCase
         $this->supplier = User::factory()->create();
         // `OrderPolicy::manageAsSupplier` هم نقش را می‌خواهد و هم مالکیتِ آیتم.
         $this->supplier->addRole(
-            \Laratrust\Models\Role::firstOrCreate(['name' => 'supplier'], ['display_name' => 'Supplier'])
+            Role::firstOrCreate(['name' => 'supplier'], ['display_name' => 'Supplier'])
         );
         Wallet::create([Wallet::USER_ID => $this->supplier->id, Wallet::BALANCE => 0, Wallet::BALANCE_HOLD => 0]);
 

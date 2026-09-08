@@ -8,7 +8,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 /**
- * @mixin \App\Models\Product
+ * @mixin Product
  */
 class ProductResource extends BaseJsonResource
 {

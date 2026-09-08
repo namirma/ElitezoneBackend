@@ -8,7 +8,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 /**
- * @mixin \App\Models\FactoryLocation
+ * @mixin FactoryLocation
  */
 class FactoryLocationResource extends BaseJsonResource
 {

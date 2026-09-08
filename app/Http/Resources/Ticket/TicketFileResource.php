@@ -3,10 +3,11 @@
 namespace App\Http\Resources\Ticket;
 
 use App\Http\Resources\BaseJsonResource;
+use App\Models\TicketFile;
 use Illuminate\Http\Request;
 
 /**
- * @mixin \App\Models\TicketFile
+ * @mixin TicketFile
  */
 class TicketFileResource extends BaseJsonResource
 {

@@ -6,6 +6,8 @@ use App\Exceptions\BusinessException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Mccarlosen\LaravelMpdf\Facades\LaravelMpdf as PDF;
+use Mccarlosen\LaravelMpdf\LaravelMpdf;
+use Mpdf\Mpdf;
 
 /**
  * مسئولیت: رندر کردن PDF از یک Blade view و ذخیره یا ارائه آن.
@@ -38,7 +40,7 @@ class InvoicePdfRenderer
     /**
      * PDF را رندر کرده و آبجکت آن را برمی‌گرداند (برای stream/download مستقیم).
      *
-     * @return \Mpdf\Mpdf|\Mccarlosen\LaravelMpdf\LaravelMpdf
+     * @return Mpdf|LaravelMpdf
      */
     public function render(string $viewName, array $data, string $docType, string $invoiceNumber)
     {

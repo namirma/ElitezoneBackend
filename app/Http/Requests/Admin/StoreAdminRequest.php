@@ -4,7 +4,9 @@ namespace App\Http\Requests\Admin;
 
 use App\Models\User;
 use App\Support\PhoneNumber;
+use Database\Seeders\AdminPermissionSeeder;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /**
  * ساخت مدیر سیستم جدید (کاربر + نقش admin).
@@ -41,7 +43,7 @@ class StoreAdminRequest extends FormRequest
             'email' => ['nullable', 'email', 'max:255'],
             // سطح دسترسی — بدون ارسال، همه مجوزها داده می‌شود
             'permissions' => ['nullable', 'array'],
-            'permissions.*' => ['string', \Illuminate\Validation\Rule::in(array_keys(\Database\Seeders\AdminPermissionSeeder::PERMISSIONS))],
+            'permissions.*' => ['string', Rule::in(array_keys(AdminPermissionSeeder::PERMISSIONS))],
         ];
     }
 

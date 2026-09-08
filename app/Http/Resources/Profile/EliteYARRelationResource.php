@@ -12,7 +12,7 @@ use App\Models\UserProfile;
 use Illuminate\Http\Request;
 
 /**
- * @mixin \App\Models\EmployerEliteYAR
+ * @mixin EmployerEliteYAR
  */
 class EliteYARRelationResource extends BaseJsonResource
 {

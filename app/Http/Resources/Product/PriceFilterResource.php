@@ -7,7 +7,7 @@ use App\Models\PriceFilter;
 use Illuminate\Http\Request;
 
 /**
- * @mixin \App\Models\PriceFilter
+ * @mixin PriceFilter
  */
 class PriceFilterResource extends BaseJsonResource
 {

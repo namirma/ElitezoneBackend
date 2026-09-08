@@ -8,7 +8,7 @@ use App\Models\ProductVariant;
 use Illuminate\Http\Request;
 
 /**
- * @mixin \App\Models\ProductVariant
+ * @mixin ProductVariant
  */
 class VariantInWishlistResource extends BaseJsonResource
 {

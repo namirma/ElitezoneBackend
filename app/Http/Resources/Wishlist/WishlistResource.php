@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 /**
- * @mixin \App\Models\Wishlist
+ * @mixin Wishlist
  */
 class WishlistResource extends BaseJsonResource
 {

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -17,7 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int|null $wallet_txn_id
  * @property string|null $matched_by روش تطبیق: shenaseh | iban | null
  * @property string|null $deposited_at_jalali
- * @property \Carbon\Carbon|null $processed_at
+ * @property Carbon|null $processed_at
  * @property string|null $note
  */
 class PodiumDepositRecord extends Model

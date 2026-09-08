@@ -10612,18 +10612,7 @@
                                             "type": "boolean"
                                         },
                                         "message": {
-                                            "anyOf": [
-                                                {
-                                                    "type": "string"
-                                                },
-                                                {
-                                                    "type": "array",
-                                                    "items": {}
-                                                },
-                                                {
-                                                    "type": "null"
-                                                }
-                                            ]
+                                            "type": "string"
                                         },
                                         "data": {
                                             "type": "object",
@@ -10695,18 +10684,7 @@
                                             "type": "boolean"
                                         },
                                         "message": {
-                                            "anyOf": [
-                                                {
-                                                    "type": "string"
-                                                },
-                                                {
-                                                    "type": "array",
-                                                    "items": {}
-                                                },
-                                                {
-                                                    "type": "null"
-                                                }
-                                            ]
+                                            "type": "string"
                                         },
                                         "data": {
                                             "type": "object",
@@ -10778,18 +10756,7 @@
                                             "type": "boolean"
                                         },
                                         "message": {
-                                            "anyOf": [
-                                                {
-                                                    "type": "string"
-                                                },
-                                                {
-                                                    "type": "array",
-                                                    "items": {}
-                                                },
-                                                {
-                                                    "type": "null"
-                                                }
-                                            ]
+                                            "type": "string"
                                         },
                                         "data": {
                                             "type": "object",

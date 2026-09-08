@@ -8,7 +8,7 @@ use Hekmatinasser\Verta\Verta;
 use Illuminate\Http\Request;
 
 /**
- * @mixin \App\Models\FactoryStock
+ * @mixin FactoryStock
  */
 class FactoryStockResource extends BaseJsonResource
 {

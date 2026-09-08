@@ -7,7 +7,7 @@ use App\Models\JobExperience;
 use Illuminate\Http\Request;
 
 /**
- * @mixin \App\Models\JobExperience
+ * @mixin JobExperience
  */
 class JobExperienceResource extends BaseJsonResource
 {

@@ -2,12 +2,15 @@
 
 namespace App\Services\Invoice;
 
+use App\Actions\Cart\BuildCartPreInvoiceAction;
 use App\Constants\FinancialCodes;
 use App\Models\Invoice;
 use App\Models\Order;
 use App\Services\DocumentSequenceService;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
+use Mccarlosen\LaravelMpdf\LaravelMpdf;
+use Mpdf\Mpdf;
 
 /**
  * Orchestrator: هماهنگ‌کننده تولید اسناد مالی.
@@ -127,9 +130,9 @@ class InvoiceGenerator
      *
      * @param  Order  $transientOrder  سفارشِ درون‌حافظه‌ای (ذخیره‌نشده) ساختهٔ سبد
      * @param  string  $previewNumber  شناسهٔ آشکارا موقتِ پیش‌نمایش
-     * @return \Mpdf\Mpdf|\Mccarlosen\LaravelMpdf\LaravelMpdf
+     * @return Mpdf|LaravelMpdf
      *
-     * @see \App\Actions\Cart\BuildCartPreInvoiceAction
+     * @see BuildCartPreInvoiceAction
      */
     public function previewPreInvoice(Order $transientOrder, string $previewNumber): mixed
     {
@@ -146,7 +149,7 @@ class InvoiceGenerator
 
     /**
      * @param  string  $outputMode  'save' (ذخیره روی disk) | 'stream' | 'download' (خروجی PDF خام)
-     * @return string|\Mpdf\Mpdf در حالت save: مسیر فایل؛ غیر از آن: آبجکت PDF
+     * @return string|Mpdf در حالت save: مسیر فایل؛ غیر از آن: آبجکت PDF
      *
      * پیش‌نیاز: $order باید relations زیر را load کرده باشد:
      *   items.productVariant.product, placer.profile, address.city, address.province

@@ -3,11 +3,13 @@
 namespace App\Http\Resources\Ticket;
 
 use App\Http\Resources\BaseJsonResource;
+use App\Models\TicketReply;
+use App\Models\User;
 use App\Support\SupportIdentity;
 use Illuminate\Http\Request;
 
 /**
- * @mixin \App\Models\TicketReply
+ * @mixin TicketReply
  */
 class TicketReplyResource extends BaseJsonResource
 {
@@ -53,7 +55,7 @@ class TicketReplyResource extends BaseJsonResource
     private function displayUserName(): ?string
     {
         $user = $this->whenLoaded('user');
-        if (! $user instanceof \App\Models\User) {
+        if (! $user instanceof User) {
             return null;
         }
 

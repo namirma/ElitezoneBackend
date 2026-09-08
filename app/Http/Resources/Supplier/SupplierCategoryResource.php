@@ -16,7 +16,7 @@ use Illuminate\Http\Request;
  * @method relationLoaded(string $string)
  */
 /**
- * @mixin \App\Models\SupplierActivityCategory
+ * @mixin SupplierActivityCategory
  */
 class SupplierCategoryResource extends BaseJsonResource
 {

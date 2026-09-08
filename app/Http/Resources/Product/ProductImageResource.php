@@ -7,7 +7,7 @@ use App\Models\ProductImage;
 use Illuminate\Http\Request;
 
 /**
- * @mixin \App\Models\ProductImage
+ * @mixin ProductImage
  */
 class ProductImageResource extends BaseJsonResource
 {

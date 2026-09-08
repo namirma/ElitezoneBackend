@@ -5,6 +5,7 @@ namespace Tests\Feature\Smoke;
 use App\Models\Address;
 use App\Models\Factory;
 use App\Models\FactoryLocation;
+use App\Models\FactoryStock;
 use App\Models\Order;
 use App\Models\OrderUnit;
 use App\Models\Product;
@@ -16,9 +17,12 @@ use App\Models\ShippingRate;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Services\Invoice\InvoiceGenerator;
+use App\Services\PodiumClient;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Laratrust\Models\Role;
+use Laravel\Sanctum\Sanctum;
 use Mockery;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -70,7 +74,7 @@ class PurchaseWalkthroughTest extends TestCase
         // عملیاتی است: بدون دسترسیِ پودیوم، هیچ کاربر تازه‌ای نمی‌تواند ثبت‌نام کند.
         // اکشنِ هویت `final` است، پس مرزِ واقعی — یعنی خودِ کلاینتِ پودیوم — را
         // stub می‌کنیم: تطبیقِ موبایل↔کدملی و استعلامِ تاریخ تولد هر دو موفق.
-        $this->mock(\App\Services\PodiumClient::class, function ($m) {
+        $this->mock(PodiumClient::class, function ($m) {
             $m->shouldReceive('callSc2')->andReturn([
                 'hasError' => false,
                 'result' => ['matched' => true, 'resultCode' => '1', 'birthDate' => '13700101'],
@@ -124,8 +128,8 @@ class PurchaseWalkthroughTest extends TestCase
         // موجودیِ به‌ازای مبدأ فقط روی خطِ لاراول ۱۰ وجود دارد؛ برنچِ ۱۳ هنوز
         // `factory_stocks` را ندارد و موجودی همان ستونِ سراسریِ واریانت است (که
         // بالاتر ست شد). پس این گام مشروط است تا پیمایش روی هر دو خط اجرا شود.
-        if (class_exists(\App\Models\FactoryStock::class)) {
-            \App\Models\FactoryStock::create([
+        if (class_exists(FactoryStock::class)) {
+            FactoryStock::create([
                 'product_variant_id' => $variant->id,
                 'factory_id' => $factory->id,
                 'factory_location_id' => $location->id,
@@ -147,7 +151,7 @@ class PurchaseWalkthroughTest extends TestCase
                 DB::table('user_types')->insert(['slug' => $slug, 'name' => $name, 'icon' => 'building']);
             }
             // نقشِ Laratrust هم باید وجود داشته باشد تا `addRole()` کار کند.
-            \Laratrust\Models\Role::firstOrCreate(['name' => $slug], ['display_name' => $name]);
+            Role::firstOrCreate(['name' => $slug], ['display_name' => $name]);
         }
 
         // استان/شهر در دیتابیسِ تست seed نشده‌اند — همان دو ردیفِ لازم را می‌سازیم.
@@ -195,7 +199,7 @@ class PurchaseWalkthroughTest extends TestCase
 
         /** @var User $user */
         $user = User::where('mobile', $mobile)->firstOrFail();
-        \Laravel\Sanctum\Sanctum::actingAs($user);
+        Sanctum::actingAs($user);
 
         // ─────────────── ۲. انتخاب نقش ───────────────
         $r = $this->postJson('/api/profile/type', ['roles' => ['employer']]);

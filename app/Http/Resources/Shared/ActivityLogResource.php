@@ -4,9 +4,10 @@ namespace App\Http\Resources\Shared;
 
 use App\Http\Resources\BaseJsonResource;
 use Illuminate\Http\Request;
+use Spatie\Activitylog\Models\Activity;
 
 /**
- * @mixin \Spatie\Activitylog\Models\Activity
+ * @mixin Activity
  */
 class ActivityLogResource extends BaseJsonResource
 {

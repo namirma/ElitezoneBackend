@@ -6,7 +6,7 @@ use App\Http\Resources\BaseJsonResource;
 use App\Models\ShippingMethod;
 
 /**
- * @mixin \App\Models\ShippingMethod
+ * @mixin ShippingMethod
  */
 class ShippingMethodResource extends BaseJsonResource
 {

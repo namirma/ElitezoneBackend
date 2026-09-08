@@ -7,6 +7,7 @@ namespace App\Services\Cart;
 use App\Models\Cart;
 use App\Models\SupplierProfile;
 use Carbon\CarbonInterface;
+use Tests\Feature\Cart\CartPriceValidityTest;
 
 /**
  * مهلتِ اعتبارِ قیمت/موجودیِ سبد — «تا چه زمانی این قیمت‌ها معتبرند؟»
@@ -23,7 +24,7 @@ use Carbon\CarbonInterface;
  * سبدی که هنوز تأمین‌کننده‌اش قفل نشده به TTLِ قدیمیِ `config/cart.php` برمی‌گردد
  * که پیش‌فرضش خالی است — یعنی «مهلتی اعلام نشده» و نه عددی ساختگی.
  *
- * @see \Tests\Feature\Cart\CartPriceValidityTest
+ * @see CartPriceValidityTest
  */
 class CartPriceValidityResolver
 {

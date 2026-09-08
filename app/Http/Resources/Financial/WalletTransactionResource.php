@@ -4,6 +4,7 @@ namespace App\Http\Resources\Financial;
 
 use App\Enums\Shared\StatusTone;
 use App\Http\Resources\BaseJsonResource;
+use App\Models\User;
 use App\Models\WalletTransaction;
 use Illuminate\Http\Request;
 
@@ -75,7 +76,7 @@ class WalletTransactionResource extends BaseJsonResource
             // endpointهای کاربر عادی wallet را eager-load نمی‌کنند، پس این فیلد
             // برای آن‌ها اصلاً در پاسخ ظاهر نمی‌شود.
             'user' => $this->whenLoaded('wallet', function () {
-                /** @var \App\Models\User|null $user */
+                /** @var User|null $user */
                 $user = $this->wallet->user;
 
                 if (! $user) {

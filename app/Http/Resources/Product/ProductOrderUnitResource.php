@@ -5,12 +5,13 @@ namespace App\Http\Resources\Product;
 use App\Http\Resources\BaseJsonResource;
 use App\Models\OrderUnit;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Collection;
 
 /**
  * یک واحد سفارشِ مجازِ محصول — «کدام واحد، با چه ضریب تبدیلی، تا چه سقفی».
  *
- * @mixin \App\Models\OrderUnit
+ * @mixin OrderUnit
  *
  * باکس خریدِ سایت اصلی برای رندر یک اسلات **هر دو** عدد را لازم دارد:
  *  • `amount`       ضریب تبدیل به واحد پایه — مبنای محاسبهٔ وزن (و در نتیجه قیمت)
@@ -44,7 +45,7 @@ class ProductOrderUnitResource extends BaseJsonResource
      * مجموعه‌ای مرتب‌شده: بستهٔ بزرگ‌تر اول، واحد پایه آخر — همان ترتیبی که سایت
      * اسلات‌ها را رندر می‌کند، تا ترتیب بصری به ترتیب insert در دیتابیس وابسته نباشد.
      */
-    public static function sortedCollection(?Collection $orderUnits): \Illuminate\Http\Resources\Json\AnonymousResourceCollection
+    public static function sortedCollection(?Collection $orderUnits): AnonymousResourceCollection
     {
         return self::collection(
             ($orderUnits ?? collect())

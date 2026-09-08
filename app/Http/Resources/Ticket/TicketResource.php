@@ -4,10 +4,11 @@ namespace App\Http\Resources\Ticket;
 
 use App\Enums\Shared\StatusTone;
 use App\Http\Resources\BaseJsonResource;
+use App\Models\Ticket;
 use Illuminate\Http\Request;
 
 /**
- * @mixin \App\Models\Ticket
+ * @mixin Ticket
  */
 class TicketResource extends BaseJsonResource
 {

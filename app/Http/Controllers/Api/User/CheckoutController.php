@@ -2,20 +2,34 @@
 
 namespace App\Http\Controllers\Api\User;
 
+use App\Actions\Financial\ProcessPreScalePaymentAction;
+use App\Actions\Financial\ProcessReservationPaymentAction;
 use App\Actions\Order\PlaceOrderAction;
 use App\DataTransferObjects\Order\PlaceOrderData;
 use App\Exceptions\InsufficientBalanceException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Order\ReserveFromCartRequest;
 use App\Http\Requests\Order\StoreOrderRequest;
+use App\Http\Resources\Cart\CartResource;
 use App\Http\Resources\Order\OrderResource;
 use App\Models\Cart;
 use App\Models\Order;
 use App\Models\SupplierProfile;
+use App\Models\User;
 use App\Models\WalletTransaction;
+use App\Services\Cart\CartCheckoutTotals;
+use App\Services\Cart\CartPaymentLinkService;
+use App\Services\Cart\CartResolver;
+use App\Services\InventoryService;
+use App\Services\Marketing\CouponService;
 use App\Services\Payment\PaymentBranch;
+use App\Services\Payment\PaymentBranchResolver;
 use App\Services\Payment\PaymentGatewayFactory;
+use App\Services\Payment\ReserveWarningResolver;
+use App\Services\Sales\ReserveDeadlineResolver;
+use App\Services\Sales\SalesSettings;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -31,7 +45,7 @@ class CheckoutController extends Controller
      * پیش‌نمایش کد تخفیف قبل از ثبت سفارش — اعتبارسنجی + نوع و مقدار.
      * اعمال واقعی هنگام placeOrder (با coupon_code) و پرداخت انجام می‌شود.
      */
-    public function couponPreview(\Illuminate\Http\Request $request, \App\Services\Marketing\CouponService $couponService): JsonResponse
+    public function couponPreview(Request $request, CouponService $couponService): JsonResponse
     {
         $validated = $request->validate(['code' => ['required', 'string', 'max:100']]);
 
@@ -58,11 +72,11 @@ class CheckoutController extends Controller
      * می‌کند، تا هشدار صرفاً یک تزئینِ سمت کلاینت نباشد.
      */
     public function paymentOptions(
-        \Illuminate\Http\Request $request,
-        \App\Services\Cart\CartResolver $cartResolver,
-        \App\Services\Payment\PaymentBranchResolver $branchResolver,
-        \App\Services\Payment\ReserveWarningResolver $warningResolver,
-        \App\Services\Cart\CartCheckoutTotals $totals,
+        Request $request,
+        CartResolver $cartResolver,
+        PaymentBranchResolver $branchResolver,
+        ReserveWarningResolver $warningResolver,
+        CartCheckoutTotals $totals,
     ): JsonResponse {
         $user = Auth::user();
         $cart = $cartResolver->resolve($request);
@@ -114,10 +128,10 @@ class CheckoutController extends Controller
      */
     public function pay(
         StoreOrderRequest $request,
-        \App\Services\Payment\PaymentBranchResolver $branchResolver,
-        \App\Services\Cart\CartCheckoutTotals $totals,
-        \App\Actions\Financial\ProcessPreScalePaymentAction $settle,
-        \App\Services\InventoryService $inventory,
+        PaymentBranchResolver $branchResolver,
+        CartCheckoutTotals $totals,
+        ProcessPreScalePaymentAction $settle,
+        InventoryService $inventory,
     ): JsonResponse {
         $user = Auth::user();
         $cart = Cart::queryForUser($user->id)->with('items')->first();
@@ -171,13 +185,13 @@ class CheckoutController extends Controller
      */
     public function reserve(
         ReserveFromCartRequest $request,
-        \App\Services\Payment\PaymentBranchResolver $branchResolver,
-        \App\Services\Payment\ReserveWarningResolver $warningResolver,
-        \App\Services\Cart\CartCheckoutTotals $totals,
-        \App\Services\Sales\SalesSettings $settings,
-        \App\Services\Sales\ReserveDeadlineResolver $deadlineResolver,
-        \App\Actions\Financial\ProcessReservationPaymentAction $settle,
-        \App\Services\InventoryService $inventory,
+        PaymentBranchResolver $branchResolver,
+        ReserveWarningResolver $warningResolver,
+        CartCheckoutTotals $totals,
+        SalesSettings $settings,
+        ReserveDeadlineResolver $deadlineResolver,
+        ProcessReservationPaymentAction $settle,
+        InventoryService $inventory,
     ): JsonResponse {
         $user = Auth::user();
         $cart = Cart::queryForUser($user->id)->with('items')->first();
@@ -280,8 +294,8 @@ class CheckoutController extends Controller
      * می‌میرد و موجودی آزاد می‌شود (تصمیم پرسش ۵) — بدون هیچ کرونِ تازه‌ای.
      */
     public function sendPaymentLink(
-        \Illuminate\Http\Request $request,
-        \App\Services\Cart\CartPaymentLinkService $links,
+        Request $request,
+        CartPaymentLinkService $links,
     ): JsonResponse {
         $request->validate([
             'beneficiary_user_id' => ['required', 'integer', 'exists:users,id'],
@@ -308,9 +322,9 @@ class CheckoutController extends Controller
      */
     public function showPaymentLink(
         Cart $cart,
-        \App\Services\Cart\CartPaymentLinkService $links,
-        \App\Services\Payment\PaymentBranchResolver $branchResolver,
-        \App\Services\Cart\CartCheckoutTotals $totals,
+        CartPaymentLinkService $links,
+        PaymentBranchResolver $branchResolver,
+        CartCheckoutTotals $totals,
     ): JsonResponse {
         $employer = Auth::user();
         $links->assertPayableBy($cart, $employer);
@@ -326,7 +340,7 @@ class CheckoutController extends Controller
         $cartOwner = $cart->user;
 
         return success([
-            'cart' => new \App\Http\Resources\Cart\CartResource($cart),
+            'cart' => new CartResource($cart),
             'final_amount' => (string) $totals->finalAmountFor($cart, $cartOwner),
             'payment' => $branchResolver->resolve($employer, $totals->finalAmountFor($cart, $cartOwner))->toArray(),
             'expires_at' => $cart->{Cart::PARKED_UNTIL}?->toIso8601String(),
@@ -347,13 +361,13 @@ class CheckoutController extends Controller
      * الیت‌یار، ذی‌نفعِ کارفرما و **پرداخت‌کننده‌ی کارفرما** ساخته می‌شود.
      */
     public function payForBeneficiary(
-        \Illuminate\Http\Request $request,
+        Request $request,
         Cart $cart,
-        \App\Services\Cart\CartPaymentLinkService $links,
-        \App\Services\Payment\PaymentBranchResolver $branchResolver,
-        \App\Services\Cart\CartCheckoutTotals $totals,
-        \App\Actions\Financial\ProcessPreScalePaymentAction $settle,
-        \App\Services\InventoryService $inventory,
+        CartPaymentLinkService $links,
+        PaymentBranchResolver $branchResolver,
+        CartCheckoutTotals $totals,
+        ProcessPreScalePaymentAction $settle,
+        InventoryService $inventory,
     ): JsonResponse {
         $employer = Auth::user();
         $links->assertPayableBy($cart, $employer);
@@ -386,9 +400,9 @@ class CheckoutController extends Controller
         $user,
         string $initialStatus,
         callable $settle,
-        \App\Services\InventoryService $inventory,
+        InventoryService $inventory,
         string $messageKey,
-        ?\App\Models\User $payer = null,
+        ?User $payer = null,
     ): JsonResponse {
         try {
             $order = DB::transaction(function () use ($user, $orderData, $initialStatus, $settle, $inventory, $payer) {

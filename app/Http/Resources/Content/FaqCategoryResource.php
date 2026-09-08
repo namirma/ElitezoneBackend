@@ -7,7 +7,7 @@ use App\Models\FaqCategory;
 use Illuminate\Http\Request;
 
 /**
- * @mixin \App\Models\FaqCategory
+ * @mixin FaqCategory
  */
 class FaqCategoryResource extends BaseJsonResource
 {

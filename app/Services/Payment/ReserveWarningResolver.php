@@ -7,6 +7,7 @@ namespace App\Services\Payment;
 use App\Models\Cart;
 use App\Models\SupplierProfile;
 use App\Services\Sales\SalesSettings;
+use Carbon\CarbonInterface;
 
 /**
  * هشدارِ «رزرو دیرهنگام» — الحاقیه‌ی ۱، تغییر ۲.
@@ -68,7 +69,7 @@ final class ReserveWarningResolver
         return ['show' => false, 'remaining_seconds' => 0, 'message' => ''];
     }
 
-    private function supplierReserveTime(Cart $cart): ?\Carbon\CarbonInterface
+    private function supplierReserveTime(Cart $cart): ?CarbonInterface
     {
         $supplierId = $cart->{Cart::SUPPLIER_USER_ID};
 

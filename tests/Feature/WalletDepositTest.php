@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Models\UserType;
 use App\Models\WalletTransaction;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Laravel\Sanctum\Sanctum;
@@ -18,7 +19,7 @@ class WalletDepositTest extends TestCase
     public function test_user_can_request_deposit_successfully(): void
     {
         // 1. ایجاد نوع کاربری (با آیکون)
-        $type = \App\Models\UserType::firstOrCreate(
+        $type = UserType::firstOrCreate(
             ['slug' => 'customer'],
             [
                 'name' => 'customer',
@@ -65,7 +66,7 @@ class WalletDepositTest extends TestCase
     public function test_deposit_fails_if_amount_is_invalid(): void
     {
         // 1. ایجاد نوع کاربری (با آیکون)
-        $type = \App\Models\UserType::firstOrCreate(
+        $type = UserType::firstOrCreate(
             ['slug' => 'customer'],
             [
                 'name' => 'customer',

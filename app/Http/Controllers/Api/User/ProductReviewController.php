@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Api\User;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Product\StoreProductReviewRequest;
 use App\Http\Resources\Product\ProductReviewResource;
+use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductReview;
+use App\Models\ProductVariant;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 
@@ -74,13 +76,13 @@ class ProductReviewController extends Controller
 
     private function hasDeliveredPurchase(Product $product): bool
     {
-        return \App\Models\Order::query()
+        return Order::query()
             ->where(fn ($q) => $q
-                ->where(\App\Models\Order::PLACER_USER_ID, Auth::id())
-                ->orWhere(\App\Models\Order::BENEFICIARY_USER_ID, Auth::id()))
-            ->where(\App\Models\Order::STATUS, \App\Models\Order::STATUS_DELIVERED)
+                ->where(Order::PLACER_USER_ID, Auth::id())
+                ->orWhere(Order::BENEFICIARY_USER_ID, Auth::id()))
+            ->where(Order::STATUS, Order::STATUS_DELIVERED)
             ->whereHas('items.productVariant', fn ($q) => $q
-                ->where(\App\Models\ProductVariant::PRODUCT_ID, $product->id))
+                ->where(ProductVariant::PRODUCT_ID, $product->id))
             ->exists();
     }
 

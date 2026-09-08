@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * @mixin \App\Models\Badge
+ * @mixin Badge
  */
 class BadgeResource extends BaseJsonResource
 {

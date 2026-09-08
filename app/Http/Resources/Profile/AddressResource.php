@@ -7,7 +7,7 @@ use App\Models\Address;
 use Illuminate\Http\Request;
 
 /**
- * @mixin \App\Models\Address
+ * @mixin Address
  */
 class AddressResource extends BaseJsonResource
 {

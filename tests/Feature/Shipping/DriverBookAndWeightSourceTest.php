@@ -11,6 +11,7 @@ use App\Models\Shipment;
 use App\Models\User;
 use App\Services\Weighbridge\ManualEntryAdapter;
 use App\Services\Weighbridge\WeightSourceResolver;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\Test;
@@ -95,7 +96,7 @@ class DriverBookAndWeightSourceTest extends TestCase
         $mobile = '09121110001';
         $this->makeDriver([Driver::MOBILE => $mobile]);
 
-        $this->expectException(\Illuminate\Database\QueryException::class);
+        $this->expectException(QueryException::class);
         $this->makeDriver([Driver::MOBILE => $mobile]);
     }
 

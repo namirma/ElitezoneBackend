@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
 class Ticket extends Model
 {
@@ -202,7 +203,7 @@ class Ticket extends Model
         return $this->{self::ADMIN_LAST_READ_AT} === null || $this->unreadForAdminCount() > 0;
     }
 
-    private function isAfterRead(TicketReply $reply, ?\Illuminate\Support\Carbon $readAt): bool
+    private function isAfterRead(TicketReply $reply, ?Carbon $readAt): bool
     {
         if ($readAt === null) {
             return true;

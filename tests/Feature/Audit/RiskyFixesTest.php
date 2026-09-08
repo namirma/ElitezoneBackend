@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Audit;
 
+use App\Actions\Financial\ProcessTransactionAction;
 use App\Jobs\Notification\SendBulkNotificationJob;
 use App\Jobs\Notification\SendSmsJob;
 use App\Models\Order;
@@ -74,7 +75,7 @@ class RiskyFixesTest extends TestCase
             'description' => 'deposit',
         ]);
 
-        app(\App\Actions\Financial\ProcessTransactionAction::class)
+        app(ProcessTransactionAction::class)
             ->execute($tx, WalletTransaction::STATUS_CONFIRMED, 'verified from receipt', $admin, 750_000);
 
         $this->assertEqualsWithDelta(750_000, (float) $wallet->fresh()->balance, 0.01);

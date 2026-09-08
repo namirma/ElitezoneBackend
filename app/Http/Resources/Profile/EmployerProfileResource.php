@@ -7,7 +7,7 @@ use App\Models\EmployerProfile;
 use Illuminate\Http\Request;
 
 /**
- * @mixin \App\Models\EmployerProfile
+ * @mixin EmployerProfile
  */
 class EmployerProfileResource extends BaseJsonResource
 {

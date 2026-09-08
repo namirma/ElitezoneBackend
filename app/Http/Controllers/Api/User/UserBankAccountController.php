@@ -13,6 +13,7 @@ use App\Services\PodiumServices\ShebaInquiryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class UserBankAccountController extends Controller
@@ -85,7 +86,7 @@ class UserBankAccountController extends Controller
         } catch (ValidationException $e) {
             throw $e;
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::warning('Bank inquiry service error', [
+            Log::warning('Bank inquiry service error', [
                 'user_id' => Auth::id(),
                 'message' => $e->getMessage(),
             ]);

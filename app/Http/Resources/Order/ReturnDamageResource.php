@@ -7,7 +7,7 @@ use App\Models\ReturnDamage;
 use Illuminate\Http\Request;
 
 /**
- * @mixin \App\Models\ReturnDamage
+ * @mixin ReturnDamage
  */
 class ReturnDamageResource extends BaseJsonResource
 {

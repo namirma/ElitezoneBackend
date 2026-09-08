@@ -6,6 +6,7 @@ namespace App\Actions\Financial;
 
 use App\Constants\FinancialCodes;
 use App\Models\Order;
+use App\Services\Financial\SettlementCalculatorService;
 use App\Services\Financial\WalletTransactionEngine;
 use App\Services\Invoice\InvoiceGenerator;
 use Illuminate\Support\Facades\DB;
@@ -35,7 +36,7 @@ class RecordSystemMoadianInvoiceAction
     public function __construct(
         private readonly WalletTransactionEngine $walletEngine,
         private readonly InvoiceGenerator $invoiceGenerator,
-        private readonly \App\Services\Financial\SettlementCalculatorService $calculator,
+        private readonly SettlementCalculatorService $calculator,
     ) {}
 
     /**

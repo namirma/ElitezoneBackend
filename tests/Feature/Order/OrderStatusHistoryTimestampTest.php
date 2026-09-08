@@ -4,6 +4,7 @@ namespace Tests\Feature\Order;
 
 use App\Models\Order;
 use App\Models\OrderStatusHistory;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
@@ -107,7 +108,7 @@ class OrderStatusHistoryTimestampTest extends TestCase
 
         $this->assertSame(
             $explicit->toDateTimeString(),
-            \Carbon\Carbon::parse($stored)->toDateTimeString(),
+            Carbon::parse($stored)->toDateTimeString(),
             'مقدارِ صریحِ created_at باید ذخیره شود، نه DEFAULT CURRENT_TIMESTAMP.'
         );
     }

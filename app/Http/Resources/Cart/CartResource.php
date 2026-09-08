@@ -8,7 +8,7 @@ use App\Http\Resources\Profile\CustomerTypeResource;
 use App\Models\Cart;
 
 /**
- * @mixin \App\Models\Cart
+ * @mixin Cart
  */
 class CartResource extends BaseJsonResource
 {

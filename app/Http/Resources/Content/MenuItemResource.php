@@ -7,7 +7,7 @@ use App\Models\MenuItem;
 use Illuminate\Http\Request;
 
 /**
- * @mixin \App\Models\MenuItem
+ * @mixin MenuItem
  */
 class MenuItemResource extends BaseJsonResource
 {

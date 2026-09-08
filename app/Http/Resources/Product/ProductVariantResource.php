@@ -3,11 +3,12 @@
 namespace App\Http\Resources\Product;
 
 use App\Http\Resources\BaseJsonResource;
+use App\Http\Resources\Supplier\FactoryFeatureResource;
 use App\Models\ProductVariant;
 use Illuminate\Http\Request;
 
 /**
- * @mixin \App\Models\ProductVariant
+ * @mixin ProductVariant
  */
 class ProductVariantResource extends BaseJsonResource
 {
@@ -56,7 +57,7 @@ class ProductVariantResource extends BaseJsonResource
                             'name' => $price->factory->name,
                             // فقط ویژگی‌های «محصول» — کارتِ محصول هرگز ویژگیِ حمل را نشان نمی‌دهد.
                             'product_features' => $price->factory->relationLoaded('activeProductFeatures')
-                                ? \App\Http\Resources\Supplier\FactoryFeatureResource::collection($price->factory->activeProductFeatures)
+                                ? FactoryFeatureResource::collection($price->factory->activeProductFeatures)
                                 : [],
                         ],
                         'factory_location' => [

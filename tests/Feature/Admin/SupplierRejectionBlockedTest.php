@@ -6,9 +6,11 @@ namespace Tests\Feature\Admin;
 
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Role;
 use App\Models\SupplierProfile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Testing\TestResponse;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\Concerns\GrantsAdminPermissions;
@@ -39,7 +41,7 @@ class SupplierRejectionBlockedTest extends TestCase
         parent::setUp();
 
         $this->admin = User::factory()->create();
-        $this->admin->addRole(\App\Models\Role::firstOrCreate(['name' => 'admin'], ['display_name' => 'Admin']));
+        $this->admin->addRole(Role::firstOrCreate(['name' => 'admin'], ['display_name' => 'Admin']));
         $this->grantAllAdminPermissions($this->admin);
 
         $this->supplier = User::factory()->create();
@@ -53,7 +55,7 @@ class SupplierRejectionBlockedTest extends TestCase
         // می‌کند. بدون آن، «رد شد» و «هرگز نداشت» از هم قابل تفکیک نیستند و تست
         // چیزی را که ادعا می‌کند نمی‌سنجد.
         $this->supplier->addRole(
-            \App\Models\Role::firstOrCreate(['name' => 'supplier'], ['display_name' => 'Supplier'])
+            Role::firstOrCreate(['name' => 'supplier'], ['display_name' => 'Supplier'])
         );
     }
 
@@ -78,7 +80,7 @@ class SupplierRejectionBlockedTest extends TestCase
         return $order->refresh();
     }
 
-    private function reject(): \Illuminate\Testing\TestResponse
+    private function reject(): TestResponse
     {
         Sanctum::actingAs($this->admin);
 

@@ -4,7 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Cache;
 
 class Faq extends Model
 {
@@ -56,7 +58,7 @@ class Faq extends Model
      * (فیلترِ `GET /faq?category=`) وجود دارد؛ برای رکوردهای جدید از این رابطه
      * استفاده کنید، نه آن رشته.
      */
-    public function faqCategory(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function faqCategory(): BelongsTo
     {
         return $this->belongsTo(FaqCategory::class, self::FAQ_CATEGORY_ID);
     }
@@ -65,8 +67,8 @@ class Faq extends Model
     {
         // سوال که عوض شود، درختِ کش‌شده‌ی دسته‌ها هم باید باطل شود
         $flush = function () {
-            \Illuminate\Support\Facades\Cache::forget(self::CACHE_KEY);
-            \Illuminate\Support\Facades\Cache::forget(FaqCategory::CACHE_KEY);
+            Cache::forget(self::CACHE_KEY);
+            Cache::forget(FaqCategory::CACHE_KEY);
         };
 
         static::saved($flush);

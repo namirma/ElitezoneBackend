@@ -8,7 +8,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 /**
- * @mixin \App\Models\UserNotification
+ * @mixin UserNotification
  */
 class UserMessageResource extends BaseJsonResource
 {
