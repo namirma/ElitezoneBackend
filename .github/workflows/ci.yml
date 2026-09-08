@@ -83,6 +83,19 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
+      # آسیب‌پذیری‌های شناخته‌شدهٔ وابستگی‌ها. تا پیش از این هیچ‌چیز در پروژه
+      # خبر نمی‌داد که یک وابستگی آسیب‌پذیر شده — دو CVE از Guzzle و شش مورد از
+      # league/commonmark فقط تصادفی و حین یک کار نامرتبط پیدا شدند.
+      # مواردی که قابل رفع نیستند در composer.json → config.audit.ignore با دلیل
+      # ثبت شده‌اند، پس این گیت فقط برای چیزهای *تازه* قرمز می‌شود.
+      - name: Security advisories (composer audit)
+        run: composer audit
+
+      # قفل وابستگی‌ها باید با PHPای که واقعاً اجرا می‌شود سازگار باشد.
+      # وقتی config.platform.php تنظیم شود، این مرحله همان گیتِ پروداکشن است.
+      - name: Platform requirements
+        run: composer check-platform-reqs
+
       - name: Prepare environment
         run: |
           cp .env.example .env
@@ -281,3 +294,34 @@ jobs:
           if-no-files-found: ignore
           retention-days: 30
 
+  # ── پاریتیِ جفتِ شاخه (L10 ↔ L13) ─────────────────────────────────────────
+  #
+  # دو شاخه عمداً هم‌زمان زنده‌اند و فیکس‌ها با cherry-pick بینشان می‌روند — یعنی
+  # «یادم رفت پورت کنم» حالتِ پیش‌فرضِ خرابی است و تا امروز هیچ گیتی آن را نمی‌دید.
+  # یک بار همین اتفاق افتاد: شاخهٔ L13 چهار فیکسِ مالی (نرخ مالیات، اسنپ‌شاتِ %TC)،
+  # گاردِ فونتِ PDF، و **کلِ پشتیبان‌گیریِ دیتابیس** را نداشت، در حالی که هر دو
+  # سوئیت سبز بودند و هیچ‌کس متوجه نشد.
+  #
+  # این گیت هر فایل PHP را نرمال می‌کند (کامنت، import، FQN، فاصله) و بعد مقایسه
+  # می‌کند، پس تفاوت‌های سبکی قرمزش نمی‌کنند. تفاوت‌های واقعاً اجباری در
+  # docs/branch-parity-allowlist.txt با دلیل ثبت می‌شوند.
+  parity:
+    name: Branch parity (L10 ↔ L13)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+
+      - name: Fetch both branches
+        run: |
+          git fetch --no-tags origin             redesign/order-flow-l10:refs/parity/l10             redesign/order-flow-l13:refs/parity/l13
+
+      - name: Semantic parity
+        run: php scripts/branch-parity.php refs/parity/l10 refs/parity/l13
