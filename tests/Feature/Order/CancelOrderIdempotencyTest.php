@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\User;
 use App\Services\InventoryService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -32,7 +33,7 @@ class CancelOrderIdempotencyTest extends TestCase
 
         $order = Order::create([
             Order::PLACER_USER_ID => $buyer->id,
-            Order::ORDER_NUMBER => 'CANCEL-'.now()->format('YmdHis').rand(100, 999),
+            Order::ORDER_NUMBER => 'CANCEL-'.Str::random(12),
             Order::STATUS => Order::STATUS_CANCELLED,        // already cancelled
             Order::PAYMENT_STATUS => Order::PAYMENT_FAILED,  // not paid → no invoice path
             Order::FINAL_AMOUNT => 0,

@@ -10,6 +10,7 @@ use App\Models\Wallet;
 use App\Services\Financial\WeighbridgeVatRouter;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -75,7 +76,7 @@ class EliteYARLifetimeCapTest extends TestCase
         $this->order = Order::create([
             Order::PLACER_USER_ID => $buyer->id,
             Order::ELITE_YAR_USER_ID => $this->eliteYAR->id,
-            Order::ORDER_NUMBER => 'CAP-'.now()->format('YmdHis').rand(100, 999),
+            Order::ORDER_NUMBER => 'CAP-'.Str::random(12),
             Order::STATUS => Order::STATUS_SHIPPED,
             Order::FINAL_AMOUNT => 200_000_000,
             Order::PAYMENT_STATUS => 'paid',
@@ -138,7 +139,7 @@ class EliteYARLifetimeCapTest extends TestCase
         Order::create([
             Order::PLACER_USER_ID => $this->order->placer_user_id,
             Order::ELITE_YAR_USER_ID => $this->eliteYAR->id,
-            Order::ORDER_NUMBER => 'PRIOR-'.now()->format('YmdHis').rand(100, 999),
+            Order::ORDER_NUMBER => 'PRIOR-'.Str::random(12),
             Order::STATUS => Order::STATUS_SHIPPED,
             Order::PAYMENT_STATUS => 'paid',
         ])->forceFill([

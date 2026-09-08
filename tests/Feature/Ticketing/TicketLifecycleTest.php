@@ -73,9 +73,16 @@ class TicketLifecycleTest extends TestCase
         $this->assertSame(Ticket::PRIORITY_HIGH, $ticket->priority);
         $this->assertNotNull($ticket->sla_due_at);
 
-        // high priority SLA = 8h by default → deadline is in the future, < 9h out.
+        // high priority SLA = 8 *business* hours by default. Comparing against a fixed
+        // wall-clock offset (e.g. now()+9h) is flaky: if "now" falls before the business
+        // day starts (config('ticketing.business_hours.start_hour'), default 9:00), the
+        // calendar rolls forward to that start before counting hours, so the real-world
+        // gap can exceed any small fixed window depending purely on what time the test
+        // happens to run. Bound it by calendar days instead — generous enough to absorb
+        // that roll-forward + a weekend (Friday) skip, tight enough to catch a genuinely
+        // wrong (e.g. multi-week) default.
         $this->assertTrue($ticket->sla_due_at->isFuture());
-        $this->assertTrue($ticket->sla_due_at->lessThan(now()->addHours(9)));
+        $this->assertTrue($ticket->sla_due_at->lessThan(now()->addDays(4)));
     }
 
     #[Test]

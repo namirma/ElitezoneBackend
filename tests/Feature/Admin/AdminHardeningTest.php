@@ -229,7 +229,7 @@ class AdminHardeningTest extends TestCase
 
         return Order::create([
             Order::PLACER_USER_ID => $buyer->id,
-            Order::ORDER_NUMBER => 'ADM-'.now()->format('YmdHis').rand(100, 999),
+            Order::ORDER_NUMBER => 'ADM-'.Str::random(12),
             Order::STATUS => $status,
             Order::PAYMENT_STATUS => $paymentStatus,
             Order::FINAL_AMOUNT => 100_000_000,

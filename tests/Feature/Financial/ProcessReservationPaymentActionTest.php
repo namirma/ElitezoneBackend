@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\Wallet;
 use App\Services\Invoice\InvoiceGenerator;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -67,7 +68,7 @@ class ProcessReservationPaymentActionTest extends TestCase
 
         $this->order = Order::create([
             Order::PLACER_USER_ID => $this->buyer->id,
-            Order::ORDER_NUMBER => 'TEST-RES-'.now()->format('YmdHis').rand(100, 999),
+            Order::ORDER_NUMBER => 'TEST-RES-'.Str::random(12),
             Order::STATUS => Order::STATUS_PROCESSING,
             Order::FINAL_AMOUNT => $this->threshold * 2, // above threshold
             Order::PAYMENT_STATUS => 'unpaid',

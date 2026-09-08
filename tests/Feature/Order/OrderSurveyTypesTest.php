@@ -6,6 +6,7 @@ use App\Models\Order;
 use App\Models\OrderSurvey;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -36,7 +37,7 @@ class OrderSurveyTypesTest extends TestCase
         $this->order = Order::create([
             Order::PLACER_USER_ID => $this->buyer->id,
             Order::ELITE_YAR_USER_ID => $this->eliteYAR->id,
-            Order::ORDER_NUMBER => 'SRV-'.now()->format('YmdHis').rand(100, 999),
+            Order::ORDER_NUMBER => 'SRV-'.Str::random(12),
             Order::STATUS => Order::STATUS_DELIVERED,
             Order::PAYMENT_STATUS => Order::PAYMENT_PAID,
             Order::FINAL_AMOUNT => 100_000_000,
@@ -78,7 +79,7 @@ class OrderSurveyTypesTest extends TestCase
             Order::PLACER_USER_ID => $this->eliteYAR->id,
             Order::ELITE_YAR_USER_ID => $this->eliteYAR->id,
             Order::BENEFICIARY_USER_ID => $employer->id,
-            Order::ORDER_NUMBER => 'SRV-'.now()->format('YmdHis').rand(100, 999),
+            Order::ORDER_NUMBER => 'SRV-'.Str::random(12),
             Order::STATUS => Order::STATUS_DELIVERED,
             Order::PAYMENT_STATUS => Order::PAYMENT_PAID,
             Order::FINAL_AMOUNT => 100_000_000,
