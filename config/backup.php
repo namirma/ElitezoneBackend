@@ -1,5 +1,17 @@
 <?php
 
+use Spatie\Backup\Notifications\Notifiable;
+use Spatie\Backup\Notifications\Notifications\BackupHasFailedNotification;
+use Spatie\Backup\Notifications\Notifications\BackupWasSuccessfulNotification;
+use Spatie\Backup\Notifications\Notifications\CleanupHasFailedNotification;
+use Spatie\Backup\Notifications\Notifications\CleanupWasSuccessfulNotification;
+use Spatie\Backup\Notifications\Notifications\HealthyBackupWasFoundNotification;
+use Spatie\Backup\Notifications\Notifications\UnhealthyBackupWasFoundNotification;
+use Spatie\Backup\Tasks\Cleanup\Strategies\DefaultStrategy;
+use Spatie\Backup\Tasks\Monitor\HealthChecks\MaximumAgeInDays;
+use Spatie\Backup\Tasks\Monitor\HealthChecks\MaximumStorageInMegabytes;
+use Spatie\DbDumper\Compressors\GzipCompressor;
+
 /*
 |--------------------------------------------------------------------------
 | Backup configuration (spatie/laravel-backup)
@@ -41,7 +53,7 @@ return [
             ],
         ],
 
-        'database_dump_compressor' => \Spatie\DbDumper\Compressors\GzipCompressor::class,
+        'database_dump_compressor' => GzipCompressor::class,
 
         'database_dump_file_timestamp_format' => null,
 
@@ -77,18 +89,24 @@ return [
     'notifications' => [
 
         'notifications' => [
-            \Spatie\Backup\Notifications\Notifications\BackupHasFailedNotification::class => ['mail'],
-            \Spatie\Backup\Notifications\Notifications\UnhealthyBackupWasFoundNotification::class => ['mail'],
-            \Spatie\Backup\Notifications\Notifications\CleanupHasFailedNotification::class => ['mail'],
-            \Spatie\Backup\Notifications\Notifications\BackupWasSuccessfulNotification::class => [],
-            \Spatie\Backup\Notifications\Notifications\HealthyBackupWasFoundNotification::class => [],
-            \Spatie\Backup\Notifications\Notifications\CleanupWasSuccessfulNotification::class => [],
+            BackupHasFailedNotification::class => ['mail'],
+            UnhealthyBackupWasFoundNotification::class => ['mail'],
+            CleanupHasFailedNotification::class => ['mail'],
+            BackupWasSuccessfulNotification::class => [],
+            HealthyBackupWasFoundNotification::class => [],
+            CleanupWasSuccessfulNotification::class => [],
         ],
 
-        'notifiable' => \Spatie\Backup\Notifications\Notifiable::class,
+        'notifiable' => Notifiable::class,
 
         'mail' => [
-            'to' => env('BACKUP_NOTIFICATION_EMAIL'),
+            // ‏`?:` و نه آرگومانِ دومِ env(): مقدارِ خالی در .env رشتهٔ '' می‌دهد نه null.
+            // spatie/laravel-backup 10 (شاخهٔ لاراول ۱۳) این را با
+            // `filter_var(FILTER_VALIDATE_EMAIL)` اعتبارسنجی می‌کند و مقدارِ خالی
+            // **هر فرمانِ artisan را** با InvalidConfig می‌ترکاند — نه فقط backup را.
+            // پس همیشه یک نشانیِ معتبر لازم است؛ نبودِ نشانیِ اختصاصی یعنی هشدارِ
+            // شکستِ پشتیبان به نشانیِ فرستندهٔ خودِ برنامه می‌رود، نه به هیچ‌جا.
+            'to' => env('BACKUP_NOTIFICATION_EMAIL') ?: env('MAIL_FROM_ADDRESS', 'noreply@elitezone.me'),
             'from' => [
                 'address' => env('MAIL_FROM_ADDRESS', 'noreply@elitezone.me'),
                 'name' => env('MAIL_FROM_NAME', 'EliteZone Backup'),
@@ -114,14 +132,14 @@ return [
             'name' => env('BACKUP_ARCHIVE_NAME', 'elitezone'),
             'disks' => array_map('trim', explode(',', (string) env('BACKUP_DISKS', 'financial'))),
             'health_checks' => [
-                \Spatie\Backup\Tasks\Monitor\HealthChecks\MaximumAgeInDays::class => 1,
-                \Spatie\Backup\Tasks\Monitor\HealthChecks\MaximumStorageInMegabytes::class => 5000,
+                MaximumAgeInDays::class => 1,
+                MaximumStorageInMegabytes::class => 5000,
             ],
         ],
     ],
 
     'cleanup' => [
-        'strategy' => \Spatie\Backup\Tasks\Cleanup\Strategies\DefaultStrategy::class,
+        'strategy' => DefaultStrategy::class,
 
         'default_strategy' => [
             'keep_all_backups_for_days' => (int) env('BACKUP_KEEP_ALL_DAYS', 7),
