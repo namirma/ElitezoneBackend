@@ -40,3 +40,22 @@ app/Actions/Financial/ProcessWeighbridgeResultAction.php | ‏`$order->items->fi
 app/Services/Financial/SupplierDebtHandler.php | همان الگوی `items->first()`.
 app/Services/Financial/WeighbridgeVatRouter.php | همان الگوی `items->first()`.
 app/Services/Order/OrderTimelineService.php | ‏`$txn->wallet?->user_id` روی L13 بدون `?->` نوشته شده (‏`wallet_transactions.wallet_id` در اسکیما NOT NULL است).
+
+# ── ۴. زیرسیستمِ صفحه‌ساز — فقط روی L13 (تصمیمِ علی، ۲۰۲۶-۰۹-۰۸) ────────────
+#
+# لاراول ۱۳ ریلی است که مستقر می‌شود. علی صریح گفت: «ما رفتیم روی لاراول ۱۳ …
+# اگر جایی به ۱۰ اشاره دارد، از خود ما که ورژن ۱۳ است را ملاک بدان.»
+#
+# پس صفحه‌ساز عمداً به L10 پورت نمی‌شود. این پنج فایل نقاطِ اتصالِ آن‌اند و
+# تفاوتشان با L10 دقیقاً همان زیرسیستم است — نه یک فیکسِ جامانده.
+#
+# ⚠️ این ردیف‌ها **پوششِ کلی نمی‌دهند.** اگر گیتِ پاریتی یکی از این فایل‌ها را
+# گزارش کرد، هنوز باید diff را بخوانید: تفاوتِ مجاز فقط سهمِ صفحه‌ساز است. هر
+# تفاوتِ دیگری در همین فایل‌ها (مثلاً یک روتِ مالی که فقط یک‌جا نشسته) همچنان
+# یک فیکسِ پورت‌نشده است و باید پورت شود.
+
+routes/api/admin.php | گروهِ ۱۰ روتِ ادمینِ صفحه‌ساز زیرِ manage-content فقط روی L13. بقیهٔ فایل باید یکی بماند.
+routes/api/public.php | فقط `GET /pages/{page}/blocks`. بقیهٔ فایل باید یکی بماند.
+app/Http/Controllers/ContentController.php | فقط متدِ `pageBlocks()` و سه importش.
+database/seeders/DatabaseSeeder.php | فقط ثبتِ `PageBlocksSeeder`.
+config/settings.php | کلیدِ `vpn_warning_text` در هر دو فهرست (allowed_keys + public_keys). فرانت از قبل رویش شیپ شده و بدونش متنِ نوارِ هشدارِ فیلترشکن از پنل قابلِ ویرایش نیست.
