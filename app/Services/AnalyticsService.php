@@ -190,18 +190,29 @@ class AnalyticsService
             return OrderItem::query()
                 ->select(
                     'product_variant_id',
-                    DB::raw('SUM(JSON_EXTRACT(quantity_details, "$.quantity")) as total_qty'),
+                    // ⚠️ قبلاً `JSON_EXTRACT(quantity_details, "$.quantity")` بود، ولی
+                    // شکل واقعی این ستون نگاشتِ «شناسه واحد سفارش → تعداد» است
+                    // (مثلاً `{"2":1}` یعنی ۱ بندیل) و هیچ کلیدی به نام `quantity`
+                    // ندارد. پس JSON_EXTRACT همیشه NULL برمی‌گرداند و ستون «عدد» در
+                    // «محصولات پرفروش» همیشه صفر نشان داده می‌شد — بی‌صدا، بدون خطا.
+                    // `order_items.quantity` یک ستون واقعی است و همین عدد را دارد.
+                    DB::raw('SUM(quantity) as total_qty'),
                     DB::raw('SUM(total_price) as total_revenue')
                 )
-                ->with('variant.product')
+                // ⚠️ رابطه‌ی OrderItem اسمش `productVariant` است، نه `variant`.
+                // این باگ تا امروز خفته بود چون دیتابیس صفر سفارش داشت: لاراول
+                // وقتی نتیجه‌ی کوئری خالی باشد eager-load را اجرا نمی‌کند، پس با
+                // اولین سفارشِ واقعی، صفحه‌ی «گزارش‌ها و تحلیل‌ها» با
+                // «Call to undefined relationship [variant]» می‌شکست.
+                ->with('productVariant.product')
                 ->groupBy('product_variant_id')
                 ->orderByDesc('total_revenue')
                 ->limit(5)
                 ->get()
                 ->map(function ($item) {
                     return [
-                        'name' => $item->variant->product->name ?? 'Unknown',
-                        'variant' => $item->variant->name ?? '-',
+                        'name' => $item->productVariant->product->name ?? 'Unknown',
+                        'variant' => $item->productVariant->name ?? '-',
                         'qty' => $item->total_qty ?? 0,
                         'revenue' => $item->total_revenue,
                     ];

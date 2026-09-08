@@ -17,6 +17,11 @@ class BadgeResource extends BaseJsonResource
         return [
             Badge::ID => $this->id,
             Badge::NAME => $this->name,
+            // getAttribute و نه دسترسی جادویی — ستون `description` تازه اضافه
+            // شده و larastan بدون فایل‌های ide-helper (که gitignore شده‌اند)
+            // نمی‌شناسدش. همان الگویی که بقیه‌ی Resourceها برای ستون‌های تازه
+            // دارند.
+            Badge::DESCRIPTION => $this->getAttribute(Badge::DESCRIPTION),
             Badge::CODE => $this->code,
             // Full public URL (icons live on the public disk) so the frontend can <img src> it.
             Badge::ICON => $this->icon

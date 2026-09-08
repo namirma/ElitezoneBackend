@@ -21,6 +21,7 @@ class StoreBadgeRequest extends FormRequest
     {
         return [
             Badge::NAME => ['required', 'string', 'max:255'],
+            Badge::DESCRIPTION => ['nullable', 'string', 'max:1000'],
             Badge::CODE => ['required', 'string', 'max:255', 'unique:badges,code'],
             // svg حذف شد: SVG می‌تواند حاوی اسکریپت باشد (XSS ذخیره‌شده اگر مستقیم رندر شود).
             Badge::ICON => ['nullable', 'file', 'mimes:png,jpg,jpeg,webp', 'max:2048'],

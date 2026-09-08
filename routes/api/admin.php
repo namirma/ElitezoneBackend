@@ -186,11 +186,16 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
         Route::get('/{user}', 'show');
         Route::post('/{user}/approve', 'approve'); // اتصال نقش supplier — تنها مسیر مجاز
         Route::post('/{user}/reject', 'reject');
-        // فرمولِ تسویه پشتِ manage-financial **و** سطح ۱. `updateFormula` فلگ‌های
-        // trans_commission/trans_vat را می‌نویسد که تعیین می‌کنند کدام‌یک از چهار
-        // واریانتِ POO/PTS اجرا شود — و روی هر سفارشِ بعدیِ آن تأمین‌کننده snapshot
-        // می‌شوند. ادمینِ پشتیبانیِ کاربران نباید بتواند نحوهٔ محاسبهٔ کمیسیون و
-        // مالیات را عوض کند.
+        // دو لایه، چون دو پرسشِ متفاوت‌اند و هر دو باید پاس شوند:
+        //
+        //   manage-financial → «به کدام بخش دسترسی دارد». `updateFormula` فلگ‌های
+        //     trans_commission/trans_vat را می‌نویسد که تعیین می‌کنند کدام‌یک از
+        //     چهار واریانتِ POO/PTS اجرا شود؛ ادمینِ پشتیبانیِ کاربران نباید بتواند
+        //     نحوهٔ محاسبهٔ کمیسیون و مالیات را عوض کند.
+        //
+        //   admin.level:1 → «تا کجا حق دارد». این فلگ‌ها روی هر سفارشِ بعدیِ آن
+        //     تأمین‌کننده snapshot می‌شوند و پس از پرداخت غیرقابلِ بازگشت‌اند، پس
+        //     تغییرشان در سطحِ مالکِ برند است نه هر مدیرِ مالی.
         Route::put('/{user}/formula', 'updateFormula')
             ->middleware(['admin.permission:manage-financial', 'admin.level:1']);
         Route::get('/{user}/orders', 'orders');
@@ -198,21 +203,6 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
 
     // Orders — پشتِ مجوزِ granular «manage-orders» (قبلاً این slug به هیچ روتی وصل نبود،
     // پس ادمینِ محدودشده هم می‌توانست وضعیت سفارش/فاکتور مودیان را تغییر دهد).
-    // محموله‌ها — تأیید تلفنی رسیدن توسط بک‌آفیس (بند ۳.۱۰).
-    Route::controller(AdminOrderController::class)->prefix('shipments')
-        ->middleware('admin.permission:manage-orders')->group(function () {
-            Route::post('/{shipment}/confirm-arrival', 'confirmShipmentArrival')->whereNumber('shipment');
-
-            // adapter دستی (§۷.۶ / بند ۳.۷) — «ثبت دستی با تأیید بک‌آفیس».
-            // فقط وزن می‌نویسد؛ تعدیل مالی جای دیگری و یک‌بار اجرا می‌شود.
-            Route::post('/{shipment}/weight', 'recordShipmentWeight')->whereNumber('shipment');
-        });
-
-    // خسارت عودت — تأیید بک‌آفیس، مرحله‌ی دومِ جریان سه‌مرحله‌ای (بند ۳.۱۱).
-    Route::post('/damages/{damage}/approve', [ReturnDamageController::class, 'approveByBackoffice'])
-        ->whereNumber('damage')
-        ->middleware('admin.permission:manage-orders');
-
     // گزارش‌های فاز ۱۳ — سبدهای رهاشده و بدهی (بند ۷.۶). فقط خواندنی.
     Route::controller(AdminDebtController::class)->group(function () {
         Route::get('/abandoned-carts', 'abandonedCarts')
@@ -222,6 +212,21 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
         Route::get('/users/{user}/debt-entries', 'userDebtEntries')
             ->middleware('admin.permission:manage-financial');
     });
+
+    // خسارت عودت — تأیید بک‌آفیس، مرحله‌ی دومِ جریان سه‌مرحله‌ای (بند ۳.۱۱).
+    Route::post('/damages/{damage}/approve', [ReturnDamageController::class, 'approveByBackoffice'])
+        ->whereNumber('damage')
+        ->middleware('admin.permission:manage-orders');
+
+    // محموله‌ها — تأیید تلفنی رسیدن توسط بک‌آفیس (بند ۳.۱۰).
+    Route::controller(AdminOrderController::class)->prefix('shipments')
+        ->middleware('admin.permission:manage-orders')->group(function () {
+            Route::post('/{shipment}/confirm-arrival', 'confirmShipmentArrival')->whereNumber('shipment');
+
+            // adapter دستی (§۷.۶ / بند ۳.۷) — «ثبت دستی با تأیید بک‌آفیس».
+            // فقط وزن می‌نویسد؛ تعدیل مالی جای دیگری و یک‌بار اجرا می‌شود.
+            Route::post('/{shipment}/weight', 'recordShipmentWeight')->whereNumber('shipment');
+        });
 
     Route::controller(AdminOrderController::class)->prefix('orders')->middleware('admin.permission:manage-orders')->group(function () {
         Route::get('/', 'index');
@@ -236,15 +241,29 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
         // پشت یک اندپوینتِ عمومیِ «تغییر وضعیت» پنهان بود، در حالی که بند ۵.۳
         // می‌گوید **تنها اختیار ادمین روی وضعیت، لغو اجباری است**. اسمِ درست
         // یعنی لاگِ ممیزی و مجوزها هم همان چیزی را بگویند که واقعاً رخ می‌دهد.
-        Route::post('/{order}/force-cancel', 'forceCancel')->whereNumber('order');
+        //
+        // سطح ۲ از برنچِ `refactor/…` می‌آید: لغوِ سفارشِ پرداخت‌شده استرداد
+        // می‌زند، پس جابه‌جاییِ واقعیِ پول است.
+        Route::post('/{order}/force-cancel', 'forceCancel')
+            ->whereNumber('order')
+            ->middleware('admin.level:2');
 
-        // Doc P — فاکتور مودیان سیستم (سازه → خریدار)، آزادسازی WVAT hold
-        Route::post('/{order}/system-moadian-invoice', 'submitSystemMoadianInvoice');
+        // Doc P — فاکتور مودیان سیستم (سازه → خریدار)، آزادسازی WVAT hold.
+        // سطح ۲: آزادسازیِ hold یعنی جابه‌جاییِ واقعیِ پول بین کیف‌پول‌ها.
+        Route::post('/{order}/system-moadian-invoice', 'submitSystemMoadianInvoice')
+            ->middleware('admin.level:2');
 
-        // باسکول از پنل ادمین حذف شد (بند ۱۶ — فاز ۷). وزن حالا همراهِ بارنامه و
-        // مشخصاتِ راننده توسط تأمین‌کننده ثبت می‌شود:
-        // `POST /profile/orders/{order}/shipments/{shipment}/waybill`.
-        // نه این روت و نه aliasِ قدیمیِ بی‌مجوزِ ریشهٔ /admin نباید برگردند.
+        // ⚠️ **باسکول عمداً اینجا نیست و نباید برگردد** (بند ۱۶ — فاز ۷).
+        //
+        // برنچِ `refactor/consultant-to-elite-yar` این روت را با
+        // `admin.level:2` دوباره اضافه کرده بود؛ در ادغام عمداً نگرفته شد.
+        // وزن حالا همراهِ بارنامه و مشخصاتِ راننده توسط **تأمین‌کننده** ثبت
+        // می‌شود: `POST /profile/orders/{order}/shipments/{shipment}/waybill`.
+        // ادمین دیگر نقطه‌ی ورودی به باسکول ندارد — نه این روت، نه aliasِ
+        // قدیمیِ بی‌مجوزِ ریشهٔ /admin.
+        //
+        // ‏`Admin/AdminPermissionCoverageTest::the_weighbridge_has_no_admin_entry_point_left`
+        // این را قفل کرده؛ اگر برگردد، سوئیت قرمز می‌شود.
     });
 
     // Tickets — مدیریت تیکت‌های پشتیبانی — پشتِ مجوزِ granular «manage-tickets».

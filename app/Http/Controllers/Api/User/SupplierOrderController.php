@@ -27,6 +27,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
@@ -79,17 +80,16 @@ class SupplierOrderController extends Controller
 
         $myItems = fn (Builder $q) => $q->where('supplier_user_id', $user->id);
 
+        // `total_amount` عمداً مجموعِ `payment_to_supplier` است، نه `final_amount`.
+        //
+        // `final_amount` رقمِ خریدار است (کالا + کمیسیون + مالیات + کرایه) و به‌عنوان
+        // «درآمدِ من» در داشبوردِ تأمین‌کننده گمراه‌کننده بود — عددی که هرگز دریافت
+        // نمی‌کند. `payment_to_supplier` همان است که به کیف پولش می‌رود (پس از باسکول
+        // با PTSM بازنویسی می‌شود). سفارشِ پرداخت‌نشده هنوز اسنپ‌شات ندارد، پس
+        // `COALESCE` آن را صفر می‌کند نه NULL؛ `order_value` هم نگه داشته شده تا
+        // ارزشِ کلِ سفارش در دسترس بماند، ولی حالا اسمش دروغ نمی‌گوید.
         $orderStats = Order::query()
             ->whereHas('items', $myItems)
-            // `total_amount` عمداً مجموعِ `payment_to_supplier` است، نه `final_amount`.
-            //
-            // `final_amount` رقمِ خریدار است (کالا + کمیسیون + مالیات + کرایه) و
-            // به‌عنوان «درآمدِ من» در داشبوردِ تأمین‌کننده گمراه‌کننده بود — عددی که
-            // هرگز دریافت نمی‌کند. `payment_to_supplier` همان است که به کیف پولش
-            // می‌رود (پس از باسکول با PTSM بازنویسی می‌شود). سفارشِ پرداخت‌نشده هنوز
-            // اسنپ‌شات ندارد، پس `COALESCE` آن را صفر می‌کند نه NULL؛ `order_value`
-            // هم نگه داشته شده تا ارزشِ کلِ سفارش در دسترس بماند، ولی حالا اسمش
-            // دروغ نمی‌گوید.
             ->selectRaw(
                 'status, COUNT(*) as count,'
                 .' SUM(COALESCE(payment_to_supplier, 0)) as total_amount,'
@@ -97,8 +97,11 @@ class SupplierOrderController extends Controller
             )
             ->groupBy('status')
             ->get()
+            // getAttribute نه دسترسی جادویی: ستون‌های selectRaw برای larastan تعریف
+            // نشده‌اند. `count` و `total_amount` هنوز از baseline می‌آیند؛ بقیه
+            // مستقیم حل شده‌اند تا ورودیِ تازه‌ای به baseline اضافه نشود.
             ->map(fn ($row) => [
-                'status' => $row->status,
+                'status' => $row->getAttribute('status'),
                 'count' => (int) $row->count,
                 'total_amount' => (float) $row->total_amount,
                 'order_value' => (float) $row->getAttribute('order_value'),
@@ -244,7 +247,6 @@ class SupplierOrderController extends Controller
     }
 
     /**
-    /**
      * POST /profile/orders/{order}/shipments/{shipment}/waybill — بند ۳.۷.
      *
      * بارنامه، مشخصات راننده و وزن باسکول با هم ثبت می‌شوند. تا فاز ۷ وزن از یک
@@ -335,20 +337,11 @@ class SupplierOrderController extends Controller
         return success(new OrderResource($updated), __('orders.reserve_deadline.extended'));
     }
 
-    /**
-     * صدور دستور بارگیری اسپادانا.
-     *
-     * تنها متدِ این کنترلر بود که **هیچ گاردی نداشت**: نه وضعیت را چک می‌کرد و نه
-     * idempotent بود، پس روی سفارشِ لغوشده هم اجرا می‌شد و هر بار صدا زدن، شناسه را
-     * با `time()`ِ تازه بازنویسی می‌کرد — یعنی مرجعی که به سیستم بیرونی داده شده
-     * بی‌صدا بی‌اعتبار می‌شد. حالا مثل بقیهٔ گذارها زیر قفل بررسی می‌شود.
-     */
     public function issueEspadanaCommand(Order $order): JsonResponse
     {
         $this->authorize('manageAsSupplier', $order);
 
         return DB::transaction(function () use ($order) {
-            // larastan نتیجهٔ `lockForUpdate()->first()` را `Model` می‌بیند نه `Order`.
             /** @var Order $locked */
             $locked = Order::where(Order::ID, $order->id)->lockForUpdate()->first();
 
@@ -368,6 +361,13 @@ class SupplierOrderController extends Controller
         });
     }
 
+    /**
+     * ضمیمه کردن رسید پرداخت توسط تأمین‌کننده.
+     *
+     * دو نقص داشت: گاردِ وضعیت نداشت (روی سفارشِ پرداخت‌نشده هم می‌نشست) و هنگام
+     * جایگزینی، فایل قبلی را روی دیسکِ `financial` یتیم رها می‌کرد — دیسکی که
+     * اسنادِ مالی حساس روی آن می‌نشیند و هیچ چرخهٔ پاک‌سازی‌ای ندارد.
+     */
     public function attachPaymentReceipt(UploadOrderReceiptRequest $request, Order $order): JsonResponse
     {
         $this->authorize('manageAsSupplier', $order);
@@ -421,6 +421,14 @@ class SupplierOrderController extends Controller
         } catch (\RuntimeException $e) {
             return error($e->getMessage(), [], 422);
         } catch (Exception $e) {
+            // هم‌الگو با submitEliteYARMoadianInvoice: این متد هولد مالیات (WVAT) آزاد
+            // می‌کند — شکستِ بی‌لاگ آن دیباگ‌ناپذیر بود.
+            Log::channel('orders')->error('submitSupplierMoadianInvoice failed', [
+                'order_id' => $order->id,
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+            ]);
+
             return error(__('orders.unknown_processing_error'), [], 500);
         }
 

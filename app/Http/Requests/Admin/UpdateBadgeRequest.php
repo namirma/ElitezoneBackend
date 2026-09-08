@@ -24,6 +24,7 @@ class UpdateBadgeRequest extends FormRequest
 
         return [
             Badge::NAME => ['sometimes', 'required', 'string', 'max:255'],
+            Badge::DESCRIPTION => ['sometimes', 'nullable', 'string', 'max:1000'],
             Badge::CODE => ['sometimes', 'required', 'string', 'max:255', Rule::unique('badges', 'code')->ignore($id)],
             // svg عمداً مجاز نیست: آیکون روی دیسک public می‌نشیند و از همان origin
             // سرو می‌شود، پس یک SVG حاوی <script> برابر است با XSS ذخیره‌شده

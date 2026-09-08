@@ -82,13 +82,10 @@ class PlaceOrderAction
             // ۱. خواندن و قفل کردن سبد خرید دقیقاً داخل تراکنش
             $cart = $this->getCartOrFail($user);
 
-            // ۱.۶ یک سفارش = یک مبدأ و یک مقصد (تصمیم مدیریت، بند ۳).
-            // گاردِ تک‌تأمین‌کننده — پیش از هر نوشتنی، و **پیش از** گاردِ مبدأ.
-            // ترتیب مهم است: سبدِ دو‌تأمین‌کننده‌ای همیشه دو مبدأ هم دارد، پس اگر
-            // اول مبدأ چک شود کاربر پیامِ «یک مبدأ» می‌گیرد در حالی که مشکلِ واقعی
-            // دو تأمین‌کننده است.
+            // ۱.۵ گاردِ تک‌تأمین‌کننده — پیش از هر نوشتنی.
             $this->assertSingleSupplier($cart);
 
+            // ۱.۶ یک سفارش = یک مبدأ و یک مقصد (تصمیم مدیریت، بند ۳).
             $this->assertSingleOriginAndDestination($cart, $data->addressId);
 
             // ۲. محاسبه مبالغ
@@ -179,10 +176,10 @@ class PlaceOrderAction
     private function calculateOrderFinancials(Cart $cart, User $user, PlaceOrderData $data): array
     {
         $subtotal = 0.0;
-        $goodsValue = 0.0;
         $totalVat = 0.0;
         $totalDiscount = 0.0;
         $totalWeight = 0.0;
+        $goodsValue = 0.0;
         $itemsData = [];
 
         $roleCode = $this->roleResolver->resolve($user);
@@ -232,13 +229,13 @@ class PlaceOrderAction
 
             // Subtotal should be the pre-discount value for correct accounting:
             $subtotal += ($lineTotal + $lineDiscount);
+            $totalVat += $lineVat;
+            $totalDiscount += $lineDiscount;
 
             // ارزشِ خالصِ کالا (پس از تخفیف، بدون مالیات و حمل) — مبنای official_price.
             // جدا از $subtotal انباشته می‌شود چون آن عمداً پیش-از-تخفیف است؛ گره‌زدنِ
             // یک عددِ مالی به نحوهٔ حسابداریِ تخفیف، شکننده‌اش می‌کرد.
             $goodsValue += $lineTotal;
-            $totalVat += $lineVat;
-            $totalDiscount += $lineDiscount;
 
             $itemsData[$item->id] = [
                 'weight' => $itemLogisticsWeight,
@@ -317,6 +314,8 @@ class PlaceOrderAction
         $isEliteYARPlacer = $user->isEliteYAR();
         $effectiveEliteYARId = $isEliteYARPlacer ? $user->id : $data->eliteYARUserId;
 
+        $commissions = $this->calculateCommissions($user, $effectiveEliteYARId, $subtotal);
+
         // ── official_price: میانگینِ وزنیِ ردیف‌ها ─────────────────────────────
         // تسویه با `OP × وزنِ کلِ سفارش` کار می‌کند، پس OP باید عددی باشد که این
         // ضرب، ارزشِ واقعیِ کالا را بدهد: OP = Σ(قیمت×وزن) / Σوزن.
@@ -324,14 +323,14 @@ class PlaceOrderAction
         // تا پیش از این هیچ‌کس این ستون را نمی‌نوشت، و هر سه مسیرِ تسویه روی
         // فالبکِ `items->first()->unit_price` می‌افتادند — یعنی **کلِ تناژِ سفارش
         // به قیمتِ ردیفِ اول** حساب می‌شد. برای سفارشِ تک‌ردیفی درست بود؛ برای
-        // سبدی با دو سایز میلگرد از یک کارخانه اشتباه صورتحساب می‌داد.
+        // سبدی با دو سایز میلگرد از یک کارخانه (که گاردِ تک‌تأمین‌کننده اجازه‌اش
+        // را می‌دهد) خریدار اشتباه صورتحساب می‌گرفت.
         //
-        // با یک ردیف، فرمول دقیقاً همان unit_price را می‌دهد.
+        // با یک ردیف، این فرمول دقیقاً همان unit_price را می‌دهد — پس رفتار
+        // سفارش‌های تک‌ردیفی ذره‌ای تغییر نمی‌کند.
         $officialPrice = $totalWeight > 0
             ? Money::toFloat(Money::div($goodsValue, $totalWeight))
             : 0.0;
-
-        $commissions = $this->calculateCommissions($user, $effectiveEliteYARId, $subtotal);
 
         return [
             'subtotal' => $subtotal,
@@ -442,7 +441,8 @@ class PlaceOrderAction
         ]);
 
         // `official_price` عمداً در $fillable نیست (ستونِ اسنپ‌شاتِ مالی)، پس
-        // گذاشتنش در آرایهٔ create بالا **بی‌صدا دور ریخته می‌شد**.
+        // گذاشتنش در آرایهٔ create بالا **بی‌صدا دور ریخته می‌شد** — همان تله‌ای که
+        // در این پروژه چند بار زده. forceFill مسیرِ مجازِ نوشتنِ این ستون‌هاست.
         $order->forceFill([Order::OFFICIAL_PRICE => $fins['official_price']])->save();
 
         return $order;
@@ -480,6 +480,97 @@ class PlaceOrderAction
         }
 
         return $map;
+    }
+
+    /**
+     * سفارش باید فقط یک تأمین‌کننده داشته باشد — تا زمانی که تسویه چندخطی نوشته شود.
+     *
+     * سبد خرید عمداً چندمبدأی است (کل زیرسیستم Shipment برای همین ساخته شده و
+     * AddToCartAction هر factory_id را می‌پذیرد) و این متد هر آیتم را با
+     * supplier_user_id مخصوص خودش ثبت می‌کند. اما *تسویهٔ مالی* یک‌خطی است: هر پنج
+     * نقطهٔ تسویه با `items->first()` کار می‌کنند —
+     * ProcessPreScalePaymentAction، ProcessReservationCompletionAction،
+     * WeighbridgeVatRouter، SupplierDebtHandler و WeighbridgeReconciler.
+     *
+     * پس یک سفارشِ دوتأمین‌کننده‌ای امروز این‌طور تسویه می‌شود:
+     *   • کلِ PTS به تأمین‌کنندهٔ آیتمِ اول می‌رود؛ تأمین‌کنندهٔ دوم **هیچ** نمی‌گیرد.
+     *   • مالیات امانی و بدهیِ کسری هم فقط روی تأمین‌کنندهٔ اول ثبت می‌شود.
+     *   • حتی مبلغِ خریدار هم غلط است: POO با `قیمتِ آیتم اول × وزنِ کل` حساب
+     *     می‌شود، پس سبدِ «میلگرد + آجر» کلِ وزن را با نرخِ میلگرد صورت‌حساب می‌کند.
+     *
+     * تسویهٔ چندخطی تغییرِ بزرگی است؛ تا آن‌موقع، ثبتِ چنین سفارشی متوقف می‌شود.
+     * همان قاعده‌ای که برای weight_before_scale برقرار است: دادهٔ نامعتبر باید
+     * متوقف کند، نه پول جابه‌جا کند. با آمدنِ تسویهٔ چندخطی این گارد برداشته شود.
+     */
+    /**
+     * بدهکار سفارش تازه ثبت نمی‌کند — بند ۳.۱۲ سند.
+     *
+     * پیش از تراکنش اجرا می‌شود، مثل باقی گاردهای «داده نامعتبر باید متوقف کند،
+     * نه اینکه پول جابه‌جا شود»: ثبتِ سفارشی که بعداً قابل پرداخت نیست فقط
+     * موجودی را قفل می‌کند و سبد را خالی.
+     */
+    private function assertNotInDebt(User $payer): void
+    {
+        if ($this->debtEngine->isInDebt((int) $payer->id)) {
+            throw new BusinessException(__('orders.blocked_by_debt'), 422);
+        }
+    }
+
+    /**
+     * یک سفارش = یک مبدأ و یک مقصد — بند ۳ سند، تصمیم مدیریت.
+     *
+     * گاردِ سبد (`CartParkService`) زودتر جلوی این را می‌گیرد، ولی این یکی
+     * **قاعده‌ی واقعی** است و حذف‌شدنی نیست: `UpdateCartItemAction` می‌تواند
+     * مقصدِ یک ردیف را بعداً عوض کند، و هر فراخوانی که مستقیم به این اکشن
+     * برسد اصلاً از مسیرِ سبد رد نشده است. همان دلیلی که
+     * `assertSingleSupplier` هم در هر دو جا هست.
+     *
+     * مقصدِ خالیِ یک ردیف یعنی «آدرسِ اصلیِ سفارش»، پس پیش از مقایسه به همان
+     * تبدیل می‌شود — وگرنه سبدی که یک ردیفش آدرس صریح دارد و بقیه ندارند،
+     * دومقصدی به نظر می‌رسید در حالی که هر دو به یک جا می‌روند.
+     *
+     * ‏`$primaryAddressId` می‌تواند `null` باشد: مسیرِ «کارفرما سبدِ الیت‌یار را
+     * می‌پردازد» آدرس را از خودِ سبد می‌خواند و آن ستون nullable است. در آن حالت
+     * فقط آدرس‌های **صریحِ** ردیف‌ها با هم سنجیده می‌شوند.
+     *
+     * پیش از هر نوشتنی اجرا می‌شود: داده‌ی نامعتبر باید متوقف کند، نه اینکه
+     * موجودی قفل و سبد خالی شود.
+     */
+    private function assertSingleOriginAndDestination(Cart $cart, ?int $primaryAddressId): void
+    {
+        $origins = $cart->items
+            ->map(fn (CartItem $item) => $item->{CartItem::FACTORY_LOCATION_ID})
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($origins->count() > 1) {
+            throw new BusinessException(__('orders.multiple_origins_not_supported'), 422);
+        }
+
+        $destinations = $cart->items
+            ->map(fn (CartItem $item) => $item->{CartItem::ADDRESS_ID} ?? $primaryAddressId)
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        if ($destinations->count() > 1) {
+            throw new BusinessException(__('orders.multiple_destinations_not_supported'), 422);
+        }
+    }
+
+    private function assertSingleSupplier(Cart $cart): void
+    {
+        $supplierIds = $cart->items
+            ->map(fn ($item) => $item->factory?->supplier_user_id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($supplierIds->count() > 1) {
+            throw new BusinessException(__('orders.multiple_suppliers_not_supported'));
+        }
     }
 
     private function createOrderItems(Order $order, Cart $cart, array $itemsData, array $shipmentMap): void
@@ -545,84 +636,5 @@ class PlaceOrderAction
     {
         $cart->items()->delete();
         $cart->delete();
-    }
-
-    /**
-     * بدهکار سفارش تازه ثبت نمی‌کند — بند ۳.۱۲ سند.
-     *
-     * پیش از تراکنش اجرا می‌شود، مثل باقی گاردهای «داده نامعتبر باید متوقف کند،
-     * نه اینکه پول جابه‌جا شود»: ثبتِ سفارشی که بعداً قابل پرداخت نیست فقط
-     * موجودی را قفل می‌کند و سبد را خالی.
-     */
-    private function assertNotInDebt(User $payer): void
-    {
-        if ($this->debtEngine->isInDebt((int) $payer->id)) {
-            throw new BusinessException(__('orders.blocked_by_debt'), 422);
-        }
-    }
-
-    /**
-     * یک سفارش = یک تأمین‌کننده.
-     *
-     * تسویه تک‌ردیفی است (`items->first()` در هر پنج مسیرِ مالی)، پس سفارشِ
-     * دوتأمین‌کننده‌ای کلِ PTS را به اولی می‌داد و به دومی هیچ — و خریدار را هم
-     * اشتباه صورتحساب می‌کرد. تا وقتی تسویهٔ چندردیفی نیامده، داده‌ی نامعتبر باید
-     * **متوقف** شود نه اینکه پول جابه‌جا کند.
-     */
-    private function assertSingleSupplier(Cart $cart): void
-    {
-        $supplierIds = $cart->items
-            // ‏`cart_items.factory_id` در اسکیما NOT NULL است.
-            ->map(fn ($item) => $item->factory->supplier_user_id)
-            ->filter()
-            ->unique()
-            ->values();
-
-        if ($supplierIds->count() > 1) {
-            throw new BusinessException(__('orders.multiple_suppliers_not_supported'));
-        }
-    }
-
-    /**
-     * یک سفارش = یک مبدأ و یک مقصد — بند ۳ سند، تصمیم مدیریت.
-     *
-     * گاردِ سبد (`CartParkService`) زودتر جلوی این را می‌گیرد، ولی این یکی
-     * **قاعده‌ی واقعی** است و حذف‌شدنی نیست: `UpdateCartItemAction` می‌تواند
-     * مقصدِ یک ردیف را بعداً عوض کند، و هر فراخوانی که مستقیم به این اکشن
-     * برسد اصلاً از مسیرِ سبد رد نشده است.
-     *
-     * مقصدِ خالیِ یک ردیف یعنی «آدرسِ اصلیِ سفارش»، پس پیش از مقایسه به همان
-     * تبدیل می‌شود — وگرنه سبدی که یک ردیفش آدرس صریح دارد و بقیه ندارند،
-     * دومقصدی به نظر می‌رسید در حالی که هر دو به یک جا می‌روند.
-     *
-     * ‏`$primaryAddressId` می‌تواند `null` باشد: مسیرِ «کارفرما سبدِ الیت‌یار را
-     * می‌پردازد» آدرس را از خودِ سبد می‌خواند و آن ستون nullable است. در آن حالت
-     * فقط آدرس‌های **صریحِ** ردیف‌ها با هم سنجیده می‌شوند.
-     *
-     * پیش از هر نوشتنی اجرا می‌شود: داده‌ی نامعتبر باید متوقف کند، نه اینکه
-     * موجودی قفل و سبد خالی شود.
-     */
-    private function assertSingleOriginAndDestination(Cart $cart, ?int $primaryAddressId): void
-    {
-        $origins = $cart->items
-            ->map(fn (CartItem $item) => $item->{CartItem::FACTORY_LOCATION_ID})
-            ->filter()
-            ->unique()
-            ->values();
-
-        if ($origins->count() > 1) {
-            throw new BusinessException(__('orders.multiple_origins_not_supported'), 422);
-        }
-
-        $destinations = $cart->items
-            ->map(fn (CartItem $item) => $item->{CartItem::ADDRESS_ID} ?? $primaryAddressId)
-            ->filter()
-            ->map(fn ($id) => (int) $id)
-            ->unique()
-            ->values();
-
-        if ($destinations->count() > 1) {
-            throw new BusinessException(__('orders.multiple_destinations_not_supported'), 422);
-        }
     }
 }

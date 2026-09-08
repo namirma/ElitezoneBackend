@@ -11,6 +11,20 @@ class LogCartEvent implements ShouldQueue
 {
     use InteractsWithQueue;
 
+    /**
+     * سبدِ حذف‌شده = این رویداد را بی‌صدا دور بینداز، نه اینکه fail شود.
+     *
+     * `CartItemChanged` از `SerializesModels` استفاده می‌کند، پس صف موقعِ پردازش
+     * دوباره `cart` و `variant` را از دیتابیس می‌خواند. `PlaceOrderAction` سبد را
+     * بعد از ثبتِ موفقِ سفارش حذف می‌کند، پس این جاب برای **هر سفارشِ موفق** با
+     * `ModelNotFoundException` می‌ترکید — ۱۷ تا از ۲۰ ردیفِ `failed_jobs` همین بود
+     * و شکست‌های واقعیِ پیامک را زیر خودش گم می‌کرد.
+     *
+     * یک رویدادِ تحلیلیِ سبد برای سبدی که دیگر وجود ندارد ارزشی ندارد؛ حذفش
+     * رفتار درست است (و مسیرِ استانداردِ خودِ لاراول برای همین حالت).
+     */
+    public bool $deleteWhenMissingModels = true;
+
     public function handle(CartItemChanged $event): void
     {
         CartEvent::create([

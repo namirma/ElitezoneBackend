@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Cache;
  * @property int $id
  * @property string $name
  * @property string $code
+ * @property string|null $description
  * @property string|null $icon
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
@@ -26,6 +27,7 @@ use Illuminate\Support\Facades\Cache;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Badge query()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Badge whereCode($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Badge whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Badge whereDescription($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Badge whereIcon($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Badge whereId($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Badge whereName($value)
@@ -51,6 +53,8 @@ class Badge extends Model
 
     const NAME = 'name';
 
+    const DESCRIPTION = 'description';
+
     const CODE = 'code';
 
     const ICON = 'icon';
@@ -61,6 +65,7 @@ class Badge extends Model
 
     protected $fillable = [
         self::NAME,
+        self::DESCRIPTION,
         self::CODE,
         self::ICON,
     ];

@@ -20,7 +20,8 @@ class VerifyEmail extends Mailable
 
     public function build(): VerifyEmail
     {
-        return $this->subject('تایید ایمیل شما در الیت زون')
+        // موضوع باید بگوید کاربر چه کاری باید بکند، نه فقط اسم فرآیند را ببرد.
+        return $this->subject('یک قدم تا تکمیل حساب شما در الیت‌زون')
             ->view('emails.verify-email')
             ->with(['link' => $this->link]);
     }

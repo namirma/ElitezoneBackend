@@ -23,8 +23,8 @@ class UserResource extends BaseJsonResource
             $selectedBadge = $this->badges->last();
         }
 
-        // موبایل فقط برای خود شخص و ادمین کامل برمی‌گردد — در نمایش به دیگران
-        // (مثل تأمین‌کننده در آیتم سفارش) mask می‌شود.
+        // موبایل/وضعیت فعال‌بودن فقط برای خود شخص و ادمین کامل برمی‌گردد — در نمایش
+        // به دیگران (مثل تأمین‌کننده در آیتم سفارش) mask/مخفی می‌شود.
         $viewer = $request->user();
         $viewerIsAdmin = (bool) $viewer?->hasRole('admin');
         $canSeeMobile = $viewer && ((int) $viewer->id === (int) $this->{User::ID} || $viewerIsAdmin);
@@ -35,6 +35,8 @@ class UserResource extends BaseJsonResource
             User::MOBILE => $canSeeMobile
                 ? $this->{User::MOBILE}
                 : $this->maskMobile($this->{User::MOBILE}),
+            // بک‌آفیس (لیست/جزئیات کاربران) به این فیلد نیاز دارد؛ قبلاً اصلاً برنمی‌گشت.
+            User::IS_ACTIVE => $canSeeMobile ? (bool) $this->{User::IS_ACTIVE} : null,
             User::CREATED_AT => $this->{User::CREATED_AT},
             User::PASSWORD => (bool) $this->{User::PASSWORD},
             User::RELATION_PROFILE => new UserProfileResource($this->whenLoaded(User::RELATION_PROFILE)),
@@ -46,10 +48,11 @@ class UserResource extends BaseJsonResource
             User::RELATION_ROLES => $this->whenLoaded(User::RELATION_ROLES, function () {
                 return $this->roles->pluck('name');
             }),
-            // مجوزهای سطح‌بندیِ پنل ادمین — فقط برای خودِ ادمین روی پروفایلِ خودش.
-            // بدون این، از وقتی EnsureAdminHasPermission به fail-closed تغییر کرد،
-            // پنل هیچ راهی نداشت بفهمد کدام تب را نشان دهد جز اینکه endpointها را
-            // صدا بزند و ۴۰۳ بگیرد. برای کاربرِ غیرادمین اصلاً ظاهر نمی‌شود.
+            // مجوزهای سطح‌بندیِ پنل ادمین — فقط برای خودِ ادمین روی پروفایلِ خودش (هرگز
+            // برای ادمینی که پروفایل ادمین دیگری را می‌بیند — AdminManagerController مسیر
+            // اختصاصی خودش را دارد). بدون این، از وقتی EnsureAdminHasPermission به
+            // fail-closed تغییر کرد، پنل هیچ راهی نداشت بفهمد کدام تب را نشان دهد جز
+            // اینکه endpointها را صدا بزند و ۴۰۳ بگیرد.
             $this->mergeWhen($this->shouldExposePermissions($viewer), fn () => [
                 'permissions' => $this->permissions->pluck('name')->values(),
                 // سطحِ اختیار هم با همان قاعده‌ی مجوزها بیرون می‌رود: فقط برای

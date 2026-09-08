@@ -29,7 +29,9 @@ class AdminManagerController extends Controller
     {
         $query = User::query()
             ->whereHas('roles', fn ($r) => $r->where('name', 'admin'))
-            ->with(['profile', 'roles'])
+            // permissions هم لود می‌شود چون UserResource برای هر ردیف (همه admin) آن را
+            // می‌خواند — بدون این، هر ردیف یک کوئری جدا می‌زد (N+1).
+            ->with(['profile', 'roles', 'permissions'])
             ->orderByDesc(User::ID);
 
         if ($request->filled('search')) {
@@ -51,25 +53,34 @@ class AdminManagerController extends Controller
             return error(__('admin.admins.not_admin'), [], 404);
         }
 
-        return success(new UserResource($user->load(['profile', 'roles'])), __('admin.admins.received'));
+        return success(new UserResource($user->load(['profile', 'roles', 'permissions'])), __('admin.admins.received'));
     }
 
     // POST /admin/admins
     public function store(StoreAdminRequest $request): JsonResponse
     {
         $user = DB::transaction(function () use ($request) {
+            // ادمین هیچ‌کدام از چهار نقشِ محصول نیست — دسترسی‌اش از نقشِ Laratrust
+            // «admin» می‌آید، نه از `type_id`. NULL همان «نقشِ محصولی ندارد» است.
             $user = User::create([
                 User::MOBILE => $request->string(User::MOBILE),
                 User::PASSWORD => Hash::make($request->string(User::PASSWORD)),
-                // ادمین هیچ‌کدام از چهار نقشِ محصول نیست — دسترسی‌اش از نقشِ Laratrust
-                // «admin» می‌آید، نه از `type_id`. NULL همان «نقشِ محصولی ندارد» است.
                 User::TYPE_ID => null,
+                // هر دو برای ورود با رمز الزامی‌اند (`AuthController::checkPassword`
+                // حسابِ بدون آن‌ها را با `auth.profile_incomplete` رد می‌کند).
+                User::NATIONAL_CODE => $request->string(User::NATIONAL_CODE),
+                User::BIRTH_DATE => $request->string(User::BIRTH_DATE),
             ]);
 
             $user->profile()->create([
                 UserProfile::NAME => $request->input('name'),
                 UserProfile::FAMILY => $request->input('family'),
                 UserProfile::EMAIL => $request->input('email'),
+                // همان کد ملیِ `users` — پروفایل و کاربر نباید از هم واگرا شوند.
+                // (ستون UNIQUE است و قبلاً `''` نوشته می‌شد؛ چون رشته‌ی خالی یک
+                // مقدارِ واقعی حساب می‌شود، ساختنِ مدیرِ دوم `Duplicate entry ''`
+                // می‌گرفت. مایگریشن `2026_07_26_120000_*` ستون را nullable کرد.)
+                UserProfile::NATIONAL_CODE => $request->string(User::NATIONAL_CODE),
             ]);
 
             $user->addRole('admin');

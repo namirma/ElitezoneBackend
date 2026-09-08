@@ -44,10 +44,15 @@ class OrderResource extends BaseJsonResource
             $statusLabel = $progress['current_status_label'] ?? __('orders.status.unknown');
         }
 
+        // ⚠️ فضای‌نامِ خودش، نه `orders.status`: هر سه واژگانِ وضعیت (سفارش /
+        // پرداخت / سهم) از رشته‌های 'pending' و 'paid' استفاده می‌کنند، پس تا وقتی
+        // در یک آرایه بودند برچسبِ سهم روی وضعیتِ پرداخت هم می‌نشست و صفحه‌ی
+        // جزئیات سفارش خودمتناقض می‌شد.
+        // فالبک هم دیگر کلیدِ خامِ انگلیسی را به کاربر نشان نمی‌دهد.
         $paymentStatusKey = $this->{Order::PAYMENT_STATUS};
-        $paymentStatusLabel = __('orders.status.'.$paymentStatusKey);
-        if ($paymentStatusLabel === 'orders.status.'.$paymentStatusKey) {
-            $paymentStatusLabel = $paymentStatusKey;
+        $paymentStatusLabel = __('orders.payment_status.'.$paymentStatusKey);
+        if ($paymentStatusLabel === 'orders.payment_status.'.$paymentStatusKey) {
+            $paymentStatusLabel = __('orders.payment_status.unknown');
         }
 
         $canPay = $paymentStatusKey !== Order::PAYMENT_PAID
