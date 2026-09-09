@@ -3,7 +3,8 @@
 namespace App\Listeners\Order;
 
 use App\Events\Order\OrderPlaced;
-use App\Jobs\Notification\SendSmsJob;
+use App\Models\User;
+use App\Services\Notifier;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Log;
@@ -17,7 +18,10 @@ class SendOrderPlacedNotification implements ShouldQueue
         $order = $event->order;
         $user = $order->placer;
 
-        if (! $user) {
+        // `instanceof` و نه فقط `! $user`: رابطهٔ `placer` روی شاخهٔ L13 از
+        // دیدِ larastan `Model` است، و این گارد هم null و هم نوعِ اشتباه را
+        // با هم رد می‌کند — بدونِ cast و بدونِ حاشیه‌نویسیِ شاخه‌به‌شاخه.
+        if (! $user instanceof User) {
             return;
         }
 
@@ -29,7 +33,7 @@ class SendOrderPlacedNotification implements ShouldQueue
                 $message = "سفارش شما با شماره {$order->order_number} رزرو شد.\nجهت تکمیل خرید، لطفاً پرداخت را انجام دهید.\nالیت زون";
             }
 
-            SendSmsJob::dispatch($user->mobile, $message);
+            Notifier::toUser($user, __('notifications.order_placed_subject'), $message);
 
             Log::info("Order placed SMS sent for Order #{$order->order_number}");
 

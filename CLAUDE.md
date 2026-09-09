@@ -3090,3 +3090,106 @@ length is `config('auth.role_selection_window_hours')` (default 2). Never
 hardcode the 2h literal, and keep `meta.hours_passed` cast to `int` — Carbon 3
 on the L13 branch returns a float from `diffInHours` and the payload must be
 identical on both branches. Pinned by `Auth/RoleSelectionGateTest`.
+### Push notifications — standards-based Web Push, no third-party provider
+
+`device_tokens` (`user_id`, `endpoint` **unique**, `public_key` / `auth_key`, `platform`,
+`app_version`, `last_seen_at`) + `POST`/`DELETE /profile/devices`
+(`DeviceTokenController`). The three subscription fields come straight from the browser's
+`PushSubscription` — `endpoint`, `keys.p256dh`, `keys.auth`.
+
+**Why Web Push and not Pushe/Chabok/Najva/FCM.** The mobile plan is a PWA. The browser
+hands out the endpoint and the encryption keys; the server POSTs directly to that endpoint,
+signed with a VAPID keypair (`minishlink/web-push`, RFC 8030/8291). No vendor account, no
+SDK, no Google project, nothing to renew. A future native APK with a vendor SDK can store
+its token in the same table — rows without `public_key`/`auth_key` are skipped by the sender
+rather than erroring, which is the seam for that.
+
+`endpoint` is `varchar(512)`: Chrome's is ~190 chars and Firefox's ~150, but WNS (Edge)
+reaches ~350, so 255 is too tight. 512 × 4 bytes stays under InnoDB's 3072-byte index limit.
+
+The app re-registers on every launch, so `store()` is `updateOrCreate` keyed on **`endpoint`
+alone**, not `(user, endpoint)`: a subscription belongs to the *device*, so when a second
+user signs in on the same browser the row's owner must move — otherwise the first user's
+notifications land on someone else's screen. `destroy()` scopes by owner, or any signed-in
+user could mute another's device. Both keys are `required` on register: a row without them
+can never be encrypted to, so it would just be a permanently-failing subscription.
+
+**The wiring is a single `UserNotification::booted()` → `created` hook** that dispatches
+`SendPushJob` (`->afterCommit()`). Three call sites create rows with `create()` today
+(`AuthController`, `EliteYARRelationController`, `GenerateCsvReportJob`) and every future
+one is covered for free — a `dispatch()` per call site would have been forgotten by the
+fourth. **The two bulk paths bypass model events and deliberately send no push**:
+`NotifyStockSubscribers` (`insert`) and `SendBulkNotificationJob` (`insertOrIgnore`). The
+admin broadcast probably *should* push, but not as one job per row — that needs chunked
+dispatch and is its own change.
+
+`PushService` mirrors `SmsService`, and for the same reason: real subscriptions sit in the
+dev database too, so a `queue:work` on a laptop would notify real customers' devices — the
+SMS incident again, with a different transport. Outside production only user IDs in
+`services.push.dev_allowlist` (`PUSH_DEV_ALLOWLIST`) are delivered to; **an empty allowlist
+blocks everything**, which is the intended default for a fresh clone. Unconfigured VAPID
+keys, a blocked environment, and a user with no subscriptions all return **`true`** — "sent"
+from the queue's point of view — so the job never retries or fails on a non-error. Only a
+real delivery failure returns `false`, which is what drives `tries`/`backoff`.
+
+**Expired subscriptions delete themselves.** A `404`/`410` from the push service
+(`$report->isSubscriptionExpired()`) means the user revoked permission or wiped the browser;
+that row can never work again, so the sender deletes it. Nothing else prunes the table.
+
+**Setup is one command:** `php artisan push:vapid-keys` prints the three `.env` lines. It
+generates the P-256 keypair itself rather than calling `VAPID::createVapidKeys()`, because
+that helper calls `openssl_pkey_new()` **without** a `config` argument and on Windows/XAMPP
+— this project's dev environment — that fails with the unhelpful "Unable to create the key"
+unless `OPENSSL_CONF` is set (and `putenv()` does **not** fix it; measured). Passing the
+`openssl.cnf` path explicitly is the only thing that works, and that requires generating the
+key ourselves. The output format is pinned against the library's own `VAPID::validate()` by
+`Notification/VapidKeyGenerationTest`, so a one-byte mistake fails in CI, not on production's
+first send.
+
+`GET /settings/public` also returns `vapid_public_key` (from config, not the `settings`
+table — its private half lives in `.env` and the two belong together). The frontend cannot
+call `pushManager.subscribe()` without it.
+
+Changing the VAPID keypair invalidates every existing subscription — the browser binds each
+one to the public key. If it ever has to rotate, truncate `device_tokens` so clients
+re-register. Pinned by `Notification/PushDeviceTokenTest`.
+
+**Four things the first cut got wrong, fixed before the frontend arrived:**
+
+- **Partial failure no longer re-sends to everyone.** The job's retry unit is the *user*,
+  not the device, so returning `false` because one of three devices failed made the other
+  two receive the notification twice — the same defect `SendSmsJob`'s dedupe window exists
+  to prevent. `sendToUser()` now returns `false` only when **nothing** got through
+  (`$sent > 0 || $failed === 0`). A total outage still retries; a partial one does not.
+- **Payload is capped** (title 120 / body 500 chars). Push services reject encrypted
+  payloads over ~4 KB, and that rejection is not "expired", so an over-long body failed
+  *and* burned all three retries. A notification renders a few lines anyway.
+- **`POST/DELETE /profile/devices` are `throttle:20,1`.** The endpoint writes a row and the
+  `endpoint` value comes from the client.
+- **Max 10 subscriptions per user** (`DeviceTokenController::MAX_PER_USER`), oldest pruned.
+  Without a cap, a signed-in client could register thousands of fake endpoints and make
+  *every* later notification fan out into thousands of doomed requests — each retried three
+  times, because a connection error is not "expired" either.
+
+### Order events reach the bell (and therefore push) — `Notifier`
+
+All six event listeners (`SendOrderPlacedNotification`, `SendOrderPaymentNotification`,
+`SendSupplierOrderNotification`, `SendOrderCancellationNotification`,
+`SendWalletFundingNotification`, `SendTransactionNotification`) used to call
+`SendSmsJob::dispatch()` and nothing else. So **no order or financial event ever created a
+`user_notifications` row**: the in-app bell was permanently empty of order news, and since
+push is built on those rows, push had nothing to carry either — only the welcome message,
+the elite-yar invitation, and "your CSV is ready".
+
+`App\Services\Notifier::toUser($user, $subject, $message)` is the single fan-out point:
+SMS first, then the notification row (which the model hook turns into a push). One place, six
+callers — six copies of the same two lines would have been forgotten by the seventh.
+
+**SMS was deliberately kept.** Push and SMS now both fire for these events; push is not a
+replacement. Subjects live in `lang/fa/notifications.php`; the **body is the existing
+`lang/fa/sms.php` string**, not a copy — two versions of one sentence drift apart.
+Note this means the SMS segment budget still governs that text.
+
+Order matters: SMS is dispatched **before** the row is written, so if the write throws, the
+retried job re-sends the SMS — which `SendSmsJob`'s 25-second dedupe window absorbs. The
+reverse order has no such guard. Pinned by `Notification/OrderEventsReachTheBellTest`.

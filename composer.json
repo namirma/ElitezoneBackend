@@ -16,6 +16,7 @@
         "laravel/sanctum": "^4.3",
         "laravel/tinker": "^3.0",
         "league/flysystem-aws-s3-v3": "3.0",
+        "minishlink/web-push": "^11.0",
         "mpdf/mpdf": "^8.2",
         "santigarcor/laratrust": "^8.5",
         "sentry/sentry-laravel": "^4.27",

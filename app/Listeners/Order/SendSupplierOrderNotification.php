@@ -3,7 +3,7 @@
 namespace App\Listeners\Order;
 
 use App\Events\Order\OrderPaid;
-use App\Jobs\Notification\SendSmsJob;
+use App\Services\Notifier;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Log;
@@ -51,8 +51,9 @@ class SendSupplierOrderNotification implements ShouldQueue
                 continue;
             }
 
-            SendSmsJob::dispatch(
-                $supplier->mobile,
+            Notifier::toUser(
+                $supplier,
+                __('notifications.supplier_new_order_subject'),
                 __('sms.order_paid_supplier', ['order_number' => $order->order_number])
             );
         }

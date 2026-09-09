@@ -3,7 +3,7 @@
 namespace App\Listeners\Order;
 
 use App\Events\Order\OrderCancelled;
-use App\Jobs\Notification\SendSmsJob;
+use App\Services\Notifier;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Log;
@@ -28,7 +28,7 @@ class SendOrderCancellationNotification implements ShouldQueue
             }
             $message .= "\nالیت زون";
 
-            SendSmsJob::dispatch($user->mobile, $message);
+            Notifier::toUser($user, __('notifications.order_cancelled_subject'), $message);
 
             Log::info("Cancellation SMS sent for Order {$order->id}");
         } catch (\Exception $e) {
