@@ -1,0 +1,163 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Feature\Supplier;
+
+use App\Models\ProductPrice;
+use App\Models\Setting;
+use App\Models\SupplierRequest;
+use App\Models\User;
+use App\Services\Sales\SalesSettings;
+use App\Services\Supplier\PriceChangeApprovalGate;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
+use PHPUnit\Framework\Attributes\Test;
+use Tests\TestCase;
+
+/**
+ * دروازه‌ی «تغییرِ قیمتِ بزرگ تأییدِ ادمین می‌خواهد» (تصمیم مدیریت، پرسش ۱).
+ *
+ * تمرکزِ این تست روی خودِ دروازه است، چون همان تکه‌ای است که هر دو مسیرِ نوشتن
+ * از آن رد می‌شوند — و اگر بشکند، هر دو بی‌صدا باز می‌شوند.
+ */
+class PriceChangeApprovalTest extends TestCase
+{
+    use DatabaseTransactions;
+
+    private function gate(float $threshold = 15.0): PriceChangeApprovalGate
+    {
+        // `Setting::booted()` خودش کش را روی `saved` پاک می‌کند، پس پاک‌کردنِ
+        // دستی لازم نیست — و متدی هم برایش وجود ندارد.
+        Setting::query()->updateOrCreate(
+            [Setting::KEY => 'price_change_approval_percent'],
+            [Setting::VALUE => (string) $threshold],
+        );
+
+        return new PriceChangeApprovalGate(new SalesSettings);
+    }
+
+    private function price(float $general): ProductPrice
+    {
+        $p = new ProductPrice;
+        $p->{ProductPrice::GENERAL_PRICE} = $general;
+        $p->{ProductPrice::SPECIAL_PRICE} = 0;
+        $p->{ProductPrice::GOLDEN_FIGURE} = 0;
+
+        return $p;
+    }
+
+    #[Test]
+    public function a_small_change_is_applied_immediately(): void
+    {
+        $queued = $this->gate()->evaluate(
+            $this->price(100_000),
+            [ProductPrice::GENERAL_PRICE => 110_000],   // ۱۰٪
+        );
+
+        $this->assertNull($queued, 'تغییرِ زیرِ آستانه نباید به صف برود.');
+    }
+
+    #[Test]
+    public function a_change_above_the_threshold_is_queued(): void
+    {
+        $queued = $this->gate()->evaluate(
+            $this->price(100_000),
+            [ProductPrice::GENERAL_PRICE => 130_000],   // ۳۰٪
+        );
+
+        $this->assertNotNull($queued);
+        $this->assertSame(30.0, $queued['change_percent']);
+        $this->assertSame('100000', $queued['current_general_price']);
+        $this->assertSame('130000', $queued['proposed_general_price']);
+    }
+
+    /**
+     * ⚠️ کاهشِ بزرگ هم باید تأیید بخواهد.
+     *
+     * وسوسه‌ی طبیعی این است که فقط گران‌شدن را بگیریم. ولی قیمتِ اشتباهِ **پایین**
+     * یعنی فروش زیرِ قیمت، که ضررش از گران‌فروشی کمتر نیست و خودش را هم نشان
+     * نمی‌دهد (کسی شکایت نمی‌کند که ارزان خریده).
+     */
+    #[Test]
+    public function a_large_price_drop_is_queued_too(): void
+    {
+        $queued = $this->gate()->evaluate(
+            $this->price(100_000),
+            [ProductPrice::GENERAL_PRICE => 20_000],    // ۸۰٪ کاهش
+        );
+
+        $this->assertNotNull($queued, 'کاهشِ بزرگ هم باید تأیید بخواهد.');
+        $this->assertSame(80.0, $queued['change_percent']);
+    }
+
+    /** رفتنِ از قیمتِ صفر به یک قیمتِ واقعی «تغییرِ بی‌نهایت» است، نه صفر. */
+    #[Test]
+    public function pricing_a_row_that_had_no_price_is_queued(): void
+    {
+        $queued = $this->gate()->evaluate(
+            $this->price(0),
+            [ProductPrice::GENERAL_PRICE => 50_000],
+        );
+
+        $this->assertNotNull($queued, 'صفر → قیمت نباید بی‌صدا از دروازه رد شود.');
+    }
+
+    #[Test]
+    public function an_unchanged_price_is_never_queued(): void
+    {
+        $queued = $this->gate()->evaluate(
+            $this->price(100_000),
+            [ProductPrice::GENERAL_PRICE => 100_000],
+        );
+
+        $this->assertNull($queued);
+    }
+
+    /** آستانه از `settings` خوانده می‌شود، نه هاردکد. */
+    #[Test]
+    public function the_threshold_is_configurable(): void
+    {
+        $change = [ProductPrice::GENERAL_PRICE => 120_000];   // ۲۰٪
+
+        $this->assertNull(
+            $this->gate(25.0)->evaluate($this->price(100_000), $change),
+            'با آستانه‌ی ۲۵٪ یک تغییرِ ۲۰٪ باید فوراً اعمال شود.',
+        );
+
+        $this->assertNotNull(
+            $this->gate(10.0)->evaluate($this->price(100_000), $change),
+            'با آستانه‌ی ۱۰٪ همان تغییر باید به صف برود.',
+        );
+    }
+
+    /** صفر یعنی «همه‌چیز تأیید می‌خواهد» — سمتِ محافظه‌کارانه. */
+    #[Test]
+    public function a_zero_threshold_queues_every_change(): void
+    {
+        $queued = $this->gate(0.0)->evaluate(
+            $this->price(100_000),
+            [ProductPrice::GENERAL_PRICE => 100_100],   // ۰٫۱٪
+        );
+
+        $this->assertNotNull($queued);
+    }
+
+    #[Test]
+    public function queueing_writes_a_pending_request_of_the_new_type(): void
+    {
+        $supplier = User::factory()->create();
+
+        $request = $this->gate()->queue($supplier->id, [
+            'product_price_id' => 1,
+            'change_percent' => 30.0,
+        ], 'دلیلِ آزمون');
+
+        $this->assertSame(SupplierRequest::TYPE_PRICE_CHANGE, $request->{SupplierRequest::TYPE});
+        $this->assertTrue($request->refresh()->isPending());
+        $this->assertContains(
+            SupplierRequest::TYPE_PRICE_CHANGE,
+            SupplierRequest::TYPES,
+            'نوعِ تازه باید در TYPES باشد وگرنه فیلترِ اندپوینتِ ادمین ۴۲۲ می‌دهد.',
+        );
+    }
+}

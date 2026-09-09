@@ -67,6 +67,15 @@ return [
     'reserve_warning_threshold_minutes' => (int) env('SALES_RESERVE_WARNING_THRESHOLD_MINUTES', 180),
 
     /*
+    | آستانه‌ی درصدِ تغییرِ قیمت که فراتر از آن، تغییرِ تأمین‌کننده به صفِ تأییدِ
+    | ادمین می‌رود به‌جای اینکه فوراً اعمال شود (تصمیم مدیریت، پرسش ۱).
+    |
+    | صفر یعنی «همه‌ی تغییرها تأیید لازم دارند»، نه «هیچ‌کدام» — پس اگر کسی
+    | ناخواسته صفرش کرد، سمتِ محافظه‌کارانه می‌افتد نه سمتِ باز.
+    */
+    'price_change_approval_percent' => (float) env('SALES_PRICE_CHANGE_APPROVAL_PERCENT', 15),
+
+    /*
     | نمایش/اعمال کوپن: all | none | selected
     | در حالت `selected` معیار ستون `users.coupon_enabled` است.
     */

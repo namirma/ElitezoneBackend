@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\Admin;
 
+use App\Exceptions\BusinessException;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Models\ProductPrice;
 use App\Models\SupplierRequest;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -87,6 +89,22 @@ class AdminSupplierRequestController extends Controller
                 return false;
             }
 
+            // ⚠️ **تنها نوعی که پذیرشش اقدام می‌کند.**
+            //
+            // قاعده‌ی بالای این کلاس («فقط تصمیم ثبت می‌شود») برای لغو و کاتالوگ
+            // نوشته شده و دلیلش این است که برای هر دو یک مسیرِ اجراییِ دیگر با
+            // شرط‌های خودش وجود دارد — `forceCancel` با تیکت و دلیل، و ساختِ
+            // دستیِ کالا در کاتالوگ. برای قیمت چنین مسیری **نیست**: اگر پذیرش
+            // اعمال نکند، ادمین باید همان عدد را دستی در کاتالوگ دوباره تایپ
+            // کند، یعنی یک «تأییدِ بی‌اثر» که خطای انسانی هم اضافه می‌کند.
+            //
+            // داخلِ همین تراکنش و پس از قفلِ ردیف است، پس دو ادمینِ هم‌زمان
+            // نمی‌توانند دو بار اعمالش کنند.
+            if ($status === SupplierRequest::STATUS_APPROVED
+                && $locked->{SupplierRequest::TYPE} === SupplierRequest::TYPE_PRICE_CHANGE) {
+                $this->applyPriceChange($locked);
+            }
+
             $locked->forceFill([
                 SupplierRequest::STATUS => $status,
                 SupplierRequest::REVIEW_NOTE => $data['note'] ?? null,
@@ -111,6 +129,68 @@ class AdminSupplierRequestController extends Controller
             $this->present($supplierRequest->refresh()),
             __('admin.supplier_requests.reviewed')
         );
+    }
+
+    /**
+     * اعمالِ قیمتِ پیشنهادی روی ردیفِ `product_prices`.
+     *
+     * ردیفِ قیمت ممکن است بینِ ثبتِ درخواست و تأیید حذف شده باشد (تأمین‌کننده
+     * کارخانه‌اش را برداشته). آن حالت **سکوت نمی‌کند**: درخواست بدونِ اثر تأیید
+     * می‌شد و هیچ‌کس نمی‌فهمید چرا قیمت عوض نشد.
+     *
+     * ⚠️ `update()` روی **مدل** است نه کوئری‌بیلدر — عمدی. `ProductPrice::booted()`
+     * کشِ قیمتِ واریانت را روی رویدادِ `updated` فلاش می‌کند، و
+     * `Model::query()->update()` رویدادِ مدل نمی‌زند؛ آن‌وقت تأیید موفق می‌شد،
+     * دیتابیس درست بود و **سایت تا انقضای TTL قیمتِ قدیمی را نشان می‌داد**.
+     */
+    private function applyPriceChange(SupplierRequest $request): void
+    {
+        $payload = $request->{SupplierRequest::PAYLOAD} ?? [];
+        $priceId = $payload['product_price_id'] ?? null;
+
+        $price = $priceId !== null
+            ? ProductPrice::whereKey($priceId)->lockForUpdate()->first()
+            : null;
+
+        if ($price === null) {
+            throw new BusinessException(__('admin.supplier_requests.price_row_missing'));
+        }
+
+        $values = [];
+
+        foreach ([ProductPrice::GENERAL_PRICE, ProductPrice::SPECIAL_PRICE, ProductPrice::GOLDEN_FIGURE] as $field) {
+            if (! array_key_exists('proposed_'.$field, $payload)) {
+                continue;
+            }
+
+            /*
+             * ⚠️ **پایه از زیرِ پای درخواست تکان خورده باشد، اعمال نمی‌کنیم.**
+             *
+             * بینِ ثبتِ درخواست و تأییدِ ادمین، قیمتِ پایه می‌تواند عوض شده باشد —
+             * با یک تغییرِ زیرِ آستانه‌ی خودِ تأمین‌کننده، یا دستِ ادمینِ دیگر. اگر
+             * کورکورانه بنشانیم، دو چیز خراب می‌شود: قیمتِ **تازه‌تر** بی‌صدا
+             * بازنویسی می‌شود، و درصدی که ادمین دید و بر مبنایش تصمیم گرفت دیگر
+             * درست نیست (ممکن است حالا اصلاً زیرِ آستانه باشد).
+             *
+             * پس ۴۰۹ می‌دهیم تا ادمین با عددِ واقعیِ امروز دوباره تصمیم بگیرد —
+             * همان انضباطِ بازبینیِ زیرِ قفل که `CancelOrderAction` دارد.
+             * مقایسه با اپسیلن است چون ستون decimal است و رشته برمی‌گردد.
+             */
+            $atRequest = $payload['current_'.$field] ?? null;
+
+            if ($atRequest !== null && abs((float) $price->{$field} - (float) $atRequest) >= 0.005) {
+                throw new BusinessException(__('admin.supplier_requests.price_moved_since_request'), 409);
+            }
+
+            $values[$field] = $payload['proposed_'.$field];
+        }
+
+        if ($values === []) {
+            throw new BusinessException(__('admin.supplier_requests.price_payload_empty'));
+        }
+
+        $values[ProductPrice::LAST_UPDATED_AT] = now();
+        $price->update($values);
     }
 
     /** @return array<string, mixed> */

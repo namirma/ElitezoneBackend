@@ -47,9 +47,19 @@ class SupplierRequest extends Model
     /** افزودنِ محصول/واریانت به کاتالوگ. */
     public const TYPE_CATALOG_ADDITION = 'catalog_addition';
 
+    /**
+     * تغییرِ قیمتِ فراتر از آستانه.
+     *
+     * ⚠️ برخلافِ دو نوعِ بالا، پذیرشِ این یکی **واقعاً اقدام می‌کند** و قیمت را
+     * اعمال می‌کند. دلیلش در `AdminSupplierRequestController::review()` نوشته
+     * شده: برای لغو و کاتالوگ یک مسیرِ اجرایی‌ِ دیگر وجود دارد، برای قیمت نه.
+     */
+    public const TYPE_PRICE_CHANGE = 'price_change';
+
     public const TYPES = [
         self::TYPE_ORDER_CANCELLATION,
         self::TYPE_CATALOG_ADDITION,
+        self::TYPE_PRICE_CHANGE,
     ];
 
     public const STATUS_PENDING = 'pending';

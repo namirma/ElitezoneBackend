@@ -53,6 +53,9 @@ return [
         'reserve_grace_hours',
         'delivery_deadline_hours',
         'max_overweight_percent',
+        // آستانه‌ی درصدِ تغییرِ قیمت که فراتر از آن تأییدِ ادمین لازم است. عمداً
+        // در `public_keys` نیست: پارامترِ داخلیِ مسیرِ فروش است و سایت لازمش ندارد.
+        'price_change_approval_percent',
         'overweight_response_hours',
         'coupon_visibility',
         'reserve_warning_threshold_minutes',

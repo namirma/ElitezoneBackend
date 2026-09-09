@@ -8,6 +8,7 @@ use App\Http\Resources\Product\ProductPriceResource;
 use App\Models\Factory;
 use App\Models\FactoryLocation;
 use App\Models\ProductPrice;
+use App\Services\Supplier\PriceChangeApprovalGate;
 use App\Services\Supplier\SupplierOriginGuard;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
@@ -101,7 +102,7 @@ class SupplierProductPriceController extends Controller
      * ۳. **خطا به‌ازای شماره‌ی ردیف.** «یکی از ردیف‌ها غلط است» در فایلِ
      *    ۳۰۰ سطری بی‌فایده است.
      */
-    public function bulkStore(BulkPriceRequest $request, SupplierOriginGuard $guard): JsonResponse
+    public function bulkStore(BulkPriceRequest $request, SupplierOriginGuard $guard, PriceChangeApprovalGate $gate): JsonResponse
     {
         $rows = $request->validated('rows');
 
@@ -111,9 +112,12 @@ class SupplierProductPriceController extends Controller
             return error(__('supplier.bulk.rows_rejected'), ['rows' => $errors], 422);
         }
 
-        $summary = DB::transaction(function () use ($rows) {
+        $supplierId = (int) Auth::id();
+
+        $summary = DB::transaction(function () use ($rows, $gate, $supplierId) {
             $created = 0;
             $updated = 0;
+            $queued = 0;
 
             foreach ($rows as $row) {
                 $identity = [
@@ -138,28 +142,60 @@ class SupplierProductPriceController extends Controller
                 ];
 
                 if ($existing) {
+                    // همان دروازه‌ی `update()`. بدونِ این، ارسالِ یک تغییرِ بزرگ
+                    // به‌صورت یک ردیفِ bulk کاملاً از تأییدِ ادمین رد می‌شد.
+                    $pending = $gate->evaluate($existing, $values);
+
+                    if ($pending !== null) {
+                        $gate->queue($supplierId, $pending, __('supplier.prices.change_reason'));
+                        $queued++;
+
+                        continue;
+                    }
+
                     $existing->update($values);
                     $updated++;
                 } else {
+                    // ردیفِ تازه آستانه ندارد: قیمتِ قبلی‌ای وجود ندارد که نسبت
+                    // به آن درصدی معنا داشته باشد.
                     ProductPrice::create($identity + $values);
                     $created++;
                 }
             }
 
-            return ['created' => $created, 'updated' => $updated, 'total' => $created + $updated];
+            return [
+                'created' => $created,
+                'updated' => $updated,
+                'queued_for_approval' => $queued,
+                'total' => $created + $updated,
+            ];
         });
 
         return success($summary, __('supplier.bulk.prices_saved'));
     }
 
     /** Update only mutates the price values — the (variant,factory,location) triple is the row identity. */
-    public function update(Request $request, ProductPrice $price): JsonResponse
+    public function update(Request $request, ProductPrice $price, PriceChangeApprovalGate $gate): JsonResponse
     {
         $this->authorize('update', $price);
 
         $data = $request->validate($this->updateRules());
-        $data[ProductPrice::LAST_UPDATED_AT] = now();
 
+        // تغییرِ بزرگ اعمال نمی‌شود؛ به صفِ تأییدِ ادمین می‌رود (تصمیم مدیریت).
+        // ⚠️ همین بررسی در `bulkStore` هم هست — اگر فقط این‌جا بود، فرستادنِ همان
+        // تغییر به‌صورت یک ردیفِ bulk کاملاً دورش می‌زد.
+        $queued = $gate->evaluate($price, $data);
+
+        if ($queued !== null) {
+            $gate->queue((int) Auth::id(), $queued, __('supplier.prices.change_reason'));
+
+            return success([
+                'queued_for_approval' => true,
+                'change_percent' => $queued['change_percent'],
+            ], __('supplier.prices.queued_for_approval'));
+        }
+
+        $data[ProductPrice::LAST_UPDATED_AT] = now();
         $price->update($data);
 
         return success(new ProductPriceResource($price->load(['factory', 'factoryLocation'])), __('admin.prices.updated'));
