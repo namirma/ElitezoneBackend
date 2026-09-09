@@ -5,6 +5,7 @@ namespace Tests\Feature\Auth;
 use App\Models\User;
 use App\Support\OtpSecret;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
@@ -148,6 +149,46 @@ class AuthControllerTest extends TestCase
         $this->postJson('/api/authenticate/verify-code', [
             'username' => '09100000013',
             'code' => $secret,
+        ])->assertStatus(404);
+    }
+
+    /**
+     * رگرسیون: `password/check` روی بدنه‌ی ناقص ۵۰۰ می‌داد.
+     *
+     * ‏`username`ِ نیامده به‌صورت null به `PhoneNumber::to09()` می‌رفت و TypeError
+     * می‌داد — یک اندپوینتِ **عمومیِ** مسیرِ ورود که با یک بدنه‌ی خالی کرش می‌کرد.
+     * بدتر: کرش پیش از `isLocked`/`recordFailure` می‌افتاد، پس تلاشِ ناموفق با
+     * بدنه‌ی ناقص اصلاً شمرده نمی‌شد.
+     */
+    public function test_check_password_rejects_a_missing_username_with_422_not_500(): void
+    {
+        $this->postJson('/api/authenticate/password/check', [])
+            ->assertStatus(422);
+
+        $this->postJson('/api/authenticate/password/check', ['username' => 'not-a-phone'])
+            ->assertStatus(422);
+    }
+
+    /**
+     * ‏`password` عمداً اجباری **نیست**.
+     *
+     * اگر اجباری بود، درخواستِ بدونِ رمز ۴۲۲ می‌گرفت و از `recordFailure` رد
+     * می‌شد — یعنی می‌شد شمارنده‌ی قفل را با فرستادنِ بدنه‌ی ناقص دور زد. پس
+     * رمزِ نیامده باید مثلِ رمزِ غلط رفتار کند (۴۰۴)، نه مثلِ خطای اعتبارسنجی.
+     */
+    public function test_check_password_treats_a_missing_password_as_a_failed_attempt(): void
+    {
+        User::factory()->create([
+            'mobile' => '09100000021',
+            'is_active' => true,
+            'national_code' => '1234567890',
+            'birth_date' => '13800101',
+            'password' => Hash::make('correct-password'),
+        ]);
+
+        // بدونِ رمز — نه ۵۰۰، نه ۴۲۲: همان مسیرِ «رمز اشتباه»
+        $this->postJson('/api/authenticate/password/check', [
+            'username' => '09100000021',
         ])->assertStatus(404);
     }
 }
