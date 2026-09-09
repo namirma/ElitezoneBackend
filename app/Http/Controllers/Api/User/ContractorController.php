@@ -33,7 +33,12 @@ class ContractorController extends Controller
             [
                 ContractorProfile::USER_ID => Auth::id(),
                 ContractorProfile::COMPANY_NAME => $request->validated('company_name') ?? $existing?->company_name,
-                ContractorProfile::NOT_RELATED => $request->validated('not_related') ?? $existing?->not_related,
+                // ‏`?? true` جا مانده بود و ستون `NOT NULL DEFAULT 1` است: برای
+                // کاربری که هنوز پروفایل ندارد، هر دو طرفِ `??` نال می‌شدند و
+                // یک **نالِ صریح** در INSERT می‌رفت که دیفالتِ دیتابیس را خنثی
+                // می‌کند — نتیجه ۵۰۰ با نشتِ متنِ SQL. همان الگویی که
+                // `engineer_member` در خطِ پایین از قبل دارد.
+                ContractorProfile::NOT_RELATED => $request->validated('not_related') ?? $existing?->not_related ?? true,
                 ContractorProfile::LICENSE_NUMBER => $request->validated('license_number') ?? $existing?->license_number,
                 ContractorProfile::SUPERVISION_BASE => $request->validated('supervision_base') ?? $existing?->supervision_base,
                 ContractorProfile::DESIGN_BASE => $request->validated('design_base') ?? $existing?->design_base,
