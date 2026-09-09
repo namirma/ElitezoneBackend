@@ -177,6 +177,53 @@ class OrderResource extends BaseJsonResource
                 'is_self' => ($this->{Order::PAYER_USER_ID} ?? $this->{Order::PLACER_USER_ID}) === $viewerId,
             ],
 
+            // --- رضایتِ دوطرفهٔ اختلافِ وزن (بندِ ۲ تصمیمِ مدیریت ۲۰۲۶-۰۹-۰۹) ---
+            //
+            // ⚠️ چهار ستونِ `overweight_*` و چهار روتِ `overweight/{approve,accept,
+            // reject,settle}` از فاز ۸ وجود داشتند، ولی **هیچ Resourceای هیچ‌کدام
+            // را سریالایز نمی‌کرد**. یعنی دکمه بود و داده نبود: هیچ طرفی نمی‌دید
+            // که منتظرِ امضای اوست، مبلغِ اختلاف چقدر است، طرفِ مقابل امضا کرده
+            // یا نه، و مهلت کِی تمام می‌شود.
+            //
+            // تا پیش از `b720a2a` این فقط اضافه‌بارِ بالای ۲۰٪ را می‌گرفت — نادر.
+            // با برداشتنِ آستانه، **هر** اختلافِ وزن وارد این جریان می‌شود، پس
+            // شکاف از «نادر» به «همیشه» رفت: سفارش در `awaiting_weight_correction`
+            // می‌ماند و کرونِ ۴۸ ساعته ردش می‌کند، بدونِ اینکه کسی رابطی داشته باشد.
+            // (تشخیصِ نشستِ پنلِ تأمین‌کننده.)
+            //
+            // کلید فقط وقتی می‌آید که درخواستی باز باشد — نبودنش یعنی «درخواستی
+            // نیست»، نه «صفر ریال».
+            'overweight' => $this->when(
+                (float) ($this->{Order::OVERWEIGHT_PENDING_AMOUNT} ?? 0) > 0.0,
+                function () use ($viewerId, $isSupplier) {
+                    $supplierApproved = $this->{Order::OVERWEIGHT_SUPPLIER_APPROVED_AT};
+                    $buyerApproved = $this->{Order::OVERWEIGHT_BUYER_APPROVED_AT};
+                    $isBuyer = $this->payerUserId() === $viewerId;
+
+                    return [
+                        // مثبت است حتی برای کم‌تحویلی — جهت از وزن‌ها معلوم است.
+                        'pending_amount' => (string) $this->{Order::OVERWEIGHT_PENDING_AMOUNT},
+                        'deadline' => $this->{Order::OVERWEIGHT_DEADLINE},
+                        'supplier_approved_at' => $supplierApproved,
+                        'buyer_approved_at' => $buyerApproved,
+
+                        // هر دو مشتق عمداً سمتِ سرورند.
+                        //
+                        // ترتیب اجباری است — **اول تأمین‌کننده، بعد خریدار** — و اگر
+                        // هر کلاینت خودش استنتاجش کند، دو پیاده‌سازی از یک قاعده
+                        // می‌شود که بی‌صدا واگرا می‌شوند. همان دلیلی که
+                        // `payer.is_self` هم این‌جا حساب می‌شود نه در کلاینت.
+                        'awaiting_me' => ($isSupplier && $supplierApproved === null)
+                            || ($isBuyer && $supplierApproved !== null && $buyerApproved === null),
+                        'is_approved' => $this->isOverweightApproved(),
+
+                        // جهتِ اختلاف، تا کلاینت مجبور نباشد دو وزن را مقایسه کند.
+                        'direction' => (float) ($this->{Order::WEIGHT_AFTER_SCALE} ?? 0)
+                            > (float) ($this->{Order::WEIGHT_BEFORE_SCALE} ?? 0) ? 'over' : 'under',
+                    ];
+                }
+            ),
+
             // --- EliteYAR Info (الیت یارِ سفارش — مستقیم از elite_yar_user_id) ---
             'elite_yar' => $eliteYARUser ? [
                 'id' => $eliteYARUser->id,

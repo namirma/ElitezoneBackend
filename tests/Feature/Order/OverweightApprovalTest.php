@@ -7,6 +7,7 @@ namespace Tests\Feature\Order;
 use App\Actions\Financial\ProcessWeighbridgeResultAction;
 use App\Actions\Order\RequestOverweightApprovalAction;
 use App\Exceptions\BusinessException;
+use App\Http\Resources\Order\OrderResource;
 use App\Models\Badge;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -275,5 +276,68 @@ class OverweightApprovalTest extends TestCase
 
         $this->assertSame(Order::STATUS_AWAITING_WEIGHT_CORRECTION, $this->order->{Order::STATUS});
         $this->assertTrue($this->order->hasOpenOverweightRequest());
+    }
+
+    /**
+     * ⚠️ **بدونِ این بلوک، کلِ جریانِ رضایت از بیرون نامرئی بود.**
+     *
+     * چهار ستونِ `overweight_*` و چهار روتِ اکشن از فاز ۸ وجود داشتند، ولی هیچ
+     * Resourceای سریالایزشان نمی‌کرد — یعنی دکمه بود و داده نبود. تا وقتی این
+     * جریان فقط اضافه‌بارِ بالای ۲۰٪ را می‌گرفت نادر بود؛ با برداشتنِ آستانه
+     * (بندِ ۲ مدیریت) **هر** اختلافِ وزن از این‌جا رد می‌شود.
+     *
+     * مرکزی‌ترین ادعا `awaiting_me` است: ترتیب اجباری است (اول تأمین‌کننده، بعد
+     * خریدار) و اگر کلاینت خودش استنتاجش کند، دو پیاده‌سازی از یک قاعده می‌شود.
+     */
+    #[Test]
+    public function the_resource_tells_each_party_whether_it_is_their_turn(): void
+    {
+        app(RequestOverweightApprovalAction::class)->open($this->order, 1_200_000.0);
+        $this->order->refresh();
+
+        // مرحله ۱ — نوبتِ تأمین‌کننده است، نه خریدار.
+        $this->actingAs($this->supplier);
+        $asSupplier = (new OrderResource($this->order))->resolve(request());
+        $this->assertArrayHasKey('overweight', $asSupplier, 'بلوک باید وقتی درخواست باز است بیاید.');
+        $this->assertTrue($asSupplier['overweight']['awaiting_me'], 'اول نوبتِ تأمین‌کننده است.');
+        $this->assertFalse($asSupplier['overweight']['is_approved']);
+        $this->assertGreaterThan(0.0, (float) $asSupplier['overweight']['pending_amount']);
+
+        $this->actingAs($this->buyer);
+        $asBuyer = (new OrderResource($this->order))->resolve(request());
+        $this->assertFalse(
+            $asBuyer['overweight']['awaiting_me'],
+            'خریدار پیش از امضای تأمین‌کننده نوبتش نیست — ترتیب اجباری است.'
+        );
+
+        // مرحله ۲ — تأمین‌کننده امضا کرد؛ حالا نوبت برعکس می‌شود.
+        $this->order->forceFill([Order::OVERWEIGHT_SUPPLIER_APPROVED_AT => now()])->save();
+        $this->order->refresh();
+
+        $this->actingAs($this->buyer);
+        $asBuyer = (new OrderResource($this->order))->resolve(request());
+        $this->assertTrue($asBuyer['overweight']['awaiting_me'], 'حالا نوبتِ خریدار است.');
+
+        $this->actingAs($this->supplier);
+        $asSupplier = (new OrderResource($this->order))->resolve(request());
+        $this->assertFalse($asSupplier['overweight']['awaiting_me'], 'تأمین‌کننده امضا کرده؛ دیگر نوبتش نیست.');
+    }
+
+    /**
+     * نبودنِ کلید یعنی «درخواستی نیست» — نه «صفر ریال».
+     *
+     * ⚠️ ‏`resolve()` و نه `toArray()`: دومی مقدارهای `MissingValue` را همان‌طور
+     * برمی‌گرداند و کلید ظاهراً «هست». چیزی که کلاینت واقعاً می‌گیرد خروجیِ
+     * `resolve()` است. با `toArray()` این تست سبزِ بی‌معنا می‌داد.
+     */
+    #[Test]
+    public function the_block_is_absent_when_no_request_is_open(): void
+    {
+        $this->order->forceFill([Order::OVERWEIGHT_PENDING_AMOUNT => 0])->save();
+
+        $this->actingAs($this->supplier);
+        $payload = (new OrderResource($this->order->refresh()))->resolve(request());
+
+        $this->assertArrayNotHasKey('overweight', $payload);
     }
 }
