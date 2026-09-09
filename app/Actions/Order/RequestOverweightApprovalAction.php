@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\Log;
  * جریان تأیید دومرحله‌ای اضافه‌بار — بند ۳.۷ و ۸.۲ گام ۷الف سند (§۶.۱).
  *
  * ⚠️ **این کلاس یک بن‌بست را می‌بندد.** پیش از آن، `ProcessWeighbridgeResultAction`
- * سفارشی را که اضافه‌بارش از `max_overweight_percent` می‌گذشت به
+ * سفارشی را که وزنش با سفارش اختلاف داشت به
  * `awaiting_weight_correction` می‌برد و هیچ مسیری برای خروج نبود — نه اکشنی،
  * نه روتی، و باسکولِ دوباره هم به‌خاطر گاردِ `$weighableStatuses` رد می‌شد.
  *
