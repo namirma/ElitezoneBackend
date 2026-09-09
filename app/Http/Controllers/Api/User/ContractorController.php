@@ -38,7 +38,14 @@ class ContractorController extends Controller
                 // یک **نالِ صریح** در INSERT می‌رفت که دیفالتِ دیتابیس را خنثی
                 // می‌کند — نتیجه ۵۰۰ با نشتِ متنِ SQL. همان الگویی که
                 // `engineer_member` در خطِ پایین از قبل دارد.
-                ContractorProfile::NOT_RELATED => $request->validated('not_related') ?? $existing?->not_related ?? true,
+                // ‏`->` و نه `?->`: با یک `??` بعدش، عملگرِ ادغامِ نال دسترسیِ
+                // خواص روی null را **سرکوب** می‌کند، پس `?->` بی‌اثر است و
+                // larastan آن را `nullsafe.neverNull` می‌گیرد. رفتارِ اجرا یکسان
+                // است (آزموده: `$null->x ?? 'd'` بدونِ هیچ اخطاری `'d'` می‌دهد).
+                // خطِ `engineer_member` پایین هنوز `?->` دارد چون از قبل در
+                // `phpstan-baseline.neon` سرکوب شده؛ عمداً دست‌نخورده ماند تا آن
+                // ورودیِ baseline بی‌تطبیق نشود.
+                ContractorProfile::NOT_RELATED => $request->validated('not_related') ?? $existing->not_related ?? true,
                 ContractorProfile::LICENSE_NUMBER => $request->validated('license_number') ?? $existing?->license_number,
                 ContractorProfile::SUPERVISION_BASE => $request->validated('supervision_base') ?? $existing?->supervision_base,
                 ContractorProfile::DESIGN_BASE => $request->validated('design_base') ?? $existing?->design_base,
