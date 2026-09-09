@@ -108,7 +108,15 @@ class DrainedSupplierWeighbridgeTest extends TestCase
         // تصمیم مدیریت (دور ۲ پرسش ۲/ب): شرکت پول را جلو نمی‌اندازد و خریدار
         // منتظر شارژِ تأمین‌کننده می‌ماند. پس اینجا هیچ پولی جابه‌جا نمی‌شود و
         // فقط دو بدهی ثبت می‌گردد.
-        app(ProcessWeighbridgeResultAction::class)->execute($order, 8.0);
+        // از ۲۰۲۶-۰۹-۰۹ (تصمیم مدیریت، بندِ ۲) هر اختلافِ وزن — این‌جا کم‌تحویلیِ
+        // ۸ به‌جای ۱۰ — بدونِ رضایتِ دو طرف متوقف می‌شود. این تست دربارهٔ
+        // **تسویه‌ی** کسری است، نه دربارهٔ خودِ گارد، پس از آن رد می‌شویم.
+        $order->forceFill([
+            Order::OVERWEIGHT_SUPPLIER_APPROVED_AT => now(),
+            Order::OVERWEIGHT_BUYER_APPROVED_AT => now(),
+        ])->save();
+
+        app(ProcessWeighbridgeResultAction::class)->execute($order->refresh(), 8.0);
 
         $order->refresh();
 

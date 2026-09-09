@@ -146,6 +146,23 @@ class ProcessWeighbridgeResultActionTest extends TestCase
     // پرداخت‌های قبلی را از رویش جمع می‌زند: اگر نوشتنش از کار می‌افتاد،
     // هر الیت‌یاری برای همیشه بی‌سقف می‌شد و هیچ‌چیز سرخ نمی‌شد.
 
+    /**
+     * هر دو رضایت را مهر می‌زند تا باسکول از گاردِ تازه رد شود.
+     *
+     * از ۲۰۲۶-۰۹-۰۹ (تصمیم مدیریت، بندِ ۲) **هر** اختلافِ وزن — چه اضافه، چه
+     * کم — بدونِ رضایتِ خریدار و تأمین‌کننده متوقف می‌شود. تست‌هایی که نتیجه‌ی
+     * **تسویه** را می‌سنجند باید اول از آن گارد رد شوند، وگرنه چیزی را
+     * می‌سنجند که اصلاً اجرا نشده.
+     */
+    private function withBothApprovals(): void
+    {
+        $this->order->forceFill([
+            Order::OVERWEIGHT_SUPPLIER_APPROVED_AT => now(),
+            Order::OVERWEIGHT_BUYER_APPROVED_AT => now(),
+        ])->save();
+        $this->order->refresh();
+    }
+
     #[Test]
     public function the_elite_yar_commission_is_written_to_the_order(): void
     {
@@ -249,6 +266,8 @@ class ProcessWeighbridgeResultActionTest extends TestCase
         $balanceBefore = (float) $this->buyerWallet->fresh()->balance;
 
         // ۱۰٪ اضافه‌بار — درون تلورانس ۲۰٪.
+        $this->withBothApprovals();
+
         $result = $this->action->execute($this->order, 11.0);
 
         $this->buyerWallet->refresh();
@@ -268,6 +287,8 @@ class ProcessWeighbridgeResultActionTest extends TestCase
         // سفارش هم متوقف می‌ماند — سند صریحاً هر دو را می‌خواهد، نه یکی.
         $this->buyerWallet->update([Wallet::BALANCE => 0]);
 
+        $this->withBothApprovals();
+
         $result = $this->action->execute($this->order, 11.0);
         $this->order->refresh();
 
@@ -281,6 +302,8 @@ class ProcessWeighbridgeResultActionTest extends TestCase
     {
         $this->buyerWallet->update([Wallet::BALANCE => 0]);
         $this->buyer->forceFill([User::CREDIT_LIMIT => 100_000_000])->save();
+
+        $this->withBothApprovals();
 
         $result = $this->action->execute($this->order, 11.0);
         $this->order->refresh();
@@ -297,6 +320,8 @@ class ProcessWeighbridgeResultActionTest extends TestCase
         $balanceBefore = (float) $this->buyerWallet->balance;
 
         // WAS (5) < WBS (10): deficit → buyer is refunded the POO − POOM difference.
+        $this->withBothApprovals();
+
         $result = $this->action->execute($this->order, 5.0);
 
         $this->buyerWallet->refresh();
@@ -350,5 +375,65 @@ class ProcessWeighbridgeResultActionTest extends TestCase
             $this->order->{Order::WEIGHING_COMPLETED_AT},
             'باسکول باید نهایی شده باشد؛ وگرنه صفربودنِ هولد چیزی را ثابت نمی‌کند.'
         );
+    }
+
+    /**
+     * گاردِ تازه — تصمیم مدیریت ۲۰۲۶-۰۹-۰۹، بندِ ۲.
+     *
+     * «درصد اضافه وزن مجاز یا کاهش وزن مجاز را حذف کنید» و به‌جایش **هر**
+     * اختلافِ وزن رضایتِ خریدار و تأمین‌کننده می‌خواهد.
+     *
+     * دو چیز را با هم می‌سنجد که جداگانه بی‌معنا می‌شوند:
+     *   • اختلافِ **کوچک** (۱٪ — بسیار زیرِ تلورانسِ قدیمِ ۲۰٪) دیگر خودکار
+     *     تسویه نمی‌شود؛
+     *   • و **کم‌تحویلی** هم متوقف می‌شود، که پیش از این هرگز از این گیت رد
+     *     نمی‌شد چون `overweightPercent` علامت‌دار است و شرطِ قبلی `> tolerance`
+     *     بود.
+     */
+    #[Test]
+    public function any_weight_difference_now_halts_for_two_party_consent(): void
+    {
+        foreach ([10.1, 9.9] as $actualWeight) {
+            $this->order->forceFill([
+                Order::STATUS => Order::STATUS_PROCESSING,
+                Order::WEIGHT_AFTER_SCALE => null,
+                Order::WEIGHING_COMPLETED_AT => null,
+                Order::OVERWEIGHT_SUPPLIER_APPROVED_AT => null,
+                Order::OVERWEIGHT_BUYER_APPROVED_AT => null,
+                Order::OVERWEIGHT_PENDING_AMOUNT => 0,
+            ])->save();
+
+            $balanceBefore = (float) $this->buyerWallet->fresh()->balance;
+
+            $this->action->execute($this->order->refresh(), $actualWeight);
+            $this->order->refresh();
+
+            $this->assertSame(
+                Order::STATUS_AWAITING_WEIGHT_CORRECTION,
+                $this->order->{Order::STATUS},
+                "اختلافِ وزن {$actualWeight} باید تا رضایتِ دو طرف متوقف بماند."
+            );
+            $this->assertNull(
+                $this->order->{Order::WEIGHING_COMPLETED_AT},
+                'باسکول نباید نهایی شده باشد.'
+            );
+            $this->assertSame(
+                $balanceBefore,
+                (float) $this->buyerWallet->fresh()->balance,
+                'و هیچ پولی نباید جابه‌جا شده باشد.'
+            );
+
+            // مبلغِ درخواست باید **مثبت** ذخیره شود، حتی برای کم‌تحویلی —
+            // وگرنه کرونِ انقضا و `hasOpenOverweightRequest()` نمی‌بینندش.
+            $this->assertGreaterThan(
+                0.0,
+                (float) $this->order->{Order::OVERWEIGHT_PENDING_AMOUNT},
+                "مبلغِ درخواست برای وزن {$actualWeight} باید مثبت باشد."
+            );
+            $this->assertTrue(
+                $this->order->hasOpenOverweightRequest(),
+                'درخواست باید «باز» شمرده شود.'
+            );
+        }
     }
 }
