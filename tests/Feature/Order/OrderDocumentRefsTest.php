@@ -34,7 +34,6 @@ class OrderDocumentRefsTest extends TestCase
         Order::FINAL_INVOICE_REF => 'INV-FINAL-1',
         Order::SYSTEM_MOADIAN_REF => 'SYS-MOADIAN-1',
         Order::WAYBILL_REF => 'WAYBILL-1',
-        Order::ESPADANA_ORDER_REF => 'ESPADANA-1',
         Order::SUPPLIER_MOADIAN_REF => 'SUP-MOADIAN-1',
         Order::ELITE_YAR_MOADIAN_REF => 'EY-MOADIAN-1',
     ];
@@ -118,7 +117,6 @@ class OrderDocumentRefsTest extends TestCase
         $refs = $this->refsSeenBy($supplier, $order);
 
         $this->assertSame('SUP-MOADIAN-1', $refs[Order::SUPPLIER_MOADIAN_REF] ?? null);
-        $this->assertSame('ESPADANA-1', $refs[Order::ESPADANA_ORDER_REF] ?? null);
         // بارنامه سندِ مشترکِ حمل است و برای تأمین‌کننده هم لازم.
         $this->assertSame('WAYBILL-1', $refs[Order::WAYBILL_REF] ?? null);
 

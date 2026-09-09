@@ -337,29 +337,24 @@ class SupplierOrderController extends Controller
         return success(new OrderResource($updated), __('orders.reserve_deadline.extended'));
     }
 
-    public function issueEspadanaCommand(Order $order): JsonResponse
-    {
-        $this->authorize('manageAsSupplier', $order);
-
-        return DB::transaction(function () use ($order) {
-            /** @var Order $locked */
-            $locked = Order::where(Order::ID, $order->id)->lockForUpdate()->first();
-
-            if ($locked->{Order::ESPADANA_ORDER_REF} !== null) {
-                return error(__('orders.espadana_already_issued'), [], 409);
-            }
-
-            if ($locked->status !== Order::STATUS_PROCESSING) {
-                return error(__('orders.cannot_issue_espadana'), [], 400);
-            }
-
-            $locked->update([Order::ESPADANA_ORDER_REF => 'ESPADANA_'.$locked->id.'_'.time()]);
-
-            $locked->loadMissing(Order::resourceRelations());
-
-            return success(new OrderResource($locked), __('orders.espadana_command_issued'));
-        });
-    }
+    /*
+     * `issueEspadanaCommand()` این‌جا بود و **حذف شد** — تصمیمِ مدیریت
+     * ۲۰۲۶-۰۹-۰۹، عیناً: «به هیچ جا وصل نمی‌شود · نتیجتاً هیچ چیز برنمی‌گرداند
+     * · هیچ معنایی ندارد · باید برداشته شود.»
+     *
+     * چه می‌کرد: یک رشته‌ی محلیِ `ESPADANA_{id}_{time}` در ستونی می‌نوشت. هیچ
+     * تماسی برقرار نمی‌شد — نه کانفیگ، نه کردنشیال، نه کلاسِ سرویس، نه HTTP.
+     * پیامِ فارسی‌اش هم خودش می‌گفت «(به صورت آزمایشی)».
+     *
+     * ⚠️ دو چیزِ هم‌نام که **حذف نشدند و نباید بشوند**:
+     *   `factories.api_key`/`api_url` — اتصال به سیستمِ خودِ تأمین‌کننده،
+     *     مسئله‌ی جدایی که مدیریت در پاسخِ پرسشِ ۱ عمداً باز گذاشت.
+     *   «سازه اسپادانا» در `AgreementSeeder` — نامِ شرکتِ مالکِ الیت‌زون.
+     *
+     * ستونِ `orders.espadana_order_ref` سرِ جایش ماند: حذفِ ستون مهاجرتِ خودش
+     * را می‌خواهد و طبقِ تصمیمِ علی، پاک‌سازیِ نهایی در زمانِ انتشار انجام
+     * می‌شود. ردیفِ `E1` در `docs/session/CLEANUP_CANDIDATES.md`.
+     */
 
     /**
      * ضمیمه کردن رسید پرداخت توسط تأمین‌کننده.

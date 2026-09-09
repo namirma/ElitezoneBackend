@@ -198,7 +198,6 @@ class OrderResource extends BaseJsonResource
                     Order::FINAL_INVOICE_REF => ($isAdmin || ! $isSupplier) ? $this->{Order::FINAL_INVOICE_REF} : null,
                     Order::SYSTEM_MOADIAN_REF => ($isAdmin || ! $isSupplier) ? $this->{Order::SYSTEM_MOADIAN_REF} : null,
                     Order::WAYBILL_REF => $this->{Order::WAYBILL_REF},
-                    Order::ESPADANA_ORDER_REF => ($isAdmin || $isSupplier) ? $this->{Order::ESPADANA_ORDER_REF} : null,
                     Order::SUPPLIER_MOADIAN_REF => ($isAdmin || $isSupplier) ? $this->{Order::SUPPLIER_MOADIAN_REF} : null,
                     // getAttribute و نه دسترسی جادویی: larastan بدون فایل‌های
                     // ide-helper (که gitignore شده‌اند) این یک ستون را نمی‌شناسد.

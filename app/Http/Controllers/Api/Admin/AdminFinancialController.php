@@ -55,8 +55,10 @@ class AdminFinancialController extends Controller
                         Order::STATUS_DELIVERED,
                     ]);
             })
-            // فیلتر دستور سفارش
-            ->when($type === 'command', fn (Builder $query) => $query->whereNotNull(Order::ESPADANA_ORDER_REF))
+            // فیلترِ «دستور سفارش» (اسپادانا) حذف شد — تصمیمِ مدیریت ۲۰۲۶-۰۹-۰۹.
+            // نوعِ سندِ `command` هم از دراپ‌داونِ بک‌آفیس برداشته شد، پس دیگر
+            // هیچ فراخوانی‌ای با این مقدار نمی‌آید. ردیفِ `E1` در
+            // docs/session/CLEANUP_CANDIDATES.md.
             // فیلتر فاکتور رسمی/مالیاتی
             //
             // ⚠️ همان داستان: `tax_invoice_ref` هم هیچ نویسنده‌ای ندارد. جانشینش

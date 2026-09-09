@@ -90,13 +90,11 @@ class AdminCompanyInvoicesTest extends TestCase
         $final = $this->makeOrder([Order::FINAL_INVOICE_REF => 'FIN-1']);
         $final->forceFill([Order::STATUS => Order::STATUS_SHIPPED])->save();
 
-        $command = $this->makeOrder([Order::ESPADANA_ORDER_REF => 'ESP-1']);
         $tax = $this->makeOrder([Order::SYSTEM_MOADIAN_REF => 'MOADIAN-1']);
 
         $expected = [
             'initial' => $initial->id,
             'final' => $final->id,
-            'command' => $command->id,
             'tax' => $tax->id,
         ];
 

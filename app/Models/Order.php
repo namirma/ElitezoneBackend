@@ -107,8 +107,6 @@ class Order extends Model
 
     public const PAYMENT_RECEIPT_REF = 'payment_receipt_ref';
 
-    public const ESPADANA_ORDER_REF = 'espadana_order_ref';
-
     public const WAYBILL_REF = 'waybill_ref';
 
     /**
@@ -335,7 +333,6 @@ class Order extends Model
         self::PREPARED_AT,
         self::SHIPPED_AT,
         self::PAYMENT_RECEIPT_REF,
-        self::ESPADANA_ORDER_REF,
         self::WAYBILL_REF,
         self::RESERVATION_EXPIRES_AT,
         self::PARTIAL_PAYMENT_AMOUNT,

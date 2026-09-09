@@ -58,44 +58,11 @@ class SupplierOrderActionGuardsTest extends TestCase
         return $order;
     }
 
-    // ── Espadana ────────────────────────────────────────────────────────────
-
-    #[Test]
-    public function espadana_can_be_issued_on_a_processing_order(): void
-    {
-        $order = $this->order(Order::STATUS_PROCESSING);
-        Sanctum::actingAs($this->supplier);
-
-        $this->postJson("/api/profile/orders/{$order->id}/espadana")->assertOk();
-
-        $this->assertNotNull($order->fresh()->{Order::ESPADANA_ORDER_REF});
-    }
-
-    #[Test]
-    public function espadana_cannot_be_issued_twice_and_never_overwrites_the_reference(): void
-    {
-        $order = $this->order(Order::STATUS_PROCESSING);
-        Sanctum::actingAs($this->supplier);
-
-        $this->postJson("/api/profile/orders/{$order->id}/espadana")->assertOk();
-        $first = $order->fresh()->{Order::ESPADANA_ORDER_REF};
-
-        $this->postJson("/api/profile/orders/{$order->id}/espadana")->assertStatus(409);
-
-        // مهم‌ترین بخش: مرجعِ اول دست‌نخورده مانده.
-        $this->assertSame($first, $order->fresh()->{Order::ESPADANA_ORDER_REF});
-    }
-
-    #[Test]
-    public function espadana_is_refused_on_a_cancelled_order(): void
-    {
-        $order = $this->order(Order::STATUS_CANCELLED);
-        Sanctum::actingAs($this->supplier);
-
-        $this->postJson("/api/profile/orders/{$order->id}/espadana")->assertStatus(400);
-
-        $this->assertNull($order->fresh()->{Order::ESPADANA_ORDER_REF});
-    }
+    /*
+     * سه تستِ «دستور بارگیری اسپادانا» این‌جا بودند و همراهِ خودِ قابلیت حذف
+     * شدند — تصمیمِ مدیریت ۲۰۲۶-۰۹-۰۹. تستِ گاردِ یک اندپوینتِ حذف‌شده، تستِ
+     * چیزی است که وجود ندارد.
+     */
 
     // ── Payment receipt ─────────────────────────────────────────────────────
 
