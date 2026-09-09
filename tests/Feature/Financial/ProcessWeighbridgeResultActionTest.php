@@ -304,4 +304,51 @@ class ProcessWeighbridgeResultActionTest extends TestCase
         $this->assertSame('deficit', $result['status']);
         $this->assertGreaterThan($balanceBefore, (float) $this->buyerWallet->balance, 'Buyer must be refunded on under-delivery');
     }
+
+    /**
+     * قراردادِ اصلیِ تصمیم مدیریت ۲۰۲۶-۰۹-۰۹، بندِ ۶:
+     * **مالیاتِ تأمین‌کننده «اصلاً نباید مسدود شود».**
+     *
+     * پیش از این، `WeighbridgeVatRouter::routeSupplierVat()` سهمِ مالیاتِ PTSM را
+     * در کیفِ خودِ تأمین‌کننده از `balance` به `balance_hold` می‌برد و تا ثبتِ
+     * فاکتور مودیان قابلِ برداشت نبود. حالا کلِ PTSM از همان لحظه در دسترسِ اوست.
+     *
+     * ⚠️ این تست هم‌زمان جلوی برگشتِ خاموش را می‌گیرد: اگر کسی روزی آن فراخوانی
+     * را برگرداند، این‌جا قرمز می‌شود — نه در یک گزارشِ مالی سه ماه بعد.
+     */
+    #[Test]
+    public function the_weighbridge_never_holds_the_suppliers_vat(): void
+    {
+        $supplierId = (int) $this->order->items()->value(OrderItem::SUPPLIER_USER_ID);
+        $supplierWallet = Wallet::where(Wallet::USER_ID, $supplierId)->firstOrFail();
+
+        $this->assertSame(
+            0.0,
+            (float) $supplierWallet->balance_hold,
+            'پیش‌شرط: کیف پول تأمین‌کننده باید بدونِ هولد شروع کند.'
+        );
+
+        // باسکولِ برابر — ساده‌ترین مسیر، بدون کسری و بدون اضافه‌بار.
+        $this->action->execute($this->order, 10.0);
+
+        $supplierWallet->refresh();
+        $this->order->refresh();
+
+        $this->assertSame(
+            0.0,
+            (float) $supplierWallet->balance_hold,
+            'مالیاتِ تأمین‌کننده نباید هولد شود — «اصلاً نباید مسدود شود».'
+        );
+
+        $this->assertNull(
+            $this->order->{Order::SUPPLIER_VAT_PENDING_AMOUNT},
+            'و چیزی هم نباید به‌عنوان مالیاتِ معلق پارک شود.'
+        );
+
+        // و باسکول واقعاً انجام شده — وگرنه ادعای بالا بی‌معنا بود.
+        $this->assertNotNull(
+            $this->order->{Order::WEIGHING_COMPLETED_AT},
+            'باسکول باید نهایی شده باشد؛ وگرنه صفربودنِ هولد چیزی را ثابت نمی‌کند.'
+        );
+    }
 }
