@@ -61,11 +61,27 @@ final class PriceChangeApprovalGate
                 continue;
             }
 
-            $percent = $this->percentChange($current, $next);
+            /*
+             * ⚠️ درصد نسبت به **آخرین قیمتِ تأییدشده** سنجیده می‌شود، نه قیمتِ
+             * فعلی (تصمیم مدیریت ۲۰۲۶-۰۹-۰۹؛ گزینه‌ی «قیمت فعلی» دیده و رد شد).
+             *
+             * چون تغییرِ زیرِ آستانه بدونِ تأیید اعمال می‌شود، با مبنای «قیمت
+             * فعلی» تأمین‌کننده می‌توانست ۱۴٪ + ۱۴٪ + ۱۴٪ بزند و قیمت را ۴۸٪
+             * جابه‌جا کند بی‌آنکه یک بار به صف بخورد. هر قدم قانونی است، جمعشان
+             * نیست.
+             *
+             * ولی `current_*` در payload همچنان **قیمتِ فعلی** است، نه مبنا —
+             * آن مقدار کارِ دیگری می‌کند: گاردِ «پایه تکان خورده» موقعِ تأیید با
+             * همان مقایسه می‌کند تا قیمتِ تازه‌تر بی‌صدا بازنویسی نشود.
+             */
+            $baseline = $existing->approvedBaselineFor($field);
+
+            $percent = $this->percentChange($baseline, $next);
             $maxPercent = max($maxPercent, $percent);
 
             $payload['current_'.$field] = (string) $current;
             $payload['proposed_'.$field] = (string) $next;
+            $payload['baseline_'.$field] = (string) $baseline;
         }
 
         if ($payload === [] || $maxPercent <= $threshold) {
@@ -79,15 +95,27 @@ final class PriceChangeApprovalGate
         ];
     }
 
-    /** ثبتِ درخواست در همان صفی که دو نوعِ دیگر از آن رد می‌شوند. */
+    /**
+     * ثبتِ درخواست در همان صفی که دو نوعِ دیگر از آن رد می‌شوند.
+     *
+     * مهلتِ بررسی (تصمیم مدیریت: ۴۸ ساعت) با `forceFill` نوشته می‌شود چون
+     * `REVIEW_DEADLINE` عمداً fillable نیست — مهلت را سامانه تعیین می‌کند، نه
+     * بدنه‌ی درخواست؛ وگرنه فرستنده می‌توانست مهلتی در گذشته بنویسد.
+     */
     public function queue(int $supplierUserId, array $payload, string $reason): SupplierRequest
     {
-        return SupplierRequest::create([
+        $request = SupplierRequest::create([
             SupplierRequest::SUPPLIER_USER_ID => $supplierUserId,
             SupplierRequest::TYPE => SupplierRequest::TYPE_PRICE_CHANGE,
             SupplierRequest::REASON => $reason,
             SupplierRequest::PAYLOAD => $payload,
         ]);
+
+        $request->forceFill([
+            SupplierRequest::REVIEW_DEADLINE => now()->addHours($this->settings->priceChangeReviewHours()),
+        ])->save();
+
+        return $request;
     }
 
     /**

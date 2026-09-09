@@ -160,4 +160,75 @@ class PriceChangeApprovalTest extends TestCase
             'نوعِ تازه باید در TYPES باشد وگرنه فیلترِ اندپوینتِ ادمین ۴۲۲ می‌دهد.',
         );
     }
+
+    /** مهلت باید ست شود، وگرنه کرونِ انقضا هیچ‌وقت این ردیف را نمی‌بیند. */
+    #[Test]
+    public function queueing_stamps_the_review_deadline(): void
+    {
+        $supplier = User::factory()->create();
+
+        $request = $this->gate()->queue($supplier->id, ['product_price_id' => 1], 'دلیلِ آزمون');
+
+        $this->assertNotNull($request->{SupplierRequest::REVIEW_DEADLINE});
+        $this->assertEqualsWithDelta(
+            48,
+            now()->diffInHours($request->{SupplierRequest::REVIEW_DEADLINE}),
+            1,
+            'مهلتِ پیش‌فرض طبق تصمیم مدیریت ۴۸ ساعت است.',
+        );
+    }
+
+    /**
+     * ⚠️ منقضی‌شدن = **رد**، نه پذیرش.
+     *
+     * مدیریت مهلت را تعیین کرد ولی نگفت پس از آن چه شود. انتخابِ ما سمتِ
+     * محافظه‌کارانه است: قیمتی که هیچ ادمینی ندید نباید با سکوت روی سایت بنشیند،
+     * و رد برگشت‌پذیر است (تأمین‌کننده دوباره ثبت می‌کند) در حالی که پذیرشِ
+     * خودکار نیست — قیمت رفته و مشتری دیده است.
+     */
+    #[Test]
+    public function an_unreviewed_request_is_rejected_when_the_deadline_passes(): void
+    {
+        $supplier = User::factory()->create();
+        $request = $this->gate()->queue($supplier->id, ['product_price_id' => 1], 'دلیلِ آزمون');
+
+        $request->forceFill([SupplierRequest::REVIEW_DEADLINE => now()->subHour()])->save();
+
+        $this->artisan('supplier-requests:expire-price-changes')->assertSuccessful();
+
+        $request->refresh();
+        $this->assertSame(SupplierRequest::STATUS_REJECTED, $request->{SupplierRequest::STATUS});
+        $this->assertNull(
+            $request->{SupplierRequest::REVIEWED_BY},
+            'هیچ ادمینی این تصمیم را نگرفت — پرکردنِ این ستون سابقه را دروغ می‌کند.',
+        );
+    }
+
+    /** ردیفی که مهلتش نگذشته دست‌نخورده می‌ماند. */
+    #[Test]
+    public function a_request_inside_its_deadline_is_left_alone(): void
+    {
+        $supplier = User::factory()->create();
+        $request = $this->gate()->queue($supplier->id, ['product_price_id' => 1], 'دلیلِ آزمون');
+
+        $this->artisan('supplier-requests:expire-price-changes')->assertSuccessful();
+
+        $this->assertTrue($request->refresh()->isPending());
+    }
+
+    /** دو نوعِ دیگر مهلت ندارند و کرون نباید لمسشان کند. */
+    #[Test]
+    public function the_expiry_cron_never_touches_the_other_request_types(): void
+    {
+        $supplier = User::factory()->create();
+        $other = SupplierRequest::create([
+            SupplierRequest::SUPPLIER_USER_ID => $supplier->id,
+            SupplierRequest::TYPE => SupplierRequest::TYPE_CATALOG_ADDITION,
+            SupplierRequest::REASON => 'دلیلِ آزمون',
+        ]);
+
+        $this->artisan('supplier-requests:expire-price-changes')->assertSuccessful();
+
+        $this->assertTrue($other->refresh()->isPending());
+    }
 }

@@ -191,6 +191,19 @@ class AdminSupplierRequestController extends Controller
 
         $values[ProductPrice::LAST_UPDATED_AT] = now();
         $price->update($values);
+
+        /*
+         * تأیید، مبنای آستانه را هم جابه‌جا می‌کند — همین‌جا معنیِ «آخرین قیمتِ
+         * تأییدشده» ساخته می‌شود.
+         *
+         * ⚠️ بدونِ این خط، مبنا روی عددِ قدیمی می‌ماند و تغییرِ **بعدی** نسبت به
+         * چیزی سنجیده می‌شود که دیگر واقعیت ندارد: قیمتی که ادمین همین حالا
+         * پذیرفت، دفعه‌ی بعد باز هم «۴۰٪ انحراف» به حساب می‌آمد و هر تغییرِ
+         * کوچکی پس از آن بی‌دلیل به صف می‌رفت.
+         */
+        $price->refresh();
+        $price->fillApprovedBaseline();
+        $price->save();
     }
 
     /** @return array<string, mixed> */
@@ -210,6 +223,9 @@ class AdminSupplierRequestController extends Controller
             SupplierRequest::PAYLOAD => $r->{SupplierRequest::PAYLOAD},
             SupplierRequest::REVIEW_NOTE => $r->{SupplierRequest::REVIEW_NOTE},
             SupplierRequest::REVIEWED_AT => $r->{SupplierRequest::REVIEWED_AT},
+            // فقط `price_change` مهلت دارد؛ برای بقیه null است و پنل ستون را خالی
+            // می‌گذارد — «مهلت ندارد» و «مهلتش گذشته» دو چیز متفاوت‌اند.
+            SupplierRequest::REVIEW_DEADLINE => $r->{SupplierRequest::REVIEW_DEADLINE},
             'created_at' => $r->created_at,
         ];
     }

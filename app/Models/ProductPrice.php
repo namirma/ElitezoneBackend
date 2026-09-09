@@ -68,6 +68,30 @@ class ProductPrice extends Model
 
     const LAST_UPDATED_AT = 'last_updated_at';
 
+    /**
+     * مبنای آستانه‌ی تأیید — «آخرین قیمتِ تأییدشده»، نه قیمتِ فعلی.
+     *
+     * ⚠️ عمداً در `$fillable` **نیست**. این ستون‌ها فقط با تأییدِ ادمین جابه‌جا
+     * می‌شوند (و یک بار موقعِ ساختِ ردیف). اگر fillable بودند، هر `update()` عادی
+     * از پنلِ تأمین‌کننده مبنا را هم با خودش می‌برد و آستانه بی‌اثر می‌شد —
+     * تأمین‌کننده با ۱۴٪ + ۱۴٪ + ۱۴٪ قیمت را ۴۸٪ جابه‌جا می‌کرد بی‌آنکه یک بار
+     * به صف بخورد. با `forceFill()` نوشته می‌شوند، مثل ستون‌های اسنپ‌شاتِ Order.
+     */
+    const APPROVED_GENERAL_PRICE = 'approved_general_price';
+
+    const APPROVED_SPECIAL_PRICE = 'approved_special_price';
+
+    const APPROVED_GOLDEN_FIGURE = 'approved_golden_figure';
+
+    const APPROVED_PRICE_AT = 'approved_price_at';
+
+    /** ستونِ مبنا به‌ازای هر ستونِ قیمتِ مشمولِ آستانه. */
+    const APPROVED_BASELINE_OF = [
+        self::GENERAL_PRICE => self::APPROVED_GENERAL_PRICE,
+        self::SPECIAL_PRICE => self::APPROVED_SPECIAL_PRICE,
+        self::GOLDEN_FIGURE => self::APPROVED_GOLDEN_FIGURE,
+    ];
+
     const CREATED_AT = 'created_at';
 
     const UPDATED_AT = 'updated_at';
@@ -88,12 +112,52 @@ class ProductPrice extends Model
         self::GENERAL_PRICE => 'decimal:0',
         self::SPECIAL_PRICE => 'decimal:0',
         self::GOLDEN_FIGURE => 'decimal:0',
+        self::APPROVED_GENERAL_PRICE => 'decimal:0',
+        self::APPROVED_SPECIAL_PRICE => 'decimal:0',
+        self::APPROVED_GOLDEN_FIGURE => 'decimal:0',
+        self::APPROVED_PRICE_AT => 'datetime',
     ];
+
+    /**
+     * مبنای سنجشِ آستانه برای یک ستون.
+     *
+     * ردیفی که مبنایش خالی است (مثلاً ردیفِ تازه‌ای که هنوز `seedApprovedBaseline`
+     * رویش نرفته) به قیمتِ فعلی برمی‌گردد — همان رفتارِ پیش از این تصمیم. سکوت
+     * نمی‌کند و صفر هم نمی‌گیرد: صفر یعنی «تغییرِ بی‌نهایت» و هر تغییری را به صف
+     * می‌فرستاد.
+     */
+    public function approvedBaselineFor(string $field): float
+    {
+        $column = self::APPROVED_BASELINE_OF[$field] ?? null;
+        $baseline = $column !== null ? $this->{$column} : null;
+
+        return (float) ($baseline ?? $this->{$field});
+    }
+
+    /**
+     * مبنا را روی مقادیرِ فعلی می‌نشاند — **بدونِ ذخیره**.
+     *
+     * ⚠️ روی `creating` صدا زده می‌شود نه `created`. نسخه‌ی اول `created` بود و
+     * داخلش `save()` می‌زد؛ آن یک نوشتنِ دومِ اضافه بود که روی کلیدِ یکتای
+     * `(variant, factory, location)` می‌خورد و `create()` را ۵۰۰ می‌کرد. مقادیر
+     * در `creating` از قبل ست شده‌اند، پس کپی‌کردنشان هیچ کوئریِ اضافه‌ای ندارد.
+     */
+    public function fillApprovedBaseline(): void
+    {
+        $this->forceFill([
+            self::APPROVED_GENERAL_PRICE => $this->{self::GENERAL_PRICE},
+            self::APPROVED_SPECIAL_PRICE => $this->{self::SPECIAL_PRICE},
+            self::APPROVED_GOLDEN_FIGURE => $this->{self::GOLDEN_FIGURE},
+            self::APPROVED_PRICE_AT => now(),
+        ]);
+    }
 
     protected static function booted(): void
     {
         parent::booted();
 
+        // ردیفِ تازه مبنای خودش است — تا اولین تأیید، همان چیزی که پذیرفته شده.
+        static::creating(fn (ProductPrice $price) => $price->fillApprovedBaseline());
         static::created(fn (ProductPrice $price) => self::flushVariantCache($price));
         static::updated(fn (ProductPrice $price) => self::flushVariantCache($price));
         static::deleted(fn (ProductPrice $price) => self::flushVariantCache($price));

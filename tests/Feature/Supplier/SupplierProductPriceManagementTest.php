@@ -301,6 +301,93 @@ class SupplierProductPriceManagementTest extends TestCase
     }
 
     /**
+     * ⚠️ **راهِ سالامی بسته است** — دلیلِ اصلیِ اینکه مدیریت «آخرین قیمتِ
+     * تأییدشده» را انتخاب کرد و «قیمتِ فعلی» را رد کرد.
+     *
+     * دو قدمِ ۱۰ درصدیِ پشتِ سرِ هم — هر کدام نسبت به **قیمتِ فعلی** زیرِ آستانه‌ی
+     * ۱۵٪ است، ولی روی هم ۲۱٪ می‌شود. با مبنای «قیمت فعلی» هر دو فوراً اعمال
+     * می‌شدند و قیمت ۲۱٪ بالا می‌رفت بی‌آنکه یک بار به صفِ تأیید بخورد.
+     *
+     * ⚠️ نسخه‌ی اولِ این تست سه قدم داشت و انتظار داشت سومی بگیرد — غلط بود.
+     * ریاضی می‌گوید **قدمِ دوم** می‌گیرد (۱٬۲۱۰٬۰۰۰ یعنی ۲۱٪ نسبت به ۱٬۰۰۰٬۰۰۰).
+     * تست اصلاح شد تا رفتارِ واقعی را پین کند، نه انتظارِ اولیه را.
+     */
+    #[Test]
+    public function repeated_small_changes_cannot_walk_past_the_threshold(): void
+    {
+        $supplier = $this->makeSupplier();
+        $factory = $this->makeSupplierFactory($supplier);
+        $location = $this->makeLocation($factory);
+        $price = ProductPrice::create($this->priceRow($this->makeVariant()->id, $factory, $location));
+
+        Sanctum::actingAs($supplier);
+
+        // قدمِ اول: ۱۰٪ نسبت به مبنا — فوراً اعمال می‌شود.
+        $this->putJson("/api/profile/supplier/prices/{$price->id}", [
+            ProductPrice::GENERAL_PRICE => 1_100_000,
+        ])->assertOk()->assertJsonMissingPath('data.queued_for_approval');
+
+        $this->assertSame(1_100_000.0, (float) $price->refresh()->{ProductPrice::GENERAL_PRICE});
+
+        // قدمِ دوم: باز هم ۱۰٪ نسبت به قیمتِ فعلی — ولی ۲۱٪ نسبت به مبنا. می‌گیرد.
+        $this->putJson("/api/profile/supplier/prices/{$price->id}", [
+            ProductPrice::GENERAL_PRICE => 1_210_000,
+        ])->assertOk()->assertJsonPath('data.queued_for_approval', true);
+
+        $this->assertSame(
+            1_100_000.0,
+            (float) $price->refresh()->{ProductPrice::GENERAL_PRICE},
+            'قدمِ دوم باید به صف برود، نه اینکه اعمال شود.'
+        );
+
+        $this->assertSame(
+            1_000_000.0,
+            (float) $price->{ProductPrice::APPROVED_GENERAL_PRICE},
+            'مبنا با تغییرِ زیرِ آستانه تکان نمی‌خورد — همین راهِ سالامی را می‌بندد.'
+        );
+    }
+
+    /** تأییدِ ادمین مبنا را جلو می‌برد، وگرنه هر تغییرِ بعدی بی‌دلیل به صف می‌رود. */
+    #[Test]
+    public function approval_moves_the_baseline_forward(): void
+    {
+        $supplier = $this->makeSupplier();
+        $factory = $this->makeSupplierFactory($supplier);
+        $location = $this->makeLocation($factory);
+        $price = ProductPrice::create($this->priceRow($this->makeVariant()->id, $factory, $location));
+
+        Sanctum::actingAs($supplier);
+        $this->putJson("/api/profile/supplier/prices/{$price->id}", [
+            ProductPrice::GENERAL_PRICE => 1_400_000,   // ۴۰٪ — به صف
+        ])->assertOk();
+
+        $request = SupplierRequest::query()
+            ->where(SupplierRequest::TYPE, SupplierRequest::TYPE_PRICE_CHANGE)
+            ->latest('id')->firstOrFail();
+
+        $admin = User::factory()->create();
+        $admin->addRole(Role::firstOrCreate(['name' => 'admin'], ['display_name' => 'Admin']));
+        $this->grantAllAdminPermissions($admin);
+        Sanctum::actingAs($admin);
+
+        $this->postJson("/api/admin/supplier-requests/{$request->id}/approve")->assertOk();
+
+        $price->refresh();
+        $this->assertSame(1_400_000.0, (float) $price->{ProductPrice::GENERAL_PRICE});
+        $this->assertSame(
+            1_400_000.0,
+            (float) $price->{ProductPrice::APPROVED_GENERAL_PRICE},
+            'مبنا باید همراهِ قیمت جلو برود.'
+        );
+
+        // و حالا یک تغییرِ کوچک نسبت به عددِ تازه باید فوراً اعمال شود.
+        Sanctum::actingAs($supplier);
+        $this->putJson("/api/profile/supplier/prices/{$price->id}", [
+            ProductPrice::GENERAL_PRICE => 1_450_000,   // ۳٫۶٪ نسبت به مبنای تازه
+        ])->assertOk()->assertJsonMissingPath('data.queued_for_approval');
+    }
+
+    /**
      * ⚠️ نیمه‌ی دومِ همان داستان: پایه بینِ ثبت و تأیید تکان خورده.
      *
      * بینِ صف‌رفتن و تأییدِ ادمین، قیمتِ پایه می‌تواند عوض شود — با یک تغییرِ

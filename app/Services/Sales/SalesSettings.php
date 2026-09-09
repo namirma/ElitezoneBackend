@@ -128,6 +128,19 @@ final class SalesSettings
     }
 
     /**
+     * مهلتِ بررسیِ درخواستِ تغییرِ قیمت، به ساعت.
+     *
+     * ⚠️ کفِ ۱ ساعت عمدی است. مقدارِ صفر یعنی «درخواست در همان لحظه‌ی ثبت منقضی
+     * است» — یعنی صفِ تأیید بی‌صدا به یک ردکنندهٔ خودکار تبدیل می‌شد و هیچ
+     * تغییرِ قیمتی هرگز به چشمِ ادمین نمی‌رسید. برخلافِ آستانه‌ی درصد، این‌جا
+     * صفر سمتِ محافظه‌کارانه نیست.
+     */
+    public function priceChangeReviewHours(): int
+    {
+        return max(1, $this->int('price_change_review_hours'));
+    }
+
+    /**
      * قواعد اعتبارسنجیِ همین کلیدها، برای `PUT /admin/settings`.
      *
      * اینجا زندگی می‌کنند و نه در کنترلر، تا افزودنِ کلیدِ تازه یک نقطه داشته
@@ -148,6 +161,7 @@ final class SalesSettings
             // بدونِ این قاعده یک مقدارِ غیرعددی ذخیره می‌شد و `(float)` صفرش
             // می‌کرد — یعنی یک غلطِ تایپی بی‌صدا «همه‌ی تغییرها تأیید بخواهند».
             'price_change_approval_percent' => ['numeric', 'min:0', 'max:100'],
+            'price_change_review_hours' => ['integer', 'min:1'],
             'coupon_visibility' => ['in:'.implode(',', self::couponVisibilityOptions())],
             'reserve_warning_threshold_minutes' => ['integer', 'min:0'],
         ];

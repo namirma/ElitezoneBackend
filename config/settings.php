@@ -56,6 +56,8 @@ return [
         // آستانه‌ی درصدِ تغییرِ قیمت که فراتر از آن تأییدِ ادمین لازم است. عمداً
         // در `public_keys` نیست: پارامترِ داخلیِ مسیرِ فروش است و سایت لازمش ندارد.
         'price_change_approval_percent',
+        // مهلتِ بررسیِ صفِ تغییرِ قیمت. مثل بالایی عمداً در `public_keys` نیست.
+        'price_change_review_hours',
         'overweight_response_hours',
         'coupon_visibility',
         'reserve_warning_threshold_minutes',
