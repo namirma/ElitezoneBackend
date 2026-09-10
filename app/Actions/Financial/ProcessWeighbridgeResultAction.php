@@ -117,7 +117,25 @@ class ProcessWeighbridgeResultAction
             // همین وزنِ فراتر-از-تلورانس دیگر باید تعدیل شود، نه دوباره متوقف.
             // بدون این استثنا، تأییدِ خریدار سفارش را به همین شاخه برمی‌گرداند
             // و حلقه‌ی بی‌پایان می‌ساخت.
-            if ($result->overweightPercent > $this->maxOverweightPercent() && ! $locked->isOverweightApproved()) {
+            // **تصمیم مدیریت ۲۰۲۶-۰۹-۰۹، بندِ ۲:** «درصد اضافه وزن مجاز یا کاهش
+            // وزن مجاز باسکول نسبت به سفارش را حذف کنید» — به‌جایش **هر اختلافِ
+            // وزن** باید هم خریدار و هم تأمین‌کننده تأییدش کنند.
+            //
+            // پس شرط دیگر آستانه‌ی درصدی نیست. دو تغییرِ معنایی این‌جا هست:
+            //
+            //   ۱. آستانه برداشته شد — هر اختلافی، هرقدر کوچک، رضایتِ دو طرف
+            //      می‌خواهد.
+            //   ۲. **کم‌تحویلی هم شامل شد.** `overweightPercent` علامت‌دار است
+            //      (`(actual − wbs) / wbs`)، پس شرطِ قبلی (`> tolerance`) ذاتاً
+            //      فقط اضافه‌بار را می‌گرفت و کم‌تحویلی همیشه بی‌رضایت تعدیل
+            //      می‌شد. مدیریت هر دو جهت را خواسته.
+            //
+            // مقایسه روی خودِ وزن‌هاست نه درصدِ مشتق: «هر اختلافی» را تحت‌اللفظی
+            // می‌کند و از بازگرداندنِ یک آستانه‌ی پنهان (اپسیلون) جلوگیری می‌کند.
+            $orderedWeight = (float) $locked->{Order::WEIGHT_BEFORE_SCALE};
+            $weightDiffers = $orderedWeight > 0.0 && $actualWeight !== $orderedWeight;
+
+            if ($weightDiffers && ! $locked->isOverweightApproved()) {
                 $locked->forceFill([
                     Order::WEIGHT_AFTER_SCALE => $actualWeight,
                     Order::STATUS => Order::STATUS_AWAITING_WEIGHT_CORRECTION,
@@ -191,10 +209,15 @@ class ProcessWeighbridgeResultAction
         }, 3);
     }
 
-    private function maxOverweightPercent(): float
-    {
-        return $this->salesSettings->maxOverweightPercent();
-    }
+    // ‏`maxOverweightPercent()` این‌جا حذف شد: تنها مصرف‌کننده‌اش گاردِ تلورانس
+    // بود که در تصمیم مدیریت ۲۰۲۶-۰۹-۰۹ (بندِ ۲) برداشته شد، و یک متدِ خصوصیِ
+    // بی‌صدازننده هم کدِ مرده است هم PHPStan را قرمز می‌کند.
+    //
+    // ⚠️ خودِ تنظیم (`SalesSettings::maxOverweightPercent()` و
+    // `config/sales.php`) عمداً دست‌نخورده ماند — طبقِ قانون یک، و چون فیلدش
+    // هنوز در صفحه‌ی تنظیماتِ بک‌آفیس هست. ردیفِ `W1` در
+    // `docs/session/CLEANUP_CANDIDATES.md` می‌گوید آن فیلد باید از پنل برداشته
+    // شود، وگرنه ادمین عددی را تنظیم می‌کند که دیگر هیچ اثری ندارد.
 
     /**
      * اضافه‌بارِ درون تلورانس — بند ۸.۲ گام ۷ب و ۷ج.

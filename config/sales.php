@@ -46,7 +46,6 @@ return [
      */
     'delivery_deadline_hours' => (int) env('SALES_DELIVERY_DEADLINE_HOURS', 5),
 
-    'max_overweight_percent' => (float) env('SALES_MAX_OVERWEIGHT_PERCENT', 20),
 
     /*
     | مهلت پاسخ به درخواست تأیید اضافه‌بار، به ساعت (بند ۳.۷).

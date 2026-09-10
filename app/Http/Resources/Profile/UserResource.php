@@ -37,6 +37,20 @@ class UserResource extends BaseJsonResource
                 : $this->maskMobile($this->{User::MOBILE}),
             // بک‌آفیس (لیست/جزئیات کاربران) به این فیلد نیاز دارد؛ قبلاً اصلاً برنمی‌گشت.
             User::IS_ACTIVE => $canSeeMobile ? (bool) $this->{User::IS_ACTIVE} : null,
+            // بند ۳.۱۲ — سقف اعتبار و مانده‌ی بدهی. تا امروز هیچ‌جا برنمی‌گشتند،
+            // پس بک‌آفیس نمی‌توانست سقفِ فعلی را **نشان** بدهد و در نتیجه فرمِ
+            // تنظیمش هم ساخته نشده بود، هرچند اندپوینتِ نوشتنش
+            // (`POST /admin/users/{user}/credit-limit`) از قبل وجود داشت.
+            //
+            // پشتِ همان گاردِ `$canSeeMobile` (خودِ شخص یا ادمین) — برای دیگران
+            // null، پس قراردادِ نمایشِ کاربر به تأمین‌کننده عوض نمی‌شود. برای
+            // خودِ شخص چیزِ تازه‌ای فاش نمی‌کند: `GET /profile/debts` همین دو
+            // عدد را از قبل به او می‌دهد.
+            //
+            // ‏`(string)` مثل `AdminDebtController` — ستون `decimal` است و
+            // فرانت با رشته کار می‌کند تا دقتِ اعشاری در JSON از بین نرود.
+            User::CREDIT_LIMIT => $canSeeMobile ? (string) $this->{User::CREDIT_LIMIT} : null,
+            User::DEBT_BALANCE => $canSeeMobile ? (string) $this->{User::DEBT_BALANCE} : null,
             User::CREATED_AT => $this->{User::CREATED_AT},
             User::PASSWORD => (bool) $this->{User::PASSWORD},
             User::RELATION_PROFILE => new UserProfileResource($this->whenLoaded(User::RELATION_PROFILE)),

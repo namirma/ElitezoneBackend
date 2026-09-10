@@ -129,17 +129,29 @@ class WeighbridgeVatRouter
     }
 
     /**
-     * Deducts the supplier's escrow VAT from WALLET_SUPPLIER and holds it in WALLET_VAT.
-     * (Doc O — RecordSupplierMoadianInvoiceAction releases this hold later.)
+     * مالیاتِ تأمین‌کننده **دیگر مسدود نمی‌شود** — تصمیم مدیریت، ۲۰۲۶-۰۹-۰۹،
+     * بندِ ۶: «پاسخ ب درست است و اصلاً نباید مسدود شود».
+     *
+     * پیش از این، سهمِ مالیاتِ PTSM در کیفِ خودِ تأمین‌کننده از `balance` به
+     * `balance_hold` می‌رفت و تا ثبتِ فاکتور مودیان قابلِ برداشت نبود. حالا کلِ
+     * PTSM از همان لحظه در دسترسِ اوست.
+     *
+     * ⚠️ **پیامدی که باید در تصمیم دیده شود:** آن هولد تنها سازوکاری بود که
+     * صدورِ فاکتورِ مودیان را از نظرِ مالی لازم می‌کرد. با برداشتنش، تنها اثرِ
+     * باقی‌مانده‌ی ندادنِ سند O این است که تأمین‌کننده نمی‌تواند پروفایلش را حذف
+     * کند (`unsettledForSupplier`) — نه چیزی روی پولش.
+     *
+     * ماشینِ هولد (`placeSupplierVatHold` / `suspendSupplierVat`) عمداً حذف
+     * نشده، فقط دیگر صدا زده نمی‌شود: این مسیرِ پول است و تصمیمش امروز یک‌بار
+     * برگشته، پس برگرداندنش باید یک خط باشد نه یک بازسازی. ردیفش در
+     * `docs/session/CLEANUP_CANDIDATES.md` ثبت شده.
      */
     private function routeSupplierVat(
         Order $order,
         WeighbridgeReconcileResult $result,
         int $supplierId,
     ): void {
-        $supplierVat = $this->calculator->extractVat($result->newPTS, $result->vat)['vat'];
-
-        $this->placeSupplierVatHold($order, $supplierId, $supplierVat);
+        // عمداً خالی. پارامترها برای امضای پایدار و خوانایی مسیر نگه داشته شدند.
     }
 
     /**

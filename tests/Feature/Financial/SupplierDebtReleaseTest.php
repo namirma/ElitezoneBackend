@@ -233,23 +233,28 @@ class SupplierDebtReleaseTest extends TestCase
     }
 
     #[Test]
-    public function the_suspended_vat_is_held_on_the_suppliers_own_wallet_when_the_debt_clears(): void
+    public function a_legacy_pending_vat_is_cleared_without_ever_being_held(): void
     {
-        // ⚠️ فیکسچرِ setUp هرگز `supplier_vat_pending_amount` نمی‌گذاشت، پس
-        // `$vatPending > 0` در کرون هیچ‌وقت اجرا نمی‌شد و آستانه‌ی ترکیبی
-        // (`balance < debt + vatPending`) فقط با vatPending صفر سنجیده می‌شد.
+        // **قراردادِ عوض‌شده — تصمیم مدیریت ۲۰۲۶-۰۹-۰۹، بندِ ۶.**
         //
-        // این همان لِگی است که سند O بعداً آزادش می‌کند؛ اگر اجرا نشود،
-        // مالیات هرگز هولد نمی‌شود و سند O چیزی برای آزادکردن ندارد.
+        // این تست پیش‌تر می‌سنجید که کرون مالیاتِ معلق را روی کیف پولِ خودِ
+        // تأمین‌کننده هولد کند. حالا مالیات «اصلاً نباید مسدود شود»، پس:
+        //
+        //   • هیچ هولدی گذاشته نمی‌شود،
+        //   • ولی یادداشتِ `supplier_vat_pending_amount` پاک می‌شود.
+        //
+        // ستون فقط یک **یادداشت** بود («این‌قدر بعداً باید هولد شود») و هرگز
+        // پولی از کیف پول برنداشته بود؛ پس پاک‌کردنش چیزی از تأمین‌کننده کم
+        // نمی‌کند. سفارش‌های قدیمی که این عدد را دارند از همین مسیر تمیز می‌شوند.
         $vat = 250_000.0;
 
         $this->order->forceFill([Order::SUPPLIER_VAT_PENDING_AMOUNT => $vat])->save();
 
-        // موجودی باید هر دو را بپوشاند — بدهی *و* مالیات. با فقط بدهی، کرون
-        // عمداً کاری نمی‌کند.
+        // موجودی فقط به‌اندازه‌ی **بدهی** — نه بدهی + مالیات. این خودش نیمی از
+        // ادعاست: آستانه دیگر مالیات را حساب نمی‌کند.
         $supplierWallet = Wallet::where(Wallet::USER_ID, $this->supplier->id)->firstOrFail();
         $supplierWallet->update([
-            Wallet::BALANCE => self::DEBT + $vat,
+            Wallet::BALANCE => self::DEBT,
             Wallet::BALANCE_HOLD => 0,
         ]);
 
@@ -258,45 +263,49 @@ class SupplierDebtReleaseTest extends TestCase
         $supplierWallet->refresh();
 
         $this->assertEqualsWithDelta(
-            $vat,
+            0.0,
             (float) $supplierWallet->balance_hold,
             0.01,
-            'مالیاتِ معلق باید روی کیف پولِ خودِ تأمین‌کننده هولد شود، نه نزد سازه.'
+            'مالیات دیگر هولد نمی‌شود — هیچ چیزی نباید در balance_hold بنشیند.'
         );
 
         $this->assertNull(
             $this->order->refresh()->{Order::SUPPLIER_VAT_PENDING_AMOUNT},
-            'پس از هولدشدن، مبلغِ معلق باید پاک شود.'
+            'یادداشتِ مالیاتِ معلق باید پاک شود، حتی بدونِ هولد.'
         );
     }
 
     #[Test]
-    public function a_balance_that_covers_the_debt_but_not_the_vat_is_not_enough(): void
+    public function a_balance_that_covers_only_the_debt_is_now_enough(): void
     {
-        // آستانه `debt + vatPending` است و نه فقط `debt`. با موجودیِ بینِ آن دو،
-        // کرون نباید چیزی را تسویه کند — وگرنه بازپس‌گیری انجام می‌شد و بعد
-        // هولدِ مالیات با موجودیِ ناکافی می‌ترکید و کلِ تراکنش برمی‌گشت.
+        // **معکوسِ عمدیِ تستِ قبلی — و رفعِ یک باگ.**
+        //
+        // پیش از این آستانه `debt + vatPending` بود، چون هولدِ مالیات در همان
+        // تراکنش می‌آمد و با موجودیِ ناکافی کلِ کار برمی‌گشت. حالا که هولدی در
+        // کار نیست، نگه‌داشتنِ آن آستانه یک **باگ** بود: تأمین‌کننده‌ای که دقیقاً
+        // به‌اندازه‌ی بدهی‌اش پول داشت، تا ابد تسویه نمی‌شد و منتظرِ پولی می‌ماند
+        // که هیچ‌کس قرار نبود برداشتش کند.
         $vat = 250_000.0;
 
         $this->order->forceFill([Order::SUPPLIER_VAT_PENDING_AMOUNT => $vat])->save();
 
         $supplierWallet = Wallet::where(Wallet::USER_ID, $this->supplier->id)->firstOrFail();
         $supplierWallet->update([
-            Wallet::BALANCE => self::DEBT,   // بدهی را می‌پوشاند، مالیات را نه
+            Wallet::BALANCE => self::DEBT,   // دقیقاً بدهی، بدونِ مالیات
             Wallet::BALANCE_HOLD => 0,
         ]);
 
         $this->runJob();
 
-        $this->assertTrue(
+        $this->assertFalse(
             (bool) $this->order->refresh()->{Order::SUPPLIER_DEBT_PENDING},
-            'با موجودیِ ناکافی برای مالیات، کسری باید باز بماند.'
+            'با موجودیِ برابرِ بدهی، کسری باید تسویه شود — مالیات دیگر شرط نیست.'
         );
         $this->assertEqualsWithDelta(
             0.0,
             (float) $supplierWallet->refresh()->balance_hold,
             0.01,
-            'هیچ هولدی نباید گذاشته شده باشد.'
+            'و باز هم هیچ هولدی گذاشته نشده باشد.'
         );
     }
 }

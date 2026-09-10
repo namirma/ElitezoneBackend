@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\Log;
  * جریان تأیید دومرحله‌ای اضافه‌بار — بند ۳.۷ و ۸.۲ گام ۷الف سند (§۶.۱).
  *
  * ⚠️ **این کلاس یک بن‌بست را می‌بندد.** پیش از آن، `ProcessWeighbridgeResultAction`
- * سفارشی را که اضافه‌بارش از `max_overweight_percent` می‌گذشت به
+ * سفارشی را که وزنش با سفارش اختلاف داشت به
  * `awaiting_weight_correction` می‌برد و هیچ مسیری برای خروج نبود — نه اکشنی،
  * نه روتی، و باسکولِ دوباره هم به‌خاطر گاردِ `$weighableStatuses` رد می‌شد.
  *
@@ -52,7 +52,19 @@ class RequestOverweightApprovalAction
     public function open(Order $order, float $deltaPOO): void
     {
         $order->forceFill([
-            Order::OVERWEIGHT_PENDING_AMOUNT => $deltaPOO,
+            // **قدرِ مطلق**، نه مقدارِ علامت‌دار. از ۲۰۲۶-۰۹-۰۹ کم‌تحویلی هم از
+            // همین مسیر رد می‌شود و `diffPOO` آن‌جا **منفی** است — و سه مصرف‌کننده
+            // روی مثبت‌بودن حساب می‌کنند:
+            //
+            //   • `Order::hasOpenOverweightRequest()`      → `> 0.0`
+            //   • `ExpireOverweightApprovals`              → `WHERE amount > 0`
+            //   • متنِ پیامک (`number_format`)             → «۱٬۲۰۰٬۰۰۰-» بی‌معناست
+            //
+            // با مقدارِ منفی، درخواستِ کم‌تحویلی برای هر سه **نامرئی** می‌شد: نه
+            // منقضی می‌شد، نه باز شمرده می‌شد. جهت از خودِ وزن‌ها معلوم است
+            // (`weight_after_scale` در برابر `weight_before_scale`)، پس ذخیره‌ی
+            // علامت این‌جا چیزی اضافه نمی‌کرد و فقط سه‌جا را می‌شکست.
+            Order::OVERWEIGHT_PENDING_AMOUNT => abs($deltaPOO),
             Order::OVERWEIGHT_SUPPLIER_APPROVED_AT => null,
             Order::OVERWEIGHT_BUYER_APPROVED_AT => null,
             Order::OVERWEIGHT_DEADLINE => now()->addHours($this->salesSettings->overweightResponseHours()),

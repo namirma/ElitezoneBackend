@@ -77,11 +77,6 @@ final class SalesSettings
         return max(1, $this->int('delivery_deadline_hours'));
     }
 
-    public function maxOverweightPercent(): float
-    {
-        return max(0.0, $this->float('max_overweight_percent'));
-    }
-
     /**
      * مهلت پاسخ به درخواست تأیید اضافه‌بار (ساعت) — بند ۳.۷.
      *
@@ -131,7 +126,6 @@ final class SalesSettings
             'park_time_minutes' => ['integer', 'min:1'],
             'reserve_grace_hours' => ['integer', 'min:0'],
             'delivery_deadline_hours' => ['integer', 'min:1'],
-            'max_overweight_percent' => ['numeric', 'min:0', 'max:100'],
             'coupon_visibility' => ['in:'.implode(',', self::couponVisibilityOptions())],
             'reserve_warning_threshold_minutes' => ['integer', 'min:0'],
         ];

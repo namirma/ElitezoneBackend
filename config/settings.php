@@ -29,6 +29,12 @@ return [
         'maintenance_banner',
         'homepage_announcement',
         'min_app_version',
+        // متنِ نوارِ هشدارِ فیلترشکن.
+        //
+        // ⚠️ استثنای قاعده‌ی «خالی = مخفی»: تصمیمِ نمایش را کد می‌گیرد (IP غیرایرانی)،
+        // نه ادمین. خالی‌بودنش نوار را حذف نمی‌کند، متنِ پیش‌فرضِ سایت را نگه می‌دارد —
+        // وگرنه یک قابلیتِ زنده در روزِ استقرار بی‌صدا ناپدید می‌شد.
+        'vpn_warning_text',
         // نمادهای اعتماد فوتر — تصویر + لینکِ مرجع. تا وقتی پر نشوند، فوتر آن
         // نماد را اصلاً نشان نمی‌دهد (به‌جای کادرِ placeholder).
         'enamad_image_url',
@@ -52,7 +58,6 @@ return [
         'park_time_minutes',
         'reserve_grace_hours',
         'delivery_deadline_hours',
-        'max_overweight_percent',
         'overweight_response_hours',
         'coupon_visibility',
         'reserve_warning_threshold_minutes',
@@ -86,6 +91,12 @@ return [
         'maintenance_banner',
         'homepage_announcement',
         'min_app_version',
+        // متنِ نوارِ هشدارِ فیلترشکن.
+        //
+        // ⚠️ استثنای قاعده‌ی «خالی = مخفی»: تصمیمِ نمایش را کد می‌گیرد (IP غیرایرانی)،
+        // نه ادمین. خالی‌بودنش نوار را حذف نمی‌کند، متنِ پیش‌فرضِ سایت را نگه می‌دارد —
+        // وگرنه یک قابلیتِ زنده در روزِ استقرار بی‌صدا ناپدید می‌شد.
+        'vpn_warning_text',
         // نمادهای اعتماد فوتر — تصویر + لینکِ مرجع. تا وقتی پر نشوند، فوتر آن
         // نماد را اصلاً نشان نمی‌دهد (به‌جای کادرِ placeholder).
         'enamad_image_url',

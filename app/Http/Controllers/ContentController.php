@@ -7,6 +7,7 @@ use App\Http\Resources\Content\BannerResource;
 use App\Http\Resources\Content\FaqCategoryResource;
 use App\Http\Resources\Content\FaqResource;
 use App\Http\Resources\Content\MenuItemResource;
+use App\Http\Resources\Content\PageBlockResource;
 use App\Http\Resources\Content\PageResource;
 use App\Models\Article;
 use App\Models\Banner;
@@ -14,6 +15,7 @@ use App\Models\Faq;
 use App\Models\FaqCategory;
 use App\Models\MenuItem;
 use App\Models\Page;
+use App\Models\PageBlock;
 use App\Models\Setting;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -190,5 +192,29 @@ class ContentController extends Controller
         $values['vapid_public_key'] = (string) config('services.push.vapid.public_key');
 
         return success($values, __('content.settings_received'));
+    }
+
+    /**
+     * GET /pages/{page}/blocks — بلوک‌های فعالِ یک صفحه‌ی محتوایی.
+     *
+     * کش‌شده و با `PageBlock::booted()` روی هر ذخیره فلاش می‌شود، پس ویرایشِ
+     * ادمین بلافاصله روی سایت دیده می‌شود.
+     */
+    public function pageBlocks(string $page): JsonResponse
+    {
+        abort_unless(in_array($page, PageBlock::PAGES, true), 404);
+
+        $blocks = Cache::remember(
+            PageBlock::cacheKeyFor($page),
+            3600,
+            fn () => PageBlock::query()
+                ->where(PageBlock::PAGE, $page)
+                ->where(PageBlock::IS_ACTIVE, true)
+                ->orderBy(PageBlock::SORT_ORDER)
+                ->orderBy(PageBlock::ID)
+                ->get()
+        );
+
+        return success(PageBlockResource::collection($blocks), __('page_blocks.list_received'));
     }
 }

@@ -111,10 +111,15 @@ class CheckSupplierBalancesJob implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        // هر دو با هم سنجیده می‌شوند: اگر فقط طلب را چک کنیم ممکن است وصول شود
-        // ولی هولدِ مالیات در همان تراکنش شکست بخورد و همه‌چیز rollback شود —
-        // هر بار، بی‌سروصدا، تا ابد.
-        if ((float) $supplierUser->wallet->balance < $debtAmount + $vatPending) {
+        // پیش از این هر دو با هم سنجیده می‌شدند، چون اگر فقط طلب چک می‌شد ممکن
+        // بود وصول شود ولی هولدِ مالیات در همان تراکنش شکست بخورد و همه‌چیز
+        // rollback شود — هر بار، بی‌سروصدا، تا ابد.
+        //
+        // حالا که مالیات هولد نمی‌شود (تصمیم مدیریت ۲۰۲۶-۰۹-۰۹، بندِ ۶)، فقط
+        // خودِ طلب سنجیده می‌شود. ⚠️ افزودنِ `$vatPending` به این شرط حالا یک
+        // **باگ** می‌شد: تأمین‌کننده باید پولی را می‌داشت که هیچ‌کس قرار نیست
+        // برداشتش کند، و تا آن روز کسری‌اش تسویه نمی‌شد.
+        if ((float) $supplierUser->wallet->balance < $debtAmount) {
             return; // Still insufficient — try again next run
         }
 
@@ -127,8 +132,11 @@ class CheckSupplierBalancesJob implements ShouldBeUnique, ShouldQueue
                 return; // Already handled by a concurrent run
             }
 
+            // همان اصلاحِ گاردِ بیرونی: مالیات دیگر هولد نمی‌شود، پس نباید در
+            // آستانه‌ی موجودی حساب شود. با `+ $vatPending` تأمین‌کننده‌ای که
+            // دقیقاً به‌اندازه‌ی طلب پول داشت، تا ابد رد می‌شد.
             $supplierWallet = Wallet::where('user_id', $supplierUser->id)->lockForUpdate()->first();
-            if (! $supplierWallet || (float) $supplierWallet->balance < $debtAmount + $vatPending) {
+            if (! $supplierWallet || (float) $supplierWallet->balance < $debtAmount) {
                 return; // Balance dropped below threshold since the check — skip
             }
 
@@ -152,17 +160,16 @@ class CheckSupplierBalancesJob implements ShouldBeUnique, ShouldQueue
                 );
             }
 
-            // ۳. مالیاتِ معلق حالا هولد می‌شود — در کیف پولِ **خودِ** تأمین‌کننده،
-            //    نه در کیف پول سازه. پس از بند ۱ می‌آید چون آن بند تازه از همین
-            //    کیف پول برداشت کرده و ترتیب برعکس می‌توانست موجودی را کم بیاورد.
-            if ($vatPending > 0) {
-                $walletEngine->placeHold(
-                    (int) $supplierUser->id,
-                    $vatPending,
-                    $lockedOrder,
-                    "مالیات امانی سفارش {$lockedOrder->order_number} — تا ثبت فاکتور مودیان"
-                );
-            }
+            // ۳. **دیگر هولدی گذاشته نمی‌شود** — تصمیم مدیریت ۲۰۲۶-۰۹-۰۹، بندِ ۶:
+            //    مالیاتِ تأمین‌کننده «اصلاً نباید مسدود شود».
+            //
+            //    ستونِ `SUPPLIER_VAT_PENDING_AMOUNT` روی سفارش‌های **قدیمی** هنوز
+            //    مقدار دارد. آن عدد هرگز از کیف پول برداشته نشده بود — فقط ثبت
+            //    شده بود که «این‌قدر باید بعداً هولد شود». حالا که هولدی در کار
+            //    نیست، درست‌ترین کار پاک‌کردنِ همان یادداشت است (بندِ ۴ پایین)،
+            //    نه برداشتِ پول از تأمین‌کننده.
+            //
+            //    ⚠️ پس عمداً هیچ تراکنشِ مالی‌ای این‌جا اجرا نمی‌شود.
 
             // 4. Clear the pending debt flags on the order
             $lockedOrder->forceFill([

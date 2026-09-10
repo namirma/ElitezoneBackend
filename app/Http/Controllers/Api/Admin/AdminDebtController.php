@@ -113,12 +113,23 @@ class AdminDebtController extends Controller
      * بدون این، مانده یک عددِ بی‌توضیح است و بک‌آفیس نمی‌تواند بگوید از کجا
      * آمده — همان دلیلی که کیف پول تاریخچه دارد.
      */
-    public function userDebtEntries(User $user): JsonResponse
+    public function userDebtEntries(Request $request, User $user): JsonResponse
     {
+        // پیش از این `paginate(50)`ِ ثابت بود و `per_page` نه خوانده می‌شد نه در
+        // `meta` برمی‌گشت — تنها اندپوینتِ صفحه‌بندیِ بدهی با این رفتار. سه
+        // همسایه‌اش (`abandonedCarts`، `debts`، و `UserDebtController::index`)
+        // هر دو را دارند.
+        //
+        // نبودنِ `per_page` در `meta` فقط بی‌نظمی نبود: مصرف‌کننده نمی‌توانست
+        // اندازه‌ی صفحه را **بفهمد** و ناچار بود عدد را هاردکد کند، پس اگر این‌جا
+        // روزی عوض می‌شد فرانت بی‌صدا غلط می‌شد.
+        //
+        // پیش‌فرض ۵۰ نگه داشته شد تا مصرف‌کننده‌ی فعلی رفتارش عوض نشود؛ سقف ۱۰۰
+        // و کفِ ۱۰ همان چیزی است که دو همسایه استفاده می‌کنند.
         $entries = DebtEntry::query()
             ->where(DebtEntry::USER_ID, $user->id)
             ->latest(DebtEntry::ID)
-            ->paginate(50);
+            ->paginate(min(100, max(10, $request->integer('per_page', 50))));
 
         return success([
             'balance' => (string) $user->{User::DEBT_BALANCE},
@@ -126,6 +137,7 @@ class AdminDebtController extends Controller
             'meta' => [
                 'current_page' => $entries->currentPage(),
                 'last_page' => $entries->lastPage(),
+                'per_page' => $entries->perPage(),
                 'total' => $entries->total(),
             ],
         ], __('admin.reports.debt_entries_received'));

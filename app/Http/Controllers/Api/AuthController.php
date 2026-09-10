@@ -367,7 +367,21 @@ class AuthController extends Controller
 
     public function checkPassword(Request $request)
     {
-        $mobile = PhoneNumber::to09($request->input('username'));
+        // بدون این، `username`ِ نیامده به‌صورت null به `to09()` می‌رفت و
+        // TypeError می‌داد — یعنی یک اندپوینتِ **عمومیِ** مسیرِ ورود روی بدنه‌ی
+        // ناقص ۵۰۰ برمی‌گرداند به‌جای ۴۲۲. بدتر از خودِ کرش این بود که ۵۰۰ پیش
+        // از `isLocked`/`recordFailure` می‌افتاد، پس تلاشِ ناموفق با بدنه‌ی ناقص
+        // اصلاً شمرده نمی‌شد.
+        //
+        // عمداً `exists:users,mobile` نمی‌گذاریم — برخلافِ forgetPassword که آن
+        // را دارد. این اندپوینت باید برای شماره‌ی ناموجود ۴۰۴ِ `no_user_found`
+        // بدهد و `recordFailure` را هم بزند؛ `exists` آن مسیر را به ۴۲۲ تبدیل
+        // می‌کرد و شمارنده‌ی قفل را دور می‌زد. شکلِ regex از خطِ ۲۲۶ همین کلاس.
+        $validated = $request->validate([
+            'username' => ['required', 'regex:/^(\+?98|0098|0)?9\d{9}$/'],
+        ]);
+
+        $mobile = PhoneNumber::to09($validated['username']);
 
         if ($this->isLocked($mobile, self::SCOPE_PASSWORD)) {
             return $this->tooManyAttempts(self::SCOPE_PASSWORD);
@@ -390,7 +404,13 @@ class AuthController extends Controller
                 404
             );
         }
-        if (! Hash::check($request->input('password'), $user->password)) {
+        // ‏`password` عمداً اجباری **نشده**: اگر اجباری بود، درخواستِ بدونِ رمز
+        // ۴۲۲ می‌گرفت و از `recordFailure` رد می‌شد — یعنی می‌شد شمارنده‌ی قفل را
+        // با فرستادنِ بدنه‌ی ناقص دور زد. این‌طوری تلاشِ ناقص هم یک تلاشِ ناموفق
+        // حساب می‌شود.
+        // کستِ `(string)` لازم است: `password_verify(null, …)` روی PHP 8.4
+        // deprecation می‌دهد و روی PHP 9 همان TypeErrorِ بالا می‌شود.
+        if (! Hash::check((string) $request->input('password'), $user->password)) {
             $this->recordFailure($mobile, self::SCOPE_PASSWORD);
 
             return error(__('auth.password_error'), [], 404);
