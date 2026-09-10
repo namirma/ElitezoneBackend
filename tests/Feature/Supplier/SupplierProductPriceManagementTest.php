@@ -8,12 +8,14 @@ use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\ProductPrice;
 use App\Models\ProductVariant;
+use App\Models\SupplierRequest;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Str;
 use Laratrust\Models\Role;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Concerns\GrantsAdminPermissions;
 use Tests\TestCase;
 
 /**
@@ -29,6 +31,7 @@ use Tests\TestCase;
 class SupplierProductPriceManagementTest extends TestCase
 {
     use DatabaseTransactions;
+    use GrantsAdminPermissions;
 
     private function makeSupplier(): User
     {
@@ -238,6 +241,14 @@ class SupplierProductPriceManagementTest extends TestCase
 
     // ── Update ──────────────────────────────────────────────────────────
 
+    /**
+     * ⚠️ این مورد قبلاً ۱٬۰۰۰٬۰۰۰ → ۱٬۲۰۰٬۰۰۰ می‌فرستاد، یعنی ۲۰٪ — که با آمدنِ
+     * دروازه‌ی تأیید (آستانه‌ی پیش‌فرض ۱۵٪) دیگر فوراً اعمال نمی‌شود.
+     *
+     * عدد **کم شد، ادعا نه**: چیزی که این تست از اول ثابت می‌کرد «تأمین‌کننده به
+     * ردیفِ خودش دسترسیِ نوشتن دارد» بود، نه «۲۰٪ مشخصاً». مسیرِ بالای آستانه
+     * موردِ جداگانه‌ی خودش را دارد، درست پایین.
+     */
     #[Test]
     public function a_supplier_can_update_their_own_price(): void
     {
@@ -249,12 +260,185 @@ class SupplierProductPriceManagementTest extends TestCase
         Sanctum::actingAs($supplier);
 
         $this->putJson("/api/profile/supplier/prices/{$price->id}", [
-            ProductPrice::GENERAL_PRICE => 1_200_000,
+            ProductPrice::GENERAL_PRICE => 1_050_000,   // ۵٪ — زیرِ آستانه
         ])->assertOk();
 
         $this->assertDatabaseHas('product_prices', [
             ProductPrice::ID => $price->id,
-            ProductPrice::GENERAL_PRICE => 1_200_000,
+            ProductPrice::GENERAL_PRICE => 1_050_000,
         ]);
+    }
+
+    /**
+     * پاسخ ۲۰۰ است، پس `assertOk()` تنها چیزی را ثابت نمی‌کند — قیمتِ **دست‌نخورده**
+     * چیزی است که اهمیت دارد. اگر دروازه بی‌صدا باز شود، تنها همین assert قرمز
+     * می‌شود.
+     */
+    #[Test]
+    public function a_large_price_change_is_queued_instead_of_applied(): void
+    {
+        $supplier = $this->makeSupplier();
+        $factory = $this->makeSupplierFactory($supplier);
+        $location = $this->makeLocation($factory);
+        $price = ProductPrice::create($this->priceRow($this->makeVariant()->id, $factory, $location));
+
+        Sanctum::actingAs($supplier);
+
+        $this->putJson("/api/profile/supplier/prices/{$price->id}", [
+            ProductPrice::GENERAL_PRICE => 1_400_000,   // ۴۰٪ — بالای آستانه
+        ])->assertOk()->assertJsonPath('data.queued_for_approval', true);
+
+        $this->assertDatabaseHas('product_prices', [
+            ProductPrice::ID => $price->id,
+            ProductPrice::GENERAL_PRICE => 1_000_000,
+        ]);
+
+        $this->assertDatabaseHas('supplier_requests', [
+            SupplierRequest::SUPPLIER_USER_ID => $supplier->id,
+            SupplierRequest::TYPE => SupplierRequest::TYPE_PRICE_CHANGE,
+            SupplierRequest::STATUS => SupplierRequest::STATUS_PENDING,
+        ]);
+    }
+
+    /**
+     * ⚠️ **راهِ سالامی بسته است** — دلیلِ اصلیِ اینکه مدیریت «آخرین قیمتِ
+     * تأییدشده» را انتخاب کرد و «قیمتِ فعلی» را رد کرد.
+     *
+     * دو قدمِ ۱۰ درصدیِ پشتِ سرِ هم — هر کدام نسبت به **قیمتِ فعلی** زیرِ آستانه‌ی
+     * ۱۵٪ است، ولی روی هم ۲۱٪ می‌شود. با مبنای «قیمت فعلی» هر دو فوراً اعمال
+     * می‌شدند و قیمت ۲۱٪ بالا می‌رفت بی‌آنکه یک بار به صفِ تأیید بخورد.
+     *
+     * ⚠️ نسخه‌ی اولِ این تست سه قدم داشت و انتظار داشت سومی بگیرد — غلط بود.
+     * ریاضی می‌گوید **قدمِ دوم** می‌گیرد (۱٬۲۱۰٬۰۰۰ یعنی ۲۱٪ نسبت به ۱٬۰۰۰٬۰۰۰).
+     * تست اصلاح شد تا رفتارِ واقعی را پین کند، نه انتظارِ اولیه را.
+     */
+    #[Test]
+    public function repeated_small_changes_cannot_walk_past_the_threshold(): void
+    {
+        $supplier = $this->makeSupplier();
+        $factory = $this->makeSupplierFactory($supplier);
+        $location = $this->makeLocation($factory);
+        $price = ProductPrice::create($this->priceRow($this->makeVariant()->id, $factory, $location));
+
+        Sanctum::actingAs($supplier);
+
+        // قدمِ اول: ۱۰٪ نسبت به مبنا — فوراً اعمال می‌شود.
+        $this->putJson("/api/profile/supplier/prices/{$price->id}", [
+            ProductPrice::GENERAL_PRICE => 1_100_000,
+        ])->assertOk()->assertJsonMissingPath('data.queued_for_approval');
+
+        $this->assertSame(1_100_000.0, (float) $price->refresh()->{ProductPrice::GENERAL_PRICE});
+
+        // قدمِ دوم: باز هم ۱۰٪ نسبت به قیمتِ فعلی — ولی ۲۱٪ نسبت به مبنا. می‌گیرد.
+        $this->putJson("/api/profile/supplier/prices/{$price->id}", [
+            ProductPrice::GENERAL_PRICE => 1_210_000,
+        ])->assertOk()->assertJsonPath('data.queued_for_approval', true);
+
+        $this->assertSame(
+            1_100_000.0,
+            (float) $price->refresh()->{ProductPrice::GENERAL_PRICE},
+            'قدمِ دوم باید به صف برود، نه اینکه اعمال شود.'
+        );
+
+        $this->assertSame(
+            1_000_000.0,
+            (float) $price->{ProductPrice::APPROVED_GENERAL_PRICE},
+            'مبنا با تغییرِ زیرِ آستانه تکان نمی‌خورد — همین راهِ سالامی را می‌بندد.'
+        );
+    }
+
+    /** تأییدِ ادمین مبنا را جلو می‌برد، وگرنه هر تغییرِ بعدی بی‌دلیل به صف می‌رود. */
+    #[Test]
+    public function approval_moves_the_baseline_forward(): void
+    {
+        $supplier = $this->makeSupplier();
+        $factory = $this->makeSupplierFactory($supplier);
+        $location = $this->makeLocation($factory);
+        $price = ProductPrice::create($this->priceRow($this->makeVariant()->id, $factory, $location));
+
+        Sanctum::actingAs($supplier);
+        $this->putJson("/api/profile/supplier/prices/{$price->id}", [
+            ProductPrice::GENERAL_PRICE => 1_400_000,   // ۴۰٪ — به صف
+        ])->assertOk();
+
+        $request = SupplierRequest::query()
+            ->where(SupplierRequest::TYPE, SupplierRequest::TYPE_PRICE_CHANGE)
+            ->latest('id')->firstOrFail();
+
+        $admin = User::factory()->create();
+        $admin->addRole(Role::firstOrCreate(['name' => 'admin'], ['display_name' => 'Admin']));
+        $this->grantAllAdminPermissions($admin);
+        Sanctum::actingAs($admin);
+
+        $this->postJson("/api/admin/supplier-requests/{$request->id}/approve")->assertOk();
+
+        $price->refresh();
+        $this->assertSame(1_400_000.0, (float) $price->{ProductPrice::GENERAL_PRICE});
+        $this->assertSame(
+            1_400_000.0,
+            (float) $price->{ProductPrice::APPROVED_GENERAL_PRICE},
+            'مبنا باید همراهِ قیمت جلو برود.'
+        );
+
+        // و حالا یک تغییرِ کوچک نسبت به عددِ تازه باید فوراً اعمال شود.
+        Sanctum::actingAs($supplier);
+        $this->putJson("/api/profile/supplier/prices/{$price->id}", [
+            ProductPrice::GENERAL_PRICE => 1_450_000,   // ۳٫۶٪ نسبت به مبنای تازه
+        ])->assertOk()->assertJsonMissingPath('data.queued_for_approval');
+    }
+
+    /**
+     * ⚠️ نیمه‌ی دومِ همان داستان: پایه بینِ ثبت و تأیید تکان خورده.
+     *
+     * بینِ صف‌رفتن و تأییدِ ادمین، قیمتِ پایه می‌تواند عوض شود — با یک تغییرِ
+     * زیرِ آستانه‌ی خودِ تأمین‌کننده، یا دستِ ادمینِ دیگر. اگر تأیید کورکورانه
+     * `proposed_*` را بنشاند، دو چیز خراب می‌شود: قیمتِ **تازه‌تر** بی‌صدا
+     * بازنویسی می‌شود، و درصدی که ادمین دید و بر مبنایش تصمیم گرفت دیگر درست
+     * نیست (شاید حالا اصلاً زیرِ آستانه باشد).
+     *
+     * این‌جا کنارِ موردِ بالا نشسته چون نیمه‌ی دیگرِ همان جریان است و فیکسچرهای
+     * کارخانه/انبار/واریانت همین‌جا هستند — یک کپیِ چهل‌خطی در فایلِ دیگر
+     * ارزشش را نداشت.
+     */
+    #[Test]
+    public function approval_is_refused_when_the_base_price_moved_since_the_request(): void
+    {
+        $supplier = $this->makeSupplier();
+        $factory = $this->makeSupplierFactory($supplier);
+        $location = $this->makeLocation($factory);
+        $price = ProductPrice::create($this->priceRow($this->makeVariant()->id, $factory, $location));
+
+        Sanctum::actingAs($supplier);
+        $this->putJson("/api/profile/supplier/prices/{$price->id}", [
+            ProductPrice::GENERAL_PRICE => 1_400_000,
+        ])->assertOk();
+
+        $request = SupplierRequest::query()
+            ->where(SupplierRequest::TYPE, SupplierRequest::TYPE_PRICE_CHANGE)
+            ->latest('id')->firstOrFail();
+
+        // پایه زیرِ پای درخواست تکان می‌خورد (تغییرِ زیرِ آستانه، پس فوراً اعمال شد).
+        $this->putJson("/api/profile/supplier/prices/{$price->id}", [
+            ProductPrice::GENERAL_PRICE => 1_050_000,
+        ])->assertOk();
+
+        $admin = User::factory()->create();
+        $admin->addRole(Role::firstOrCreate(['name' => 'admin'], ['display_name' => 'Admin']));
+        $this->grantAllAdminPermissions($admin);
+        Sanctum::actingAs($admin);
+
+        $this->postJson("/api/admin/supplier-requests/{$request->id}/approve")
+            ->assertStatus(409);
+
+        $this->assertSame(
+            1_050_000.0,
+            (float) $price->refresh()->{ProductPrice::GENERAL_PRICE},
+            'قیمتِ تازه‌تر نباید با مقدارِ کهنه‌ی درخواست بازنویسی شود.'
+        );
+
+        $this->assertTrue(
+            $request->refresh()->isPending(),
+            'تراکنش باید کامل برگردد — درخواست باز می‌ماند تا ادمین با عددِ امروز دوباره تصمیم بگیرد.'
+        );
     }
 }

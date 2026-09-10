@@ -141,9 +141,17 @@ class ProcessWeighbridgeResultAction
                     Order::STATUS => Order::STATUS_AWAITING_WEIGHT_CORRECTION,
                 ])->save();
 
-                Log::channel('financial')->warning(
-                    "Order {$locked->id}: overweight {$result->overweightPercent}% exceeds the tolerance; settlement halted."
-                );
+                // پیامِ قبلی «exceeds the tolerance» می‌گفت، در حالی که آستانه‌ای
+                // دیگر وجود ندارد — و چون `overweightPercent` علامت‌دار است، برای
+                // کم‌تحویلی می‌شد «overweight -3% exceeds the tolerance». هر دو
+                // نیمه‌اش برای کسی که لاگِ مالی را می‌خواند گمراه‌کننده بود.
+                Log::channel('financial')->warning(sprintf(
+                    'Order %d: weighed %s vs ordered %s (%+.2f%%); awaiting two-party consent, settlement halted.',
+                    $locked->id,
+                    $actualWeight,
+                    $orderedWeight,
+                    $result->overweightPercent,
+                ));
 
                 // درخواستِ تأیید را همین‌جا باز می‌کنیم تا سفارش با مبلغ و مهلت
                 // مشخص منتظر بماند؛ رزولوشن از `RequestOverweightApprovalAction`
@@ -213,11 +221,15 @@ class ProcessWeighbridgeResultAction
     // بود که در تصمیم مدیریت ۲۰۲۶-۰۹-۰۹ (بندِ ۲) برداشته شد، و یک متدِ خصوصیِ
     // بی‌صدازننده هم کدِ مرده است هم PHPStan را قرمز می‌کند.
     //
-    // ⚠️ خودِ تنظیم (`SalesSettings::maxOverweightPercent()` و
-    // `config/sales.php`) عمداً دست‌نخورده ماند — طبقِ قانون یک، و چون فیلدش
-    // هنوز در صفحه‌ی تنظیماتِ بک‌آفیس هست. ردیفِ `W1` در
-    // `docs/session/CLEANUP_CANDIDATES.md` می‌گوید آن فیلد باید از پنل برداشته
-    // شود، وگرنه ادمین عددی را تنظیم می‌کند که دیگر هیچ اثری ندارد.
+    // ⚠️ این پاراگراف قبلاً می‌گفت خودِ تنظیم «عمداً دست‌نخورده ماند». دیگر
+    // درست نیست: کامیتِ بعدیِ همان نشست (`479fdb2`) آن را از
+    // `SalesSettings`، `config/sales.php` و `config/settings.php` هم برداشت.
+    // هیچ `maxOverweightPercent()`ای برای صدازدن نمانده.
+    //
+    // ولی نیمه‌ی بک‌آفیسِ ماجرا هنوز باز است: اگر فیلدش در صفحه‌ی تنظیمات مانده
+    // باشد، ادمین عددی را تنظیم می‌کند که هیچ اثری ندارد — و بدتر، چون کلید از
+    // `allowed_keys` هم رفته، ذخیره‌اش رد می‌شود. ردیفِ `W1` در
+    // `docs/session/CLEANUP_CANDIDATES.md` همان است.
 
     /**
      * اضافه‌بارِ درون تلورانس — بند ۸.۲ گام ۷ب و ۷ج.

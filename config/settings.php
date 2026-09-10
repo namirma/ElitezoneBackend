@@ -58,6 +58,17 @@ return [
         'park_time_minutes',
         'reserve_grace_hours',
         'delivery_deadline_hours',
+        // ⚠️ `max_overweight_percent` عمداً برنگشت. این merge دو شاخه را کنار
+        // هم می‌آورد که هر دو همین ناحیه را عوض کرده‌اند: یکی آن کلید را
+        // بازنشسته کرده (هر اختلافِ وزنی حالا رضایتِ دو طرف می‌خواهد، بندِ ۲
+        // مدیریت) و دیگری این دو کلید را اضافه کرده. برگرداندنِ آن کلید یعنی
+        // احیای تنظیمی که هیچ کدِ زنده‌ای دیگر نمی‌خواندش.
+        //
+        // آستانه‌ی درصدِ تغییرِ قیمت که فراتر از آن تأییدِ ادمین لازم است. عمداً
+        // در `public_keys` نیست: پارامترِ داخلیِ مسیرِ فروش است و سایت لازمش ندارد.
+        'price_change_approval_percent',
+        // مهلتِ بررسیِ صفِ تغییرِ قیمت. مثل بالایی عمداً در `public_keys` نیست.
+        'price_change_review_hours',
         'overweight_response_hours',
         'coupon_visibility',
         'reserve_warning_threshold_minutes',

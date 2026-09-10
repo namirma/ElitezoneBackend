@@ -637,10 +637,23 @@ positive, no report could show it either.
 
 Two guards replaced the clamp, both in `ProcessWeighbridgeResultAction`:
 
-- **Tolerance.** `overweightPercent > SalesSettings::maxOverweightPercent()` (default 20 %)
-  → order goes to `awaiting_weight_correction`, `weighing_completed_at` stays NULL, and
-  **not one financial leg runs**. Same principle as the zero-`official_price` guard:
-  invalid data halts, it does not move money.
+- **Two-party consent — and the percentage that used to gate it is GONE**
+  (management clause 2, 2026-09-09). **Any** difference between `weight_after_scale` and
+  `weight_before_scale` — in **either** direction, however small — sends the order to
+  `awaiting_weight_correction`, opens a `RequestOverweightApprovalAction`, leaves
+  `weighing_completed_at` NULL, and runs **not one financial leg**.
+  `max_overweight_percent` and `SalesSettings::maxOverweightPercent()` no longer exist.
+
+  Two things this changed that are easy to miss:
+  - The comparison is on the **weights**, not the derived percentage — "any difference"
+    stays literal instead of smuggling a threshold back in as a float epsilon.
+  - **Under-delivery is covered for the first time.** `overweightPercent` is signed
+    (`(actual − wbs) / wbs`), so the old `> tolerance` test could only ever fire for
+    over-delivery; a short load always settled without asking anyone.
+
+  ⚠️ Do not confuse this with `config('financial.weighbridge_tolerance')` (Rials), which
+  is still live and still decides whether a POO/PTS **money** delta is rounding noise.
+  Two different guards; only the percentage one was retired.
 - **Credit limit.** Within tolerance, the buyer is charged `deltaPOO` from their wallet;
   whatever the wallet cannot cover becomes a `DebtEngine` entry. If `debt_after ≤
   credit_limit` the load ships (`status = 'surplus'`); otherwise the debt is **still
@@ -715,13 +728,27 @@ documents are submitted:
 > recorded at all. Two management decisions unblocked it; both are implemented and
 > `Financial/DrainedSupplierWeighbridgeTest` was *changed* (not deleted) to assert the fix.
 
-**The supplier's VAT is held in the supplier's OWN wallet, never moved to WVAT.**
-`WeighbridgeVatRouter::placeSupplierVatHold()` calls
-`WalletTransactionEngine::placeHold()` — `balance → balance_hold` on the supplier's wallet.
-It is their money; it is only locked until they issue Doc O, which
-`RecordSupplierMoadianInvoiceAction` then releases with `releaseHold()` **on that same
-wallet**. The old path debited it into the separate WVAT escrow and released it *within*
-WVAT, so the VAT never came back to the supplier at all.
+**The supplier's VAT is NOT held at all any more — management clause 6, 2026-09-09.**
+`WeighbridgeVatRouter::routeSupplierVat()` is deliberately an empty method (the signature
+stays so the router still reads as three legs). The whole PTSM is spendable the moment the
+weighbridge settles.
+
+This reversed twice inside 24 hours, so the history matters: VAT was first moved into the
+WVAT escrow (and never came back), then held in the supplier's **own** wallet
+`balance → balance_hold` until Doc O, and now not held at all.
+`placeSupplierVatHold()` / `suspendSupplierVat()` still exist but are **orphaned** — kept
+deliberately so reverting stays a one-line change rather than a reconstruction (rows V1/V2
+in `CLEANUP_CANDIDATES`). ⚠️ Their own docblocks still describe the hold as live; they
+document the dormant machinery, not current behaviour.
+
+`RecordSupplierMoadianInvoiceAction` **keeps** its `releaseHold()` call on purpose: orders
+weighed before the change have real money sitting in `balance_hold`, and dropping the
+release would strand it permanently. It already no-ops when there is nothing to release.
+
+⚠️ **Consequence worth knowing:** that hold was the only thing that made filing the Moadian
+invoice financially necessary. The sole remaining effect of never filing is that the
+supplier cannot delete their profile and an admin cannot reject them — nothing touches
+withdrawal.
 
 **Weighbridge deficit — insufficient supplier balance**
 If at weighbridge time the supplier's wallet cannot cover `PTS − PTSM`:
@@ -797,11 +824,12 @@ Trigger 1 is the one phase 7 lacked, and without it **under-delivery could never
 the summed weight never reaches the order weight, and if the supplier ships in fewer loads
 than there are shipment rows, trigger 3 never fires either. The order stayed open forever.
 
-### Over-tolerance overweight is a two-party approval, not a dead end
+### Any weight difference is a two-party approval, not a dead end
 
-Spec §3.7 / §8.2 step 7a. `ProcessWeighbridgeResultAction` sends an order whose overweight
-exceeds `max_overweight_percent` to `awaiting_weight_correction` with **no financial leg
-run**. Until `RequestOverweightApprovalAction` existed, nothing brought it back: there was
+Spec §3.7 / §8.2 step 7a. `ProcessWeighbridgeResultAction` sends an order whose weighed
+weight differs from the ordered weight **at all, in either direction** (the
+`max_overweight_percent` gate was retired — see the weighbridge section above) to
+`awaiting_weight_correction` with **no financial leg run**. Until `RequestOverweightApprovalAction` existed, nothing brought it back: there was
 no action, no route, and `$weighableStatuses` rejected the status, so re-weighing 409'd
 too. **The order was locked forever.**
 

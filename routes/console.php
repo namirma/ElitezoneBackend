@@ -56,6 +56,17 @@ Schedule::command('orders:expire-overweight')
     ->runInBackground()
     ->onOneServer();
 
+// درخواست‌های تغییرِ قیمتی که ادمین در مهلتِ ۴۸ ساعته به آن‌ها نرسیده.
+// ساعتی، به همان دلیلِ بالایی: مهلت با ساعت سنجیده می‌شود.
+//
+// ⚠️ بدونِ این کرون، مهلتی که به تأمین‌کننده نشان می‌دهیم تزئینی است — عددی که
+// می‌گذرد و هیچ اتفاقی نمی‌افتد.
+Schedule::command('supplier-requests:expire-price-changes')
+    ->hourly()
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->onOneServer();
+
 // سینک محصولات کویر — هر ساعت
 Schedule::command('products:sync-kavir')
     ->hourly()

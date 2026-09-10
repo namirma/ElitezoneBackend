@@ -110,7 +110,33 @@ final class SalesSettings
     }
 
     /**
-     * قواعد اعتبارسنجیِ همین شش کلید، برای `PUT /admin/settings`.
+     * آستانه‌ی درصدِ تغییرِ قیمت که فراتر از آن تأییدِ ادمین لازم است.
+     *
+     * ⚠️ `max(0.0, …)` عمدی است و **صفر را مجاز می‌گذارد**: صفر یعنی هر تغییری
+     * تأیید می‌خواهد. اگر به‌جایش مقدارِ پیش‌فرض را جایگزینِ صفر می‌کردیم، یک
+     * تنظیمِ اشتباه بی‌صدا به «سخت‌گیریِ کمتر» می‌افتاد، که جهتِ غلطی است برای
+     * دروازه‌ای که کارش جلوگیری است.
+     */
+    public function priceChangeApprovalPercent(): float
+    {
+        return max(0.0, $this->float('price_change_approval_percent'));
+    }
+
+    /**
+     * مهلتِ بررسیِ درخواستِ تغییرِ قیمت، به ساعت.
+     *
+     * ⚠️ کفِ ۱ ساعت عمدی است. مقدارِ صفر یعنی «درخواست در همان لحظه‌ی ثبت منقضی
+     * است» — یعنی صفِ تأیید بی‌صدا به یک ردکنندهٔ خودکار تبدیل می‌شد و هیچ
+     * تغییرِ قیمتی هرگز به چشمِ ادمین نمی‌رسید. برخلافِ آستانه‌ی درصد، این‌جا
+     * صفر سمتِ محافظه‌کارانه نیست.
+     */
+    public function priceChangeReviewHours(): int
+    {
+        return max(1, $this->int('price_change_review_hours'));
+    }
+
+    /**
+     * قواعد اعتبارسنجیِ همین کلیدها، برای `PUT /admin/settings`.
      *
      * اینجا زندگی می‌کنند و نه در کنترلر، تا افزودنِ کلیدِ تازه یک نقطه داشته
      * باشد. قاعدهٔ متقاطعِ `reserve_value ≤ shaparak_value` اینجا نیست چون به
@@ -126,6 +152,13 @@ final class SalesSettings
             'park_time_minutes' => ['integer', 'min:1'],
             'reserve_grace_hours' => ['integer', 'min:0'],
             'delivery_deadline_hours' => ['integer', 'min:1'],
+            // ‏`max_overweight_percent` عمداً برنگشت — همان دلیلِ
+            // `config/settings.php`: آن تنظیم بازنشسته شده و مصرف‌کننده‌ای ندارد.
+            //
+            // بدونِ این قاعده یک مقدارِ غیرعددی ذخیره می‌شد و `(float)` صفرش
+            // می‌کرد — یعنی یک غلطِ تایپی بی‌صدا «همه‌ی تغییرها تأیید بخواهند».
+            'price_change_approval_percent' => ['numeric', 'min:0', 'max:100'],
+            'price_change_review_hours' => ['integer', 'min:1'],
             'coupon_visibility' => ['in:'.implode(',', self::couponVisibilityOptions())],
             'reserve_warning_threshold_minutes' => ['integer', 'min:0'],
         ];

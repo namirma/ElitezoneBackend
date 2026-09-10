@@ -41,15 +41,34 @@ class SupplierRequest extends Model
 
     public const REVIEWED_AT = 'reviewed_at';
 
+    /**
+     * مهلتِ بررسی — فقط برای `price_change` پر می‌شود (تصمیم مدیریت: ۴۸ ساعت).
+     *
+     * ⚠️ عمداً در `$fillable` نیست: مهلت را سامانه تعیین می‌کند، نه بدنه‌ی
+     * درخواستِ تأمین‌کننده. اگر fillable بود، فرستنده می‌توانست مهلتِ خودش را
+     * بنویسد — یا مهلتی در گذشته که بلافاصله منقضی شود.
+     */
+    public const REVIEW_DEADLINE = 'review_deadline';
+
     /** لغوِ سفارش — ادمین با `forceCancel` انجامش می‌دهد. */
     public const TYPE_ORDER_CANCELLATION = 'order_cancellation';
 
     /** افزودنِ محصول/واریانت به کاتالوگ. */
     public const TYPE_CATALOG_ADDITION = 'catalog_addition';
 
+    /**
+     * تغییرِ قیمتِ فراتر از آستانه.
+     *
+     * ⚠️ برخلافِ دو نوعِ بالا، پذیرشِ این یکی **واقعاً اقدام می‌کند** و قیمت را
+     * اعمال می‌کند. دلیلش در `AdminSupplierRequestController::review()` نوشته
+     * شده: برای لغو و کاتالوگ یک مسیرِ اجرایی‌ِ دیگر وجود دارد، برای قیمت نه.
+     */
+    public const TYPE_PRICE_CHANGE = 'price_change';
+
     public const TYPES = [
         self::TYPE_ORDER_CANCELLATION,
         self::TYPE_CATALOG_ADDITION,
+        self::TYPE_PRICE_CHANGE,
     ];
 
     public const STATUS_PENDING = 'pending';
@@ -75,6 +94,7 @@ class SupplierRequest extends Model
     protected $casts = [
         self::PAYLOAD => 'array',
         self::REVIEWED_AT => 'datetime',
+        self::REVIEW_DEADLINE => 'datetime',
     ];
 
     /** @return BelongsTo<User, $this> */
