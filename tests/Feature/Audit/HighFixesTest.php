@@ -5,13 +5,13 @@ namespace Tests\Feature\Audit;
 use App\Services\Reports\CsvReportBuilder;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
+use PHPUnit\Framework\Attributes\Group;
 use Tests\TestCase;
 
 /**
  * Regression tests for the High-severity audit fixes.
- *
- * @group audit-fixes
  */
+#[Group('audit-fixes')]
 class HighFixesTest extends TestCase
 {
     use DatabaseTransactions;

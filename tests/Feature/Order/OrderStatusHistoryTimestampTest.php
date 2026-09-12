@@ -85,6 +85,43 @@ class OrderStatusHistoryTimestampTest extends TestCase
         );
     }
 
+    /**
+     * `duration_minutes` باید مدتِ **سپری‌شده** باشد — عددِ مثبت.
+     *
+     * پیشینه: در Carbon 2 (لاراول ۱۰) `diffIn*` قدرمطلقِ صحیح برمی‌گرداند، در
+     * Carbon 3 (لاراول ۱۳) عددِ علامت‌دارِ اعشاری. `OrderObserver` می‌نوشت
+     * `now()->diffInMinutes($lastHistory->created_at)` — یعنی «از now تا گذشته» —
+     * که روی L13 منفی می‌شود. ستون integer است پس مقدار هم بریده می‌شد، و
+     * `OrderTimelineService` همان را به کاربر «−۳۰ دقیقه در وضعیت قبلی» نشان می‌داد.
+     *
+     * این تست خودِ علامت را pin می‌کند، نه صرفاً «ستون پر شده» — با ترتیبِ غلطِ
+     * عملوندها سرخ می‌شود.
+     */
+    #[Test]
+    public function the_duration_of_a_status_change_is_a_positive_elapsed_time(): void
+    {
+        $order = Order::factory()->create([Order::STATUS => Order::STATUS_PROCESSING]);
+
+        // ساعتِ تست را جلو می‌بریم تا بینِ رکوردِ اولیه (created) و تغییرِ وضعیت
+        // واقعاً زمان گذشته باشد؛ وگرنه صفر و منفیِ صفر از هم تفکیک نمی‌شوند.
+        Carbon::setTestNow(now()->addMinutes(45));
+
+        $order->update([Order::STATUS => Order::STATUS_DELIVERED]);
+
+        $duration = OrderStatusHistory::where(OrderStatusHistory::ORDER_ID, $order->id)
+            ->latest(OrderStatusHistory::CREATED_AT)
+            ->value(OrderStatusHistory::DURATION_MINUTES);
+
+        Carbon::setTestNow();
+
+        $this->assertSame(
+            45,
+            (int) $duration,
+            'مدتِ توقف باید ۴۵ دقیقهٔ مثبت باشد. مقدارِ منفی یعنی ترتیبِ عملوندهای '
+            .'diffInMinutes برعکس است و Carbon 3 علامت‌دار برمی‌گرداند.'
+        );
+    }
+
     #[Test]
     public function the_migration_default_is_not_what_fills_the_column(): void
     {

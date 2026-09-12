@@ -8,13 +8,13 @@ use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use PHPUnit\Framework\Attributes\Group;
 use Tests\TestCase;
 
 /**
  * Regression tests for the decision-batch fixes (D1-B remove phantom fee hold, D3 admin perms).
- *
- * @group audit-fixes
  */
+#[Group('audit-fixes')]
 class ReAuditFix3Test extends TestCase
 {
     use DatabaseTransactions;

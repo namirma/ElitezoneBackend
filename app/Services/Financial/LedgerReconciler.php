@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use App\Support\Money;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -324,8 +325,13 @@ final class LedgerReconciler
             'order_number' => $row->order_number,
             'order_status' => (string) $row->order_status,
             'stuck_hold' => (string) $row->stuck_hold,
+            // ترتیبِ عملوندها عمدی است: Carbon 3 (لاراول ۱۳) عددِ **علامت‌دار**
+            // برمی‌گرداند و Carbon 2 قدرمطلق. با `now()->diffInDays($past)` سنِ
+            // هر هولدِ گیرکرده منفی گزارش می‌شد — یعنی گزارشِ financial:doctor
+            // قدیمی‌ترین هولد را جوان‌ترین نشان می‌داد. از گذشته به now هر دو
+            // نسخه مثبت می‌دهند.
             'age_days' => $row->last_movement
-                ? (int) now()->diffInDays($row->last_movement)
+                ? (int) Carbon::parse($row->last_movement)->diffInDays(now())
                 : 0,
         ])->all();
     }

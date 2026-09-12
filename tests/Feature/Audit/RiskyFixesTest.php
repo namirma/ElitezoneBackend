@@ -14,14 +14,14 @@ use App\Services\SmsService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Cache;
 use Mockery;
+use PHPUnit\Framework\Attributes\Group;
 use Tests\TestCase;
 
 /**
  * Regression tests for the "risky" batch (R1 idempotency fallback, R4 dedup,
  * R5 verified_amount, R15 payable-status alignment).
- *
- * @group audit-fixes
  */
+#[Group('audit-fixes')]
 class RiskyFixesTest extends TestCase
 {
     use DatabaseTransactions;

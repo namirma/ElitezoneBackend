@@ -7,13 +7,13 @@ use App\Jobs\Financial\PollPodiumDepositsJob;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
+use PHPUnit\Framework\Attributes\Group;
 use Tests\TestCase;
 
 /**
  * Regression tests for the second re-audit batch (decision-item safe fixes).
- *
- * @group audit-fixes
  */
+#[Group('audit-fixes')]
 class ReAuditFix2Test extends TestCase
 {
     use DatabaseTransactions;

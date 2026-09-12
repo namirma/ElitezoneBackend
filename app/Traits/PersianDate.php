@@ -60,7 +60,11 @@ trait PersianDate
                 return 0;
             }
 
-            return (int) Carbon::make(@$this->attributes['expire_at'])?->diffInDays();
+            // ترتیبِ عملوندها عمدی است: Carbon 3 (لاراول ۱۳) عددِ **علامت‌دار**
+            // برمی‌گرداند و Carbon 2 قدرمطلق. با `$expireAt->diffInDays()` — که
+            // یعنی «از expire تا now» — روزهای باقی‌مانده منفی درمی‌آمد. بالا
+            // تضمین شده expire_at در گذشته نیست، پس now→expire مثبت است.
+            return (int) now()->diffInDays(Carbon::parse(@$this->attributes['expire_at']));
         }
     }
 }

@@ -3,6 +3,7 @@
 namespace Tests\Feature\Audit;
 
 use App\Enums\Survey\SurveyStatus;
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -23,9 +24,8 @@ use Tests\TestCase;
  *
  * Adding to this list is cheap. Removing from it should mean the parked flow was
  * actually cancelled, not that it still looks unused.
- *
- * @group audit-fixes
  */
+#[Group('audit-fixes')]
 class DeliberatelyKeptTest extends TestCase
 {
     #[Test]
