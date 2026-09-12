@@ -257,6 +257,23 @@ class PageBlockSchemaTest extends TestCase
     }
 
     #[Test]
+    public function the_geometry_ladder_contains_the_value_the_site_actually_renders(): void
+    {
+        // ۲۰ مقدارِ فعلیِ gapِ `card_row` است و از عرضِ کنواس درمی‌آید:
+        // `4×300 + 3×20 = 1260` (`PdBenefits.css:23`). نبودنش یعنی ادمین
+        // نمی‌تواند همان چیزی را انتخاب کند که صفحه امروز نشان می‌دهد — و
+        // نسخه‌ی اولِ این نردبان دقیقاً همین اشتباه را داشت.
+        $this->assertContains('20', PageBlockSchema::STYLE_SLOTS['gap']['values']);
+
+        // و پله‌ی تایپ باید همان توکن‌هایی باشد که `typeScale.css` تعریف کرده،
+        // وگرنه `var(--ez-fs-N)`ی ساخته می‌شود که وجود ندارد و بی‌صدا
+        // به fallback می‌افتد.
+        foreach (['48', '32', '16', '12'] as $step) {
+            $this->assertContains($step, PageBlockSchema::STYLE_SLOTS['titleSize']['values']);
+        }
+    }
+
+    #[Test]
     public function hero_actions_limits_its_button_count_to_match_its_hint(): void
     {
         // هینتِ hero_actions می‌گوید «یک یا دو دکمه‌ی فراخوان»، پس قاعده باید

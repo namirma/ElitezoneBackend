@@ -42,6 +42,11 @@ class AdminPageBlockController extends Controller
         return success([
             'types' => $schema->all(),
             'shapes' => $this->normalizedShapes(),
+            // واژگانِ ویجتِ `style` از روی سیم می‌رود تا بک‌آفیس کپیِ دستی
+            // نداشته باشد. بدونِ این، نردبانِ مقادیر در دو جا نوشته می‌شد و
+            // همان روزِ اول واگرا شد: نسخه‌ی پنل ۲۰ را نداشت در حالی که
+            // مقدارِ فعلیِ `card_row` دقیقاً ۲۰ است.
+            'style_slots' => PageBlockSchema::STYLE_SLOTS,
             'site_url' => rtrim((string) config('app.front_url'), '/') ?: null,
         ], __('page_blocks.schema_received'));
     }
