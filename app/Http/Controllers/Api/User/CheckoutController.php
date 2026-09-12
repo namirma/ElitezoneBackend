@@ -102,6 +102,16 @@ class CheckoutController extends Controller
 
         return success(array_merge($branch->toArray(), [
             'reserve_warning' => $warningResolver->forCart($cart),
+            // دو پرچمی که بدونشان فرانت دکمه‌ای نشان می‌داد که قطعاً شکست می‌خورد
+            // (ممیزیِ ۲۰۲۶-۰۹-۱۲، باگ‌های ۱ و ۴):
+            //  - رِیلِ «پرداخت اینترنتی» فقط وقتی هست که driverِ درگاه پیکربندی
+            //    شده باشد — همان `isConfigured()` که `paymentInfo` می‌خواند؛ وگرنه
+            //    `wallet/deposit` برای هر روشی جز فیش ۵۰۳ می‌دهد.
+            //  - سبدی که برای کارفرما لینک شده از کیف پولِ الیت‌یار پرداخت
+            //    نمی‌شود (`pay`/`reserve` ۴۲۲ می‌دهند)، پس فرانت باید کارتِ
+            //    تسویه را ببندد.
+            'online_gateway_active' => $this->onlineGatewayIsActive(),
+            'is_for_beneficiary' => $cart->isForBeneficiary(),
             // اجزای پایه، تا فرانت مجبور نباشد خودش دوباره جمع بزند —
             // و `shipping_included` صریح می‌گوید کرایه شمرده شده یا نه.
             'breakdown' => [

@@ -256,4 +256,37 @@ class PaymentBaseIncludesShippingTest extends TestCase
         $this->assertFalse($data['breakdown']['shipping_included']);
         $this->assertSame(0.0, (float) $data['breakdown']['shipping_with_vat']);
     }
+
+    // ── دو پرچمِ ممیزیِ ۲۰۲۶-۰۹-۱۲ (باگ‌های ۱ و ۴) ─────────────────────────────
+    // این‌جا و نه در فایلِ جدا، چون همین fixtures کافی‌اند و هر دو پرچم روی همان
+    // پاسخِ payment-options می‌نشینند.
+
+    #[Test]
+    public function payment_options_reports_whether_the_online_gateway_rail_exists(): void
+    {
+        $address = $this->address();
+        $this->fillCart($address);
+
+        // PASARGAD_* در محیطِ تست خالی است، پس driver پیکربندی‌نشده و رِیل خاموش
+        // است — همان وضعیتی که `wallet/deposit` برای podium/shaparak ۵۰۳ می‌دهد.
+        $data = $this->branchOptions();
+
+        $this->assertArrayHasKey('online_gateway_active', $data);
+        $this->assertFalse($data['online_gateway_active']);
+        $this->assertFalse($data['is_for_beneficiary']);
+    }
+
+    #[Test]
+    public function payment_options_flags_a_cart_that_is_linked_to_an_employer(): void
+    {
+        $address = $this->address();
+        $cart = $this->fillCart($address);
+
+        $employer = User::factory()->create();
+        $cart->forceFill([Cart::BENEFICIARY_USER_ID => $employer->id])->save();
+
+        // `pay`/`reserve` روی این سبد ۴۲۲ می‌دهند؛ فرانت باید از همین پرچم بفهمد
+        // و کارتِ تسویه را ببندد، نه از یک کلیکِ شکست‌خورده.
+        $this->assertTrue($this->branchOptions()['is_for_beneficiary']);
+    }
 }

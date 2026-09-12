@@ -94,9 +94,16 @@ class PlaceOrderAction
             // ۲.۵ اعمال کوپن تخفیف (در صورت ارسال) — با lock تا مصرف همزمان نشود.
             // تخفیف روی final_amount نمایش داده می‌شود؛ leg مالی آن هنگام پرداخت
             // (WSSG→WO) ثبت می‌شود و فرمول‌های POO/PTS دست نمی‌خورند.
+            // کد از بدنه‌ی درخواست، و در نبودش از خودِ سبد. تصمیمِ شاخه در
+            // `CartCheckoutTotals` همیشه از `carts.coupon_code` می‌خواند؛ اگر
+            // این‌جا فقط بدنه معتبر بود، سفارشی که فرانت کدش را نفرستاده (پیش‌نمایشِ
+            // ناهم‌زمان بعد از رفرش) بدونِ تخفیف ساخته می‌شد و بیشتر از عددِ
+            // نمایش‌داده‌شده از کیف پول کم می‌شد. `fromCart()` از قبل همین را می‌کرد.
+            $couponCode = $data->couponCode ?: ($cart->{Cart::COUPON_CODE} ?: null);
+
             $coupon = null;
-            if ($data->couponCode) {
-                $coupon = $this->couponService->validateForCheckout($user, $data->couponCode, lock: true);
+            if ($couponCode) {
+                $coupon = $this->couponService->validateForCheckout($user, $couponCode, lock: true);
                 $couponDiscount = $this->couponService->calculateDiscount($coupon, (float) $financials['final_amount']);
                 $financials['coupon_id'] = $coupon->id;
                 $financials['coupon_discount_amount'] = $couponDiscount;
