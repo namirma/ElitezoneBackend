@@ -152,6 +152,12 @@ final class PageBlockSchema
                     'headlineLine2' => ['type' => 'text', 'required' => true, 'max' => 160, 'label' => 'خطِ دومِ تیتر'],
                     // دکمه همیشه رندر می‌شود، پس بدونِ مقصد یک لینکِ مرده است.
                     'cta' => ['type' => 'link', 'required' => true, 'label' => 'دکمه‌ی فراخوان'],
+                    'style' => [
+                        'type' => 'style',
+                        'slots' => ['titleSize', 'titleWeight', 'bodySize', 'bodyWeight'],
+                        'label' => 'تایپوگرافی',
+                        'hint' => 'تیتر = خطِ اولِ سربرگ، متن = خطِ دوم. این بلوک روی ستونِ ۱۲۶۰ نیست و نردبانِ تایپِ خودش را دارد، پس اسلاتِ هندسی ندارد.',
+                    ],
                 ],
             ],
 
@@ -165,6 +171,12 @@ final class PageBlockSchema
                     'videoSrc' => ['type' => 'text', 'required' => true, 'label' => 'نشانی فایلِ ویدیو', 'hint' => 'آدرسِ (URL) فایلِ ویدیویی که در این بلوک پخش می‌شود — آپلودِ مستقیم نیست.'],
                     'posterSrc' => ['type' => 'image', 'label' => 'عکسِ پوستر', 'hint' => 'پیش از پخش، به‌جای ویدیو نمایش داده می‌شود.'],
                     'glass' => ['type' => 'glass', 'label' => 'تنظیماتِ نمای شیشه‌ای', 'hint' => 'روی نوارِ کنترل‌های ویدیو (نوارِ پیشرفت، دکمه‌ی پخش و دکمه‌ی صدا) اثر می‌گذارد — رنگ، شفافیت، بلور، عمق و رینگِ نورِ همان نوار را از این‌جا تنظیم می‌کنید.'],
+                    'style' => [
+                        'type' => 'style',
+                        'slots' => ['gap'],
+                        'label' => 'فاصله‌ها',
+                        'hint' => 'فقط فاصله‌ی بینِ دکمه‌های کنترلِ ویدیو. این بلوک هیچ متنی ندارد.',
+                    ],
                 ],
             ],
 
@@ -189,6 +201,12 @@ final class PageBlockSchema
                     'paragraphs' => ['type' => 'list', 'of' => 'textarea', 'label' => 'پاراگراف‌های متن'],
                     'items' => ['type' => 'list', 'of' => 'text', 'label' => 'موارد فهرست'],
                     'link' => ['type' => 'link', 'label' => 'لینکِ «بیشتر بدانید»'],
+                    'style' => [
+                        'type' => 'style',
+                        'slots' => ['titleSize', 'titleWeight', 'bodySize', 'bodyWeight'],
+                        'label' => 'تایپوگرافی',
+                        'hint' => 'عنوان و متنِ پشتِ کارت. کپشنِ دوزبانه‌ی زیرِ کارت و لیدِ آن هرکدام پله‌ی خودشان را دارند.',
+                    ],
                 ],
             ],
 
@@ -202,6 +220,12 @@ final class PageBlockSchema
                     'title' => ['type' => 'text', 'required' => true, 'label' => 'عنوان'],
                     'body' => ['type' => 'list', 'of' => 'textarea', 'required' => true, 'label' => 'جمله‌های نوار', 'hint' => 'هر عضوِ فهرست یک خط از نوارِ شیشه‌ای روی عکس است.'],
                     'glass' => ['type' => 'glass', 'label' => 'تنظیماتِ نمای شیشه‌ای', 'hint' => 'روی همین نوارِ شیشه‌ایِ رویِ عکس اثر می‌گذارد — رنگ، شفافیت، بلور، عمق و رینگِ نورِ نوار را از این‌جا تنظیم می‌کنید.'],
+                    'style' => [
+                        'type' => 'style',
+                        'slots' => ['titleSize', 'titleWeight', 'bodySize', 'bodyWeight'],
+                        'label' => 'تایپوگرافی',
+                        'hint' => 'تیتر و متنِ نوارِ شیشه‌ای. روتیترِ بالای آن پله‌ی تایپِ خودش را دارد.',
+                    ],
                 ],
             ],
 
@@ -210,6 +234,12 @@ final class PageBlockSchema
                 'hint' => 'جمله‌ها یکی‌یکی با اسکرول ظاهر می‌شوند. کاراکترِ «ـ» داخلِ متن، کشیدگیِ طراحی است — پاکش نکنید.',
                 'fields' => [
                     'callouts' => ['type' => 'list', 'of' => 'callout', 'required' => true, 'label' => 'فهرستِ جمله‌ها'],
+                    'style' => [
+                        'type' => 'style',
+                        'slots' => ['titleSize', 'bodySize', 'bodyWeight', 'gap'],
+                        'label' => 'تایپوگرافی و فاصله‌ها',
+                        'hint' => 'تیتر = خطِ درشتِ هر بند، متن = ادامه‌ی جمله، فاصله = میانِ بندها (امروز ۶۸؛ نزدیک‌ترین پله ۶۴). وزنِ تیتر عمداً نیست: CSS وزنی برایش اعلام نکرده و از متن ارث می‌برد.',
+                    ],
                 ],
             ],
 
@@ -219,6 +249,12 @@ final class PageBlockSchema
                 'fields' => [
                     'cards' => ['type' => 'list', 'of' => 'audience', 'required' => true, 'label' => 'کارت‌های شیشه‌ای'],
                     'glass' => ['type' => 'glass', 'label' => 'تنظیماتِ نمای شیشه‌ای', 'hint' => 'روی ظاهرِ شیشه‌ایِ خودِ کارت‌ها اثر می‌گذارد — رنگ، شفافیت، بلور، عمق و رینگِ نورِ کارت‌ها را از این‌جا تنظیم می‌کنید.'],
+                    'style' => [
+                        'type' => 'style',
+                        'slots' => ['titleSize', 'titleWeight', 'bodySize', 'bodyWeight'],
+                        'label' => 'تایپوگرافی',
+                        'hint' => 'تیتر و متنِ کارت‌ها. فاصله‌های این بلوک درصدیِ گریدِ خودش‌اند نه ضریبِ ستونِ ۱۲۶۰، پس اسلاتِ هندسی ندارد — «۲۰» این‌جا «۲۰٪» می‌شد.',
+                    ],
                 ],
             ],
 
@@ -228,6 +264,12 @@ final class PageBlockSchema
                 'fields' => [
                     'heading' => ['type' => 'text', 'label' => 'عنوانِ بخش'],
                     'intro' => ['type' => 'textarea', 'max' => 400, 'label' => 'توضیحِ زیرِ عنوان'],
+                    'style' => [
+                        'type' => 'style',
+                        'slots' => ['titleSize', 'titleWeight', 'bodySize', 'bodyWeight', 'gap'],
+                        'label' => 'تایپوگرافی و فاصله‌ها',
+                        'hint' => 'تیتر و متنِ معرفیِ بخش، و فاصله‌ی دکمه‌های دسته‌بندی. متنِ خودِ پرسش‌وپاسخ از رکوردهای FAQ می‌آید.',
+                    ],
                 ],
             ],
 
@@ -254,6 +296,12 @@ final class PageBlockSchema
                     'lines' => ['type' => 'list', 'of' => 'textarea', 'required' => true, 'label' => 'خط‌های نوارِ روی عکس', 'hint' => 'هر عضوِ فهرست یک خط از متنِ روی نوارِ شیشه‌ای زیرِ عکس است.'],
                     'actions' => ['type' => 'list', 'of' => 'action', 'required' => true, 'max' => 2, 'label' => 'دکمه‌های فراخوان'],
                     'glass' => ['type' => 'glass', 'label' => 'تنظیماتِ نمای شیشه‌ای', 'hint' => 'روی نوارِ شیشه‌ایِ زیرِ عکسِ هیرو اثر می‌گذارد — رنگ، شفافیت، بلور، عمق و رینگِ نورِ همان نوار را از این‌جا تنظیم می‌کنید.'],
+                    'style' => [
+                        'type' => 'style',
+                        'slots' => ['titleSize', 'titleWeight', 'bodySize', 'bodyWeight'],
+                        'label' => 'تایپوگرافی',
+                        'hint' => 'تیتر و زیرتیترِ بالای عکس. نیمه‌ی پایینِ این بلوک full-bleed است و خط‌کشِ دیگری دارد، پس اسلاتِ هندسی ندارد.',
+                    ],
                 ],
             ],
 
@@ -275,6 +323,12 @@ final class PageBlockSchema
                     ], 'required' => true, 'label' => 'جهتِ چیدمانِ ردیف', 'hint' => 'راست‌به‌چپ یا چپ‌به‌راست‌بودنِ چیدمانِ کارت‌ها در ردیف.'],
                     'cards' => ['type' => 'list', 'of' => 'card', 'required' => true, 'label' => 'کارت‌ها'],
                     'glass' => ['type' => 'glass', 'label' => 'تنظیماتِ نمای شیشه‌ای', 'hint' => 'روی خودِ کارت‌های این شبکه اثر می‌گذارد — رنگ، شفافیت، بلور، عمق و رینگِ نورِ کارت‌ها را از این‌جا تنظیم می‌کنید. تونِ روشن/تیره‌ی بالا جداست و اول اعمال می‌شود؛ این تنظیمات رویش می‌نشیند.'],
+                    'style' => [
+                        'type' => 'style',
+                        'slots' => ['titleSize', 'titleWeight', 'gap'],
+                        'label' => 'تایپوگرافی و فاصله‌ها',
+                        'hint' => '⚠️ عرضِ کارت‌ها از خودِ فاصله مشتق می‌شود، پس تغییرِ فاصله عرضِ هر سه کارت را هم جابه‌جا می‌کند.',
+                    ],
                 ],
             ],
 
@@ -299,6 +353,12 @@ final class PageBlockSchema
                         'label' => 'اندیس‌های بولدِ متن',
                         'hint' => 'اندیسِ بخش‌هایی از «پاراگراف‌های متن» که باید پررنگ نمایش داده شوند — عدد جایگاه است، نه خودِ متن.',
                     ],
+                    'style' => [
+                        'type' => 'style',
+                        'slots' => ['titleSize', 'titleWeight', 'bodySize', 'bodyWeight'],
+                        'label' => 'تایپوگرافی',
+                        'hint' => 'تیترِ بخش و متنِ کنارِ عکس. تنها فاصله‌ی این بلوک ۱۰۸ است که روی نردبانِ هندسی نیست، پس اسلاتِ فاصله ندارد.',
+                    ],
                 ],
             ],
 
@@ -313,6 +373,12 @@ final class PageBlockSchema
                     'alt' => ['type' => 'text', 'label' => 'متن جایگزین عکس (alt)'],
                     'title' => ['type' => 'text', 'required' => true, 'label' => 'عنوانِ بخش'],
                     'paragraphs' => ['type' => 'list', 'of' => 'textarea', 'required' => true, 'label' => 'پاراگراف‌های پشتِ کارت'],
+                    'style' => [
+                        'type' => 'style',
+                        'slots' => ['titleSize', 'titleWeight'],
+                        'label' => 'تایپوگرافی',
+                        'hint' => 'فقط تیترِ بالای کارت. خودِ کارتِ برگردان اندازه‌های مشترکِ سایت را دارد و از این‌جا عوض نمی‌شود.',
+                    ],
                 ],
             ],
 
@@ -333,6 +399,12 @@ final class PageBlockSchema
                     'fineprint' => ['type' => 'textarea', 'max' => 400, 'label' => 'متنِ ریزِ پابرگ', 'hint' => 'توضیحِ کوچک زیرِ دکمه، مثلِ شرایط یا یادداشتِ حقوقی.'],
                     // `PdClosing` هیچ سطحِ شیشه‌ای ندارد (نه GlassPanel، نه
                     // backdrop-filter در CSSاش) — فیلدِ glass این‌جا مرده بود.
+                    'style' => [
+                        'type' => 'style',
+                        'slots' => ['titleSize', 'titleWeight', 'bodySize', 'bodyWeight'],
+                        'label' => 'تایپوگرافی',
+                        'hint' => 'تیتر و متنِ بالای دکمه. متنِ ریزِ زیرِ دکمه پله‌ی خودش را دارد. این بلوک full-bleed است، پس اسلاتِ هندسی ندارد.',
+                    ],
                 ],
             ],
 
@@ -350,6 +422,12 @@ final class PageBlockSchema
                     'body' => ['type' => 'textarea', 'required' => true, 'label' => 'پاراگرافِ متن'],
                     'reveal' => ['type' => 'boolean', 'label' => 'نمایشِ تدریجی هنگامِ اسکرول', 'hint' => 'برای بلوکی که بالای صفحه است خاموش بگذارید — محتوایی که همین الان دیده می‌شود نباید دوباره محو-ظاهر شود.'],
                     'glass' => ['type' => 'glass', 'label' => 'تنظیماتِ نمای شیشه‌ای', 'hint' => 'روی نوارِ شیشه‌ایِ زیرِ عنوان اثر می‌گذارد — رنگ، شفافیت، بلور، عمق و رینگِ نورِ همان نوار را از این‌جا تنظیم می‌کنید.'],
+                    'style' => [
+                        'type' => 'style',
+                        'slots' => ['titleSize', 'titleWeight', 'bodySize', 'bodyWeight', 'gap'],
+                        'label' => 'تایپوگرافی و فاصله‌ها',
+                        'hint' => 'تیترِ باندِ شیشه‌ای (امروز ۳۲ / وزن ۹۰۰)، متنِ زیرش (۲۴ / ۴۰۰) و فاصله‌ی تیتر تا متن.',
+                    ],
                 ],
             ],
 
@@ -363,6 +441,12 @@ final class PageBlockSchema
                     'title' => ['type' => 'text', 'required' => true, 'label' => 'عنوان'],
                     'cards' => ['type' => 'list', 'of' => 'stat', 'required' => true, 'label' => 'کارت‌های عددی'],
                     'glass' => ['type' => 'glass', 'label' => 'تنظیماتِ نمای شیشه‌ای', 'hint' => 'روی ظاهرِ شیشه‌ایِ کارت‌های عددی اثر می‌گذارد — رنگ، شفافیت، بلور، عمق و رینگِ نورِ کارت‌ها را از این‌جا تنظیم می‌کنید.'],
+                    'style' => [
+                        'type' => 'style',
+                        'slots' => ['titleSize', 'titleWeight', 'bodySize', 'bodyWeight', 'gap'],
+                        'label' => 'تایپوگرافی و فاصله‌ها',
+                        'hint' => 'تیترِ بخش (تنها تیترِ این صفحه که ۴۸ است نه ۵۶)، پاراگرافِ زیرِ هر کارت و فاصله‌ی عکس تا پاراگراف. سه خطِ روی پلاکِ شیشه‌ای دامنه‌ی خودشان را دارند.',
+                    ],
                 ],
             ],
 
@@ -376,6 +460,12 @@ final class PageBlockSchema
                     'title' => ['type' => 'text', 'required' => true, 'label' => 'عنوان'],
                     'cards' => ['type' => 'list', 'of' => 'feature', 'required' => true, 'label' => 'کارت‌های محصول'],
                     'glass' => ['type' => 'glass', 'label' => 'تنظیماتِ نمای شیشه‌ای', 'hint' => 'روی نوارِ شیشه‌ایِ رویِ عکسِ هر کارتِ محصول اثر می‌گذارد — رنگ، شفافیت، بلور، عمق و رینگِ نورِ نوار را از این‌جا تنظیم می‌کنید. رنگِ تیتر و زیرتیترِ هر کارت جداگانه در خودِ آن کارت تنظیم می‌شود.'],
+                    'style' => [
+                        'type' => 'style',
+                        'slots' => ['titleSize', 'titleWeight', 'bodySize', 'bodyWeight', 'gap'],
+                        'label' => 'تایپوگرافی و فاصله‌ها',
+                        'hint' => 'تیترِ بخش، پاراگرافِ زیرِ هر کارت و فاصله‌ی دو ستون. ⚠️ عرضِ کارت‌ها 1fr است، پس تغییرِ فاصله عرضشان را هم جابه‌جا می‌کند.',
+                    ],
                 ],
             ],
 
@@ -396,6 +486,12 @@ final class PageBlockSchema
                     'title' => ['type' => 'text', 'required' => true, 'label' => 'عنوان'],
                     'cards' => ['type' => 'list', 'of' => 'banner_card', 'required' => true, 'label' => 'کارت‌ها'],
                     'glass' => ['type' => 'glass', 'label' => 'تنظیماتِ نمای شیشه‌ای', 'hint' => 'روی نوارِ عنوانِ شیشه‌ایِ رویِ عکسِ هر کارت اثر می‌گذارد — رنگ، شفافیت، بلور، عمق و رینگِ نورِ نوار را از این‌جا تنظیم می‌کنید. این بخش پیش‌فرض تیره است.'],
+                    'style' => [
+                        'type' => 'style',
+                        'slots' => ['titleSize', 'titleWeight', 'bodySize', 'bodyWeight', 'gap'],
+                        'label' => 'تایپوگرافی و فاصله‌ها',
+                        'hint' => 'تیترِ بخش، پاراگرافِ زیرِ هر کارت و فاصله‌ی عکس تا پاراگراف. تیتر/زیرتیترِ نوارِ تیره دامنه‌ی خودشان را دارند.',
+                    ],
                 ],
             ],
 
@@ -415,6 +511,12 @@ final class PageBlockSchema
                     'id' => ['type' => 'text', 'max' => 190, 'label' => 'شناسه‌ی لنگر (anchor)', 'hint' => 'برای لینک‌هایی مثلِ «/podium#services» که با کلیک به همین بخش اسکرول می‌کنند. تغییرِ این مقدار هر لینکی را که به مقدارِ قبلی اشاره دارد می‌شکند.'],
                     'title' => ['type' => 'text', 'required' => true, 'label' => 'عنوان'],
                     'cards' => ['type' => 'list', 'of' => 'flip_panel', 'required' => true, 'label' => 'کارت‌ها'],
+                    'style' => [
+                        'type' => 'style',
+                        'slots' => ['titleSize', 'titleWeight', 'gap'],
+                        'label' => 'تایپوگرافی و فاصله‌ها',
+                        'hint' => 'تیترِ بخش و فاصله‌ی عمودیِ بینِ کارت‌های برگردان. تایپِ داخلِ کارت مالِ کامپوننتِ مشترک است.',
+                    ],
                 ],
             ],
 
@@ -485,6 +587,12 @@ final class PageBlockSchema
                         'type' => 'list', 'of' => 'number',
                         'label' => 'اندیس‌های بولدِ متن',
                         'hint' => 'اندیسِ بخش‌هایی از «پاراگراف‌های متن» که باید پررنگ نمایش داده شوند — عدد جایگاه است، نه خودِ متن.',
+                    ],
+                    'style' => [
+                        'type' => 'style',
+                        'slots' => ['titleSize', 'titleWeight', 'bodySize', 'bodyWeight'],
+                        'label' => 'تایپوگرافی',
+                        'hint' => 'تیترِ بخش و متنِ زیرِ عکس. این بلوک فاصله‌ی فلکس/گریدی ندارد.',
                     ],
                 ],
             ],
