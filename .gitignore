@@ -44,3 +44,8 @@ _ide_helper_models.php
 /contract-changelog.md
 /contract-breaking.md
 /contract-summary.md
+
+# یک کامیتِ محلی روی `master` این فایل را با کردنشیالِ واقعی وارد گیت کرد
+# (DB/MAIL/AWS/PUSHER). آن کامیت عمداً هرگز push نشد. این خط جلوی تکرارش را
+# می‌گیرد: `.env` از قبل بود، ولی `env.local` بدونِ نقطه در الگو نمی‌افتاد.
+env.local
