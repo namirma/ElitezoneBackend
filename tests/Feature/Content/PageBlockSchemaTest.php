@@ -29,7 +29,10 @@ class PageBlockSchemaTest extends TestCase
     #[Test]
     public function every_field_uses_a_known_widget_type(): void
     {
-        $known = ['text', 'textarea', 'image', 'link', 'list', 'number', 'color', 'select', 'boolean', 'glass'];
+        // ⚠️ از خودِ ثابت خوانده می‌شود، نه کپیِ دستی. این فهرست دو بار در همین
+        // فایل هاردکد بود و افزودنِ ویجتِ `style` هر دو را قرمز کرد — دقیقاً همان
+        // «آینه بدونِ تست» که این مسیر سه نمونه‌ی زنده‌اش را دارد.
+        $known = PageBlockSchema::WIDGETS;
 
         foreach ($this->schema->all() as $type => $definition) {
             foreach ($definition['fields'] as $name => $field) {
@@ -48,7 +51,10 @@ class PageBlockSchemaTest extends TestCase
         // `every_field_uses_a_known_widget_type` فقط فیلدهای سطحِ بالا را می‌بیند؛
         // یک تایپوی «selct» داخلِ SHAPES هیچ‌جا رد نمی‌شد. این تست همان چک را
         // برای اعضای فهرست‌های آبجکتی (SHAPES) هم می‌زند.
-        $known = ['text', 'textarea', 'image', 'link', 'list', 'number', 'color', 'select', 'boolean', 'glass'];
+        // ⚠️ از خودِ ثابت خوانده می‌شود، نه کپیِ دستی. این فهرست دو بار در همین
+        // فایل هاردکد بود و افزودنِ ویجتِ `style` هر دو را قرمز کرد — دقیقاً همان
+        // «آینه بدونِ تست» که این مسیر سه نمونه‌ی زنده‌اش را دارد.
+        $known = PageBlockSchema::WIDGETS;
 
         foreach (PageBlockSchema::SHAPES as $shape => $members) {
             foreach ($members as $name => $member) {
@@ -172,6 +178,82 @@ class PageBlockSchemaTest extends TestCase
 
         $this->assertNotNull($inRule, '«action.tone» باید با Rule::in به گزینه‌های مجازش محدود شود');
         $this->assertSame('in:"solid","stroke"', (string) $inRule);
+    }
+
+    /* ── ویجتِ `style` (فازِ ۱ استایلِ پویا) ──────────────────────────────
+     * قرارداد: docs/specs/STYLE_WIDGET_CONTRACT.md
+     */
+
+    #[Test]
+    public function a_style_slot_only_accepts_a_step_from_the_site_ladder(): void
+    {
+        $rules = $this->schema->rulesFor('card_row');
+
+        // مقدارِ بیرونِ نردبان باید رد شود — این همان چیزی است که جلوی
+        // `font-size: 37px` را می‌گیرد و نردبانِ ریسپانسیو را زنده نگه می‌دارد.
+        $this->assertArrayHasKey('data.style.titleSize', $rules);
+
+        $in = collect($rules['data.style.titleSize'])->first(fn ($r) => $r instanceof In);
+        $this->assertNotNull($in, 'اندازه‌ی عنوان باید با Rule::in محدود شده باشد');
+
+        $allowed = (string) $in;
+        $this->assertStringContainsString('"32"', $allowed, '۳۲ باید یک پله‌ی مجاز باشد');
+        $this->assertStringNotContainsString('"999"', $allowed, '۹۹۹ نباید پله باشد');
+        $this->assertStringNotContainsString('"37"', $allowed, 'عددِ بینِ پله‌ها نباید مجاز باشد');
+    }
+
+    #[Test]
+    public function a_block_type_only_gets_rules_for_the_slots_it_declares(): void
+    {
+        $rules = $this->schema->rulesFor('card_row');
+
+        // `card_row` سه اسلات اعلام کرده چون `PdBenefits.css` سه‌تا مصرف می‌کند.
+        $this->assertArrayHasKey('data.style.titleSize', $rules);
+        $this->assertArrayHasKey('data.style.titleWeight', $rules);
+        $this->assertArrayHasKey('data.style.gap', $rules);
+
+        // و اسلاتی که اعلام نکرده قاعده نمی‌گیرد، پس
+        // `excludeUnvalidatedArrayKeys` حذفش می‌کند و دادهٔ بی‌مصرف ذخیره نمی‌شود.
+        $this->assertArrayNotHasKey('data.style.padTop', $rules);
+        $this->assertArrayNotHasKey('data.style.bodySize', $rules);
+    }
+
+    #[Test]
+    public function every_declared_style_slot_exists_in_the_shared_vocabulary(): void
+    {
+        // آینه‌ی سه‌طرفه (بک‌اند/بک‌آفیس/سایت) فقط وقتی امن است که هیچ نوعی
+        // اسلاتی بیرونِ واژگانِ مشترک اعلام نکند.
+        foreach ($this->schema->all() as $type => $definition) {
+            foreach ($definition['fields'] as $name => $field) {
+                if (($field['type'] ?? null) !== 'style') {
+                    continue;
+                }
+
+                $this->assertNotEmpty($field['slots'] ?? [], "«{$type}.{$name}» هیچ اسلاتی اعلام نکرده");
+
+                foreach ($field['slots'] as $slot) {
+                    $this->assertArrayHasKey(
+                        $slot,
+                        PageBlockSchema::STYLE_SLOTS,
+                        "«{$type}.{$name}» اسلاتِ ناشناخته‌ی «{$slot}» دارد"
+                    );
+                }
+            }
+        }
+    }
+
+    #[Test]
+    public function a_style_field_without_slots_is_a_programmer_error(): void
+    {
+        // کلاس final است، پس به‌جای زیرکلاس، خودِ متدِ گارد صدا زده می‌شود.
+        // نبودِ slots باید صریح بترکد، نه اینکه `Rule::in([])` بسازد که خاموش
+        // هر مقداری را رد می‌کند و شبیهِ باگِ داده به‌نظر می‌رسد.
+        $method = new \ReflectionMethod(PageBlockSchema::class, 'styleRules');
+        $method->setAccessible(true);
+
+        $this->expectException(\InvalidArgumentException::class);
+
+        $method->invoke($this->schema, 'data.style', ['type' => 'style'], 'nullable', 'x.style');
     }
 
     #[Test]
