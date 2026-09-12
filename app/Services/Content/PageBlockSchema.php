@@ -25,7 +25,7 @@ final class PageBlockSchema
     /** ویجت‌هایی که بک‌آفیس می‌شناسد. نوعِ بیرونِ این فهرست = فرمِ خالی. */
     public const WIDGETS = [
         'text', 'textarea', 'image', 'link', 'list',
-        'number', 'color', 'select', 'boolean', 'glass',
+        'number', 'color', 'select', 'boolean', 'glass', 'style',
     ];
 
     /**
@@ -438,6 +438,18 @@ final class PageBlockSchema
                     'title' => ['type' => 'text', 'required' => true, 'max' => 160, 'label' => 'عنوان'],
                     'cards' => ['type' => 'list', 'of' => 'card', 'required' => true, 'label' => 'کارت‌ها'],
                     'glass' => ['type' => 'glass', 'label' => 'تنظیماتِ نمای شیشه‌ای', 'hint' => 'روی خودِ کارت‌های این ردیف اثر می‌گذارد — رنگ، شفافیت، بلور، عمق و رینگِ نورِ کارت‌ها را از این‌جا تنظیم می‌کنید.'],
+
+                    // فازِ ۱ِ استایلِ پویا. فقط سه اسلات، چون `PdBenefits.css`
+                    // فقط همین سه را مصرف می‌کند: عنوان (اندازه و وزن) و
+                    // فاصله‌ی بینِ کارت‌ها. `padTop`/`padBottom` عمداً نیامده —
+                    // این بلوک امروز پدینگی ندارد و فاصله‌ی بینِ بلوک‌ها کارِ
+                    // فازِ ۳ است؛ اسلاتی که CSS مصرفش نکند فرمِ تزئینی است.
+                    'style' => [
+                        'type' => 'style',
+                        'slots' => ['titleSize', 'titleWeight', 'gap'],
+                        'label' => 'تایپوگرافی و فاصله‌ها',
+                        'hint' => 'خالی بگذارید تا همان طرحِ سایت بماند. مقادیر از نردبانِ خودِ سایت‌اند، پس در نمایشگرِ کوچک‌تر هم درست کوچک می‌شوند.',
+                    ],
                 ],
             ],
 
@@ -555,6 +567,7 @@ final class PageBlockSchema
                     $key.'.to' => ['nullable', 'string', 'max:2048'],
                 ],
                 'glass' => $rules += $this->glassRules($key, $required),
+                'style' => $rules += $this->styleRules($key, $field, $required, "{$type}.{$name}"),
                 'number' => $rules[$key] = [$required, 'numeric'],
                 'boolean' => $rules[$key] = [$required, 'boolean'],
                 'select' => $rules[$key] = [$required, 'string', Rule::in($this->selectOptions($field, "{$type}.{$name}"))],
@@ -641,6 +654,60 @@ final class PageBlockSchema
      * بک‌آفیس می‌بیند (`variant` + هفت کنترل) و سایت به متغیرِ CSS ترجمه
      * می‌کند. تنها منبعِ این فهرست همین‌جاست.
      */
+    /* ── ویجتِ `style` — قراردادِ کامل: docs/specs/STYLE_WIDGET_CONTRACT.md ──
+     *
+     * ادمین از **نردبانِ خودِ سایت** انتخاب می‌کند، نه عددِ آزاد. دلیلش دو
+     * چیز است و هر دو سابقه‌ی زنده دارند:
+     *
+     *   ۱. `typeScale.css` همین توکن‌ها را زیرِ `@media (max-width: 1259px)`
+     *      بازتعریف می‌کند. یک عددِ خام تایپ را در همه‌ی عرض‌ها قفل می‌کند و
+     *      نردبانِ ریسپانسیو را می‌کُشد — همان باگِ `, 28px` در `Podium.css`.
+     *   ۲. «پکیج تنها منبعِ حقیقتِ بصری است»؛ ادمین از مقادیرِ موجود انتخاب
+     *      می‌کند، مقدارِ تازه نمی‌سازد.
+     *
+     * مقادیر عمداً **رشته‌اند، نه عدد**: `select` در این اسکیما رشته می‌دهد و
+     * `Rule::in` سخت‌گیرانه مقایسه می‌کند.
+     */
+    private const STYLE_TYPE_STEPS = ['48', '40', '34', '32', '28', '24', '22', '20', '18', '16', '14', '12'];
+
+    /** همان هفت وزنی که فونتِ سایت واقعاً دارد. */
+    private const STYLE_WEIGHTS = ['100', '300', '400', '600', '700', '800', '900'];
+
+    /**
+     * ⚠️ این نردبان از **خودِ سایت اندازه‌گیری شده**، نه از یک ریتمِ ۸تاییِ ذهنی.
+     *
+     * نسخه‌ی اولِ قرارداد `0,8,16,24,32,40,48,56,64,80` بود و **۲۰ را نداشت** —
+     * در حالی‌که ۲۰ پرکاربردترین gapِ سایت است (۶ مورد) و مقدارِ فعلیِ خودِ
+     * `card_row` هم هست: `4×300 + 3×20 = 1260`، دقیقاً عرضِ کنواس
+     * (`PdBenefits.css:23`). یعنی ادمین نمی‌توانست همان چیزی را انتخاب کند که
+     * صفحه امروز نشان می‌دهد. نشستِ بک‌آفیس این تناقض را گرفت.
+     *
+     * شمارشِ واقعی روی CSSِ بلوک‌ها (gap و padding):
+     *   20×۹ · 24×۵ · 28×۳ · 18×۳ · 32×۲ · 56×۲ · 40×۲ · 6×۲ · 8 · 10 · 12 · 64
+     *
+     * پس «سایت تنها مرجعِ دیزاین است» این‌جا هم اجرا می‌شود: هر پله یک مقدارِ
+     * واقعیِ کشیده‌شده است. `0` اضافه شده چون «بدونِ فاصله» انتخابِ معناداری است.
+     */
+    private const STYLE_GEOMETRY_STEPS = ['0', '6', '8', '10', '12', '18', '20', '24', '28', '32', '40', '56', '64'];
+
+    /**
+     * واژگانِ بسته‌ی اسلات‌ها. هر نوعِ بلوک با کلیدِ `slots` اعلام می‌کند کدام‌ها
+     * را دارد — و **فقط آن‌هایی که CSSاش واقعاً مصرف می‌کند**. اسلاتِ
+     * اعلام‌شده‌ی بی‌مصرف همان «فرمِ تزئینی» است که ادمین پُرش می‌کند و هیچ
+     * اثری روی سایت نمی‌بیند.
+     *
+     * @var array<string, array{label: string, values: list<string>}>
+     */
+    public const STYLE_SLOTS = [
+        'titleSize' => ['label' => 'اندازه‌ی عنوان', 'values' => self::STYLE_TYPE_STEPS],
+        'bodySize' => ['label' => 'اندازه‌ی متن', 'values' => self::STYLE_TYPE_STEPS],
+        'titleWeight' => ['label' => 'وزنِ عنوان', 'values' => self::STYLE_WEIGHTS],
+        'bodyWeight' => ['label' => 'وزنِ متن', 'values' => self::STYLE_WEIGHTS],
+        'padTop' => ['label' => 'فاصله‌ی بالای بخش', 'values' => self::STYLE_GEOMETRY_STEPS],
+        'padBottom' => ['label' => 'فاصله‌ی پایین بخش', 'values' => self::STYLE_GEOMETRY_STEPS],
+        'gap' => ['label' => 'فاصله‌ی بینِ آیتم‌ها', 'values' => self::STYLE_GEOMETRY_STEPS],
+    ];
+
     private const GLASS_VARIANTS = ['clear', 'light', 'dark', 'control'];
 
     private const GLASS_COLOR_FIELDS = ['fill', 'rimSide', 'rimFlat', 'shade', 'sheen'];
@@ -666,6 +733,45 @@ final class PageBlockSchema
 
         foreach (self::GLASS_NUMBER_FIELDS as $field) {
             $rules[$key.'.'.$field] = ['nullable', 'numeric'];
+        }
+
+        return $rules;
+    }
+
+    /**
+     * قواعدِ ویجتِ `style` — فقط برای اسلات‌هایی که **همین نوعِ بلوک** اعلام کرده.
+     *
+     * اسلاتی که اعلام نشده هیچ قاعده‌ای نمی‌گیرد، پس
+     * `excludeUnvalidatedArrayKeys` بی‌صدا حذفش می‌کند — همان رفتارِ `glass`،
+     * و همان چیزی که می‌خواهیم: دادهٔ بی‌مصرف ذخیره نمی‌شود.
+     *
+     * نبودِ `slots` خطای برنامه‌نویس است نه ورودیِ کاربر، پس مثلِ
+     * `selectOptions()` با استثنا متوقف می‌شود — نه با `Rule::in([])` که
+     * خاموش **هر** مقداری را رد می‌کند و شبیهِ باگِ داده به‌نظر می‌رسد.
+     *
+     * @param  array<string, mixed>  $field
+     * @return array<string, list<mixed>>
+     */
+    private function styleRules(string $key, array $field, string $required, string $context): array
+    {
+        $slots = $field['slots'] ?? [];
+
+        if (empty($slots)) {
+            throw new \InvalidArgumentException(
+                "فیلدِ style با نامِ «{$context}» هیچ اسلاتی (slots) اعلام نکرده — این خطای برنامه‌نویس است."
+            );
+        }
+
+        $rules = [$key => [$required, 'array']];
+
+        foreach ($slots as $slot) {
+            if (! isset(self::STYLE_SLOTS[$slot])) {
+                throw new \InvalidArgumentException(
+                    "اسلاتِ ناشناخته‌ی «{$slot}» در «{$context}» — واژگانِ مجاز در STYLE_SLOTS است."
+                );
+            }
+
+            $rules[$key.'.'.$slot] = ['nullable', 'string', Rule::in(self::STYLE_SLOTS[$slot]['values'])];
         }
 
         return $rules;
