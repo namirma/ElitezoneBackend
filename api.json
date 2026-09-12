@@ -12347,7 +12347,8 @@
                             ],
                             "enum": [
                                 "order_cancellation",
-                                "catalog_addition"
+                                "catalog_addition",
+                                "price_change"
                             ]
                         }
                     },
@@ -21328,7 +21329,8 @@
                             ],
                             "enum": [
                                 "order_cancellation",
-                                "catalog_addition"
+                                "catalog_addition",
+                                "price_change"
                             ]
                         }
                     },

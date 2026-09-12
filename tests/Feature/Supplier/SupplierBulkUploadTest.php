@@ -81,15 +81,51 @@ class SupplierBulkUploadTest extends TestCase
 
         // upsert است نه insert: فرستادنِ دوباره‌ی همان فهرست باید به‌روزرسانی
         // کند، نه اینکه هر ردیف ۴۲۲ِ «تکراری» بگیرد.
+        //
+        // ⚠️ تغییر عمداً **زیرِ آستانه** است (۱۰٪ در برابرِ ۱۵٪). نسخه‌ی قبلی
+        // قیمت را دو برابر می‌کرد و بعد از آمدنِ `PriceChangeApprovalGate` آن
+        // ردیف به صفِ تأیید می‌رفت، پس `updated` صفر می‌شد و تست قرمز — در حالی
+        // که چیزی که این تست می‌سنجد «upsert در برابرِ ۴۲۲» است، نه اندازه‌ی
+        // تغییر. رفتارِ بالای آستانه تستِ خودش را دارد (پایین).
         $second = $this->postJson('/api/profile/supplier/prices/bulk', [
-            'rows' => [$this->priceRow($this->variantA, ['general_price' => 2_000_000])],
+            'rows' => [$this->priceRow($this->variantA, ['general_price' => 1_100_000])],
         ])->assertOk()->json('data');
 
         $this->assertSame(0, $second['created']);
         $this->assertSame(1, $second['updated']);
+        $this->assertSame(0, $second['queued_for_approval']);
 
         $this->assertSame(
-            2_000_000.0,
+            1_100_000.0,
+            (float) ProductPrice::query()
+                ->where(ProductPrice::PRODUCT_VARIANT_ID, $this->variantA->id)
+                ->value(ProductPrice::GENERAL_PRICE)
+        );
+    }
+
+    #[Test]
+    public function an_over_threshold_row_is_queued_instead_of_applied(): void
+    {
+        // مسیرِ bulk همان دروازه‌ای را دارد که `update()` دارد. اگر نداشت،
+        // فرستادنِ یک تغییرِ بزرگ به‌صورت یک ردیفِ bulk کاملاً از تأییدِ ادمین
+        // رد می‌شد — که دقیقاً دلیلِ وجودِ `PriceChangeApprovalGate` به‌عنوان
+        // یک سرویس است، نه کدِ داخلِ یک کنترلر.
+        Sanctum::actingAs($this->supplier);
+
+        $this->postJson('/api/profile/supplier/prices/bulk', [
+            'rows' => [$this->priceRow($this->variantA)],
+        ])->assertOk();
+
+        $second = $this->postJson('/api/profile/supplier/prices/bulk', [
+            'rows' => [$this->priceRow($this->variantA, ['general_price' => 2_000_000])],
+        ])->assertOk()->json('data');
+
+        $this->assertSame(1, $second['queued_for_approval']);
+        $this->assertSame(0, $second['updated']);
+
+        // و مهم‌تر از شمارنده: قیمت واقعاً تکان نخورده باشد.
+        $this->assertSame(
+            1_000_000.0,
             (float) ProductPrice::query()
                 ->where(ProductPrice::PRODUCT_VARIANT_ID, $this->variantA->id)
                 ->value(ProductPrice::GENERAL_PRICE)

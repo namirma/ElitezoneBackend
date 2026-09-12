@@ -2,41 +2,26 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-> ## ⚠️ You are on the **L13** branch (`redesign/order-flow-l13`)
-> 
-> This guide is maintained as a near-copy of the L10 branch's (`redesign/order-flow-l10`)
-> so the two do not drift into separate documents. Everything below applies to **both**
-> branches unless a paragraph says otherwise.
-> 
-> **What is genuinely different here — check these before trusting any version claim:**
-> 
-> | | L10 (`api/`) | L13 (this branch) |
-> |---|---|---|
-> | Framework | Laravel 10 | **Laravel 13** |
-> | larastan | `^2.11` (PHPStan 1.12) | **`^3.10` (PHPStan 2.x)** |
-> | App root | the `api/` subdirectory | **the repo root** |
-> | PHPStan baseline ceiling | 172 entries | **288 entries** |
-> 
-> The two ceilings are deliberately independent — larastan 3 is stricter, so the same
-> code produces more findings here. Do not "fix" one branch's number to match the other.
-> 
-> This file previously carried the L10 text verbatim, so on a Laravel 13 branch it
-> claimed to be Laravel 10 and told you PHPStan 2.x was unavailable — the exact
-> question you would open it to answer. If you find another such claim, correct it
-> here rather than working around it.
+> ## ⚠️ L10 is retired — this branch is the only rail (2026-09-10)
 >
-> **Everything else is meant to be identical, and there is now a gate that proves it:**
+> This guide used to be maintained as a near-copy of `redesign/order-flow-l10`, with a
+> `parity` job in CI proving the two stayed identical. **That pair no longer exists.** The
+> decision was to ship Laravel 13 and stop maintaining L10; nothing is ported back, and
+> the parity gate, `scripts/branch-parity.php` and `docs/branch-parity-allowlist.txt`
+> were deleted in the same commit rather than left to fail.
 >
-> ```bash
-> php scripts/branch-parity.php ../api .          # two worktrees
-> php scripts/branch-parity.php redesign/order-flow-l10 redesign/order-flow-l13
-> ```
+> Why they were deleted rather than disabled: L10 never received the Web Push work, the
+> VAT/weighbridge changes, or the price-approval queue, so the gate would have gone red on
+> every push with dozens of "unexpected divergence" files — an alarm that always fires gets
+> muted, and a muted alarm is worse than none. It also had a failure mode of its own: it
+> could exit 0 while reporting "common PHP files: 0" when one side was not a local branch.
 >
-> It normalises comments, imports, fully-qualified names and whitespace, then compares
-> every PHP file. Anything that still differs in *meaning* must be listed with a reason
-> in `docs/branch-parity-allowlist.txt`; anything else fails the check (and the `parity`
-> job in CI). The 183 test files are byte-identical across the two branches — if you
-> touch a test here, mirror it there in the same commit.
+> **Consequences for anything you read below.** Paragraphs that say "mirror it on the other
+> branch", "keep the test files byte-identical", or "cherry-pick, never merge" are historical
+> — there is no other branch. Two things that were true of this rail and still are:
+> it runs **Laravel 13** with **larastan `^3.10` (PHPStan 2.x)**, and the application lives
+> at the **repository root**, not in `api/`. The PHPStan baseline ceiling here is 288
+> entries, which was always independent of L10's 172 — larastan 3 is stricter.
 
 
 ## Project Overview
@@ -2939,12 +2924,13 @@ and the whole settlement. Now:
 On L10, two jobs in `.github/workflows/ci.yml` replace the hand-written frontend handoff
 docs that kept going stale.
 
-> ⚠️ **On this branch there is no `notify` job — only `tests` and `contract`.** It was
-> deliberately not ported, and `ci.yml` says why at the point where it would have gone:
-> the front end integrates against the **L10** contract only, and posting two contracts
-> into one chat group would leave the team unsure which is authoritative. The drift gate
-> below is still needed here and is present. The `notify` section further down describes
-> L10's job — read it as background, not as something you can configure on this branch.
+> ⚠️ **There is no `notify` job anywhere any more — only `tests` and `contract`.** It was
+> never ported here: the reasoning at the time was that the front end integrated against
+> the **L10** contract only, so posting two contracts into one chat group would leave the
+> team unsure which was authoritative. That reason expired with L10 (2026-09-10), and the
+> job went with it — this is now the only contract, so if the team still wants build
+> notifications the job has to be **rebuilt here**, not fetched from a dead branch. The
+> drift gate below is separate, still needed, and present.
 
 **`contract` — the drift gate.** Runs `php artisan scramble:export` and byte-compares
 the result against the committed `api.json`. If they differ the build fails: the
@@ -2964,7 +2950,7 @@ changelog into the job summary and an artifact.
 > labelled every push a breaking change — an alert that always fires gets muted.
 > `--format json` returns `[]` when empty, which is unambiguous.
 
-**`notify` — push, not pull (L10 only; see the note above).** Posts branch, commit, test result and the contract
+**`notify` — push, not pull (a description of the retired L10 job; see the note above — it exists nowhere now).** Posts branch, commit, test result and the contract
 changelog to the team chat group. Runs `if: always()` on purpose — a failed build is
 exactly when the notification matters most.
 
@@ -3221,3 +3207,60 @@ Note this means the SMS segment budget still governs that text.
 Order matters: SMS is dispatched **before** the row is written, so if the write throws, the
 retried job re-sends the SMS — which `SendSmsJob`'s 25-second dedupe window absorbs. The
 reverse order has no such guard. Pinned by `Notification/OrderEventsReachTheBellTest`.
+
+### Page composer (`page_blocks`) — schema-driven, one source of truth per block type
+
+Ported onto this rail from the unmerged `feature/page-blocks`; it was on neither trunk
+before. `PageBlock` rows compose a page out of typed blocks:
+`GET /pages/{page}/blocks` (public) renders the site; ten admin routes under
+`manage-content` do the CRUD (`AdminPageBlockController`).
+
+**`Services/Content/PageBlockSchema` is the single source of truth for "which fields does
+this block type have".** Three consumers read that one array: `GET /admin/page-blocks/schema`
+(the BackOffice builds its form from it), `rulesFor()` (Store/Update validation), and the
+file itself as the written contract. Split them and you get two copies of one contract that
+drift silently — which is exactly what a per-type hand-written admin form would have been.
+
+**Adding a block type is one entry here plus one component in the site's `blockRegistry.jsx`.
+The BackOffice needs no change at all.** Every SHAPES member is an array (`type` + `label`,
+plus `options`/`of` where the widget needs them); there are no bare-string members left, so
+nothing has to accept two shapes.
+
+`settings.vpn_warning_text` arrived with this and is a **deliberate exception to the
+"empty = hidden" rule**: code decides whether the bar shows (non-Iranian IP), so an empty
+value keeps the site's built-in default rather than switching the bar off.
+
+Seeded idempotently by `PageBlocksSeeder` (registered in `DatabaseSeeder`).
+Pinned by four suites under `tests/Feature/Content/`.
+
+### Supplier price changes over a threshold queue for admin approval
+
+`PriceChangeApprovalGate` (management decision, question 1). A supplier's price edit above
+`settings.price_change_approval_percent` (default 15 %) does not apply — it becomes a
+`SupplierRequest` of type `price_change` in the same queue as cancellations and catalog
+additions, with a `review_deadline` of `price_change_review_hours` (default 48).
+
+Four things about it that are easy to get wrong:
+
+- **The gate is a service, not controller code, because there are two write paths.** A
+  supplier changes a price through `SupplierProductPriceController::update()` *and* through
+  `bulkStore()`, and the second one calls `update()` on an existing row. A gate living in
+  the first path only would have been bypassed completely by sending the same change as a
+  one-row bulk.
+- **The percentage is measured against the last *approved* baseline, not the current
+  price** — and the alternative was considered and rejected. Since a sub-threshold change
+  applies without review, a current-price basis let a supplier walk the price 14 % + 14 % +
+  14 % and move it 48 % without ever hitting the queue. Each step is legal; the sum is not.
+  `ProductPrice::approvedBaselineFor()` holds that baseline. The payload still carries
+  `current_*` as well, for a different job: the approve-time guard that refuses to overwrite
+  a price that moved underneath the request.
+- **It is absolute — a cut needs review as much as a rise.** A mistaken 80 % discount is
+  selling below cost, not a favour.
+- **A current price of zero is treated as an infinite change, not a zero one.** An
+  unpriced row going to a real price is precisely what should be seen; returning 0 % would
+  have slipped it past the gate silently.
+
+`review_deadline` is written with `forceFill` because it is deliberately not fillable — the
+system sets the deadline, not the request body, or a sender could backdate it.
+`supplier-requests:expire-price-changes` (hourly, `ExpirePriceChangeRequests`) is what makes
+that deadline real rather than a decorative number.
