@@ -3254,7 +3254,37 @@ nothing has to accept two shapes.
 value keeps the site's built-in default rather than switching the bar off.
 
 Seeded idempotently by `PageBlocksSeeder` (registered in `DatabaseSeeder`).
-Pinned by four suites under `tests/Feature/Content/`.
+Pinned by five suites under `tests/Feature/Content/`.
+
+**Phase 3 (2026-09-12) — a page is a RECORD now, not a constant.**
+`pages` gained `has_blocks` / `style` / `route`, and the migration *creates* the three
+block pages (they never had `pages` rows — they were only `PageBlock::PAGES`). `body`
+became nullable in the same migration: a block page genuinely has none, and seeding `''`
+would be a value someone later has to interpret as "empty".
+
+- **`Page::blockPages()` is the single source of truth for "which pages are block pages"**,
+  cached under `Page::BLOCK_PAGES_CACHE_KEY` and flushed with the public page list. All
+  four former `PageBlock::PAGES` readers go through it — the two page-block FormRequests'
+  `Rule::in`, `ContentController`'s 404 guard, and the reorder cache flush. `PageBlock::PAGES`
+  survives **only** as the flush floor (`PageBlock::cachedPageKeys()`) and the panel's
+  bootstrap seed. Reading it as "the list of pages" makes an admin-created page silently
+  404/422.
+- **`route` is not the slug.** `steel-kavir` lives at `/steel-kavirCo`, and until Phase 3
+  that fact existed *only* in the BackOffice's `PreviewPane.jsx` — the panel's preview was
+  the sole keeper of a site routing fact. `NULL` means an admin-created page, served at
+  `/p/{slug}`. It is deliberately **not writable from the request body**, or an admin could
+  take `/`.
+- **`GET /pages/{page}/blocks` returns `{blocks, style}`**, not a bare array. `style` is the
+  page-level slot object and is always cast `(object)` so an unstyled page does not send
+  `[]` where a styled one sends `{}`.
+- **`GET /admin/page-blocks/schema`** also returns `pages` and `page_style_slots`, killing
+  the BackOffice's three hand-written copies.
+- ⚠️ **`prohibited` must be the only rule on a locked field.** `UpdatePageRequest` first
+  shipped `[$isBlockPage ? 'prohibited' : 'sometimes', 'required', …]` for `slug`, which
+  left `required` in force alongside `prohibited` — unsatisfiable, so **every** update to a
+  block page 422'd, including the style save that sends no slug at all. Build, lint, console
+  and 1218 other tests were all green; only a real PUT from the browser showed it. Pinned by
+  `Content/AdminPageStyleTest`.
 
 ### Supplier price changes over a threshold queue for admin approval
 

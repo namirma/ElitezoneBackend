@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Content;
 
+use App\Models\Page;
 use Illuminate\Validation\Rule;
 
 /**
@@ -815,6 +816,41 @@ final class PageBlockSchema
         'padBottom' => ['label' => 'فاصله‌ی پایین بخش', 'values' => self::STYLE_GEOMETRY_STEPS],
         'gap' => ['label' => 'فاصله‌ی بینِ آیتم‌ها', 'values' => self::STYLE_GEOMETRY_STEPS],
     ];
+
+    /**
+     * اسلات‌های **سطحِ صفحه** — فازِ ۳.
+     *
+     * ⚠️ نام‌ها عمداً با `STYLE_SLOTS` یکی **نیستند**، هرچند مفهومشان نزدیک است.
+     * اسلاتِ صفحه روی `.ez-canvas`ِ بیرونی می‌نشیند و متغیرِ سفارشی ارث می‌رسد،
+     * پس اگر صفحه هم `gap` بنویسد، **همان `--ez-b-gap`** به هر بلوکی که خودش
+     * ستش نکرده نشت می‌کند: ادمین «فاصله‌ی بینِ بلوک‌ها» را عوض می‌کند و
+     * فاصله‌ی داخلیِ کارت‌های نصفِ سایت هم با آن تکان می‌خورد — بی‌صدا، چون
+     * هر دو مقدار معتبرند. خانواده‌ی `--ez-p-*` این تصادف را غیرممکن می‌کند.
+     */
+    public const PAGE_STYLE_SLOTS = [
+        'blockGap' => ['label' => 'فاصله‌ی بینِ بلوک‌ها', 'values' => self::STYLE_GEOMETRY_STEPS],
+        'pagePadTop' => ['label' => 'فاصله‌ی بالای صفحه', 'values' => self::STYLE_GEOMETRY_STEPS],
+        'pagePadBottom' => ['label' => 'فاصله‌ی پایین صفحه', 'values' => self::STYLE_GEOMETRY_STEPS],
+    ];
+
+    /**
+     * قواعدِ اعتبارسنجیِ `style` برای **صفحه** (نه بلوک).
+     *
+     * همان شکلِ `styleRules()` است ولی روی `PAGE_STYLE_SLOTS` و عمومی، چون
+     * مصرف‌کننده‌اش `StorePageRequest`/`UpdatePageRequest` است نه `rulesFor()`.
+     *
+     * @return array<string, array<int, mixed>>
+     */
+    public static function pageStyleRules(string $required = 'nullable', string $key = Page::STYLE): array
+    {
+        $rules = [$key => [$required, 'array']];
+
+        foreach (self::PAGE_STYLE_SLOTS as $slot => $spec) {
+            $rules[$key.'.'.$slot] = ['nullable', 'string', Rule::in($spec['values'])];
+        }
+
+        return $rules;
+    }
 
     private const GLASS_VARIANTS = ['clear', 'light', 'dark', 'control'];
 
