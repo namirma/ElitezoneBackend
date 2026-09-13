@@ -11,7 +11,6 @@ use App\Models\Coupon;
 use App\Models\FactoryStock;
 use App\Models\Order;
 use App\Models\OrderUnit;
-use App\Models\ProductVariant;
 use App\Models\Setting;
 use App\Models\ShippingMethod;
 use App\Models\SupplierProfile;
@@ -84,15 +83,11 @@ class CouponSourceOfTruthTest extends TestCase
         $this->variant = $this->makeVariant();
         $this->makePrice($this->variant, $this->factory, $this->location, general: 1_000_000, special: 900_000);
 
-        if (class_exists(FactoryStock::class)) {
-            FactoryStock::updateOrCreate([
-                'product_variant_id' => $this->variant->id,
-                'factory_id' => $this->factory->id,
-                'factory_location_id' => $this->location->id,
-            ], ['quantity' => 100_000]);
-        } else {
-            $this->variant->forceFill([ProductVariant::STOCK_QUANTITY => 100_000])->save();
-        }
+        FactoryStock::updateOrCreate([
+            'product_variant_id' => $this->variant->id,
+            'factory_id' => $this->factory->id,
+            'factory_location_id' => $this->location->id,
+        ], ['quantity' => 100_000]);
 
         $this->shipping = ShippingMethod::create([
             ShippingMethod::NAME => 'تست حمل',

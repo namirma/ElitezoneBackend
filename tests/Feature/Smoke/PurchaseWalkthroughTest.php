@@ -125,17 +125,12 @@ class PurchaseWalkthroughTest extends TestCase
             ProductPrice::GOLDEN_FIGURE => 500_000,
             ProductPrice::LAST_UPDATED_AT => now(),
         ]);
-        // موجودیِ به‌ازای مبدأ فقط روی خطِ لاراول ۱۰ وجود دارد؛ برنچِ ۱۳ هنوز
-        // `factory_stocks` را ندارد و موجودی همان ستونِ سراسریِ واریانت است (که
-        // بالاتر ست شد). پس این گام مشروط است تا پیمایش روی هر دو خط اجرا شود.
-        if (class_exists(FactoryStock::class)) {
-            FactoryStock::create([
-                'product_variant_id' => $variant->id,
-                'factory_id' => $factory->id,
-                'factory_location_id' => $location->id,
-                'quantity' => 100000,
-            ]);
-        }
+        FactoryStock::create([
+            'product_variant_id' => $variant->id,
+            'factory_id' => $factory->id,
+            'factory_location_id' => $location->id,
+            'quantity' => 100000,
+        ]);
         $unit = OrderUnit::create(['name' => 'کیلوگرم', 'code' => 'kg_'.uniqid(), 'unit' => 'kg', 'amount' => 1]);
         // واحد باید به محصول وصل باشد، وگرنه سبد آن را نمی‌پذیرد.
         DB::table('product_order_units')->insert([

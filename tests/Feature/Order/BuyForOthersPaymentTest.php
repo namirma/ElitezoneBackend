@@ -9,7 +9,6 @@ use App\Models\CartItem;
 use App\Models\FactoryStock;
 use App\Models\Order;
 use App\Models\OrderUnit;
-use App\Models\ProductVariant;
 use App\Models\Setting;
 use App\Models\ShippingMethod;
 use App\Models\SupplierProfile;
@@ -110,17 +109,11 @@ class BuyForOthersPaymentTest extends TestCase
 
     private function setStock(float $quantity): void
     {
-        if (class_exists(FactoryStock::class)) {
-            FactoryStock::updateOrCreate([
-                'product_variant_id' => $this->variant->id,
-                'factory_id' => $this->factory->id,
-                'factory_location_id' => $this->location->id,
-            ], ['quantity' => $quantity]);
-
-            return;
-        }
-
-        $this->variant->forceFill([ProductVariant::STOCK_QUANTITY => $quantity])->save();
+        FactoryStock::updateOrCreate([
+            'product_variant_id' => $this->variant->id,
+            'factory_id' => $this->factory->id,
+            'factory_location_id' => $this->location->id,
+        ], ['quantity' => $quantity]);
     }
 
     private function fillCart(): Cart

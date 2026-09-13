@@ -177,13 +177,6 @@ class SupplierBulkUploadTest extends TestCase
     #[Test]
     public function stocks_upload_in_bulk_and_the_variant_rollup_follows(): void
     {
-        // زیرسیستمِ موجودیِ per-origin (`factory_stocks`) هنوز به برنچِ L13 پورت
-        // نشده، پس آنجا نه کنترلری هست و نه روتی. همان قراردادِ بقیه‌ی تست‌ها:
-        // skip به‌جای فورک‌کردنِ فایل، تا بین دو برنچ بایت‌به‌بایت یکی بماند.
-        if (! class_exists(FactoryStock::class)) {
-            $this->markTestSkipped('factory_stocks is not on this branch.');
-        }
-
         Sanctum::actingAs($this->supplier);
 
         $this->postJson('/api/profile/supplier/stocks/bulk', [

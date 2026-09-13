@@ -2343,10 +2343,14 @@ Pinned by `Financial/SupplierDebtReleaseTest`.
 > after it. The class, the `financial:doctor` command (`Console/Commands/ReconcileLedger`)
 > and `Financial/LedgerReconcilerTest` are all present here.
 > 
-> The two reconciliation tests still guard themselves with `class_exists()`. That is not
-> dead weight: it is what lets the test files stay **byte-identical across both branches**
-> instead of forking into two maintained copies, and the same pattern (plus
-> route-existence guards) is how every other cross-branch gap is handled.
+> **No test may skip itself because a feature "is not on this branch" (removed 2026-09-13).**
+> Those `class_exists()` / `method_exists()` / route-existence guards, and the
+> `if (class_exists(FactoryStock::class))` fallbacks, only kept the test files
+> byte-identical with L10. With L10 retired they never fired — but renaming
+> `LedgerReconciler`, `FactoryStock`, `partyRolesFor` or `GET /profile/supplier` would
+> have turned a real failure into a silent skip under a green CI. A missing feature must
+> fail. Same rule for data: `MoneyColumnsAreIntegerRialsTest` reports a money column that
+> no longer exists instead of skipping it.
 
 ### Wallet status vocabulary — cover `hold` everywhere
 

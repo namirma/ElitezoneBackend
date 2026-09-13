@@ -43,21 +43,6 @@ class SupplierPanelVisibilityTest extends TestCase
         $this->supplier->addRole(Role::firstOrCreate(['name' => 'supplier'], ['display_name' => 'Supplier']));
     }
 
-    /**
-     * ‏`GET /profile/supplier` روی برنچِ L13 وجود ندارد (فقط POST و DELETE) —
-     * «تأمین‌کننده وضعیتِ خودش را می‌بیند» از فازهای بعدی است و هنوز پورت نشده.
-     * skip به‌جای فورک‌کردنِ فایل، تا تست بین دو برنچ بایت‌به‌بایت یکی بماند.
-     */
-    private function skipUnlessRouteExists(string $uri, string $method = 'GET'): void
-    {
-        $exists = collect(app('router')->getRoutes()->getRoutes())
-            ->contains(fn ($route) => $route->uri() === $uri && in_array($method, $route->methods(), true));
-
-        if (! $exists) {
-            $this->markTestSkipped("{$method} /{$uri} is not on this branch.");
-        }
-    }
-
     private function profileFor(User $user, array $attrs = []): SupplierProfile
     {
         $profile = SupplierProfile::create([SupplierProfile::USER_ID => $user->id]);
@@ -72,8 +57,6 @@ class SupplierPanelVisibilityTest extends TestCase
     #[Test]
     public function the_price_window_the_supplier_sets_is_readable_back(): void
     {
-        $this->skipUnlessRouteExists('api/profile/supplier');
-
         $this->profileFor($this->supplier, [
             SupplierProfile::STATUS => SupplierProfile::STATUS_APPROVED,
             SupplierProfile::RESERVE_TIME => now()->addDays(3),
@@ -99,8 +82,6 @@ class SupplierPanelVisibilityTest extends TestCase
     {
         // این همان حالتی است که کالای تأمین‌کننده را نامرئی می‌کند؛ باید بتواند
         // علتش را از پنل بفهمد، نه از نیامدنِ سفارش.
-        $this->skipUnlessRouteExists('api/profile/supplier');
-
         $this->profileFor($this->supplier, [
             SupplierProfile::STATUS => SupplierProfile::STATUS_APPROVED,
             SupplierProfile::RESERVE_TIME => now()->subDay(),
@@ -116,16 +97,6 @@ class SupplierPanelVisibilityTest extends TestCase
     #[Test]
     public function the_supplier_is_told_how_much_to_top_up(): void
     {
-        // بلوکِ `supplier_settlement` روی برنچِ L13 وجود ندارد و پیش‌نیازش هم
-        // آنجا نیست: `$isSupplier` هنوز نقشِ **سراسری** است نه «تأمین‌کننده‌ی
-        // همین سفارش». افزودنِ ارقامِ تسویه پشتِ آن پرچم یعنی نمایششان روی
-        // سفارشی که بیننده فقط خریدارش است — همان نشتی که `partyRolesFor()`
-        // برای بستنش آمد. پس پورتِ آن بلوک به L13 تغییرِ جداگانه‌ای است و تا آن
-        // زمان اینجا skip می‌شود، نه اینکه فایلِ تست بین دو برنچ فورک شود.
-        if (! method_exists(Order::class, 'partyRolesFor')) {
-            $this->markTestSkipped('supplier_settlement is not on this branch.');
-        }
-
         $order = Order::create([
             Order::PLACER_USER_ID => User::factory()->create()->id,
             Order::ORDER_NUMBER => 'TOPUP-'.uniqid(),

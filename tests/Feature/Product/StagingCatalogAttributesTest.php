@@ -4,7 +4,6 @@ namespace Tests\Feature\Product;
 
 use App\Models\Attribute;
 use App\Models\AttributeValue;
-use App\Models\FactoryStock;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use Database\Seeders\ProductSeeder;
@@ -34,15 +33,6 @@ class StagingCatalogAttributesTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-
-        // زیرسیستمِ موجودیِ per-origin (`factory_stocks`) هنوز به برنچِ L13
-        // پورت نشده و `StagingCatalogSeeder` آنجا روی همان کلاس می‌افتد — یعنی
-        // آن سیدر روی L13 از قبل و مستقل از این تغییر خراب است. همان قراردادی
-        // که تست‌های `LedgerReconciler` دارند: skip به‌جای فورک‌کردنِ فایل، تا
-        // این تست بین دو برنچ بایت‌به‌بایت یکی بماند.
-        if (! class_exists(FactoryStock::class)) {
-            $this->markTestSkipped('factory_stocks is not on this branch — StagingCatalogSeeder cannot run.');
-        }
 
         // دیسکِ `public` در این محیط روی S3 است و `ensurePlaceholderImages()`
         // واقعاً به شبکه می‌زند — کُند و بی‌ربط به چیزی که اینجا سنجیده می‌شود.

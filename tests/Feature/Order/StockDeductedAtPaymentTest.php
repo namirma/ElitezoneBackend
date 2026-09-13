@@ -8,7 +8,6 @@ use App\Models\CartItem;
 use App\Models\FactoryStock;
 use App\Models\Order;
 use App\Models\OrderUnit;
-use App\Models\ProductVariant;
 use App\Models\Setting;
 use App\Models\ShippingMethod;
 use App\Models\SupplierProfile;
@@ -100,40 +99,24 @@ class StockDeductedAtPaymentTest extends TestCase
         Wallet::create([Wallet::USER_ID => $sys->id, Wallet::BALANCE => 0, Wallet::BALANCE_HOLD => 0]);
     }
 
-    /**
-     * موجودی از همان جایی خوانده می‌شود که `setStock` می‌نویسد.
-     *
-     * شاخه‌ی L10 موجودیِ per-origin دارد (`factory_stocks`) و شاخه‌ی L13 هنوز
-     * روی خودِ واریانت نگه می‌دارد. آنچه این تست پین می‌کند «کِی» کسر می‌شود
-     * است نه «کجا»، پس هر دو شاخه با یک فایل کار می‌کنند.
-     */
+    /** موجودی از همان جایی خوانده می‌شود که `setStock` می‌نویسد: موجودیِ per-origin. */
     private function stockNow(): float
     {
-        if (class_exists(FactoryStock::class)) {
-            return (float) FactoryStock::where('product_variant_id', $this->variant->id)
-                ->where('factory_location_id', $this->location->id)
-                ->value('quantity');
-        }
-
-        return (float) $this->variant->fresh()->{ProductVariant::STOCK_QUANTITY};
+        return (float) FactoryStock::where('product_variant_id', $this->variant->id)
+            ->where('factory_location_id', $this->location->id)
+            ->value('quantity');
     }
 
     private function setStock(float $quantity): void
     {
-        if (class_exists(FactoryStock::class)) {
-            FactoryStock::updateOrCreate(
-                [
-                    'product_variant_id' => $this->variant->id,
-                    'factory_id' => $this->factory->id,
-                    'factory_location_id' => $this->location->id,
-                ],
-                ['quantity' => $quantity],
-            );
-
-            return;
-        }
-
-        $this->variant->forceFill([ProductVariant::STOCK_QUANTITY => $quantity])->save();
+        FactoryStock::updateOrCreate(
+            [
+                'product_variant_id' => $this->variant->id,
+                'factory_id' => $this->factory->id,
+                'factory_location_id' => $this->location->id,
+            ],
+            ['quantity' => $quantity],
+        );
     }
 
     private function fillCart(float $kg = 100): Cart

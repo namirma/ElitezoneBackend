@@ -60,9 +60,11 @@ class MoneyColumnsAreIntegerRialsTest extends TestCase
                     [$table, $column]
                 );
 
-                // ستونی که روی این برنچ نیست موضوعِ این تست نیست — L10 و L13
-                // مجموعه‌ی یکسانی از جدول‌ها ندارند.
+                // ستونِ غایب هم خطاست: تغییرِ نام یا حذفِ یک ستونِ مبلغ نباید این
+                // تست را بی‌صدا سبز نگه دارد.
                 if ($meta === null) {
+                    $offenders[] = "{$table}.{$column} does not exist";
+
                     continue;
                 }
 
@@ -75,7 +77,7 @@ class MoneyColumnsAreIntegerRialsTest extends TestCase
         $this->assertSame(
             [],
             $offenders,
-            "این ستون‌ها مبلغ‌اند ولی اعشار دارند، در حالی که کیف پول `decimal(20,0)` است:\n  "
+            "این ستون‌ها مبلغ‌اند ولی اعشار دارند (کیف پول `decimal(20,0)` است) یا دیگر وجود ندارند:\n  "
             .implode("\n  ", $offenders)
         );
     }

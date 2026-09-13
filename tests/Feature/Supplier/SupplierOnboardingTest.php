@@ -149,28 +149,9 @@ class SupplierOnboardingTest extends TestCase
             ->assertStatus(422);
     }
 
-    /**
-     * ‏`GET /profile/supplier` روی برنچِ L13 وجود ندارد (فقط POST و DELETE) —
-     * «تأمین‌کننده وضعیتِ خودش را می‌بیند» از فازهای بعدی است و هنوز پورت نشده.
-     * skip به‌جای فورک‌کردنِ فایل، تا تست بین دو برنچ بایت‌به‌بایت یکی بماند.
-     * نیمه‌ی دومِ این سناریو (ویرایش = درخواستِ دوباره) تستِ جداگانه‌ی خودش را
-     * دارد، پس skip اینجا پوششی را از دست نمی‌دهد.
-     */
-    private function skipUnlessRouteExists(string $uri, string $method = 'GET'): void
-    {
-        $exists = collect(app('router')->getRoutes()->getRoutes())
-            ->contains(fn ($route) => $route->uri() === $uri && in_array($method, $route->methods(), true));
-
-        if (! $exists) {
-            $this->markTestSkipped("{$method} /{$uri} is not on this branch.");
-        }
-    }
-
     #[Test]
     public function the_applicant_can_read_why_they_were_rejected_and_re_apply(): void
     {
-        $this->skipUnlessRouteExists('api/profile/supplier');
-
         $this->profile();
 
         Sanctum::actingAs($this->admin);
