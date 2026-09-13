@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * همه‌ی ستون‌های **مبلغ** روی یک قرارداد: `decimal(20,0)` — ریالِ صحیح.
@@ -86,11 +87,47 @@ return new class extends Migration
 
     public function up(): void
     {
+        // ⚠️ «هیچ مقدارِ کسری نبود» (بالا) روی دیتابیسِ توسعه شمرده شد، نه روی
+        // دادهٔ سرور. کاهشِ scale در `MODIFY` مقدار را **گرد** می‌کند و strict mode
+        // جلویش را نمی‌گیرد — یعنی ریالِ واقعی بی‌صدا عوض می‌شد. و چون هر `ALTER`
+        // جدا کامیت می‌شود، شکست وسطِ حلقه اسکیمای نیمه‌تبدیل می‌گذاشت؛ پس همه‌ی
+        // ستون‌ها **پیش از اولین `ALTER`** بررسی می‌شوند.
+        $fractional = $this->fractionalMoney(self::MONEY_COLUMNS);
+
+        if ($fractional !== []) {
+            throw new RuntimeException(
+                'Money columns hold fractional values that decimal(20,0) would silently round: '
+                .implode(', ', $fractional).'. Resolve them before migrating; nothing was altered.'
+            );
+        }
+
         foreach (self::MONEY_COLUMNS as $table => $columns) {
             foreach (array_keys($columns) as $column) {
                 $this->retype($table, $column, 'decimal(20,0)');
             }
         }
+    }
+
+    /**
+     * ستونی که روی این دیتابیس نیست رد می‌شود — همان قاعده‌ی `retype`.
+     *
+     * @param  array<string, array<string, string>>  $columns
+     * @return list<string> «جدول.ستون»هایی که دست‌کم یک مقدارِ کسری دارند
+     */
+    private function fractionalMoney(array $columns): array
+    {
+        $found = [];
+
+        foreach ($columns as $table => $definitions) {
+            foreach (array_keys($definitions) as $column) {
+                if (Schema::hasColumn($table, $column)
+                    && DB::table($table)->whereRaw("`{$column}` <> ROUND(`{$column}`)")->exists()) {
+                    $found[] = "{$table}.{$column}";
+                }
+            }
+        }
+
+        return $found;
     }
 
     public function down(): void
