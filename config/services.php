@@ -146,5 +146,10 @@ return [
             'intval',
             array_filter(array_map('trim', explode(',', (string) env('PUSH_DEV_ALLOWLIST', ''))))
         ))),
+
+        // اشتراکی که این‌قدر روز دیده نشده، به‌عنوانِ رهاشده حذف می‌شود
+        // (`push:prune-stale`). «دیده‌شدن» یعنی اپ باز شده و اشتراک دوباره اعلام
+        // شده — `syncExistingSubscription` این کار را روی هر بوت می‌کند.
+        'stale_after_days' => (int) env('PUSH_STALE_AFTER_DAYS', 90),
     ],
 ];

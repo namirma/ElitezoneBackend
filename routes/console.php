@@ -199,3 +199,11 @@ Schedule::command('financial:doctor')
     ->dailyAt('02:45')
     ->withoutOverlapping()
     ->onOneServer();
+
+// اشتراک‌های پوشِ رهاشده. حذفِ خودکارِ ۴۰۴/۴۱۰ فقط وقتی کار می‌کند که پیامی
+// فرستاده شود؛ دستگاهی که اپ را پاک کرده و اعلانی نگرفته، هیچ‌وقت خودش را لو
+// نمی‌دهد. شرح در `PruneStalePushSubscriptions`.
+Schedule::command('push:prune-stale')
+    ->dailyAt('03:30')
+    ->withoutOverlapping()
+    ->onOneServer();

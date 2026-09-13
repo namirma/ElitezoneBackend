@@ -3132,10 +3132,24 @@ can never be encrypted to, so it would just be a permanently-failing subscriptio
 `SendPushJob` (`->afterCommit()`). Three call sites create rows with `create()` today
 (`AuthController`, `EliteYARRelationController`, `GenerateCsvReportJob`) and every future
 one is covered for free — a `dispatch()` per call site would have been forgotten by the
-fourth. **The two bulk paths bypass model events and deliberately send no push**:
-`NotifyStockSubscribers` (`insert`) and `SendBulkNotificationJob` (`insertOrIgnore`). The
-admin broadcast probably *should* push, but not as one job per row — that needs chunked
-dispatch and is its own change.
+fourth. **The two bulk paths bypass model events, so the hook never runs for them.**
+`NotifyStockSubscribers` (`insert`) deliberately sends no push. `SendBulkNotificationJob`
+(`insertOrIgnore`) sends its own, **one `SendBulkPushJob` per 500-recipient chunk** — not one
+job per row, which would bury every real order notification behind tens of thousands of
+jobs for users who mostly have no subscription.
+
+The subtle part is retries. That job has `tries = 3` and is made idempotent by a fixed
+`batchId` plus the unique `(user_id, batch_id)` index: a re-run silently skips rows it
+already inserted. Dispatching the push for the **whole** chunk would have undone that for
+push — the row would be skipped but the phone would ring twice, thousands of times over on a
+broadcast that failed halfway. So `sendChunk()` first selects who has **no row for this
+batch yet**, inserts only those, and pushes only those. Push is best-effort and the row is
+the source of truth: if the insert lands but the dispatch does not, the retry sees nobody
+fresh and that chunk never gets a push. A missed nudge beats a duplicate one.
+
+`PushService::sendToUsers()` applies the dev allowlist as a **filter**, not all-or-nothing.
+All-or-nothing would mean a broadcast on a laptop either reaches every real customer or
+nobody — and the first is exactly the incident the guard exists to prevent.
 
 `PushService` mirrors `SmsService`, and for the same reason: real subscriptions sit in the
 dev database too, so a `queue:work` on a laptop would notify real customers' devices — the
@@ -3148,7 +3162,16 @@ real delivery failure returns `false`, which is what drives `tries`/`backoff`.
 
 **Expired subscriptions delete themselves.** A `404`/`410` from the push service
 (`$report->isSubscriptionExpired()`) means the user revoked permission or wiped the browser;
-that row can never work again, so the sender deletes it. Nothing else prunes the table.
+that row can never work again, so the sender deletes it.
+
+**That only catches devices we actually send to.** A phone whose app was deleted without
+revoking permission never answers anything until a message goes out, so its row would sit
+forever. `push:prune-stale` (daily, 03:30) removes subscriptions not seen for
+`services.push.stale_after_days` (`PUSH_STALE_AFTER_DAYS`, default 90) — "seen" meaning the
+app re-announced it on boot, which refreshes `last_seen_at`. A row with no `last_seen_at`
+falls back to `updated_at`. The cost of a wrong prune is self-healing: the user keeps
+getting in-app notifications, and the first time they open the app the subscription is
+re-announced and the row comes back.
 
 **Setup is one command:** `php artisan push:vapid-keys` prints the three `.env` lines. It
 generates the P-256 keypair itself rather than calling `VAPID::createVapidKeys()`, because

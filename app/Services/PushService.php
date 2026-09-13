@@ -3,21 +3,27 @@
 namespace App\Services;
 
 use App\Models\DeviceToken;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
 use Minishlink\WebPush\Subscription;
 use Minishlink\WebPush\WebPush;
 use Throwable;
 
 /**
- * ارسالِ نوتیفیکیشنِ پوش به همهٔ دستگاه‌های یک کاربر، روی استانداردِ Web Push.
+ * ارسالِ نوتیفیکیشنِ پوش، روی استانداردِ Web Push.
+ *
+ * دو ورودی دارد و هر دو از یک مسیرِ ارسال (`deliver`) رد می‌شوند:
+ *   - `sendToUser`  — یک کاربر (قلابِ `UserNotification::created`)
+ *   - `sendToUsers` — یک تکه‌ی گروهی (`SendBulkPushJob`): یک کوئری، یک
+ *     `WebPush`، یک `flush` — نه N بار `sendToUser`
  *
  * سه حالتِ «ارسال نشد ولی خطا نیست» عمداً `true` برمی‌گردانند تا جابِ صف
  * retry/fail نشود (دقیقاً مثل `SmsService::send`):
  *   ۱. کلیدهای VAPID تنظیم نشده‌اند
- *   ۲. محیط غیرپروداکشن و کاربر خارج از allowlist
- *   ۳. کاربر هیچ اشتراکِ فعالی ندارد (اپ را نصب/اجازه نداده) — حالتِ اکثریت
+ *   ۲. محیط غیرپروداکشن و گیرنده خارج از allowlist
+ *   ۳. گیرنده هیچ اشتراکِ فعالی ندارد (اپ را نصب/اجازه نداده) — حالتِ اکثریت
  *
- * فقط شکستِ واقعیِ تحویل `false` می‌دهد، تا `SendPushJob` دوباره تلاش کند.
+ * فقط شکستِ واقعیِ تحویل `false` می‌دهد، تا جاب دوباره تلاش کند.
  */
 class PushService
 {
@@ -49,7 +55,7 @@ class PushService
      */
     public function sendToUser(int $userId, string $title, string $body, array $data = []): bool
     {
-        if ($this->publicKey === '' || $this->privateKey === '') {
+        if (! $this->configured()) {
             Log::warning('PushService: کلیدهای VAPID تنظیم نشده، ارسال پوش نادیده گرفته شد.', ['user_id' => $userId]);
 
             return true;
@@ -58,7 +64,7 @@ class PushService
         // ── گاردِ محیطِ غیرپروداکشن ──────────────────────────────────────────
         // اشتراکِ واقعیِ دستگاهِ کاربران در دیتابیسِ توسعه هم هست؛ بدون این گارد
         // یک `queue:work` روی صفِ انباشته به دستگاهِ مشتریِ واقعی نوتیف می‌فرستد.
-        if (! app()->environment('production') && ! $this->allowedInNonProduction($userId)) {
+        if (! app()->environment('production') && ! in_array($userId, $this->allowlist(), true)) {
             Log::info('PushService: پوش در محیط غیرپروداکشن ارسال نشد (خارج از allowlist).', [
                 'user_id' => $userId,
                 'env' => app()->environment(),
@@ -68,13 +74,80 @@ class PushService
             return true;
         }
 
-        // فقط ردیف‌هایی که کلیدِ رمزگذاری دارند قابلِ ارسال‌اند. ردیفِ نیتیوِ
-        // آینده (بدون کلید) اینجا کنار گذاشته می‌شود، نه اینکه خطا بدهد.
-        $subscriptions = DeviceToken::where(DeviceToken::USER_ID, $userId)
+        return $this->deliver($this->subscriptionsFor([$userId]), $title, $body, $data, ['user_id' => $userId]);
+    }
+
+    /**
+     * ارسالِ یک پیام به گروهی از کاربران در یک تکه.
+     *
+     * ⚠️ همان گاردِ محیطِ `sendToUser`، ولی **فیلترکننده** نه همه‌یاهیچ: بیرونِ
+     * پروداکشن فقط اعضای allowlist از تکه جدا می‌شوند. اگر همه‌یاهیچ بود، یک
+     * ارسالِ همگانی روی لپ‌تاپ یا به همه‌ی مشتری‌های واقعی می‌رفت یا به هیچ‌کس —
+     * و اولی دقیقاً همان حادثه‌ی پیامکی است که این گارد برای جلوگیری از آن است.
+     *
+     * @param  list<int>  $userIds
+     * @param  array<string, mixed>  $data
+     */
+    public function sendToUsers(array $userIds, string $title, string $body, array $data = []): bool
+    {
+        if ($userIds === []) {
+            return true;
+        }
+
+        if (! $this->configured()) {
+            Log::warning('PushService: کلیدهای VAPID تنظیم نشده، ارسال گروهیِ پوش نادیده گرفته شد.', ['users' => count($userIds)]);
+
+            return true;
+        }
+
+        if (! app()->environment('production')) {
+            $allowed = array_values(array_intersect($userIds, $this->allowlist()));
+
+            if (count($allowed) !== count($userIds)) {
+                Log::info('PushService: بخشی از ارسالِ گروهی در محیط غیرپروداکشن کنار گذاشته شد (خارج از allowlist).', [
+                    'requested' => count($userIds),
+                    'allowed' => count($allowed),
+                    'env' => app()->environment(),
+                ]);
+            }
+
+            $userIds = $allowed;
+
+            if ($userIds === []) {
+                return true;
+            }
+        }
+
+        return $this->deliver($this->subscriptionsFor($userIds), $title, $body, $data, ['users' => count($userIds)]);
+    }
+
+    private function configured(): bool
+    {
+        return $this->publicKey !== '' && $this->privateKey !== '';
+    }
+
+    /**
+     * فقط ردیف‌هایی که کلیدِ رمزگذاری دارند قابلِ ارسال‌اند. ردیفِ نیتیوِ
+     * آینده (بدون کلید) اینجا کنار گذاشته می‌شود، نه اینکه خطا بدهد.
+     *
+     * @param  list<int>  $userIds
+     * @return Collection<int, DeviceToken>
+     */
+    private function subscriptionsFor(array $userIds): Collection
+    {
+        return DeviceToken::whereIn(DeviceToken::USER_ID, $userIds)
             ->whereNotNull(DeviceToken::PUBLIC_KEY)
             ->whereNotNull(DeviceToken::AUTH_KEY)
             ->get();
+    }
 
+    /**
+     * @param  Collection<int, DeviceToken>  $subscriptions
+     * @param  array<string, mixed>  $data
+     * @param  array<string, mixed>  $context  فقط برای لاگ
+     */
+    private function deliver(Collection $subscriptions, string $title, string $body, array $data, array $context): bool
+    {
         if ($subscriptions->isEmpty()) {
             return true;
         }
@@ -120,8 +193,7 @@ class PushService
 
                 // ۴۰۴/۴۱۰ یعنی کاربر اجازه را پس گرفته یا مرورگر را پاک کرده.
                 // این ردیف دیگر هرگز کار نمی‌کند؛ نگه‌داشتنش یعنی هر نوتیفِ
-                // بعدی یک درخواستِ محکوم‌به‌شکستِ اضافه. حذفش تنها راهِ
-                // پاک‌سازیِ جدول است — هیچ‌کس دستی خبر نمی‌دهد.
+                // بعدی یک درخواستِ محکوم‌به‌شکستِ اضافه.
                 if ($report->isSubscriptionExpired()) {
                     DeviceToken::where(DeviceToken::ENDPOINT, $report->getEndpoint())->delete();
 
@@ -129,39 +201,30 @@ class PushService
                 }
 
                 // شکستِ واقعی (۵xx، شبکه).
-                Log::error('Push delivery failed', [
-                    'user_id' => $userId,
-                    'reason' => $report->getReason(),
-                ]);
+                Log::error('Push delivery failed', $context + ['reason' => $report->getReason()]);
                 $failed++;
             }
 
             // ⚠️ تلاشِ مجدد **فقط** وقتی که هیچ‌کدام نرفته باشد.
             //
-            // جاب واحدِ تلاشِ مجددش «کاربر» است نه «دستگاه»: یک retry همهٔ
-            // اشتراک‌ها را دوباره می‌فرستد. پس اگر از سه دستگاه یکی خطا بدهد
-            // و ما false برگردانیم، آن دو دستگاهِ موفق نوتیفیکیشن را **دو
-            // بار** می‌گیرند — همان مشکلی که برای پیامک با پنجرهٔ dedupe حل
-            // شد. نوتیفِ درون‌برنامه‌ای در هر حال ثبت شده و منبعِ حقیقت است؛
-            // پوش فقط تلنگر است، پس نرسیدن به یک دستگاه بهتر از تکرار روی
-            // بقیه است. قطعیِ کامل (هیچ ارسالِ موفقی) هنوز retry می‌شود.
+            // واحدِ تلاشِ مجددِ جاب «کاربر» یا «تکه» است نه «دستگاه»: یک retry
+            // همهٔ اشتراک‌ها را دوباره می‌فرستد. پس اگر از سه دستگاه یکی خطا بدهد
+            // و ما false برگردانیم، آن دو دستگاهِ موفق نوتیفیکیشن را **دو بار**
+            // می‌گیرند — همان مشکلی که برای پیامک با پنجرهٔ dedupe حل شد. در
+            // ارسالِ گروهی این اثر چند صد برابر است. نوتیفِ درون‌برنامه‌ای در هر
+            // حال ثبت شده و منبعِ حقیقت است؛ پوش فقط تلنگر است.
             return $sent > 0 || $failed === 0;
         } catch (Throwable $e) {
             // کلیدِ خصوصی هرگز در پیام خطا لاگ نمی‌شود.
-            Log::error('Push send error', [
-                'user_id' => $userId,
-                'error' => $e->getMessage(),
-            ]);
+            Log::error('Push send error', $context + ['error' => $e->getMessage()]);
 
             return false;
         }
     }
 
-    private function allowedInNonProduction(int $userId): bool
+    /** @return list<int> */
+    private function allowlist(): array
     {
-        /** @var array<int, int> $allowlist */
-        $allowlist = (array) config('services.push.dev_allowlist', []);
-
-        return in_array($userId, $allowlist, true);
+        return array_values(array_map('intval', (array) config('services.push.dev_allowlist', [])));
     }
 }
