@@ -2969,6 +2969,25 @@ gate existed, `api.json` was missing **26 endpoints** (all of `overweight/*`,
 Byte-comparison is safe because `scramble:export` is deterministic (verified: two
 consecutive runs produce an identical SHA-256).
 
+> ⚠️ **The gate proves `api.json` matches Scramble, not that Scramble is right.**
+> Until 2026-09-13, 491 of 525 operations documented their success body as a bare
+> `{"type":"object"}`: `success()`/`created()` go through the `Response::success`
+> **macro**, which Scramble cannot see through. `App\Support\Scramble\SuccessResponseExtension`
+> (registered in `config/scramble.php`) now declares the envelope by hand —
+> `{status, message, data}`, plus top-level `meta`/`links` for paginated data, with
+> `*_page_url` link keys and no `meta.links` for a raw paginator — which brought it
+> to 133. Because the extension restates `ResponseServiceProvider::paginationEnvelope`,
+> the two can drift silently; `Contract/SuccessEnvelopeIsDocumentedTest` compares the
+> documented keys against real responses, one per envelope shape. Change either side
+> and that test must still pass.
+>
+> Two traps found on the way: `Union::wrap()` takes an **array** (two arguments pass
+> through `Arr::wrap`, which drops the second — every nullable came out non-null), and
+> `__('key')` whose value is an array crashes the whole export (Scramble's own
+> translation extension runs before config extensions and assumes a string) — use
+> `trans()` for array-valued keys. Most of the remaining 133 return `success()` on one
+> branch and `error()` on another; `error()` is not declared yet.
+
 It then runs `oasdiff` against the previous commit's `api.json` and writes a Persian
 changelog into the job summary and an artifact.
 

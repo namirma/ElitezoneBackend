@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\Scramble\SuccessResponseExtension;
 use Dedoc\Scramble\Http\Middleware\RestrictedDocsAccess;
 
 return [
@@ -132,5 +133,7 @@ return [
         RestrictedDocsAccess::class,
     ],
 
-    'extensions' => [],
+    'extensions' => [
+        SuccessResponseExtension::class,
+    ],
 ];

@@ -196,7 +196,9 @@ class EliteYARRelationController extends Controller
 
     public function getRejectionReasons(): JsonResponse
     {
-        return success(__('elite_yar.rejection_reasons'), __('elite_yar.rejection_reasons_received'));
+        // ‏`trans()` و نه `__()`: مقدار آرایه است و Scramble هر `__()` را رشته فرض
+        // می‌کند و روی آرایه کلِ `scramble:export` را می‌خواباند (SuccessResponseExtension).
+        return success(trans('elite_yar.rejection_reasons'), __('elite_yar.rejection_reasons_received'));
     }
 
     /**
