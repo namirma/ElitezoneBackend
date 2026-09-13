@@ -4,8 +4,11 @@ namespace Tests\Feature\Product;
 
 use App\Models\Attribute;
 use App\Models\AttributeValue;
+use App\Models\FactoryStock;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\User;
+use App\Models\UserNotification;
 use Database\Seeders\ProductSeeder;
 use Database\Seeders\StagingCatalogSeeder;
 use Database\Seeders\UserTypeSeeder;
@@ -13,6 +16,7 @@ use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -252,5 +256,47 @@ class StagingCatalogAttributesTest extends TestCase
         $this->seed(StagingCatalogSeeder::class);
 
         $this->assertSame($before, DB::table('product_variant_attributes')->count());
+    }
+
+    #[Test]
+    public function the_catalogue_has_a_fully_and_a_partly_out_of_stock_product(): void
+    {
+        // بدون این دو، دکمه‌ی «موجود شد خبرم کن» روی استیجینگ هرگز رندر نمی‌شد و
+        // آن قابلیت فقط در تست دیده شده بود، نه روی سایت.
+        foreach (['DEMO-BRK-FR1', 'DEMO-VLV-GT3'] as $sku) {
+            $variant = ProductVariant::where(ProductVariant::SKU, $sku)->firstOrFail();
+
+            $this->assertSame(0.0, (float) $variant->{ProductVariant::STOCK_QUANTITY}, "{$sku} باید ناموجود باشد.");
+            // صفر روی مبدأها هم، وگرنه اولین rollup موجودیِ قدیمی را برمی‌گرداند.
+            $this->assertSame(0.0, (float) FactoryStock::where(FactoryStock::PRODUCT_VARIANT_ID, $variant->id)->sum(FactoryStock::QUANTITY));
+        }
+
+        // «یک واریانت ناموجود» فقط وقتی معنا دارد که همسایه‌اش موجود باشد.
+        $this->assertGreaterThan(0.0, (float) ProductVariant::where(ProductVariant::SKU, 'DEMO-VLV-GT2')->value(ProductVariant::STOCK_QUANTITY));
+    }
+
+    #[Test]
+    public function a_subscriber_to_a_seeded_sold_out_variant_is_told_once_the_supplier_restocks(): void
+    {
+        $variant = ProductVariant::where(ProductVariant::SKU, 'DEMO-VLV-GT3')->firstOrFail();
+        $buyer = User::factory()->create();
+
+        Sanctum::actingAs($buyer);
+        $this->postJson('/api/profile/stock-subscriptions/toggle', ['variant_id' => $variant->id])
+            ->assertOk()
+            ->assertJsonPath('data.is_subscribed', true);
+
+        $this->artisan('stock:notify-subscribers')->assertExitCode(0);
+        $this->assertSame(0, UserNotification::where(UserNotification::USER_ID, $buyer->id)->count(), 'تا ناموجود است نباید خبر برود.');
+
+        // شارژ از همان روتی که پنلِ تأمین‌کننده می‌زند، نه `update` مستقیم: کامند
+        // جمعِ واریانت را می‌خواند، پس اگر این مسیر rollup را جا بیندازد، اعلان
+        // هرگز نمی‌رود و تستِ اصلیِ اعلان (که مستقیم می‌نویسد) آن را نمی‌بیند.
+        $stock = FactoryStock::where(FactoryStock::PRODUCT_VARIANT_ID, $variant->id)->firstOrFail();
+        Sanctum::actingAs(User::where(User::MOBILE, '09120000001')->firstOrFail()); // تأمین‌کننده‌ی نمایشیِ سیدر
+        $this->putJson("/api/profile/supplier/stocks/{$stock->id}", [FactoryStock::QUANTITY => 500])->assertOk();
+
+        $this->artisan('stock:notify-subscribers')->assertExitCode(0);
+        $this->assertSame(1, UserNotification::where(UserNotification::USER_ID, $buyer->id)->count());
     }
 }
