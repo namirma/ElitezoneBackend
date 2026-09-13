@@ -384,7 +384,7 @@ class AdminPageBlockTest extends TestCase
         $a = PageBlock::create([PageBlock::PAGE => PageBlock::PAGE_HOME, PageBlock::TYPE => 'faq', PageBlock::SORT_ORDER => 1, PageBlock::DATA => []]);
         $b = PageBlock::create([PageBlock::PAGE => PageBlock::PAGE_HOME, PageBlock::TYPE => 'faq', PageBlock::SORT_ORDER => 2, PageBlock::DATA => []]);
 
-        $before = $this->getJson('/api/pages/home/blocks')->assertOk()->json('data');
+        $before = $this->getJson('/api/pages/home/blocks')->assertOk()->json('data.blocks');
         $this->assertSame($a->id, $before[0]['id']);
         $this->assertSame($b->id, $before[1]['id']);
 
@@ -392,7 +392,7 @@ class AdminPageBlockTest extends TestCase
             'items' => [['id' => $a->id, 'sort_order' => 2], ['id' => $b->id, 'sort_order' => 1]],
         ])->assertOk();
 
-        $after = $this->getJson('/api/pages/home/blocks')->assertOk()->json('data');
+        $after = $this->getJson('/api/pages/home/blocks')->assertOk()->json('data.blocks');
         $this->assertSame($b->id, $after[0]['id']);
         $this->assertSame($a->id, $after[1]['id']);
     }
@@ -421,5 +421,24 @@ class AdminPageBlockTest extends TestCase
 
         Storage::disk('public')->assertExists($body['path']);
         $this->assertNotEmpty($body['url']);
+    }
+
+    #[Test]
+    public function a_data_payload_with_no_recognised_keys_is_stored_empty_not_a_500(): void
+    {
+        Sanctum::actingAs($this->admin);
+
+        // `faq` فیلدهایش `heading`/`intro`/`style` است. یک بدنه که هیچ‌کدام را
+        // ندارد از `validated()` بدونِ کلیدِ `data` بیرون می‌آید، و ستون NOT NULL
+        // است — پیش از این یک ۵۰۰ـِ SQL می‌داد. اندپوینتِ ادمین نباید با ورودیِ
+        // بد بمیرد. (پیش از فازِ ۳ هم همین‌طور بود؛ روی `home` هم می‌شکست.)
+        $res = $this->postJson('/api/admin/page-blocks', [
+            'page' => PageBlock::PAGE_HOME,
+            'type' => 'faq',
+            'sort_order' => 99,
+            'data' => ['nope' => 'x'],
+        ])->assertCreated();
+
+        $this->assertSame([], PageBlock::findOrFail($res->json('data.id'))->{PageBlock::DATA});
     }
 }

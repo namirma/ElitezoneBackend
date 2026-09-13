@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
-use App\Models\PageBlock;
+use App\Models\Page;
 use App\Services\Content\PageBlockSchema;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -24,7 +24,7 @@ class StorePageBlockRequest extends FormRequest
         $type = is_string($rawType) ? $rawType : '';
 
         return array_merge([
-            'page' => ['required', Rule::in(PageBlock::PAGES)],
+            'page' => ['required', Rule::in(Page::blockPageSlugs())],
             'type' => ['required', Rule::in($schema->types())],
             'sort_order' => ['nullable', 'integer', 'min:0'],
             'is_active' => ['nullable', 'boolean'],

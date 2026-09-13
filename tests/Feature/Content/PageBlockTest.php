@@ -2,8 +2,10 @@
 
 namespace Tests\Feature\Content;
 
+use App\Models\Page;
 use App\Models\PageBlock;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -47,7 +49,7 @@ class PageBlockTest extends TestCase
 
         $response = $this->getJson('/api/pages/podium/blocks')->assertOk();
 
-        $titles = array_column(array_column($response->json('data'), 'data'), 'title');
+        $titles = array_column(array_column($response->json('data.blocks'), 'data'), 'title');
         $this->assertSame(['اول', 'دوم'], $titles);
     }
 
@@ -59,6 +61,68 @@ class PageBlockTest extends TestCase
     }
 
     #[Test]
+    public function a_page_created_by_the_admin_serves_its_blocks_immediately(): void
+    {
+        // قلبِ فازِ ۳: فهرستِ صفحه‌ها دیگر ثابتِ `PageBlock::PAGES` نیست. اگر
+        // این تست قرمز شود یعنی یک مصرف‌کننده به آن ثابت برگشته و صفحه‌ی
+        // ساخته‌شده توسط ادمین بی‌صدا ۴۰۴ می‌گیرد.
+        Page::create([
+            Page::TITLE => 'درباره ما',
+            Page::SLUG => 'about-us',
+            Page::HAS_BLOCKS => true,
+            Page::IS_ACTIVE => true,
+        ]);
+
+        PageBlock::create([
+            PageBlock::PAGE => 'about-us',
+            PageBlock::TYPE => 'faq',
+            PageBlock::SORT_ORDER => 1,
+            PageBlock::DATA => ['title' => 'پرسش'],
+        ]);
+
+        $blocks = $this->getJson('/api/pages/about-us/blocks')->assertOk()->json('data.blocks');
+
+        $this->assertCount(1, $blocks);
+        $this->assertSame('پرسش', $blocks[0]['data']['title']);
+    }
+
+    #[Test]
+    public function the_envelope_carries_the_pages_own_style(): void
+    {
+        // اسلات‌های سطحِ صفحه مالکِ بلوکی ندارند، پس تنها راهِ رسیدنشان به سایت
+        // همین پاکت است. اگر پاسخ به آرایه‌ی خام برگردد، فاصله‌ی بینِ بلوک‌ها
+        // بی‌صدا از کنترلِ ادمین خارج می‌شود — بدون هیچ خطایی.
+        Page::where(Page::SLUG, PageBlock::PAGE_PODIUM)
+            ->update([Page::STYLE => json_encode(['blockGap' => '40'])]);
+        Cache::forget(Page::BLOCK_PAGES_CACHE_KEY);
+
+        $style = $this->getJson('/api/pages/podium/blocks')->assertOk()->json('data.style');
+
+        $this->assertSame(['blockGap' => '40'], $style);
+    }
+
+    #[Test]
+    public function an_unstyled_page_sends_an_object_not_an_empty_array(): void
+    {
+        // `[]` و `{}` در JSON دو **نوعِ** متفاوت‌اند. آرایه‌ی تهیِ PHP به `[]`
+        // می‌رود، پس بدونِ کستِ صریح صفحه‌ی بدونِ تنظیمات آرایه می‌فرستاد و
+        // صفحه‌ی تنظیم‌شده آبجکت — یک کلید با دو شکل روی سیم.
+        $raw = $this->getJson('/api/pages/steel-kavir/blocks')->assertOk()->getContent();
+
+        $this->assertStringContainsString('"style":{}', $raw);
+        $this->assertStringNotContainsString('"style":[]', $raw);
+    }
+
+    #[Test]
+    public function a_deactivated_page_stops_serving_blocks(): void
+    {
+        Page::where(Page::SLUG, PageBlock::PAGE_PODIUM)->update([Page::IS_ACTIVE => false]);
+        Cache::forget(Page::BLOCK_PAGES_CACHE_KEY);
+
+        $this->getJson('/api/pages/podium/blocks')->assertNotFound();
+    }
+
+    #[Test]
     public function the_public_response_still_carries_page_and_is_active(): void
     {
         // `PageBlockResource` بینِ اندپوینتِ عمومی و ادمین مشترک است. این‌جا
@@ -67,7 +131,7 @@ class PageBlockTest extends TestCase
         // محرمانه نیستند و شرطِ اضافه فقط برای این اندپوینت هیچ فایده‌ای ندارد.
         PageBlock::create([PageBlock::PAGE => PageBlock::PAGE_STEEL_KAVIR, PageBlock::TYPE => 'sk_hero', PageBlock::SORT_ORDER => 1, PageBlock::DATA => ['image' => 'x.webp', 'title' => 'ت', 'body' => 'ب']]);
 
-        $block = $this->getJson('/api/pages/steel-kavir/blocks')->assertOk()->json('data.0');
+        $block = $this->getJson('/api/pages/steel-kavir/blocks')->assertOk()->json('data.blocks.0');
 
         $this->assertSame('steel-kavir', $block['page']);
         $this->assertTrue($block['is_active']);
@@ -80,7 +144,7 @@ class PageBlockTest extends TestCase
 
         PageBlock::create([PageBlock::PAGE => PageBlock::PAGE_HOME, PageBlock::TYPE => 'faq', PageBlock::SORT_ORDER => 1, PageBlock::DATA => ['title' => 'تازه']]);
 
-        $this->assertCount(1, $this->getJson('/api/pages/home/blocks')->json('data'));
+        $this->assertCount(1, $this->getJson('/api/pages/home/blocks')->json('data.blocks'));
     }
 
     /**
@@ -106,7 +170,7 @@ class PageBlockTest extends TestCase
             ],
         ]);
 
-        $data = $this->getJson('/api/pages/home/blocks')->assertOk()->json('data.0.data');
+        $data = $this->getJson('/api/pages/home/blocks')->assertOk()->json('data.blocks.0.data');
 
         // خودِ منطقِ resolveMedia مقدارِ حل‌شده را با `http`/`/` می‌شناسد —
         // دیسکِ فیک بسته به تنظیمِ APP_URL ممکن است URL را نسبی (`/storage/...`)
