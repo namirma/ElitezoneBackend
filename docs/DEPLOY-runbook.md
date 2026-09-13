@@ -1,7 +1,7 @@
 # Deploy runbook — `feature/spec-gaps-elite yar-cap-ticketing`
 
 Run these on the server **after** the new code is in place (after your usual pull/push-deploy
-to `89.42.210.55`). All commands run from the `api/` directory. **Take a DB backup first** —
+to `188.212.22.118`). All commands run from the `api/` directory. **Take a DB backup first** —
 two migrations move uploaded files on disk.
 
 ## 0. Backup (once, before anything)

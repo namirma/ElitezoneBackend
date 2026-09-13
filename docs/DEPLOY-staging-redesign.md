@@ -1,6 +1,6 @@
 # استقرار بازطراحی روی استیجینگ
 
-برنچ: `redesign/order-flow-l10` · سرور: `89.42.210.55` · هدف: تیم تولید سایتِ پرِ محصول ببیند.
+برنچ: `redesign/order-flow-l10` · سرور: `188.212.22.118` · هدف: تیم تولید سایتِ پرِ محصول ببیند.
 
 > ⚠️ **۶۴ مهاجرت اجرا می‌شود و ۸ تای آن داده را جابه‌جا می‌کنند** (نگاشت وضعیت
 > سفارش، انتقال فایل تیکت به دیسک خصوصی، backfill نقش الیت‌یار، NOT NULL کردن
@@ -38,12 +38,12 @@ git log -p staging/master ^redesign/order-flow-l10 -- app/
 
 ## گام ۱ — مشخص کنید چه کاری از دست خودتان برمی‌آید
 
-ریموتِ استیجینگ `api-staging@89.42.210.55:/home/git/repositories/api-staging.git`
+ریموتِ استیجینگ `api-staging@188.212.22.118:/home/git/repositories/api-staging.git`
 است. مسیرِ `/home/git/repositories/` یعنی حسابِ git-shell، که معمولاً **فقط
 دستورات git** را می‌پذیرد و `php artisan` روی آن اجرا نمی‌شود.
 
 ```bash
-ssh api-staging@89.42.210.55 "whoami"
+ssh api-staging@188.212.22.118 "whoami"
 ```
 
 - **جواب داد** → شل دارید، همه‌ی گام‌ها را خودتان می‌زنید.
