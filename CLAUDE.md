@@ -843,6 +843,31 @@ too. **The order was locked forever.**
   `DebtEngine::balanceFor()` — the person-level balance would charge the buyer for debt
   from unrelated orders.
 - Pinned by `Order/OverweightApprovalTest`.
+- **Branch 7b is visible to the client now** — gap 16.1 in `BACKEND_NEEDS_FINAL`. The
+  settle route existed, but nothing told a client *which* order had an open overweight
+  debt: the `overweight` block only appears in 7a (`overweight_pending_amount > 0`), and
+  that column is already zeroed by the time 7b exists. So the buyer's settle button could
+  not be built, and a buyer whose load was held behind a debt had no way to release it
+  from the site. Two additions:
+  - `OrderResource.overweight_settlement` → `{ outstanding_amount, is_load_held }`, payer
+    only, **absent** (not zero) when there is nothing to settle — the same rule as the
+    `overweight` block.
+  - `GET /profile/debts` rows gained `order_id` beside `order_number`, because the settle
+    route is `whereNumber` and a client should not have to join two endpoints on a string.
+- **The block and `settleShortfall` must never disagree**, or the button is dead: shown
+  and then 422'd, or missing where it should be. Both call
+  `DebtEngine::outstandingOnOrder()` (`max(0, min(orderDebt, debt_balance))`) — one
+  formula, not two copies that drift independently.
+- **It does not N+1, and that is load-bearing.** `OrderResource` is serialized by twelve
+  list endpoints. Three guards run first with no query at all: the viewer is the payer, the
+  order is weighed, and the viewer's `debt_balance > 0` (a zero balance makes
+  `min(orderDebt, 0)` *exactly* zero, and `debt_balance` is already loaded on the
+  authenticated user). Only a debtor who passes all three reaches `viewerDebtByOrder()`,
+  which loads every per-order total in **one grouped query per request**, memoized on
+  `$request->attributes`. Not `once()`: that lives for the whole process, so a test making
+  several requests (before and after a settle) would read stale debt. Pinned by
+  `Order/OverweightSettlementBlockTest`, including a query-count case that renders 1 and
+  then 4 orders and requires the same single query both times.
 
 ### Reservation expiry: one cron, one grace rule, one guard
 

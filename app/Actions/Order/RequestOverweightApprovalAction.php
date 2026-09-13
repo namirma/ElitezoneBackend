@@ -256,7 +256,9 @@ class RequestOverweightApprovalAction
             ->where(DebtEntry::ORDER_ID, $order->getKey())
             ->sum(DebtEntry::AMOUNT);
 
-        return max(0.0, min($orderDebt, $this->debtEngine->balanceFor($payerId)));
+        // فرمول مشترک است: `OrderResource` با همین تصمیم می‌گیرد دکمه‌ی تسویه را
+        // نشان بدهد یا نه، و این دو نباید هرگز جوابِ متفاوت بدهند.
+        return DebtEngine::outstandingOnOrder($orderDebt, $this->debtEngine->balanceFor($payerId));
     }
 
     private function assertOpen(Order $order): void

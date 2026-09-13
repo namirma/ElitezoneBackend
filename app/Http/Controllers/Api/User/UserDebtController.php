@@ -57,6 +57,11 @@ class UserDebtController extends Controller
             // دفتر را جمع بزند و به همان مانده برسد.
             'amount' => (string) $entry->{DebtEntry::AMOUNT},
             'description' => $entry->{DebtEntry::DESCRIPTION},
+            // شناسه کنارِ شماره، نه به‌جایش. روتِ تسویه (`/orders/{order}/overweight/settle`)
+            // `whereNumber` است و شماره‌ی سفارش را نمی‌پذیرد؛ بدونِ این فیلد کلاینت
+            // مجبور بود `order_number` را بینِ دو اندپوینت تطبیق دهد تا به شناسه برسد
+            // (شکافِ ۱۶.۱ در `BACKEND_NEEDS_FINAL`). ردیفِ تعدیلِ دستیِ بی‌سفارش null است.
+            'order_id' => $entry->{DebtEntry::ORDER_ID},
             'order_number' => $orderNumbers[$entry->{DebtEntry::ORDER_ID}] ?? null,
             'created_at' => $entry->{DebtEntry::CREATED_AT}?->toIso8601String(),
         ])->values()->all();

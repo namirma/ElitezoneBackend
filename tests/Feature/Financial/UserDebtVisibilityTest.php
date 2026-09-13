@@ -127,4 +127,29 @@ class UserDebtVisibilityTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.entries.0.order_number', 'EZ-DEBT-001');
     }
+
+    #[Test]
+    public function an_entry_carries_its_order_id_so_the_settle_route_can_be_called(): void
+    {
+        // روتِ `overweight/settle` شناسه‌ی عددی می‌خواهد (`whereNumber`)، نه شماره‌ی
+        // سفارش. بدونِ `order_id` کلاینت باید شماره را بینِ دو اندپوینت تطبیق می‌داد
+        // تا به شناسه برسد — شکافِ ۱۶.۱.
+        $order = Order::create([
+            Order::PLACER_USER_ID => $this->user->id,
+            Order::ORDER_NUMBER => 'EZ-DEBT-002',
+            Order::STATUS => Order::STATUS_PROCESSING,
+            Order::PAYMENT_STATUS => Order::PAYMENT_PAID,
+        ]);
+
+        $this->debtEngine->incur($this->user->id, 40_000, DebtEntry::TYPE_OVERWEIGHT, $order, 'اضافه‌بار');
+        // تعدیلِ دستیِ بدونِ سفارش: شناسه باید null باشد، نه صفر و نه خطا.
+        $this->debtEngine->incur($this->user->id, 10_000, DebtEntry::TYPE_ADJUSTMENT, null, 'تعدیل');
+
+        Sanctum::actingAs($this->user);
+
+        $entries = collect($this->getJson('/api/profile/debts')->assertOk()->json('data.entries'));
+
+        $this->assertSame($order->id, $entries->firstWhere('order_number', 'EZ-DEBT-002')['order_id']);
+        $this->assertNull($entries->firstWhere('order_number', null)['order_id']);
+    }
 }

@@ -4,7 +4,10 @@ namespace App\Http\Resources\Order;
 
 use App\Enums\Shared\StatusTone;
 use App\Http\Resources\BaseJsonResource;
+use App\Models\DebtEntry;
 use App\Models\Order;
+use App\Models\User;
+use App\Services\Financial\DebtEngine;
 use App\Support\Money;
 use App\Support\OrderDocumentCatalog;
 use Illuminate\Http\Request;
@@ -29,6 +32,10 @@ class OrderResource extends BaseJsonResource
         // مبلغِ تسویهٔ تأمین‌کننده روی سفارشی که او فقط خریدارش است هم ظاهر می‌شد.
         $viewerRoles = $this->partyRolesFor($viewerId);
         $isSupplier = in_array(OrderDocumentCatalog::AUDIENCE_SUPPLIER, $viewerRoles, true);
+
+        // یک بار، پیش از آرایه. گاردهای ارزانش برای تقریباً همه‌ی سفارش‌ها بدونِ هیچ
+        // کوئری‌ای null برمی‌گردانند — شرح در `overweightSettlementFor`.
+        $overweightSettlement = $this->overweightSettlementFor($request, $viewerId, $user);
         $isAdmin = $user ? $user->hasRole('admin') : false;
         $isEliteYar = in_array(OrderDocumentCatalog::AUDIENCE_ELITE_YAR, $viewerRoles, true);
 
@@ -224,6 +231,18 @@ class OrderResource extends BaseJsonResource
                 }
             ),
 
+            // --- تسویه‌ی بدهیِ اضافه‌بار (شاخه‌ی ۷ب) — شکافِ ۱۶.۱ ---
+            //
+            // روتِ `overweight/settle` از قبل بود، ولی هیچ فیلدی به کلاینت نمی‌گفت کدام
+            // سفارش بدهیِ بازِ اضافه‌بار دارد: بلوکِ `overweight` بالا فقط در شاخه‌ی ۷الف
+            // می‌آید (`overweight_pending_amount > 0`) و در ۷ب آن ستون صفر شده است. پس
+            // دکمه‌ی تسویه در سایت ساخته نشد، و خریداری که بارش پشتِ بدهی متوقف بود
+            // از داخلِ سایت هیچ راهی برای آزادکردنش نداشت.
+            //
+            // قرینه‌ی بلوکِ `overweight` و با همان قاعده: نیامدنش یعنی «چیزی برای تسویه
+            // نیست»، نه صفر ریال.
+            'overweight_settlement' => $this->when($overweightSettlement !== null, $overweightSettlement),
+
             // --- EliteYAR Info (الیت یارِ سفارش — مستقیم از elite_yar_user_id) ---
             'elite_yar' => $eliteYARUser ? [
                 'id' => $eliteYARUser->id,
@@ -351,5 +370,95 @@ class OrderResource extends BaseJsonResource
                 'created_at_diff' => $this->created_at_diff,
             ],
         ];
+    }
+
+    /**
+     * آیا بیننده بدهی‌ای روی این سفارش دارد که `overweight/settle` بپذیرد؟
+     *
+     * ⚠️ **باید دقیقاً همان جوابِ `RequestOverweightApprovalAction::settleShortfall` را
+     * بدهد**، وگرنه دکمه یا بی‌دلیل ۴۲۲ می‌گیرد یا جایی که باید باشد نیست. برای همین
+     * فرمول (`DebtEngine::outstandingOnOrder`) مشترک است، نه دو کپی.
+     *
+     * سه گارد به ترتیبِ هزینه، **هر سه بدونِ کوئری**:
+     *   ۱. بیننده پرداخت‌کننده است — همان کسی که `assertPayer` در کنترلر می‌پذیرد
+     *   ۲. سفارش باسکول شده — `settleShortfall` بدونِ آن ۴۲۲ می‌دهد
+     *   ۳. بیننده بدهیِ کل دارد. مانده‌ی صفر یعنی بدهیِ این سفارش **دقیقاً** صفر است
+     *      (`min(orderDebt, 0)`)، نه تقریباً — پس کوئری لازم نیست. `debt_balance` روی
+     *      کاربرِ احرازشده از قبل بارگذاری شده.
+     *
+     * فقط بدهکاری که از هر سه رد شود به `viewerDebtByOrder` می‌رسد، و آن هم یک کوئری
+     * برای **کلِ درخواست** است، نه برای هر سفارش.
+     *
+     * @return array{outstanding_amount: string, is_load_held: bool}|null
+     */
+    private function overweightSettlementFor(Request $request, int|string|null $viewerId, mixed $viewer): ?array
+    {
+        if ($viewerId === null || $this->payerUserId() !== (int) $viewerId) {
+            return null;
+        }
+
+        if ($this->{Order::WEIGHING_COMPLETED_AT} === null) {
+            return null;
+        }
+
+        $balance = $viewer instanceof User ? (float) $viewer->{User::DEBT_BALANCE} : 0.0;
+
+        if ($balance <= 0.0) {
+            return null;
+        }
+
+        $orderDebt = $this->viewerDebtByOrder($request, (int) $viewerId)[(int) $this->getKey()] ?? 0.0;
+        $outstanding = DebtEngine::outstandingOnOrder($orderDebt, $balance);
+
+        if ($outstanding <= 0.0) {
+            return null;
+        }
+
+        return [
+            'outstanding_amount' => (string) $outstanding,
+            // `settleShortfall` بارِ متوقف را از همین وضعیت آزاد می‌کند. خریدارِ درونِ
+            // سقفِ اعتبار هم بدهی دارد، ولی بارش `SHIPPED` است و متوقف نیست.
+            'is_load_held' => $this->{Order::STATUS} === Order::STATUS_AWAITING_WEIGHT_CORRECTION,
+        ];
+    }
+
+    /**
+     * جمعِ بدهیِ بیننده به‌تفکیکِ سفارش — **یک کوئری برای کلِ درخواست**.
+     *
+     * `OrderResource` در دوازده اندپوینتِ فهرستی سریالایز می‌شود. محاسبه‌ی بدهیِ هر
+     * سفارش جداگانه یعنی یک کوئری به‌ازای هر ردیف (N+1). به‌جایش اولین بار همه‌ی
+     * سفارش‌های بدهکارِ این کاربر یک‌جا جمع و روی خودِ Request نگه داشته می‌شود.
+     *
+     * ⚠️ روی `$request->attributes`، **نه `once()`**: `once()` تا پایانِ پروسه می‌ماند،
+     * و تستی که پشتِ سرِ هم چند درخواست می‌زند (قبل و بعد از تسویه) بدهیِ کهنه‌ی
+     * درخواستِ قبلی را می‌گرفت. هر Request حافظه‌ی تازه دارد.
+     *
+     * جمع شاملِ **همه‌ی** انواعِ بدهیِ این سفارش است، نه فقط اضافه‌بار — چون
+     * `outstandingForOrder` همین را جمع می‌زند و این دو نباید اختلاف داشته باشند.
+     *
+     * @return array<int, float>
+     */
+    private function viewerDebtByOrder(Request $request, int $viewerId): array
+    {
+        $key = 'order_resource.debt_by_order.'.$viewerId;
+        $cached = $request->attributes->get($key);
+
+        if (is_array($cached)) {
+            return $cached;
+        }
+
+        $map = DebtEntry::query()
+            ->where(DebtEntry::USER_ID, $viewerId)
+            ->whereNotNull(DebtEntry::ORDER_ID)
+            ->groupBy(DebtEntry::ORDER_ID)
+            ->selectRaw(DebtEntry::ORDER_ID.' as order_id, SUM('.DebtEntry::AMOUNT.') as total')
+            ->toBase()
+            ->get()
+            ->mapWithKeys(fn ($row) => [(int) $row->order_id => (float) $row->total])
+            ->all();
+
+        $request->attributes->set($key, $map);
+
+        return $map;
     }
 }
