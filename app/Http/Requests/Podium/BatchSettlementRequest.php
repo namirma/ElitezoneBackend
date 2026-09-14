@@ -2,12 +2,15 @@
 
 namespace App\Http\Requests\Podium;
 
+use App\Http\Requests\Concerns\ReadsScalarInput;
 use App\Support\IranIban;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
 
 class BatchSettlementRequest extends FormRequest
 {
+    use ReadsScalarInput;
+
     public function authorize(): bool
     {
         return true;
@@ -15,9 +18,9 @@ class BatchSettlementRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        $toEn = static fn ($v) => strtr((string) $v, ['۰' => '0', '۱' => '1', '۲' => '2', '۳' => '3', '۴' => '4', '۵' => '5', '۶' => '6', '۷' => '7', '۸' => '8', '۹' => '9']);
+        $toEn = static fn ($v) => strtr(self::scalar($v), ['۰' => '0', '۱' => '1', '۲' => '2', '۳' => '3', '۴' => '4', '۵' => '5', '۶' => '6', '۷' => '7', '۸' => '8', '۹' => '9']);
 
-        $batchId = $this->filled('batchId') ? preg_replace('/[^A-Za-z0-9\-]/', '', (string) $this->input('batchId')) : null;
+        $batchId = $this->filled('batchId') ? preg_replace('/[^A-Za-z0-9\-]/', '', $this->scalarInput('batchId')) : null;
 
         $list = $this->input('list', []);
         if (is_string($list)) {
@@ -29,14 +32,16 @@ class BatchSettlementRequest extends FormRequest
 
         $norm = [];
         foreach ((array) $list as $i => $row) {
+            // آیتمِ غیرآرایه (`list: ["x"]`) به آرایه‌ی خالی می‌افتد تا `list.*.amount` ۴۲۲ بدهد.
+            $row = is_array($row) ? $row : [];
             $row['amount'] = isset($row['amount']) ? (int) $toEn($row['amount']) : null;
-            $row['firstName'] = isset($row['firstName']) ? trim((string) $row['firstName']) : null;
-            $row['lastName'] = isset($row['lastName']) ? trim((string) $row['lastName']) : null;
-            $row['toolCode'] = isset($row['toolCode']) ? strtoupper(trim((string) $row['toolCode'])) : null;
-            $row['toolId'] = isset($row['toolId']) ? strtoupper(preg_replace('/\s+/', '', (string) $row['toolId'])) : null;
-            $row['wallet'] = isset($row['wallet']) ? strtoupper(trim((string) $row['wallet'])) : 'PODLAND_WALLET';
-            $row['currencyCode'] = isset($row['currencyCode']) ? strtoupper(trim((string) $row['currencyCode'])) : 'IRR';
-            $row['description'] = isset($row['description']) ? trim((string) $row['description']) : null;
+            $row['firstName'] = isset($row['firstName']) ? trim(self::scalar($row['firstName'])) : null;
+            $row['lastName'] = isset($row['lastName']) ? trim(self::scalar($row['lastName'])) : null;
+            $row['toolCode'] = isset($row['toolCode']) ? strtoupper(trim(self::scalar($row['toolCode']))) : null;
+            $row['toolId'] = isset($row['toolId']) ? strtoupper(preg_replace('/\s+/', '', self::scalar($row['toolId']))) : null;
+            $row['wallet'] = isset($row['wallet']) ? strtoupper(trim(self::scalar($row['wallet']))) : 'PODLAND_WALLET';
+            $row['currencyCode'] = isset($row['currencyCode']) ? strtoupper(trim(self::scalar($row['currencyCode']))) : 'IRR';
+            $row['description'] = isset($row['description']) ? trim(self::scalar($row['description'])) : null;
 
             // ساختن uniqueId اگر نبود
             $uid = $row['uniqueId'] ?? null;
@@ -48,7 +53,7 @@ class BatchSettlementRequest extends FormRequest
                     strtoupper(Str::random(4))
                 );
             }
-            $row['uniqueId'] = preg_replace('/[^A-Za-z0-9\-]/', '', (string) $uid);
+            $row['uniqueId'] = preg_replace('/[^A-Za-z0-9\-]/', '', self::scalar($uid));
 
             $norm[] = $row;
         }

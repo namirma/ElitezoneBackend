@@ -2,10 +2,13 @@
 
 namespace App\Http\Requests\Podium;
 
+use App\Http\Requests\Concerns\ReadsScalarInput;
 use Illuminate\Foundation\Http\FormRequest;
 
 class SettlementInquiryRequest extends FormRequest
 {
+    use ReadsScalarInput;
+
     public function authorize(): bool
     {
         return true;
@@ -13,22 +16,22 @@ class SettlementInquiryRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        $toEn = static fn ($v) => strtr((string) $v, ['۰' => '0', '۱' => '1', '۲' => '2', '۳' => '3', '۴' => '4', '۵' => '5', '۶' => '6', '۷' => '7', '۸' => '8', '۹' => '9']);
+        $toEn = static fn ($v) => strtr(self::scalar($v), ['۰' => '0', '۱' => '1', '۲' => '2', '۳' => '3', '۴' => '4', '۵' => '5', '۶' => '6', '۷' => '7', '۸' => '8', '۹' => '9']);
 
         $offset = $this->filled('offset') ? (int) $toEn($this->input('offset')) : 0;
         $size = $this->filled('size') ? (int) $toEn($this->input('size')) : 20;
 
-        $toolCode = $this->filled('toolCode') ? strtoupper(trim((string) $this->input('toolCode'))) : null;
-        $currencyCode = $this->filled('currencyCode') ? strtoupper(trim((string) $this->input('currencyCode'))) : 'IRR';
-        $statusCode = $this->filled('statusCode') ? strtoupper(trim((string) $this->input('statusCode'))) : null;
-        $toolId = $this->filled('toolId') ? strtoupper(preg_replace('/\s+/', '', (string) $this->input('toolId'))) : null;
-        $uniqueId = $this->filled('uniqueId') ? preg_replace('/[^A-Za-z0-9\-]/', '', (string) $this->input('uniqueId')) : null;
+        $toolCode = $this->filled('toolCode') ? strtoupper(trim($this->scalarInput('toolCode'))) : null;
+        $currencyCode = $this->filled('currencyCode') ? strtoupper(trim($this->scalarInput('currencyCode'))) : 'IRR';
+        $statusCode = $this->filled('statusCode') ? strtoupper(trim($this->scalarInput('statusCode'))) : null;
+        $toolId = $this->filled('toolId') ? strtoupper(preg_replace('/\s+/', '', $this->scalarInput('toolId'))) : null;
+        $uniqueId = $this->filled('uniqueId') ? preg_replace('/[^A-Za-z0-9\-]/', '', $this->scalarInput('uniqueId')) : null;
         $id = $this->filled('id') ? (int) $toEn($this->input('id')) : null;
         $fromAmount = $this->filled('fromAmount') ? (int) $toEn($this->input('fromAmount')) : null;
         $toAmount = $this->filled('toAmount') ? (int) $toEn($this->input('toAmount')) : null;
 
-        $fromDate = $this->filled('fromDate') ? trim((string) $this->input('fromDate')) : null;
-        $toDate = $this->filled('toDate') ? trim((string) $this->input('toDate')) : null;
+        $fromDate = $this->filled('fromDate') ? trim($this->scalarInput('fromDate')) : null;
+        $toDate = $this->filled('toDate') ? trim($this->scalarInput('toDate')) : null;
 
         $this->merge(compact(
             'offset', 'size', 'toolCode', 'currencyCode', 'statusCode', 'toolId',

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Financial;
 
+use App\Http\Requests\Concerns\ReadsScalarInput;
 use App\Models\UserBankAccount;
 use App\Support\IranIban;
 use Illuminate\Foundation\Http\FormRequest;
@@ -10,6 +11,8 @@ use Illuminate\Validation\Rule;
 
 class StoreUserBankAccountRequest extends FormRequest
 {
+    use ReadsScalarInput;
+
     public function authorize(): bool
     {
         return true;
@@ -41,7 +44,7 @@ class StoreUserBankAccountRequest extends FormRequest
     public function withValidator($validator)
     {
         $validator->after(function ($v) {
-            $shaba = (string) $this->input(UserBankAccount::SHABA);
+            $shaba = $this->scalarInput(UserBankAccount::SHABA);
 
             // فقط اگر شبا پر شده بود الگوریتم را چک کن
             if (! empty($shaba) && ! IranIban::isValid($shaba)) {

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Profile;
 
+use App\Http\Requests\Concerns\ReadsScalarInput;
 use App\Models\EliteYARSmsInvite;
 use App\Support\PhoneNumber;
 use Illuminate\Foundation\Http\FormRequest;
@@ -18,6 +19,8 @@ use Illuminate\Validation\Rule;
  */
 class SendEliteYARSmsInviteRequest extends FormRequest
 {
+    use ReadsScalarInput;
+
     public function authorize(): bool
     {
         return true;
@@ -26,7 +29,7 @@ class SendEliteYARSmsInviteRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         if ($this->filled('mobile')) {
-            $this->merge(['mobile' => PhoneNumber::to09((string) $this->input('mobile'))]);
+            $this->merge(['mobile' => PhoneNumber::to09($this->scalarInput('mobile'))]);
         }
     }
 

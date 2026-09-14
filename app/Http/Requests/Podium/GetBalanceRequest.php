@@ -2,10 +2,13 @@
 
 namespace App\Http\Requests\Podium;
 
+use App\Http\Requests\Concerns\ReadsScalarInput;
 use Illuminate\Foundation\Http\FormRequest;
 
 class GetBalanceRequest extends FormRequest
 {
+    use ReadsScalarInput;
+
     public function authorize(): bool
     {
         return true;
@@ -13,7 +16,7 @@ class GetBalanceRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        $guild = $this->filled('guildCode') ? strtoupper(trim((string) $this->input('guildCode'))) : null;
+        $guild = $this->filled('guildCode') ? strtoupper(trim($this->scalarInput('guildCode'))) : null;
 
         if (! empty($guild)) {
             $guild = preg_replace('/[^A-Z0-9_.\-]/', '', $guild);

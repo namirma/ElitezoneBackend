@@ -2,11 +2,14 @@
 
 namespace App\Http\Requests\Podium;
 
+use App\Http\Requests\Concerns\ReadsScalarInput;
 use App\Support\IranIban;
 use Illuminate\Foundation\Http\FormRequest;
 
 class SingleSettlementRequest extends FormRequest
 {
+    use ReadsScalarInput;
+
     public function authorize(): bool
     {
         return true;
@@ -17,17 +20,17 @@ class SingleSettlementRequest extends FormRequest
         $toEn = static function ($v) {
             $map = ['۰' => '0', '۱' => '1', '۲' => '2', '۳' => '3', '۴' => '4', '۵' => '5', '۶' => '6', '۷' => '7', '۸' => '8', '۹' => '9'];
 
-            return strtr((string) $v, $map);
+            return strtr(self::scalar($v), $map);
         };
 
         $amount = $toEn($this->input('amount'));
-        $toolCode = strtoupper(trim((string) $this->input('toolCode')));
-        $wallet = $this->filled('wallet') ? strtoupper(trim((string) $this->input('wallet'))) : null;
-        $guild = $this->filled('guildCode') ? trim((string) $this->input('guildCode')) : null;
+        $toolCode = strtoupper(trim($this->scalarInput('toolCode')));
+        $wallet = $this->filled('wallet') ? strtoupper(trim($this->scalarInput('wallet'))) : null;
+        $guild = $this->filled('guildCode') ? trim($this->scalarInput('guildCode')) : null;
 
-        $ibanRaw = strtoupper(preg_replace('/\s+/', '', (string) $this->input('toolId', '')));
-        $pid = $this->filled('paymentId') ? preg_replace('/[^A-Za-z0-9\-]/', '', (string) $this->input('paymentId')) : null;
-        $uid = $this->filled('uniqueId') ? preg_replace('/[^A-Za-z0-9\-]/', '', (string) $this->input('uniqueId')) : null;
+        $ibanRaw = strtoupper(preg_replace('/\s+/', '', $this->scalarInput('toolId')));
+        $pid = $this->filled('paymentId') ? preg_replace('/[^A-Za-z0-9\-]/', '', $this->scalarInput('paymentId')) : null;
+        $uid = $this->filled('uniqueId') ? preg_replace('/[^A-Za-z0-9\-]/', '', $this->scalarInput('uniqueId')) : null;
 
         $this->merge([
             'amount' => is_numeric($amount) ? (int) $amount : $amount,
@@ -39,7 +42,7 @@ class SingleSettlementRequest extends FormRequest
             'uniqueId' => $uid,
             'currencyCode' => $this->input('currencyCode', 'IRR'),
         ]);
-        $raw = (string) $this->input('toolId', '');
+        $raw = $this->scalarInput('toolId');
         $iban = strtoupper(preg_replace('/\s+/', '', $raw));
 
         if (preg_match('/^\d{24}$/', $iban)) {
@@ -73,7 +76,7 @@ class SingleSettlementRequest extends FormRequest
     public function withValidator($validator)
     {
         $validator->after(function ($v) {
-            $raw = preg_replace('/\s+/', '', (string) $this->input('toolId', ''));
+            $raw = preg_replace('/\s+/', '', $this->scalarInput('toolId'));
 
             if (preg_match('/^\d{16}$/', $raw)) {
                 $v->errors()->add('toolId', 'به نظر شماره کارت است؛ برای PAYA/SATNA باید شِبا (IR + 24 رقم) ارسال شود.');
@@ -82,8 +85,8 @@ class SingleSettlementRequest extends FormRequest
             }
 
             // چک‌سام فعلی‌ات عالیه؛ نگه‌دار
-            $toolCode = (string) $this->input('toolCode');
-            $iban = (string) $this->input('toolId');
+            $toolCode = $this->scalarInput('toolCode');
+            $iban = $this->scalarInput('toolId');
             if (in_array($toolCode, ['SETTLEMENT_TOOL_PAYA', 'SETTLEMENT_TOOL_SATNA'], true)) {
                 if (! IranIban::isValid($iban)) {
                     $v->errors()->add('toolId', 'شماره شبا نامعتبر است (IBAN checksum).');

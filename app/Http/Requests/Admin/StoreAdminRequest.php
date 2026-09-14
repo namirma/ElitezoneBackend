@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Http\Requests\Concerns\ReadsScalarInput;
 use App\Models\User;
 use App\Support\PhoneNumber;
 use Database\Seeders\AdminPermissionSeeder;
@@ -13,6 +14,8 @@ use Illuminate\Validation\Rule;
  */
 class StoreAdminRequest extends FormRequest
 {
+    use ReadsScalarInput;
+
     public function authorize(): bool
     {
         return true;
@@ -21,7 +24,7 @@ class StoreAdminRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         if ($this->filled(User::MOBILE)) {
-            $this->merge([User::MOBILE => PhoneNumber::to09((string) $this->input(User::MOBILE))]);
+            $this->merge([User::MOBILE => PhoneNumber::to09($this->scalarInput(User::MOBILE))]);
         }
     }
 
