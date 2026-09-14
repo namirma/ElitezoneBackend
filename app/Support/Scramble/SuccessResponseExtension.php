@@ -40,16 +40,39 @@ class SuccessResponseExtension implements FunctionReturnTypeExtension
 {
     public function shouldHandle(string $name): bool
     {
-        return in_array(ltrim($name, '\\'), ['success', 'created', 'trans'], true);
+        return in_array(ltrim($name, '\\'), ['success', 'created', 'error', 'trans'], true);
     }
 
     public function getFunctionReturnType(FunctionCallEvent $event): ?Type
     {
         return match (ltrim($event->getName(), '\\')) {
             'trans' => $this->arrayTranslation($event),
+            'error' => $this->errorEnvelope($event),
             'created' => $this->envelope($event->getArg('data', 0, new NullType), new LiteralIntegerType(201)),
             default => $this->envelope($event->getArg('data', 0), $event->getArg('status', 2, new LiteralIntegerType(200))),
         };
+    }
+
+    /**
+     * ‏`error($message, $errors, $status)` — همان ماکروی `Response::error`.
+     *
+     * بدونِ این، متدی که در یک شاخه `success()` و در شاخه‌ی دیگر `error()` برمی‌گرداند
+     * نوعِ نامعلوم می‌گرفت و Scramble **هر دو** پاسخ را به `{"type":"object"}` تقلیل
+     * می‌داد — ۱۰۹ از ۱۳۳ عملیاتِ بی‌سند همین بودند. `data` همیشه `null` است و
+     * `errors` برای سازگاری با کلاینت‌های قدیمی کنارش می‌ماند.
+     */
+    private function errorEnvelope(FunctionCallEvent $event): Generic
+    {
+        return new Generic(JsonResponse::class, [
+            new KeyedArrayType([
+                new ArrayItemType_('status', new LiteralBooleanType(false)),
+                new ArrayItemType_('message', new StringType),
+                new ArrayItemType_('data', new NullType),
+                new ArrayItemType_('errors', $event->getArg('errors', 1, new ArrayType)),
+            ]),
+            $event->getArg('status', 2),
+            new KeyedArrayType,
+        ]);
     }
 
     /**

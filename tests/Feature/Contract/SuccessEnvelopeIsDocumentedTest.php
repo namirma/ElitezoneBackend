@@ -57,10 +57,20 @@ class SuccessEnvelopeIsDocumentedTest extends TestCase
         $this->assertMatchesDocumentation('/profile/supplier/requests', $this->getJson('/api/profile/supplier/requests')->assertOk()->json());
     }
 
-    /** @param  array<string, mixed>  $body */
-    private function assertMatchesDocumentation(string $path, array $body): void
+    #[Test]
+    public function an_error_response_has_exactly_the_documented_keys(): void
     {
-        $schema = $this->documentedSuccessSchema($path);
+        // ‏`error()` هم از ماکرو می‌گذرد؛ بدونِ اعلامش، متدی که یک شاخه `success`
+        // و شاخه‌ی دیگر `error` برمی‌گرداند هر دو پاسخش را بی‌شکل می‌کرد.
+        $body = $this->getJson('/api/agreements/no-such-agreement')->assertNotFound()->json();
+
+        $this->assertMatchesDocumentation('/agreements/{slug}', $body, 404);
+    }
+
+    /** @param  array<string, mixed>  $body */
+    private function assertMatchesDocumentation(string $path, array $body, int $status = 200): void
+    {
+        $schema = $this->documentedSchema($path, $status);
 
         $this->assertEqualsCanonicalizing(
             array_keys($schema['properties'] ?? []),
@@ -82,16 +92,16 @@ class SuccessEnvelopeIsDocumentedTest extends TestCase
     }
 
     /** @return array<string, mixed> */
-    private function documentedSuccessSchema(string $path): array
+    private function documentedSchema(string $path, int $status): array
     {
         $spec = json_decode((string) file_get_contents(base_path('api.json')), true);
 
-        foreach ($spec['paths'][$path]['get']['responses'] ?? [] as $code => $response) {
-            if (str_starts_with((string) $code, '2')) {
-                return $response['content']['application/json']['schema'] ?? [];
-            }
+        $schema = $spec['paths'][$path]['get']['responses'][$status]['content']['application/json']['schema'] ?? null;
+
+        if ($schema === null) {
+            $this->fail("GET {$path} در api.json پاسخِ {$status} ندارد.");
         }
 
-        $this->fail("GET {$path} در api.json پاسخِ موفق ندارد.");
+        return $schema;
     }
 }

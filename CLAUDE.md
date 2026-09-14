@@ -2985,8 +2985,13 @@ consecutive runs produce an identical SHA-256).
 > through `Arr::wrap`, which drops the second — every nullable came out non-null), and
 > `__('key')` whose value is an array crashes the whole export (Scramble's own
 > translation extension runs before config extensions and assumes a string) — use
-> `trans()` for array-valued keys. Most of the remaining 133 return `success()` on one
-> branch and `error()` on another; `error()` is not declared yet.
+> `trans()` for array-valued keys.
+>
+> `error()` is declared too (`{status: false, message, data: null, errors}` at its
+> literal status). Before that, a method returning `success()` on one branch and
+> `error()` on another collapsed **both** responses to a bare object — 119 of the 133.
+> What remains (14) is mostly file/PDF downloads, which are correctly not JSON, plus a
+> few `$this->helper()` returns Scramble cannot follow.
 
 It then runs `oasdiff` against the previous commit's `api.json` and writes a Persian
 changelog into the job summary and an artifact.
