@@ -58512,19 +58512,95 @@
                         "maxLength": 255
                     },
                     "body": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "is_active": {
                         "type": [
                             "boolean",
                             "null"
                         ]
+                    },
+                    "has_blocks": {
+                        "type": [
+                            "boolean",
+                            "null"
+                        ]
+                    },
+                    "style": {
+                        "type": "object",
+                        "properties": {
+                            "blockGap": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "enum": [
+                                    "0",
+                                    "6",
+                                    "8",
+                                    "10",
+                                    "12",
+                                    "18",
+                                    "20",
+                                    "24",
+                                    "28",
+                                    "32",
+                                    "40",
+                                    "56",
+                                    "64"
+                                ]
+                            },
+                            "pagePadTop": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "enum": [
+                                    "0",
+                                    "6",
+                                    "8",
+                                    "10",
+                                    "12",
+                                    "18",
+                                    "20",
+                                    "24",
+                                    "28",
+                                    "32",
+                                    "40",
+                                    "56",
+                                    "64"
+                                ]
+                            },
+                            "pagePadBottom": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "enum": [
+                                    "0",
+                                    "6",
+                                    "8",
+                                    "10",
+                                    "12",
+                                    "18",
+                                    "20",
+                                    "24",
+                                    "28",
+                                    "32",
+                                    "40",
+                                    "56",
+                                    "64"
+                                ]
+                            }
+                        }
                     }
                 },
                 "required": [
                     "title",
-                    "slug",
-                    "body"
+                    "slug"
                 ],
                 "title": "StorePageRequest"
             },
@@ -60186,6 +60262,80 @@
                             "boolean",
                             "null"
                         ]
+                    },
+                    "has_blocks": {
+                        "type": [
+                            "boolean",
+                            "null"
+                        ]
+                    },
+                    "style": {
+                        "type": "object",
+                        "properties": {
+                            "blockGap": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "enum": [
+                                    "0",
+                                    "6",
+                                    "8",
+                                    "10",
+                                    "12",
+                                    "18",
+                                    "20",
+                                    "24",
+                                    "28",
+                                    "32",
+                                    "40",
+                                    "56",
+                                    "64"
+                                ]
+                            },
+                            "pagePadTop": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "enum": [
+                                    "0",
+                                    "6",
+                                    "8",
+                                    "10",
+                                    "12",
+                                    "18",
+                                    "20",
+                                    "24",
+                                    "28",
+                                    "32",
+                                    "40",
+                                    "56",
+                                    "64"
+                                ]
+                            },
+                            "pagePadBottom": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "enum": [
+                                    "0",
+                                    "6",
+                                    "8",
+                                    "10",
+                                    "12",
+                                    "18",
+                                    "20",
+                                    "24",
+                                    "28",
+                                    "32",
+                                    "40",
+                                    "56",
+                                    "64"
+                                ]
+                            }
+                        }
                     }
                 },
                 "title": "UpdatePageRequest"

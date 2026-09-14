@@ -202,7 +202,8 @@ class ContentController extends Controller
      */
     public function pageBlocks(string $page): JsonResponse
     {
-        abort_unless(in_array($page, PageBlock::PAGES, true), 404);
+        $record = Page::blockPages()[$page] ?? null;
+        abort_if($record === null, 404);
 
         $blocks = Cache::remember(
             PageBlock::cacheKeyFor($page),
@@ -215,6 +216,17 @@ class ContentController extends Controller
                 ->get()
         );
 
-        return success(PageBlockResource::collection($blocks), __('page_blocks.list_received'));
+        // پاکتِ `{blocks, style}` — فازِ ۳. پیش از این فقط آرایه‌ی بلوک‌ها بود.
+        // `style` اسلات‌های **سطحِ صفحه** است (فاصله‌ی بینِ بلوک‌ها و پدینگِ صفحه)
+        // که هیچ بلوکی مالکش نیست، پس جایی جز خودِ پاکت ندارد.
+        return success([
+            'blocks' => PageBlockResource::collection($blocks),
+            // `(object)` لازم است: آرایه‌ی تهیِ PHP به `[]` سریالایز می‌شود نه
+            // `{}`، پس صفحه‌ی بدونِ تنظیمات یک **آرایه** روی سیم می‌فرستاد در
+            // حالی که صفحه‌ی تنظیم‌شده یک آبجکت — یک کلید با دو شکل، همان تله‌ای
+            // که `order_units.amount` قبلاً ساخت. امروز فرانت تصادفاً هر دو را
+            // تحمل می‌کند؛ فردا یک `Object.keys(...).length` این را نمی‌بخشد.
+            'style' => (object) $record['style'],
+        ], __('page_blocks.list_received'));
     }
 }

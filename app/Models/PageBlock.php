@@ -38,6 +38,18 @@ class PageBlock extends Model
 
     const PAGE_STEEL_KAVIR = 'steel-kavir';
 
+    /**
+     * ⚠️ **دیگر فهرستِ صفحه‌های بلوکی نیست** — فازِ ۳ (۲۰۲۶-۰۹-۱۲).
+     *
+     * صفحه حالا یک **رکورد** در `pages` است (`has_blocks = true`) تا ادمین
+     * بتواند صفحه‌ی تازه بسازد. تنها منبعِ حقیقت: `Page::blockPages()`.
+     *
+     * این ثابت فقط سه صفحه‌ی *اولیه* را نگه می‌دارد و صرفاً در
+     * `cachedPageKeys()` به‌عنوان کفِ فلاشِ کش استفاده می‌شود — تا اگر ردیفِ
+     * `pages` هنوز سید نشده باشد، کشِ همان سه صفحه‌ی زنده باز هم پاک شود.
+     * برای اعتبارسنجی یا گاردِ ۴۰۴ **از آن استفاده نکنید**؛ صفحه‌ی ساخته‌شده
+     * توسط ادمین در آن نیست و بی‌صدا ۴۲۲/۴۰۴ می‌گیرد.
+     */
     const PAGES = [self::PAGE_HOME, self::PAGE_PODIUM, self::PAGE_STEEL_KAVIR];
 
     const CACHE_KEY = 'content:page_blocks';
@@ -63,6 +75,21 @@ class PageBlock extends Model
     }
 
     /**
+     * کلیدهایی که هنگام فلاش باید پاک شوند = صفحه‌های بلوکیِ رکوردشده
+     * **به‌علاوه‌ی** سه صفحه‌ی اولیه.
+     *
+     * اجتماع عمدی است: `Page::blockPages()` فقط صفحه‌های `is_active` را
+     * برمی‌گرداند، پس اگر ادمین صفحه‌ای را غیرفعال کند کشِ قبلی‌اش بدونِ این
+     * کف تا انقضای TTL روی سایت می‌ماند.
+     *
+     * @return list<string>
+     */
+    public static function cachedPageKeys(): array
+    {
+        return array_values(array_unique([...self::PAGES, ...Page::blockPageSlugs()]));
+    }
+
+    /**
      * کشِ **همه‌ی** صفحه‌ها فلاش می‌شود، نه فقط صفحه‌ی همین ردیف.
      *
      * دلیل: `$model->page` بعد از `update(['page' => ...])` مقدارِ **جدید** است،
@@ -73,7 +100,7 @@ class PageBlock extends Model
     protected static function booted(): void
     {
         $flush = function (): void {
-            foreach (self::PAGES as $page) {
+            foreach (self::cachedPageKeys() as $page) {
                 Cache::forget(self::cacheKeyFor($page));
             }
         };

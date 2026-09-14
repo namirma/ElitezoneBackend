@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StorePageBlockRequest;
 use App\Http\Requests\Admin\UpdatePageBlockRequest;
 use App\Http\Resources\Content\PageBlockResource;
+use App\Models\Page;
 use App\Models\PageBlock;
 use App\Services\Content\PageBlockSchema;
 use Illuminate\Http\JsonResponse;
@@ -47,6 +48,21 @@ class AdminPageBlockController extends Controller
             // همان روزِ اول واگرا شد: نسخه‌ی پنل ۲۰ را نداشت در حالی که
             // مقدارِ فعلیِ `card_row` دقیقاً ۲۰ است.
             'style_slots' => PageBlockSchema::STYLE_SLOTS,
+            // اسلات‌های سطحِ صفحه، جدا از اسلات‌های بلوک — نامشان هم عمداً جداست
+            // (`--ez-p-*` در برابرِ `--ez-b-*`)؛ دلیل در `PAGE_STYLE_SLOTS`.
+            'page_style_slots' => PageBlockSchema::PAGE_STYLE_SLOTS,
+            // فهرستِ صفحه‌ها هم از روی سیم می‌رود. تا فازِ ۳ بک‌آفیس **سه کپیِ
+            // دستی** داشت — `PAGE_KEYS`، `PAGE_LABELS` و `ROUTE_BY_PAGE` — و
+            // آخری تنها جایی بود که می‌دانست فولاد کویر روی `/steel-kavirCo`
+            // است، نه `/steel-kavir`. صفحه‌ی تازه‌ای که ادمین می‌سازد در هیچ‌کدام
+            // از آن سه نبود، پس بی‌صدا در پنل دیده نمی‌شد.
+            // `style` با `(object)` — عینِ `ContentController::pageBlocks()` و به
+            // همان دلیل: آرایه‌ی تهیِ PHP به `[]` می‌رود نه `{}`، پس صفحه‌ی
+            // بدونِ تنظیمات یک نوعِ JSONِ متفاوت از صفحه‌ی تنظیم‌شده می‌فرستاد.
+            'pages' => array_map(
+                fn (array $p) => [...$p, 'style' => (object) $p['style']],
+                array_values(Page::blockPages())
+            ),
             'site_url' => rtrim((string) config('app.front_url'), '/') ?: null,
         ], __('page_blocks.schema_received'));
     }
@@ -105,7 +121,19 @@ class AdminPageBlockController extends Controller
 
     public function store(StorePageBlockRequest $request): JsonResponse
     {
-        $block = PageBlock::create($request->validated());
+        // `data` صریحاً `?? []` می‌گیرد، و این یک احتیاطِ تزئینی نیست.
+        //
+        // `validated()` فقط کلیدهایی را برمی‌گرداند که **قاعده‌ای دارند و
+        // فرستاده شده‌اند**. قواعدِ `data` از اسکیمای همان نوع می‌آیند، پس یک
+        // بدنه که هیچ‌کدام از کلیدهای آن نوع را ندارد (مثلاً `{title, items}`
+        // برای `faq` که فیلدهایش `heading`/`intro`/`style` است) از اعتبارسنجی
+        // رد می‌شود ولی `data` **اصلاً در خروجی نیست** — و ستون NOT NULL است،
+        // پس `PageBlock::create()` با یک ۵۰۰ـِ SQL می‌مرد به‌جای ۴۲۲.
+        //
+        // این پیش از فازِ ۳ هم بود؛ روی `home` هم همان‌طور می‌شکست. پنل همیشه
+        // فیلدهای واقعی را می‌فرستد، ولی یک اندپوینتِ ادمین نباید با ورودیِ بد
+        // ۵۰۰ بدهد. پینِ رگرسیون: `Content/AdminPageBlockTest`.
+        $block = PageBlock::create($request->validated() + [PageBlock::DATA => []]);
 
         return created(new PageBlockResource($block), __('page_blocks.created'));
     }
@@ -148,7 +176,7 @@ class AdminPageBlockController extends Controller
         }
 
         // `update()` روی کوئری‌بیلدر رویدادِ مدل نمی‌زند، پس کش خودش فلاش نمی‌شود.
-        foreach (PageBlock::PAGES as $page) {
+        foreach (PageBlock::cachedPageKeys() as $page) {
             Cache::forget(PageBlock::cacheKeyFor($page));
         }
 

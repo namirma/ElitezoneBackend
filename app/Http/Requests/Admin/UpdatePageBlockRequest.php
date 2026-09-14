@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Models\Page;
 use App\Models\PageBlock;
 use App\Services\Content\PageBlockSchema;
 use Illuminate\Foundation\Http\FormRequest;
@@ -45,7 +46,7 @@ class UpdatePageBlockRequest extends FormRequest
         }
 
         return array_merge([
-            'page' => ['sometimes', Rule::in(PageBlock::PAGES)],
+            'page' => ['sometimes', Rule::in(Page::blockPageSlugs())],
             'type' => ['sometimes', Rule::in($schema->types())],
             'sort_order' => ['nullable', 'integer', 'min:0'],
             'is_active' => ['nullable', 'boolean'],
