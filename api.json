@@ -12700,6 +12700,519 @@
                 }
             }
         },
+        "/admin/order-cancel-requests": {
+            "get": {
+                "operationId": "adminOrderCancelRequest.index",
+                "tags": [
+                    "AdminOrderCancelRequest"
+                ],
+                "parameters": [
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "enum": [
+                                "pending",
+                                "escalated",
+                                "approved",
+                                "rejected"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "integer",
+                                "null"
+                            ],
+                            "minimum": 1,
+                            "maximum": 100
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {}
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "properties": {
+                                                "current_page": {
+                                                    "type": "integer"
+                                                },
+                                                "from": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "last_page": {
+                                                    "type": "integer"
+                                                },
+                                                "path": {
+                                                    "type": "string"
+                                                },
+                                                "per_page": {
+                                                    "type": "integer"
+                                                },
+                                                "to": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "total": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "required": [
+                                                "current_page",
+                                                "from",
+                                                "last_page",
+                                                "path",
+                                                "per_page",
+                                                "to",
+                                                "total"
+                                            ]
+                                        },
+                                        "links": {
+                                            "type": "object",
+                                            "properties": {
+                                                "first_page_url": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "last_page_url": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "prev_page_url": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "next_page_url": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "first_page_url",
+                                                "last_page_url",
+                                                "prev_page_url",
+                                                "next_page_url"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "status",
+                                        "message",
+                                        "data",
+                                        "meta",
+                                        "links"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/admin/order-cancel-requests/{orderCancelRequest}/approve": {
+            "post": {
+                "operationId": "adminOrderCancelRequest.approve",
+                "tags": [
+                    "AdminOrderCancelRequest"
+                ],
+                "parameters": [
+                    {
+                        "name": "orderCancelRequest",
+                        "in": "path",
+                        "required": true,
+                        "description": "The order cancel request ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CancelRequestReasonRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {},
+                                                "status": {
+                                                    "type": "string"
+                                                },
+                                                "order_id": {
+                                                    "type": "string"
+                                                },
+                                                "order_number": {
+                                                    "type": "string"
+                                                },
+                                                "order_status": {
+                                                    "type": "string"
+                                                },
+                                                "payment_of_owner": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "description": "\u0631\u0642\u0645\u06cc \u06a9\u0647 \u0628\u0627 \u067e\u0630\u06cc\u0631\u0634 \u062c\u0627\u0628\u0647\u200c\u062c\u0627 \u0645\u06cc\u200c\u0634\u0648\u062f: \u0627\u0632 \u062a\u0623\u0645\u06cc\u0646\u200c\u06a9\u0646\u0646\u062f\u0647 (PTS) \u0648 \u0628\u0647 \u062e\u0631\u06cc\u062f\u0627\u0631 (POO)."
+                                                },
+                                                "payment_to_supplier": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "requested_by": {
+                                                    "type": "string"
+                                                },
+                                                "requester": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "user_id": {
+                                                            "type": "string"
+                                                        },
+                                                        "name": {
+                                                            "type": "string"
+                                                        },
+                                                        "mobile": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "user_id",
+                                                        "name",
+                                                        "mobile"
+                                                    ]
+                                                },
+                                                "reason": {
+                                                    "type": "string"
+                                                },
+                                                "respond_until": {
+                                                    "type": "string"
+                                                },
+                                                "counterparty_decision": {
+                                                    "type": "string"
+                                                },
+                                                "counterparty_reason": {
+                                                    "type": "string"
+                                                },
+                                                "responded_at": {
+                                                    "type": "string"
+                                                },
+                                                "escalated_at": {
+                                                    "type": "string"
+                                                },
+                                                "admin_decision": {
+                                                    "type": "string"
+                                                },
+                                                "admin_reason": {
+                                                    "type": "string"
+                                                },
+                                                "admin_name": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "decided_at": {
+                                                    "type": "string"
+                                                },
+                                                "created_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "format": "date-time"
+                                                }
+                                            },
+                                            "required": [
+                                                "id",
+                                                "status",
+                                                "order_id",
+                                                "order_number",
+                                                "order_status",
+                                                "payment_of_owner",
+                                                "payment_to_supplier",
+                                                "requested_by",
+                                                "requester",
+                                                "reason",
+                                                "respond_until",
+                                                "counterparty_decision",
+                                                "counterparty_reason",
+                                                "responded_at",
+                                                "escalated_at",
+                                                "admin_decision",
+                                                "admin_reason",
+                                                "admin_name",
+                                                "decided_at",
+                                                "created_at"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "status",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    }
+                }
+            }
+        },
+        "/admin/order-cancel-requests/{orderCancelRequest}/reject": {
+            "post": {
+                "operationId": "adminOrderCancelRequest.reject",
+                "tags": [
+                    "AdminOrderCancelRequest"
+                ],
+                "parameters": [
+                    {
+                        "name": "orderCancelRequest",
+                        "in": "path",
+                        "required": true,
+                        "description": "The order cancel request ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CancelRequestReasonRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {},
+                                                "status": {
+                                                    "type": "string"
+                                                },
+                                                "order_id": {
+                                                    "type": "string"
+                                                },
+                                                "order_number": {
+                                                    "type": "string"
+                                                },
+                                                "order_status": {
+                                                    "type": "string"
+                                                },
+                                                "payment_of_owner": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "description": "\u0631\u0642\u0645\u06cc \u06a9\u0647 \u0628\u0627 \u067e\u0630\u06cc\u0631\u0634 \u062c\u0627\u0628\u0647\u200c\u062c\u0627 \u0645\u06cc\u200c\u0634\u0648\u062f: \u0627\u0632 \u062a\u0623\u0645\u06cc\u0646\u200c\u06a9\u0646\u0646\u062f\u0647 (PTS) \u0648 \u0628\u0647 \u062e\u0631\u06cc\u062f\u0627\u0631 (POO)."
+                                                },
+                                                "payment_to_supplier": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "requested_by": {
+                                                    "type": "string"
+                                                },
+                                                "requester": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "user_id": {
+                                                            "type": "string"
+                                                        },
+                                                        "name": {
+                                                            "type": "string"
+                                                        },
+                                                        "mobile": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "user_id",
+                                                        "name",
+                                                        "mobile"
+                                                    ]
+                                                },
+                                                "reason": {
+                                                    "type": "string"
+                                                },
+                                                "respond_until": {
+                                                    "type": "string"
+                                                },
+                                                "counterparty_decision": {
+                                                    "type": "string"
+                                                },
+                                                "counterparty_reason": {
+                                                    "type": "string"
+                                                },
+                                                "responded_at": {
+                                                    "type": "string"
+                                                },
+                                                "escalated_at": {
+                                                    "type": "string"
+                                                },
+                                                "admin_decision": {
+                                                    "type": "string"
+                                                },
+                                                "admin_reason": {
+                                                    "type": "string"
+                                                },
+                                                "admin_name": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "decided_at": {
+                                                    "type": "string"
+                                                },
+                                                "created_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "format": "date-time"
+                                                }
+                                            },
+                                            "required": [
+                                                "id",
+                                                "status",
+                                                "order_id",
+                                                "order_number",
+                                                "order_status",
+                                                "payment_of_owner",
+                                                "payment_to_supplier",
+                                                "requested_by",
+                                                "requester",
+                                                "reason",
+                                                "respond_until",
+                                                "counterparty_decision",
+                                                "counterparty_reason",
+                                                "responded_at",
+                                                "escalated_at",
+                                                "admin_decision",
+                                                "admin_reason",
+                                                "admin_name",
+                                                "decided_at",
+                                                "created_at"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "status",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    }
+                }
+            }
+        },
         "/admin/order-units": {
             "get": {
                 "operationId": "adminOrderUnit.index",
@@ -40596,6 +41109,266 @@
                 }
             }
         },
+        "/profile/orders/{order}/cancellation-request": {
+            "post": {
+                "operationId": "order.orderCancelRequest.store_0",
+                "tags": [
+                    "OrderCancelRequest"
+                ],
+                "parameters": [
+                    {
+                        "name": "order",
+                        "in": "path",
+                        "required": true,
+                        "description": "The order ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CancelRequestReasonRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/OrderResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "status",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    }
+                }
+            }
+        },
+        "/profile/orders/{order}/cancel-request": {
+            "post": {
+                "operationId": "order.orderCancelRequest.store_0",
+                "tags": [
+                    "OrderCancelRequest"
+                ],
+                "parameters": [
+                    {
+                        "name": "order",
+                        "in": "path",
+                        "required": true,
+                        "description": "The order ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CancelRequestReasonRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/OrderResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "status",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    }
+                }
+            }
+        },
+        "/profile/orders/{order}/cancel-request/accept": {
+            "post": {
+                "operationId": "orderCancelRequest.accept",
+                "tags": [
+                    "OrderCancelRequest"
+                ],
+                "parameters": [
+                    {
+                        "name": "order",
+                        "in": "path",
+                        "required": true,
+                        "description": "The order ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/OrderResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "status",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/profile/orders/{order}/cancel-request/reject": {
+            "post": {
+                "operationId": "orderCancelRequest.reject",
+                "tags": [
+                    "OrderCancelRequest"
+                ],
+                "parameters": [
+                    {
+                        "name": "order",
+                        "in": "path",
+                        "required": true,
+                        "description": "The order ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CancelRequestReasonRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/OrderResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "status",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    }
+                }
+            }
+        },
         "/profile/orders/{order}/invoice/{type}": {
             "get": {
                 "operationId": "user.orders.invoice",
@@ -43797,6 +44570,199 @@
                     },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/profile/orders/{order}/extension": {
+            "post": {
+                "operationId": "reserveExtension.propose",
+                "tags": [
+                    "ReserveExtension"
+                ],
+                "parameters": [
+                    {
+                        "name": "order",
+                        "in": "path",
+                        "required": true,
+                        "description": "The order ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ProposeReserveExtensionRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/OrderResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "status",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/profile/orders/{order}/extension/{offer}/accept": {
+            "post": {
+                "operationId": "reserveExtension.accept",
+                "tags": [
+                    "ReserveExtension"
+                ],
+                "parameters": [
+                    {
+                        "name": "order",
+                        "in": "path",
+                        "required": true,
+                        "description": "The order ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "offer",
+                        "in": "path",
+                        "required": true,
+                        "description": "The offer ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/OrderResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "status",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/profile/orders/{order}/extension/{offer}/reject": {
+            "post": {
+                "operationId": "reserveExtension.reject",
+                "tags": [
+                    "ReserveExtension"
+                ],
+                "parameters": [
+                    {
+                        "name": "order",
+                        "in": "path",
+                        "required": true,
+                        "description": "The order ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "offer",
+                        "in": "path",
+                        "required": true,
+                        "description": "The offer ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/OrderResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "status",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
                     }
                 }
             }
@@ -48689,175 +49655,6 @@
                 }
             }
         },
-        "/profile/orders/{order}/cancellation-request": {
-            "post": {
-                "operationId": "supplierRequest.cancelOrder",
-                "description": "\u0641\u0642\u0637 \u0631\u0648\u06cc \u0633\u0641\u0627\u0631\u0634\u06cc \u06a9\u0647 \u0647\u0646\u0648\u0632 \u062a\u0633\u0648\u06cc\u0647 \u0646\u0634\u062f\u0647: \u067e\u0633 \u0627\u0632 \u0628\u0627\u0633\u06a9\u0648\u0644 \u067e\u0648\u0644 \u062c\u0627\u0628\u0647\u200c\u062c\u0627 \u0634\u062f\u0647 \u0648\n\u0628\u0631\u06af\u0631\u062f\u0627\u0646\u062f\u0646\u0634 \u0645\u0633\u06cc\u0631\u0650 \u062f\u06cc\u06af\u0631\u06cc \u062f\u0627\u0631\u062f (\u0645\u0631\u062c\u0648\u0639\u06cc/\u062f\u0627\u0648\u0631\u06cc)\u060c \u0646\u0647 \u0644\u063a\u0648.",
-                "summary": "\u062f\u0631\u062e\u0648\u0627\u0633\u062a\u0650 \u0644\u063a\u0648\u0650 \u0633\u0641\u0627\u0631\u0634",
-                "tags": [
-                    "SupplierRequest"
-                ],
-                "parameters": [
-                    {
-                        "name": "order",
-                        "in": "path",
-                        "required": true,
-                        "description": "The order ID",
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "type": "object",
-                                "properties": {
-                                    "reason": {
-                                        "type": "string",
-                                        "description": "\u0647\u0645\u0627\u0646 `min:10` \u0644\u063a\u0648\u0650 \u0627\u062c\u0628\u0627\u0631\u06cc: \u00ab\u062f\u0644\u06cc\u0644\u00bb \u0628\u0627\u06cc\u062f \u062c\u0645\u0644\u0647 \u0628\u0627\u0634\u062f\u060c \u0648\u06af\u0631\u0646\u0647 \u0627\u062f\u0645\u06cc\u0646\n\u0686\u06cc\u0632\u06cc \u0628\u0631\u0627\u06cc \u062a\u0635\u0645\u06cc\u0645\u200c\u06af\u06cc\u0631\u06cc \u0646\u062f\u0627\u0631\u062f.",
-                                        "minLength": 10,
-                                        "maxLength": 1000
-                                    }
-                                },
-                                "required": [
-                                    "reason"
-                                ]
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "201": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "status": {
-                                            "type": "boolean"
-                                        },
-                                        "message": {
-                                            "type": "string"
-                                        },
-                                        "data": {
-                                            "type": "object",
-                                            "properties": {
-                                                "id": {},
-                                                "type": {
-                                                    "type": "string"
-                                                },
-                                                "status": {
-                                                    "type": "string"
-                                                },
-                                                "order_id": {
-                                                    "type": "string"
-                                                },
-                                                "order_number": {
-                                                    "type": "string"
-                                                },
-                                                "ticket_id": {
-                                                    "type": "string"
-                                                },
-                                                "reason": {
-                                                    "type": "string"
-                                                },
-                                                "payload": {
-                                                    "type": "string"
-                                                },
-                                                "review_note": {
-                                                    "type": "string",
-                                                    "description": "\u067e\u0627\u0633\u062e\u0650 \u0628\u06a9\u200c\u0622\u0641\u06cc\u0633 \u2014 \u0628\u062f\u0648\u0646\u0650 \u0627\u06cc\u0646\u060c \u00ab\u0631\u062f \u0634\u062f\u00bb \u0647\u0645\u0627\u0646 \u0628\u0646\u200c\u0628\u0633\u062a\u06cc \u0645\u06cc\u200c\u0634\u0648\u062f \u06a9\u0647 \u062f\u0631\n\u0631\u062f\u0650 \u062f\u0631\u062e\u0648\u0627\u0633\u062a\u0650 \u062a\u0623\u0645\u06cc\u0646\u200c\u06a9\u0646\u0646\u062f\u06af\u06cc \u062f\u0627\u0634\u062a\u06cc\u0645."
-                                                },
-                                                "reviewed_at": {
-                                                    "type": "string"
-                                                },
-                                                "created_at": {
-                                                    "type": [
-                                                        "string",
-                                                        "null"
-                                                    ],
-                                                    "format": "date-time"
-                                                }
-                                            },
-                                            "required": [
-                                                "id",
-                                                "type",
-                                                "status",
-                                                "order_id",
-                                                "order_number",
-                                                "ticket_id",
-                                                "reason",
-                                                "payload",
-                                                "review_note",
-                                                "reviewed_at",
-                                                "created_at"
-                                            ]
-                                        }
-                                    },
-                                    "required": [
-                                        "status",
-                                        "message",
-                                        "data"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "409": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "status": {
-                                            "type": "boolean"
-                                        },
-                                        "message": {
-                                            "type": "string"
-                                        },
-                                        "data": {
-                                            "type": "null"
-                                        },
-                                        "errors": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "string"
-                                            },
-                                            "minItems": 0,
-                                            "maxItems": 0,
-                                            "additionalItems": false
-                                        }
-                                    },
-                                    "required": [
-                                        "status",
-                                        "message",
-                                        "data",
-                                        "errors"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/AuthorizationException"
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/ModelNotFoundException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    }
-                }
-            }
-        },
         "/profile/supplier/requests": {
             "get": {
                 "operationId": "supplierRequest.index",
@@ -53509,6 +54306,21 @@
                 ],
                 "title": "BulkStockRequest"
             },
+            "CancelRequestReasonRequest": {
+                "type": "object",
+                "description": "\u00ab\u062f\u0644\u06cc\u0644\u00bb \u062f\u0631 \u062c\u0631\u06cc\u0627\u0646\u0650 \u0644\u063a\u0648\u0650 \u062f\u0648\u0637\u0631\u0641\u0647 \u2014 \u067e\u0631\u0633\u0634 \u06f4 \u0645\u062f\u06cc\u0631\u06cc\u062a.\n\n\u06cc\u06a9 FormRequest \u0628\u0631\u0627\u06cc \u0647\u0631 \u0633\u0647 \u0646\u0648\u0634\u062a\u0646\u0650 \u062f\u0644\u06cc\u0644\u200c\u062f\u0627\u0631 (\u062b\u0628\u062a\u0650 \u062f\u0631\u062e\u0648\u0627\u0633\u062a\u060c \u0631\u062f\u0650 \u0637\u0631\u0641\u0650 \u0645\u0642\u0627\u0628\u0644\u060c\n\u062a\u0635\u0645\u06cc\u0645\u0650 \u0628\u06a9\u200c\u0622\u0641\u06cc\u0633): \u0647\u0645\u0627\u0646 `min:10` \u0644\u063a\u0648\u0650 \u0627\u062c\u0628\u0627\u0631\u06cc\u060c \u0686\u0648\u0646 \u00ab\u062f\u0644\u06cc\u0644\u00bb \u0628\u0627\u06cc\u062f \u062c\u0645\u0644\u0647 \u0628\u0627\u0634\u062f \u0648\u06af\u0631\u0646\u0647\n\u06a9\u0633\u06cc \u06a9\u0647 \u0628\u0627\u06cc\u062f \u062a\u0635\u0645\u06cc\u0645 \u0628\u06af\u06cc\u0631\u062f \u0686\u06cc\u0632\u06cc \u0628\u0631\u0627\u06cc \u062e\u0648\u0627\u0646\u062f\u0646 \u0646\u062f\u0627\u0631\u062f.",
+                "properties": {
+                    "reason": {
+                        "type": "string",
+                        "minLength": 10,
+                        "maxLength": 1000
+                    }
+                },
+                "required": [
+                    "reason"
+                ],
+                "title": "CancelRequestReasonRequest"
+            },
             "CartItemResource": {
                 "type": "object",
                 "properties": {
@@ -55404,6 +56216,154 @@
                             "is_load_held"
                         ]
                     },
+                    "reservation": {
+                        "type": "object",
+                        "description": "\u2500\u2500 [flow2] \u0631\u0632\u0631\u0648\u060c \u062a\u0645\u062f\u06cc\u062f\u0650 \u0628\u0627 \u062a\u0648\u0627\u0641\u0642\u060c \u0644\u063a\u0648\u0650 \u062f\u0648\u0637\u0631\u0641\u0647 (\u067e\u0631\u0633\u0634 \u06f3 \u0648 \u06f4 \u0645\u062f\u06cc\u0631\u06cc\u062a) \u2500\u2500 \u062a\u0627 \u0627\u06cc\u0646 \u0646\u0634\u0633\u062a **\u0647\u06cc\u0686 Resource\u0627\u06cc \u0645\u0647\u0644\u062a\u0650 \u0631\u0632\u0631\u0648 \u0631\u0627 \u0633\u0631\u06cc\u0627\u0644\u0627\u06cc\u0632 \u0646\u0645\u06cc\u200c\u06a9\u0631\u062f** \u2014 \u067e\u0646\u0644\u0650\n\u062a\u0623\u0645\u06cc\u0646\u200c\u06a9\u0646\u0646\u062f\u0647 `reserve_deadline` \u0645\u06cc\u200c\u062e\u0648\u0627\u0646\u062f \u0648 \u0647\u0645\u06cc\u0634\u0647 null \u0645\u06cc\u200c\u06af\u0631\u0641\u062a. \u06a9\u0644\u06cc\u062f\u0647\u0627\n\u0641\u0642\u0637 \u0648\u0642\u062a\u06cc \u0645\u06cc\u200c\u0622\u06cc\u0646\u062f \u06a9\u0647 \u0645\u0648\u0636\u0648\u0639\u06cc\u062a \u062f\u0627\u0631\u0646\u062f\u061b \u0646\u06cc\u0627\u0645\u062f\u0646\u0650 `extension` \u06cc\u0639\u0646\u06cc \u00ab\u067e\u06cc\u0634\u0646\u0647\u0627\u062f\u06cc\n\u0646\u06cc\u0633\u062a\u00bb \u0648 \u0646\u06cc\u0627\u0645\u062f\u0646\u0650 `cancel_request` \u06cc\u0639\u0646\u06cc \u00ab\u062f\u0631\u062e\u0648\u0627\u0633\u062a\u06cc \u0646\u0628\u0648\u062f\u0647\u00bb.\n\n`awaiting_me`/`can_*` \u0633\u0645\u062a\u0650 \u0633\u0631\u0648\u0631 \u062d\u0633\u0627\u0628 \u0645\u06cc\u200c\u0634\u0648\u0646\u062f\u060c \u0628\u0647 \u0647\u0645\u0627\u0646 \u062f\u0644\u06cc\u0644\u0650 \u0628\u0644\u0648\u06a9\u0650\n`overweight`: \u062f\u0648 \u06a9\u0644\u0627\u06cc\u0646\u062a \u06a9\u0647 \u062e\u0648\u062f\u0634\u0627\u0646 \u0642\u0627\u0639\u062f\u0647 \u0631\u0627 \u0628\u0627\u0632\u0633\u0627\u0632\u06cc \u06a9\u0646\u0646\u062f\u060c \u0648\u0627\u06af\u0631\u0627 \u0645\u06cc\u200c\u0634\u0648\u0646\u062f.",
+                        "properties": {
+                            "deadline": {
+                                "type": "string"
+                            },
+                            "original_deadline": {
+                                "type": "string"
+                            },
+                            "grace_hours": {
+                                "type": "integer"
+                            },
+                            "ends_at": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "format": "date-time",
+                                "description": "\u0644\u062d\u0638\u0647\u200c\u0627\u06cc \u06a9\u0647 \u06a9\u0631\u0648\u0646 \u0644\u063a\u0648 \u0645\u06cc\u200c\u06a9\u0646\u062f \u2014 \u0645\u0647\u0644\u062a\u0650 \u067e\u0627\u0633\u062e \u0628\u0647 \u067e\u06cc\u0634\u0646\u0647\u0627\u062f\u0650 \u062a\u0645\u062f\u06cc\u062f \u0647\u0645 \u0647\u0645\u06cc\u0646 \u0627\u0633\u062a."
+                            },
+                            "has_deadline_passed": {
+                                "type": "string"
+                            },
+                            "is_expired": {
+                                "type": "boolean"
+                            },
+                            "can_propose_extension": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "deadline",
+                            "original_deadline",
+                            "grace_hours",
+                            "ends_at",
+                            "has_deadline_passed",
+                            "is_expired",
+                            "can_propose_extension"
+                        ]
+                    },
+                    "extension": {
+                        "type": "object",
+                        "properties": {
+                            "id": {},
+                            "hours": {
+                                "type": "string"
+                            },
+                            "proposed_until": {
+                                "type": "string"
+                            },
+                            "proposed_at": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "format": "date-time"
+                            },
+                            "respond_until": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "format": "date-time",
+                                "description": "\u062e\u0631\u06cc\u062f\u0627\u0631 \u0628\u0627\u06cc\u062f \u062a\u0627 \u067e\u0627\u06cc\u0627\u0646\u0650 \u0627\u0631\u0641\u0627\u0642 \u067e\u0627\u0633\u062e \u062f\u0647\u062f\u060c \u0648\u06af\u0631\u0646\u0647 \u06a9\u0631\u0648\u0646 \u0631\u0632\u0631\u0648 \u0631\u0627 \u0644\u063a\u0648 \u0645\u06cc\u200c\u06a9\u0646\u062f."
+                            },
+                            "awaiting_me": {
+                                "type": "boolean"
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "hours",
+                            "proposed_until",
+                            "proposed_at",
+                            "respond_until",
+                            "awaiting_me"
+                        ]
+                    },
+                    "can_request_cancel": {
+                        "type": "string",
+                        "description": "\u062f\u06a9\u0645\u0647\u200c\u06cc \u00ab\u062f\u0631\u062e\u0648\u0627\u0633\u062a \u0644\u063a\u0648\u00bb \u0641\u0642\u0637 \u0628\u0631\u0627\u06cc \u062f\u0648 \u0637\u0631\u0641\u0650 \u0633\u0641\u0627\u0631\u0634\u060c \u0648 \u0641\u0642\u0637 \u0648\u0642\u062a\u06cc \u0627\u06a9\u0634\u0646 \u0647\u0645\n\u0642\u0628\u0648\u0644\u0634 \u0645\u06cc\u200c\u06a9\u0646\u062f \u2014 `Order::canRequestCancel()`. \u0627\u0644\u06cc\u062a\u200c\u06cc\u0627\u0631\u0650 \u063a\u06cc\u0631\u067e\u0631\u062f\u0627\u062e\u062a\u200c\u06a9\u0646\u0646\u062f\u0647\n\u0637\u0631\u0641\u0650 \u067e\u0648\u0644 \u0646\u06cc\u0633\u062a \u0648 \u06f4\u06f0\u06f3 \u0645\u06cc\u200c\u06af\u06cc\u0631\u062f\u060c \u067e\u0633 \u062f\u06a9\u0645\u0647 \u0647\u0645 \u0646\u0645\u06cc\u200c\u0628\u06cc\u0646\u062f."
+                    },
+                    "cancel_request": {
+                        "type": "object",
+                        "properties": {
+                            "id": {},
+                            "status": {
+                                "type": "string"
+                            },
+                            "requested_by": {
+                                "type": "string"
+                            },
+                            "is_mine": {
+                                "type": "string"
+                            },
+                            "reason": {
+                                "type": "string"
+                            },
+                            "requested_at": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "format": "date-time"
+                            },
+                            "respond_until": {
+                                "type": "string"
+                            },
+                            "awaiting_me": {
+                                "type": "string"
+                            },
+                            "counterparty_decision": {
+                                "type": "string"
+                            },
+                            "counterparty_reason": {
+                                "type": "string"
+                            },
+                            "escalated_at": {
+                                "type": "string"
+                            },
+                            "admin_decision": {
+                                "type": "string"
+                            },
+                            "admin_reason": {
+                                "type": "string"
+                            },
+                            "decided_at": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "status",
+                            "requested_by",
+                            "is_mine",
+                            "reason",
+                            "requested_at",
+                            "respond_until",
+                            "awaiting_me",
+                            "counterparty_decision",
+                            "counterparty_reason",
+                            "escalated_at",
+                            "admin_decision",
+                            "admin_reason",
+                            "decided_at"
+                        ]
+                    },
                     "elite_yar": {
                         "type": [
                             "object",
@@ -55681,6 +56641,7 @@
                     "items_summary",
                     "beneficiary",
                     "payer",
+                    "can_request_cancel",
                     "elite_yar",
                     "financial",
                     "actions",
@@ -57238,6 +58199,22 @@
                     "created_at_p"
                 ],
                 "title": "PromoOverlayResource"
+            },
+            "ProposeReserveExtensionRequest": {
+                "type": "object",
+                "description": "\u067e\u06cc\u0634\u0646\u0647\u0627\u062f\u0650 \u062a\u0645\u062f\u06cc\u062f\u0650 \u0631\u0632\u0631\u0648 \u062a\u0648\u0633\u0637 \u062a\u0623\u0645\u06cc\u0646\u200c\u06a9\u0646\u0646\u062f\u0647 \u2014 \u067e\u0631\u0633\u0634 \u06f3 \u0645\u062f\u06cc\u0631\u06cc\u062a.\n\n\u0641\u0642\u0637 \u00ab\u0686\u0646\u062f \u0633\u0627\u0639\u062a\u00bb. \u0645\u0647\u0644\u062a\u0650 \u0645\u0637\u0644\u0642 \u0631\u0627 \u0627\u06a9\u0634\u0646 \u0627\u0632 \u0631\u0648\u06cc \u0645\u0647\u0644\u062a\u0650 \u0641\u0639\u0644\u06cc\u0650 \u0633\u0641\u0627\u0631\u0634 \u0645\u06cc\u200c\u0633\u0627\u0632\u062f (\u0632\u06cc\u0631\n\u0642\u0641\u0644)\u060c \u0648 \u00ab\u0622\u06cc\u0627 \u0627\u0644\u0627\u0646 \u0648\u0642\u062a\u0650 \u067e\u06cc\u0634\u0646\u0647\u0627\u062f \u0647\u0633\u062a\u00bb \u0647\u0645 \u0647\u0645\u0627\u0646\u200c\u062c\u0627 \u0633\u0646\u062c\u06cc\u062f\u0647 \u0645\u06cc\u200c\u0634\u0648\u062f \u2014 \u0627\u06cc\u0646\u200c\u062c\u0627 \u0641\u0642\u0637\n\u0634\u06a9\u0644\u0650 \u0648\u0631\u0648\u062f\u06cc.",
+                "properties": {
+                    "hours": {
+                        "type": "integer",
+                        "description": "\u06f3\u06f0 \u0631\u0648\u0632 \u0633\u0642\u0641\u0650 \u06cc\u06a9 \u067e\u06cc\u0634\u0646\u0647\u0627\u062f\u061b \u00ab\u0646\u0627\u0645\u062d\u062f\u0648\u062f\u00bb \u0627\u0632 \u062a\u06a9\u0631\u0627\u0631\u0650 \u067e\u06cc\u0634\u0646\u0647\u0627\u062f\u0647\u0627 \u0645\u06cc\u200c\u0622\u06cc\u062f\u060c \u0646\u0647 \u0627\u0632 \u06cc\u06a9 \u0639\u062f\u062f\u0650 \u0628\u06cc\u200c\u0633\u0642\u0641.",
+                        "minimum": 1,
+                        "maximum": 720
+                    }
+                },
+                "required": [
+                    "hours"
+                ],
+                "title": "ProposeReserveExtensionRequest"
             },
             "PurchaseParameterGroupResource": {
                 "type": "object",
