@@ -31,7 +31,7 @@ class AdminProductPriceController extends Controller
             ->when($request->filled('product_variant_id'), fn ($q) => $q->where(ProductPrice::PRODUCT_VARIANT_ID, $request->integer('product_variant_id')))
             ->when($request->filled('factory_id'), fn ($q) => $q->where(ProductPrice::FACTORY_ID, $request->integer('factory_id')))
             ->when($request->filled('factory_location_id'), fn ($q) => $q->where(ProductPrice::FACTORY_LOCATION_ID, $request->integer('factory_location_id')))
-            ->with(['factory', 'factoryLocation'])
+            ->with(['productVariant', 'factory', 'factoryLocation'])
             ->latest(ProductPrice::ID)
             ->paginate($this->perPage(50));
 
@@ -55,7 +55,7 @@ class AdminProductPriceController extends Controller
         $data[ProductPrice::LAST_UPDATED_AT] = now();
         $price = ProductPrice::create($data);
 
-        return created(new ProductPriceResource($price->load(['factory', 'factoryLocation'])), __('admin.prices.created'));
+        return created(new ProductPriceResource($price->load(['productVariant', 'factory', 'factoryLocation'])), __('admin.prices.created'));
     }
 
     public function update(Request $request, ProductPrice $price): JsonResponse
@@ -65,7 +65,7 @@ class AdminProductPriceController extends Controller
 
         $price->update($data);
 
-        return success(new ProductPriceResource($price->load(['factory', 'factoryLocation'])), __('admin.prices.updated'));
+        return success(new ProductPriceResource($price->load(['productVariant', 'factory', 'factoryLocation'])), __('admin.prices.updated'));
     }
 
     public function destroy(ProductPrice $price): JsonResponse

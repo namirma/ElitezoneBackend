@@ -21,6 +21,10 @@ class ProductPriceResource extends BaseJsonResource
             ProductPrice::GENERAL_PRICE => (string) $this->general_price,
             ProductPrice::SPECIAL_PRICE => (string) $this->special_price,
             ProductPrice::GOLDEN_FIGURE => (string) $this->golden_figure,
+            'variant' => $this->whenLoaded('productVariant', fn () => [
+                'id' => $this->productVariant->id,
+                'name' => $this->productVariant->name,
+            ]),
             'factory' => $this->whenLoaded('factory', fn () => [
                 'id' => $this->factory->id,
                 'name' => $this->factory->name,
