@@ -3,6 +3,7 @@
 namespace App\Listeners\Order;
 
 use App\Events\Order\OrderPlaced;
+use App\Models\Order;
 use App\Models\User;
 use App\Services\Notifier;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -22,6 +23,15 @@ class SendOrderPlacedNotification implements ShouldQueue
         // دیدِ larastan `Model` است، و این گارد هم null و هم نوعِ اشتباه را
         // با هم رد می‌کند — بدونِ cast و بدونِ حاشیه‌نویسیِ شاخه‌به‌شاخه.
         if (! $user instanceof User) {
+            return;
+        }
+
+        // ⚠️ فقط سفارشِ **رزرو**. `PlaceOrderAction` این رویداد را برای هر سه مسیرِ
+        // `pay`/`reserve`/`payForBeneficiary` می‌زند، ولی متنش («رزرو شد، لطفاً پرداخت
+        // را انجام دهید») فقط برای رزرو درست است. سفارشِ پرداخت‌شده (`processing`)
+        // همان لحظه `OrderPaid` را هم می‌گیرد («با موفقیت ثبت شد») — پس مشتری‌ای که
+        // کامل پرداخته بود دو پیامکِ متناقض می‌گرفت که یکی‌شان می‌گفت «پرداخت کنید».
+        if ($order->{Order::STATUS} !== Order::STATUS_RESERVED) {
             return;
         }
 

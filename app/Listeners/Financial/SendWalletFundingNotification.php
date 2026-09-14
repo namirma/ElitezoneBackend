@@ -23,7 +23,15 @@ class SendWalletFundingNotification implements ShouldQueue
 
         try {
             $amount = number_format($transaction->amount);
-            $message = "کیف پول شما مبلغ {$amount} ریال شارژ شد.\nکد پیگیری: {$transaction->meta['ref_id']}\nالیت زون";
+
+            // ⚠️ هر منبعِ شارژ کدِ پیگیریِ خودش را دارد: درگاه `ref_id`، تأییدِ واریزِ
+            // پادیوم توسط ادمین `doc_number`. خواندنِ بی‌قیدِ `meta['ref_id']` روی مسیرِ
+            // پادیوم خطا می‌داد و این `try` آن را می‌بلعید — کاربر نه پیامک می‌گرفت نه
+            // اعلانِ زنگوله. نبودِ کد یعنی سطرش نمی‌آید، نه «کد پیگیری: » خالی.
+            $trackingCode = $transaction->meta['ref_id'] ?? $transaction->meta['doc_number'] ?? null;
+            $trackingLine = $trackingCode !== null ? "کد پیگیری: {$trackingCode}\n" : '';
+
+            $message = "کیف پول شما مبلغ {$amount} ریال شارژ شد.\n{$trackingLine}الیت زون";
 
             Notifier::toUser($user, __('notifications.wallet_funded_subject'), $message);
 

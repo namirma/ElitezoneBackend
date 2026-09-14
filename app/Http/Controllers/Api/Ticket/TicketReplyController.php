@@ -14,15 +14,19 @@ class TicketReplyController extends Controller
 {
     public function __construct(protected TicketReplyService $service) {}
 
+    /**
+     * ⚠️ بدونِ try/catch، عمداً. نسخه‌ی قبل هر خطا را با
+     * `error($e->getMessage(), [], $e->getCode())` برمی‌گرداند: `ValidationException`
+     * (کدِ ۰) به وضعیتِ HTTPِ نامعتبرِ ۰ می‌رسید و خودش ۵۰۰ می‌شد — یعنی پاسخِ
+     * بی‌متن به‌جای ۴۲۲ با خطای فیلد — و خطای دیتابیس متنِ SQL را به کاربر نشان
+     * می‌داد. هندلرِ لاراول هر سه را درست می‌سازد (۴۲۲، `BusinessException::render`،
+     * و ۵۰۰ بی‌نشت).
+     */
     public function store(Request $request, Ticket $ticket): JsonResponse
     {
-        try {
-            $dto = TicketReplyDTO::fromRequest($request);
-            $ticketReply = $this->service->create($dto, $ticket->id);
+        $dto = TicketReplyDTO::fromRequest($request);
+        $ticketReply = $this->service->create($dto, $ticket->id);
 
-            return created(new CreatedResource($ticketReply), 'ticket.replyCreatedSuccessfully');
-        } catch (\Exception $e) {
-            return error($e->getMessage(), [], $e->getCode());
-        }
+        return created(new CreatedResource($ticketReply), 'ticket.replyCreatedSuccessfully');
     }
 }

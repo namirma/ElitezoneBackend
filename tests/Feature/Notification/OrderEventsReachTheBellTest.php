@@ -51,7 +51,8 @@ class OrderEventsReachTheBellTest extends TestCase
     #[Test]
     public function an_order_placed_notifies_both_channels(): void
     {
-        $order = Order::factory()->create();
+        // فقط رزرو پیامِ «ثبت/رزرو» می‌گیرد — سفارشِ پرداخت‌شده با `OrderPaid` خبر می‌گیرد.
+        $order = Order::factory()->reserved()->create();
 
         $this->assertBothChannels(
             fn () => (new SendOrderPlacedNotification)->handle(new OrderPlaced($order)),
@@ -88,7 +89,7 @@ class OrderEventsReachTheBellTest extends TestCase
         // عنوان از lang/fa/notifications.php. اگر کسی جابه‌جا کند، کاربر یک
         // نوتیفیکیشن با عنوانِ «سفارش شما با شماره…» و متنِ «ثبت سفارش» می‌گیرد.
         Queue::fake();
-        $order = Order::factory()->create();
+        $order = Order::factory()->reserved()->create();
 
         (new SendOrderPlacedNotification)->handle(new OrderPlaced($order));
 
@@ -98,5 +99,39 @@ class OrderEventsReachTheBellTest extends TestCase
 
         $this->assertSame(__('notifications.order_placed_subject'), $row->{UserNotification::SUBJECT});
         $this->assertStringContainsString($order->order_number, (string) $row->{UserNotification::BODY});
+    }
+
+    #[Test]
+    public function a_paid_order_is_not_told_to_go_and_pay(): void
+    {
+        // ‏`PlaceOrderAction` این رویداد را برای سفارشِ پرداخت‌شده هم می‌زند؛ متنش
+        // «رزرو شد، لطفاً پرداخت را انجام دهید» است و همان مشتری هم‌زمان «با موفقیت
+        // ثبت شد» را از `OrderPaid` می‌گرفت.
+        Queue::fake();
+        $order = Order::factory()->paid()->create();
+
+        (new SendOrderPlacedNotification)->handle(new OrderPlaced($order));
+
+        Queue::assertNotPushed(SendSmsJob::class);
+        $this->assertSame(0, UserNotification::where(UserNotification::USER_ID, $order->placer->id)->count());
+    }
+
+    #[Test]
+    public function the_refund_is_announced_to_the_payer_not_to_the_placer(): void
+    {
+        // خرید برای دیگری: استرداد به کیف پولِ پرداخت‌کننده می‌رود.
+        Queue::fake();
+        $payer = User::factory()->create();
+        $order = Order::factory()->create([Order::PAYMENT_STATUS => Order::PAYMENT_REFUNDED]);
+        $order->forceFill([Order::PAYER_USER_ID => $payer->id])->save();
+
+        (new SendOrderCancellationNotification)->handle(new OrderCancelled($order->fresh()));
+
+        $payerBody = (string) UserNotification::where(UserNotification::USER_ID, $payer->id)->value(UserNotification::BODY);
+        $placerBody = UserNotification::where(UserNotification::USER_ID, $order->placer->id)->value(UserNotification::BODY);
+
+        $this->assertStringContainsString('کیف پول شما', $payerBody, 'پرداخت‌کننده باید خبرِ استرداد را بگیرد.');
+        $this->assertNotNull($placerBody, 'ثبت‌کننده هم باید خبرِ لغو را بگیرد.');
+        $this->assertStringNotContainsString('کیف پول', (string) $placerBody, 'به ثبت‌کننده نباید گفته شود پولی به کیف پولش برگشته.');
     }
 }

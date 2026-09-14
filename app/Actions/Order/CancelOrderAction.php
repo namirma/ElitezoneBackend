@@ -12,6 +12,7 @@ use App\Services\Marketing\CouponService;
 use Exception;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class CancelOrderAction
 {
@@ -142,10 +143,25 @@ class CancelOrderAction
             // ۵. صدور اسناد لغو (Doc j همیشه، Doc i فقط اگر استرداد شد) ─────
             if ($wasReserved || $wasPaid) {
                 DB::afterCommit(function () use ($locked, $refundWallet) {
-                    $this->invoiceGenerator->generateCancellationDocs(
-                        $locked,
-                        withRefundReceipt: (bool) $refundWallet
-                    );
+                    // ⚠️ این callback **بعد از commit** ولی هنوز داخلِ `execute()` اجرا
+                    // می‌شود. خطای ساختِ PDF (مثلاً فونتِ غایب → ۵۰۳) از این‌جا بیرون
+                    // می‌پرید در حالی که سفارش **لغو و مسترد شده بود**: ادمین «قابل لغو
+                    // نیست» می‌دید، `OrderCancelled` هرگز dispatch نمی‌شد (مشتری خبری
+                    // نمی‌گرفت) و حلقه‌ی کرون روی همین سفارش متوقف می‌شد. لغو انجام
+                    // شده؛ سندِ نساخته فقط ثبت می‌شود تا پیگیری شود.
+                    try {
+                        $this->invoiceGenerator->generateCancellationDocs(
+                            $locked,
+                            withRefundReceipt: (bool) $refundWallet
+                        );
+                    } catch (Throwable $e) {
+                        Log::channel('financial')->critical('Cancellation documents were not generated for a cancelled order', [
+                            'order_id' => $locked->id,
+                            'order_number' => $locked->order_number,
+                            'with_refund_receipt' => (bool) $refundWallet,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
                 });
             }
 

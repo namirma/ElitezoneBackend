@@ -147,10 +147,15 @@ class SearchController extends Controller
             return collect();
         }
 
-        return Search::select(Search::QUERY)
+        // ‏`GROUP BY` + `MAX(created_at)` و نه `DISTINCT` + `ORDER BY created_at`:
+        // MySQL 8 دومی را رد می‌کند (خطای 3065 — ستونِ مرتب‌سازی در SELECTِ
+        // distinct نیست) و جستجوی هر کاربرِ واردشده ۵۰۰ می‌داد. MariaDBِ لوکال
+        // قبولش می‌کند، پس فقط CI روی MySQL 8 آن را گرفت. معنا هم دقیق‌تر شد:
+        // هر عبارت یک‌بار، به ترتیبِ **آخرین** باری که جستجو شده.
+        return Search::query()
             ->where(Search::USER_ID, Auth::id())
-            ->distinct()
-            ->orderBy(Search::CREATED_AT, 'desc')
+            ->groupBy(Search::QUERY)
+            ->orderByRaw('MAX('.Search::CREATED_AT.') DESC')
             ->limit(5)
             ->pluck(Search::QUERY);
     }
