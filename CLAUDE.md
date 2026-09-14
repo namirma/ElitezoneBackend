@@ -901,6 +901,32 @@ completable, which is both a rule violation and what made the race above reachab
 Pinned by `Order/BuyerCancelWindowTest` (incl. a case asserting the cron refuses a reserve
 still inside its grace window, and one asserting admin force-cancel is unaffected).
 
+### Extension offers and cancel requests are re-checked against the order when answered
+
+Management questions 3 and 4 (`ReserveExtensionAction`, `OrderCancelRequestAction`). Both
+flows run between two parties, so hours or days pass between asking and answering, and the
+order can move in between. The 2026-09-14 review found each answer path trusting only its own
+row's status:
+
+- **An extension offer is answerable only while its order is still `reserved`.** Nothing
+  expires an offer when the reservation completes, so rejecting a leftover offer ran
+  `CancelOrderAction` on a paid `processing` order — a unilateral cancel and full refund, the
+  exact outcome the two-sided flow exists to prevent. `lockPending()` locks the order first
+  (the same order as `propose()`) and returns 409 otherwise; `OrderResource.extension` checks
+  the status before touching the relation.
+- **A lapsed offer (`proposed_until` past) never blocks a new one.** It is expired when the
+  supplier proposes again. `OrderExtensionOffer::respondUntil()` — the earlier of the reserve
+  end and `proposed_until` — is what the buyer is told.
+- **`accept` and `adminApprove` re-run `assertCancellable()` under the order lock.** A
+  registered shipment (`shipments.registered_at`) closes the cancel path, because a load on
+  the road stays `processing` until the last leg and a full refund plus stock restore would pay
+  back goods already dispatched. `Order::hasRegisteredShipment()` is shared by the action and
+  `canRequestCancel()` so the button and the action cannot disagree.
+
+Pinned by `Order/ReserveExtensionOfferTest` and `Order/OrderCancelRequestTest` (the
+"بازبینی ۲۰۲۶-۰۹-۱۴" cases). The one-sided `PUT reserve-deadline` route is still live pending
+a product decision.
+
 ### A supplier cannot be rejected while an order is unsettled
 
 Management decision. `AdminSupplierController::reject` removes the `supplier` role, and
