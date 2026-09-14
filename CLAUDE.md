@@ -2993,6 +2993,36 @@ consecutive runs produce an identical SHA-256).
 > What remains (14) is mostly file/PDF downloads, which are correctly not JSON, plus a
 > few `$this->helper()` returns Scramble cannot follow.
 
+### CI was red for five days and nobody noticed — local green is not CI green
+
+From 2026-09-08 to 2026-09-14 every push failed in "Prepare environment", so CI ran **no
+tests and no contract gate** while every local suite was green. **Check
+`gh run list --branch redesign/order-flow-l13 --limit 5` before trusting a local result.**
+CI differs from a dev machine in four ways, and each one broke something real:
+
+| CI has | Local has | What it broke |
+|---|---|---|
+| `.env.example`, copied verbatim | a real `.env` | `MAIL_FROM_ADDRESS=your_mail_from_address` crashed **boot** (spatie/laravel-backup validates the notification address at startup). `config/backup.php` now validates both addresses and falls back — a mistyped email must not take the API down. |
+| **MySQL 8** | MariaDB 10.4 | `DISTINCT` + `ORDER BY` a column outside the select list is error 3065 on MySQL 8 only; "latest searches" 500'd for every signed-in user. Write queries for MySQL 8 semantics. |
+| no licensed fonts | `storage/fonts/YekanBakh-*.ttf` | Every PDF path 503s. The fonts are gitignored on purpose; CI copies mPDF's `DejaVuSans` under those names. **On a server this is fatal, not cosmetic**: purchase/reservation documents are built inside the payment transaction, so no order can be placed. |
+| a DB only if the job declares one | always | `scramble:export` reads `information_schema`; the contract job now runs MySQL + migrate. Its server URL used to come from `APP_URL`, so exports differed per machine — it is the relative `/api` now (`AppServiceProvider`). |
+
+Reproduce CI's boot locally: `cp .env.example .env.ciprobe` →
+`php artisan key:generate --show --env=ciprobe` → delete the file.
+
+### Two rules the same review turned up
+
+- **Work in `DB::afterCommit` must not throw out of the action.** The callback runs after
+  commit but still inside `execute()`. `CancelOrderAction` built cancellation PDFs there; a
+  font failure escaped after the order was already cancelled and refunded, so the admin
+  saw "not cancellable", `OrderCancelled` never fired and the expiry cron stopped. Inside
+  the transaction, failing closed is right (the purchase docs do); after commit, catch and
+  log.
+- **Money notifications go to the payer, not the placer.** Refunds and charges land in
+  `payerUserId()`'s wallet. In buy-for-others the placer is the elite yar — telling them
+  "refunded to your wallet" was false while the paying employer heard nothing. And
+  `OrderPlaced` fires for paid orders too: only a **reserved** order should be told to pay.
+
 It then runs `oasdiff` against the previous commit's `api.json` and writes a Persian
 changelog into the job summary and an artifact.
 
