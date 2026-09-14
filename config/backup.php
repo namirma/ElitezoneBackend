@@ -106,9 +106,18 @@ return [
             // **هر فرمانِ artisan را** با InvalidConfig می‌ترکاند — نه فقط backup را.
             // پس همیشه یک نشانیِ معتبر لازم است؛ نبودِ نشانیِ اختصاصی یعنی هشدارِ
             // شکستِ پشتیبان به نشانیِ فرستندهٔ خودِ برنامه می‌رود، نه به هیچ‌جا.
-            'to' => env('BACKUP_NOTIFICATION_EMAIL') ?: env('MAIL_FROM_ADDRESS', 'noreply@elitezone.me'),
+            //
+            // ⚠️ «خالی» تنها حالتِ خطرناک نبود: نشانیِ **نامعتبرِ غیرخالی** هم همان
+            // انفجار را می‌داد. `.env.example` تا ۲۰۲۶-۰۹-۱۴ مقدارِ
+            // `your_mail_from_address` داشت و CI از ۲۰۲۶-۰۹-۰۸ در «Prepare environment»
+            // (`key:generate`) قرمز بود — یعنی هیچ تستی اجرا نمی‌شد و کسی نمی‌دید. روی
+            // سرور همین یعنی یک غلطِ تایپیِ ایمیل کلِ API را از کار می‌اندازد. پس هر
+            // نشانی اعتبارسنجی می‌شود و نامعتبر به پیش‌فرض برمی‌گردد؛ `backup:monitor`
+            // شکست را همچنان لاگ می‌کند.
+            'to' => filter_var(env('BACKUP_NOTIFICATION_EMAIL'), FILTER_VALIDATE_EMAIL)
+                ?: (filter_var(env('MAIL_FROM_ADDRESS'), FILTER_VALIDATE_EMAIL) ?: 'noreply@elitezone.me'),
             'from' => [
-                'address' => env('MAIL_FROM_ADDRESS', 'noreply@elitezone.me'),
+                'address' => filter_var(env('MAIL_FROM_ADDRESS'), FILTER_VALIDATE_EMAIL) ?: 'noreply@elitezone.me',
                 'name' => env('MAIL_FROM_NAME', 'EliteZone Backup'),
             ],
         ],

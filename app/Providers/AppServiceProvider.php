@@ -9,6 +9,9 @@ use App\Models\User;
 use App\Observers\OrderObserver;
 use App\Observers\ProductPriceObserver;
 use App\Observers\TicketObserver;
+use Dedoc\Scramble\Scramble;
+use Dedoc\Scramble\Support\Generator\OpenApi;
+use Dedoc\Scramble\Support\Generator\Server;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -54,6 +57,18 @@ class AppServiceProvider extends ServiceProvider
             $allowed = (array) config('app.api_docs_emails', []);
 
             return $user && in_array($user->email, $allowed, strict: true);
+        });
+
+        // سرورِ `api.json` نسبی (`/api`)، نه ساخته‌شده از `APP_URL`.
+        //
+        // Scramble نشانیِ سرور را با `url()` از APP_URL و طرحِ اجباریِ بالا (http در
+        // debug، https بیرونش) می‌ساخت؛ پس خروجیِ هر ماشین فقط در همین یک مقدار با
+        // دیگری فرق داشت — و گیتِ CI که `api.json` را بایت‌به‌بایت مقایسه می‌کند با
+        // `.env.example` (`https://localhost:8000`) همیشه قرمز می‌شد. OpenAPI نشانیِ
+        // نسبی را مجاز می‌داند و مستندات روی هر دامنه‌ای (لوکال/استیجینگ/تولید) درست
+        // به همان میزبان اشاره می‌کند؛ دامنه‌ی تولید در ریپو ثبت نشده که حدسش بزنیم.
+        Scramble::configure()->withDocumentTransformers(function (OpenApi $openApi) {
+            $openApi->servers = [new Server('/api')];
         });
 
         ProductPrice::observe(ProductPriceObserver::class);
