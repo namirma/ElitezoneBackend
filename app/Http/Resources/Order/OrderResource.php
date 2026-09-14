@@ -284,6 +284,12 @@ class OrderResource extends BaseJsonResource
                 ],
             ),
 
+            // دکمه‌ی «درخواست لغو» فقط برای دو طرفِ سفارش، و فقط وقتی اکشن هم
+            // قبولش می‌کند — `Order::canRequestCancel()`. الیت‌یارِ غیرپرداخت‌کننده
+            // طرفِ پول نیست و ۴۰۳ می‌گیرد، پس دکمه هم نمی‌بیند.
+            'can_request_cancel' => ($isSupplier || $this->payerUserId() === $viewerId)
+                && $this->canRequestCancel(),
+
             'cancel_request' => $this->when(
                 $this->latestCancelRequest !== null,
                 function () use ($viewerId, $isSupplier) {

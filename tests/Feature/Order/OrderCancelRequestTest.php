@@ -216,13 +216,33 @@ class OrderCancelRequestTest extends TestCase
     #[Test]
     public function the_resource_says_it_is_the_counterpartys_turn(): void
     {
-        $this->requestAs($this->buyer)->assertCreated();
+        // پیش از هر درخواستی هر دو طرف دکمه دارند؛ بعد از ثبت، تا بسته‌شدنش هیچ‌کدام.
+        Sanctum::actingAs($this->buyer);
+        $this->getJson("/api/profile/orders/{$this->order->id}")
+            ->assertOk()
+            ->assertJsonPath('data.can_request_cancel', true)
+            ->assertJsonMissingPath('data.cancel_request');
+
+        $this->requestAs($this->buyer)->assertCreated()
+            ->assertJsonPath('data.can_request_cancel', false);
 
         Sanctum::actingAs($this->supplier);
         $this->getJson("/api/profile/orders/{$this->order->id}")
             ->assertOk()
+            ->assertJsonPath('data.can_request_cancel', false)
             ->assertJsonPath('data.cancel_request.awaiting_me', true)
             ->assertJsonPath('data.cancel_request.is_mine', false);
+    }
+
+    #[Test]
+    public function a_weighed_order_offers_no_cancel_button(): void
+    {
+        $this->order->forceFill([Order::WEIGHING_COMPLETED_AT => now()])->save();
+
+        Sanctum::actingAs($this->buyer);
+        $this->getJson("/api/profile/orders/{$this->order->id}")
+            ->assertOk()
+            ->assertJsonPath('data.can_request_cancel', false);
     }
 
     // ── مهلت ────────────────────────────────────────────────────────────────

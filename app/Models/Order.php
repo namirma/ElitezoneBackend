@@ -520,6 +520,28 @@ class Order extends Model
     }
 
     /**
+     * آیا همین حالا می‌شود برای این سفارش درخواستِ لغوِ دوطرفه ثبت کرد؟ — پرسش ۴ مدیریت.
+     *
+     * همان دو شرطِ `OrderCancelRequestAction::assertCancellable()` (فقط `processing` و
+     * پیش از باسکول) به‌علاوه‌ی «درخواستِ بازی در جریان نیست». این‌جا هست تا
+     * `OrderResource` بتواند `can_request_cancel` را سمتِ سرور بدهد و کلاینت‌ها
+     * قاعده را بازسازی نکنند — `weighing_completed_at` اصلاً به خریدار سریالایز
+     * نمی‌شود. اکشن همچنان زیرِ قفل، خودش دوباره می‌سنجد.
+     */
+    public function canRequestCancel(): bool
+    {
+        if ($this->{self::STATUS} !== self::STATUS_PROCESSING || $this->{self::WEIGHING_COMPLETED_AT} !== null) {
+            return false;
+        }
+
+        $latest = $this->relationLoaded('latestCancelRequest')
+            ? $this->latestCancelRequest
+            : $this->latestCancelRequest()->first();
+
+        return ! ($latest instanceof OrderCancelRequest && $latest->isOpen());
+    }
+
+    /**
      * تأمین‌کننده‌ی این سفارش (یک سفارش = یک تأمین‌کننده، در لحظه‌ی ثبت تضمین شده).
      *
      * از آیتم‌های بارگذاری‌شده می‌خواند اگر باشند — همان ملاحظه‌ی `partyRolesFor`.
