@@ -7,14 +7,14 @@ use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Hash;
+use PHPUnit\Framework\Attributes\Group;
 use Tests\TestCase;
 
 /**
  * Coverage for previously-untested critical paths (audit suggestion S6):
  * password reset flow + payment gateway callback.
- *
- * @group audit-fixes
  */
+#[Group('audit-fixes')]
 class PaymentAndAuthCoverageTest extends TestCase
 {
     use DatabaseTransactions;

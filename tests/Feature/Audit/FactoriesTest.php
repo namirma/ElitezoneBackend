@@ -7,14 +7,14 @@ use App\Models\Order;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use PHPUnit\Framework\Attributes\Group;
 use Tests\TestCase;
 
 /**
  * Verifies the newly-added model factories produce valid, persistable models
  * (audit gap: only User/OrderItem had factories, making setup brittle).
- *
- * @group audit-fixes
  */
+#[Group('audit-fixes')]
 class FactoriesTest extends TestCase
 {
     use DatabaseTransactions;

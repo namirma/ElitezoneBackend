@@ -44,7 +44,13 @@ class OrderObserver
 
             $duration = 0;
             if ($lastHistory) {
-                $duration = now()->diffInMinutes($lastHistory->{OrderStatusHistory::CREATED_AT});
+                // ترتیبِ عملوندها عمدی است: Carbon 3 (لاراول ۱۳) عددِ **علامت‌دار**
+                // برمی‌گرداند و Carbon 2 قدرمطلق. با `now()->diffInMinutes($past)`
+                // هر رکوردِ تاریخچه مدتِ منفی ذخیره می‌کرد و تایم‌لاین به کاربر
+                // «−۳۰ دقیقه در وضعیت قبلی» نشان می‌داد. از گذشته به now هر دو
+                // نسخه مثبت می‌دهند. ‏(int) هم لازم است — ستون integer است و
+                // Carbon 3 برخلافِ Carbon 2 اعشاری برمی‌گرداند.
+                $duration = (int) $lastHistory->{OrderStatusHistory::CREATED_AT}->diffInMinutes(now());
             }
 
             /* -----------------------------------------------------

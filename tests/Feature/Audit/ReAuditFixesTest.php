@@ -6,13 +6,13 @@ use App\Jobs\Notification\SendInviteSmsJob;
 use App\Jobs\Notification\SendSmsJob;
 use App\Services\SmsService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use PHPUnit\Framework\Attributes\Group;
 use Tests\TestCase;
 
 /**
  * Regression tests for the final re-audit batch (safe fixes).
- *
- * @group audit-fixes
  */
+#[Group('audit-fixes')]
 class ReAuditFixesTest extends TestCase
 {
     use DatabaseTransactions;

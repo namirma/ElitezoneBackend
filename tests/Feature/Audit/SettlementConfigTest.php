@@ -6,14 +6,14 @@ use App\Models\PriceSetting;
 use App\Services\Financial\SettlementCalculatorService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Cache;
+use PHPUnit\Framework\Attributes\Group;
 use Tests\TestCase;
 
 /**
  * D7-1 — the transaction-commission rate (%TC) is now a global, editable setting
  * (PriceSetting: tc_percentage) instead of a hardcoded constant.
- *
- * @group audit-fixes
  */
+#[Group('audit-fixes')]
 class SettlementConfigTest extends TestCase
 {
     use DatabaseTransactions;

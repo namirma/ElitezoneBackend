@@ -4,13 +4,13 @@ namespace Tests\Feature\Audit;
 
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
+use PHPUnit\Framework\Attributes\Group;
 use Tests\TestCase;
 
 /**
  * Regression tests for the critical-audit fixes.
- *
- * @group audit-fixes
  */
+#[Group('audit-fixes')]
 class CriticalFixesTest extends TestCase
 {
     use DatabaseTransactions;

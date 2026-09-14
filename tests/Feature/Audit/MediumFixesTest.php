@@ -7,13 +7,13 @@ use App\Models\PriceSetting;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use PHPUnit\Framework\Attributes\Group;
 use Tests\TestCase;
 
 /**
  * Regression tests for the Medium-severity audit fixes.
- *
- * @group audit-fixes
  */
+#[Group('audit-fixes')]
 class MediumFixesTest extends TestCase
 {
     use DatabaseTransactions;
