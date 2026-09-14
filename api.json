@@ -56383,6 +56383,21 @@
                     "golden_figure": {
                         "type": "string"
                     },
+                    "variant": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "integer"
+                            },
+                            "name": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "name"
+                        ]
+                    },
                     "factory": {
                         "type": "object",
                         "properties": {
