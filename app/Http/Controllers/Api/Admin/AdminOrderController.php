@@ -14,6 +14,7 @@ use App\Http\Resources\Order\ShipmentResource;
 use App\Models\Order;
 use App\Models\Shipment;
 use App\Services\Order\OrderTimelineService;
+use App\Support\JalaliDate;
 use Exception;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -35,7 +36,7 @@ class AdminOrderController extends Controller
             return [
                 'event' => $activity->description,
                 'causer_name' => $activity->causer?->profile?->name ?? 'سیستم',
-                'created_at' => verta($activity->created_at)->format('Y/m/d H:i'),
+                'created_at' => JalaliDate::format($activity->created_at),
                 'changes' => $activity->properties['attributes'] ?? [],
                 'old' => $activity->properties['old'] ?? [],
             ];

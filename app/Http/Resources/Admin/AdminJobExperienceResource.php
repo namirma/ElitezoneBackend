@@ -4,6 +4,7 @@ namespace App\Http\Resources\Admin;
 
 use App\Http\Resources\BaseJsonResource;
 use App\Models\JobExperience;
+use App\Support\JalaliDate;
 use Illuminate\Http\Request;
 
 /**
@@ -28,7 +29,7 @@ class AdminJobExperienceResource extends BaseJsonResource
                     ? $this->{JobExperience::FILE_PATH}
                     : route('admin.job-experiences.file', $this->id))
                 : null,
-            'submitted_at' => $this->created_at ? verta($this->created_at)->format('Y/m/d H:i') : null,
+            'submitted_at' => $this->created_at ? JalaliDate::format($this->created_at) : null,
             'waiting_days' => $this->created_at ? (int) $this->created_at->diffInDays(now()) : null,
             'user' => $this->whenLoaded('user', fn () => [
                 'id' => $this->user->id,

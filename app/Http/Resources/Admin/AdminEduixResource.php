@@ -4,6 +4,7 @@ namespace App\Http\Resources\Admin;
 
 use App\Http\Resources\BaseJsonResource;
 use App\Models\EduixRecord;
+use App\Support\JalaliDate;
 use Illuminate\Http\Request;
 
 /**
@@ -28,7 +29,7 @@ class AdminEduixResource extends BaseJsonResource
             EduixRecord::TRACE_CODE => $this->{EduixRecord::TRACE_CODE},
             'admin_status' => $this->{EduixRecord::ADMIN_STATUS},
             EduixRecord::REJECTION_REASON => $this->{EduixRecord::REJECTION_REASON},
-            'submitted_at' => $this->created_at ? verta($this->created_at)->format('Y/m/d H:i') : null,
+            'submitted_at' => $this->created_at ? JalaliDate::format($this->created_at) : null,
             'waiting_days' => $this->created_at ? (int) $this->created_at->diffInDays(now()) : null,
             'user' => $this->whenLoaded('user', fn () => [
                 'id' => $this->user->id,

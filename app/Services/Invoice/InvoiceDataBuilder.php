@@ -6,6 +6,7 @@ use App\Constants\FinancialCodes;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\UserProfile;
+use App\Support\JalaliDate;
 use App\Traits\ConvertNumberToWord;
 
 /**
@@ -76,11 +77,9 @@ class InvoiceDataBuilder
             'line_items' => $lineItems,
             'totals' => $totals,
             'doc_type' => $docType,
-            'date_shamsi' => verta()->format('Y/m/d'),
+            'date_shamsi' => JalaliDate::format(now(), 'Y/m/d'),
             // اعتبار پیش‌فاکتور: تا انقضای رزرو سفارش، و در نبود آن، ۲ روز پس از صدور.
-            'validity_shamsi' => $order->reservation_expires_at
-                ? verta($order->reservation_expires_at)->format('Y/m/d')
-                : verta()->addDays(2)->format('Y/m/d'),
+            'validity_shamsi' => JalaliDate::format($order->reservation_expires_at ?? now()->addDays(2), 'Y/m/d'),
             'amount_words' => $this->numberToWords((int) round($amountToConvert)),
             'payment_label' => match ($order->payment_status) {
                 Order::PAYMENT_PAID => 'پرداخت شده',

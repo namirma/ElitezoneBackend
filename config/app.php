@@ -107,6 +107,10 @@ return [
 
     'timezone' => 'UTC',
 
+    // Zone for strings a person reads (Jalali `_p` fields, SMS, PDFs). Storage and every
+    // comparison stay in `timezone` above; read only through App\Support\JalaliDate.
+    'display_timezone' => 'Asia/Tehran',
+
     /*
     |--------------------------------------------------------------------------
     | Application Locale Configuration

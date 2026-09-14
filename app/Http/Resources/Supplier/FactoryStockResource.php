@@ -4,7 +4,7 @@ namespace App\Http\Resources\Supplier;
 
 use App\Http\Resources\BaseJsonResource;
 use App\Models\FactoryStock;
-use Hekmatinasser\Verta\Verta;
+use App\Support\JalaliDate;
 use Illuminate\Http\Request;
 
 /**
@@ -38,11 +38,7 @@ class FactoryStockResource extends BaseJsonResource
                 'name' => $this->originFactoryLocation->name,
             ]),
 
-            // Verta::createTimestamp و نه helper‌ی verta(): پارامترِ helper بدون تایپ
-            // و با پیش‌فرضِ null است، پس PHPStan هر آرگومانی را رد می‌کند.
-            'updated_at_p' => $this->updated_at
-                ? Verta::createTimestamp($this->updated_at->getTimestamp())->format('Y/m/d H:i')
-                : null,
+            'updated_at_p' => $this->updated_at ? JalaliDate::format($this->updated_at) : null,
         ];
     }
 }

@@ -6,6 +6,7 @@ use App\Enums\Shared\StatusTone;
 use App\Http\Resources\BaseJsonResource;
 use App\Models\User;
 use App\Models\WalletTransaction;
+use App\Support\JalaliDate;
 use Illuminate\Http\Request;
 
 /**
@@ -70,7 +71,7 @@ class WalletTransactionResource extends BaseJsonResource
                 'image_url' => $displayFileName,
             ],
             'created_at' => $this->created_at?->format('Y-m-d H:i:s'),
-            'created_at_p' => $this->created_at ? verta($this->created_at)->format('Y/m/d') : null,
+            'created_at_p' => $this->created_at ? JalaliDate::format($this->created_at, 'Y/m/d') : null,
 
             // صاحب تراکنش — فقط وقتی رابطه wallet لود شده باشد (لیست‌های ادمین).
             // endpointهای کاربر عادی wallet را eager-load نمی‌کنند، پس این فیلد

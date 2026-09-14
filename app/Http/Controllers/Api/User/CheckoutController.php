@@ -28,6 +28,7 @@ use App\Services\Payment\PaymentGatewayFactory;
 use App\Services\Payment\ReserveWarningResolver;
 use App\Services\Sales\ReserveDeadlineResolver;
 use App\Services\Sales\SalesSettings;
+use App\Support\JalaliDate;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -498,7 +499,7 @@ class CheckoutController extends Controller
             'order_number' => $order->order_number,
             'payable_amount' => (string) $order->final_amount,
             'items_count' => $order->items()->count(),
-            'created_at_p' => verta($order->created_at)->format('Y/m/d H:i'),
+            'created_at_p' => JalaliDate::format($order->created_at),
             'gateways' => $gateways,
         ];
 

@@ -46,7 +46,7 @@
             </tr>
             <tr>
                 <td colspan="3" class="lbl text-right font-bold">تاریخ ثبت</td>
-                <td colspan="8" class="val text-right">{{ enToFa(verta($survey->created_at)->format('Y/m/d')) }}</td>
+                <td colspan="8" class="val text-right">{{ enToFa(\App\Support\JalaliDate::format($survey->created_at, 'Y/m/d')) }}</td>
             </tr>
             <tr>
                 <td colspan="3" class="lbl text-right font-bold" valign="top">توضیحات خریدار</td>

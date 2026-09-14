@@ -5,6 +5,7 @@ namespace App\Http\Resources\Order;
 use App\Http\Resources\BaseJsonResource;
 use App\Models\Order;
 use App\Models\OrderSurvey;
+use App\Support\JalaliDate;
 use Illuminate\Http\Request;
 
 /**
@@ -19,7 +20,7 @@ class OrderSurveyResource extends BaseJsonResource
             'order_number' => $this->order->{Order::ORDER_NUMBER} ?? null,
             OrderSurvey::RATING => $this->{OrderSurvey::RATING},
             OrderSurvey::COMMENT => $this->{OrderSurvey::COMMENT},
-            'created_at_p' => verta($this->{OrderSurvey::CREATED_AT})->format('Y/m/d'),
+            'created_at_p' => JalaliDate::format($this->{OrderSurvey::CREATED_AT}, 'Y/m/d'),
             'created_at_diff' => $this->{OrderSurvey::CREATED_AT}->diffForHumans(),
         ];
     }

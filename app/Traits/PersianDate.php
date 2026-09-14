@@ -2,6 +2,7 @@
 
 namespace App\Traits;
 
+use App\Support\JalaliDate;
 use Carbon\Carbon;
 
 /**
@@ -14,9 +15,8 @@ trait PersianDate
      */
     public function getCreatedAtPAttribute()
     {
-        // test server
         if (@$this->attributes['created_at']) {
-            return Verta(@$this->attributes['created_at'])->formatDatetime();
+            return JalaliDate::format($this->attributes['created_at'], 'Y-m-d H:i:s');
         }
     }
 
@@ -26,7 +26,7 @@ trait PersianDate
     public function getUpdatedAtPAttribute()
     {
         if (@$this->attributes['updated_at']) {
-            return Verta(@$this->attributes['updated_at'])->formatDatetime();
+            return JalaliDate::format($this->attributes['updated_at'], 'Y-m-d H:i:s');
         }
     }
 

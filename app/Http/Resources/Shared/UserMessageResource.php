@@ -4,6 +4,7 @@ namespace App\Http\Resources\Shared;
 
 use App\Http\Resources\BaseJsonResource;
 use App\Models\UserNotification;
+use App\Support\JalaliDate;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -29,8 +30,8 @@ class UserMessageResource extends BaseJsonResource
             UserNotification::READ_AT => $readAt ? $readAt->format('Y-m-d H:i:s') : null,
             UserNotification::CREATED_AT => $createdAt ? $createdAt->format('Y-m-d H:i:s') : null,
 
-            'read_at_p' => $readAt ? verta($readAt)->format('Y/m/d H:i') : null,
-            'created_at_p' => $createdAt ? verta($createdAt)->format('Y/m/d H:i') : null,
+            'read_at_p' => $readAt ? JalaliDate::format($readAt) : null,
+            'created_at_p' => $createdAt ? JalaliDate::format($createdAt) : null,
 
             'read_at_diff' => $readAt ? verta($readAt)->formatDifference() : null,
             'created_at_diff' => $createdAt ? verta($createdAt)->formatDifference() : null,

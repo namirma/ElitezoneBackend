@@ -4,6 +4,7 @@ namespace App\Http\Resources\Profile;
 
 use App\Http\Resources\BaseJsonResource;
 use App\Models\JobExperience;
+use App\Support\JalaliDate;
 use Illuminate\Http\Request;
 
 /**
@@ -35,7 +36,7 @@ class JobExperienceResource extends BaseJsonResource
             'status' => $statusText,
             'status_code' => $this->{JobExperience::STATUS},
             JobExperience::REJECTION_REASON => $this->{JobExperience::REJECTION_REASON},
-            'created_at_p' => $this->created_at ? verta($this->created_at)->format('Y/m/d') : null,
+            'created_at_p' => $this->created_at ? JalaliDate::format($this->created_at, 'Y/m/d') : null,
         ];
     }
 }

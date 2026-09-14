@@ -26,7 +26,7 @@
         <div class="meta">
             <span>نسخه: {{ $agreement->version }}</span>
             @if ($agreement->effective_at)
-                <span>تاریخ لازم‌الاجرا: {{ verta($agreement->effective_at)->format('Y/m/d') }}</span>
+                <span>تاریخ لازم‌الاجرا: {{ \App\Support\JalaliDate::format($agreement->effective_at, 'Y/m/d') }}</span>
             @endif
             <span>مالک پلتفرم: شرکت نرم‌افزاری سازه اسپادانا — elitezone.me</span>
         </div>
@@ -55,7 +55,7 @@
                 </tr>
                 <tr>
                     <td>تاریخ و ساعت پذیرش:</td>
-                    <td>{{ $acceptance->accepted_at ? verta($acceptance->accepted_at)->format('Y/m/d H:i:s') : '—' }}</td>
+                    <td>{{ $acceptance->accepted_at ? \App\Support\JalaliDate::format($acceptance->accepted_at, 'Y/m/d H:i:s') : '—' }}</td>
                     <td>روش پذیرش:</td><td>{{ $acceptance->acceptance_method ?? '—' }}</td>
                 </tr>
             </table>

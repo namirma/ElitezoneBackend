@@ -3,6 +3,7 @@
 namespace App\Http\Resources\Shared;
 
 use App\Http\Resources\BaseJsonResource;
+use App\Support\JalaliDate;
 use Illuminate\Http\Request;
 use Spatie\Activitylog\Models\Activity;
 
@@ -29,7 +30,7 @@ class ActivityLogResource extends BaseJsonResource
             'changes' => $this->properties['attributes'] ?? [],
             'old' => $this->properties['old'] ?? [],
             'custom_props' => collect($this->properties)->except(['attributes', 'old', 'ip']),
-            'created_at' => verta($this->created_at)->format('Y/m/d H:i:s'),
+            'created_at' => JalaliDate::format($this->created_at, 'Y/m/d H:i:s'),
             'created_at_diff' => $this->created_at->diffForHumans(),
         ];
     }

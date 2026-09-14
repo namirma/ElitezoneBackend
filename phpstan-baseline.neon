@@ -805,28 +805,10 @@ parameters:
 			path: app/Http/Requests/Profile/UpdateRealProfileRequest.php
 
 		-
-			message: '#^Parameter \#1 \$datetime of function verta expects null, Illuminate\\Support\\Carbon given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Resources/Admin/AdminEduixResource.php
-
-		-
-			message: '#^Parameter \#1 \$datetime of function verta expects null, Illuminate\\Support\\Carbon given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Resources/Admin/AdminJobExperienceResource.php
-
-		-
 			message: '#^Variable \$quantities on left side of \?\? always exists and is not nullable\.$#'
 			identifier: nullCoalesce.variable
 			count: 1
 			path: app/Http/Resources/Cart/CartItemResource.php
-
-		-
-			message: '#^Parameter \#1 \$datetime of function verta expects null, Illuminate\\Support\\Carbon given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Resources/Financial/WalletTransactionResource.php
 
 		-
 			message: '#^Access to an undefined property App\\Http\\Resources\\Order\\OrderResource\:\:\$elite_yar_user_id\.$#'
@@ -884,12 +866,6 @@ parameters:
 
 		-
 			message: '#^Parameter \#1 \$condition of method Illuminate\\Http\\Resources\\Json\\JsonResource\:\:when\(\) expects bool, int\<0, max\>\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Resources/Order/OrderResource.php
-
-		-
-			message: '#^Parameter \#1 \$datetime of function verta expects null, Carbon\\Carbon given\.$#'
 			identifier: argument.type
 			count: 1
 			path: app/Http/Resources/Order/OrderResource.php
@@ -1021,12 +997,6 @@ parameters:
 			path: app/Http/Resources/Profile/EliteYARRelationResource.php
 
 		-
-			message: '#^Parameter \#1 \$datetime of function verta expects null, Illuminate\\Support\\Carbon given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Resources/Profile/JobExperienceResource.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_saze90_user\.$#'
 			identifier: property.notFound
 			count: 1
@@ -1059,7 +1029,7 @@ parameters:
 		-
 			message: '#^Parameter \#1 \$datetime of function verta expects null, Carbon\\Carbon given\.$#'
 			identifier: argument.type
-			count: 4
+			count: 2
 			path: app/Http/Resources/Shared/UserMessageResource.php
 
 		-
@@ -1123,22 +1093,10 @@ parameters:
 			path: app/Listeners/User/SendWinBackOffer.php
 
 		-
-			message: '#^Parameter \#1 \$datetime of function verta expects null, mixed given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Models/Article.php
-
-		-
 			message: '#^PHPDoc type array\<int, string\> of property App\\Models\\Attribute\:\:\$fillable is not covariant with PHPDoc type list\<string\> of overridden property Illuminate\\Database\\Eloquent\\Model\:\:\$fillable\.$#'
 			identifier: property.phpDocType
 			count: 1
 			path: app/Models/Attribute.php
-
-		-
-			message: '#^Parameter \#1 \$datetime of function verta expects null, mixed given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Models/Banner.php
 
 		-
 			message: '#^Trait App\\Models\\Concerns\\HasProfiles is used zero times and is not analysed\.$#'
@@ -1159,33 +1117,9 @@ parameters:
 			path: app/Models/ContractorProfile.php
 
 		-
-			message: '#^Parameter \#1 \$datetime of function verta expects null, mixed given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Models/ContractorProfile.php
-
-		-
-			message: '#^Parameter \#1 \$datetime of function verta expects null, mixed given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Models/Coupon.php
-
-		-
-			message: '#^Parameter \#1 \$datetime of function verta expects null, mixed given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Models/EmployerProfile.php
-
-		-
 			message: '#^PHPDoc type array\<int, string\> of property App\\Models\\EngineerProfile\:\:\$fillable is not covariant with PHPDoc type list\<string\> of overridden property Illuminate\\Database\\Eloquent\\Model\:\:\$fillable\.$#'
 			identifier: property.phpDocType
 			count: 1
-			path: app/Models/EngineerProfile.php
-
-		-
-			message: '#^Parameter \#1 \$datetime of function verta expects null, mixed given\.$#'
-			identifier: argument.type
-			count: 2
 			path: app/Models/EngineerProfile.php
 
 		-
@@ -1201,30 +1135,6 @@ parameters:
 			path: app/Models/Order.php
 
 		-
-			message: '#^Parameter \#1 \$datetime of function verta expects null, mixed given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Models/Order.php
-
-		-
-			message: '#^Parameter \#1 \$datetime of function verta expects null, mixed given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Models/Product.php
-
-		-
-			message: '#^Parameter \#1 \$datetime of function verta expects null, mixed given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Models/ProductReview.php
-
-		-
-			message: '#^Parameter \#1 \$datetime of function verta expects null, mixed given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Models/PromoOverlay.php
-
-		-
 			message: '#^Unsafe usage of new static\(\)\.$#'
 			identifier: new.static
 			count: 3
@@ -1237,28 +1147,10 @@ parameters:
 			path: app/Models/SupplierProfile.php
 
 		-
-			message: '#^Parameter \#1 \$datetime of function verta expects null, mixed given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Models/SupplierProfile.php
-
-		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Builder\:\:open\(\)\.$#'
 			identifier: method.notFound
 			count: 1
 			path: app/Models/Ticket.php
-
-		-
-			message: '#^Parameter \#1 \$datetime of function verta expects null, mixed given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Models/User.php
-
-		-
-			message: '#^Parameter \#1 \$datetime of function verta expects null, mixed given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Models/UserNote.php
 
 		-
 			message: '#^PHPDoc type array\<int, string\> of property App\\Models\\UserNotification\:\:\$fillable is not covariant with PHPDoc type list\<string\> of overridden property Illuminate\\Database\\Eloquent\\Model\:\:\$fillable\.$#'
@@ -1270,12 +1162,6 @@ parameters:
 			message: '#^PHPDoc type array\<int, string\> of property App\\Models\\UserProfile\:\:\$fillable is not covariant with PHPDoc type list\<string\> of overridden property Illuminate\\Database\\Eloquent\\Model\:\:\$fillable\.$#'
 			identifier: property.phpDocType
 			count: 1
-			path: app/Models/UserProfile.php
-
-		-
-			message: '#^Parameter \#1 \$datetime of function verta expects null, mixed given\.$#'
-			identifier: argument.type
-			count: 2
 			path: app/Models/UserProfile.php
 
 		-
@@ -1439,12 +1325,6 @@ parameters:
 			identifier: function.impossibleType
 			count: 2
 			path: app/Services/InventoryService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Order\:\:\$reservation_expires_at\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Invoice/InvoiceDataBuilder.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$address\.$#'

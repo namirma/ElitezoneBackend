@@ -11,7 +11,7 @@ use App\Models\OrderStatusHistory;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
-use Hekmatinasser\Verta\Verta;
+use App\Support\JalaliDate;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -408,17 +408,9 @@ final class OrderTimelineService
         return number_format((float) $value, 0, '.', ',');
     }
 
-    /**
-     * تاریخ شمسی.
-     *
-     * از `Verta::createTimestamp()` استفاده می‌شود نه هلپر `verta()`: پارامترِ آن
-     * هلپر بدونِ نوع و با پیش‌فرضِ null تعریف شده، پس PHPStan نوعش را `null`
-     * استنتاج می‌کند و هر آرگومانی خطا می‌دهد — همان خطایی که ۱۹ ورودی در baseline
-     * دارد. این متد دقیقاً همان خروجی را می‌دهد ولی امضایش `int` است، پس بدهیِ
-     * جدیدی به baseline اضافه نمی‌شود.
-     */
+    /** تاریخ شمسی به ساعتِ تهران — شرح در `JalaliDate`. */
     private function jalali(Carbon $at): string
     {
-        return Verta::createTimestamp($at->getTimestamp())->format('Y/m/d H:i');
+        return JalaliDate::format($at);
     }
 }
