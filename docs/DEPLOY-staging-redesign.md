@@ -235,6 +235,36 @@ php artisan schedule:list | grep push:prune-stale
 
 ---
 
+## این سرور در عمل (188.212.22.118، از ۲۰۲۶-۰۹-۱۴)
+
+گام‌های بالا nginx و `elitezone-worker` را فرض می‌کنند؛ روی این سرور چیزِ دیگری است:
+
+- **Apache + mod_php 8.3** (نه nginx/fpm). `php8.3-fpm` روی Ubuntu 20.04 نصب‌شدنی نیست.
+- `/var/www/api-staging` یک **کلونِ گیت** روی `redesign-l13` است؛ نسخه‌ی قبلی در
+  `/var/www/api-staging-l10`.
+- کارگرِ صف همان برنامه‌ی supervisor به نامِ **`laravel-queue`** است؛ زمان‌بند در
+  **crontabِ کاربرِ `www-data`**.
+- **هوکِ `post-receive` عمداً خاموش است** (`BRANCH="disabled-manual-deploy"`): push
+  فقط کد را به سرور می‌رساند و سایت را عوض نمی‌کند. چک‌اوتِ خودکارِ `master` نسخه‌ی
+  ۱۳ را با کدِ قدیمی بازنویسی می‌کرد.
+- **هر `artisan` با `sudo -u www-data`.** لاگ فایلی با دسترسیِ 0644 است؛ اگر root یا
+  `api-staging` اول آن را بسازد، وب‌سرور نمی‌تواند در آن بنویسد و همه‌ی درخواست‌ها ۵۰۰ می‌شوند.
+- کاربرِ `api-staging` sudo ندارد؛ این کارها با root است.
+
+به‌روزرسانیِ بعدی — روی کامپیوترِ خودتان `git push staging redesign/order-flow-l13:redesign-l13`، بعد روی سرور با root:
+
+```bash
+cd /var/www/api-staging
+sudo -H -u api-staging git pull --ff-only origin redesign-l13
+sudo -H -u api-staging env XDEBUG_MODE=off composer install --no-dev --optimize-autoloader --no-interaction
+sudo -u www-data php8.3 artisan migrate:status | grep Pending   # پیش از migrate نگاه کنید
+sudo -u www-data php8.3 artisan migrate --force
+sudo -u www-data php8.3 artisan config:cache
+sudo -u www-data php8.3 artisan queue:restart
+```
+
+---
+
 ## برگشت
 
 ```bash
