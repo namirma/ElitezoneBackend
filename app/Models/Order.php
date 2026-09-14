@@ -534,11 +534,27 @@ class Order extends Model
             return false;
         }
 
+        if ($this->hasRegisteredShipment()) {
+            return false;
+        }
+
         $latest = $this->relationLoaded('latestCancelRequest')
             ? $this->latestCancelRequest
             : $this->latestCancelRequest()->first();
 
         return ! ($latest instanceof OrderCancelRequest && $latest->isOpen());
+    }
+
+    /**
+     * آیا باری از این سفارش ثبت (بارنامه) شده است؟ کالا از کارخانه بیرون رفته، پس لغو
+     * و استردادِ کامل دیگر درست نیست. از رابطه‌ی بارگذاری‌شده می‌خواند اگر باشد
+     * (`resourceRelations()` دارد) — همان ملاحظه‌ی `supplierUserId()`.
+     */
+    public function hasRegisteredShipment(): bool
+    {
+        return $this->relationLoaded('shipments')
+            ? $this->shipments->contains(fn ($shipment) => $shipment->{Shipment::REGISTERED_AT} !== null)
+            : $this->shipments()->whereNotNull(Shipment::REGISTERED_AT)->exists();
     }
 
     /**
@@ -740,6 +756,7 @@ class Order extends Model
         return $this->hasMany(OrderItem::class, OrderItem::ORDER_ID);
     }
 
+    /** @return HasMany<Shipment, $this> */
     public function shipments(): HasMany
     {
         return $this->hasMany(Shipment::class, Shipment::ORDER_ID);

@@ -271,4 +271,62 @@ class ReserveExtensionOfferTest extends TestCase
             // یک پیشنهاد باز است → پیشنهادِ دوم ممکن نیست.
             ->assertJsonPath('data.reservation.can_propose_extension', false);
     }
+
+    // ── بازبینی ۲۰۲۶-۰۹-۱۴ ─────────────────────────────────────────────────
+
+    #[Test]
+    public function an_offer_left_open_after_the_reserve_was_paid_cannot_cancel_the_order(): void
+    {
+        // پیشنهاد روی رزروِ در حالِ پایان ثبت شد، خریدار پرداخت را کامل کرد، و
+        // «رد» سفارشِ پرداخت‌شده را یک‌طرفه لغو و مسترد می‌کرد.
+        $order = $this->reserved(now()->addHour());
+        $this->propose($order)->assertCreated();
+        $offer = OrderExtensionOffer::first();
+
+        $order->forceFill([
+            Order::STATUS => Order::STATUS_PROCESSING,
+            Order::PAYMENT_STATUS => Order::PAYMENT_PAID,
+        ])->save();
+
+        Sanctum::actingAs($this->buyer);
+        $this->getJson("/api/profile/orders/{$order->id}")
+            ->assertOk()
+            ->assertJsonMissingPath('data.extension');
+
+        $this->postJson("/api/profile/orders/{$order->id}/extension/{$offer->id}/reject")->assertStatus(409);
+        $this->postJson("/api/profile/orders/{$order->id}/extension/{$offer->id}/accept")->assertStatus(409);
+
+        $this->assertSame(Order::STATUS_PROCESSING, $order->fresh()->{Order::STATUS});
+        $this->assertSame(Order::PAYMENT_PAID, $order->fresh()->{Order::PAYMENT_STATUS});
+    }
+
+    #[Test]
+    public function a_lapsed_offer_gives_way_to_a_new_one(): void
+    {
+        // مهلت یک ساعت پیش گذشته و ارفاق ۵ ساعت است: پیشنهادِ «۱ ساعت» سه ساعت پیش از
+        // پایانِ ارفاق می‌میرد. قبلاً پذیرشش ۴۲۲ و پیشنهادِ تازه ۴۰۹ بود، پس تا لغوِ
+        // کرون تنها راهِ خریدار «رد = کنسل» بود.
+        $order = $this->reserved(now()->subHour());
+        $this->propose($order, 1)->assertCreated();
+        $first = OrderExtensionOffer::first();
+
+        // به خریدار مهلتی بیش از عمرِ خودِ پیشنهاد وعده داده نمی‌شود.
+        $this->assertTrue($first->respondUntil($order->fresh())->equalTo($first->{OrderExtensionOffer::PROPOSED_UNTIL}));
+
+        $this->travel(2)->hours();
+
+        Sanctum::actingAs($this->buyer);
+        $this->postJson("/api/profile/orders/{$order->id}/extension/{$first->id}/accept")->assertStatus(422);
+
+        Sanctum::actingAs($this->supplier);
+        $this->getJson("/api/profile/orders/{$order->id}")
+            ->assertOk()
+            ->assertJsonMissingPath('data.extension')
+            ->assertJsonPath('data.reservation.can_propose_extension', true);
+
+        $this->propose($order->fresh(), 2)->assertCreated();
+
+        $this->assertSame(OrderExtensionOffer::STATUS_EXPIRED, $first->fresh()->{OrderExtensionOffer::STATUS});
+        $this->assertSame(2, OrderExtensionOffer::count());
+    }
 }

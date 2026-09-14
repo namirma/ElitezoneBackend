@@ -250,6 +250,14 @@ php artisan schedule:list | grep push:prune-stale
 - **هر `artisan` با `sudo -u www-data`.** لاگ فایلی با دسترسیِ 0644 است؛ اگر root یا
   `api-staging` اول آن را بسازد، وب‌سرور نمی‌تواند در آن بنویسد و همه‌ی درخواست‌ها ۵۰۰ می‌شوند.
 - کاربرِ `api-staging` sudo ندارد؛ این کارها با root است.
+- **`tinker` با `sudo -u www-data env HOME=/tmp …`.** بدونِ `HOME=/tmp`، psysh نمی‌تواند در
+  `/var/www/.config` بنویسد و `--execute` بی‌هیچ خروجی‌ای متوقف می‌شود.
+- **`git` با `sudo -u api-staging`** (مثلاً `git -C /var/www/api-staging log -1`)؛ root پیامِ
+  `dubious ownership` می‌گیرد.
+- هر سه دامنه پشتِ **Cloudflare** است: از ایران بدونِ فیلترشکن کار می‌کند ولی کند و گاهی
+  timeout (۲۰۲۶-۰۹-۱۴: ۵٫۵ ثانیه تا آماده‌شدنِ TLS). تصاویرِ عمومی روی **Arvan**
+  (`FILESYSTEM_PUBLIC_DRIVER=s3`) است و برعکس، **با** فیلترشکن باز نمی‌شود. گزارشِ «سایت
+  باز نمی‌شود» را اول با این دو بسنجید، بعد سراغِ کد بروید.
 
 به‌روزرسانیِ بعدی — روی کامپیوترِ خودتان `git push staging redesign/order-flow-l13:redesign-l13`، بعد روی سرور با root:
 

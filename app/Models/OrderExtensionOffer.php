@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -69,5 +70,26 @@ class OrderExtensionOffer extends Model
     public function isPending(): bool
     {
         return $this->{self::STATUS} === self::STATUS_PENDING;
+    }
+
+    /**
+     * `proposed_until` گذشته: پذیرفتنش مهلتی در گذشته می‌ساخت (accept ۴۲۲ می‌دهد)،
+     * پس نه به خریدار نشان داده می‌شود و نه جلوی پیشنهادِ تازه را می‌گیرد.
+     */
+    public function isLapsed(): bool
+    {
+        return $this->{self::PROPOSED_UNTIL}->isPast();
+    }
+
+    /**
+     * تا کِی خریدار واقعاً می‌تواند بپذیرد: هرکدام زودتر — `proposed_until`، یا پایانِ
+     * ارفاقِ رزرو که کرون در آن لغو می‌کند.
+     */
+    public function respondUntil(Order $order): CarbonInterface
+    {
+        $until = $this->{self::PROPOSED_UNTIL};
+        $endsAt = $order->reserveEndsAt();
+
+        return $endsAt !== null && $endsAt->lessThan($until) ? $endsAt : $until;
     }
 }

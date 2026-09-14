@@ -7,6 +7,7 @@ namespace Tests\Feature\Order;
 use App\Models\Order;
 use App\Models\OrderCancelRequest;
 use App\Models\OrderItem;
+use App\Models\Shipment;
 use App\Models\User;
 use App\Models\UserNotification;
 use App\Models\Wallet;
@@ -367,5 +368,55 @@ class OrderCancelRequestTest extends TestCase
 
         $this->requestAs($this->supplier, 'حالا خودِ ما هم نمی‌توانیم تأمین کنیم.')->assertCreated();
         $this->assertSame(2, OrderCancelRequest::count());
+    }
+
+    // ── بازبینی ۲۰۲۶-۰۹-۱۴: سفارش لحظه‌ی تصمیم دوباره سنجیده می‌شود ───────
+
+    #[Test]
+    public function an_order_weighed_after_the_request_cannot_be_cancelled_by_agreement(): void
+    {
+        // شرط‌ها فقط هنگامِ ثبت سنجیده می‌شد؛ پذیرش روی سفارشِ باسکول‌شده با
+        // RuntimeExceptionِ استرداد ۵۰۰ می‌داد و درخواست باز می‌ماند.
+        $this->requestAs($this->buyer)->assertCreated();
+        $this->order->forceFill([Order::WEIGHING_COMPLETED_AT => now()])->save();
+
+        Sanctum::actingAs($this->supplier);
+        $this->postJson($this->url('/accept'))->assertStatus(422);
+
+        $this->assertSame(OrderCancelRequest::STATUS_PENDING, OrderCancelRequest::first()->{OrderCancelRequest::STATUS});
+        $this->assertSame(self::PTS, $this->balance($this->supplier));
+    }
+
+    #[Test]
+    public function a_registered_shipment_closes_the_cancel_path(): void
+    {
+        // بارِ اول در راه است: استردادِ کامل و برگرداندنِ همه‌ی موجودی دیگر درست نیست —
+        // نه برای تصمیمِ بک‌آفیس، نه برای درخواستِ تازه، نه برای دکمه.
+        $request = $this->escalated();
+
+        $shipment = Shipment::create([
+            Shipment::ORDER_ID => $this->order->id,
+            Shipment::STATUS => Shipment::STATUS_SHIPPED,
+        ]);
+        $shipment->forceFill([Shipment::WAYBILL_REF => 'WB-'.Str::random(6), Shipment::REGISTERED_AT => now()])->save();
+
+        Sanctum::actingAs($this->admin);
+        $this->postJson("/api/admin/order-cancel-requests/{$request->id}/approve", [
+            'reason' => 'تأمین‌کننده هنوز بارگیری نکرده بود؛ درخواست خریدار موجه است.',
+        ])->assertStatus(422);
+
+        $this->assertSame(Order::STATUS_PROCESSING, $this->order->fresh()->{Order::STATUS});
+        $this->assertSame(self::PTS, $this->balance($this->supplier));
+        $this->assertSame(OrderCancelRequest::STATUS_ESCALATED, $request->fresh()->{OrderCancelRequest::STATUS});
+
+        // بک‌آفیس می‌بندد؛ حالا درخواستِ تازه و دکمه هم به‌خاطرِ بار بسته‌اند، نه درخواستِ باز.
+        $this->postJson("/api/admin/order-cancel-requests/{$request->id}/reject", [
+            'reason' => 'بار طبق مدارک بارگیری شده و لغو ممکن نیست.',
+        ])->assertOk();
+
+        $this->requestAs($this->buyer)->assertStatus(422);
+        $this->getJson("/api/profile/orders/{$this->order->id}")
+            ->assertOk()
+            ->assertJsonPath('data.can_request_cancel', false);
     }
 }

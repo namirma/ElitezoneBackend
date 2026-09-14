@@ -10,7 +10,7 @@ use App\Models\OrderExtensionOffer;
 use App\Models\User;
 use App\Services\Notifier;
 use App\Services\Sales\SalesSettings;
-use Hekmatinasser\Verta\Verta;
+use App\Support\JalaliDate;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -32,10 +32,15 @@ use Illuminate\Support\Facades\DB;
  *    `CancelOrderAction` می‌گذرد تا بیعانه با همان مسیرِ همیشگی برگردد —
  *    هیچ‌کدام این‌جا دوباره نوشته نشده.
  *
- * مهلتِ پاسخِ خریدار همان پایانِ ارفاقِ رزرو است (`reserveEndsAt()`): اگر تا آن
- * لحظه پاسخی نیاید، کرونِ `orders:expire-reserves` سفارش را لغو می‌کند و پیشنهاد
- * `expired` می‌شود. پیشنهاد **کرون را متوقف نمی‌کند** — وگرنه یک پیشنهادِ
- * بی‌پاسخ موجودی را تا ابد قفل نگه می‌داشت.
+ * مهلتِ پاسخِ خریدار هرکدام زودتر است: پایانِ ارفاقِ رزرو (`reserveEndsAt()`، کرونِ
+ * `orders:expire-reserves` در آن لغو می‌کند) یا `proposed_until` —
+ * `OrderExtensionOffer::respondUntil()`. پیشنهاد **کرون را متوقف نمی‌کند** — وگرنه
+ * یک پیشنهادِ بی‌پاسخ موجودی را تا ابد قفل نگه می‌داشت.
+ *
+ * ⚠️ هیچ کرونی پیشنهاد را `expired` نمی‌کند. دو گارد جایش را می‌گیرند: پاسخ به
+ * پیشنهادی که سفارشش دیگر `reserved` نیست ۴۰۹ است (`lockPending`)، و پیشنهادِ
+ * lapsed هنگامِ پیشنهادِ تازه `expired` می‌شود. بدونِ گاردِ اول، «رد»ِ پیشنهادِ
+ * مانده روی سفارشی که پرداختش کامل شده بود، آن را یک‌طرفه لغو و مسترد می‌کرد.
  *
  * پوششِ تست: tests/Feature/Order/ReserveExtensionOfferTest.php
  */
@@ -58,9 +63,15 @@ final class ReserveExtensionAction
                 throw new BusinessException(__('orders.extension.not_ending'), 422);
             }
 
-            if ($locked->pendingExtensionOffer()->exists()) {
+            // پیشنهادی که `proposed_until`اش گذشته دیگر پذیرفتنی نیست (accept ۴۲۲ می‌دهد).
+            // اگر جلوی پیشنهادِ تازه را هم می‌گرفت، تا لغوِ کرون تنها راهِ خریدار «رد = کنسل» بود.
+            $pending = $locked->pendingExtensionOffer()->lockForUpdate()->first();
+
+            if ($pending !== null && ! $pending->isLapsed()) {
                 throw new BusinessException(__('orders.extension.already_pending'), 409);
             }
+
+            $pending?->forceFill([OrderExtensionOffer::STATUS => OrderExtensionOffer::STATUS_EXPIRED])->save();
 
             // مبنا مهلتِ فعلی است، مگر اینکه گذشته باشد — آن‌وقت «از همین حالا».
             // وگرنه پیشنهادِ «۲ ساعت» روی مهلتی که ۳ ساعت پیش تمام شده، مهلتی در
@@ -79,8 +90,8 @@ final class ReserveExtensionAction
 
         // پیامک به پرداخت‌کننده (قاعده‌ی تیم بک‌اند: رویدادِ مالی به پرداخت‌کننده).
         $this->notify($order->payerUserId(), 'reserve_extension_proposed', $order, [
-            'until' => Verta::instance($offer->{OrderExtensionOffer::PROPOSED_UNTIL})->format('Y/m/d H:i'),
-            'respond_until' => Verta::instance($order->reserveEndsAt())->format('Y/m/d H:i'),
+            'until' => JalaliDate::format($offer->{OrderExtensionOffer::PROPOSED_UNTIL}),
+            'respond_until' => JalaliDate::format($offer->respondUntil($order)),
         ]);
 
         return $offer;
@@ -110,7 +121,7 @@ final class ReserveExtensionAction
         });
 
         $this->notify($offer->{OrderExtensionOffer::SUPPLIER_USER_ID}, 'reserve_extension_accepted', $order, [
-            'until' => Verta::instance($order->{Order::RESERVE_DEADLINE})->format('Y/m/d H:i'),
+            'until' => JalaliDate::format($order->{Order::RESERVE_DEADLINE}),
         ]);
 
         return $order;
@@ -149,6 +160,11 @@ final class ReserveExtensionAction
 
     private function lockPending(OrderExtensionOffer $offer): OrderExtensionOffer
     {
+        // سفارش پیش از پیشنهاد قفل می‌شود — همان ترتیبِ `propose()`، تا دو مسیر روی
+        // یک سفارش هم‌دیگر را در بن‌بست نگذارند.
+        /** @var Order|null $order */
+        $order = Order::whereKey($offer->{OrderExtensionOffer::ORDER_ID})->lockForUpdate()->first();
+
         /** @var OrderExtensionOffer $locked */
         $locked = OrderExtensionOffer::whereKey($offer->getKey())->lockForUpdate()->first();
 
@@ -156,7 +172,14 @@ final class ReserveExtensionAction
             throw new BusinessException(__('orders.extension.already_answered'), 409);
         }
 
-        return $locked;
+        // پیشنهاد فقط تا وقتی معنا دارد که سفارش هنوز رزرو است. پیشنهادی که پس از
+        // تکمیلِ پرداخت باز مانده بود، «رد» را به لغو و استردادِ یک‌طرفه‌ی سفارشِ
+        // پرداخت‌شده تبدیل می‌کرد — همان لغوی که پرسش ۴ دوطرفه کرده (بازبینی ۲۰۲۶-۰۹-۱۴).
+        if ($order === null || $order->{Order::STATUS} !== Order::STATUS_RESERVED) {
+            throw new BusinessException(__('orders.extension.order_moved_on'), 409);
+        }
+
+        return $locked->setRelation('order', $order);
     }
 
     /** @param  array<string, string>  $extra */

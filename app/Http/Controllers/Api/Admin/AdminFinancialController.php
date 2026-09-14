@@ -26,7 +26,7 @@ class AdminFinancialController extends Controller
         $type = $request->input('type', 'initial');
 
         $invoices = Order::query()
-            ->with(['placer.profile', 'items.productVariant'])
+            ->with(['placer.profile', 'items.productVariant', 'pendingExtensionOffer', 'latestCancelRequest'])
             // فیلتر فاکتور اولیه
             //
             // ⚠️ این شرط `whereNotNull(Order::INITIAL_INVOICE_REF)` بود و
@@ -142,7 +142,7 @@ class AdminFinancialController extends Controller
             // این اندپوینت ۲۰۰ می‌داد فقط چون کوئریِ فیلترشده صفر ردیف داشت: با صفر
             // ردیف هیچ eager-loadی اجرا نمی‌شود. اولین سفارشی که شرط را پاس کند
             // `BadMethodCallException` و ۵۰۰ می‌گرفت. خطِ ۱۷۱ همین فایل از اول درست بود.
-            ->with(['items.supplier.profile', 'items.originFactory'])
+            ->with(['items.supplier.profile', 'items.originFactory', 'pendingExtensionOffer', 'latestCancelRequest'])
             ->when($docType === 'waybill', fn (Builder $query) => $query->whereNotNull(Order::WAYBILL_REF))
             // ⚠️ این شرط `payment_receipt_ref` بود — ستونی که واقعاً نوشته می‌شود،
             // ولی مسیرِ فیشِ **تصویریِ پرداخت** است نه سندِ مالیاتی. پس تبِ
@@ -171,7 +171,7 @@ class AdminFinancialController extends Controller
         // تراکنشِ کیف پول. پس این گزارش قرینه‌ی `getSupplierDocuments` می‌شود:
         // سفارش‌هایی که فاکتور مودیانِ الیت‌یار برایشان ثبت شده.
         $documents = Order::query()
-            ->with(['eliteYAR.profile', 'items.productVariant'])
+            ->with(['eliteYAR.profile', 'items.productVariant', 'pendingExtensionOffer', 'latestCancelRequest'])
             ->whereNotNull(Order::ELITE_YAR_MOADIAN_REF)
             ->latest(Order::UPDATED_AT)
             ->paginate($this->perPage());
@@ -192,7 +192,7 @@ class AdminFinancialController extends Controller
     {
         $orders = Order::query()
             ->where(Order::SUPPLIER_DEBT_PENDING, true)
-            ->with(['placer.profile', 'items.originFactory'])
+            ->with(['placer.profile', 'items.originFactory', 'pendingExtensionOffer', 'latestCancelRequest'])
             ->latest()
             ->paginate($this->perPage(20));
 

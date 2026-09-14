@@ -9,7 +9,7 @@ use App\Models\Order;
 use App\Models\OrderCancelRequest;
 use App\Models\User;
 use App\Services\Notifier;
-use Hekmatinasser\Verta\Verta;
+use App\Support\JalaliDate;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -81,7 +81,7 @@ final class OrderCancelRequestAction
         });
 
         $this->notify($this->counterpartyUserId($order, $request), 'order_cancel_requested', $order, [
-            'until' => Verta::instance($request->{OrderCancelRequest::RESPOND_UNTIL})->format('Y/m/d H:i'),
+            'until' => JalaliDate::format($request->{OrderCancelRequest::RESPOND_UNTIL}),
         ]);
 
         return $request;
@@ -92,6 +92,7 @@ final class OrderCancelRequestAction
     {
         $order = DB::transaction(function () use ($request) {
             $locked = $this->lockOpen($request, OrderCancelRequest::STATUS_PENDING);
+            $this->assertStillCancellable($locked);
 
             $locked->forceFill([
                 OrderCancelRequest::COUNTERPARTY_DECISION => OrderCancelRequest::DECISION_ACCEPTED,
@@ -172,6 +173,7 @@ final class OrderCancelRequestAction
     {
         $order = DB::transaction(function () use ($request, $adminId, $reason) {
             $locked = $this->lockOpen($request, OrderCancelRequest::STATUS_ESCALATED);
+            $this->assertStillCancellable($locked);
 
             $locked->forceFill([
                 OrderCancelRequest::ADMIN_DECISION => OrderCancelRequest::DECISION_APPROVED,
@@ -212,14 +214,31 @@ final class OrderCancelRequestAction
     }
 
     /**
-     * فقط `processing` و پیش از باسکول — دلیلش در سرِ کلاس.
+     * فقط `processing`، پیش از باسکول، و پیش از ارسالِ هر باری — دلیلش در سرِ کلاس.
+     *
+     * بارِ ثبت‌شده (بارنامه) یعنی کالا از کارخانه خارج شده؛ استردادِ کامل و
+     * برگرداندنِ همه‌ی موجودی در آن حالت پولِ باری را پس می‌داد که در راه است.
      */
     private function assertCancellable(Order $order): void
     {
         if ($order->{Order::STATUS} !== Order::STATUS_PROCESSING
-            || $order->{Order::WEIGHING_COMPLETED_AT} !== null) {
+            || $order->{Order::WEIGHING_COMPLETED_AT} !== null
+            || $order->hasRegisteredShipment()) {
             throw new BusinessException(__('orders.cancel_request.not_cancellable'), 422);
         }
+    }
+
+    /**
+     * همان شرط‌ها، دوباره و زیرِ قفلِ سفارش، لحظه‌ی تصمیم. بینِ ثبت و تصمیم (۴۸ ساعت
+     * و بیشتر) سفارش ممکن است به باسکول رسیده یا باری فرستاده باشد — بدونِ این،
+     * اولی ۵۰۰ می‌داد و دومی کامل مسترد می‌شد (بازبینی ۲۰۲۶-۰۹-۱۴).
+     */
+    private function assertStillCancellable(OrderCancelRequest $request): void
+    {
+        /** @var Order $order */
+        $order = Order::whereKey($request->{OrderCancelRequest::ORDER_ID})->lockForUpdate()->first();
+
+        $this->assertCancellable($order);
     }
 
     private function lockOpen(OrderCancelRequest $request, string $expectedStatus): OrderCancelRequest

@@ -11,6 +11,7 @@ use App\Models\OrderExtensionOffer;
 use App\Models\User;
 use App\Services\Financial\DebtEngine;
 use App\Services\Sales\SalesSettings;
+use App\Support\JalaliDate;
 use App\Support\Money;
 use App\Support\OrderDocumentCatalog;
 use Illuminate\Http\Request;
@@ -266,20 +267,26 @@ class OrderResource extends BaseJsonResource
                     'has_deadline_passed' => $this->{Order::RESERVE_DEADLINE}->isPast(),
                     'is_expired' => $this->isReserveWindowExpired(),
                     'can_propose_extension' => $isSupplier
-                        && $this->pendingExtensionOffer === null
+                        && ($this->pendingExtensionOffer === null || $this->pendingExtensionOffer->isLapsed())
                         && $this->canProposeReserveExtension(app(SalesSettings::class)->reserveWarningThreshold()),
                 ],
             ),
 
+            // پیشنهادِ تمدیدی که خریدار همین حالا می‌تواند به آن پاسخ دهد؛ نیامدنش یعنی چنین پیشنهادی نیست.
             'extension' => $this->when(
-                $this->pendingExtensionOffer !== null,
+                // همان دو شرطِ `ReserveExtensionAction`: پیشنهادِ مانده روی سفارشِ پرداخت‌شده
+                // دکمه‌ی «رد» را نشان می‌داد و رد آن سفارش را یک‌طرفه لغو می‌کرد. وضعیت اول
+                // سنجیده می‌شود تا فهرست‌ها برای سفارشِ غیررزرو رابطه را lazy نخوانند.
+                $this->{Order::STATUS} === Order::STATUS_RESERVED
+                    && $this->pendingExtensionOffer !== null
+                    && ! $this->pendingExtensionOffer->isLapsed(),
                 fn () => [
                     'id' => $this->pendingExtensionOffer->getKey(),
                     'hours' => $this->pendingExtensionOffer->{OrderExtensionOffer::HOURS},
                     'proposed_until' => $this->pendingExtensionOffer->{OrderExtensionOffer::PROPOSED_UNTIL},
                     'proposed_at' => $this->pendingExtensionOffer->created_at,
-                    // خریدار باید تا پایانِ ارفاق پاسخ دهد، وگرنه کرون رزرو را لغو می‌کند.
-                    'respond_until' => $this->reserveEndsAt(),
+                    // هرکدام زودتر: پایانِ ارفاق (کرون لغو می‌کند) یا `proposed_until` (پذیرش ۴۲۲ می‌شود).
+                    'respond_until' => $this->pendingExtensionOffer->respondUntil($this->resource),
                     'awaiting_me' => $this->payerUserId() === $viewerId,
                 ],
             ),
@@ -349,7 +356,7 @@ class OrderResource extends BaseJsonResource
                 'payment_status_text' => $paymentStatusLabel,
                 'is_paid' => $paymentStatusKey === Order::PAYMENT_PAID,
                 'paid_at_p' => $this->{Order::PAID_AT}
-                    ? verta($this->{Order::PAID_AT})->format('Y/m/d H:i')
+                    ? JalaliDate::format($this->{Order::PAID_AT})
                     : null,
 
                 $this->mergeWhen(! $isSupplier, [
