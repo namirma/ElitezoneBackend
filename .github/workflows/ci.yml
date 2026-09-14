@@ -234,7 +234,7 @@ jobs:
       - name: Committed api.json must match the routes
         run: |
           if ! diff -q api.json api.generated.json >/dev/null 2>&1; then
-            echo "::error::api.json is stale — the committed OpenAPI snapshot no longer matches the routes. Run 'php artisan scramble:export' and commit the result."
+            echo "::error::api.json is stale — the committed OpenAPI snapshot no longer matches the routes. Re-export against a FRESHLY MIGRATED database (a long-lived dev DB orders columns by its migration history, which changes 'required' lists): create an empty DB, run 'DB_DATABASE=<it> php artisan migrate' then 'DB_DATABASE=<it> php artisan scramble:export', and commit the result."
             diff <(jq -S . api.json) <(jq -S . api.generated.json) | head -60 || true
             exit 1
           fi

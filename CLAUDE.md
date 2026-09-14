@@ -3010,6 +3010,19 @@ CI differs from a dev machine in four ways, and each one broke something real:
 Reproduce CI's boot locally: `cp .env.example .env.ciprobe` →
 `php artisan key:generate --show --env=ciprobe` → delete the file.
 
+**Export `api.json` from a freshly migrated database, never the dev DB.** Scramble builds
+`required` lists in column order from `information_schema`, and a long-lived dev database
+orders columns by its own migration history — `users.admin_level` sat three places away
+from where a fresh migrate puts it, so a dev-DB export failed the gate on CI. Also: a
+**method docblock on a controller action becomes the endpoint's public summary** in
+`api.json`; put internal notes in `//` comments.
+
+```bash
+mysql -u root -e "CREATE DATABASE ez_contract_scratch CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+DB_DATABASE=ez_contract_scratch php artisan migrate --force
+DB_DATABASE=ez_contract_scratch php artisan scramble:export
+```
+
 ### Two rules the same review turned up
 
 - **Work in `DB::afterCommit` must not throw out of the action.** The callback runs after

@@ -14,16 +14,14 @@ class TicketReplyController extends Controller
 {
     public function __construct(protected TicketReplyService $service) {}
 
-    /**
-     * ⚠️ بدونِ try/catch، عمداً. نسخه‌ی قبل هر خطا را با
-     * `error($e->getMessage(), [], $e->getCode())` برمی‌گرداند: `ValidationException`
-     * (کدِ ۰) به وضعیتِ HTTPِ نامعتبرِ ۰ می‌رسید و خودش ۵۰۰ می‌شد — یعنی پاسخِ
-     * بی‌متن به‌جای ۴۲۲ با خطای فیلد — و خطای دیتابیس متنِ SQL را به کاربر نشان
-     * می‌داد. هندلرِ لاراول هر سه را درست می‌سازد (۴۲۲، `BusinessException::render`،
-     * و ۵۰۰ بی‌نشت).
-     */
     public function store(Request $request, Ticket $ticket): JsonResponse
     {
+        // ⚠️ بدونِ try/catch، عمداً. نسخه‌ی قبل هر خطا را با
+        // `error($e->getMessage(), [], $e->getCode())` برمی‌گرداند: `ValidationException`
+        // (کدِ ۰) به وضعیتِ HTTPِ نامعتبرِ ۰ می‌رسید و خودش ۵۰۰ می‌شد — به‌جای ۴۲۲ با
+        // خطای فیلد — و خطای دیتابیس متنِ SQL را نشان می‌داد. هندلرِ لاراول هر سه را
+        // درست می‌سازد. (کامنت و نه docblock: Scramble docblockِ متد را خلاصه‌ی عمومیِ
+        // اندپوینت در `api.json` می‌کند.)
         $dto = TicketReplyDTO::fromRequest($request);
         $ticketReply = $this->service->create($dto, $ticket->id);
 

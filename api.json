@@ -49986,16 +49986,6 @@
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
                     "201": {
                         "description": "",
                         "content": {
@@ -60427,12 +60417,6 @@
                     "is_active": {
                         "type": "boolean"
                     },
-                    "admin_level": {
-                        "type": [
-                            "integer",
-                            "null"
-                        ]
-                    },
                     "debt_balance": {
                         "type": "string"
                     },
@@ -60442,6 +60426,12 @@
                     "coupon_enabled": {
                         "type": [
                             "boolean",
+                            "null"
+                        ]
+                    },
+                    "admin_level": {
+                        "type": [
+                            "integer",
                             "null"
                         ]
                     },
@@ -60491,10 +60481,10 @@
                     "badge_purchase_amount",
                     "mobile",
                     "is_active",
-                    "admin_level",
                     "debt_balance",
                     "credit_limit",
                     "coupon_enabled",
+                    "admin_level",
                     "national_code",
                     "birth_date",
                     "created_at",
