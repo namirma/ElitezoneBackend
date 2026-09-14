@@ -6,10 +6,13 @@ use App\Models\Builders\OrderBuilder;
 use App\Models\Concerns\HasOrderProgress;
 use App\Support\OrderDocumentCatalog;
 use App\Traits\PersianDate;
+use Carbon\CarbonInterface;
+use Carbon\CarbonInterval;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
@@ -476,6 +479,61 @@ class Order extends Model
     }
 
     /**
+     * لحظه‌ای که کرونِ انقضا این رزرو را لغو می‌کند: مهلت + ارفاق.
+     *
+     * همان جمعی که `isReserveWindowExpired()` می‌سنجد، ولی به‌صورت لحظه — تا
+     * پیشنهادِ تمدید بتواند به خریدار بگوید «تا کِی» فرصت پاسخ دارد.
+     */
+    public function reserveEndsAt(): ?CarbonInterface
+    {
+        $deadline = $this->{self::RESERVE_DEADLINE};
+
+        if ($deadline === null) {
+            return null;
+        }
+
+        return $deadline->copy()->addHours(max(0, (int) ($this->{self::RESERVE_GRACE_HOURS} ?? 0)));
+    }
+
+    /**
+     * آیا تأمین‌کننده همین حالا می‌تواند تمدید پیشنهاد دهد؟ — پرسش ۳ مدیریت.
+     *
+     * «پس از پایانِ رزرو». دقیقاً: سفارش هنوز `reserved` است (کرون لغوش نکرده)
+     * و مهلتِ جاری یا **گذشته** (بازه‌ی ارفاق) یا **در حالِ پایان** است — یعنی
+     * کمتر از آستانه‌ی هشدارِ رزرو به آن مانده. آستانه لازم است چون ارفاق
+     * می‌تواند صفر باشد (override تأمین‌کننده)؛ بدونِ آن، بینِ پایانِ مهلت و لغوِ
+     * کرون یک دقیقه فاصله بود و پیشنهاد هرگز به خریدار نمی‌رسید.
+     */
+    public function canProposeReserveExtension(CarbonInterval $warningThreshold): bool
+    {
+        if ($this->{self::STATUS} !== self::STATUS_RESERVED) {
+            return false;
+        }
+
+        $deadline = $this->{self::RESERVE_DEADLINE};
+
+        if ($deadline === null) {
+            return false;
+        }
+
+        return now()->greaterThanOrEqualTo($deadline->copy()->sub($warningThreshold));
+    }
+
+    /**
+     * تأمین‌کننده‌ی این سفارش (یک سفارش = یک تأمین‌کننده، در لحظه‌ی ثبت تضمین شده).
+     *
+     * از آیتم‌های بارگذاری‌شده می‌خواند اگر باشند — همان ملاحظه‌ی `partyRolesFor`.
+     */
+    public function supplierUserId(): ?int
+    {
+        $id = $this->relationLoaded('items')
+            ? $this->items->first()?->{OrderItem::SUPPLIER_USER_ID}
+            : $this->items()->value(OrderItem::SUPPLIER_USER_ID);
+
+        return $id === null ? null : (int) $id;
+    }
+
+    /**
      * کیف پولی که پولِ این سفارش از آن می‌آید و استرداد به آن برمی‌گردد.
      *
      * `??` و نه `?:` — و برای سفارش‌های پیش از فاز ۶ که ستون خالی است، به
@@ -591,6 +649,9 @@ class Order extends Model
             // whenLoaded('coupon') هرگز true نمی‌شد (نه فقط در چک‌اوت — همه کنترلرهای
             // سفارش که این متد را صدا می‌زنند).
             'coupon',
+            // پرسش ۳ و ۴ — بدونِ این دو، هر ردیفِ فهرست یک کوئریِ اضافه می‌زد.
+            'pendingExtensionOffer',
+            'latestCancelRequest',
         ];
     }
 
@@ -621,6 +682,34 @@ class Order extends Model
     public function address(): BelongsTo
     {
         return $this->belongsTo(Address::class, self::ADDRESS_ID);
+    }
+
+    /**
+     * پیشنهادِ تمدیدِ بازِ این رزرو (پرسش ۳). حداکثر یکی — اکشن روی تکرار ۴۰۹ می‌دهد.
+     *
+     * @return HasOne<OrderExtensionOffer, $this>
+     */
+    public function pendingExtensionOffer(): HasOne
+    {
+        return $this->hasOne(OrderExtensionOffer::class, OrderExtensionOffer::ORDER_ID)
+            ->where(OrderExtensionOffer::STATUS, OrderExtensionOffer::STATUS_PENDING);
+    }
+
+    /**
+     * آخرین درخواستِ لغوِ دوطرفه (پرسش ۴) — باز یا بسته، چون ردِ بک‌آفیس و دلیلش
+     * باید روی کارت دیده شود، نه فقط درخواستِ در جریان.
+     *
+     * @return HasOne<OrderCancelRequest, $this>
+     */
+    public function latestCancelRequest(): HasOne
+    {
+        return $this->hasOne(OrderCancelRequest::class, OrderCancelRequest::ORDER_ID)->latestOfMany();
+    }
+
+    /** @return HasMany<OrderCancelRequest, $this> */
+    public function cancelRequests(): HasMany
+    {
+        return $this->hasMany(OrderCancelRequest::class, OrderCancelRequest::ORDER_ID);
     }
 
     /** @return HasMany<OrderItem, $this> */

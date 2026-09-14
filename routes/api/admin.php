@@ -24,6 +24,7 @@ use App\Http\Controllers\Api\Admin\AdminJobExperienceController;
 use App\Http\Controllers\Api\Admin\AdminManagerController;
 use App\Http\Controllers\Api\Admin\AdminMenuItemController;
 use App\Http\Controllers\Api\Admin\AdminNotificationController;
+use App\Http\Controllers\Api\Admin\AdminOrderCancelRequestController;
 use App\Http\Controllers\Api\Admin\AdminOrderController;
 use App\Http\Controllers\Api\Admin\AdminOrderUnitController;
 use App\Http\Controllers\Api\Admin\AdminPageBlockController;
@@ -179,6 +180,24 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
             Route::get('/', 'index');
             Route::post('/{supplierRequest}/approve', 'approve')->whereNumber('supplierRequest');
             Route::post('/{supplierRequest}/reject', 'reject')->whereNumber('supplierRequest');
+        });
+
+    // صفِ لغوهای ارجاع‌شده — پرسش ۴ مدیریت (۲۰۲۶-۰۹-۰۹): درخواستِ لغوی که طرفِ
+    // مقابل رد کرده یا در ۴۸ ساعت پاسخ نداده، این‌جا تصمیمِ نهایی می‌گیرد.
+    //
+    // ⚠️ برخلافِ صفِ بالا، `approve` این‌جا **واقعاً لغو می‌کند** و پول را از
+    // تأمین‌کننده به خریدار برمی‌گرداند (`CancelOrderAction`). شرط‌های بند ۳.۶
+    // به شکلِ خودشان برقرارند — پرونده‌ی درخواست جای تیکت، و `reason` اجباری.
+    // سطح ۲ روی پذیرش، مثلِ `orders/{order}/force-cancel`: جابه‌جاییِ واقعیِ پول.
+    Route::controller(AdminOrderCancelRequestController::class)
+        ->prefix('order-cancel-requests')
+        ->middleware('admin.permission:manage-orders')
+        ->group(function () {
+            Route::get('/', 'index');
+            Route::post('/{orderCancelRequest}/approve', 'approve')
+                ->whereNumber('orderCancelRequest')
+                ->middleware('admin.level:2');
+            Route::post('/{orderCancelRequest}/reject', 'reject')->whereNumber('orderCancelRequest');
         });
 
     // Suppliers — مدیریت سوپلایرها (+ صف تأیید درخواست‌های سوپلایری)

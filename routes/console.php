@@ -67,6 +67,15 @@ Schedule::command('supplier-requests:expire-price-changes')
     ->runInBackground()
     ->onOneServer();
 
+// درخواست‌های لغوِ دوطرفه‌ای که طرفِ مقابل در ۴۸ ساعت پاسخ نداد → صفِ بک‌آفیس
+// (پرسش ۴ مدیریت). ارجاع، نه پذیرش/ردِ خودکار — پول بدونِ تصمیمِ آدم جابه‌جا
+// نمی‌شود. ساعتی، چون مهلت با ساعت سنجیده می‌شود.
+Schedule::command('orders:escalate-cancel-requests')
+    ->hourly()
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->onOneServer();
+
 // سینک محصولات کویر — هر ساعت
 Schedule::command('products:sync-kavir')
     ->hourly()

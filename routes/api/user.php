@@ -5,7 +5,9 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\Data\AnalyticsController;
 use App\Http\Controllers\Api\Data\InventoryController;
 use App\Http\Controllers\Api\ListopherController;
+use App\Http\Controllers\Api\Order\OrderCancelRequestController;
 use App\Http\Controllers\Api\Order\OverweightApprovalController;
+use App\Http\Controllers\Api\Order\ReserveExtensionController;
 use App\Http\Controllers\Api\Shipping\ReturnDamageController;
 use App\Http\Controllers\Api\Shipping\ShipmentDeliveryController;
 use App\Http\Controllers\Api\User\AccountSecurityController;
@@ -375,7 +377,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
                 // ۴۰۹ می‌دهد (شماره‌ی راننده نباید باطل شود)، ولی همان گارد
                 // وزنِ غلط را هم قفل می‌کرد و اصلاحش فقط از ادمین برمی‌آمد.
                 // درخواستِ لغو — تأمین‌کننده خودش لغو نمی‌کند (بند ۵.۳).
-                Route::post('/{order}/cancellation-request', [SupplierRequestController::class, 'cancelOrder'])
+                //
+                // ✏️ ۲۰۲۶-۰۹-۱۴ (پرسش ۴ مدیریت): همین مسیر حالا به جریانِ لغوِ
+                // **دوطرفه** می‌رسد (`OrderCancelRequestController::store`)، نه به
+                // صفِ یک‌طرفه‌ی `supplier_requests`. پنلِ تأمین‌کننده همین آدرس را
+                // می‌زند، پس آدرس ماند و مقصد عوض شد. مسیرِ کاملِ جریان پایینِ همین
+                // فایل، گروهِ «لغوِ دوطرفه».
+                Route::post('/{order}/cancellation-request', [OrderCancelRequestController::class, 'store'])
                     ->whereNumber('order')->middleware('throttle:10,1');
 
                 Route::patch('/{order}/shipments/{shipment}/weight', 'correctShipmentWeight')
@@ -695,4 +703,39 @@ Route::middleware('auth:sanctum')->prefix('profile/orders')->group(function () {
     Route::post('/{order}/overweight/settle', [OverweightApprovalController::class, 'settleShortfall'])
         ->whereNumber('order')
         ->middleware(['idempotency', 'throttle:financial']);
+});
+
+// ── تمدیدِ رزرو با توافق (پرسش ۳ مدیریت، ۲۰۲۶-۰۹-۰۹) ─────────────────────────
+//
+// تأمین‌کننده پیشنهاد می‌دهد، خریدار می‌پذیرد یا رد می‌کند؛ رد = لغوِ رزرو.
+// همان تفکیکِ نقش‌ها که `overweight/*` دارد. throttle چون هر سه پیامک می‌فرستند.
+// رد و پذیرش هر دو زیرِ قفل idempotent‌اند (پیشنهادِ پاسخ‌داده‌شده ۴۰۹ می‌دهد).
+Route::middleware('auth:sanctum')->prefix('profile/orders')->group(function () {
+    Route::post('/{order}/extension', [ReserveExtensionController::class, 'propose'])
+        ->whereNumber('order')
+        ->middleware('throttle:10,1');
+    Route::post('/{order}/extension/{offer}/accept', [ReserveExtensionController::class, 'accept'])
+        ->whereNumber('order')->whereNumber('offer')
+        ->middleware('throttle:10,1');
+    // رد = لغوِ رزرو و بازگشتِ بیعانه؛ پول جابه‌جا می‌شود.
+    Route::post('/{order}/extension/{offer}/reject', [ReserveExtensionController::class, 'reject'])
+        ->whereNumber('order')->whereNumber('offer')
+        ->middleware(['idempotency', 'throttle:financial']);
+});
+
+// ── لغوِ دوطرفه با ارجاع به بک‌آفیس (پرسش ۴ مدیریت، ۲۰۲۶-۰۹-۰۹) ──────────────
+//
+// یک اندپوینت برای هر دو طرف؛ سمتِ درخواست از هویتِ اکتور درمی‌آید، نه از بدنه.
+// `cancellation-request` (بالاتر، گروهِ تأمین‌کننده) به همین `store` می‌رسد.
+Route::middleware('auth:sanctum')->prefix('profile/orders')->group(function () {
+    Route::post('/{order}/cancel-request', [OrderCancelRequestController::class, 'store'])
+        ->whereNumber('order')
+        ->middleware('throttle:10,1');
+    // پذیرشِ طرفِ مقابل همان لحظه لغو و استرداد می‌کند — میان‌افزارهای مالی.
+    Route::post('/{order}/cancel-request/accept', [OrderCancelRequestController::class, 'accept'])
+        ->whereNumber('order')
+        ->middleware(['idempotency', 'throttle:financial']);
+    Route::post('/{order}/cancel-request/reject', [OrderCancelRequestController::class, 'reject'])
+        ->whereNumber('order')
+        ->middleware('throttle:10,1');
 });

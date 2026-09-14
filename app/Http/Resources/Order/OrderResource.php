@@ -6,8 +6,11 @@ use App\Enums\Shared\StatusTone;
 use App\Http\Resources\BaseJsonResource;
 use App\Models\DebtEntry;
 use App\Models\Order;
+use App\Models\OrderCancelRequest;
+use App\Models\OrderExtensionOffer;
 use App\Models\User;
 use App\Services\Financial\DebtEngine;
+use App\Services\Sales\SalesSettings;
 use App\Support\Money;
 use App\Support\OrderDocumentCatalog;
 use Illuminate\Http\Request;
@@ -242,6 +245,70 @@ class OrderResource extends BaseJsonResource
             // قرینه‌ی بلوکِ `overweight` و با همان قاعده: نیامدنش یعنی «چیزی برای تسویه
             // نیست»، نه صفر ریال.
             'overweight_settlement' => $this->when($overweightSettlement !== null, $overweightSettlement),
+
+            // ── [flow2] رزرو، تمدیدِ با توافق، لغوِ دوطرفه (پرسش ۳ و ۴ مدیریت) ──
+            //
+            // تا این نشست **هیچ Resourceای مهلتِ رزرو را سریالایز نمی‌کرد** — پنلِ
+            // تأمین‌کننده `reserve_deadline` می‌خواند و همیشه null می‌گرفت. کلیدها
+            // فقط وقتی می‌آیند که موضوعیت دارند؛ نیامدنِ `extension` یعنی «پیشنهادی
+            // نیست» و نیامدنِ `cancel_request` یعنی «درخواستی نبوده».
+            //
+            // `awaiting_me`/`can_*` سمتِ سرور حساب می‌شوند، به همان دلیلِ بلوکِ
+            // `overweight`: دو کلاینت که خودشان قاعده را بازسازی کنند، واگرا می‌شوند.
+            'reservation' => $this->when(
+                $this->{Order::STATUS} === Order::STATUS_RESERVED && $this->{Order::RESERVE_DEADLINE} !== null,
+                fn () => [
+                    'deadline' => $this->{Order::RESERVE_DEADLINE},
+                    'original_deadline' => $this->{Order::RESERVE_DEADLINE_ORIGINAL},
+                    'grace_hours' => (int) ($this->{Order::RESERVE_GRACE_HOURS} ?? 0),
+                    // لحظه‌ای که کرون لغو می‌کند — مهلتِ پاسخ به پیشنهادِ تمدید هم همین است.
+                    'ends_at' => $this->reserveEndsAt(),
+                    'has_deadline_passed' => $this->{Order::RESERVE_DEADLINE}->isPast(),
+                    'is_expired' => $this->isReserveWindowExpired(),
+                    'can_propose_extension' => $isSupplier
+                        && $this->pendingExtensionOffer === null
+                        && $this->canProposeReserveExtension(app(SalesSettings::class)->reserveWarningThreshold()),
+                ],
+            ),
+
+            'extension' => $this->when(
+                $this->pendingExtensionOffer !== null,
+                fn () => [
+                    'id' => $this->pendingExtensionOffer->getKey(),
+                    'hours' => $this->pendingExtensionOffer->{OrderExtensionOffer::HOURS},
+                    'proposed_until' => $this->pendingExtensionOffer->{OrderExtensionOffer::PROPOSED_UNTIL},
+                    'proposed_at' => $this->pendingExtensionOffer->created_at,
+                    // خریدار باید تا پایانِ ارفاق پاسخ دهد، وگرنه کرون رزرو را لغو می‌کند.
+                    'respond_until' => $this->reserveEndsAt(),
+                    'awaiting_me' => $this->payerUserId() === $viewerId,
+                ],
+            ),
+
+            'cancel_request' => $this->when(
+                $this->latestCancelRequest !== null,
+                function () use ($viewerId, $isSupplier) {
+                    $r = $this->latestCancelRequest;
+                    $isBuyer = $this->payerUserId() === $viewerId;
+                    $mySide = $isBuyer ? OrderCancelRequest::SIDE_BUYER : ($isSupplier ? OrderCancelRequest::SIDE_SUPPLIER : null);
+
+                    return [
+                        'id' => $r->getKey(),
+                        'status' => $r->{OrderCancelRequest::STATUS},
+                        'requested_by' => $r->{OrderCancelRequest::REQUESTED_BY},
+                        'is_mine' => $mySide !== null && $mySide === $r->{OrderCancelRequest::REQUESTED_BY},
+                        'reason' => $r->{OrderCancelRequest::REASON},
+                        'requested_at' => $r->created_at,
+                        'respond_until' => $r->{OrderCancelRequest::RESPOND_UNTIL},
+                        'awaiting_me' => $r->isPending() && $mySide !== null && $mySide === $r->counterpartySide(),
+                        'counterparty_decision' => $r->{OrderCancelRequest::COUNTERPARTY_DECISION},
+                        'counterparty_reason' => $r->{OrderCancelRequest::COUNTERPARTY_REASON},
+                        'escalated_at' => $r->{OrderCancelRequest::ESCALATED_AT},
+                        'admin_decision' => $r->{OrderCancelRequest::ADMIN_DECISION},
+                        'admin_reason' => $r->{OrderCancelRequest::ADMIN_REASON},
+                        'decided_at' => $r->{OrderCancelRequest::DECIDED_AT},
+                    ];
+                },
+            ),
 
             // --- EliteYAR Info (الیت یارِ سفارش — مستقیم از elite_yar_user_id) ---
             'elite_yar' => $eliteYARUser ? [
