@@ -65,7 +65,10 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.4'
+          # 8.3 = نسخه‌ی سرورِ استیجینگ (Ubuntu 20.04؛ PHP 8.4 برایش منتشر نمی‌شود).
+          # CI باید روی همان نسخه‌ای سبز شود که کد رویش اجرا می‌شود، و
+          # `config.platform.php` در composer.json هم همین را قفل کرده است.
+          php-version: '8.3'
           extensions: mbstring, bcmath, gd, iconv, pdo_mysql, zip, exif
           coverage: none
 
@@ -212,7 +215,10 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.4'
+          # 8.3 = نسخه‌ی سرورِ استیجینگ (Ubuntu 20.04؛ PHP 8.4 برایش منتشر نمی‌شود).
+          # CI باید روی همان نسخه‌ای سبز شود که کد رویش اجرا می‌شود، و
+          # `config.platform.php` در composer.json هم همین را قفل کرده است.
+          php-version: '8.3'
           extensions: mbstring, bcmath, gd, iconv, pdo_mysql, zip, exif
           coverage: none
 

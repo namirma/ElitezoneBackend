@@ -4,8 +4,10 @@
 
 > ⚠️ **سه چیز نسبت به نسخه‌ی لاراول ۱۰ عوض شده که اگر رعایت نشوند، سایت بی‌صدا
 > خراب می‌شود:**
-> ۱. **PHP باید ۸.۴ یا بالاتر باشد** (`composer.json`: `"php": "^8.4"`). روی PHP
-> قدیمی‌تر `composer install` همان اول می‌ایستد.
+> ۱. **PHP باید ۸.۳ یا بالاتر باشد** (`composer.json`: `"php": "^8.3"`). روی PHP
+> قدیمی‌تر `composer install` همان اول می‌ایستد. سرورِ استیجینگ (Ubuntu 20.04) روی
+> ۸.۳ است و PHP 8.4 برایش منتشر نمی‌شود، پس پروژه روی ۸.۳ قفل شد
+> (`config.platform.php = 8.3.9`) و CI هم روی ۸.۳ اجرا می‌شود.
 > ۲. **برنامه در ریشه‌ی مخزن است، نه زیرشاخه‌ی `api/`.** هر مسیری که به
 > `…/api` ختم می‌شود (supervisor، cron، nginx) بعد از سوئیچ غلط است.
 > ۳. **زمان‌بند (scheduler) و کلیدهای پوش** لازم‌اند — گام‌های ۵ و ۸.
@@ -19,8 +21,8 @@
 روی سرور:
 
 ```bash
-php -v                                           # باید 8.4.x یا بالاتر
-ls /usr/bin/php*                                 # اگر پیش‌فرض قدیمی است، مسیرِ 8.4 را پیدا کنید
+php -v                                           # باید 8.3.x یا بالاتر
+ls /usr/bin/php*                                 # اگر پیش‌فرض قدیمی است، مسیرِ 8.3 را پیدا کنید
 php -m | grep -Ei '^(curl|mbstring|openssl|json|gd)$'
 ```
 
@@ -194,7 +196,7 @@ php artisan config:cache
 
 در `/etc/supervisor/conf.d/elitezone-worker.conf` (قالبش: `deploy/supervisor/elitezone-worker.conf`)
 **دو چیز را برای L13 عوض کنید:** مسیرِ `…/api` → ریشه‌ی مخزن، و `php` → مسیرِ
-کاملِ PHP 8.4. بعد:
+کاملِ PHP 8.3 (مثلاً `/usr/bin/php8.3`). بعد:
 
 ```bash
 sudo supervisorctl reread && sudo supervisorctl update
