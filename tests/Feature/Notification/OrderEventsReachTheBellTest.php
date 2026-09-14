@@ -117,6 +117,21 @@ class OrderEventsReachTheBellTest extends TestCase
     }
 
     #[Test]
+    public function a_payment_for_someone_else_reaches_the_payer_too(): void
+    {
+        // خرید برای دیگری: پول از کیف پولِ پرداخت‌کننده رفته؛ او هم باید بداند.
+        Queue::fake();
+        $payer = User::factory()->create();
+        $order = Order::factory()->paid()->create();
+        $order->forceFill([Order::PAYER_USER_ID => $payer->id])->save();
+
+        (new SendOrderPaymentNotification)->handle(new OrderPaid($order->fresh()));
+
+        $this->assertSame(1, UserNotification::where(UserNotification::USER_ID, $payer->id)->count(), 'پرداخت‌کننده خبری نگرفت.');
+        $this->assertSame(1, UserNotification::where(UserNotification::USER_ID, $order->placer->id)->count(), 'ثبت‌کننده هم باید همچنان خبر بگیرد.');
+    }
+
+    #[Test]
     public function the_refund_is_announced_to_the_payer_not_to_the_placer(): void
     {
         // خرید برای دیگری: استرداد به کیف پولِ پرداخت‌کننده می‌رود.

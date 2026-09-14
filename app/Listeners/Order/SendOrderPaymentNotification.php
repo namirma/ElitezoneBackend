@@ -36,11 +36,18 @@ class SendOrderPaymentNotification implements ShouldQueue
 
         try {
             // متن از lang می‌آید، نه هاردکد در PHP — قاعدهٔ صریحِ پروژه.
-            Notifier::toUser(
-                $user,
-                __('notifications.order_paid_subject'),
-                __('sms.order_paid_buyer', ['order_number' => $order->order_number])
-            );
+            $subject = __('notifications.order_paid_subject');
+            $body = __('sms.order_paid_buyer', ['order_number' => $order->order_number]);
+
+            Notifier::toUser($user, $subject, $body);
+
+            // در «خرید برای دیگری» پول از کیف پولِ **پرداخت‌کننده** رفته، ولی فقط
+            // ثبت‌کننده (الیت‌یار) خبر می‌گرفت — کارفرمایی که پرداخته بود هیچ.
+            $payer = User::find($order->payerUserId());
+
+            if ($payer instanceof User && $payer->id !== $user->id) {
+                Notifier::toUser($payer, $subject, $body);
+            }
 
             //  در آینده ایمیل
 
