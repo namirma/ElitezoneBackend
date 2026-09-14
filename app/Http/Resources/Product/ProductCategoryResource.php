@@ -5,6 +5,7 @@ namespace App\Http\Resources\Product;
 use App\Http\Resources\BaseJsonResource;
 use App\Models\ProductCategory;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * @mixin ProductCategory
@@ -17,8 +18,13 @@ class ProductCategoryResource extends BaseJsonResource
             ProductCategory::ID => $this->id,
             ProductCategory::NAME => $this->name,
             ProductCategory::SLUG => $this->slug,
+            ProductCategory::SUBTITLE => $this->subtitle,
             ProductCategory::DESCRIPTION => $this->description,
-            ProductCategory::IMAGE => $this->image,
+            // URL کامل، همان قراردادِ BannerResource — سایت فقط `/api` را پراکسی
+            // می‌کند، پس مسیرِ خامِ `categories/x.jpg` روی صفحه‌ی دسته‌بندی ۴۰۴ می‌شد.
+            ProductCategory::IMAGE => $this->image
+                ? (str_starts_with($this->image, 'http') ? $this->image : Storage::disk('public')->url($this->image))
+                : null,
             ProductCategory::IS_ACTIVE => $this->is_active,
             'products_count' => $this->whenCounted('products'),
         ];

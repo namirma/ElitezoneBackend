@@ -12,6 +12,7 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property string $name
  * @property string $slug
+ * @property string|null $subtitle
  * @property string|null $description
  * @property string|null $image
  * @property bool $is_active
@@ -45,6 +46,9 @@ class ProductCategory extends Model
 
     const SLUG = 'slug';
 
+    /** خطِ دومِ هیروِ صفحه‌ی دسته‌بندی، وقتی بنرِ اختصاصی ثبت نشده. */
+    const SUBTITLE = 'subtitle';
+
     const DESCRIPTION = 'description';
 
     const IMAGE = 'image';
@@ -54,6 +58,7 @@ class ProductCategory extends Model
     protected $fillable = [
         self::NAME,
         self::SLUG,
+        self::SUBTITLE,
         self::DESCRIPTION,
         self::IMAGE,
         self::IS_ACTIVE,

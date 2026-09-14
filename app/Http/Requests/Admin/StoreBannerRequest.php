@@ -4,6 +4,7 @@ namespace App\Http\Requests\Admin;
 
 use App\Models\Banner;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /**
  * ساخت بنر جدید توسط ادمین.
@@ -21,9 +22,14 @@ class StoreBannerRequest extends FormRequest
     {
         return [
             Banner::TITLE => ['required', 'string', 'max:255'],
+            Banner::SUBTITLE => ['nullable', 'string', 'max:255'],
             Banner::IMAGE => ['required', 'file', 'mimes:png,jpg,jpeg,webp', 'max:4096'],
             Banner::LINK => ['nullable', 'string', 'max:2048'],
-            Banner::POSITION => ['nullable', 'string', 'max:100'],
+            // جایگاه اجباری است و فقط از فهرستِ مدل: بنرِ بی‌جایگاه هیچ‌جا رندر
+            // نمی‌شود و «ذخیره‌ی موفقِ بی‌اثر» همان چیزی است که قاعده‌ی صداقت ردش می‌کند.
+            Banner::POSITION => ['required', 'string', Rule::in(array_keys(Banner::POSITIONS))],
+            // بنرِ دسته‌بندی بدونِ دسته یتیم است — صفحه‌ی دسته‌بندی نمی‌داند مالِ کیست.
+            Banner::CATEGORY_ID => ['nullable', 'required_if:'.Banner::POSITION.','.Banner::POSITION_CATEGORY, 'integer', Rule::exists('product_categories', 'id')],
             Banner::SORT_ORDER => ['nullable', 'integer', 'min:0'],
             Banner::IS_ACTIVE => ['nullable', 'boolean'],
         ];
@@ -36,6 +42,7 @@ class StoreBannerRequest extends FormRequest
             'image.required' => __('admin.banners.image_required'),
             'image.mimes' => __('admin.banners.image_invalid'),
             'image.max' => __('admin.banners.image_too_large'),
+            'category_id.required_if' => __('admin.banners.category_required'),
         ];
     }
 }

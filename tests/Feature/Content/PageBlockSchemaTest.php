@@ -347,7 +347,7 @@ class PageBlockSchemaTest extends TestCase
             'hero_media', 'video', 'story_card', 'image_glass_band', 'callout_list',
             'glass_cards', 'faq', 'hero_actions', 'card_grid', 'media_text',
             'flip_card', 'cta_band', 'sk_hero', 'stat_carousel', 'feature_cards',
-            'banner_carousel', 'flip_cards', 'card_row', 'latin_media_text',
+            'banner_carousel', 'flip_cards', 'card_row', 'latin_media_text', 'banner_slot',
         ], $this->schema->types());
     }
 

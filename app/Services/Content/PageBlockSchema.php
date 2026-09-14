@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Content;
 
+use App\Models\Banner;
 use App\Models\Page;
 use Illuminate\Validation\Rule;
 
@@ -594,6 +595,25 @@ final class PageBlockSchema
                         'slots' => ['titleSize', 'titleWeight', 'bodySize', 'bodyWeight'],
                         'label' => 'تایپوگرافی',
                         'hint' => 'تیترِ بخش و متنِ زیرِ عکس. این بلوک فاصله‌ی فلکس/گریدی ندارد.',
+                    ],
+                ],
+            ],
+
+            // پلِ «مدیریت بنرها» به صفحه‌ساز (۲۰۲۶-۰۹-۱۴). محتوای این بلوک
+            // این‌جا نیست: `BannerSlot.jsx` بنرهای فعالِ همین جایگاه را از
+            // `GET /banners` می‌خواند (یکی → تمام‌عرض، چندتا → چرخ‌وفلک، هیچ →
+            // هیچ‌چیز). گزینه‌های `position` از `Banner::POSITIONS` می‌آیند، پس
+            // جایگاهی که فرمِ بنر نمی‌پذیرد این‌جا هم انتخاب‌شدنی نیست.
+            'banner_slot' => [
+                'label' => 'جایگاهِ بنر',
+                'hint' => 'بنرهای فعالِ یک جایگاه از «مدیریت بنرها» را همین‌جا نشان می‌دهد: یک بنر تمام‌عرض، چند بنر به‌صورتِ چرخ‌وفلک، و بدونِ بنر هیچ‌چیز. خودِ بنرها (عکس، عنوان، لینک) در «مدیریت بنرها» ویرایش می‌شوند، نه این‌جا.',
+                'fields' => [
+                    'position' => ['type' => 'select', 'options' => Banner::positionOptions(), 'required' => true, 'label' => 'جایگاه', 'hint' => 'همان جایگاهی که هنگام ثبتِ بنر انتخاب شده. «بنر دسته‌بندی» و «بالای صفحه‌ی تسویه» جای ثابتِ خودشان را روی سایت دارند و این‌جا معمولاً لازم نمی‌شوند.'],
+                    'style' => [
+                        'type' => 'style',
+                        'slots' => ['titleSize', 'titleWeight', 'bodySize', 'bodyWeight', 'gap'],
+                        'label' => 'تایپوگرافی و فاصله‌ها',
+                        'hint' => 'عنوان و زیرعنوانی که روی عکسِ هر بنر نوشته می‌شود، و فاصله‌ی بینِ آن دو خط.',
                     ],
                 ],
             ],

@@ -99,6 +99,7 @@ class AdminProductCategoryController extends Controller
         return [
             ProductCategory::NAME => [$req, 'string', 'max:255'],
             ProductCategory::SLUG => [$req, 'string', 'max:255', Rule::unique('product_categories', 'slug')->ignore($ignoreId)],
+            ProductCategory::SUBTITLE => ['nullable', 'string', 'max:255'],
             ProductCategory::DESCRIPTION => ['nullable', 'string'],
             ProductCategory::IS_ACTIVE => ['boolean'],
             // svg عمداً نیست — آپلود روی دیسک public نباید SVG بپذیرد (XSS ذخیره‌شده).

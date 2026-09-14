@@ -51,7 +51,7 @@ class AdminBannerController extends Controller
     // POST /admin/banners
     public function store(StoreBannerRequest $request): JsonResponse
     {
-        $data = $request->safe()->except(Banner::IMAGE);
+        $data = $this->withCategoryScopedToPosition($request->safe()->except(Banner::IMAGE), $request->input(Banner::POSITION));
         $data[Banner::IMAGE] = $request->file(Banner::IMAGE)->store('banners', 'public');
 
         $banner = Banner::create($data);
@@ -62,7 +62,10 @@ class AdminBannerController extends Controller
     // PUT|POST /admin/banners/{banner}
     public function update(UpdateBannerRequest $request, Banner $banner): JsonResponse
     {
-        $data = $request->safe()->except(Banner::IMAGE);
+        $data = $this->withCategoryScopedToPosition(
+            $request->safe()->except(Banner::IMAGE),
+            $request->input(Banner::POSITION, $banner->{Banner::POSITION})
+        );
 
         if ($request->hasFile(Banner::IMAGE)) {
             $this->deleteImageIfOwned($banner);
@@ -97,6 +100,20 @@ class AdminBannerController extends Controller
         $banner->restore();
 
         return success(new BannerResource($banner->refresh()), __('admin.banners.restored'));
+    }
+
+    /**
+     * `category_id` فقط روی جایگاهِ «بنر دسته‌بندی» معنی دارد. ادمینی که جایگاه را
+     * از دسته‌بندی به هوم عوض می‌کند نباید دسته‌ی قبلی را با خودش بکشد — وگرنه
+     * صفحه‌ی دسته‌بندی بنری را می‌بیند که دیگر مالِ او نیست.
+     */
+    private function withCategoryScopedToPosition(array $data, ?string $position): array
+    {
+        if ($position !== Banner::POSITION_CATEGORY) {
+            $data[Banner::CATEGORY_ID] = null;
+        }
+
+        return $data;
     }
 
     private function deleteImageIfOwned(Banner $banner): void
