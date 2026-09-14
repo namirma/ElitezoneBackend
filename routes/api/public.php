@@ -138,12 +138,26 @@ Route::prefix('purchase-parameters')->group(function () {
 // امضا تنها گاردِ این دو مسیر است، پس هیچ‌کدام پارامتری از بدنه نمی‌خوانند و
 // انقضای لینک همان `delivery_deadline` است — نه بیشتر، وگرنه پس از عودت هم
 // قابل استفاده می‌ماند. `throttle` چون یک لینکِ لو رفته نباید قابل کوبیدن باشد.
+//
+// ⚠️ **GET فقط صفحه‌ی تأیید است؛ تغییرِ وضعیت فقط با POST.** این لینک با پیامک
+// می‌رود، و پیش‌نمایشِ لینک در پیام‌رسان، اسکنرِ امنیتی و click-trackingِ درگاهِ
+// پیامک همان URLِ امضاشده را GET/HEAD می‌کنند — امضا در برابرشان محافظتی ندارد.
+// وقتی GET خودش تحویل را ثبت می‌کرد، یک پیش‌واکشی سفارش را «تحویل‌شده» می‌کرد و
+// پنجره‌ی اصلاحِ وزنِ باسکول (`ProcessWeighbridgeResultAction`) بسته می‌شد — یعنی
+// حقِ اصلاحِ یک عددِ مالی از تأمین‌کننده گرفته می‌شد. پیش‌واکشی‌کننده فرم ارسال
+// نمی‌کند. امضا روی مسیر + query است، پس POST به همان URL هم معتبر است.
 Route::middleware(['signed', 'throttle:30,1'])->group(function () {
-    Route::get('/shipments/{shipment}/arrived', [ShipmentDeliveryController::class, 'arrived'])
+    Route::get('/shipments/{shipment}/arrived', [ShipmentDeliveryController::class, 'arrivedPage'])
         ->whereNumber('shipment')
         ->name('shipments.arrived');
+    Route::post('/shipments/{shipment}/arrived', [ShipmentDeliveryController::class, 'arrived'])
+        ->whereNumber('shipment')
+        ->name('shipments.arrived.submit');
 
-    Route::get('/delivery/{shipment}/confirm', [ShipmentDeliveryController::class, 'confirmSigned'])
+    Route::get('/delivery/{shipment}/confirm', [ShipmentDeliveryController::class, 'confirmPage'])
         ->whereNumber('shipment')
         ->name('delivery.confirm');
+    Route::post('/delivery/{shipment}/confirm', [ShipmentDeliveryController::class, 'confirmSigned'])
+        ->whereNumber('shipment')
+        ->name('delivery.confirm.submit');
 });

@@ -38,8 +38,10 @@ class DeliveryLinksRequireSignatureTest extends TestCase
         Queue::fake();
         $shipment = $this->shipment();
 
-        $this->getJson("/api/delivery/{$shipment->id}/confirm")->assertForbidden();
-        $this->getJson("/api/shipments/{$shipment->id}/arrived")->assertForbidden();
+        foreach (["/api/delivery/{$shipment->id}/confirm", "/api/shipments/{$shipment->id}/arrived"] as $path) {
+            $this->getJson($path)->assertForbidden();
+            $this->postJson($path)->assertForbidden();
+        }
 
         $this->assertSame(Shipment::STATUS_SHIPPED, $shipment->fresh()->{Shipment::STATUS});
     }
@@ -50,17 +52,18 @@ class DeliveryLinksRequireSignatureTest extends TestCase
         Queue::fake();
         $shipment = $this->shipment();
 
+        // POST، چون تغییرِ وضعیت فقط آن‌جاست.
         $signed = URL::temporarySignedRoute('delivery.confirm', now()->addDay(), ['shipment' => $shipment->id]);
-        $this->getJson(preg_replace('/signature=[a-f0-9]+/', 'signature='.str_repeat('0', 64), $signed))
+        $this->postJson(preg_replace('/signature=[a-f0-9]+/', 'signature='.str_repeat('0', 64), $signed))
             ->assertForbidden();
 
         // لینکِ امضای **شناسه‌ی دیگری** نباید روی این محموله کار کند.
         $other = URL::temporarySignedRoute('delivery.confirm', now()->addDay(), ['shipment' => $shipment->id + 1]);
-        $this->getJson(str_replace('/delivery/'.($shipment->id + 1).'/', "/delivery/{$shipment->id}/", $other))
+        $this->postJson(str_replace('/delivery/'.($shipment->id + 1).'/', "/delivery/{$shipment->id}/", $other))
             ->assertForbidden();
 
         $expired = URL::temporarySignedRoute('delivery.confirm', now()->subMinute(), ['shipment' => $shipment->id]);
-        $this->getJson($expired)->assertForbidden();
+        $this->postJson($expired)->assertForbidden();
 
         $this->assertSame(Shipment::STATUS_SHIPPED, $shipment->fresh()->{Shipment::STATUS});
     }

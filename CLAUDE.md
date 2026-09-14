@@ -1038,10 +1038,19 @@ nothing recorded that the driver arrived or that the buyer took delivery, and
 - **"Outstanding" means neither delivered nor returned.** A returned leg is *settled*,
   not pending, so an order with one delivered and one returned leg is `delivered`, not
   stuck in `partially_delivered` forever.
-- Driver and buyer have **no authenticated route** into this: `GET /shipments/{id}/arrived`
-  and `GET /delivery/{id}/confirm` are `signed` + `throttle`, no `auth:sanctum`. Drivers
+- Driver and buyer have **no authenticated route** into this: `/shipments/{id}/arrived`
+  and `/delivery/{id}/confirm` are `signed` + `throttle`, no `auth:sanctum`. Drivers
   have no account at all (§3.9). The confirm link expires exactly at `delivery_deadline` —
   any longer and it would still work after the load was returned.
+- ⚠️ **The SMS link's GET only renders a confirmation page; only POST changes state**
+  (2026-09-14). Link previews in messaging apps, security scanners and the SMS gateway's
+  click tracking fetch the signed URL with GET/HEAD, and the signature does not stop them
+  — they hold the real URL. When GET confirmed delivery, a prefetch moved the order out
+  of the states `ProcessWeighbridgeResultAction` accepts, closing the supplier's weight
+  correction window: a financial figure lost irreversibly. The page posts back to the
+  same signed URL (the signature covers path + query, so POST validates). Never put
+  state changes behind a GET that leaves the system by SMS. Pinned by
+  `Order/ShipmentDeliveryTest::opening_the_*` and `Shipping/DeliveryLinksRequireSignatureTest`.
 - Panel confirmation is **payer-only**, not placer: in buy-for-others it is the employer's
   confirmation that prevents the return and the debt that follows.
 - Pinned by `Order/ShipmentDeliveryTest`.

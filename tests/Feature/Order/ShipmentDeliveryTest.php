@@ -114,8 +114,42 @@ class ShipmentDeliveryTest extends TestCase
 
         $url = URL::temporarySignedRoute('shipments.arrived', now()->addDay(), ['shipment' => $shipment->id]);
 
-        $this->getJson($url)->assertOk();
+        $this->postJson($url)->assertOk();
         $this->assertNotNull($shipment->fresh()->{Shipment::ARRIVED_AT});
+    }
+
+    #[Test]
+    public function opening_the_driver_link_records_nothing_until_the_button(): void
+    {
+        // پیش‌نمایشِ لینک در پیام‌رسان، اسکنرِ امنیتی و click-trackingِ درگاهِ پیامک
+        // همان URLِ امضاشده را GET/HEAD می‌کنند. اگر GET ثبت می‌کرد، رسیدنِ بار
+        // پیش از رسیدنِ واقعی ثبت و مهلتِ تأییدِ تحویل شروع می‌شد.
+        $shipment = $this->makeShipment();
+        $url = URL::temporarySignedRoute('shipments.arrived', now()->addDay(), ['shipment' => $shipment->id]);
+
+        $this->get($url)->assertOk()->assertSee('<form method="post"', false);
+        $this->call('HEAD', $url)->assertOk();
+        $this->assertNull($shipment->fresh()->{Shipment::ARRIVED_AT}, 'باز کردنِ لینک نباید رسیدن را ثبت کند.');
+
+        $this->post($url)->assertOk();
+        $this->assertNotNull($shipment->fresh()->{Shipment::ARRIVED_AT});
+    }
+
+    #[Test]
+    public function opening_the_delivery_link_does_not_confirm_delivery(): void
+    {
+        // 💰 تحویلِ ثبت‌شده سفارش را از وضعیت‌های قابلِ پردازشِ باسکول بیرون می‌برد و
+        // حقِ اصلاحِ وزن — یعنی مبلغِ نهاییِ تأمین‌کننده — را می‌گیرد.
+        $shipment = $this->arrive($this->makeShipment());
+        $url = URL::temporarySignedRoute('delivery.confirm', now()->addDay(), ['shipment' => $shipment->id]);
+
+        $this->get($url)->assertOk();
+        $this->call('HEAD', $url)->assertOk();
+        $this->assertSame(Shipment::STATUS_ARRIVED, $shipment->fresh()->{Shipment::STATUS}, 'باز کردنِ لینک نباید تحویل را تأیید کند.');
+        $this->assertNotSame(Order::STATUS_DELIVERED, $this->order->fresh()->{Order::STATUS});
+
+        $this->post($url)->assertOk();
+        $this->assertSame(Shipment::STATUS_DELIVERED, $shipment->fresh()->{Shipment::STATUS});
     }
 
     #[Test]

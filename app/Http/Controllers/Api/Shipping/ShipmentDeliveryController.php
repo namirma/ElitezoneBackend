@@ -12,6 +12,8 @@ use App\Http\Resources\Order\ShipmentResource;
 use App\Models\Order;
 use App\Models\Shipment;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 
 /**
@@ -29,16 +31,27 @@ class ShipmentDeliveryController extends Controller
     /**
      * GET /api/shipments/{shipment}/arrived — middleware `signed`، بدون auth.
      *
+     * فقط صفحه‌ی تأیید. ⚠️ هیچ‌چیز ثبت نمی‌شود: پیش‌نمایشِ لینک در پیام‌رسان همین
+     * URL را GET/HEAD می‌کند (توضیح در `routes/api/public.php`).
+     */
+    public function arrivedPage(Request $request, Shipment $shipment): Response
+    {
+        return $this->linkPage($request, $shipment, 'arrival');
+    }
+
+    /**
+     * POST /api/shipments/{shipment}/arrived — دکمه‌ی همان صفحه.
+     *
      * راننده روی لینک پیامکی می‌زند. امضا تنها گاردِ این مسیر است، پس هیچ
      * پارامتری از بدنه خوانده نمی‌شود.
      */
-    public function arrived(Shipment $shipment, RecordShipmentArrivalAction $action): JsonResponse
+    public function arrived(Request $request, Shipment $shipment, RecordShipmentArrivalAction $action): JsonResponse|Response
     {
-        $action->execute($shipment, Shipment::ARRIVAL_DRIVER_LINK);
-
-        return success(
-            new ShipmentResource($shipment->fresh()),
-            __('shipments.arrival_recorded')
+        return $this->respondToLink(
+            $request,
+            $shipment,
+            fn () => $action->execute($shipment, Shipment::ARRIVAL_DRIVER_LINK),
+            __('shipments.arrival_recorded'),
         );
     }
 
@@ -72,16 +85,73 @@ class ShipmentDeliveryController extends Controller
     /**
      * GET /api/delivery/{shipment}/confirm — middleware `signed`، بدون auth.
      *
-     * همان تأیید، از لینک پیامکی. `confirmedBy` عمداً `null` می‌ماند تا در
-     * تاریخچه معلوم باشد تأیید از پنل نیامده است.
+     * فقط صفحه‌ی تأیید؛ ثبتِ تحویل با POST. تحویلِ ثبت‌شده پنجره‌ی اصلاحِ وزنِ
+     * باسکول را می‌بندد، پس یک پیش‌واکشی نباید بتواند انجامش دهد.
      */
-    public function confirmSigned(Shipment $shipment, ConfirmShipmentDeliveryAction $action): JsonResponse
+    public function confirmPage(Request $request, Shipment $shipment): Response
     {
-        $action->execute($shipment, null);
+        return $this->linkPage($request, $shipment, 'confirm');
+    }
 
-        return success(
-            new ShipmentResource($shipment->fresh()),
-            __('shipments.delivery_confirmed')
+    /**
+     * POST /api/delivery/{shipment}/confirm — همان تأیید، از لینک پیامکی.
+     *
+     * `confirmedBy` عمداً `null` می‌ماند تا در تاریخچه معلوم باشد تأیید از پنل
+     * نیامده است.
+     */
+    public function confirmSigned(Request $request, Shipment $shipment, ConfirmShipmentDeliveryAction $action): JsonResponse|Response
+    {
+        return $this->respondToLink(
+            $request,
+            $shipment,
+            fn () => $action->execute($shipment, null),
+            __('shipments.delivery_confirmed'),
         );
+    }
+
+    private function linkPage(Request $request, Shipment $shipment, string $kind): Response
+    {
+        $orderNumber = (string) Order::whereKey($shipment->{Shipment::ORDER_ID})->value(Order::ORDER_NUMBER);
+
+        return response()->view('shipments.signed-link', [
+            'title' => __("shipments.link_{$kind}_title"),
+            'body' => __("shipments.link_{$kind}_body", ['order_number' => $orderNumber]),
+            'button' => __("shipments.link_{$kind}_button"),
+            // POST به همان URL: امضا روی مسیر + query است و `signed` دوباره می‌سنجدش.
+            'action' => $request->fullUrl(),
+        ]);
+    }
+
+    /**
+     * راننده/خریدار در مرورگرِ گوشی است، پس پاسخِ دکمه صفحه است نه JSON. کلاینتی
+     * که JSON می‌خواهد همان پاسخ و خطای قبلی را می‌گیرد.
+     */
+    private function respondToLink(Request $request, Shipment $shipment, callable $run, string $done): JsonResponse|Response
+    {
+        try {
+            $run();
+        } catch (BusinessException $e) {
+            if ($request->expectsJson()) {
+                throw $e;
+            }
+
+            return response()->view('shipments.signed-link', [
+                'title' => __('shipments.link_failed_title'),
+                'body' => $e->getMessage(),
+                'button' => null,
+                'action' => null,
+            ], 422);
+        }
+
+        if ($request->expectsJson()) {
+            return success(new ShipmentResource($shipment->fresh()), $done);
+        }
+
+        return response()->view('shipments.signed-link', [
+            'title' => $done,
+            'body' => null,
+            'button' => null,
+            'action' => null,
+        ]);
     }
 }
