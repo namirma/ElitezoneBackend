@@ -1,3 +1,5 @@
+> ⚠️ **این نسخه از ۱۴۰۵/۰۶/۲۳ منجمد است و به‌روز نمی‌شود؛ مرجع: `../../docs/specs/BACKEND_NEEDS_FINAL.md`** (تصمیمِ مدیریت، پاسخِ ۳-۳ سندِ «موارد باز و ابهامات»؛ حذف نشد به‌خاطرِ قانونِ یک).
+
 # 📋 Backend Needs — Final Handoff to Backend Developer
 
 > ✅ **وضعیت (2026-07-19): تمام ماژول‌های این سند در بک‌اند پیاده شد** (روت‌ها در `routes/api/admin.php` بخش «Content & BackOffice modules»).
