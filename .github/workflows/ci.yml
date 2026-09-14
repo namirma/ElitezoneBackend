@@ -136,6 +136,18 @@ jobs:
             echo "::notice::baseline shrank to ${COUNT} — lower CEILING in .github/workflows/ci.yml to lock the win in."
           fi
 
+      # فونتِ فاکتور (YekanBakh) لایسنس‌دار است و عمداً در گیت نیست
+      # (`.gitignore`)، پس روی CI وجود ندارد و `InvoicePdfRenderer` با ۵۰۳ رد
+      # می‌کند. پنج تست (پیش‌فاکتور، پنجره‌ی لغوِ خریدار، لغوِ اجباریِ ادمین) را
+      # همین قرمز می‌کرد — و چون «Prepare environment» از ۲۰۲۶-۰۹-۰۸ همیشه
+      # می‌افتاد، هیچ‌کس ندید. به‌جای skip، یک TTFِ آزادِ همراهِ mPDF با همان
+      # نام گذاشته می‌شود تا مسیرِ واقعیِ ساختِ PDF همچنان سنجیده شود.
+      - name: Stand-in invoice fonts
+        run: |
+          mkdir -p storage/fonts
+          cp vendor/mpdf/mpdf/ttfonts/DejaVuSans.ttf storage/fonts/YekanBakh-Regular.ttf
+          cp vendor/mpdf/mpdf/ttfonts/DejaVuSans-Bold.ttf storage/fonts/YekanBakh-Bold.ttf
+
       - name: PHPUnit
         env:
           DB_HOST: 127.0.0.1
@@ -161,6 +173,30 @@ jobs:
   contract:
     name: OpenAPI contract diff
     runs-on: ubuntu-latest
+
+    # Scramble برای نوعِ فیلدهای مدل، ستون‌ها را از `information_schema` می‌خواند؛
+    # بدونِ دیتابیس export با «Connection refused» می‌افتاد (و اگر نمی‌افتاد،
+    # نوع‌ها با خروجیِ لوکال یکی نمی‌شدند و گیتِ بایت‌به‌بایت باز قرمز بود).
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: laravel
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    env:
+      DB_HOST: 127.0.0.1
+      DB_DATABASE: laravel
+      DB_USERNAME: root
+      DB_PASSWORD: root
+
     outputs:
       changed: ${{ steps.diff.outputs.changed }}
       summary: ${{ steps.diff.outputs.summary }}
@@ -187,6 +223,9 @@ jobs:
         run: |
           cp .env.example .env
           php artisan key:generate
+
+      - name: Migrate (schema for Scramble's model inference)
+        run: php artisan migrate --force
 
       # روت‌ها و FormRequestها منبع حقیقت‌اند؛ این فایل صرفاً بازتابشان است.
       - name: Export OpenAPI from the live route table

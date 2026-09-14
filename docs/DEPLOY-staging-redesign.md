@@ -91,6 +91,18 @@ cd <app-root>      # پوشه‌ای که artisan در آن است — در L13 
 composer install --no-dev --optimize-autoloader
 ```
 
+**فونتِ فاکتور — بدونش هیچ خرید و رزروی ثبت نمی‌شود.** اسنادِ مالیِ خرید و رزرو
+**داخلِ همان تراکنشِ پرداخت** ساخته می‌شوند؛ اگر فونت نباشد ساختِ PDF با ۵۰۳ می‌افتد و کلِ
+پرداخت برمی‌گردد (پولی جابه‌جا نمی‌شود، ولی سفارشی هم ثبت نمی‌شود). `YekanBakh-Regular.ttf`
+و `YekanBakh-Bold.ttf` لایسنس‌دارند و عمداً در گیت نیستند، پس کلونِ تازه‌ی سرور آن‌ها را
+ندارد. یک‌بار از منبعِ تیم کپی شوند:
+
+```bash
+mkdir -p storage/fonts
+# دو فایلِ YekanBakh-Regular.ttf و YekanBakh-Bold.ttf را این‌جا بگذارید
+ls storage/fonts/YekanBakh-*.ttf
+```
+
 ---
 
 ## گام ۵ — کلیدهای `.env`
