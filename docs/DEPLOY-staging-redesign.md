@@ -130,10 +130,15 @@ php artisan push:vapid-keys
 php artisan migrate:status | grep Pending
 ```
 
-- **اگر دیتابیس روی `staging/master` مهاجرت شده بود** → ۷ مهاجرت. فقط یکی داده
-  را جابه‌جا می‌کند: `remap_legacy_pending_order_status` (سفارش‌های وضعیتِ قدیمیِ
-  `pending` → `cancelled`، مگر پرداخت‌شده‌ها که به `processing` می‌روند تا پیگیری
-  شوند).
+- **اگر دیتابیس روی `staging/master` مهاجرت شده بود** → ۹ مهاجرت. سه‌تا به داده
+  دست می‌زنند:
+  - `remap_legacy_pending_order_status` — سفارش‌های وضعیتِ قدیمیِ `pending` →
+    `cancelled`، مگر پرداخت‌شده‌ها که به `processing` می‌روند تا پیگیری شوند.
+  - `add_block_page_columns_to_pages_table` — سه صفحه‌ی `home`/`podium`/`steel-kavir`
+    را در `pages` **می‌سازد** (با `updateOrInsert`؛ صفحه‌ی موجود با همان اسلاگ به
+    صفحه‌ی بلوکی تبدیل می‌شود). بدونش صفحه‌های بلوکی ۴۰۴ می‌دهند.
+  - `fix_negative_order_status_history_durations` — فقط مدت‌های **منفی** را مثبت
+    می‌کند (باگِ Carbon 3). اجرای دوباره بی‌اثر است.
 - **اگر نه** → بیشتر، شامل مهاجرت‌های داده‌ایِ بازطراحی (نگاشت وضعیت سفارش،
   انتقال فایل تیکت، backfill نقش الیت‌یار، NOT NULL کردن `users.type_id`).
 
