@@ -883,7 +883,7 @@ final class PageBlockSchema
      * `unit`: `px` (پیکسل؛ برای هندسه پیکسلِ طراحی روی خط‌کشِ ۱۲۶۰) یا
      * `weight` (وزنِ فونت، بی‌واحد).
      *
-     * @var array<string, array{label: string, values: list<string>, unit: string, narrow?: array<string, string>}>
+     * @var array<string, array{label: string, values: list<string>, unit: string, narrow?: array<int, string>}>
      */
     public const STYLE_SLOTS = [
         'titleSize' => ['label' => 'اندازه‌ی عنوان', 'values' => self::STYLE_TYPE_STEPS, 'unit' => 'px', 'narrow' => self::STYLE_TYPE_NARROW],
