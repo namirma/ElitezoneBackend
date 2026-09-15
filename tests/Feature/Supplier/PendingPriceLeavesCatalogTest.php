@@ -158,6 +158,36 @@ class PendingPriceLeavesCatalogTest extends TestCase
     }
 
     #[Test]
+    public function an_expired_suppliers_price_row_is_not_served_next_to_a_live_one(): void
+    {
+        // همان واریانت، یک تأمین‌کننده‌ی دوم با پنجره‌ی منقضی. محصول در فهرست
+        // می‌ماند (یک قیمتِ زنده دارد) ولی ردیفِ منقضی نباید به سایت برسد — سایت
+        // `prices[0]` را به سبد می‌فرستد و ردیفِ منقضی آن‌جا ۴۲۲ می‌شود.
+        $expired = User::factory()->create();
+        $expired->addRole(Role::firstOrCreate(['name' => 'supplier'], ['display_name' => 'Supplier']));
+        SupplierProfile::create([SupplierProfile::USER_ID => $expired->id])
+            ->forceFill([
+                SupplierProfile::STATUS => SupplierProfile::STATUS_APPROVED,
+                SupplierProfile::RESERVE_TIME => now()->subHour(),
+            ])->save();
+        $expiredFactory = $this->makeFactory();
+        $expiredFactory->forceFill(['supplier_user_id' => $expired->id])->save();
+        $this->makePrice($this->variant, $expiredFactory, $this->makeLocation($expiredFactory), general: 500_000, special: 400_000);
+
+        $deepLink = $this->getJson("/api/products/variants/{$this->variant->id}")->assertOk();
+        $deepLink->assertJsonCount(1, 'data.variant.prices')
+            ->assertJsonPath('data.variant.prices.0.factory.id', (string) $this->factory->id);
+
+        $listed = collect($this->getJson("/api/products/{$this->product->cuid}/variants")->assertOk()->json('data.data'))
+            ->firstWhere('id', $this->variant->id);
+        $this->assertCount(1, $listed['prices']);
+
+        $product = collect($this->getJson('/api/products?per_page=100')->assertOk()->json('data.data'))
+            ->firstWhere('cuid', $this->product->cuid);
+        $this->assertNotNull($product, 'محصول با یک قیمتِ زنده باید در فهرست بماند');
+    }
+
+    #[Test]
     public function the_hidden_variant_cannot_be_added_to_a_cart(): void
     {
         $this->queueChange();

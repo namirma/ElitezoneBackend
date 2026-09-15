@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Services\Pricing\Pipes\SetBasePrice;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -210,6 +211,27 @@ class ProductPrice extends Model
                 (int) $price->factory_location_id,
             ));
         }
+    }
+
+    /* -------------------- Scopes -------------------- */
+
+    /**
+     * فقط ردیف‌هایی که تأمین‌کننده‌شان همین حالا پنجره‌ی اعتبارِ قیمت (`reserve_time`)
+     * زنده دارد — همان قاعده‌ی «قیمتِ کهنه دیده نشود» که `FilterProductsAction`
+     * روی محصول اعمال می‌کند، این‌بار روی خودِ ردیفِ قیمت. بدونِ این، محصولی که
+     * یک تأمین‌کننده‌ی منقضی و یک تأمین‌کننده‌ی زنده دارد در فهرست می‌ماند ولی
+     * ردیفِ منقضی هم به سایت می‌رسید؛ سایت `prices[0]` را برای «افزودن به سبد»
+     * می‌فرستاد و `AddToCartAction` آن را ۴۲۲ می‌کرد — قیمتی که هرگز نباید نشان
+     * داده می‌شد. کارخانه‌ی بدونِ `supplier_user_id` هم (داده‌ی ناقص) بیرون می‌ماند.
+     */
+    public function scopeFromLiveSuppliers(Builder $query): Builder
+    {
+        $liveSuppliers = SupplierProfile::query()
+            ->whereNotNull(SupplierProfile::RESERVE_TIME)
+            ->where(SupplierProfile::RESERVE_TIME, '>', now())
+            ->select(SupplierProfile::USER_ID);
+
+        return $query->whereHas('factory', fn (Builder $factory) => $factory->whereIn(Factory::SUPPLIER_USER_ID, $liveSuppliers));
     }
 
     /* -------------------- Relationships -------------------- */

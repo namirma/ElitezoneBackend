@@ -8,6 +8,8 @@ use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\ProductPrice;
 use App\Models\ProductVariant;
+use App\Models\SupplierProfile;
+use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\Test;
@@ -69,10 +71,17 @@ class ProductVariantDeepLinkTest extends TestCase
     {
         $variant = $this->makeProductWithVariant('محصول با قیمت');
 
+        // قیمت فقط از تأمین‌کننده‌ای با پنجره‌ی اعتبارِ زنده به سایت می‌رسد
+        // (`ProductPrice::scopeFromLiveSuppliers`).
+        $supplier = User::factory()->create();
+        SupplierProfile::create([SupplierProfile::USER_ID => $supplier->id])
+            ->forceFill([SupplierProfile::RESERVE_TIME => now()->addDay()])->save();
+
         $factory = Factory::create([
             Factory::NAME => 'کارخانه تست',
             Factory::SLUG => 'factory-'.Str::random(10),
             Factory::IS_ACTIVE => true,
+            Factory::SUPPLIER_USER_ID => $supplier->id,
         ]);
         $location = FactoryLocation::create([
             FactoryLocation::FACTORY_ID => $factory->id,

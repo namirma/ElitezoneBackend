@@ -28,7 +28,7 @@ class FilterProductVariantsAction
         $query = ProductVariant::query()
             ->where(ProductVariant::PRODUCT_ID, $product->getKey())
             ->catalogVisible()
-            ->with(['prices.factory', 'prices.factory.activeProductFeatures', 'prices.factoryLocation', 'variantAttributes.attributeType', 'limitOrderUnit']);
+            ->with(['prices' => fn ($q) => $q->fromLiveSuppliers(), 'prices.factory', 'prices.factory.activeProductFeatures', 'prices.factoryLocation', 'variantAttributes.attributeType', 'limitOrderUnit']);
 
         // ۲. اعمال فیلتر ویژگی‌ها
         //

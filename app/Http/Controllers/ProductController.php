@@ -133,6 +133,7 @@ class ProductController extends Controller
     public function showVariant(ProductVariant $variant, VariantPriceHydrator $priceHydrator): JsonResponse
     {
         $variant->load([
+            'prices' => fn ($q) => $q->fromLiveSuppliers(),
             'prices.factory',
             'prices.factory.activeProductFeatures',
             'prices.factoryLocation',

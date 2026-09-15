@@ -41,6 +41,8 @@ class FilterProductsAction
             // واریانتِ «در انتظار تأیید قیمت» در فهرست نمی‌آید و در کمینه‌ی قیمتِ
             // محصول هم شمرده نمی‌شود (تصمیم مدیریت ۲۰۲۶-۰۹-۰۹).
             'variants' => fn ($q) => $q->catalogVisible(),
+            // ردیفِ قیمتِ تأمین‌کننده‌ی منقضی به سایت نمی‌رسد (`scopeFromLiveSuppliers`).
+            'variants.prices' => fn ($q) => $q->fromLiveSuppliers(),
             'variants.prices.factory',
             'variants.prices.factory.activeProductFeatures',
             'variants.prices.factoryLocation',
