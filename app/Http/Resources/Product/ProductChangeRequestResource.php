@@ -46,7 +46,7 @@ class ProductChangeRequestResource extends BaseJsonResource
                 'mobile' => $this->supplier?->mobile,
             ]),
             // عنوانِ خوانا برای ستونِ «موضوع»: نامِ رکوردِ هدف، یا نامِ پیشنهادی.
-            'subject' => $this->variant?->name ?? $this->product?->name ?? ($payload['name'] ?? null),
+            'subject' => $this->variant->name ?? $this->product->name ?? ($payload['name'] ?? null),
             ProductChangeRequest::PAYLOAD => $payload,
             ProductChangeRequest::DIFF => $this->{ProductChangeRequest::DIFF},
             'media' => [

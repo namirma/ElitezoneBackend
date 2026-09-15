@@ -140,7 +140,7 @@ final class ProductChangeRequestService
 
         $before = $product->only(array_keys(Arr::except($payload, ['order_units', 'images', 'videos', 'remove_image_ids', 'remove_video_ids'])));
         $before['order_units'] = $product->orderUnits
-            ->map(fn ($u) => ['order_unit_id' => $u->id, 'max_quantity' => (int) $u->pivot->max_quantity])
+            ->map(fn ($u) => ['order_unit_id' => $u->id, 'max_quantity' => (int) ($u->pivot?->getAttribute('max_quantity') ?? 0)])
             ->values()->all();
 
         $diff = $this->diff($before, Arr::except($payload, ['images', 'videos', 'remove_image_ids', 'remove_video_ids']));
@@ -654,16 +654,18 @@ final class ProductChangeRequestService
 
         try {
             if ($approved) {
-                Notifier::toUser(
+                Notifier::template(
                     $supplier,
                     __('notifications.product_change_approved_subject'),
-                    __('sms.product_change_approved', ['subject' => $subject]),
+                    'product_change_approved',
+                    ['subject' => $subject],
                 );
             } else {
-                Notifier::toUser(
+                Notifier::template(
                     $supplier,
                     __('notifications.product_change_rejected_subject'),
-                    __('sms.product_change_rejected', ['subject' => $subject, 'reason' => $note ?? '']),
+                    'product_change_rejected',
+                    ['subject' => $subject, 'reason' => $note ?? ''],
                 );
             }
         } catch (\Throwable $e) {
@@ -679,8 +681,8 @@ final class ProductChangeRequestService
     {
         $payload = $request->{ProductChangeRequest::PAYLOAD} ?? [];
 
-        return (string) ($request->variant?->name
-            ?? $request->product?->name
+        return (string) ($request->variant->name
+            ?? $request->product->name
             ?? $payload['name']
             ?? '');
     }

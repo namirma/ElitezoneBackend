@@ -157,6 +157,7 @@ class Product extends Model
         return $this->belongsTo(ProductCategory::class, self::CATEGORY_ID);
     }
 
+    /** @return HasMany<ProductImage, $this> */
     public function images(): HasMany
     {
         return $this->hasMany(ProductImage::class, ProductImage::PRODUCT_ID, self::ID);
@@ -167,6 +168,7 @@ class Product extends Model
         return $this->hasMany(ProductReview::class, ProductReview::PRODUCT_ID, self::ID);
     }
 
+    /** @return HasMany<ProductVideo, $this> */
     public function videos(): HasMany
     {
         return $this->hasMany(ProductVideo::class, ProductVideo::PRODUCT_ID, self::ID);

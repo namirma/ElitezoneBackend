@@ -82,14 +82,14 @@ class SmsTemplateSeeder extends Seeder
             'order_cancel_escalated' => ['ارجاع لغو سفارش به پشتیبانی', 'درخواست لغو در مهلت مقرر پاسخ نمی‌گیرد و به پشتیبانی ارجاع می‌شود — به هر دو طرف. ارسال‌کننده: OrderCancelRequestAction::escalate (کرون).', $any, ['order']],
             'order_cancel_admin_approved' => ['تأیید لغو سفارش توسط پشتیبانی', 'پشتیبانی درخواستِ ارجاع‌شده را تأیید و سفارش را لغو می‌کند — به هر دو طرف، با دلیل. ارسال‌کننده: OrderCancelRequestAction::adminApprove.', $any, ['order', 'reason']],
             'order_cancel_admin_rejected' => ['رد لغو سفارش توسط پشتیبانی', 'پشتیبانی درخواستِ ارجاع‌شده را رد می‌کند و سفارش ادامه می‌یابد — به هر دو طرف، با دلیل. ارسال‌کننده: OrderCancelRequestAction::adminReject.', $any, ['order', 'reason']],
-            // ── کلیدهایی که نشست‌های موازیِ ۲۰۲۶-۰۹-۱۴ اضافه کرده‌اند ──
-            // ⚠️ محلِ ارسالِ این چهار تا هنوز متن را مستقیم از lang می‌خواند (Notifier::toUser /
-            // SendSmsJob::dispatch با متنِ خام)؛ تا به `Notifier::template` / `SendSmsJob::template`
-            // وصل نشود، ویرایش/خاموش‌کردن/شرط از این پنل روی ارسالِ واقعی اثر ندارد.
-            'price_change_expired' => ['انقضای درخواست تغییر قیمت — تأمین‌کننده', '⚠️ هنوز به این پنل وصل نیست (متن از lang خوانده می‌شود). مهلت بررسی درخواست تغییر قیمت می‌گذرد و رد می‌شود — به تأمین‌کننده. ارسال‌کننده: ExpirePriceChangeRequests (کرون).', $s, ['variant', 'hours']],
-            'cart_payment_link_cancelled' => ['لغو لینک پرداخت سبد — کارفرما', '⚠️ هنوز به این پنل وصل نیست (متن از lang خوانده می‌شود). الیت‌یار لینک پرداختی را که برای کارفرما فرستاده بود لغو می‌کند. ارسال‌کننده: CartPaymentLinkService::cancel.', $em, ['elite_yar_name']],
-            'product_change_approved' => ['تأیید درخواست تغییر کاتالوگ — تأمین‌کننده', '⚠️ هنوز به این پنل وصل نیست (متن از lang خوانده می‌شود). ادمین پیشنهاد ساخت/ویرایش محصول یا واریانت را تأیید و اعمال می‌کند. ارسال‌کننده: ProductChangeRequestService.', $s, ['subject']],
-            'product_change_rejected' => ['رد درخواست تغییر کاتالوگ — تأمین‌کننده', '⚠️ هنوز به این پنل وصل نیست (متن از lang خوانده می‌شود). ادمین پیشنهاد تغییر کاتالوگ را با دلیل رد می‌کند. ارسال‌کننده: ProductChangeRequestService.', $s, ['subject', 'reason']],
+            // ── کلیدهای نشست‌های موازیِ ۲۰۲۶-۰۹-۱۴ — همه از ۲۴ شهریور از راهِ `::template` می‌روند
+            'price_change_expired' => ['انقضای درخواست تغییر قیمت — تأمین‌کننده', 'مهلت بررسی درخواست تغییر قیمت می‌گذرد و رد می‌شود — به تأمین‌کننده. ارسال‌کننده: ExpirePriceChangeRequests (کرون).', $s, ['variant', 'hours']],
+            'cart_payment_link_cancelled' => ['لغو لینک پرداخت سبد — کارفرما', 'الیت‌یار لینک پرداختی را که برای کارفرما فرستاده بود لغو می‌کند. ارسال‌کننده: CartPaymentLinkService::cancel.', $em, ['elite_yar_name']],
+            'product_change_approved' => ['تأیید درخواست تغییر کاتالوگ — تأمین‌کننده', 'ادمین پیشنهاد ساخت/ویرایش محصول یا واریانت را تأیید و اعمال می‌کند. ارسال‌کننده: ProductChangeRequestService.', $s, ['subject']],
+            'product_change_rejected' => ['رد درخواست تغییر کاتالوگ — تأمین‌کننده', 'ادمین پیشنهاد تغییر کاتالوگ را با دلیل رد می‌کند. ارسال‌کننده: ProductChangeRequestService.', $s, ['subject', 'reason']],
+            'coupon_funding_requested' => ['درخواست تأمین تخفیف کوپن', 'سازنده‌ی کوپن (ادمین/تأمین‌کننده/الیت‌یار) بخشی از تخفیف را از سهمِ این کاربر پیشنهاد می‌کند؛ کاربر باید در پنلِ خودش بپذیرد یا رد کند. ارسال‌کننده: CouponFunderService.', $any, ['proposer', 'percent', 'code']],
+            'coupon_funding_accepted' => ['پذیرش تأمین تخفیف کوپن', 'یک تأمین‌کننده‌ی تخفیف سهمش را پذیرفت؛ به سازنده‌ی کوپن می‌رود. ارسال‌کننده: CouponFunderService.', $any, ['funder', 'percent', 'code']],
+            'coupon_funding_declined' => ['رد تأمین تخفیف کوپن', 'یک تأمین‌کننده‌ی تخفیف سهمش را نپذیرفت و کوپن قابل استفاده نیست؛ به سازنده‌ی کوپن می‌رود. ارسال‌کننده: CouponFunderService.', $any, ['funder', 'code']],
         ];
     }
 

@@ -10,6 +10,7 @@ use App\Models\CartItem;
 use App\Models\OrderUnit;
 use App\Models\Setting;
 use App\Models\ShippingMethod;
+use App\Models\SmsTemplate;
 use App\Models\SupplierProfile;
 use App\Models\User;
 use App\Models\Wallet;
@@ -135,10 +136,17 @@ class CartPaymentLinkLockTest extends TestCase
         return $cart->fresh(['items']);
     }
 
-    /** ویژگی‌های job محافظت‌شده‌اند؛ closure با bind به خودِ job می‌خواندشان. */
+    /**
+     * ویژگی‌های job محافظت‌شده‌اند؛ closure با bind به خودِ job می‌خواندشان.
+     * از ۲۴ شهریور پیامک از راهِ قالب می‌رود (`SendSmsJob::template`): متن در لحظه‌ی
+     * اجرا از `SmsTemplate::render()` ساخته می‌شود، پس همان رندر را می‌سنجیم.
+     */
     private function smsMatches(SendSmsJob $job, string $mobile, string $prefix): bool
     {
-        return (fn () => $this->mobile === $mobile && str_starts_with($this->message, $prefix))->call($job);
+        return (fn () => $this->mobile === $mobile
+            && $this->templateKey !== null
+            && str_starts_with((string) SmsTemplate::render($this->templateKey, $this->params, $this->mobile), $prefix)
+        )->call($job);
     }
 
     // ── قفل ────────────────────────────────────────────────────────────────

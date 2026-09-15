@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\Pivot;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -19,6 +20,7 @@ use Illuminate\Support\Facades\Cache;
  * @property Carbon|null $updated_at
  * @property-read \Illuminate\Database\Eloquent\Collection<int, Product> $products
  * @property-read int|null $products_count
+ * @property-read Pivot|null $pivot  ردیفِ `product_order_units` وقتی از سمتِ `Product::orderUnits()` خوانده شود
  *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|OrderUnit newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|OrderUnit newQuery()

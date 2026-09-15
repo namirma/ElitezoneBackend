@@ -114,10 +114,11 @@ class ExpirePriceChangeRequests extends Command
             ->with('productVariant')
             ->first()?->productVariant?->name;
 
-        Notifier::toUser(
+        Notifier::template(
             $supplier,
             __('notifications.price_change_expired_subject'),
-            __('sms.price_change_expired', ['variant' => $variant ?? '—', 'hours' => $hours]),
+            'price_change_expired',
+            ['variant' => $variant ?? '—', 'hours' => $hours],
         );
     }
 }

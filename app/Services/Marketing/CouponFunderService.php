@@ -107,14 +107,15 @@ class CouponFunderService
 
         $key = $accept ? 'coupon_funding_accepted' : 'coupon_funding_declined';
 
-        Notifier::toUser(
+        Notifier::template(
             $creator,
             __('notifications.'.$key.'_subject'),
-            __('sms.'.$key, [
+            $key,
+            [
                 'funder' => $funder->displayName(),
                 'percent' => $this->percent($funder),
                 'code' => $coupon->code,
-            ]),
+            ],
         );
     }
 
@@ -129,14 +130,15 @@ class CouponFunderService
         // نامِ جعلی نه: پیشنهاددهنده‌ی بی‌پروفایل با شماره‌اش معرفی می‌شود.
         $proposerName = $proposer->profile ? trim((string) $proposer->full_name) : '';
 
-        Notifier::toUser(
+        Notifier::template(
             $user,
             __('notifications.coupon_funding_requested_subject'),
-            __('sms.coupon_funding_requested', [
+            'coupon_funding_requested',
+            [
                 'proposer' => $proposerName !== '' && $proposerName !== 'کاربر ناشناس' ? $proposerName : (string) $proposer->mobile,
                 'percent' => $this->percent($funder),
                 'code' => $coupon->code,
-            ]),
+            ],
         );
     }
 

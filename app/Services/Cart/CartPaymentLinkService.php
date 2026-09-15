@@ -115,11 +115,10 @@ class CartPaymentLinkService
         ])->save();
 
         if ($employer !== null) {
-            SendSmsJob::dispatch(
+            SendSmsJob::template(
                 $employer->mobile,
-                __('sms.cart_payment_link_cancelled', [
-                    'elite_yar_name' => trim((string) $eliteYar->profile?->name) ?: __('global.elite_yar'),
-                ])
+                'cart_payment_link_cancelled',
+                ['elite_yar_name' => trim((string) $eliteYar->profile?->name) ?: __('global.elite_yar')],
             );
         }
 

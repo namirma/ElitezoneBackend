@@ -31,7 +31,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $decided_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
- * @property-read User $supplier
+ * @property-read User|null $supplier
  * @property-read User|null $admin
  * @property-read Product|null $product
  * @property-read ProductVariant|null $variant

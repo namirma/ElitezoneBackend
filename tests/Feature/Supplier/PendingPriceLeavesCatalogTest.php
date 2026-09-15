@@ -14,6 +14,7 @@ use App\Models\ProductPrice;
 use App\Models\ProductVariant;
 use App\Models\Setting;
 use App\Models\ShippingMethod;
+use App\Models\SmsTemplate;
 use App\Models\SupplierProfile;
 use App\Models\SupplierRequest;
 use App\Models\User;
@@ -234,7 +235,9 @@ class PendingPriceLeavesCatalogTest extends TestCase
         $mobile = $this->supplier->mobile;
         Queue::assertPushed(
             SendSmsJob::class,
-            fn (SendSmsJob $job) => (fn () => $this->mobile === $mobile && str_contains($this->message, 'در مهلت 48 ساعته'))
+            fn (SendSmsJob $job) => (fn () => $this->mobile === $mobile
+                && $this->templateKey !== null
+                && str_contains((string) SmsTemplate::render($this->templateKey, $this->params, $this->mobile), 'در مهلت 48 ساعته'))
                 ->call($job)
         );
         $this->assertSame(

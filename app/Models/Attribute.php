@@ -22,6 +22,7 @@ use Illuminate\Support\Carbon;
  * @property-read int|null $product_variants_count
  * @property-read Collection<int, AttributeValue> $values
  * @property-read int|null $values_count
+ * @property-read ProductVariantAttribute|null $details  ردیفِ `product_variant_attributes` (`->as('details')`) وقتی از سمتِ `ProductVariant::variantAttributes()` خوانده شود
  *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Attribute newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Attribute newQuery()
