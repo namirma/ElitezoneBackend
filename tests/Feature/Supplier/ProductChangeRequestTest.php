@@ -441,6 +441,15 @@ class ProductChangeRequestTest extends TestCase
 
         // دوباره → ۴۰۹
         $this->postJson("/api/admin/product-change-requests/{$id}/approve")->assertStatus(409);
+
+        // پیشنهاددهنده حالا «تأمین‌کننده‌ی» این کالاست — بی‌آنکه هنوز قیمتی گذاشته
+        // باشد — پس می‌تواند ویرایشش را پیشنهاد دهد؛ تأمین‌کننده‌ی دیگر نه.
+        Sanctum::actingAs($supplier);
+        $this->getJson('/api/profile/supplier/products')->assertOk()->assertJsonPath('data.0.cuid', $product->cuid);
+        $this->putJson("/api/profile/supplier/products/{$product->cuid}", ['description' => 'اصلاح تایپی'])->assertCreated();
+
+        Sanctum::actingAs($this->supplier());
+        $this->putJson("/api/profile/supplier/products/{$product->cuid}", ['description' => 'x'])->assertForbidden();
     }
 
     #[Test]

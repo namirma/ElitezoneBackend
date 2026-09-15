@@ -52,7 +52,9 @@ final class ProductChangeRequestService
 
     /**
      * محصولاتی که این تأمین‌کننده تأمین می‌کند: دستِ‌کم یک واریانتشان از یکی از
-     * کارخانه‌های او قیمت یا موجودی دارد.
+     * کارخانه‌های او قیمت یا موجودی دارد — **یا** خودِ محصول از پیشنهادِ تأییدشده‌ی
+     * همین تأمین‌کننده ساخته شده. بدونِ شرطِ دوم، کسی که کالایی را پیشنهاد داده
+     * تا وقتی برایش قیمت نگذاشته نمی‌توانست حتی یک غلطِ تایپی‌اش را اصلاح کند.
      *
      * @return Builder<Product>
      */
@@ -62,14 +64,26 @@ final class ProductChangeRequestService
             ->select(Factory::ID)
             ->where(Factory::SUPPLIER_USER_ID, $supplierUserId);
 
-        return Product::query()->whereHas('variants', function (Builder $variants) use ($factoryIds, $supplierUserId) {
-            $variants
-                ->whereHas('prices.factory', fn (Builder $f) => $f->where(Factory::SUPPLIER_USER_ID, $supplierUserId))
+        return Product::query()->where(function (Builder $products) use ($factoryIds, $supplierUserId) {
+            $products
+                ->whereHas('variants', function (Builder $variants) use ($factoryIds, $supplierUserId) {
+                    $variants
+                        ->whereHas('prices.factory', fn (Builder $f) => $f->where(Factory::SUPPLIER_USER_ID, $supplierUserId))
+                        ->orWhereIn(
+                            ProductVariant::ID,
+                            FactoryStock::query()
+                                ->select(FactoryStock::PRODUCT_VARIANT_ID)
+                                ->whereIn(FactoryStock::FACTORY_ID, $factoryIds)
+                        );
+                })
                 ->orWhereIn(
-                    ProductVariant::ID,
-                    FactoryStock::query()
-                        ->select(FactoryStock::PRODUCT_VARIANT_ID)
-                        ->whereIn(FactoryStock::FACTORY_ID, $factoryIds)
+                    Product::ID,
+                    ProductChangeRequest::query()
+                        ->select(ProductChangeRequest::PRODUCT_ID)
+                        ->where(ProductChangeRequest::SUPPLIER_USER_ID, $supplierUserId)
+                        ->where(ProductChangeRequest::TYPE, ProductChangeRequest::TYPE_CREATE_PRODUCT)
+                        ->where(ProductChangeRequest::STATUS, ProductChangeRequest::STATUS_APPROVED)
+                        ->whereNotNull(ProductChangeRequest::PRODUCT_ID)
                 );
         });
     }

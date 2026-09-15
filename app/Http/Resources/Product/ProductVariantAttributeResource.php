@@ -27,6 +27,9 @@ class ProductVariantAttributeResource extends BaseJsonResource
         return [
             ProductVariantAttribute::PRODUCT_VARIANT_ID => $pivot->product_variant_id,
             ProductVariantAttribute::ATTRIBUTE_ID => $pivot->attribute_id,
+            // شناسه‌ی مقدار، تا فرمِ ویرایشِ واریانت (پنلِ تأمین‌کننده) بتواند بدونِ
+            // تطبیقِ متنیِ `value` با فهرستِ مقادیر، انتخابِ فعلی را پیش‌پر کند.
+            'attribute_value_id' => $pivot->attribute_value_id,
 
             'name' => $this->name,
             'label' => $this->display_name,
