@@ -151,5 +151,14 @@ class AdminPageStyleTest extends TestCase
             ['blockGap', 'pagePadTop', 'pagePadBottom'],
             array_keys($data['page_style_slots'])
         );
+
+        // پیش‌فرضِ هر پوسته کنارِ خودِ صفحه می‌رود — پنل «پیش‌فرضِ سایت: ۶۴
+        // پیکسل» را از همین می‌سازد، نه از جدولی دستی.
+        $this->assertSame('64', $bySlug[PageBlock::PAGE_HOME]['style_defaults']['blockGap']);
+        $this->assertSame('86', $bySlug[PageBlock::PAGE_STEEL_KAVIR]['style_defaults']['blockGap']);
+        $this->assertArrayHasKey('blockGap', $bySlug[PageBlock::PAGE_STEEL_KAVIR]['style_default_notes']);
+        $this->assertSame([], $bySlug[PageBlock::PAGE_HOME]['style_default_notes']);
+        $this->assertSame('px', $data['page_style_slots']['blockGap']['unit']);
+        $this->assertSame('40', $data['style_slots']['titleSize']['narrow']['48']);
     }
 }

@@ -274,6 +274,76 @@ class PageBlockSchemaTest extends TestCase
     }
 
     #[Test]
+    public function every_declared_style_slot_carries_the_site_default_and_it_is_a_string(): void
+    {
+        // پنل هر ورودیِ استایل را با «پیش‌فرضِ سایت: …» برچسب می‌زند و آن عدد
+        // فقط از همین‌جا می‌آید — بدونِ آن، ادمین یک فهرستِ خالی می‌بیند و
+        // «بازگشت به پیش‌فرض» نمی‌گوید به چه چیزی. رشته، مثلِ بقیه‌ی واژگان.
+        foreach ($this->schema->all() as $type => $spec) {
+            foreach ($spec['fields'] as $name => $field) {
+                if (($field['type'] ?? null) !== 'style') {
+                    continue;
+                }
+
+                foreach ($field['slots'] as $slot) {
+                    $this->assertIsString(
+                        $field['defaults'][$slot] ?? null,
+                        "«{$type}.{$name}» برای اسلاتِ «{$slot}» پیش‌فرضِ سایت ندارد"
+                    );
+                }
+
+                // پیش‌فرض برای اسلاتی که اعلام نشده = عددِ بی‌صاحب.
+                $this->assertSame(
+                    [],
+                    array_diff(array_keys($field['defaults']), $field['slots']),
+                    "«{$type}.{$name}» پیش‌فرضی برای اسلاتِ اعلام‌نشده دارد"
+                );
+            }
+        }
+    }
+
+    #[Test]
+    public function a_style_slot_without_a_default_throws_like_any_other_programmer_error(): void
+    {
+        $method = new \ReflectionMethod(PageBlockSchema::class, 'styleRules');
+        $method->setAccessible(true);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('defaults');
+
+        $method->invoke($this->schema, 'data.style', ['type' => 'style', 'slots' => ['gap']], 'nullable', 'x.style');
+    }
+
+    #[Test]
+    public function page_style_defaults_follow_the_shell_and_fall_back_to_zero_for_admin_pages(): void
+    {
+        // اندازه‌گیریِ ۱۴۰۵/۰۶/۲۴: `Home.jsx` gap-16/pt-20، `.pd-page` و
+        // `.sk-page` clamp تا ۸۶ با padding-top ۸۰/۶۸، و `/p/{slug}` هیچ.
+        $this->assertSame(
+            ['blockGap' => '64', 'pagePadTop' => '80', 'pagePadBottom' => '0'],
+            PageBlockSchema::pageStyleDefaults('home')['defaults']
+        );
+        $this->assertSame('86', PageBlockSchema::pageStyleDefaults('podium')['defaults']['blockGap']);
+        $this->assertSame('68', PageBlockSchema::pageStyleDefaults('steel-kavir')['defaults']['pagePadTop']);
+        $this->assertSame(
+            ['blockGap' => '0', 'pagePadTop' => '0', 'pagePadBottom' => '0'],
+            PageBlockSchema::pageStyleDefaults('some-admin-page')['defaults']
+        );
+
+        // ۸۶ روی نردبان نیست و یادداشت باید صادقانه بگوید.
+        $this->assertNotContains('86', PageBlockSchema::PAGE_STYLE_SLOTS['blockGap']['values']);
+        $this->assertArrayHasKey('blockGap', PageBlockSchema::pageStyleDefaults('podium')['notes']);
+
+        // هر اسلاتِ صفحه در هر پوسته پیش‌فرض دارد.
+        foreach (['home', 'podium', 'steel-kavir', 'x'] as $slug) {
+            $this->assertSame(
+                array_keys(PageBlockSchema::PAGE_STYLE_SLOTS),
+                array_keys(PageBlockSchema::pageStyleDefaults($slug)['defaults'])
+            );
+        }
+    }
+
+    #[Test]
     public function hero_actions_limits_its_button_count_to_match_its_hint(): void
     {
         // هینتِ hero_actions می‌گوید «یک یا دو دکمه‌ی فراخوان»، پس قاعده باید

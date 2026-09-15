@@ -6,6 +6,7 @@ namespace App\Services\Content;
 
 use App\Models\Banner;
 use App\Models\Page;
+use App\Models\PageBlock;
 use Illuminate\Validation\Rule;
 
 /**
@@ -157,6 +158,11 @@ final class PageBlockSchema
                     'style' => [
                         'type' => 'style',
                         'slots' => ['titleSize', 'titleWeight', 'bodySize', 'bodyWeight'],
+                        'defaults' => ['titleSize' => '56', 'titleWeight' => '700', 'bodySize' => '48', 'bodyWeight' => '400'],
+                        'default_notes' => [
+                            'titleSize' => 'نردبانِ خودِ هیرو (Block1Hero.css: --ez-headline-size-1): ۵۶px تا عرضِ ۸۳۳، ۳۶px در تبلت، ۲۸px در موبایل — روی فهرستِ زیر نیست و فقط با خالی‌ماندن به‌دست می‌آید.',
+                            'bodySize' => 'نردبانِ خودِ هیرو (--ez-headline-size-2): ۴۸px تا عرضِ ۸۳۳، ۳۰px در تبلت، ۲۴px در موبایل.',
+                        ],
                         'label' => 'تایپوگرافی',
                         'hint' => 'تیتر = خطِ اولِ سربرگ، متن = خطِ دوم. این بلوک روی ستونِ ۱۲۶۰ نیست و نردبانِ تایپِ خودش را دارد، پس اسلاتِ هندسی ندارد.',
                     ],
@@ -176,6 +182,10 @@ final class PageBlockSchema
                     'style' => [
                         'type' => 'style',
                         'slots' => ['gap'],
+                        'defaults' => ['gap' => '24'],
+                        'default_notes' => [
+                            'gap' => 'این بلوک روی کانوس نیست، پس عدد مستقیماً پیکسلِ واقعی است (×1px) و با عرضِ صفحه مقیاس نمی‌شود.',
+                        ],
                         'label' => 'فاصله‌ها',
                         'hint' => 'فقط فاصله‌ی بینِ دکمه‌های کنترلِ ویدیو. این بلوک هیچ متنی ندارد.',
                     ],
@@ -206,6 +216,7 @@ final class PageBlockSchema
                     'style' => [
                         'type' => 'style',
                         'slots' => ['titleSize', 'titleWeight', 'bodySize', 'bodyWeight'],
+                        'defaults' => ['titleSize' => '20', 'titleWeight' => '700', 'bodySize' => '16', 'bodyWeight' => '400'],
                         'label' => 'تایپوگرافی',
                         'hint' => 'عنوان و متنِ پشتِ کارت. کپشنِ دوزبانه‌ی زیرِ کارت و لیدِ آن هرکدام پله‌ی خودشان را دارند.',
                     ],
@@ -225,6 +236,7 @@ final class PageBlockSchema
                     'style' => [
                         'type' => 'style',
                         'slots' => ['titleSize', 'titleWeight', 'bodySize', 'bodyWeight'],
+                        'defaults' => ['titleSize' => '48', 'titleWeight' => '800', 'bodySize' => '24', 'bodyWeight' => '400'],
                         'label' => 'تایپوگرافی',
                         'hint' => 'تیتر و متنِ نوارِ شیشه‌ای. روتیترِ بالای آن پله‌ی تایپِ خودش را دارد.',
                     ],
@@ -239,6 +251,10 @@ final class PageBlockSchema
                     'style' => [
                         'type' => 'style',
                         'slots' => ['titleSize', 'bodySize', 'bodyWeight', 'gap'],
+                        'defaults' => ['titleSize' => '48', 'bodySize' => '40', 'bodyWeight' => '700', 'gap' => '68'],
+                        'default_notes' => [
+                            'gap' => '۶۸ روی نردبانِ هندسی نیست؛ نزدیک‌ترین پله ۶۴ است. مقدارِ دقیقِ سایت فقط با خالی‌ماندن به‌دست می‌آید.',
+                        ],
                         'label' => 'تایپوگرافی و فاصله‌ها',
                         'hint' => 'تیتر = خطِ درشتِ هر بند، متن = ادامه‌ی جمله، فاصله = میانِ بندها (امروز ۶۸؛ نزدیک‌ترین پله ۶۴). وزنِ تیتر عمداً نیست: CSS وزنی برایش اعلام نکرده و از متن ارث می‌برد.',
                     ],
@@ -254,6 +270,7 @@ final class PageBlockSchema
                     'style' => [
                         'type' => 'style',
                         'slots' => ['titleSize', 'titleWeight', 'bodySize', 'bodyWeight'],
+                        'defaults' => ['titleSize' => '28', 'titleWeight' => '900', 'bodySize' => '18', 'bodyWeight' => '400'],
                         'label' => 'تایپوگرافی',
                         'hint' => 'تیتر و متنِ کارت‌ها. فاصله‌های این بلوک درصدیِ گریدِ خودش‌اند نه ضریبِ ستونِ ۱۲۶۰، پس اسلاتِ هندسی ندارد — «۲۰» این‌جا «۲۰٪» می‌شد.',
                     ],
@@ -269,6 +286,7 @@ final class PageBlockSchema
                     'style' => [
                         'type' => 'style',
                         'slots' => ['titleSize', 'titleWeight', 'bodySize', 'bodyWeight', 'gap'],
+                        'defaults' => ['titleSize' => '48', 'titleWeight' => '700', 'bodySize' => '24', 'bodyWeight' => '400', 'gap' => '24'],
                         'label' => 'تایپوگرافی و فاصله‌ها',
                         'hint' => 'تیتر و متنِ معرفیِ بخش، و فاصله‌ی دکمه‌های دسته‌بندی. متنِ خودِ پرسش‌وپاسخ از رکوردهای FAQ می‌آید.',
                     ],
@@ -301,6 +319,7 @@ final class PageBlockSchema
                     'style' => [
                         'type' => 'style',
                         'slots' => ['titleSize', 'titleWeight', 'bodySize', 'bodyWeight'],
+                        'defaults' => ['titleSize' => '40', 'titleWeight' => '800', 'bodySize' => '24', 'bodyWeight' => '700'],
                         'label' => 'تایپوگرافی',
                         'hint' => 'تیتر و زیرتیترِ بالای عکس. نیمه‌ی پایینِ این بلوک full-bleed است و خط‌کشِ دیگری دارد، پس اسلاتِ هندسی ندارد.',
                     ],
@@ -328,6 +347,7 @@ final class PageBlockSchema
                     'style' => [
                         'type' => 'style',
                         'slots' => ['titleSize', 'titleWeight', 'gap'],
+                        'defaults' => ['titleSize' => '48', 'titleWeight' => '800', 'gap' => '24'],
                         'label' => 'تایپوگرافی و فاصله‌ها',
                         'hint' => '⚠️ عرضِ کارت‌ها از خودِ فاصله مشتق می‌شود، پس تغییرِ فاصله عرضِ هر سه کارت را هم جابه‌جا می‌کند.',
                     ],
@@ -358,6 +378,7 @@ final class PageBlockSchema
                     'style' => [
                         'type' => 'style',
                         'slots' => ['titleSize', 'titleWeight', 'bodySize', 'bodyWeight'],
+                        'defaults' => ['titleSize' => '48', 'titleWeight' => '800', 'bodySize' => '18', 'bodyWeight' => '400'],
                         'label' => 'تایپوگرافی',
                         'hint' => 'تیترِ بخش و متنِ کنارِ عکس. تنها فاصله‌ی این بلوک ۱۰۸ است که روی نردبانِ هندسی نیست، پس اسلاتِ فاصله ندارد.',
                     ],
@@ -378,6 +399,7 @@ final class PageBlockSchema
                     'style' => [
                         'type' => 'style',
                         'slots' => ['titleSize', 'titleWeight'],
+                        'defaults' => ['titleSize' => '48', 'titleWeight' => '800'],
                         'label' => 'تایپوگرافی',
                         'hint' => 'فقط تیترِ بالای کارت. خودِ کارتِ برگردان اندازه‌های مشترکِ سایت را دارد و از این‌جا عوض نمی‌شود.',
                     ],
@@ -404,6 +426,7 @@ final class PageBlockSchema
                     'style' => [
                         'type' => 'style',
                         'slots' => ['titleSize', 'titleWeight', 'bodySize', 'bodyWeight'],
+                        'defaults' => ['titleSize' => '48', 'titleWeight' => '800', 'bodySize' => '28', 'bodyWeight' => '600'],
                         'label' => 'تایپوگرافی',
                         'hint' => 'تیتر و متنِ بالای دکمه. متنِ ریزِ زیرِ دکمه پله‌ی خودش را دارد. این بلوک full-bleed است، پس اسلاتِ هندسی ندارد.',
                     ],
@@ -427,6 +450,10 @@ final class PageBlockSchema
                     'style' => [
                         'type' => 'style',
                         'slots' => ['titleSize', 'titleWeight', 'bodySize', 'bodyWeight', 'gap'],
+                        'defaults' => ['titleSize' => '32', 'titleWeight' => '900', 'bodySize' => '24', 'bodyWeight' => '400', 'gap' => '20'],
+                        'default_notes' => [
+                            'gap' => '۲۰ برای هیروی لوسیل؛ هیروی آغازین (جفتِ عنوان + خطِ لاتین) ۵۰ دارد که روی نردبان نیست.',
+                        ],
                         'label' => 'تایپوگرافی و فاصله‌ها',
                         'hint' => 'تیترِ باندِ شیشه‌ای (امروز ۳۲ / وزن ۹۰۰)، متنِ زیرش (۲۴ / ۴۰۰) و فاصله‌ی تیتر تا متن.',
                     ],
@@ -446,6 +473,7 @@ final class PageBlockSchema
                     'style' => [
                         'type' => 'style',
                         'slots' => ['titleSize', 'titleWeight', 'bodySize', 'bodyWeight', 'gap'],
+                        'defaults' => ['titleSize' => '48', 'titleWeight' => '800', 'bodySize' => '16', 'bodyWeight' => '400', 'gap' => '20'],
                         'label' => 'تایپوگرافی و فاصله‌ها',
                         'hint' => 'تیترِ بخش (تنها تیترِ این صفحه که ۴۸ است نه ۵۶)، پاراگرافِ زیرِ هر کارت و فاصله‌ی عکس تا پاراگراف. سه خطِ روی پلاکِ شیشه‌ای دامنه‌ی خودشان را دارند.',
                     ],
@@ -465,6 +493,7 @@ final class PageBlockSchema
                     'style' => [
                         'type' => 'style',
                         'slots' => ['titleSize', 'titleWeight', 'bodySize', 'bodyWeight', 'gap'],
+                        'defaults' => ['titleSize' => '48', 'titleWeight' => '800', 'bodySize' => '18', 'bodyWeight' => '400', 'gap' => '28'],
                         'label' => 'تایپوگرافی و فاصله‌ها',
                         'hint' => 'تیترِ بخش، پاراگرافِ زیرِ هر کارت و فاصله‌ی دو ستون. ⚠️ عرضِ کارت‌ها 1fr است، پس تغییرِ فاصله عرضشان را هم جابه‌جا می‌کند.',
                     ],
@@ -491,6 +520,7 @@ final class PageBlockSchema
                     'style' => [
                         'type' => 'style',
                         'slots' => ['titleSize', 'titleWeight', 'bodySize', 'bodyWeight', 'gap'],
+                        'defaults' => ['titleSize' => '48', 'titleWeight' => '800', 'bodySize' => '16', 'bodyWeight' => '400', 'gap' => '20'],
                         'label' => 'تایپوگرافی و فاصله‌ها',
                         'hint' => 'تیترِ بخش، پاراگرافِ زیرِ هر کارت و فاصله‌ی عکس تا پاراگراف. تیتر/زیرتیترِ نوارِ تیره دامنه‌ی خودشان را دارند.',
                     ],
@@ -516,6 +546,7 @@ final class PageBlockSchema
                     'style' => [
                         'type' => 'style',
                         'slots' => ['titleSize', 'titleWeight', 'gap'],
+                        'defaults' => ['titleSize' => '48', 'titleWeight' => '800', 'gap' => '64'],
                         'label' => 'تایپوگرافی و فاصله‌ها',
                         'hint' => 'تیترِ بخش و فاصله‌ی عمودیِ بینِ کارت‌های برگردان. تایپِ داخلِ کارت مالِ کامپوننتِ مشترک است.',
                     ],
@@ -551,6 +582,7 @@ final class PageBlockSchema
                     'style' => [
                         'type' => 'style',
                         'slots' => ['titleSize', 'titleWeight', 'gap'],
+                        'defaults' => ['titleSize' => '48', 'titleWeight' => '800', 'gap' => '20'],
                         'label' => 'تایپوگرافی و فاصله‌ها',
                         'hint' => 'خالی بگذارید تا همان طرحِ سایت بماند. مقادیر از نردبانِ خودِ سایت‌اند، پس در نمایشگرِ کوچک‌تر هم درست کوچک می‌شوند.',
                     ],
@@ -593,6 +625,7 @@ final class PageBlockSchema
                     'style' => [
                         'type' => 'style',
                         'slots' => ['titleSize', 'titleWeight', 'bodySize', 'bodyWeight'],
+                        'defaults' => ['titleSize' => '48', 'titleWeight' => '800', 'bodySize' => '18', 'bodyWeight' => '400'],
                         'label' => 'تایپوگرافی',
                         'hint' => 'تیترِ بخش و متنِ زیرِ عکس. این بلوک فاصله‌ی فلکس/گریدی ندارد.',
                     ],
@@ -612,6 +645,7 @@ final class PageBlockSchema
                     'style' => [
                         'type' => 'style',
                         'slots' => ['titleSize', 'titleWeight', 'bodySize', 'bodyWeight', 'gap'],
+                        'defaults' => ['titleSize' => '24', 'titleWeight' => '800', 'bodySize' => '20', 'bodyWeight' => '600', 'gap' => '28'],
                         'label' => 'تایپوگرافی و فاصله‌ها',
                         'hint' => 'عنوان و زیرعنوانی که روی عکسِ هر بنر نوشته می‌شود، و فاصله‌ی بینِ آن دو خط.',
                     ],
@@ -799,6 +833,19 @@ final class PageBlockSchema
      */
     private const STYLE_TYPE_STEPS = ['48', '40', '34', '32', '28', '24', '22', '20', '18', '16', '14', '12'];
 
+    /**
+     * هر پله‌ی تایپ زیرِ عرضِ ۱۲۶۰ چند پیکسل می‌شود — عینِ بلوکِ
+     * `@media (max-width: 1259px)` در `DesignCanvas/typeScale.css` پکیج.
+     * پله‌های خواندنی (۱۸ و پایین‌تر) در هیچ عرضی تکان نمی‌خورند و این‌جا
+     * نیامده‌اند. روی سیم می‌رود تا پنل هر گزینه را با «۴۸ — ۴۸px در ۱۴۴۰ /
+     * ۴۰px در ۱۲۰۰» برچسب بزند، بدونِ اینکه خودش کپی‌ای از نردبان داشته باشد.
+     * `scripts/style-slot-mirror.mjs` این جدول را با CSS مقایسه می‌کند.
+     */
+    private const STYLE_TYPE_NARROW = [
+        '48' => '40', '40' => '32', '34' => '30', '32' => '28',
+        '28' => '24', '24' => '22', '22' => '20', '20' => '20',
+    ];
+
     /** همان هفت وزنی که فونتِ سایت واقعاً دارد. */
     private const STYLE_WEIGHTS = ['100', '300', '400', '600', '700', '800', '900'];
 
@@ -825,16 +872,27 @@ final class PageBlockSchema
      * اعلام‌شده‌ی بی‌مصرف همان «فرمِ تزئینی» است که ادمین پُرش می‌کند و هیچ
      * اثری روی سایت نمی‌بیند.
      *
-     * @var array<string, array{label: string, values: list<string>}>
+     * پیش‌فرضِ هر اسلات **per-block** است و کنارِ همان فیلد در `all()` با
+     * کلیدِ `defaults` می‌آید (به‌علاوه‌ی `default_notes` برای مقدارِ
+     * ریسپانسیو یا خارج از نردبان). آن عدد همان fallbackِ
+     * `var(--ez-b-*, <عدد>)` در CSSِ همان بلوک است — یعنی چیزی که سایت
+     * وقتی ادمین چیزی انتخاب نکرده رندر می‌کند — و گیتِ آینه
+     * (`scripts/style-slot-mirror.mjs`) هر یک را با CSS مقایسه می‌کند.
+     * پنل هیچ جدولِ دومی ندارد؛ فقط همین را می‌خواند.
+     *
+     * `unit`: `px` (پیکسل؛ برای هندسه پیکسلِ طراحی روی خط‌کشِ ۱۲۶۰) یا
+     * `weight` (وزنِ فونت، بی‌واحد).
+     *
+     * @var array<string, array{label: string, values: list<string>, unit: string, narrow?: array<string, string>}>
      */
     public const STYLE_SLOTS = [
-        'titleSize' => ['label' => 'اندازه‌ی عنوان', 'values' => self::STYLE_TYPE_STEPS],
-        'bodySize' => ['label' => 'اندازه‌ی متن', 'values' => self::STYLE_TYPE_STEPS],
-        'titleWeight' => ['label' => 'وزنِ عنوان', 'values' => self::STYLE_WEIGHTS],
-        'bodyWeight' => ['label' => 'وزنِ متن', 'values' => self::STYLE_WEIGHTS],
-        'padTop' => ['label' => 'فاصله‌ی بالای بخش', 'values' => self::STYLE_GEOMETRY_STEPS],
-        'padBottom' => ['label' => 'فاصله‌ی پایین بخش', 'values' => self::STYLE_GEOMETRY_STEPS],
-        'gap' => ['label' => 'فاصله‌ی بینِ آیتم‌ها', 'values' => self::STYLE_GEOMETRY_STEPS],
+        'titleSize' => ['label' => 'اندازه‌ی عنوان', 'values' => self::STYLE_TYPE_STEPS, 'unit' => 'px', 'narrow' => self::STYLE_TYPE_NARROW],
+        'bodySize' => ['label' => 'اندازه‌ی متن', 'values' => self::STYLE_TYPE_STEPS, 'unit' => 'px', 'narrow' => self::STYLE_TYPE_NARROW],
+        'titleWeight' => ['label' => 'وزنِ عنوان', 'values' => self::STYLE_WEIGHTS, 'unit' => 'weight'],
+        'bodyWeight' => ['label' => 'وزنِ متن', 'values' => self::STYLE_WEIGHTS, 'unit' => 'weight'],
+        'padTop' => ['label' => 'فاصله‌ی بالای بخش', 'values' => self::STYLE_GEOMETRY_STEPS, 'unit' => 'px'],
+        'padBottom' => ['label' => 'فاصله‌ی پایین بخش', 'values' => self::STYLE_GEOMETRY_STEPS, 'unit' => 'px'],
+        'gap' => ['label' => 'فاصله‌ی بینِ آیتم‌ها', 'values' => self::STYLE_GEOMETRY_STEPS, 'unit' => 'px'],
     ];
 
     /**
@@ -848,10 +906,60 @@ final class PageBlockSchema
      * هر دو مقدار معتبرند. خانواده‌ی `--ez-p-*` این تصادف را غیرممکن می‌کند.
      */
     public const PAGE_STYLE_SLOTS = [
-        'blockGap' => ['label' => 'فاصله‌ی بینِ بلوک‌ها', 'values' => self::STYLE_GEOMETRY_STEPS],
-        'pagePadTop' => ['label' => 'فاصله‌ی بالای صفحه', 'values' => self::STYLE_GEOMETRY_STEPS],
-        'pagePadBottom' => ['label' => 'فاصله‌ی پایین صفحه', 'values' => self::STYLE_GEOMETRY_STEPS],
+        'blockGap' => ['label' => 'فاصله‌ی بینِ بلوک‌ها', 'values' => self::STYLE_GEOMETRY_STEPS, 'unit' => 'px'],
+        'pagePadTop' => ['label' => 'فاصله‌ی بالای صفحه', 'values' => self::STYLE_GEOMETRY_STEPS, 'unit' => 'px'],
+        'pagePadBottom' => ['label' => 'فاصله‌ی پایین صفحه', 'values' => self::STYLE_GEOMETRY_STEPS, 'unit' => 'px'],
     ];
+
+    /**
+     * پیش‌فرضِ اسلات‌های صفحه **per-shell** است: هر پوسته فاصله‌ی خودش را
+     * دارد و هیچ‌کدام در جدولی نبود — پنل به ادمین می‌گفت «بازگشت به
+     * پیش‌فرضِ سایت» بی‌آنکه بگوید پیش‌فرض چیست. اندازه‌گیری از خودِ سایت
+     * (۱۴۰۵/۰۶/۲۴):
+     *
+     *   home         `Home.jsx`: `gap-16 pt-20` → ۶۴ / ۸۰ / ۰
+     *   podium       `Podium.css .pd-page`: `gap: clamp(34px, 6.83vw, 86px)`, `padding-top: 80px` → ۸۶ / ۸۰ / ۰
+     *   steel-kavir  `SteelKavir.css .sk-page`: همان clamp، `padding-top: 68px` → ۸۶ / ۶۸ / ۰
+     *   /p/{slug}    `BlockList.css .ez-page-blocks`: فقط flex، بدونِ gap و padding → ۰ / ۰ / ۰
+     *
+     * ⚠️ ۸۶ روی نردبانِ هندسی نیست (سقفش ۶۴) و فقط با خالی‌ماندن به‌دست
+     * می‌آید؛ `notes` همین را به ادمین می‌گوید. مقدارها رشته‌اند، مثلِ بقیه‌ی
+     * واژگان. گیتِ آینه این جدول را با CSSِ پوسته‌ها مقایسه می‌کند.
+     *
+     * @var array<string, array{defaults: array<string, string>, notes: array<string, string>}>
+     */
+    private const PAGE_STYLE_DEFAULTS = [
+        PageBlock::PAGE_HOME => [
+            'defaults' => ['blockGap' => '64', 'pagePadTop' => '80', 'pagePadBottom' => '0'],
+            'notes' => [],
+        ],
+        PageBlock::PAGE_PODIUM => [
+            'defaults' => ['blockGap' => '86', 'pagePadTop' => '80', 'pagePadBottom' => '0'],
+            'notes' => ['blockGap' => 'در عرضِ ۱۲۶۰ به بالا ۸۶px؛ پایین‌تر ۶٫۸۳٪ عرضِ صفحه با کفِ ۳۴px. ۸۶ روی نردبانِ زیر نیست و فقط با خالی‌ماندن به‌دست می‌آید.'],
+        ],
+        PageBlock::PAGE_STEEL_KAVIR => [
+            'defaults' => ['blockGap' => '86', 'pagePadTop' => '68', 'pagePadBottom' => '0'],
+            'notes' => ['blockGap' => 'در عرضِ ۱۲۶۰ به بالا ۸۶px؛ پایین‌تر ۶٫۸۳٪ عرضِ صفحه با کفِ ۳۴px. ۸۶ روی نردبانِ زیر نیست و فقط با خالی‌ماندن به‌دست می‌آید.'],
+        ],
+    ];
+
+    /** پوسته‌ای که ادمین ساخته (`/p/{slug}`) هیچ فاصله‌ای از خودش ندارد. */
+    private const PAGE_STYLE_DEFAULTS_BARE = [
+        'defaults' => ['blockGap' => '0', 'pagePadTop' => '0', 'pagePadBottom' => '0'],
+        'notes' => ['blockGap' => 'این صفحه پوسته‌ی اختصاصی ندارد؛ تا مقداری انتخاب نکنید بلوک‌ها بدونِ فاصله پشتِ هم می‌نشینند.'],
+    ];
+
+    /**
+     * پیش‌فرض و یادداشت‌های اسلات‌های صفحه برای یک اسلاگ — روی سیم کنارِ هر
+     * صفحه در `GET /admin/page-blocks/schema` (`pages[].style_defaults` /
+     * `pages[].style_default_notes`).
+     *
+     * @return array{defaults: array<string, string>, notes: array<string, string>}
+     */
+    public static function pageStyleDefaults(string $slug): array
+    {
+        return self::PAGE_STYLE_DEFAULTS[$slug] ?? self::PAGE_STYLE_DEFAULTS_BARE;
+    }
 
     /**
      * قواعدِ اعتبارسنجیِ `style` برای **صفحه** (نه بلوک).
@@ -932,6 +1040,15 @@ final class PageBlockSchema
             if (! isset(self::STYLE_SLOTS[$slot])) {
                 throw new \InvalidArgumentException(
                     "اسلاتِ ناشناخته‌ی «{$slot}» در «{$context}» — واژگانِ مجاز در STYLE_SLOTS است."
+                );
+            }
+
+            // اسلاتِ بدونِ پیش‌فرض یعنی پنل نمی‌تواند بگوید سایت الان چه
+            // رندر می‌کند — همان شکافی که کلیدِ `defaults` برای بستنش آمد.
+            // خطای برنامه‌نویس است، نه ورودیِ کاربر، پس مثلِ بالا استثنا.
+            if (! is_string($field['defaults'][$slot] ?? null)) {
+                throw new \InvalidArgumentException(
+                    "اسلاتِ «{$slot}» در «{$context}» پیش‌فرضِ سایت (defaults) ندارد — از CSSِ همان بلوک اندازه بگیرید."
                 );
             }
 

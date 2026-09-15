@@ -59,8 +59,17 @@ class AdminPageBlockController extends Controller
             // `style` با `(object)` — عینِ `ContentController::pageBlocks()` و به
             // همان دلیل: آرایه‌ی تهیِ PHP به `[]` می‌رود نه `{}`، پس صفحه‌ی
             // بدونِ تنظیمات یک نوعِ JSONِ متفاوت از صفحه‌ی تنظیم‌شده می‌فرستاد.
+            // پیش‌فرضِ اسلات‌های صفحه per-shell است (هوم ۶۴، پادیوم/فولاد
+            // ۸۶، صفحه‌ی ادمین‌ساخته ۰) و کنارِ هر صفحه می‌رود تا پنل
+            // بتواند بگوید «پیش‌فرضِ سایت: ۶۴ پیکسل» — نه فقط «بازگشت به
+            // پیش‌فرض» بی‌آنکه بگوید پیش‌فرض چیست. `PageBlockSchema::PAGE_STYLE_DEFAULTS`.
             'pages' => array_map(
-                fn (array $p) => [...$p, 'style' => (object) $p['style']],
+                fn (array $p) => [
+                    ...$p,
+                    'style' => (object) $p['style'],
+                    'style_defaults' => PageBlockSchema::pageStyleDefaults($p['slug'])['defaults'],
+                    'style_default_notes' => (object) PageBlockSchema::pageStyleDefaults($p['slug'])['notes'],
+                ],
                 array_values(Page::blockPages())
             ),
             'site_url' => rtrim((string) config('app.front_url'), '/') ?: null,
