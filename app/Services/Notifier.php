@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Jobs\Notification\SendSmsJob;
+use App\Models\SmsTemplate;
 use App\Models\User;
 use App\Models\UserNotification;
 
@@ -23,20 +24,49 @@ use App\Models\UserNotification;
  * ⚠️ ترتیب عمدی است: **اول پیامک**. اگر ساختِ ردیف خطا بدهد، جاب دوباره اجرا
  * می‌شود و پیامک دوباره می‌رود — که پنجرهٔ ۲۵ ثانیه‌ایِ dedupe در
  * `SendSmsJob` همان را می‌گیرد. برعکسش چنین محافظی ندارد.
+ *
+ * ## دو ورودی
+ *
+ * - `template()` — قالبِ `sms_templates` (کلیدِ lang). راهِ درست برای هر پیامکی
+ *   که کلید دارد: متنِ ویرایش‌شده‌ی ادمین، خاموش‌بودن و شرط‌ها همه اثر می‌کنند.
+ *   بدنه‌ی زنگوله همان متنِ قالب است (`SmsTemplate::text`) — بدونِ شرط: خاموش‌کردنِ
+ *   پیامک، اعلانِ داخلِ پنل را نمی‌کُشد.
+ * - `toUser()` — متنِ خام؛ برای پیامی که (هنوز) قالب ندارد.
  */
 class Notifier
 {
+    /**
+     * @param  array<string, mixed>  $params
+     */
+    public static function template(User $user, string $subject, string $key, array $params = []): void
+    {
+        $body = SmsTemplate::text($key, $params);
+
+        if ($body === null) {
+            return;
+        }
+
+        SendSmsJob::template($user->mobile, $key, $params);
+
+        self::bell($user, $subject, $body);
+    }
+
     public static function toUser(User $user, string $subject, string $message): void
     {
         SendSmsJob::dispatch($user->mobile, $message);
 
+        self::bell($user, $subject, $message);
+    }
+
+    private static function bell(User $user, string $subject, string $body): void
+    {
         // قلابِ `UserNotification::created` این را به `SendPushJob` می‌دهد.
         UserNotification::create([
             UserNotification::USER_ID => $user->id,
             UserNotification::SENDER_ID => null,
             UserNotification::BATCH_ID => null,
             UserNotification::SUBJECT => $subject,
-            UserNotification::BODY => $message,
+            UserNotification::BODY => $body,
         ]);
     }
 }

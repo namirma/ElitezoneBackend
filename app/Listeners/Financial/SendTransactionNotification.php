@@ -29,13 +29,11 @@ class SendTransactionNotification implements ShouldQueue
             default => 'تراکنش'
         };
 
-        if ($trx->status === WalletTransaction::STATUS_CONFIRMED) {
-            $msg = __('sms.transaction_confirmed', ['type' => $typeFa, 'amount' => $amount]);
-        } else {
-            $msg = __('sms.transaction_rejected', ['type' => $typeFa, 'amount' => $amount]);
-        }
+        $key = $trx->status === WalletTransaction::STATUS_CONFIRMED
+            ? 'transaction_confirmed'
+            : 'transaction_rejected';
 
         // ارسال به صف پیامک
-        Notifier::toUser($user, __('notifications.transaction_subject'), $msg);
+        Notifier::template($user, __('notifications.transaction_subject'), $key, ['type' => $typeFa, 'amount' => $amount]);
     }
 }

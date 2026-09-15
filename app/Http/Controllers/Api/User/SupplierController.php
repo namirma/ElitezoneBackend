@@ -145,7 +145,7 @@ class SupplierController extends Controller
                 $mobile = $cart->user?->mobile;
 
                 if ($mobile) {
-                    SendSmsJob::dispatch($mobile, __('sms.cart_prices_updated'));
+                    SendSmsJob::template($mobile, 'cart_prices_updated');
                 }
             });
     }

@@ -74,19 +74,14 @@ class CartPaymentLinkService
 
         $link = $this->linkFor($cart);
 
-        SendSmsJob::dispatch(
-            $beneficiary->mobile,
-            // getAttribute و نه دسترسی جادویی — larastan بدون فایل‌های ide-helper
-            // (که gitignore شده‌اند) این ستون را نمی‌شناسد و level 5 خطا می‌دهد.
-            __('sms.cart_payment_link', [
-                // ⚠️ `users` هیچ ستونِ `name` ندارد — نام در `user_profiles.name` است.
-                // ‏`getAttribute('name')` همیشه null می‌داد و `(string)` آن را به
-                // رشته‌ی خالی تبدیل می‌کرد. در پیامک فالبک پنهانش می‌کرد؛ در
-                // پاسخِ API فالبکی نبود و فرانت نامِ خالی می‌گرفت.
-                'elite_yar_name' => trim((string) $eliteYar->profile?->name) ?: __('global.elite_yar'),
-                'link' => $link,
-            ])
-        );
+        SendSmsJob::template($beneficiary->mobile, 'cart_payment_link', [
+            // ⚠️ `users` هیچ ستونِ `name` ندارد — نام در `user_profiles.name` است.
+            // ‏`getAttribute('name')` همیشه null می‌داد و `(string)` آن را به
+            // رشته‌ی خالی تبدیل می‌کرد. در پیامک فالبک پنهانش می‌کرد؛ در
+            // پاسخِ API فالبکی نبود و فرانت نامِ خالی می‌گرفت.
+            'elite_yar_name' => trim((string) $eliteYar->profile?->name) ?: __('global.elite_yar'),
+            'link' => $link,
+        ]);
 
         return [
             'link' => $link,

@@ -30,7 +30,7 @@ final class RequestOtpAction
             User::SECRET_EXPIRES_AT => Carbon::now()->addMinutes($ttlMinutes),
         ]);
 
-        SendSmsJob::dispatch($mobile, __('sms.loginMessage', ['code' => $code]));
+        SendSmsJob::template($mobile, 'loginMessage', ['code' => $code]);
 
         return $code;
     }

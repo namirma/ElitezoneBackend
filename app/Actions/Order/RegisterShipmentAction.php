@@ -197,12 +197,9 @@ class RegisterShipmentAction
             ['shipment' => $shipment->id],
         );
 
-        SendSmsJob::dispatch(
-            $mobile,
-            __('sms.driver_assigned', [
-                'order_number' => $order->order_number,
-                'link' => $link,
-            ])
-        )->afterCommit();
+        SendSmsJob::template($mobile, 'driver_assigned', [
+            'order_number' => $order->order_number,
+            'link' => $link,
+        ])->afterCommit();
     }
 }

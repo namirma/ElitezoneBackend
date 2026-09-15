@@ -46,11 +46,13 @@ class EliteYARInviteController extends Controller
         SendInviteSmsJob::dispatch(
             $invite->id,
             $mobile,
-            __('sms.elite_yar_sms_invitation', [
+            '',
+            EliteYARSmsInvite::class,
+            'elite_yar_sms_invitation',
+            [
                 'employer_name' => $employer->full_name,
                 'link' => config('app.front_url'),
-            ]),
-            EliteYARSmsInvite::class,
+            ],
         );
 
         return success(

@@ -130,8 +130,8 @@ class BeneficiaryController extends Controller
         );
 
         $buyerName = $buyer->profile->{UserProfile::NAME} ?? $buyer->{User::MOBILE};
-        $smsMessage = __('beneficiary.sms_verification_body', ['name' => $buyerName, 'code' => $verifyCode]);
-        SendSmsJob::dispatch($mobile, $smsMessage);
+        // قالبِ `sms.beneficiary_verification` (همان متن) — تا در پنلِ پیامک‌ها دیده شود.
+        SendSmsJob::template($mobile, 'beneficiary_verification', ['name' => $buyerName, 'code' => $verifyCode]);
 
         return success([
             'beneficiary_user_id' => $beneficiaryUser->id,

@@ -46,6 +46,8 @@ use App\Http\Controllers\Api\Admin\AdminSearchController;
 use App\Http\Controllers\Api\Admin\AdminSettingController;
 use App\Http\Controllers\Api\Admin\AdminShippingMethodController;
 use App\Http\Controllers\Api\Admin\AdminShippingRateController;
+use App\Http\Controllers\Api\Admin\AdminSmsLogController;
+use App\Http\Controllers\Api\Admin\AdminSmsTemplateController;
 use App\Http\Controllers\Api\Admin\AdminSupplierController;
 use App\Http\Controllers\Api\Admin\AdminSupplierRequestController;
 use App\Http\Controllers\Api\Admin\AdminSystemHealthController;
@@ -637,6 +639,25 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
         Route::get('/', 'index');
         Route::get('/stats', 'stats');
         Route::post('/send', 'send');
+    });
+
+    // SMS templates — پیامک‌های سیستم: متن، شرط، فعال/غیرفعال، قالبِ سفارشی روی رویداد.
+    // `/events` پیش از `/{smsTemplate}` تا به‌عنوان شناسه خوانده نشود. built-in حذف نمی‌شود
+    // (۴۲۲) و کلیدِ حفاظت‌شده (کد ورود و …) خاموش نمی‌شود (۴۲۲).
+    Route::controller(AdminSmsTemplateController::class)->prefix('sms-templates')->middleware('admin.permission:manage-content')->group(function () {
+        Route::get('/', 'index');
+        Route::get('/events', 'events');
+        Route::get('/{smsTemplate}', 'show');
+        Route::post('/', 'store');
+        Route::put('/{smsTemplate}', 'update');
+        Route::post('/{smsTemplate}/toggle', 'toggle');
+        Route::post('/{smsTemplate}/test', 'test')->middleware('throttle:10,1');
+        Route::delete('/{smsTemplate}', 'destroy');
+    });
+
+    // SMS logs — گزارشِ ارسال (فقط خواندنی)
+    Route::controller(AdminSmsLogController::class)->prefix('sms-logs')->middleware('admin.permission:manage-content')->group(function () {
+        Route::get('/', 'index');
     });
 
     // Reports — خروجی CSV گزارش‌ها (بازه بزرگ → صف + اعلان + دانلود)

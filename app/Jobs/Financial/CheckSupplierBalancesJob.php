@@ -275,13 +275,10 @@ class CheckSupplierBalancesJob implements ShouldBeUnique, ShouldQueue
         // if the transaction later rolls back.
         $buyer = $buyerWallet->user;
         if ($buyer?->mobile && $refundAmount > 0) {
-            SendSmsJob::dispatch(
-                $buyer->mobile,
-                __('sms.buyer_refund_released', [
-                    'amount' => number_format((int) $refundAmount),
-                    'order_number' => $lockedOrder->order_number,
-                ])
-            )->afterCommit();
+            SendSmsJob::template($buyer->mobile, 'buyer_refund_released', [
+                'amount' => number_format((int) $refundAmount),
+                'order_number' => $lockedOrder->order_number,
+            ])->afterCommit();
         }
     }
 

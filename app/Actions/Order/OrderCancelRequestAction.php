@@ -286,10 +286,11 @@ final class OrderCancelRequestAction
             return;
         }
 
-        Notifier::toUser(
+        Notifier::template(
             $user,
             __('notifications.'.$key.'_subject'),
-            __('sms.'.$key, ['order' => $order->order_number] + $extra),
+            $key,
+            ['order' => $order->order_number] + $extra,
         );
     }
 }

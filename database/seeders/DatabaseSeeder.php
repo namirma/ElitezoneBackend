@@ -37,5 +37,7 @@ class DatabaseSeeder extends Seeder
         $this->call(PromoOverlaySeeder::class);
         // بلوک‌های سه صفحه‌ی محتوایی (هوم/پادیوم/فولاد کویر) — idempotent
         $this->call(PageBlocksSeeder::class);
+        // یک ردیف به‌ازای هر کلیدِ lang/fa/sms.php — idempotent، متنِ ادمین را نگه می‌دارد
+        $this->call(SmsTemplateSeeder::class);
     }
 }

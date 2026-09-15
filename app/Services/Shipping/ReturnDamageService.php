@@ -249,10 +249,7 @@ class ReturnDamageService
         $buyer = User::whereKey($order->payerUserId())->first();
 
         if ($buyer?->mobile) {
-            SendSmsJob::dispatch(
-                $buyer->mobile,
-                __('sms.return_damage_cap_reached', ['order_number' => $order->order_number])
-            )->afterCommit();
+            SendSmsJob::template($buyer->mobile, 'return_damage_cap_reached', ['order_number' => $order->order_number])->afterCommit();
         }
     }
 
@@ -279,13 +276,10 @@ class ReturnDamageService
             return;
         }
 
-        SendSmsJob::dispatch(
-            $buyer->mobile,
-            __('sms.return_damage_awaiting_buyer', [
-                'order_number' => $order->order_number,
-                'amount' => number_format((int) $damage->{ReturnDamage::AMOUNT}),
-            ])
-        )->afterCommit();
+        SendSmsJob::template($buyer->mobile, 'return_damage_awaiting_buyer', [
+            'order_number' => $order->order_number,
+            'amount' => number_format((int) $damage->{ReturnDamage::AMOUNT}),
+        ])->afterCommit();
     }
 
     private function notifySettled(Order $order): void
@@ -299,9 +293,6 @@ class ReturnDamageService
             return;
         }
 
-        SendSmsJob::dispatch(
-            $supplier->mobile,
-            __('sms.return_damage_settled', ['order_number' => $order->order_number])
-        )->afterCommit();
+        SendSmsJob::template($supplier->mobile, 'return_damage_settled', ['order_number' => $order->order_number])->afterCommit();
     }
 }

@@ -306,12 +306,9 @@ class ProcessPodiumDepositAction
         // SMS اطلاع‌رسانی (خارج از transaction)
         $mobile = $user->{User::MOBILE};
         if ($mobile) {
-            SendSmsJob::dispatch(
-                $mobile,
-                __('sms.wallet_deposited_podium', [
-                    'amount' => number_format((int) ($amount / 10)), // ریال → تومان
-                ])
-            );
+            SendSmsJob::template($mobile, 'wallet_deposited_podium', [
+                'amount' => number_format((int) ($amount / 10)), // ریال → تومان
+            ]);
         }
 
         Log::info('ProcessPodiumDepositAction: واریز با موفقیت پردازش شد', [

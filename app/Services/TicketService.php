@@ -194,10 +194,7 @@ class TicketService
             return;
         }
 
-        SendSmsJob::dispatch(
-            $mobile,
-            __("sms.{$smsKey}", ['code' => $ticket->{Ticket::CODE}])
-        );
+        SendSmsJob::template($mobile, $smsKey, ['code' => $ticket->{Ticket::CODE}]);
     }
 
     /** Record the first staff response timestamp (called when an admin replies). */

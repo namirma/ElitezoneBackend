@@ -273,9 +273,6 @@ class AdminTicketController extends Controller
             return;
         }
 
-        SendSmsJob::dispatch(
-            $mobile,
-            __("sms.{$smsKey}", ['code' => $ticket->{Ticket::CODE}])
-        );
+        SendSmsJob::template($mobile, $smsKey, ['code' => $ticket->{Ticket::CODE}]);
     }
 }

@@ -32,28 +32,24 @@ class SendOrderCancellationNotification implements ShouldQueue
         try {
             $refunded = $order->{Order::PAYMENT_STATUS} === Order::PAYMENT_REFUNDED;
 
+            $params = ['order_number' => $order->order_number];
+
             if ($payer instanceof User) {
-                Notifier::toUser($payer, __('notifications.order_cancelled_subject'), $this->message($order, $refunded));
+                Notifier::template(
+                    $payer,
+                    __('notifications.order_cancelled_subject'),
+                    $refunded ? 'order_cancelled_refunded' : 'order_cancelled',
+                    $params,
+                );
             }
 
             if ($placer instanceof User && (! $payer instanceof User || $placer->id !== $payer->id)) {
-                Notifier::toUser($placer, __('notifications.order_cancelled_subject'), $this->message($order, false));
+                Notifier::template($placer, __('notifications.order_cancelled_subject'), 'order_cancelled', $params);
             }
 
             Log::info("Cancellation SMS sent for Order {$order->id}");
         } catch (\Exception $e) {
             Log::error('Failed to send cancellation SMS: '.$e->getMessage());
         }
-    }
-
-    private function message(Order $order, bool $withRefund): string
-    {
-        $message = "سفارش {$order->order_number} لغو شد.\n";
-
-        if ($withRefund) {
-            $message .= '.مبلغ سفارش به کیف پول شما بازگشت داده شد';
-        }
-
-        return $message."\nالیت زون";
     }
 }

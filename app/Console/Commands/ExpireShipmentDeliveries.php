@@ -101,20 +101,20 @@ class ExpireShipmentDeliveries extends Command
     /** بند ۱۰.۲: `shipment_returned` به **هر دو** طرف می‌رود. */
     private function notify(Shipment $shipment, Order $order): void
     {
-        $message = __('sms.shipment_returned', ['order_number' => $order->order_number]);
+        $params = ['order_number' => $order->order_number];
 
         // متغیرهای تایپ‌دار از راه کوئری: larastan روی شاخه‌ی L13 نتیجه‌ی
         // رابطه را `Model` می‌بیند و `->mobile` خطای خاصیتِ تعریف‌نشده می‌دهد.
         /** @var User|null $buyer */
         $buyer = User::whereKey($order->payerUserId())->first();
         if ($buyer?->mobile) {
-            SendSmsJob::dispatch($buyer->mobile, $message)->afterCommit();
+            SendSmsJob::template($buyer->mobile, 'shipment_returned', $params)->afterCommit();
         }
 
         $supplierId = (int) $order->items()->value(OrderItem::SUPPLIER_USER_ID);
         $supplier = $supplierId > 0 ? User::whereKey($supplierId)->first() : null;
         if ($supplier?->mobile) {
-            SendSmsJob::dispatch($supplier->mobile, $message)->afterCommit();
+            SendSmsJob::template($supplier->mobile, 'shipment_returned', $params)->afterCommit();
         }
     }
 }

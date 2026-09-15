@@ -74,7 +74,7 @@ class RequestOverweightApprovalAction
             "Order {$order->id}: overweight approval requested for {$deltaPOO} rials."
         );
 
-        $this->notify($this->supplierIdOf($order), 'sms.overweight_supplier_request', $order);
+        $this->notify($this->supplierIdOf($order), 'overweight_supplier_request', $order);
     }
 
     /** مرحله‌ی یک — تأمین‌کننده افزایش وزن را تأیید می‌کند. */
@@ -88,7 +88,7 @@ class RequestOverweightApprovalAction
 
         $order->forceFill([Order::OVERWEIGHT_SUPPLIER_APPROVED_AT => now()])->save();
 
-        $this->notify($order->payerUserId(), 'sms.overweight_buyer_request', $order);
+        $this->notify($order->payerUserId(), 'overweight_buyer_request', $order);
 
         return $order;
     }
@@ -164,8 +164,8 @@ class RequestOverweightApprovalAction
             );
         });
 
-        $this->notify($this->supplierIdOf($order), 'sms.overweight_rejected', $order);
-        $this->notify($order->payerUserId(), 'sms.overweight_rejected', $order);
+        $this->notify($this->supplierIdOf($order), 'overweight_rejected', $order);
+        $this->notify($order->payerUserId(), 'overweight_rejected', $order);
 
         return $order->refresh();
     }
@@ -298,9 +298,9 @@ class RequestOverweightApprovalAction
             return;
         }
 
-        SendSmsJob::dispatch($user->mobile, __($key, [
+        SendSmsJob::template($user->mobile, $key, [
             'order' => $order->order_number,
             'amount' => number_format((float) $order->{Order::OVERWEIGHT_PENDING_AMOUNT}),
-        ]));
+        ]);
     }
 }

@@ -144,13 +144,10 @@ class SupplierDebtHandler
         // rollback would have already told the supplier about a debt that never landed.
         $supplierUser = $order->items->first()?->supplier;
         if ($supplierUser?->mobile) {
-            SendSmsJob::dispatch(
-                $supplierUser->mobile,
-                __('sms.supplier_debt_notification', [
-                    'order_number' => $order->order_number,
-                    'amount' => number_format((int) $reclaimAmount),
-                ])
-            )->afterCommit();
+            SendSmsJob::template($supplierUser->mobile, 'supplier_debt_notification', [
+                'order_number' => $order->order_number,
+                'amount' => number_format((int) $reclaimAmount),
+            ])->afterCommit();
         }
 
         Log::channel('financial')->warning(

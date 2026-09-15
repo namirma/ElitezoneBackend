@@ -57,9 +57,9 @@ class WarnExpiringCarts extends Command
             }
 
             try {
-                SendSmsJob::dispatch($mobile, __('sms.cart_expiring', [
+                SendSmsJob::template($mobile, 'cart_expiring', [
                     'minutes' => $lead,
-                ]));
+                ]);
 
                 // پیش از dispatch علامت نمی‌زنیم و پس از آن می‌زنیم: اگر صف
                 // بالا نیاید، اجرای بعدی دوباره تلاش می‌کند.

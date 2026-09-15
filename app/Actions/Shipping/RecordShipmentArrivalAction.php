@@ -101,12 +101,9 @@ class RecordShipmentArrivalAction
             ['shipment' => $shipment->id],
         );
 
-        SendSmsJob::dispatch(
-            $buyer->mobile,
-            __('sms.driver_arrived', [
-                'order_number' => $order->order_number,
-                'link' => $link,
-            ])
-        )->afterCommit();
+        SendSmsJob::template($buyer->mobile, 'driver_arrived', [
+            'order_number' => $order->order_number,
+            'link' => $link,
+        ])->afterCommit();
     }
 }

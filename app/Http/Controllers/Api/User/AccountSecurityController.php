@@ -207,7 +207,7 @@ class AccountSecurityController extends Controller
         // like the rest of the system — not the raw user input.
         Cache::put('pending_mobile_change_'.$user->id, $newMobile09, 120);
 
-        SendSmsJob::dispatch($newMobile09, __('sms.loginMessage', ['code' => $code]));
+        SendSmsJob::template($newMobile09, 'loginMessage', ['code' => $code]);
 
         return success([], __('auth.verification_code_sent_to_new_mobile'));
     }

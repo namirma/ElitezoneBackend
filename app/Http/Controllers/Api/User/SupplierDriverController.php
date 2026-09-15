@@ -107,7 +107,7 @@ class SupplierDriverController extends Controller
             $code = generateVerifyCode();
             Cache::put($key, OtpSecret::hash((string) $code), now()->addMinutes(self::OTP_TTL_MINUTES));
 
-            SendSmsJob::dispatch($driver->{Driver::MOBILE}, __('sms.driver_verify', ['code' => $code]));
+            SendSmsJob::template($driver->{Driver::MOBILE}, 'driver_verify', ['code' => $code]);
 
             return success(['sent' => true], __('drivers.code_sent'));
         }

@@ -10,6 +10,7 @@ use App\Jobs\Notification\SendSmsJob;
 use App\Models\ContractorProfile;
 use App\Models\EmployerEliteYAR;
 use App\Models\EngineerProfile;
+use App\Models\SmsTemplate;
 use App\Models\User;
 use App\Models\UserNotification;
 use App\Models\UserProfile;
@@ -122,16 +123,16 @@ class EliteYARRelationController extends Controller
 
         $employer->loadMissing('profile');
         $employerName = $employer->profile->name ?? $employer->{User::MOBILE};
-        $smsMessage = __('sms.elite_yar_invitation', ['employer_name' => $employerName]);
+        $params = ['employer_name' => $employerName];
 
         UserNotification::create([
             UserNotification::USER_ID => $eliteYAR->id,
             UserNotification::SENDER_ID => $employer->id,
             UserNotification::SUBJECT => __('global.eliteYARInvitationSubject'),
-            UserNotification::BODY => $smsMessage,
+            UserNotification::BODY => SmsTemplate::text('elite_yar_invitation', $params),
         ]);
 
-        SendSmsJob::dispatch($eliteYAR->{User::MOBILE}, $smsMessage);
+        SendSmsJob::template($eliteYAR->{User::MOBILE}, 'elite_yar_invitation', $params);
 
         return success(
             ['outcome' => 'invited'],

@@ -12,11 +12,13 @@ use App\Events\User\CustomerSegmentChanged;
 use App\Listeners\Cart\LogCartEvent;
 use App\Listeners\Financial\SendTransactionNotification;
 use App\Listeners\Financial\SendWalletFundingNotification;
+use App\Listeners\Notification\SendCustomSmsForEvent;
 use App\Listeners\Order\SendOrderCancellationNotification;
 use App\Listeners\Order\SendOrderPaymentNotification;
 use App\Listeners\Order\SendOrderPlacedNotification;
 use App\Listeners\Order\SendSupplierOrderNotification;
 use App\Listeners\User\SendWinBackOffer;
+use App\Sms\EventCatalog;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
@@ -62,7 +64,12 @@ class EventServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // پیامک‌های سفارشیِ ادمین: یک لیسنر روی هر رویدادِ فهرست‌شده. از خودِ
+        // فهرست ثبت می‌شود تا `EventCatalog` تنها منبعِ «کدام رویدادها» بماند —
+        // ورودیِ تازه در فهرست بدونِ ویرایشِ این‌جا شنیده می‌شود.
+        foreach (EventCatalog::events() as $event) {
+            Event::listen($event, SendCustomSmsForEvent::class);
+        }
     }
 
     /**

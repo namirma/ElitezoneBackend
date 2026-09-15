@@ -51,10 +51,11 @@ class SendSupplierOrderNotification implements ShouldQueue
                 continue;
             }
 
-            Notifier::toUser(
+            Notifier::template(
                 $supplier,
                 __('notifications.supplier_new_order_subject'),
-                __('sms.order_paid_supplier', ['order_number' => $order->order_number])
+                'order_paid_supplier',
+                ['order_number' => $order->order_number],
             );
         }
     }

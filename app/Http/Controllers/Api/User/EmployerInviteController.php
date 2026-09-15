@@ -34,13 +34,10 @@ class EmployerInviteController extends Controller
             EmployerSmsInvite::SENT_AT => now(),
         ]);
 
-        $advisorName = $advisor->full_name;
-        $smsText = __('sms.employer_invitation', [
-            'advisor_name' => $advisorName,
+        SendInviteSmsJob::dispatch($invite->id, $mobile, '', EmployerSmsInvite::class, 'employer_invitation', [
+            'advisor_name' => $advisor->full_name,
             'link' => config('app.front_url'),
         ]);
-
-        SendInviteSmsJob::dispatch($invite->id, $mobile, $smsText);
 
         $remaining = max(0, EmployerSmsInvite::MAX_INVITES - ($used + 1));
 

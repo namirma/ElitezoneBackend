@@ -119,9 +119,6 @@ class ConfirmShipmentDeliveryAction
             return;
         }
 
-        SendSmsJob::dispatch(
-            $mobile,
-            __('sms.delivery_confirmed', ['order_number' => $order->order_number])
-        )->afterCommit();
+        SendSmsJob::template($mobile, 'delivery_confirmed', ['order_number' => $order->order_number])->afterCommit();
     }
 }

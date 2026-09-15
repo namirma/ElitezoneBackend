@@ -31,9 +31,10 @@ class SendWalletFundingNotification implements ShouldQueue
             $trackingCode = $transaction->meta['ref_id'] ?? $transaction->meta['doc_number'] ?? null;
             $trackingLine = $trackingCode !== null ? "کد پیگیری: {$trackingCode}\n" : '';
 
-            $message = "کیف پول شما مبلغ {$amount} ریال شارژ شد.\n{$trackingLine}الیت زون";
-
-            Notifier::toUser($user, __('notifications.wallet_funded_subject'), $message);
+            Notifier::template($user, __('notifications.wallet_funded_subject'), 'wallet_funded', [
+                'amount' => $amount,
+                'tracking_line' => $trackingLine,
+            ]);
 
             Log::info("Wallet funded SMS sent to User {$user->id}");
         } catch (\Exception $e) {

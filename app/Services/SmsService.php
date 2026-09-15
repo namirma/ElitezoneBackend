@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Http\Classes\Constant;
+use App\Models\SmsLog;
 use App\Support\PhoneNumber;
 use Exception;
 use Illuminate\Support\Facades\Http;
@@ -29,13 +30,18 @@ class SmsService
         $this->password = config('services.tsms.password', '');
     }
 
-    public function send($to, $message)
+    /**
+     * @param  string|null  $templateKey  کلیدِ قالب (`sms_templates.key`) — فقط برای لاگ؛
+     *                                    متن از قبل رندر شده است. null یعنی متنِ خام.
+     */
+    public function send($to, $message, ?string $templateKey = null)
     {
         // اگر سرویس تنظیم نشده باشد (محیط تست/استیجینگِ بدون TSMS) این یک no-op است، نه
         // «شکستِ تحویل». true برمی‌گردانیم تا جاب‌ها (که حالا روی false تلاش مجدد می‌کنند)
         // در محیطِ بدون‌پیکربندی به‌اشتباه fail/retry نشوند.
         if (empty($this->link) || empty($this->from)) {
             Log::warning('SmsService: TSMS پیکربندی نشده، ارسال پیامک نادیده گرفته شد.', ['to' => $to]);
+            SmsLog::record((string) $to, $templateKey, (string) $message, SmsLog::STATUS_UNCONFIGURED);
 
             return true;
         }
@@ -53,6 +59,7 @@ class SmsService
                 'env' => app()->environment(),
                 'message' => $message,
             ]);
+            SmsLog::record((string) $to, $templateKey, (string) $message, SmsLog::STATUS_SKIPPED_ALLOWLIST);
 
             return true;
         }
@@ -76,9 +83,12 @@ class SmsService
             // شکست به‌عنوان موفقیت تلقی می‌شد؛ حالا false می‌دهیم تا retry فعال شود.
             if (! $response->successful()) {
                 Log::error('TSMS non-success response', ['to' => $to, 'status' => $response->status()]);
+                SmsLog::record((string) $to, $templateKey, (string) $message, SmsLog::STATUS_FAILED, 'HTTP '.$response->status());
 
                 return false;
             }
+
+            SmsLog::record((string) $to, $templateKey, (string) $message, SmsLog::STATUS_SENT);
 
             return $response->body();
         } catch (Exception $e) {
@@ -87,6 +97,7 @@ class SmsService
                 'to' => $to,
                 'error' => $e->getMessage(),
             ]);
+            SmsLog::record((string) $to, $templateKey, (string) $message, SmsLog::STATUS_FAILED, $e->getMessage());
 
             return false;
         }

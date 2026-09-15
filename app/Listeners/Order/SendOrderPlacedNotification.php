@@ -36,14 +36,9 @@ class SendOrderPlacedNotification implements ShouldQueue
         }
 
         try {
-
-            $message = __('sms.order_placed', ['order_number' => $order->order_number]);
-
-            if (! $message || $message === 'sms.order_placed') {
-                $message = "سفارش شما با شماره {$order->order_number} رزرو شد.\nجهت تکمیل خرید، لطفاً پرداخت را انجام دهید.\nالیت زون";
-            }
-
-            Notifier::toUser($user, __('notifications.order_placed_subject'), $message);
+            Notifier::template($user, __('notifications.order_placed_subject'), 'order_placed', [
+                'order_number' => $order->order_number,
+            ]);
 
             Log::info("Order placed SMS sent for Order #{$order->order_number}");
 

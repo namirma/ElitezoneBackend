@@ -459,7 +459,7 @@ class AuthController extends Controller
         SyncIdentityToProfileJob::dispatch($user->id);
 
         if ($isNewUser) {
-            SendSmsJob::dispatch($mobile, __('sms.newRegisterUser'));
+            SendSmsJob::template($mobile, 'newRegisterUser');
 
             UserNotification::create([
                 UserNotification::USER_ID => Auth::id(),
