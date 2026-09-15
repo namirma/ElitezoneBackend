@@ -11,6 +11,7 @@ use App\Models\SupplierProfile;
 use App\Services\Financial\SettlementCalculatorService;
 use App\Services\Financial\WalletTransactionEngine;
 use App\Services\Invoice\InvoiceGenerator;
+use App\Services\Marketing\CouponFundingService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -20,6 +21,7 @@ class ProcessPreScalePaymentAction
         protected SettlementCalculatorService $calculator,
         protected WalletTransactionEngine $walletEngine,
         protected InvoiceGenerator $invoiceGenerator,
+        protected CouponFundingService $couponFunding,
     ) {}
 
     public function execute(Order $order): void
@@ -163,10 +165,6 @@ class ProcessPreScalePaymentAction
                 "دریافت وجه از خریدار برای سفارش {$locked->order_number}"
             );
 
-            if ($couponDiscount > 0) {
-                $this->walletEngine->debitSystem($locked, $couponDiscount, FinancialCodes::STATUS_AVAILABLE, $couponDesc);
-            }
-
             // B — Saze pays supplier PTS: WSSG(-) → WS(+)
             $this->walletEngine->debitSystem(
                 $locked, $PTS, FinancialCodes::STATUS_AVAILABLE,
@@ -176,6 +174,17 @@ class ProcessPreScalePaymentAction
                 $locked, $PTS, FinancialCodes::STATUS_AVAILABLE, $realSupplierId,
                 "واریز سهم فروش سفارش {$locked->order_number}"
             );
+
+            // ── تأمینِ تخفیف (docs/specs/COUPON_FUNDING_2026-09-15.md §۳.۴) ──
+            // لِگِ `debitSystem(تخفیف)` قبلاً این‌جا بود و همه‌ی تخفیف را از سازه
+            // می‌گرفت. حالا هر تأمین‌کننده سهمِ خودش را می‌دهد — شرکت از WSSG (سقفش
+            // ≤ POO − PTS است، پس سازه منفی نمی‌شود)، تأمین‌کننده از WS **بعد از**
+            // دریافتِ PTS، الیت‌یار از WEY. کوپنِ بدونِ ردیفِ تأمین = شرکت ۱۰۰٪،
+            // یعنی دقیقاً همان لِگِ قبلی.
+            if ($couponDiscount > 0) {
+                $this->couponFunding->debitFunders($locked, $couponDiscount);
+            }
+            // ── پایانِ تأمینِ تخفیف ──
 
             $locked->update([
                 'status' => Order::STATUS_PROCESSING,

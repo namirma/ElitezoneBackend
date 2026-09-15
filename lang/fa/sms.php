@@ -155,4 +155,13 @@ return [
 الیت‌زون',
     'product_change_rejected' => 'درخواست تغییر کاتالوگ شما برای «:subject» رد شد. دلیل: :reason
 الیت‌زون',
+
+    // ── تأمینِ تخفیفِ کوپن (docs/specs/COUPON_FUNDING_2026-09-15.md §۶) ──────────
+    // `requested` به تأمین‌کننده/الیت‌یارِ پیشنهادشده؛ دو تای دیگر به سازنده‌ی کوپن.
+    'coupon_funding_requested' => ':proposer درخواست کرده :percent٪ تخفیف کوپن :code از سهم شما تأمین شود. برای پذیرش یا رد به پنل مراجعه کنید.
+الیت‌زون',
+    'coupon_funding_accepted' => ':funder تأمین :percent٪ تخفیف کوپن :code را پذیرفت.
+الیت‌زون',
+    'coupon_funding_declined' => ':funder تأمین تخفیف کوپن :code را نپذیرفت؛ این کوپن قابل استفاده نیست.
+الیت‌زون',
 ];

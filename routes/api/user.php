@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\User\BadgeController;
 use App\Http\Controllers\Api\User\BeneficiaryController;
 use App\Http\Controllers\Api\User\CartController;
 use App\Http\Controllers\Api\User\CheckoutController;
+use App\Http\Controllers\Api\User\CouponFundingController;
 use App\Http\Controllers\Api\User\ContractorController;
 use App\Http\Controllers\Api\User\DashboardController;
 use App\Http\Controllers\Api\User\DeviceTokenController;
@@ -777,3 +778,27 @@ Route::middleware('auth:sanctum')->prefix('profile/orders')->group(function () {
         ->whereNumber('order')
         ->middleware('throttle:10,1');
 });
+
+// ── تأمینِ تخفیفِ کوپن — سمتِ تأمین‌کننده و الیت‌یار (docs/specs/COUPON_FUNDING_2026-09-15.md §۴) ──
+//
+// نوعِ سازنده از پیش‌فرضِ روت می‌آید، نه از بدنه (نقشِ پاسخ‌دهنده نباید قابلِ جعل
+// باشد). درخواست‌ها و لِگ‌ها به نقش ربطی ندارند: هر کاربر فقط ردیفِ خودش را می‌بیند.
+Route::middleware('auth:sanctum')->prefix('profile')->controller(CouponFundingController::class)->group(function () {
+    Route::middleware('role.supplier')->prefix('supplier/coupons')->group(function () {
+        Route::get('/', 'index')->defaults('funder_type', 'supplier');
+        Route::post('/', 'store')->defaults('funder_type', 'supplier')->middleware('throttle:10,1');
+        Route::post('/{coupon}/toggle', 'toggle')->whereNumber('coupon')->defaults('funder_type', 'supplier');
+    });
+
+    Route::middleware('role.elite_yar')->prefix('elite-yar/coupons')->group(function () {
+        Route::get('/', 'index')->defaults('funder_type', 'elite_yar');
+        Route::post('/', 'store')->defaults('funder_type', 'elite_yar')->middleware('throttle:10,1');
+        Route::post('/{coupon}/toggle', 'toggle')->whereNumber('coupon')->defaults('funder_type', 'elite_yar');
+    });
+
+    Route::get('/coupon-funders', 'requests');
+    Route::post('/coupon-funders/{funder}/accept', 'accept')->whereNumber('funder')->middleware('throttle:10,1');
+    Route::post('/coupon-funders/{funder}/decline', 'decline')->whereNumber('funder')->middleware('throttle:10,1');
+    Route::get('/coupon-funding-legs', 'legs');
+});
+// ── پایانِ تأمینِ تخفیف ──

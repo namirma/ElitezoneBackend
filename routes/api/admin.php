@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\Admin\AdminAvatarModerationController;
 use App\Http\Controllers\Api\Admin\AdminBadgeController;
 use App\Http\Controllers\Api\Admin\AdminBannerController;
 use App\Http\Controllers\Api\Admin\AdminCouponController;
+use App\Http\Controllers\Api\Admin\AdminCouponFundingController;
 use App\Http\Controllers\Api\Admin\AdminCustomerTypeController;
 use App\Http\Controllers\Api\Admin\AdminDashboardController;
 use App\Http\Controllers\Api\Admin\AdminDebtController;
@@ -699,6 +700,17 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
         Route::post('/{coupon}/toggle', 'toggle');
         Route::delete('/{coupon}', 'destroy');
     });
+
+    // ── تأمینِ تخفیفِ کوپن — سمتِ شرکت (docs/specs/COUPON_FUNDING_2026-09-15.md §۴) ──
+    // صفِ ردیف‌های شرکت که تأمین‌کننده/الیت‌یار پیشنهاد داده‌اند + لِگ‌های تأمین‌شده.
+    // همان `manage-catalog` که خودِ کوپن‌ها دارند.
+    Route::controller(AdminCouponFundingController::class)->middleware('admin.permission:manage-catalog')->group(function () {
+        Route::get('/coupon-funders', 'index');
+        Route::post('/coupon-funders/{funder}/accept', 'accept')->whereNumber('funder');
+        Route::post('/coupon-funders/{funder}/decline', 'decline')->whereNumber('funder');
+        Route::get('/coupon-funding-legs', 'legs');
+    });
+    // ── پایانِ تأمینِ تخفیف ──
 
     // Reviews — صف تأیید نظرات محصول (الگوی صف‌های job-experiences)
     // پشت فلگ features.product_reviews — پیش‌فرض خاموش (config/features.php)

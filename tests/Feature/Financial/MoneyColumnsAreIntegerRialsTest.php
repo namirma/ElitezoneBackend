@@ -40,6 +40,7 @@ class MoneyColumnsAreIntegerRialsTest extends TestCase
         'cart_items' => ['price', 'final_price', 'vat_amount', 'total_with_vat'],
         'product_prices' => ['general_price', 'special_price', 'golden_figure'],
         'debt_entries' => ['amount'],
+        'coupon_funding_legs' => ['amount'],
         'invoices' => ['amount'],
         'return_damages' => ['amount'],
         'shipments' => ['shipping_cost'],

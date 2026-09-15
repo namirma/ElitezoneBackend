@@ -414,6 +414,56 @@ class SettlementCalculatorService
     }
 
     /**
+     * سقفِ تأمینِ تخفیفِ کوپن از سهمِ شرکت و سهمِ الیت‌یار در **همین** سفارش —
+     * `docs/specs/COUPON_FUNDING_2026-09-15.md` §۳.۳.
+     *
+     * همان ورودی‌هایی که `ProcessPreScalePaymentAction` بعداً واقعاً به
+     * `calculatePOO/PTS` می‌دهد؛ استخر `POO − PTS` است، سهمِ ناخالصِ الیت‌یار
+     * `pool × CO/(CO+SSG)` فقط وقتی الیت‌یارِ کمیسیون‌گیر روی سفارش هست (همان
+     * شرطِ `WeighbridgeVatRouter::routeEliteYAR`)، سهمِ شرکت باقیِ استخر.
+     *
+     * سقف‌ها **خالص از مالیات**اند: مالیاتِ سهم پولِ شرکت/الیت‌یار نیست که از آن
+     * تخفیف داده شود. سقفِ عمرِ الیت‌یار (خوابیده) لحاظ نمی‌شود — اگر فعال شود سهمِ
+     * واقعی از این سقف کمتر است، نه بیشتر.
+     *
+     * @return array{poo: float, pts: float, company: float, elite_yar: float} ریالِ صحیح
+     */
+    public function couponFundingCaps(
+        float $trans,
+        float $op,
+        float $weight,
+        ?string $badgeCode,
+        float $vatPercent,
+        bool $transCommission,
+        bool $transVat,
+        bool $hasCommissionedEliteYAR,
+    ): array {
+        $rates = $this->getCommissionRatesForTc($badgeCode, self::tcPercentage());
+
+        $poo = $this->calculatePOO($trans, $op, $weight, $rates['ow_final_rate'], $vatPercent, $transCommission, $transVat);
+        $pts = $this->calculatePTS(
+            $trans, $op, $weight,
+            $rates['ow_final_rate'], $rates['ssg_final_rate'], $rates['co_final_rate'],
+            $vatPercent, $transCommission, $transVat
+        );
+
+        $pool = max(0.0, $poo - $pts);
+        $coPlusSsg = $rates['co_final_rate'] + $rates['ssg_final_rate'];
+
+        $eliteYARGross = $hasCommissionedEliteYAR && $coPlusSsg > 0
+            ? self::rial(Money::mul($pool, Money::div($rates['co_final_rate'], $coPlusSsg)))
+            : 0.0;
+        $companyGross = max(0.0, $pool - $eliteYARGross);
+
+        return [
+            'poo' => $poo,
+            'pts' => $pts,
+            'company' => $this->extractVatInRials($companyGross, $vatPercent)['net'],
+            'elite_yar' => $this->extractVatInRials($eliteYARGross, $vatPercent)['net'],
+        ];
+    }
+
+    /**
      * Split a VAT-inclusive gross amount into its net and VAT parts.
      *
      * Uses vat = gross × VAT / (100 + VAT) — the division acts on large operands,

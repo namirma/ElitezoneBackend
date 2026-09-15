@@ -10,6 +10,7 @@ use App\Exceptions\Order\CartIsEmptyException;
 use App\Models\Address;
 use App\Models\Cart;
 use App\Models\CartItem;
+use App\Models\Coupon;
 use App\Models\CustomerType;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -17,11 +18,13 @@ use App\Models\OrderUnit;
 use App\Models\PriceFilterCategory;
 use App\Models\ProductVariant;
 use App\Models\Shipment;
+use App\Models\SupplierProfile;
 use App\Models\User;
 use App\Models\UserType;
 use App\Services\DocumentSequenceService;
 use App\Services\Financial\DebtEngine;
 use App\Services\Financial\SettlementCalculatorService;
+use App\Services\Marketing\CouponFundingService;
 use App\Services\Marketing\CouponService;
 use App\Services\PriceCalculationService;
 use App\Services\PricingRoleResolver;
@@ -44,6 +47,7 @@ class PlaceOrderAction
         private readonly CartShippingQuoteService $shippingQuoteService,
         private readonly CouponService $couponService,
         private readonly DebtEngine $debtEngine,
+        private readonly CouponFundingService $couponFunding,
     ) {}
 
     /**
@@ -107,6 +111,12 @@ class PlaceOrderAction
             if ($couponCode) {
                 $coupon = $this->couponService->validateForCheckout($user, $couponCode, lock: true);
                 $couponDiscount = $this->couponService->calculateDiscount($coupon, (float) $financials['final_amount']);
+                // ── تأمینِ تخفیف (docs/specs/COUPON_FUNDING_2026-09-15.md §۳.۳) ──
+                // تقسیمِ تخفیف بینِ تأمین‌کننده‌ها، سقفِ سهمِ شرکت/الیت‌یار در همین
+                // سفارش و موجودیِ کیف پولِ هر تأمین‌کننده — پیش از هر نوشتنی؛ تخطی
+                // ۴۲۲ با پیامِ دقیق است، نه کاهشِ بی‌صدا.
+                $this->assertCouponFundable($coupon, $couponDiscount, $financials, $cart, ($payer ?? $user)->id);
+                // ── پایانِ تأمینِ تخفیف ──
                 $financials['coupon_id'] = $coupon->id;
                 $financials['coupon_discount_amount'] = $couponDiscount;
                 $financials['final_amount'] = max(0, $financials['final_amount'] - $couponDiscount);
@@ -593,6 +603,49 @@ class PlaceOrderAction
         if ($blocked) {
             throw new BusinessException(__('supplier.price_under_review'), 422);
         }
+    }
+
+    /**
+     * تأمینِ تخفیف — سقف و موجودیِ هر تأمین‌کننده در **همین** سفارش
+     * (docs/specs/COUPON_FUNDING_2026-09-15.md §۳.۳).
+     *
+     * سهم‌ها با همان ورودی‌هایی حساب می‌شوند که `ProcessPreScalePaymentAction` بعداً
+     * واقعاً به POO/PTS می‌دهد: قیمتِ رسمی، وزنِ پیش از باسکول، کرایه، فلگ‌های
+     * قراردادِ تأمین‌کننده، نرخِ مالیاتِ زنده و نشانِ الیت‌یار. شرطِ «الیت‌یارِ
+     * کمیسیون‌گیر» عیناً همانِ `WeighbridgeVatRouter::routeEliteYAR` است: ست‌شده و
+     * غیر از پرداخت‌کننده.
+     */
+    private function assertCouponFundable(Coupon $coupon, float $discount, array $fins, Cart $cart, int $payerId): void
+    {
+        if ($discount <= 0) {
+            return;
+        }
+
+        $supplierId = $cart->items->first()?->factory?->supplier_user_id;
+        $supplierId = $supplierId ? (int) $supplierId : null;
+        $eliteYARId = $fins['effective_elite_yar_id'] ? (int) $fins['effective_elite_yar_id'] : null;
+        $hasCommissionedEliteYAR = $eliteYARId !== null && $eliteYARId !== $payerId;
+
+        $supplierProfile = $supplierId
+            ? SupplierProfile::where(SupplierProfile::USER_ID, $supplierId)->first()
+            : null;
+
+        // `badge()` جنریک ندارد — `getAttribute`، همان راهی که بقیه‌ی فایل می‌رود.
+        $badge = $eliteYARId ? User::find($eliteYARId)?->badge : null;
+        $badgeCode = $badge ? (string) ($badge->getAttribute('code') ?? 'pioneer') : 'pioneer';
+
+        $caps = $this->settlementCalculator->couponFundingCaps(
+            trans: (float) $fins['shipping_cost'],
+            op: (float) $fins['official_price'],
+            weight: (float) $fins['total_weight'],
+            badgeCode: $badgeCode,
+            vatPercent: $this->settlementCalculator->currentVatRate(),
+            transCommission: (bool) ($supplierProfile->{SupplierProfile::TRANS_COMMISSION} ?? true),
+            transVat: (bool) ($supplierProfile->{SupplierProfile::TRANS_VAT} ?? true),
+            hasCommissionedEliteYAR: $hasCommissionedEliteYAR,
+        );
+
+        $this->couponFunding->plan($coupon, $discount, $caps, $supplierId, $hasCommissionedEliteYAR ? $eliteYARId : null);
     }
 
     private function assertSingleSupplier(Cart $cart): void

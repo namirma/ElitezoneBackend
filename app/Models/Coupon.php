@@ -6,7 +6,9 @@ use App\Traits\PersianDate;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 /**
  * @property int $id
@@ -17,6 +19,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $expires_at
  * @property Carbon|null $used_at
  * @property string|null $reason
+ * @property int|null $created_by_user_id
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read User|null $owner
@@ -65,6 +68,8 @@ class Coupon extends Model
 
     const IS_ACTIVE = 'is_active';
 
+    const CREATED_BY_USER_ID = 'created_by_user_id';
+
     const CREATED_AT = 'created_at';
 
     const UPDATED_AT = 'updated_at';
@@ -87,6 +92,7 @@ class Coupon extends Model
         self::USED_AT,
         self::REASON,
         self::IS_ACTIVE,
+        self::CREATED_BY_USER_ID,
     ];
 
     protected $casts = [
@@ -102,6 +108,72 @@ class Coupon extends Model
     public function owner(): BelongsTo
     {
         return $this->belongsTo(User::class, self::USER_ID);
+    }
+
+    /** @return BelongsTo<User, $this> */
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, self::CREATED_BY_USER_ID);
+    }
+
+    /** @return HasMany<CouponFunder, $this> */
+    public function funders(): HasMany
+    {
+        return $this->hasMany(CouponFunder::class, CouponFunder::COUPON_ID);
+    }
+
+    /** @return HasMany<CouponFundingLeg, $this> */
+    public function fundingLegs(): HasMany
+    {
+        return $this->hasMany(CouponFundingLeg::class, CouponFundingLeg::COUPON_ID);
+    }
+
+    /* -------------------------------------------------------------------------- */
+    /* تأمینِ تخفیف — docs/specs/COUPON_FUNDING_2026-09-15.md */
+    /* -------------------------------------------------------------------------- */
+
+    /**
+     * ردیف‌های تأمین، یا — برای کوپنی که هیچ ردیفی ندارد (fixtureِ تست، ردیفِ
+     * ساخته‌شده بیرونِ مسیرهای رسمی) — یک ردیفِ مجازیِ «شرکت ۱۰۰٪ پذیرفته».
+     * همان معنایی که مهاجرت برای کوپن‌های قدیمی نوشت، بدونِ نیاز به ردیف.
+     *
+     * @return Collection<int, CouponFunder>
+     */
+    public function fundingRows(): Collection
+    {
+        $rows = $this->relationLoaded('funders') ? $this->funders : $this->funders()->get();
+
+        if ($rows->isNotEmpty()) {
+            return $rows->values();
+        }
+
+        return collect([new CouponFunder([
+            CouponFunder::COUPON_ID => $this->id,
+            CouponFunder::FUNDER_TYPE => CouponFunder::TYPE_COMPANY,
+            CouponFunder::FUNDER_USER_ID => null,
+            CouponFunder::SHARE_PERCENT => 100,
+            CouponFunder::STATUS => CouponFunder::STATUS_ACCEPTED,
+        ])]);
+    }
+
+    /** کوپن فقط وقتی قابلِ استفاده است که **همه‌ی** تأمین‌کننده‌ها پذیرفته باشند. */
+    public function isFundingReady(): bool
+    {
+        return $this->fundingRows()->every(fn (CouponFunder $f) => $f->isAccepted());
+    }
+
+    /** `ready` | `pending` | `declined` — برای پنل‌ها. */
+    public function fundingStatus(): string
+    {
+        $rows = $this->fundingRows();
+
+        if ($rows->contains(fn (CouponFunder $f) => $f->{CouponFunder::STATUS} === CouponFunder::STATUS_DECLINED)) {
+            return CouponFunder::STATUS_DECLINED;
+        }
+
+        return $rows->every(fn (CouponFunder $f) => $f->isAccepted())
+            ? 'ready'
+            : CouponFunder::STATUS_PENDING;
     }
 
     /* -------------------------------------------------------------------------- */

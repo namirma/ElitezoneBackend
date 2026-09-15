@@ -8,6 +8,7 @@ use App\Models\Address;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Coupon;
+use App\Models\CouponFunder;
 use App\Models\FactoryStock;
 use App\Models\Order;
 use App\Models\OrderUnit;
@@ -69,7 +70,10 @@ class CouponSourceOfTruthTest extends TestCase
         $this->buyer = User::factory()->create();
 
         $supplier = User::factory()->create();
-        Wallet::create([Wallet::USER_ID => $supplier->id, Wallet::BALANCE => 0, Wallet::BALANCE_HOLD => 0]);
+        // تأمینِ تخفیف (COUPON_FUNDING_2026-09-15): کوپنِ ۵ میلیونیِ این تست حالا
+        // تأمین‌کننده‌ای است (سقفِ شرکت روی این سفارش چند صد هزار ریال است)، پس
+        // کیف پولِ تأمین‌کننده باید لِگش را بپوشاند.
+        Wallet::create([Wallet::USER_ID => $supplier->id, Wallet::BALANCE => 50_000_000, Wallet::BALANCE_HOLD => 0]);
         SupplierProfile::create([SupplierProfile::USER_ID => $supplier->id])
             ->forceFill([
                 SupplierProfile::STATUS => SupplierProfile::STATUS_APPROVED,
@@ -168,6 +172,15 @@ class CouponSourceOfTruthTest extends TestCase
             Coupon::USER_ID => $this->buyer->id,
             Coupon::TYPE => Coupon::TYPE_FIXED,
             Coupon::AMOUNT => 5_000_000,
+        ]);
+        // منبعِ تأمین به هدفِ این تست (منبعِ حقیقت = ستونِ سبد) ربطی ندارد؛ فقط
+        // باید از سقفِ شرکت عبور نکند، پس تأمین‌کننده‌ی سفارش (بی‌سقف) می‌دهدش.
+        $coupon->funders()->create([
+            CouponFunder::FUNDER_TYPE => CouponFunder::TYPE_SUPPLIER,
+            CouponFunder::FUNDER_USER_ID => $this->supplierId,
+            CouponFunder::SHARE_PERCENT => 100,
+            CouponFunder::STATUS => CouponFunder::STATUS_ACCEPTED,
+            CouponFunder::RESPONDED_AT => now(),
         ]);
 
         $this->fillCart(100, $coupon->code);

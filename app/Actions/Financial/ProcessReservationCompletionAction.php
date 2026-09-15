@@ -14,6 +14,7 @@ use App\Models\Wallet;
 use App\Services\Financial\SettlementCalculatorService;
 use App\Services\Financial\WalletTransactionEngine;
 use App\Services\Invoice\InvoiceGenerator;
+use App\Services\Marketing\CouponFundingService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -22,7 +23,8 @@ class ProcessReservationCompletionAction
     public function __construct(
         protected WalletTransactionEngine $walletEngine,
         protected SettlementCalculatorService $calculator,
-        protected InvoiceGenerator $invoiceGenerator
+        protected InvoiceGenerator $invoiceGenerator,
+        protected CouponFundingService $couponFunding,
     ) {}
 
     public function execute(Order $order): void
@@ -215,12 +217,6 @@ class ProcessReservationCompletionAction
                 $this->walletEngine->creditBuyer($locked, $refundAmount, FinancialCodes::STATUS_AVAILABLE, 'دریافت مابه‌التفاوت افت قیمت رزرو');
             }
 
-            // برداشتِ تخفیف از کیف سازه بعد از دریافتِ وجه تکمیلی، تا WSSG در
-            // هیچ لحظه‌ای منفی نشود.
-            if ($couponDiscount > 0) {
-                $this->walletEngine->debitSystem($locked, $couponDiscount, FinancialCodes::STATUS_AVAILABLE, $couponDesc);
-            }
-
             // هولدِ رزرو بالاتر و پیش از هر برداشتی آزاد شد (توضیح آنجاست). آزادسازی
             // از مسیرِ فقط-افزودنیِ `releaseHold()` می‌رود تا یک ردیفِ مجزای
             // TYPE_HOLD_RELEASE ثبت شود و ثبتِ هولد (ProcessReservationPaymentAction)
@@ -228,6 +224,16 @@ class ProcessReservationCompletionAction
             // ممیزیِ پروژه. هرگز هولد را با جفتِ خامِ debit-HOLD/credit-AVAILABLE جابه‌جا نکنید.
             $this->walletEngine->debitSystem($locked, $PTS, FinancialCodes::STATUS_AVAILABLE, "تخصیص سهم تامین‌کننده سفارش {$locked->order_number}");
             $this->walletEngine->creditSupplier($locked, $PTS, FinancialCodes::STATUS_AVAILABLE, $realSupplierId, "واریز سهم فروش سفارش {$locked->order_number}");
+
+            // ── تأمینِ تخفیف (docs/specs/COUPON_FUNDING_2026-09-15.md §۳.۴) ──
+            // پیش از این `debitSystem(تخفیف)` بالای لِگِ PTS بود و همه‌ی تخفیف را از
+            // سازه می‌گرفت. حالا هر تأمین‌کننده سهمِ خودش را می‌دهد و لِگِ تأمین‌کننده
+            // **بعد از** دریافتِ PTS می‌آید تا کیف پولش اتاقِ کافی داشته باشد؛ سهمِ
+            // شرکت ≤ POO − PTS است، پس WSSG همچنان در هیچ لحظه‌ای منفی نمی‌شود.
+            if ($couponDiscount > 0) {
+                $this->couponFunding->debitFunders($locked, $couponDiscount);
+            }
+            // ── پایانِ تأمینِ تخفیف ──
 
             $locked->forceFill([
                 Order::STATUS => Order::STATUS_PROCESSING,

@@ -33,4 +33,9 @@ return [
     // درخواستِ تغییرِ کاتالوگ (محصول/واریانت) — به تأمین‌کننده
     'product_change_approved_subject' => 'تأیید تغییر کاتالوگ',
     'product_change_rejected_subject' => 'رد تغییر کاتالوگ',
+
+    // تأمینِ تخفیفِ کوپن — به تأمین‌کننده/الیت‌یارِ پیشنهادشده و به سازنده‌ی کوپن
+    'coupon_funding_requested_subject' => 'درخواست تأمین تخفیف',
+    'coupon_funding_accepted_subject' => 'پذیرش تأمین تخفیف',
+    'coupon_funding_declined_subject' => 'رد تأمین تخفیف',
 ];

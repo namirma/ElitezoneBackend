@@ -5,6 +5,7 @@ namespace App\Actions\Order;
 use App\Constants\FinancialCodes;
 use App\Models\Order;
 use App\Services\Financial\WalletTransactionEngine;
+use App\Services\Marketing\CouponFundingService;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -31,6 +32,7 @@ final class RefundOrderToWalletAction
 {
     public function __construct(
         private readonly WalletTransactionEngine $walletEngine,
+        private readonly CouponFundingService $couponFunding,
     ) {}
 
     public function execute(Order $order): void
@@ -96,6 +98,19 @@ final class RefundOrderToWalletAction
             //    (uncapped) discount over-debited the buyer by (discount − POO) whenever the
             //    coupon exceeded POO, either blocking the refund (InsufficientBalance) or
             //    minting money from the buyer.
+            // ── تأمینِ تخفیف (docs/specs/COUPON_FUNDING_2026-09-15.md §۳.۵) ──
+            // سفارشی که با لِگ‌های تأمین پرداخت شده، هر لِگ را به همان کیف پول
+            // (شرکت / تأمین‌کننده / الیت‌یار) برمی‌گرداند؛ `false` یعنی سفارشِ قدیمی
+            // بدونِ لِگ و مسیرِ WO→WSSG زیر همان قبلی است.
+            /** @var Order $lockedForLegs */
+            $lockedForLegs = $locked;
+            if ($this->couponFunding->reverseLegs($lockedForLegs)) {
+                $locked->update([Order::PAYMENT_STATUS => Order::PAYMENT_REFUNDED]);
+
+                return;
+            }
+            // ── پایانِ تأمینِ تخفیف ──
+
             $couponDiscount = min((float) ($locked->{Order::COUPON_DISCOUNT_AMOUNT} ?? 0), $poo);
             if ($couponDiscount > 0) {
                 $couponCode = $locked->coupon?->code ?? '-';

@@ -16,6 +16,10 @@ class CouponResource extends BaseJsonResource
      */
     public function toArray(Request $request): array
     {
+        // تأمینِ تخفیف (docs/specs/COUPON_FUNDING_2026-09-15.md): وضعیتِ کلی از
+        // ردیف‌ها مشتق می‌شود؛ کوپنِ بی‌ردیف «شرکت ۱۰۰٪» است و همان را نشان می‌دهد.
+        $fundingStatus = $this->fundingStatus();
+
         return [
             Coupon::ID => $this->id,
             Coupon::CODE => $this->code,
@@ -26,9 +30,24 @@ class CouponResource extends BaseJsonResource
             Coupon::USED_AT => $this->used_at,
             Coupon::REASON => $this->reason,
             Coupon::IS_ACTIVE => $this->is_active,
-            'is_valid' => $this->isValid(),
+            'is_valid' => $this->isValid() && $fundingStatus === 'ready',
             Coupon::CREATED_AT => $this->created_at,
             'created_at_p' => $this->created_at_p,
+            Coupon::CREATED_BY_USER_ID => $this->created_by_user_id,
+            'creator_name' => $this->whenLoaded('creator', fn () => $this->creator
+                ? ($this->creator->profile ? $this->creator->full_name : $this->creator->mobile)
+                : null),
+            'funders' => CouponFunderResource::collection($this->fundingRows()),
+            'funding_status' => $fundingStatus,
+            'funding_status_info' => [
+                'key' => $fundingStatus,
+                'label' => __('coupons.funding_statuses.'.$fundingStatus),
+                'tone' => match ($fundingStatus) {
+                    'ready' => 'success',
+                    'declined' => 'failure',
+                    default => 'ongoing',
+                },
+            ],
         ];
     }
 }

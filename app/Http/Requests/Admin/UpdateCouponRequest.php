@@ -2,15 +2,21 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Http\Requests\Concerns\ValidatesCouponFunders;
 use App\Models\Coupon;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 /**
  * ویرایش کد تخفیف — یکتایی code با نادیده‌گرفتن رکورد جاری.
+ *
+ * `funders[]` (اختیاری) مجموعه‌ی تأمین‌کننده‌ها را **جایگزین** می‌کند
+ * (docs/specs/COUPON_FUNDING_2026-09-15.md §۳.۱).
  */
 class UpdateCouponRequest extends FormRequest
 {
+    use ValidatesCouponFunders;
+
     public function authorize(): bool
     {
         return true;
@@ -31,7 +37,7 @@ class UpdateCouponRequest extends FormRequest
             Coupon::EXPIRES_AT => ['nullable', 'date'],
             Coupon::REASON => ['nullable', 'string', 'max:500'],
             Coupon::IS_ACTIVE => ['nullable', 'boolean'],
-        ];
+        ] + $this->funderRules(required: false);
     }
 
     /**
@@ -49,6 +55,8 @@ class UpdateCouponRequest extends FormRequest
 
             return $type === Coupon::TYPE_PERCENT;
         });
+
+        $this->validateFunders($validator);
     }
 
     public function messages(): array
@@ -59,6 +67,12 @@ class UpdateCouponRequest extends FormRequest
             'type.required' => __('admin.coupons.type_required'),
             'type.in' => __('admin.coupons.type_invalid'),
             'amount.required' => __('admin.coupons.amount_required'),
-        ];
+        ] + $this->funderMessages();
+    }
+
+    /** فیلدهای خودِ کوپن — بدونِ `funders` که جدولِ دیگری دارد. */
+    public function couponAttributes(): array
+    {
+        return collect($this->validated())->except(['funders'])->all();
     }
 }

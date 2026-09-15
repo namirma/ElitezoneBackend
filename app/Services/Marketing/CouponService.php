@@ -4,6 +4,7 @@ namespace App\Services\Marketing;
 
 use App\Exceptions\BusinessException;
 use App\Models\Coupon;
+use App\Models\CouponFunder;
 use App\Models\Order;
 use App\Models\User;
 use App\Services\Sales\SalesSettings;
@@ -79,6 +80,15 @@ class CouponService
             throw new BusinessException(__('coupons.not_yours'));
         }
 
+        // تأمینِ تخفیف (docs/specs/COUPON_FUNDING_2026-09-15.md §۳.۲): تا همه‌ی
+        // تأمین‌کننده‌ها نپذیرفته‌اند کوپن وجود دارد ولی قابلِ استفاده نیست. این‌جاست
+        // چون هر سه مسیر از همین متد رد می‌شوند. سقف و موجودیِ تأمین‌کننده‌ها به
+        // اعدادِ سفارش نیاز دارند و در `CouponFundingService::plan()` (ثبت سفارش)
+        // سنجیده می‌شوند.
+        if (! $coupon->isFundingReady()) {
+            throw new BusinessException(__('coupons.funding_not_ready'), 422);
+        }
+
         return $coupon;
     }
 
@@ -143,7 +153,7 @@ class CouponService
             $finalCode = $namePart.'-'.Str::upper(Str::random(self::CODE_RANDOM_LENGTH + $attempt));
 
             try {
-                return Coupon::create([
+                $coupon = Coupon::create([
                     Coupon::CODE => $finalCode,
                     Coupon::USER_ID => $user->id,
                     Coupon::TYPE => Coupon::TYPE_PERCENT,
@@ -151,6 +161,17 @@ class CouponService
                     Coupon::EXPIRES_AT => Carbon::now()->addDays($expireDays),
                     Coupon::REASON => $reason,
                 ]);
+
+                // کوپنِ بازاریابیِ سازه است: تأمین از کیف پولِ شرکت، صریح و پذیرفته.
+                // سقفِ سهمِ شرکت (§۳.۳ اسپک) در لحظه‌ی ثبت سفارش روی آن هم اعمال می‌شود.
+                $coupon->funders()->create([
+                    CouponFunder::FUNDER_TYPE => CouponFunder::TYPE_COMPANY,
+                    CouponFunder::SHARE_PERCENT => 100,
+                    CouponFunder::STATUS => CouponFunder::STATUS_ACCEPTED,
+                    CouponFunder::RESPONDED_AT => now(),
+                ]);
+
+                return $coupon;
             } catch (UniqueConstraintViolationException) {
                 Log::warning('Coupon code collision, retrying', [
                     'user_id' => $user->id,
