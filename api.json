@@ -52631,7 +52631,7 @@
                     "content": {
                         "multipart/form-data": {
                             "schema": {
-                                "$ref": "#/components/schemas/ProductProposalRequest"
+                                "$ref": "#/components/schemas/UpdateProductProposalRequest"
                             }
                         }
                     }
@@ -52695,7 +52695,7 @@
                     "content": {
                         "multipart/form-data": {
                             "schema": {
-                                "$ref": "#/components/schemas/ProductProposalRequest"
+                                "$ref": "#/components/schemas/UpdateProductProposalRequest"
                             }
                         }
                     }
@@ -52827,7 +52827,7 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/VariantProposalRequest"
+                                "$ref": "#/components/schemas/UpdateVariantProposalRequest"
                             }
                         }
                     }
@@ -67318,6 +67318,228 @@
                 },
                 "title": "UpdatePageRequest"
             },
+            "UpdateProductProposalRequest": {
+                "type": "object",
+                "description": "\u067e\u06cc\u0634\u0646\u0647\u0627\u062f\u0650 \u0648\u06cc\u0631\u0627\u06cc\u0634\u0650 \u0645\u062d\u0635\u0648\u0644 \u2014 \u0647\u0645\u0627\u0646 \u0642\u0648\u0627\u0639\u062f\u060c \u0631\u0648\u06cc `{product}`\u0650 \u0631\u0648\u062a.",
+                "properties": {
+                    "category_id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "slug": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "sku": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "shipping_promo": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 255
+                    },
+                    "items_per_page": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "minimum": 1,
+                        "maximum": 100
+                    },
+                    "aggregate_min_order_value": {
+                        "type": [
+                            "number",
+                            "null"
+                        ],
+                        "minimum": 0
+                    },
+                    "aggregate_max_order_value": {
+                        "type": [
+                            "number",
+                            "null"
+                        ],
+                        "minimum": 0
+                    },
+                    "aggregate_limit_order_unit_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "primary_image_index": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "minimum": 0
+                    },
+                    "note": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 1000
+                    },
+                    "order_units": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "order_unit_id": {
+                                    "type": "integer"
+                                },
+                                "max_quantity": {
+                                    "type": "integer",
+                                    "minimum": 0
+                                }
+                            },
+                            "required": [
+                                "order_unit_id",
+                                "max_quantity"
+                            ]
+                        }
+                    },
+                    "images": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "format": "binary",
+                            "contentMediaType": "application/octet-stream",
+                            "maxLength": 4096
+                        },
+                        "maxItems": 10
+                    },
+                    "videos": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "format": "binary",
+                            "contentMediaType": "application/octet-stream",
+                            "maxLength": 51200
+                        },
+                        "maxItems": 3
+                    },
+                    "video_titles": {
+                        "type": "array",
+                        "items": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "maxLength": 255
+                        }
+                    },
+                    "variants": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "name": {
+                                    "type": "string",
+                                    "maxLength": 255
+                                },
+                                "sku": {
+                                    "type": "string",
+                                    "maxLength": 255
+                                },
+                                "min_order_value": {
+                                    "type": [
+                                        "number",
+                                        "null"
+                                    ],
+                                    "minimum": 0
+                                },
+                                "max_order_value": {
+                                    "type": [
+                                        "number",
+                                        "null"
+                                    ],
+                                    "minimum": 0
+                                },
+                                "limit_order_unit_id": {
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ]
+                                },
+                                "discount_value": {
+                                    "type": [
+                                        "number",
+                                        "null"
+                                    ],
+                                    "minimum": 0
+                                },
+                                "discount_type": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "enum": [
+                                        "percentage",
+                                        "fixed_amount"
+                                    ]
+                                },
+                                "discount_start_date": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "format": "date-time"
+                                },
+                                "discount_end_date": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "format": "date-time"
+                                },
+                                "attributes": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "attribute_id": {
+                                                "type": "integer"
+                                            },
+                                            "attribute_value_id": {
+                                                "type": "integer"
+                                            }
+                                        },
+                                        "required": [
+                                            "attribute_id",
+                                            "attribute_value_id"
+                                        ]
+                                    }
+                                }
+                            },
+                            "required": [
+                                "name",
+                                "sku"
+                            ]
+                        },
+                        "maxItems": 50
+                    }
+                },
+                "required": [
+                    "category_id",
+                    "name",
+                    "slug",
+                    "sku"
+                ],
+                "title": "UpdateProductProposalRequest"
+            },
             "UpdateRealProfileRequest": {
                 "type": "object",
                 "properties": {
@@ -67554,6 +67776,101 @@
                     }
                 },
                 "title": "UpdateUserProfileRequest"
+            },
+            "UpdateVariantProposalRequest": {
+                "type": "object",
+                "description": "\u067e\u06cc\u0634\u0646\u0647\u0627\u062f\u0650 \u0648\u06cc\u0631\u0627\u06cc\u0634\u0650 \u0648\u0627\u0631\u06cc\u0627\u0646\u062a \u2014 \u0647\u0645\u0627\u0646 \u0642\u0648\u0627\u0639\u062f\u060c \u0631\u0648\u06cc `{variant}`\u0650 \u0631\u0648\u062a.",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "sku": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "min_order_value": {
+                        "type": [
+                            "number",
+                            "null"
+                        ],
+                        "minimum": 0
+                    },
+                    "max_order_value": {
+                        "type": [
+                            "number",
+                            "null"
+                        ],
+                        "minimum": 0
+                    },
+                    "limit_order_unit_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "discount_value": {
+                        "type": [
+                            "number",
+                            "null"
+                        ],
+                        "minimum": 0
+                    },
+                    "discount_type": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "enum": [
+                            "percentage",
+                            "fixed_amount"
+                        ]
+                    },
+                    "discount_start_date": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "discount_end_date": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "note": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 1000
+                    },
+                    "attributes": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "attribute_id": {
+                                    "type": "integer"
+                                },
+                                "attribute_value_id": {
+                                    "type": "integer"
+                                }
+                            },
+                            "required": [
+                                "attribute_id",
+                                "attribute_value_id"
+                            ]
+                        }
+                    }
+                },
+                "required": [
+                    "name",
+                    "sku"
+                ],
+                "title": "UpdateVariantProposalRequest"
             },
             "UpdateWishlistRequest": {
                 "type": "object",

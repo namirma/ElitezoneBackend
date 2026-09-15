@@ -31,7 +31,7 @@ class CouponFunderResource extends BaseJsonResource
             CouponFunder::STATUS => $this->status,
             'status_info' => [
                 'key' => $this->status,
-                'label' => __('coupons.funder_statuses.'.$this->status),
+                'label' => trans('coupons.funder_statuses')[$this->status] ?? $this->status,
                 'tone' => match ($this->status) {
                     CouponFunder::STATUS_ACCEPTED => 'success',
                     CouponFunder::STATUS_DECLINED => 'failure',

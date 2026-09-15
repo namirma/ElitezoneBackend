@@ -20,14 +20,20 @@ class VariantProposalRequest extends FormRequest
         return true;
     }
 
+    /** هدفِ ویرایش — این کلاس درخواستِ ساخت است (روتش `{variant}` ندارد)؛ زیرکلاسِ Update آن را از روت می‌خواند. */
+    protected function targetVariant(): ?ProductVariant
+    {
+        return null;
+    }
+
     public function isUpdate(): bool
     {
-        return $this->route('variant') instanceof ProductVariant;
+        return $this->targetVariant() instanceof ProductVariant;
     }
 
     public function rules(): array
     {
-        $variant = $this->route('variant');
+        $variant = $this->targetVariant();
         $isUpdate = $variant instanceof ProductVariant;
 
         $rules = Arr::except(

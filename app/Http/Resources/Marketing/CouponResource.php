@@ -41,7 +41,7 @@ class CouponResource extends BaseJsonResource
             'funding_status' => $fundingStatus,
             'funding_status_info' => [
                 'key' => $fundingStatus,
-                'label' => __('coupons.funding_statuses.'.$fundingStatus),
+                'label' => trans('coupons.funding_statuses')[$fundingStatus] ?? $fundingStatus,
                 'tone' => match ($fundingStatus) {
                     'ready' => 'success',
                     'declined' => 'failure',

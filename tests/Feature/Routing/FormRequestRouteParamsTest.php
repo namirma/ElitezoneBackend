@@ -95,7 +95,9 @@ class FormRequestRouteParamsTest extends TestCase
                 continue;
             }
 
-            $declared = $route->parameterNames();
+            // پیش‌فرض‌های روت (`->defaults('x', …)`) هم مثلِ پارامترِ URI از `route('x')`
+            // خوانده می‌شوند — الگوی «نقش از روت می‌آید نه از بدنه» (کوپن‌های تأمین‌شده).
+            $declared = array_merge($route->parameterNames(), array_keys($route->defaults));
 
             foreach ($this->formRequestsOf(new ReflectionMethod($controller, $method)) as $requestClass) {
                 foreach ($this->paramsReadBy($requestClass) as $read) {

@@ -6,6 +6,8 @@ namespace App\Http\Controllers\Api\User;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Supplier\ProductProposalRequest;
+use App\Http\Requests\Supplier\UpdateProductProposalRequest;
+use App\Http\Requests\Supplier\UpdateVariantProposalRequest;
 use App\Http\Requests\Supplier\VariantProposalRequest;
 use App\Http\Resources\Order\OrderUnitResource;
 use App\Http\Resources\Product\AttributeTypeResource;
@@ -126,7 +128,7 @@ class SupplierProductController extends Controller
         return created(new ProductChangeRequestResource($proposal), __('product_changes.submitted'));
     }
 
-    public function update(ProductProposalRequest $request, Product $product): JsonResponse
+    public function update(UpdateProductProposalRequest $request, Product $product): JsonResponse
     {
         $proposal = $this->service->proposeProductUpdate(
             $request->user(),
@@ -146,7 +148,7 @@ class SupplierProductController extends Controller
         return created(new ProductChangeRequestResource($proposal->load('product')), __('product_changes.submitted'));
     }
 
-    public function updateVariant(VariantProposalRequest $request, ProductVariant $variant): JsonResponse
+    public function updateVariant(UpdateVariantProposalRequest $request, ProductVariant $variant): JsonResponse
     {
         $proposal = $this->service->proposeVariantUpdate($request->user(), $variant, $request->validated());
 

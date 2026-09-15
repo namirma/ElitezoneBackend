@@ -103,7 +103,7 @@ class CouponFunder extends Model
     /** برچسبِ فارسیِ نوع — برای پیام‌ها و پیامک‌ها. */
     public static function typeLabel(string $type): string
     {
-        return __('coupons.funder_types.'.$type);
+        return trans('coupons.funder_types')[$type] ?? $type;
     }
 
     /** نامِ قابلِ نمایشِ تأمین‌کننده: نامِ کاربر، یا «شرکت سازه». */

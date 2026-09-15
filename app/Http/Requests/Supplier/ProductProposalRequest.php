@@ -40,14 +40,25 @@ class ProductProposalRequest extends FormRequest
         return true;
     }
 
+    /**
+     * هدفِ ویرایش. این کلاس درخواستِ *ساخت* است و روتش `{product}` ندارد، پس
+     * همیشه null؛ `UpdateProductProposalRequest` آن را از روت می‌خواند.
+     * (گاردِ `FormRequestRouteParamsTest`: هیچ درخواستی پارامتری را نمی‌خواند که
+     * روتش اعلام نکرده.)
+     */
+    protected function targetProduct(): ?Product
+    {
+        return null;
+    }
+
     public function isUpdate(): bool
     {
-        return $this->route('product') instanceof Product;
+        return $this->targetProduct() instanceof Product;
     }
 
     public function rules(): array
     {
-        $product = $this->route('product');
+        $product = $this->targetProduct();
         $isUpdate = $product instanceof Product;
 
         $rules = Arr::except(
