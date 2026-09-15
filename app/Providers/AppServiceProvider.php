@@ -121,10 +121,12 @@ class AppServiceProvider extends ServiceProvider
             // قبلاً همیشه username بود؛ روی مسیرهای احرازشده که username ندارند کلید
             // به «IP + رشتهٔ خالی» می‌رسید و همهٔ کاربرانِ پشتِ یک NAT یک سطل مشترک
             // می‌گرفتند — هم نشتِ throttle بین کاربران، هم ضعیف‌ترشدنِ گاردِ brute-force.
+            // مرحله‌ی دومِ ورودِ دومرحله‌ای (`/login/2fa`) نه کاربر دارد نه username؛
+            // کلیدش خودِ چالش است تا کوبیدنِ یک چالش، بقیه‌ی پشتِ همان NAT را قفل نکند.
             $user = $request->user();
             $discriminator = $user !== null
                 ? (string) $user->id
-                : (string) $request->input('username', '');
+                : (string) ($request->input('username') ?: $request->input('challenge', ''));
 
             $throttleKey = 'otp:'.$request->ip().':'.$discriminator;
 

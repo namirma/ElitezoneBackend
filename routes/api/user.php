@@ -49,6 +49,7 @@ use App\Http\Controllers\Api\User\SupplierProductPriceController;
 use App\Http\Controllers\Api\User\SupplierRequestController;
 use App\Http\Controllers\Api\User\SupplierShippingRateController;
 use App\Http\Controllers\Api\User\SupplierStockController;
+use App\Http\Controllers\Api\User\TwoFactorController;
 use App\Http\Controllers\Api\User\UserBankAccountController;
 use App\Http\Controllers\Api\User\UserDebtController;
 use App\Http\Controllers\Api\User\WalletController;
@@ -241,6 +242,17 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/password/otp', [AccountSecurityController::class, 'changePasswordFirstAttempt'])->middleware('throttle:sms');          // step 1: send code
         Route::post('/password/verify', [AccountSecurityController::class, 'verifyPasswordOtp'])->middleware('throttle:otp-verify'); // step 2: verify code (non-consuming)
         Route::post('/password', [AccountSecurityController::class, 'setPassword'])->middleware('throttle:otp-verify');              // step 3: set new password
+
+        // ── ورودِ دومرحله‌ای (TOTP) — تصمیمِ مدیریت شماره‌ی ۸ ─────────────────────
+        // setup راز می‌سازد (تا confirm بی‌اثر) → confirm با اولین کدِ اپ فعال می‌کند و
+        // ده کدِ بازیابی را یک بار برمی‌گرداند → disable با یک کدِ معتبر خاموش می‌کند.
+        // throttle:otp-verify روی دو مسیری که کد می‌سنجند — هم‌ردیفِ password/verify.
+        Route::prefix('2fa')->controller(TwoFactorController::class)->group(function () {
+            Route::get('/', 'show');
+            Route::post('/setup', 'setup')->middleware('throttle:10,1');
+            Route::post('/confirm', 'confirm')->middleware('throttle:otp-verify');
+            Route::post('/disable', 'disable')->middleware('throttle:otp-verify');
+        });
 
         Route::prefix('change-mobile')->controller(AccountSecurityController::class)->group(function () {
             Route::get('/', 'updateMobile');

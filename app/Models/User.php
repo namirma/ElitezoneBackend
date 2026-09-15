@@ -223,6 +223,25 @@ class User extends Authenticatable
         return $this->hasOne(EmployerProfile::class);
     }
 
+    // ── ورودِ دومرحله‌ای (TOTP) ──────────────────────────────────────────────
+    /** @return HasOne<UserTwoFactor, $this> */
+    public function twoFactor(): HasOne
+    {
+        return $this->hasOne(UserTwoFactor::class);
+    }
+
+    /**
+     * ردیفِ تأییدنشده (setup بدونِ confirm) در ورود بی‌اثر است.
+     *
+     * عمداً کوئری است نه رابطه‌ی کش‌شده: روی یک نمونه‌ی زنده‌ی User (تست، Octane)
+     * `$this->twoFactor` پس از اولین خواندن ثابت می‌ماند و فعال‌شدنِ بعدی را نمی‌بیند.
+     */
+    public function hasTwoFactorEnabled(): bool
+    {
+        return $this->twoFactor()->whereNotNull(UserTwoFactor::ENABLED_AT)->exists();
+    }
+    // ── پایانِ ورودِ دومرحله‌ای ──────────────────────────────────────────────
+
     public function type(): BelongsTo
     {
         return $this->belongsTo(UserType::class, self::TYPE_ID);

@@ -56,6 +56,13 @@ Route::controller(AuthController::class)->prefix('authenticate')->group(function
     Route::middleware('auth:sanctum')->post('/logout', 'logout');
 });
 
+// ── ورودِ دومرحله‌ای (TOTP) — مرحله‌ی دوم ────────────────────────────────────
+// `{challenge, code | recovery_code}` → توکن. چالش را verify-code / password/check /
+// change-password برای کاربرِ دارای دومرحله‌ای به‌جای توکن برمی‌گردانند.
+// throttle:otp-verify — کدِ ۶ رقمی brute-force پذیر است؛ کلیدِ محدودکننده روی
+// این مسیر `challenge` است (AppServiceProvider)، چون `username`ای در بدنه نیست.
+Route::post('/login/2fa', [AuthController::class, 'verifyTwoFactor'])->middleware('throttle:otp-verify');
+
 // ── Products & categories (public listing) ────────────────────────────────
 Route::prefix('products')->middleware(['attach.price.category'])->group(function () {
     Route::get('categories', [ProductCategoryController::class, 'index']);

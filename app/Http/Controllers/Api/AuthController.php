@@ -60,6 +60,124 @@ class AuthController extends Controller
         return $user->createToken($device)->plainTextToken;
     }
 
+    // ── ورودِ دومرحله‌ای (TOTP) — تصمیمِ مدیریت شماره‌ی ۸ ────────────────────────
+
+    /** عمرِ چالش: مرحله‌ی اول گذشته، کاربر فقط باید کدِ اپ را بخواند و بزند. */
+    private const TWO_FACTOR_CHALLENGE_TTL_SECONDS = 300;
+
+    /** پس از این تعداد کدِ غلط، چالش می‌سوزد و مرحله‌ی اول باید تکرار شود. */
+    private const TWO_FACTOR_MAX_FAILURES = 5;
+
+    /**
+     * پایانِ ورودِ موفق (کدِ پیامکی، رمز، یا بازنشانیِ رمز) — هر سه مسیر از این‌جا
+     * رد می‌شوند، پس گاردِ دومرحله‌ای جایی نیست که بشود دورش زد.
+     *
+     * اگر کاربر ورودِ دومرحله‌ای فعال دارد، توکن صادر **نمی‌شود**: یک چالشِ
+     * ۵ دقیقه‌ایِ یک‌بارمصرف (کلیدِ تصادفیِ ۴۸ کاراکتری در کش) برمی‌گردد که
+     * `verifyTwoFactor` با کدِ اپ یا کدِ بازیابی به توکن تبدیل می‌کند. نشستِ
+     * stateful هم بسته می‌شود — `Auth::login` پیش از این نقطه صدا زده شده و روی
+     * مبدأِ stateful یک کوکیِ نشست می‌ساخت که مرحله‌ی دوم را بی‌معنی می‌کرد.
+     */
+    private function finishLogin(User $user, Request $request, string $message): JsonResponse
+    {
+        if (! $user->hasTwoFactorEnabled()) {
+            return $this->tokenResponse($user, $request, $message);
+        }
+
+        if ($request->hasSession()) {
+            Auth::guard('web')->logout();
+            $request->session()->invalidate();
+        }
+
+        $challenge = Str::random(48);
+        Cache::put(
+            $this->twoFactorChallengeKey($challenge),
+            ['user_id' => $user->id, 'failures' => 0],
+            self::TWO_FACTOR_CHALLENGE_TTL_SECONDS,
+        );
+
+        return success(['requires_2fa' => true, 'challenge' => $challenge], __('auth.two_factor_required'));
+    }
+
+    private function tokenResponse(User $user, Request $request, string $message): JsonResponse
+    {
+        $token = $this->issueTokenForDevice($user, $request);
+
+        $userWithRelations = $user->fresh([
+            User::RELATION_PROFILE,
+            User::RELATION_TYPE,
+            User::RELATION_ROLES,
+            User::RELATION_BADGE,
+        ]);
+
+        return success(['user' => new UserResource($userWithRelations), 'token' => $token], $message);
+    }
+
+    private function twoFactorChallengeKey(string $challenge): string
+    {
+        return 'auth_2fa_challenge:'.$challenge;
+    }
+
+    /**
+     * مرحله‌ی دوم: `{challenge, code | recovery_code}` → توکن.
+     *
+     * `throttle:otp-verify` روی روت به‌ازای IP + چالش می‌شمارد؛ این‌جا هم به‌ازای
+     * خودِ چالش شمرده می‌شود تا کوبیدن از چند IP روی یک چالش، آن را بسوزاند.
+     * کدِ TOTP در پنجره‌ی ±۱ گام پذیرفته می‌شود ولی هر کد فقط یک بار
+     * (`UserTwoFactor::consumeTotp`)؛ کدِ بازیابی پس از مصرف حذف می‌شود.
+     */
+    public function verifyTwoFactor(Request $request): JsonResponse
+    {
+        $request->validate([
+            'challenge' => ['required', 'string', 'size:48'],
+            'code' => ['required_without:recovery_code', 'nullable', 'digits:6'],
+            'recovery_code' => ['required_without:code', 'nullable', 'string', 'max:20'],
+        ], [
+            'code.digits' => __('auth.code_digits'),
+            'code.required_without' => __('auth.code_exists'),
+            'recovery_code.required_without' => __('auth.code_exists'),
+        ]);
+
+        $key = $this->twoFactorChallengeKey((string) $request->input('challenge'));
+        $state = Cache::get($key);
+
+        if (! is_array($state)) {
+            return error(__('auth.two_factor_challenge_expired'), [], 410);
+        }
+
+        $user = User::find($state['user_id']);
+        $row = $user?->twoFactor()->first();
+
+        // در فاصله‌ی دو مرحله ممکن است دومرحله‌ای خاموش شده باشد — چالش دیگر معنی ندارد.
+        if ($user === null || $row === null || ! $row->isEnabled() || $this->isDisabled($user)) {
+            Cache::forget($key);
+
+            return error(__('auth.two_factor_challenge_expired'), [], 410);
+        }
+
+        $accepted = $request->filled('code')
+            ? $row->consumeTotp((string) $request->input('code'))
+            : $row->consumeRecoveryCode((string) $request->input('recovery_code'));
+
+        if (! $accepted) {
+            $state['failures']++;
+            if ($state['failures'] >= self::TWO_FACTOR_MAX_FAILURES) {
+                Cache::forget($key);
+
+                return error(__('auth.too_many_otp_attempts'), [], 429);
+            }
+            Cache::put($key, $state, self::TWO_FACTOR_CHALLENGE_TTL_SECONDS);
+
+            return error(__('auth.two_factor_code_invalid'), [], 422);
+        }
+
+        Cache::forget($key);
+
+        return $this->tokenResponse($user, $request, __('auth.login_success'));
+    }
+
+    // ── پایانِ ورودِ دومرحله‌ای ──────────────────────────────────────────────────
+
     /**
      * قفل تجمعی — مکمل throttle دقیقه‌ای روت، چون هم کد ۶ رقمی و هم رمز عبور
      * با IPهای متعدد قابل brute-force اند.
@@ -340,9 +458,6 @@ class AuthController extends Controller
         // پودیوم کند باشد، ورودِ همهٔ کاربران هم کند می‌شود.
         SyncIdentityToProfileJob::dispatch($user->id);
 
-        // ورود با کد یک‌بارمصرف — فقط نشستِ همین کلاینت جایگزین می‌شود
-        $token = $this->issueTokenForDevice($user, $request);
-
         if ($isNewUser) {
             SendSmsJob::dispatch($mobile, __('sms.newRegisterUser'));
 
@@ -352,17 +467,9 @@ class AuthController extends Controller
                 UserNotification::BODY => __('global.newUserNotificationBody'),
             ]);
         }
-        $userWithRelations = $user->fresh([
-            User::RELATION_PROFILE,
-            User::RELATION_TYPE,
-            User::RELATION_ROLES,
-            User::RELATION_BADGE,
-        ]);
-
-        return success([
-            'user' => new UserResource($userWithRelations),
-            'token' => $token,
-        ], __('auth.register_success'));
+        // ورود با کد یک‌بارمصرف — فقط نشستِ همین کلاینت جایگزین می‌شود؛ با
+        // دومرحله‌ایِ فعال، به‌جای توکن چالش برمی‌گردد (finishLogin).
+        return $this->finishLogin($user, $request, __('auth.register_success'));
     }
 
     public function checkPassword(Request $request)
@@ -418,17 +525,10 @@ class AuthController extends Controller
 
         $this->clearFailures($mobile, self::SCOPE_PASSWORD);
         Auth::login($user);
-        // ورود با رمز عبور — فقط نشستِ همین کلاینت جایگزین می‌شود، نه همه‌ی برنامه‌ها
-        $token = $this->issueTokenForDevice($user, $request);
 
-        $userWithRelations = $user->fresh([
-            User::RELATION_PROFILE,
-            User::RELATION_TYPE,
-            User::RELATION_ROLES,
-            User::RELATION_BADGE,
-        ]);
-
-        return success(['user' => new UserResource($userWithRelations), 'token' => $token], __('auth.login_success'));
+        // ورود با رمز عبور — فقط نشستِ همین کلاینت جایگزین می‌شود، نه همه‌ی برنامه‌ها؛
+        // با دومرحله‌ایِ فعال، به‌جای توکن چالش برمی‌گردد (finishLogin).
+        return $this->finishLogin($user, $request, __('auth.login_success'));
     }
 
     public function forgetPassword(Request $request)
@@ -509,9 +609,9 @@ class AuthController extends Controller
         // سپرده نمی‌شود: رمز عبور عوض شده، پس هر نشستی روی هر دستگاهی — از جمله
         // نشستِ کسی که رمز قدیمی را داشته — باید بیرون بیفتد.
         $user->tokens()->delete();
-        $token = $user->createToken(self::DEFAULT_DEVICE)->plainTextToken;
 
-        return success(['user' => new UserResource($user), 'token' => $token], __('auth.password_changed_successfully'));
+        // توکنِ تازه (یا با دومرحله‌ایِ فعال: چالش) — finishLogin.
+        return $this->finishLogin($user, $request, __('auth.password_changed_successfully'));
     }
 
     public function sendVerificationCode(Request $request)
