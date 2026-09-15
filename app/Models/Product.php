@@ -208,6 +208,27 @@ class Product extends Model
         return $this->belongsTo(OrderUnit::class, self::AGGREGATE_LIMIT_ORDER_UNIT_ID);
     }
 
+    /**
+     * درخواست‌های تغییرِ تأمین‌کننده روی این محصول (ویرایشِ خودش یا واریانت‌هایش).
+     *
+     * @return HasMany<ProductChangeRequest, $this>
+     */
+    public function changeRequests(): HasMany
+    {
+        return $this->hasMany(ProductChangeRequest::class, ProductChangeRequest::PRODUCT_ID, self::ID);
+    }
+
+    /**
+     * فقط بازها — `withCount('pendingChangeRequests')` به پنلِ تأمین‌کننده می‌گوید
+     * روی کدام ردیف «در انتظار تأیید» بگذارد.
+     *
+     * @return HasMany<ProductChangeRequest, $this>
+     */
+    public function pendingChangeRequests(): HasMany
+    {
+        return $this->changeRequests()->where(ProductChangeRequest::STATUS, ProductChangeRequest::STATUS_PENDING);
+    }
+
     public function scopeActive($query)
     {
         return $query->where(self::IS_ACTIVE, true);

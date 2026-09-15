@@ -3,18 +3,18 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Product\ProductSpecRules;
 use App\Http\Resources\Product\ProductImageResource;
 use App\Http\Resources\Product\ProductResource;
 use App\Http\Resources\Product\ProductVideoResource;
 use App\Models\Product;
 use App\Models\ProductImage;
 use App\Models\ProductVideo;
+use App\Services\Product\ProductCatalogWriter;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\Rule;
 
 /**
  * پنل مدیریت — CRUD محصولات + مدیریت رسانه (تصویر/ویدیو).
@@ -22,9 +22,16 @@ use Illuminate\Validation\Rule;
  * محصول با cuid مسیر می‌خورد. حذف محصولِ استفاده‌شده در سفارش‌ها به‌خاطر FK ممکن نیست؛
  * در آن حالت پیام «غیرفعالش کن» برمی‌گردد (به‌جای ۵۰۰). فایل‌های رسانه روی دیسک public
  * ذخیره و هنگام حذف، فایل فیزیکی هم پاک می‌شود.
+ *
+ * ⚠️ هر نوشتنی از `ProductCatalogWriter` می‌گذرد و قواعدش از `ProductSpecRules`
+ * می‌آید — همان دو چیزی که پذیرشِ درخواستِ تأمین‌کننده هم استفاده می‌کند. این
+ * کنترلر **نباید** دوباره `Product::create` یا قاعده‌ی محلی بگیرد، وگرنه دو
+ * مسیرِ نوشتن با دو تعریف از «محصولِ معتبر» ساخته می‌شود.
  */
 class AdminProductController extends Controller
 {
+    public function __construct(private readonly ProductCatalogWriter $writer) {}
+
     public function index(Request $request): JsonResponse
     {
         $request->validate([
@@ -71,17 +78,9 @@ class AdminProductController extends Controller
      */
     public function syncOrderUnits(Request $request, Product $product): JsonResponse
     {
-        $data = $request->validate([
-            'units' => ['present', 'array'],
-            'units.*.order_unit_id' => ['required', 'integer', 'exists:order_units,id'],
-            'units.*.max_quantity' => ['required', 'integer', 'min:0'],
-        ]);
+        $data = $request->validate(ProductSpecRules::orderUnits('units'));
 
-        $sync = [];
-        foreach ($data['units'] as $row) {
-            $sync[$row['order_unit_id']] = ['max_quantity' => $row['max_quantity']];
-        }
-        $product->orderUnits()->sync($sync);
+        $this->writer->syncOrderUnits($product, $data['units']);
 
         return success(
             new ProductResource($product->load(['category', 'orderUnits'])),
@@ -91,14 +90,14 @@ class AdminProductController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        $product = Product::create($request->validate($this->rules()));
+        $product = $this->writer->createProduct($request->validate(ProductSpecRules::product()));
 
         return created(new ProductResource($product->load('category')), __('admin.products.created'));
     }
 
     public function update(Request $request, Product $product): JsonResponse
     {
-        $product->update($request->validate($this->rules($product->id)));
+        $this->writer->updateProduct($product, $request->validate(ProductSpecRules::product($product->id, partial: true)));
 
         return success(new ProductResource($product->load('category')), __('admin.products.updated'));
     }
@@ -109,11 +108,11 @@ class AdminProductController extends Controller
             DB::transaction(function () use ($product) {
                 // remove uploaded media files before the DB cascade drops the rows
                 foreach ($product->images as $image) {
-                    $this->deleteFileIfOwned($image->image_path);
+                    $this->writer->deleteFileIfOwned($image->image_path);
                 }
                 foreach ($product->videos as $video) {
-                    $this->deleteFileIfOwned($video->video_path);
-                    $this->deleteFileIfOwned($video->thumbnail_path);
+                    $this->writer->deleteFileIfOwned($video->video_path);
+                    $this->writer->deleteFileIfOwned($video->thumbnail_path);
                 }
                 $product->delete();
             });
@@ -146,24 +145,14 @@ class AdminProductController extends Controller
 
     public function addImage(Request $request, Product $product): JsonResponse
     {
-        $data = $request->validate([
-            ProductImage::IMAGE_PATH => ['required', 'file', 'mimes:png,jpg,jpeg,webp', 'max:4096'],
-            ProductImage::IS_PRIMARY => ['boolean'],
-            ProductImage::SORT_ORDER => ['nullable', 'integer', 'min:0'],
-        ]);
+        $data = $request->validate(ProductSpecRules::imageUpload());
 
-        $image = DB::transaction(function () use ($request, $product, $data) {
-            $isPrimary = (bool) ($data[ProductImage::IS_PRIMARY] ?? false);
-            if ($isPrimary) {
-                $product->images()->update([ProductImage::IS_PRIMARY => false]);
-            }
-
-            return $product->images()->create([
-                ProductImage::IMAGE_PATH => $request->file(ProductImage::IMAGE_PATH)->store('products', 'public'),
-                ProductImage::IS_PRIMARY => $isPrimary,
-                ProductImage::SORT_ORDER => $data[ProductImage::SORT_ORDER] ?? 0,
-            ]);
-        });
+        $image = $this->writer->storeImage(
+            $product,
+            $request->file(ProductImage::IMAGE_PATH),
+            (bool) ($data[ProductImage::IS_PRIMARY] ?? false),
+            (int) ($data[ProductImage::SORT_ORDER] ?? 0),
+        );
 
         return created(new ProductImageResource($image), __('admin.products.image_added'));
     }
@@ -172,8 +161,7 @@ class AdminProductController extends Controller
     {
         $this->assertBelongsToProduct((int) $image->product_id, $product->id);
 
-        $this->deleteFileIfOwned($image->image_path);
-        $image->delete();
+        $this->writer->deleteImage($image);
 
         return success(null, __('admin.products.image_deleted'));
     }
@@ -194,21 +182,15 @@ class AdminProductController extends Controller
 
     public function addVideo(Request $request, Product $product): JsonResponse
     {
-        $request->validate([
-            ProductVideo::VIDEO_PATH => ['required', 'file', 'mimes:mp4,webm,mov,ogg', 'max:51200'],
-            ProductVideo::THUMBNAIL_PATH => ['nullable', 'file', 'mimes:png,jpg,jpeg,webp', 'max:4096'],
-            ProductVideo::TITLE => ['nullable', 'string', 'max:255'],
-            ProductVideo::SORT_ORDER => ['nullable', 'integer', 'min:0'],
-        ]);
+        $request->validate(ProductSpecRules::videoUpload());
 
-        $video = $product->videos()->create([
-            ProductVideo::VIDEO_PATH => $request->file(ProductVideo::VIDEO_PATH)->store('product-videos', 'public'),
-            ProductVideo::THUMBNAIL_PATH => $request->hasFile(ProductVideo::THUMBNAIL_PATH)
-                ? $request->file(ProductVideo::THUMBNAIL_PATH)->store('product-videos/thumbnails', 'public')
-                : null,
-            ProductVideo::TITLE => $request->input(ProductVideo::TITLE),
-            ProductVideo::SORT_ORDER => $request->integer(ProductVideo::SORT_ORDER, 0),
-        ]);
+        $video = $this->writer->storeVideo(
+            $product,
+            $request->file(ProductVideo::VIDEO_PATH),
+            $request->hasFile(ProductVideo::THUMBNAIL_PATH) ? $request->file(ProductVideo::THUMBNAIL_PATH) : null,
+            $request->input(ProductVideo::TITLE),
+            $request->integer(ProductVideo::SORT_ORDER, 0),
+        );
 
         return created(new ProductVideoResource($video), __('admin.products.video_added'));
     }
@@ -217,44 +199,15 @@ class AdminProductController extends Controller
     {
         $this->assertBelongsToProduct((int) $video->product_id, $product->id);
 
-        $this->deleteFileIfOwned($video->video_path);
-        $this->deleteFileIfOwned($video->thumbnail_path);
-        $video->delete();
+        $this->writer->deleteVideo($video);
 
         return success(null, __('admin.products.video_deleted'));
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────
 
-    private function rules(?int $ignoreId = null): array
-    {
-        $req = $ignoreId ? 'sometimes' : 'required';
-
-        return [
-            Product::CATEGORY_ID => [$req, 'integer', 'exists:product_categories,id'],
-            Product::NAME => [$req, 'string', 'max:255'],
-            Product::SLUG => [$req, 'string', 'max:255', Rule::unique('products', 'slug')->ignore($ignoreId)],
-            Product::SKU => [$req, 'string', 'max:255', Rule::unique('products', 'sku')->ignore($ignoreId)],
-            Product::DESCRIPTION => ['nullable', 'string'],
-            Product::SHIPPING_PROMO => ['nullable', 'string', 'max:255'],
-            Product::IS_ACTIVE => ['boolean'],
-            Product::IS_FEATURED => ['boolean'],
-            Product::ITEMS_PER_PAGE => ['nullable', 'integer', 'min:1', 'max:100'],
-            Product::AGGREGATE_MIN_ORDER_VALUE => ['nullable', 'numeric', 'min:0'],
-            Product::AGGREGATE_MAX_ORDER_VALUE => ['nullable', 'numeric', 'min:0'],
-            Product::AGGREGATE_LIMIT_ORDER_UNIT_ID => ['nullable', 'integer', 'exists:order_units,id'],
-        ];
-    }
-
     private function assertBelongsToProduct(int $ownerId, int $productId): void
     {
         abort_unless($ownerId === $productId, 404);
-    }
-
-    private function deleteFileIfOwned(?string $path): void
-    {
-        if ($path && ! str_starts_with($path, 'http') && Storage::disk('public')->exists($path)) {
-            Storage::disk('public')->delete($path);
-        }
     }
 }

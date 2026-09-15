@@ -27,6 +27,12 @@ class ProductCategoryResource extends BaseJsonResource
                 : null,
             ProductCategory::IS_ACTIVE => $this->is_active,
             'products_count' => $this->whenCounted('products'),
+            // انواعِ ویژگیِ این دسته (`category_attributes`) — فقط وقتی لود شده؛ فرمِ
+            // واریانت با آن فهرستِ ویژگی‌ها را به دسته‌ی انتخاب‌شده محدود می‌کند.
+            'attribute_type_ids' => $this->whenLoaded(
+                'attributeTypes',
+                fn () => $this->attributeTypes->pluck('id')->values()->all()
+            ),
         ];
     }
 }

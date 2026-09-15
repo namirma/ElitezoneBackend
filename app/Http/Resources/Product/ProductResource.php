@@ -25,6 +25,8 @@ class ProductResource extends BaseJsonResource
             Product::IS_FEATURED => (bool) $this->is_featured,
             Product::IS_ACTIVE => (bool) $this->is_active,
             'variants_count' => $this->whenCounted('variants'),
+            // پنلِ تأمین‌کننده: چند درخواستِ تغییرِ باز روی این محصول هست (فقط با withCount).
+            'pending_change_requests_count' => $this->whenCounted('pendingChangeRequests'),
             Product::VIEW_COUNT => $this->view_count,
             Product::ITEMS_PER_PAGE => $this->items_per_page,
 

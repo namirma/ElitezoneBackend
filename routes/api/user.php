@@ -44,6 +44,7 @@ use App\Http\Controllers\Api\User\SupplierDriverController;
 use App\Http\Controllers\Api\User\SupplierFactoryController;
 use App\Http\Controllers\Api\User\SupplierFactoryLocationController;
 use App\Http\Controllers\Api\User\SupplierOrderController;
+use App\Http\Controllers\Api\User\SupplierProductController;
 use App\Http\Controllers\Api\User\SupplierProductPriceController;
 use App\Http\Controllers\Api\User\SupplierRequestController;
 use App\Http\Controllers\Api\User\SupplierShippingRateController;
@@ -570,6 +571,25 @@ Route::middleware(['auth:sanctum'])->group(function () {
                     ->middleware('throttle:10,1');
                 Route::delete('/requests/{supplierRequest}', [SupplierRequestController::class, 'destroy'])
                     ->whereNumber('supplierRequest');
+
+                // کاتالوگ از نگاهِ تأمین‌کننده — خواندنِ کالاهایی که تأمین می‌کند و
+                // **پیشنهادِ** ساخت/ویرایشِ محصول و واریانت. محصول و واریانت
+                // بینِ همه‌ی تأمین‌کننده‌ها مشترک‌اند، پس هیچ‌کدام از این مسیرها
+                // کاتالوگ را نمی‌نویسد: هر پیشنهاد یک `ProductChangeRequest` است که
+                // ادمین از `admin/product-change-requests` تأیید یا رد می‌کند.
+                // فقط قیمت و موجودی (مالِ خودِ تأمین‌کننده) مستقیم نوشته می‌شوند.
+                Route::controller(SupplierProductController::class)->group(function () {
+                    Route::get('/products', 'index');
+                    Route::get('/products/options', 'options');
+                    Route::post('/products', 'store')->middleware('throttle:20,1');
+                    Route::get('/products/{product}', 'show');
+                    Route::put('/products/{product}', 'update')->middleware('throttle:20,1');
+                    Route::post('/products/{product}', 'update')->middleware('throttle:20,1'); // multipart
+                    Route::post('/products/{product}/variants', 'storeVariant')->middleware('throttle:20,1');
+                    Route::put('/variants/{variant}', 'updateVariant')->middleware('throttle:20,1');
+                    Route::get('/change-requests', 'requests');
+                    Route::delete('/change-requests/{changeRequest}', 'withdraw')->whereNumber('changeRequest');
+                });
 
                 // Factories — CRUD scoped to factories.supplier_user_id = خودم
                 Route::controller(SupplierFactoryController::class)->prefix('factories')->group(function () {

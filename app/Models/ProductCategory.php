@@ -73,9 +73,15 @@ class ProductCategory extends Model
         return $this->hasMany(Product::class, 'category_id');
     }
 
+    /**
+     * ⚠️ کلیدِ pivot صریح است: ستونِ `category_attributes` به دسته `category_id`
+     * است، نه `product_category_id`ای که لاراول از نامِ مدل حدس می‌زند. تا
+     * ۲۰۲۶-۰۹-۱۴ هیچ صداکننده‌ای نداشت و اولین `with('attributeTypes')` با
+     * «Unknown column» شکست.
+     */
     public function attributeTypes(): BelongsToMany
     {
-        return $this->belongsToMany(AttributeType::class, 'category_attributes')
+        return $this->belongsToMany(AttributeType::class, 'category_attributes', 'category_id', 'attribute_type_id')
             ->withPivot('is_required', 'is_filterable', 'sort_order')
             ->withTimestamps();
     }

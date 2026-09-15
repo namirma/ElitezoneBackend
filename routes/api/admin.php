@@ -35,6 +35,7 @@ use App\Http\Controllers\Api\Admin\AdminPriceFilterCategoryController;
 use App\Http\Controllers\Api\Admin\AdminPriceFilterController;
 use App\Http\Controllers\Api\Admin\AdminPriceFilterTypeController;
 use App\Http\Controllers\Api\Admin\AdminProductCategoryController;
+use App\Http\Controllers\Api\Admin\AdminProductChangeRequestController;
 use App\Http\Controllers\Api\Admin\AdminProductController;
 use App\Http\Controllers\Api\Admin\AdminProductPriceController;
 use App\Http\Controllers\Api\Admin\AdminProductVariantController;
@@ -445,6 +446,20 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
         // واحدهای سفارشِ مجاز + سقف تعداد (پیوت). بدون ردیف، افزودن به سبد ۴۲۲ می‌شود.
         Route::post('/{product}/order-units', 'syncOrderUnits');
     });
+
+    // صفِ درخواست‌های تغییرِ کاتالوگ از سوی تأمین‌کننده‌ها (ساخت/ویرایشِ محصول و
+    // واریانت). ⚠️ پذیرش **اعمال می‌کند** — از همان `ProductCatalogWriter`ی که
+    // مسیرهای `products` و `variants` بالا/پایین می‌نویسند. زیرِ `manage-catalog`
+    // چون نتیجه‌اش دقیقاً همان نوشتنِ کاتالوگ است.
+    Route::controller(AdminProductChangeRequestController::class)
+        ->prefix('product-change-requests')
+        ->middleware('admin.permission:manage-catalog')
+        ->group(function () {
+            Route::get('/', 'index');
+            Route::get('/{changeRequest}', 'show')->whereNumber('changeRequest');
+            Route::post('/{changeRequest}/approve', 'approve')->whereNumber('changeRequest');
+            Route::post('/{changeRequest}/reject', 'reject')->whereNumber('changeRequest');
+        });
 
     // Order Units — واحدهای سفارش (ظرفیت/بندیل/خرده‌فروشی…). `amount` ضریب تبدیل به
     // کیلوگرم است و مبنای وزنِ سبد، کرایهٔ حمل و تسویه — پس همان سطحِ کاتالوگ را می‌گیرد.

@@ -29,4 +29,8 @@ return [
     'order_cancel_escalated_subject' => 'ارجاع درخواست لغو به پشتیبانی',
     'order_cancel_admin_approved_subject' => 'تصمیم پشتیبانی: لغو سفارش',
     'order_cancel_admin_rejected_subject' => 'تصمیم پشتیبانی: ادامه‌ی سفارش',
+
+    // درخواستِ تغییرِ کاتالوگ (محصول/واریانت) — به تأمین‌کننده
+    'product_change_approved_subject' => 'تأیید تغییر کاتالوگ',
+    'product_change_rejected_subject' => 'رد تغییر کاتالوگ',
 ];
