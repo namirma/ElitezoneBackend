@@ -112,7 +112,7 @@ final class ProductChangeRequestService
     {
         $payload = $this->productPayload($data);
         $payload['variants'] = array_map(fn (array $v) => $this->variantPayload($v), $data['variants'] ?? []);
-        $payload += $this->storeUploads($images, $data['primary_image_index'] ?? null, $videos, $data['video_titles'] ?? []);
+        $payload += $this->storeUploads($images, isset($data['primary_image_index']) ? (int) $data['primary_image_index'] : null, $videos, $data['video_titles'] ?? []);
 
         return ProductChangeRequest::create([
             ProductChangeRequest::SUPPLIER_USER_ID => $supplier->id,
@@ -132,7 +132,7 @@ final class ProductChangeRequestService
         $this->assertSupplies($supplier->id, $product);
 
         $payload = $this->productPayload($data);
-        $payload += $this->storeUploads($images, $data['primary_image_index'] ?? null, $videos, $data['video_titles'] ?? []);
+        $payload += $this->storeUploads($images, isset($data['primary_image_index']) ? (int) $data['primary_image_index'] : null, $videos, $data['video_titles'] ?? []);
         $payload['remove_image_ids'] = array_values(array_map('intval', $data['remove_image_ids'] ?? []));
         $payload['remove_video_ids'] = array_values(array_map('intval', $data['remove_video_ids'] ?? []));
 
@@ -614,6 +614,9 @@ final class ProductChangeRequestService
      */
     private function storeUploads(array $images, ?int $primaryIndex, array $videos, array $titles): array
     {
+        // ⚠️ صداکننده‌ها `(int)` می‌کنند: multipart همه‌چیز را رشته می‌دهد («0») و
+        // `validated()` قاعده‌ی `integer` را cast نمی‌کند — روی ۵۰۰ِ زنده پیدا شد.
+
         $dir = ProductChangeRequest::UPLOAD_DIR.'/'.Str::uuid();
         $out = ['images' => [], 'videos' => []];
 

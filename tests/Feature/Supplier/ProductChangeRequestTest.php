@@ -252,7 +252,8 @@ class ProductChangeRequestTest extends TestCase
 
         $res = $this->post('/api/profile/supplier/products', $body + [
             'images' => [UploadedFile::fake()->image('a.jpg'), UploadedFile::fake()->image('b.jpg')],
-            'primary_image_index' => 1,
+            // رشته، نه عدد: multipart واقعی همین را می‌فرستد (روی ۵۰۰ِ زنده پیدا شد).
+            'primary_image_index' => '1',
         ], ['Accept' => 'application/json'])->assertCreated();
 
         $this->assertSame(ProductChangeRequest::TYPE_CREATE_PRODUCT, $res->json('data.type'));
