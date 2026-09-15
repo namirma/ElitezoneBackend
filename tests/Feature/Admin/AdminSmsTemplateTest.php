@@ -172,7 +172,10 @@ class AdminSmsTemplateTest extends TestCase
 
         $paid = collect($response->json('data'))->firstWhere('event', OrderPaid::class);
         $this->assertNotNull($paid);
-        $this->assertContains('order_number', $paid['placeholders']);
+        $this->assertContains('order_number', array_column($paid['placeholders'], 'name'));
+        $this->assertNotEmpty($paid['placeholders'][0]['meaning']);
+        $this->assertNotEmpty($paid['audiences'][0]['resolution']);
+        $this->assertContains('order_paid_supplier', array_column($paid['templates'], 'key'));
         $this->assertContains('supplier', array_column($paid['audiences'], 'value'));
     }
 

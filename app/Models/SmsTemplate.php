@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Sms\EventCatalog;
+use App\Sms\PlaceholderCatalog;
 use App\Support\PhoneNumber;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
@@ -69,6 +70,12 @@ class SmsTemplate extends Model
 
     const EVENT = 'event';
 
+    const TRIGGER_KIND = 'trigger_kind';
+
+    const SENDER = 'sender';
+
+    const SCHEDULE = 'schedule';
+
     const IS_CUSTOM = 'is_custom';
 
     const CREATED_AT = 'created_at';
@@ -88,6 +95,17 @@ class SmsTemplate extends Model
     const AUDIENCE_ADMIN = 'admin';
 
     const AUDIENCE_ANY = 'any';
+
+    /** محرک: داخلِ یک رویدادِ دامنه‌ای، یک اقدام/کلاسِ مشخص، یک کرون، یا (هنوز) هیچ‌جا. */
+    const KIND_EVENT = 'event';
+
+    const KIND_ACTION = 'action';
+
+    const KIND_SCHEDULED = 'scheduled';
+
+    const KIND_NONE = 'none';
+
+    const KINDS = [self::KIND_EVENT, self::KIND_ACTION, self::KIND_SCHEDULED, self::KIND_NONE];
 
     const AUDIENCES = [
         self::AUDIENCE_BUYER,
@@ -131,6 +149,9 @@ class SmsTemplate extends Model
         self::IS_ACTIVE,
         self::CONDITIONS,
         self::EVENT,
+        self::TRIGGER_KIND,
+        self::SENDER,
+        self::SCHEDULE,
         self::IS_CUSTOM,
     ];
 
@@ -194,6 +215,16 @@ class SmsTemplate extends Model
     }
 
     /**
+     * همان جانگهدارها، با معنی و نمونه — برای پنل.
+     *
+     * @return list<array{name: string, meaning: string, example: string}>
+     */
+    public function placeholderDetails(): array
+    {
+        return PlaceholderCatalog::describe($this->allowedPlaceholders(), (string) $this->{self::KEY});
+    }
+
+    /**
      * هر کلیدِ `lang/fa/sms.php` یک ردیف.
      *
      * با فهرستِ فراداده (seeder): عنوان/شرح/مخاطب/جانگهدارها/حفاظت به‌روز می‌شوند،
@@ -201,7 +232,11 @@ class SmsTemplate extends Model
      * بدونِ فهرست (بازشدنِ صفحه‌ی پنل): فقط ردیفِ **غایب** ساخته می‌شود، با عنوانِ
      * خودِ کلید — تا کلیدی که نشستِ دیگری همین امروز اضافه کرده از پنل جا نماند.
      *
-     * @param  array<string, array{0: string, 1: string, 2: string, 3: list<string>}>  $catalog
+     * عنصرِ پنجم، محرکِ ساخت‌یافته: `[kind, eventOrSender, schedule?]` —
+     * برای `event` عنصرِ دوم کلاسِ رویداد است و در ستونِ `event` می‌نشیند؛ برای
+     * بقیه کلاس/متد یا نامِ دستور است و در `sender` می‌نشیند.
+     *
+     * @param  array<string, array{0: string, 1: string, 2: string, 3: list<string>, 4?: array{0: string, 1?: string|null, 2?: string|null}}>  $catalog
      */
     public static function syncFromLang(array $catalog = []): void
     {
@@ -227,11 +262,17 @@ class SmsTemplate extends Model
 
             $row ??= new self([self::KEY => $key, self::BODY => $body, self::IS_ACTIVE => true]);
 
+            [$kind, $target, $schedule] = array_pad((array) ($meta[4] ?? []), 3, null);
+
             $row->fill([
                 self::TITLE => $meta[0] ?? $key,
                 self::TRIGGER_DESCRIPTION => $meta[1] ?? null,
                 self::AUDIENCE => $meta[2] ?? self::AUDIENCE_ANY,
                 self::PLACEHOLDERS => $meta[3] ?? static::placeholdersIn($body),
+                self::TRIGGER_KIND => $kind,
+                self::EVENT => $kind === self::KIND_EVENT ? $target : null,
+                self::SENDER => $kind === self::KIND_EVENT ? null : $target,
+                self::SCHEDULE => $schedule,
                 self::IS_CUSTOM => false,
             ]);
             // عمداً fillable نیست — فقط همین‌جا نوشته می‌شود، نه از بدنه‌ی درخواست.

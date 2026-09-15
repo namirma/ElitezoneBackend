@@ -11,6 +11,7 @@ use App\Models\SmsLog;
 use App\Models\SmsTemplate;
 use App\Services\SmsService;
 use App\Sms\EventCatalog;
+use App\Sms\PlaceholderCatalog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -58,6 +59,14 @@ class AdminSmsTemplateController extends Controller
     // GET /admin/sms-templates/events
     public function events(): JsonResponse
     {
+        // قالب‌هایی که همین حالا روی هر رویداد سوارند — built-in و سفارشی، هر دو
+        $usedBy = SmsTemplate::query()
+            ->whereNotNull(SmsTemplate::EVENT)
+            ->orderBy(SmsTemplate::IS_CUSTOM)
+            ->orderBy(SmsTemplate::ID)
+            ->get([SmsTemplate::ID, SmsTemplate::KEY, SmsTemplate::TITLE, SmsTemplate::EVENT, SmsTemplate::AUDIENCE, SmsTemplate::IS_ACTIVE, SmsTemplate::IS_CUSTOM])
+            ->groupBy(SmsTemplate::EVENT);
+
         $events = [];
 
         foreach (EventCatalog::all() as $class => $meta) {
@@ -66,10 +75,21 @@ class AdminSmsTemplateController extends Controller
                 'label' => $meta['label'],
                 'description' => $meta['description'],
                 'audiences' => collect($meta['audiences'])
-                    ->map(fn ($label, $value) => ['value' => $value, 'label' => $label])
+                    ->map(fn ($label, $value) => ['value' => $value, 'label' => $label, 'resolution' => $meta['resolutions'][$value] ?? null])
                     ->values()
                     ->all(),
-                'placeholders' => $meta['placeholders'],
+                'placeholders' => PlaceholderCatalog::describe($meta['placeholders']),
+                'templates' => ($usedBy[$class] ?? collect())
+                    ->map(fn (SmsTemplate $t) => [
+                        SmsTemplate::ID => $t->id,
+                        SmsTemplate::KEY => $t->{SmsTemplate::KEY},
+                        SmsTemplate::TITLE => $t->{SmsTemplate::TITLE},
+                        SmsTemplate::AUDIENCE => $t->{SmsTemplate::AUDIENCE},
+                        SmsTemplate::IS_ACTIVE => (bool) $t->{SmsTemplate::IS_ACTIVE},
+                        SmsTemplate::IS_CUSTOM => (bool) $t->{SmsTemplate::IS_CUSTOM},
+                    ])
+                    ->values()
+                    ->all(),
             ];
         }
 

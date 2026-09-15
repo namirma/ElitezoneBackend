@@ -39,7 +39,10 @@ use App\Models\WalletTransaction;
 final class EventCatalog
 {
     /**
-     * @return array<class-string, array{label: string, description: string, audiences: array<string, string>, placeholders: list<string>}>
+     * `resolutions` می‌گوید هر مخاطب **از کجای رویداد** پیدا می‌شود — همان چیزی که
+     * `recipients()` پایین‌تر اجرا می‌کند، به زبانِ آدم، تا پنل بتواند نشانش دهد.
+     *
+     * @return array<class-string, array{label: string, description: string, audiences: array<string, string>, resolutions: array<string, string>, placeholders: list<string>}>
      */
     public static function all(): array
     {
@@ -49,43 +52,56 @@ final class EventCatalog
             SmsTemplate::AUDIENCE_ELITE_YAR => 'الیت‌یارِ سفارش',
             SmsTemplate::AUDIENCE_SUPPLIER => 'تأمین‌کننده‌ی سفارش',
         ];
+        $orderResolutions = [
+            SmsTemplate::AUDIENCE_BUYER => 'کاربرِ placer_user_id سفارش — کسی که سفارش را ثبت کرده',
+            SmsTemplate::AUDIENCE_EMPLOYER => 'کاربرِ beneficiary_user_id — فقط وقتی سفارش «به نامِ دیگری» است؛ وگرنه کسی نمی‌گیرد',
+            SmsTemplate::AUDIENCE_ELITE_YAR => 'کاربرِ elite_yar_user_id — فقط اگر الیت‌یاری روی سفارش باشد',
+            SmsTemplate::AUDIENCE_SUPPLIER => 'تأمین‌کننده‌ی اقلامِ سفارش (supplier_user_id روی آیتم‌ها؛ یک سفارش یک تأمین‌کننده)',
+        ];
         $orderPlaceholders = ['order_number', 'amount', 'name'];
+        $walletOwner = [SmsTemplate::AUDIENCE_ANY => 'کاربرِ صاحبِ کیف پولی که تراکنش رویش ثبت شده'];
 
         return [
             OrderPlaced::class => [
                 'label' => 'ثبت سفارش',
                 'description' => 'هر بار که سفارشی ثبت می‌شود — چه رزرو، چه پرداخت‌شده.',
                 'audiences' => $orderAudiences,
+                'resolutions' => $orderResolutions,
                 'placeholders' => $orderPlaceholders,
             ],
             OrderPaid::class => [
                 'label' => 'پرداخت سفارش',
                 'description' => 'وقتی سفارش کامل پرداخت می‌شود و به صفِ کاریِ تأمین‌کننده می‌رود.',
                 'audiences' => $orderAudiences,
+                'resolutions' => $orderResolutions,
                 'placeholders' => $orderPlaceholders,
             ],
             OrderCancelled::class => [
                 'label' => 'لغو سفارش',
                 'description' => 'وقتی سفارش لغو می‌شود — توسط خریدار، ادمین یا انقضای رزرو.',
                 'audiences' => $orderAudiences,
+                'resolutions' => $orderResolutions,
                 'placeholders' => $orderPlaceholders,
             ],
             WalletFunded::class => [
                 'label' => 'شارژ کیف پول',
                 'description' => 'وقتی کیف پول کاربر شارژ می‌شود (درگاه یا تأیید واریز پادیوم).',
                 'audiences' => [SmsTemplate::AUDIENCE_ANY => 'صاحب کیف پول'],
+                'resolutions' => $walletOwner,
                 'placeholders' => ['amount', 'name'],
             ],
             TransactionProcessed::class => [
                 'label' => 'تصمیم ادمین روی تراکنش',
                 'description' => 'وقتی ادمین درخواست واریز/برداشت را تأیید یا رد می‌کند.',
                 'audiences' => [SmsTemplate::AUDIENCE_ANY => 'صاحب کیف پول'],
+                'resolutions' => $walletOwner,
                 'placeholders' => ['amount', 'type', 'status', 'name'],
             ],
             CustomerSegmentChanged::class => [
                 'label' => 'تغییر بخشِ مشتری',
                 'description' => 'وقتی تحلیلِ رفتار، بخشِ مشتری را عوض می‌کند (مثلاً «در خطر»).',
                 'audiences' => [SmsTemplate::AUDIENCE_ANY => 'کاربر'],
+                'resolutions' => [SmsTemplate::AUDIENCE_ANY => 'همان کاربری که بخشش عوض شده (خروجیِ کرونِ RFM)'],
                 'placeholders' => ['name', 'old_segment', 'new_segment'],
             ],
         ];
