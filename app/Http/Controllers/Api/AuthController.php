@@ -467,6 +467,7 @@ class AuthController extends Controller
                 UserNotification::BODY => __('global.newUserNotificationBody'),
             ]);
         }
+
         // ورود با کد یک‌بارمصرف — فقط نشستِ همین کلاینت جایگزین می‌شود؛ با
         // دومرحله‌ایِ فعال، به‌جای توکن چالش برمی‌گردد (finishLogin).
         return $this->finishLogin($user, $request, __('auth.register_success'));
