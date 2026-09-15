@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use App\Http\Requests\Admin\Concerns\ValidatesSmsTemplate;
+use App\Http\Requests\Concerns\ReadsScalarInput;
 use App\Models\SmsTemplate;
 use App\Sms\EventCatalog;
 use Illuminate\Foundation\Http\FormRequest;
@@ -15,6 +16,7 @@ use Illuminate\Validation\Validator;
  */
 class StoreSmsTemplateRequest extends FormRequest
 {
+    use ReadsScalarInput;
     use ValidatesSmsTemplate;
 
     public function authorize(): bool
@@ -24,7 +26,7 @@ class StoreSmsTemplateRequest extends FormRequest
 
     public function rules(): array
     {
-        $event = (string) $this->input(SmsTemplate::EVENT, '');
+        $event = $this->scalarInput(SmsTemplate::EVENT, '');
 
         return [
             SmsTemplate::TITLE => ['required', 'string', 'max:150'],
@@ -39,7 +41,7 @@ class StoreSmsTemplateRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $v) {
-            $event = (string) $this->input(SmsTemplate::EVENT, '');
+            $event = $this->scalarInput(SmsTemplate::EVENT, '');
             $allowed = EventCatalog::all()[$event]['placeholders'] ?? [];
 
             $this->assertPlaceholdersKnown($v, $this->input(SmsTemplate::BODY), $allowed);

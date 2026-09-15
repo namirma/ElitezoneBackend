@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use App\Http\Requests\Admin\Concerns\ValidatesSmsTemplate;
+use App\Http\Requests\Concerns\ReadsScalarInput;
 use App\Models\SmsTemplate;
 use App\Sms\EventCatalog;
 use Illuminate\Foundation\Http\FormRequest;
@@ -20,6 +21,7 @@ use Illuminate\Validation\Validator;
  */
 class UpdateSmsTemplateRequest extends FormRequest
 {
+    use ReadsScalarInput;
     use ValidatesSmsTemplate;
 
     public function authorize(): bool
@@ -30,7 +32,7 @@ class UpdateSmsTemplateRequest extends FormRequest
     public function rules(): array
     {
         $template = $this->template();
-        $event = (string) $this->input(SmsTemplate::EVENT, $template !== null ? (string) $template->{SmsTemplate::EVENT} : '');
+        $event = $this->scalarInput(SmsTemplate::EVENT, $template !== null ? (string) $template->{SmsTemplate::EVENT} : '');
 
         $rules = [
             SmsTemplate::BODY => ['sometimes', 'required', 'string', 'max:1000'],
@@ -57,7 +59,7 @@ class UpdateSmsTemplateRequest extends FormRequest
             }
 
             // رویدادِ تازه‌ی یک قالبِ سفارشی، جانگهدارهای خودش را می‌آورد.
-            $event = (string) $this->input(SmsTemplate::EVENT, '');
+            $event = $this->scalarInput(SmsTemplate::EVENT, '');
             $allowed = $template->{SmsTemplate::IS_CUSTOM} && $event !== ''
                 ? (EventCatalog::all()[$event]['placeholders'] ?? [])
                 : $template->allowedPlaceholders();

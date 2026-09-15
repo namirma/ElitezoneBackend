@@ -56,9 +56,12 @@ trait ValidatesSmsTemplate
     /**
      * @param  list<string>  $allowedPlaceholders
      */
-    protected function assertPlaceholdersKnown(Validator $validator, ?string $body, array $allowedPlaceholders): void
+    protected function assertPlaceholdersKnown(Validator $validator, mixed $body, array $allowedPlaceholders): void
     {
-        if ($body === null) {
+        // `after` روی بدنه‌ای که قاعده‌ها را رد کرده هم اجرا می‌شود؛ بدنه‌ی
+        // غیررشته‌ای (`{"body":[]}`) قبلاً TypeError → ۵۰۰ می‌داد. قاعده‌ی `string`
+        // خودش ۴۲۲ داده است. پین: `Security/ValidationNeverFiveHundredTest`.
+        if (! is_string($body)) {
             return;
         }
 
