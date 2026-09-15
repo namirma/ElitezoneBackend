@@ -49,7 +49,18 @@ class AdminPageController extends Controller
     // PUT /admin/pages/{page}
     public function update(UpdatePageRequest $request, Page $page): JsonResponse
     {
-        $page->update($request->validated());
+        $data = $request->validated();
+
+        // «برگرد به پیش‌فرضِ سایت»: پنل با پاک‌شدنِ آخرین اسلات `style: {}` می‌فرستد.
+        // `validated()` آرایه‌ی خالیِ زیرِ قاعده‌های تودرتو را برنمی‌گرداند، پس بدونِ
+        // این خط آن درخواست ۲۰۰ می‌گرفت و هیچ‌چیز عوض نمی‌شد — ادمین می‌توانست
+        // فاصله را تغییر دهد ولی هرگز به پیش‌فرض برگرداند. اسلاتِ `null` هم یعنی
+        // «حذف»، نه مقداری که باید ذخیره شود.
+        if ($request->exists(Page::STYLE)) {
+            $data[Page::STYLE] = array_filter((array) ($data[Page::STYLE] ?? []), fn ($v) => $v !== null);
+        }
+
+        $page->update($data);
 
         return success(new PageResource($page->refresh()), __('admin.pages.updated'));
     }

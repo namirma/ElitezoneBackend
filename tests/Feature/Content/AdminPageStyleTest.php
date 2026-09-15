@@ -113,6 +113,23 @@ class AdminPageStyleTest extends TestCase
     }
 
     #[Test]
+    public function an_empty_style_returns_the_page_to_the_site_default(): void
+    {
+        $page = $this->homePage();
+        $this->putJson("/api/admin/pages/{$page->id}", ['style' => ['blockGap' => '24']])->assertOk();
+
+        // پنل با پاک‌شدنِ آخرین اسلات دقیقاً `{}` می‌فرستد؛ قبلاً ۲۰۰ می‌گرفت و
+        // مقدارِ قبلی می‌ماند — بازگشت به پیش‌فرض عملاً غیرممکن بود.
+        $this->putJson("/api/admin/pages/{$page->id}", ['style' => []])->assertOk();
+        $this->assertSame([], $page->fresh()->{Page::STYLE} ?: []);
+        $this->assertSame([], $this->getJson('/api/pages/home/blocks')->assertOk()->json('data.style') ?: []);
+
+        // اسلاتِ null هم «حذف» است، نه مقداری برای ذخیره.
+        $this->putJson("/api/admin/pages/{$page->id}", ['style' => ['blockGap' => '24', 'pagePadTop' => null]])->assertOk();
+        $this->assertSame(['blockGap' => '24'], $page->fresh()->{Page::STYLE});
+    }
+
+    #[Test]
     public function saving_a_style_flushes_the_public_page_cache(): void
     {
         $page = $this->homePage();
