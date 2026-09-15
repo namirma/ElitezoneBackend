@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Models\ProductPrice;
 use App\Models\SupplierRequest;
+use App\Services\Notifier;
+use App\Services\Sales\SalesSettings;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -62,7 +65,9 @@ class ExpirePriceChangeRequests extends Command
      */
     private function expire(SupplierRequest $request): bool
     {
-        return (bool) DB::transaction(function () use ($request) {
+        $hours = app(SalesSettings::class)->priceChangeReviewHours();
+
+        $expired = (bool) DB::transaction(function () use ($request, $hours) {
             /** @var SupplierRequest $locked */
             $locked = SupplierRequest::whereKey($request->getKey())->lockForUpdate()->first();
 
@@ -72,12 +77,47 @@ class ExpirePriceChangeRequests extends Command
 
             $locked->forceFill([
                 SupplierRequest::STATUS => SupplierRequest::STATUS_REJECTED,
-                SupplierRequest::REVIEW_NOTE => __('admin.supplier_requests.price_review_expired'),
+                SupplierRequest::REVIEW_NOTE => __('admin.supplier_requests.price_review_expired', ['hours' => $hours]),
                 SupplierRequest::REVIEWED_BY => null,
                 SupplierRequest::REVIEWED_AT => now(),
             ])->save();
 
             return true;
         });
+
+        if ($expired) {
+            $this->notifySupplier($request, $hours);
+        }
+
+        return $expired;
+    }
+
+    /**
+     * تأمین‌کننده باید بفهمد چرا قیمتش اعمال نشد و کالایش برگشته — وگرنه
+     * «رد شد» را در پنل می‌بیند و نمی‌داند چه کند. پس از commit، تا پیامکِ
+     * ردیفی نرود که تراکنشش برگشته.
+     *
+     * بازگرداندنِ کالا به کاتالوگ خودِ همین ردشدن است: قیمتِ ردیف تا تأیید دست
+     * نخورده بود (پیشنهاد فقط در payload می‌نشیند) و `scopeCatalogVisible` با
+     * بسته‌شدنِ درخواست دیگر چیزی برای پنهان‌کردن ندارد — هیچ نوشتنی لازم نیست.
+     */
+    private function notifySupplier(SupplierRequest $request, int $hours): void
+    {
+        $supplier = $request->supplier;
+
+        if ($supplier === null) {
+            return;
+        }
+
+        $variant = ProductPrice::query()
+            ->whereKey($request->{SupplierRequest::PRODUCT_PRICE_ID})
+            ->with('productVariant')
+            ->first()?->productVariant?->name;
+
+        Notifier::toUser(
+            $supplier,
+            __('notifications.price_change_expired_subject'),
+            __('sms.price_change_expired', ['variant' => $variant ?? '—', 'hours' => $hours]),
+        );
     }
 }

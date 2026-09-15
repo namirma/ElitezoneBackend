@@ -38,6 +38,9 @@ class ProductVariantResource extends BaseJsonResource
             ProductVariant::DISCOUNT_END_DATE => optional($this->{ProductVariant::DISCOUNT_END_DATE})->format('Y-m-d H:i:s'),
             'active_discount_details' => $this->getActiveDiscountDetails(),
             'min_price' => isset($this->min_price) ? (string) $this->min_price : null,
+            // فقط `showVariant` این را ست می‌کند (دیپ‌لینک به واریانتِ در انتظارِ
+            // تأیید قیمت)؛ فهرست‌ها چنین واریانتی را اصلاً برنمی‌گردانند.
+            'price_under_review' => (bool) ($this->price_under_review ?? false),
             'attributes' => ProductVariantAttributeResource::collection(
                 $this->whenLoaded('variantAttributes', $this->variantAttributes)
             ),

@@ -3,6 +3,7 @@
 namespace App\Actions\Product;
 
 use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\ProductVariantAttribute;
 use App\Services\Pricing\VariantPriceHydrator;
 use App\Services\Product\AttributeFilterResolver;
@@ -22,7 +23,11 @@ class FilterProductVariantsAction
         // 'cartItems' حذف شد: همهٔ ردیف‌های cart_items همهٔ کاربران را برای هر واریانت لود
         // می‌کرد، در حالی که نه در VariantPriceHydrator و نه در ProductVariantResource خوانده
         // می‌شود — اتلافِ حافظه/کوئری روی یک endpoint عمومیِ داغ.
-        $query = $product->variants()
+        // واریانتی که درخواستِ تغییرِ قیمتِ باز دارد از کاتالوگ بیرون است
+        // (تصمیم مدیریت ۲۰۲۶-۰۹-۰۹). با تأیید/رد/انقضا خودبه‌خود برمی‌گردد.
+        $query = ProductVariant::query()
+            ->where(ProductVariant::PRODUCT_ID, $product->getKey())
+            ->catalogVisible()
             ->with(['prices.factory', 'prices.factory.activeProductFeatures', 'prices.factoryLocation', 'variantAttributes.attributeType', 'limitOrderUnit']);
 
         // ۲. اعمال فیلتر ویژگی‌ها

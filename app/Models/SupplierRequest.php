@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -28,6 +29,15 @@ class SupplierRequest extends Model
     public const ORDER_ID = 'order_id';
 
     public const TICKET_ID = 'ticket_id';
+
+    /**
+     * ردیفِ `product_prices` که درخواستِ `price_change` روی آن است.
+     *
+     * همان مقدارِ `payload.product_price_id`، ولی به‌صورت ستونِ ایندکس‌دار — تا
+     * کاتالوگِ عمومی بتواند واریانتِ «در انتظار تأیید» را با یک `whereDoesntHave`
+     * پنهان کند (تصمیم مدیریت: تا تأیید نشده، کالا موقتاً از کاتالوگ خارج است).
+     */
+    public const PRODUCT_PRICE_ID = 'product_price_id';
 
     public const REASON = 'reason';
 
@@ -87,6 +97,7 @@ class SupplierRequest extends Model
         self::TYPE,
         self::ORDER_ID,
         self::TICKET_ID,
+        self::PRODUCT_PRICE_ID,
         self::REASON,
         self::PAYLOAD,
     ];
@@ -117,5 +128,26 @@ class SupplierRequest extends Model
     public function isPending(): bool
     {
         return $this->{self::STATUS} === self::STATUS_PENDING;
+    }
+
+    /**
+     * ردِ خودکار به‌خاطرِ گذشتنِ مهلت — نه تصمیمِ یک ادمین.
+     *
+     * `ExpirePriceChangeRequests` عمداً `reviewed_by` را null می‌گذارد؛ همین
+     * امضاست که «منقضی» را از «رد شد» جدا می‌کند و پنل آن را جداگانه نشان می‌دهد.
+     */
+    public function isExpiredByDeadline(): bool
+    {
+        return $this->{self::STATUS} === self::STATUS_REJECTED
+            && $this->{self::REVIEWED_BY} === null
+            && $this->{self::REVIEW_DEADLINE} !== null;
+    }
+
+    /** درخواست‌های تغییرِ قیمتِ باز — همان‌هایی که کالا را از کاتالوگ بیرون نگه می‌دارند. */
+    public function scopePendingPriceChange(Builder $query): Builder
+    {
+        return $query
+            ->where(self::TYPE, self::TYPE_PRICE_CHANGE)
+            ->where(self::STATUS, self::STATUS_PENDING);
     }
 }

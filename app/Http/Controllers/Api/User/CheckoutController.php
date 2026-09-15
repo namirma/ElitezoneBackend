@@ -113,6 +113,15 @@ class CheckoutController extends Controller
             //    تسویه را ببندد.
             'online_gateway_active' => $this->onlineGatewayIsActive(),
             'is_for_beneficiary' => $cart->isForBeneficiary(),
+            // قفلِ سبد (تصمیم مدیریت ۲۰۲۶-۰۹-۱۴): تا لینک باز است هر تغییرِ سبد
+            // ۴۰۹ می‌گیرد و فرانت به‌جای دکمه‌ی تسویه، «لغو لینک پرداخت» را
+            // نشان می‌دهد. `beneficiary_name` فقط وقتی هست که واقعاً نامی هست
+            // (قاعده‌ی صداقت — نامِ خالی جعل نمی‌شود).
+            'cart_locked' => $cart->isForBeneficiary(),
+            'payment_link_sent_at' => $cart->{Cart::PAYMENT_LINK_SENT_AT}?->toIso8601String(),
+            'beneficiary_name' => $cart->isForBeneficiary()
+                ? (trim((string) $cart->beneficiary?->profile?->name) ?: null)
+                : null,
             // اجزای پایه، تا فرانت مجبور نباشد خودش دوباره جمع بزند —
             // و `shipping_included` صریح می‌گوید کرایه شمرده شده یا نه.
             'breakdown' => [
@@ -322,6 +331,26 @@ class CheckoutController extends Controller
         return success(
             $links->issue($user, $cart, (int) $request->integer('beneficiary_user_id')),
             __('checkout.payment_link_sent')
+        );
+    }
+
+    /**
+     * POST /checkout/payment-link/cancel — الیت‌یار لینکِ فرستاده‌شده را لغو می‌کند.
+     *
+     * بی‌اثر روی سبدی که لینکِ بازی ندارد (۲۰۰ با `cancelled: false`) — دوبار
+     * زدنِ دکمه یا لغو پس از پرداختِ کارفرما خطا نیست. سبد همان سبدِ خودِ
+     * کاربر است، پس کسی جز فرستنده‌ی لینک به آن نمی‌رسد.
+     */
+    public function cancelPaymentLink(CartPaymentLinkService $links): JsonResponse
+    {
+        $user = Auth::user();
+        $cart = Cart::queryForUser($user->id)->first();
+
+        $cancelled = $cart !== null && $links->cancel($user, $cart);
+
+        return success(
+            ['cancelled' => $cancelled],
+            $cancelled ? __('checkout.payment_link_cancelled_by_you') : __('checkout.cart_has_no_payment_link')
         );
     }
 

@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Support\Carbon;
 
 /**
@@ -207,6 +209,43 @@ class ProductVariant extends Model
     public function scopeActive($query)
     {
         return $query->where(self::IS_ACTIVE, true);
+    }
+
+    /**
+     * درخواست‌های تغییرِ قیمتِ بازِ روی هر یک از ردیف‌های قیمتِ این واریانت.
+     *
+     * @return HasManyThrough<SupplierRequest, ProductPrice, $this>
+     */
+    public function pendingPriceChanges(): HasManyThrough
+    {
+        return $this->hasManyThrough(
+            SupplierRequest::class,
+            ProductPrice::class,
+            ProductPrice::PRODUCT_VARIANT_ID,
+            SupplierRequest::PRODUCT_PRICE_ID,
+            self::ID,
+            ProductPrice::ID,
+        )->pendingPriceChange();
+    }
+
+    /**
+     * «تا تأیید نشده کالا موقتاً از کاتالوگ خارج می‌شود» (تصمیم مدیریت ۲۰۲۶-۰۹-۰۹).
+     *
+     * واریانتی که روی هر یک از مبدأهایش درخواستِ تغییرِ قیمتِ باز دارد از فهرست‌ها
+     * و صفحه‌ی محصول بیرون می‌ماند؛ با تأیید، رد یا انقضای درخواست خودبه‌خود
+     * برمی‌گردد — چون قیمتِ ردیف تا تأیید دست نخورده، با همان قیمتِ قبلی.
+     * مسیرِ سبد جداگانه گارد دارد (`AddToCartAction`, `PlaceOrderAction`): این
+     * scope فقط نمایش را می‌بندد، شناسه‌ی واریانت از یک تبِ باز هنوز می‌رسد.
+     */
+    public function scopeCatalogVisible(Builder $query): Builder
+    {
+        return $query->whereDoesntHave('pendingPriceChanges');
+    }
+
+    /** آیا این واریانت به‌خاطرِ درخواستِ قیمتِ باز از کاتالوگ بیرون است؟ */
+    public function isPriceUnderReview(): bool
+    {
+        return $this->pendingPriceChanges()->exists();
     }
 
     public function stockSubscriptions(): HasMany

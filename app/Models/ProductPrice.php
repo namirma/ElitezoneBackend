@@ -6,6 +6,7 @@ use App\Services\Pricing\Pipes\SetBasePrice;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -150,6 +151,23 @@ class ProductPrice extends Model
             self::APPROVED_GOLDEN_FIGURE => $this->{self::GOLDEN_FIGURE},
             self::APPROVED_PRICE_AT => now(),
         ]);
+    }
+
+    /**
+     * درخواستِ تغییرِ قیمتِ بازِ این ردیف (اگر هست).
+     *
+     * تا این رابطه پر است، واریانت از کاتالوگِ عمومی پنهان است و پنلِ
+     * تأمین‌کننده «در انتظار تأیید تا …» نشان می‌دهد. `latestOfMany` چون یک
+     * تأمین‌کننده می‌تواند پیش از تصمیمِ ادمین دوباره ثبت کند؛ آخری نمایش داده
+     * می‌شود و گاردِ «پایه تکان خورده» موقعِ تأیید بقیه را می‌گیرد.
+     *
+     * @return HasOne<SupplierRequest, $this>
+     */
+    public function pendingPriceChange(): HasOne
+    {
+        return $this->hasOne(SupplierRequest::class, SupplierRequest::PRODUCT_PRICE_ID)
+            ->pendingPriceChange()
+            ->latestOfMany();
     }
 
     protected static function booted(): void

@@ -78,6 +78,12 @@ class Cart extends Model
     /** آخرین باری که لینک پرداخت پیامک شد — فقط برای نمایش و محدودکردنِ ارسالِ دوباره. */
     const PAYMENT_LINK_SENT_AT = 'payment_link_sent_at';
 
+    /**
+     * لحظه‌ی لغوِ لینک توسط الیت‌یار. فقط برای صفحه‌ی کارفرما معنا دارد («لغو
+     * شد» در برابرِ «لینکی نبود»)؛ صدورِ لینکِ بعدی پاکش می‌کند.
+     */
+    const PAYMENT_LINK_CANCELLED_AT = 'payment_link_cancelled_at';
+
     const ADDRESS_ID = 'address_id';
 
     /** فقط کد؛ مبلغ در لحظه‌ی رزرو/پرداخت محاسبه می‌شود (بند ۳.۱۳). */
@@ -109,12 +115,15 @@ class Cart extends Model
         self::PARKED_UNTIL => 'datetime',
         self::PARK_WARNED_AT => 'datetime',
         self::PAYMENT_LINK_SENT_AT => 'datetime',
+        self::PAYMENT_LINK_CANCELLED_AT => 'datetime',
     ];
 
     /**
      * کارفرمای مقصدِ لینک پرداخت. مثل `supplier_user_id` عمداً fillable نیست —
      * فقط `CartPaymentLinkService` آن را می‌نویسد، وگرنه یک فیلدِ اضافه در بدنه‌ی
      * «افزودن به سبد» می‌توانست پرداخت را به کیف پولِ شخصِ دیگری بیندازد.
+     *
+     * @return BelongsTo<User, $this>
      */
     public function beneficiary(): BelongsTo
     {

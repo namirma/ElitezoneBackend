@@ -15,6 +15,8 @@ return [
     'order_cancelled_subject' => 'لغو سفارش',
     'supplier_new_order_subject' => 'سفارش جدید',
     'wallet_funded_subject' => 'شارژ کیف پول',
+    // [flow1] انقضای درخواستِ تغییرِ قیمت — به تأمین‌کننده
+    'price_change_expired_subject' => 'انقضای درخواست تغییر قیمت',
     'transaction_subject' => 'نتیجهٔ تراکنش',
 
     // ── [flow2] تمدیدِ رزرو و لغوِ دوطرفه (پرسش ۳ و ۴ مدیریت) ────────────────

@@ -38,6 +38,9 @@ class FilterProductsAction
         $relations = [
             'category',
             'images',
+            // واریانتِ «در انتظار تأیید قیمت» در فهرست نمی‌آید و در کمینه‌ی قیمتِ
+            // محصول هم شمرده نمی‌شود (تصمیم مدیریت ۲۰۲۶-۰۹-۰۹).
+            'variants' => fn ($q) => $q->catalogVisible(),
             'variants.prices.factory',
             'variants.prices.factory.activeProductFeatures',
             'variants.prices.factoryLocation',

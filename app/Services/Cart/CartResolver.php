@@ -2,6 +2,7 @@
 
 namespace App\Services\Cart;
 
+use App\Exceptions\BusinessException;
 use App\Models\Cart;
 use App\Models\CustomerType;
 use App\Services\PricingRoleResolver;
@@ -22,6 +23,7 @@ class CartResolver
 {
     public function __construct(
         private readonly PricingRoleResolver $roleResolver,
+        private readonly CartPaymentLinkService $paymentLinks,
     ) {}
 
     /**
@@ -32,6 +34,24 @@ class CartResolver
     {
         $cart = $this->loadOrCreateCart($request);
         $this->syncContext($cart);
+
+        return $cart;
+    }
+
+    /**
+     * همان `resolve()` برای مسیرهایی که سبد را **تغییر** می‌دهند.
+     *
+     * قفلِ «لینکِ پرداختِ باز» یک‌جا این‌جاست، نه در هر اکشن: شش اندپوینتِ
+     * سبد (افزودن/ویرایش/حذفِ آیتم، فیلتر، نوعِ مشتری، کوپن) همه از همین رد
+     * می‌شوند، پس هفتمی که فردا اضافه شود نمی‌تواند گارد را جا بیندازد.
+     * خواندن (`getCart`, `pre-invoice`, `shipping-quote`) همچنان `resolve()` است.
+     *
+     * @throws BusinessException ۴۰۹ وقتی لینکِ پرداخت باز است
+     */
+    public function resolveForMutation(Request $request): Cart
+    {
+        $cart = $this->resolve($request);
+        $this->paymentLinks->assertMutable($cart);
 
         return $cart;
     }

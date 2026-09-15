@@ -28,6 +28,7 @@ use App\Services\Cart\CartResolver;
 use App\Services\PriceCalculationService;
 use App\Services\Pricing\VariantPriceHydrator;
 use App\Services\Product\AttributeFilterResolver;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 
@@ -142,7 +143,18 @@ class ProductController extends Controller
             'product.orderUnits',
         ]);
 
+        // دیپ‌لینک به واریانتی که قیمتش در انتظار تأیید است ۴۰۴ نمی‌شود — صفحه
+        // رندر می‌شود ولی بدونِ قیمت و با پرچمِ صریح، تا سایت «موقتاً ناموجود»
+        // بنویسد نه یک قیمتِ کهنه (قاعده‌ی صداقت). فهرست‌ها همین واریانت را
+        // اصلاً نشان نمی‌دهند (`scopeCatalogVisible`).
+        $underReview = $variant->isPriceUnderReview();
+
+        if ($underReview) {
+            $variant->setRelation('prices', new EloquentCollection);
+        }
+
         $priceHydrator->hydrate($variant, $this->cartResolver->activeCode());
+        $variant->setAttribute('price_under_review', $underReview);
 
         return success([
             'variant' => new ProductVariantResource($variant),

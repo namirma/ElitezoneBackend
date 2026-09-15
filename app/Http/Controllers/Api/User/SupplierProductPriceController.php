@@ -8,6 +8,7 @@ use App\Http\Resources\Product\ProductPriceResource;
 use App\Models\Factory;
 use App\Models\FactoryLocation;
 use App\Models\ProductPrice;
+use App\Services\Sales\SalesSettings;
 use App\Services\Supplier\PriceChangeApprovalGate;
 use App\Services\Supplier\SupplierOriginGuard;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -43,7 +44,9 @@ class SupplierProductPriceController extends Controller
             ->when($request->filled('product_variant_id'), fn ($q) => $q->where(ProductPrice::PRODUCT_VARIANT_ID, $request->integer('product_variant_id')))
             ->when($request->filled('factory_id'), fn ($q) => $q->where(ProductPrice::FACTORY_ID, $request->integer('factory_id')))
             ->when($request->filled('factory_location_id'), fn ($q) => $q->where(ProductPrice::FACTORY_LOCATION_ID, $request->integer('factory_location_id')))
-            ->with(['productVariant', 'factory', 'factoryLocation'])
+            // `pendingPriceChange` تا پنل بتواند «در انتظار تأیید تا …» را روی
+            // همان ردیف بنویسد — تصمیم مدیریت: مهلت به تأمین‌کننده نشان داده شود.
+            ->with(['productVariant', 'factory', 'factoryLocation', 'pendingPriceChange'])
             ->latest(ProductPrice::ID)
             ->paginate($this->perPage(50));
 
@@ -192,7 +195,7 @@ class SupplierProductPriceController extends Controller
             return success([
                 'queued_for_approval' => true,
                 'change_percent' => $queued['change_percent'],
-            ], __('supplier.prices.queued_for_approval'));
+            ], __('supplier.prices.queued_for_approval', ['hours' => app(SalesSettings::class)->priceChangeReviewHours()]));
         }
 
         $data[ProductPrice::LAST_UPDATED_AT] = now();

@@ -17,7 +17,7 @@ use App\Services\Sales\SalesSettings;
  * مسیرِ اول می‌نشست، ارسالِ همان تغییر به‌صورت یک ردیفِ bulk کاملاً دورش می‌زد.
  * پس منطق این‌جاست و هر دو کنترلر از همین رد می‌شوند.
  *
- * قاعده‌ی درصد: نسبت به **قیمتِ فعلی** سنجیده می‌شود و قدرِمطلق است — گران‌شدن و
+ * قاعده‌ی درصد: نسبت به **آخرین قیمتِ تأییدشده** سنجیده می‌شود و قدرِمطلق است — گران‌شدن و
  * ارزان‌شدن هر دو تأیید می‌خواهند. یک کاهشِ ۸۰٪ هم به‌اندازه‌ی افزایشش نیازمندِ
  * چشمِ ادمین است (قیمتِ اشتباهِ پایین یعنی فروش زیرِ قیمت، نه یک لطف).
  */
@@ -107,6 +107,9 @@ final class PriceChangeApprovalGate
         $request = SupplierRequest::create([
             SupplierRequest::SUPPLIER_USER_ID => $supplierUserId,
             SupplierRequest::TYPE => SupplierRequest::TYPE_PRICE_CHANGE,
+            // ستونِ واقعی کنارِ payload: کاتالوگِ عمومی با همین، واریانت را تا
+            // تصمیمِ ادمین پنهان می‌کند (`ProductVariant::scopeCatalogVisible`).
+            SupplierRequest::PRODUCT_PRICE_ID => $payload['product_price_id'] ?? null,
             SupplierRequest::REASON => $reason,
             SupplierRequest::PAYLOAD => $payload,
         ]);

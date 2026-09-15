@@ -15,6 +15,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderUnit;
 use App\Models\PriceFilterCategory;
+use App\Models\ProductVariant;
 use App\Models\Shipment;
 use App\Models\User;
 use App\Models\UserType;
@@ -84,6 +85,7 @@ class PlaceOrderAction
 
             // ۱.۵ گاردِ تک‌تأمین‌کننده — پیش از هر نوشتنی.
             $this->assertSingleSupplier($cart);
+            $this->assertNoPriceUnderReview($cart);
 
             // ۱.۶ یک سفارش = یک مبدأ و یک مقصد (تصمیم مدیریت، بند ۳).
             $this->assertSingleOriginAndDestination($cart, $data->addressId);
@@ -564,6 +566,32 @@ class PlaceOrderAction
 
         if ($destinations->count() > 1) {
             throw new BusinessException(__('orders.multiple_destinations_not_supported'), 422);
+        }
+    }
+
+    /**
+     * کالایی که قیمتش در صفِ تأییدِ ادمین است فروخته نمی‌شود — نه با قیمتِ قدیم.
+     *
+     * `AddToCartAction` ورودِ تازه را می‌بندد؛ این گارد آیتمی را می‌گیرد که
+     * **پیش از** ثبتِ درخواست در سبد نشسته بود (یا سبدی که الیت‌یار بسته و
+     * کارفرما دیرتر می‌پردازد). تأمین‌کننده خودش گفته این قیمت درست نیست؛
+     * فروختنِ همان قیمت دقیقاً ضرری است که صف برای جلوگیری از آن ساخته شد.
+     */
+    private function assertNoPriceUnderReview(Cart $cart): void
+    {
+        $variantIds = $cart->items->pluck(CartItem::PRODUCT_VARIANT_ID)->filter()->unique()->all();
+
+        if ($variantIds === []) {
+            return;
+        }
+
+        $blocked = ProductVariant::query()
+            ->whereIn(ProductVariant::ID, $variantIds)
+            ->whereHas('pendingPriceChanges')
+            ->exists();
+
+        if ($blocked) {
+            throw new BusinessException(__('supplier.price_under_review'), 422);
         }
     }
 

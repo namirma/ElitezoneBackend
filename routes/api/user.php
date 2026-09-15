@@ -165,6 +165,12 @@ Route::middleware(['auth:sanctum', 'attach.price.category'])->group(function () 
         Route::get('/pay-for/{cart}', 'showPaymentLink');
         Route::post('/pay-for/{cart}', 'payForBeneficiary')
             ->middleware(['idempotency', 'throttle:financial', EnsureRoleIsSelected::class]);
+        // ── لغوِ لینکِ پرداخت (تصمیم مدیریت ۲۰۲۶-۰۹-۱۴، گزینه‌ی ب) ─────────────
+        // تا لینک باز است سبد قفل است (`CartResolver::resolveForMutation` ۴۰۹
+        // می‌دهد)؛ این تنها راهِ بازکردنش است. بی‌اثر روی سبدِ بدونِ لینک.
+        // `throttle:sms` چون لغو یک پیامکِ پولی برای کارفرما می‌فرستد — همان
+        // سقفِ خودِ ارسالِ لینک. (بی‌اثربودن روی سبدِ بدونِ لینک، اسپم را هم می‌بندد.)
+        Route::post('/payment-link/cancel', 'cancelPaymentLink')->middleware('throttle:sms');
     });
 });
 

@@ -226,6 +226,8 @@ class AdminSupplierRequestController extends Controller
             // فقط `price_change` مهلت دارد؛ برای بقیه null است و پنل ستون را خالی
             // می‌گذارد — «مهلت ندارد» و «مهلتش گذشته» دو چیز متفاوت‌اند.
             SupplierRequest::REVIEW_DEADLINE => $r->{SupplierRequest::REVIEW_DEADLINE},
+            // ردِ خودکارِ کرون، نه تصمیمِ ادمین — پنل «منقضی» می‌نویسد نه «رد شد».
+            'expired' => $r->isExpiredByDeadline(),
             'created_at' => $r->created_at,
         ];
     }

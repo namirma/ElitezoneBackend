@@ -58,9 +58,18 @@ class CartPaymentLinkService
             throw new BusinessException(__('orders.store_beneficiary_not_approved_employer'), 422);
         }
 
+        // لینکِ باز برای کارفرمای **دیگری** یعنی تغییرِ سبدِ قفل‌شده — همان
+        // قاعده‌ای که روی افزودن/حذفِ آیتم هست. ارسالِ دوباره به همان کارفرما
+        // (پیامکِ گم‌شده) مجاز است؛ لغو + صدورِ تازه برای همان نفر فقط یک
+        // پیامکِ «لغو سفارش» گیج‌کننده می‌فرستاد.
+        if ($cart->isForBeneficiary() && (int) $cart->{Cart::BENEFICIARY_USER_ID} !== $beneficiary->id) {
+            $this->assertMutable($cart);
+        }
+
         $cart->forceFill([
             Cart::BENEFICIARY_USER_ID => $beneficiary->id,
             Cart::PAYMENT_LINK_SENT_AT => now(),
+            Cart::PAYMENT_LINK_CANCELLED_AT => null,
         ])->save();
 
         $link = $this->linkFor($cart);
@@ -87,6 +96,58 @@ class CartPaymentLinkService
     }
 
     /**
+     * لغوِ لینک توسط همان الیت‌یاری که فرستاده (تصمیم مدیریت، گزینه‌ی ب).
+     *
+     * **بی‌اثر روی سبدی که لینکِ بازی ندارد** — دوبار زدنِ دکمه یا لغوِ سبدی که
+     * کارفرما همین حالا پرداخت کرده (سبد با سفارش حذف می‌شود) نباید خطا بدهد؛
+     * `false` یعنی «چیزی برای لغو نبود» و هیچ پیامکی نمی‌رود.
+     *
+     * شرطِ علی (۲۰۲۶-۰۹-۱۴): لغو باید با عنوان «لغو سفارش» برای کارفرما پیامک
+     * شود — متنِ `sms.cart_payment_link_cancelled` با همین دو کلمه شروع می‌شود.
+     */
+    public function cancel(User $eliteYar, Cart $cart): bool
+    {
+        if (! $cart->isForBeneficiary()) {
+            return false;
+        }
+
+        $employer = $cart->beneficiary;
+
+        $cart->forceFill([
+            Cart::BENEFICIARY_USER_ID => null,
+            Cart::PAYMENT_LINK_SENT_AT => null,
+            Cart::PAYMENT_LINK_CANCELLED_AT => now(),
+        ])->save();
+
+        if ($employer !== null) {
+            SendSmsJob::dispatch(
+                $employer->mobile,
+                __('sms.cart_payment_link_cancelled', [
+                    'elite_yar_name' => trim((string) $eliteYar->profile?->name) ?: __('global.elite_yar'),
+                ])
+            );
+        }
+
+        return true;
+    }
+
+    /**
+     * تا لینکِ پرداخت باز است، سبد قفل است (ممیزی ۲۰۲۶-۰۹-۱۲، بند ۴).
+     *
+     * الیت‌یار مبلغی را پیامک کرده که کارفرما روی آن تصمیم می‌گیرد؛ هر تغییری
+     * در سبد آن عدد را دروغ می‌کند. راهِ درست: اول لغو، بعد تغییر، بعد لینکِ
+     * تازه. ۴۰۹ چون تضاد با وضعیتِ فعلیِ منبع است، نه خطای ورودی.
+     *
+     * @throws BusinessException
+     */
+    public function assertMutable(Cart $cart): void
+    {
+        if ($cart->isForBeneficiary()) {
+            throw new BusinessException(__('checkout.cart_locked_by_payment_link'), 409);
+        }
+    }
+
+    /**
      * صفحه‌ی SPA که کارفرما در آن سبد را می‌بیند و پرداخت می‌کند.
      *
      * مسیر باید با روتِ فرانت یکی باشد؛ تستِ sweep
@@ -105,6 +166,12 @@ class CartPaymentLinkService
     public function assertPayableBy(Cart $cart, User $employer): void
     {
         if (! $cart->isForBeneficiary()) {
+            // «لغو شد» و «لینکی نبود» دو پیامِ متفاوت‌اند: کارفرمایی که پیامکِ
+            // لغو گرفته و روی لینکِ قدیمی می‌زند باید همان را ببیند، نه ۴۰۴.
+            if ($cart->{Cart::PAYMENT_LINK_CANCELLED_AT} !== null) {
+                throw new BusinessException(__('checkout.payment_link_cancelled'), 410);
+            }
+
             throw new BusinessException(__('checkout.cart_has_no_payment_link'), 404);
         }
 

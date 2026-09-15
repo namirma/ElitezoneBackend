@@ -28,6 +28,10 @@ use Illuminate\Support\Facades\Auth;
  *
  * Cart resolution + context sync lives in CartResolver.
  * Pricing + response formatting lives in CartResponseBuilder.
+ *
+ * هر متدی که سبد را تغییر می‌دهد `resolveForMutation()` می‌گیرد، نه `resolve()`:
+ * تا لینکِ پرداخت برای کارفرما باز است سبد قفل است و ۴۰۹ می‌گیرد (اول لغو،
+ * بعد تغییر). گارد همان‌جا و یک‌بار نوشته شده — این‌جا فقط انتخابِ متد است.
  */
 class CartController extends Controller
 {
@@ -45,7 +49,7 @@ class CartController extends Controller
     /** POST — add an item */
     public function addToCart(AddToCartRequest $request, AddToCartAction $action): JsonResponse
     {
-        $cart = $this->resolver->resolve($request);
+        $cart = $this->resolver->resolveForMutation($request);
         $action->execute($cart, $request->validated());
 
         return $this->responder->build($cart);
@@ -57,7 +61,7 @@ class CartController extends Controller
         CartItem $item,
         UpdateCartItemAction $action,
     ): JsonResponse {
-        $cart = $this->resolver->resolve($request);
+        $cart = $this->resolver->resolveForMutation($request);
 
         if ($item->cart_id !== $cart->id) {
             return error('global.notFound', [], 404);
@@ -74,7 +78,7 @@ class CartController extends Controller
         CartItem $item,
         RemoveCartItemAction $action,
     ): JsonResponse {
-        $cart = $this->resolver->resolve($request);
+        $cart = $this->resolver->resolveForMutation($request);
 
         if ($item->cart_id !== $cart->id) {
             return error('global.notFound', [], 404);
@@ -90,7 +94,7 @@ class CartController extends Controller
         UpdateCartFiltersRequest $request,
         SyncCartFiltersAction $action,
     ): JsonResponse {
-        $cart = $this->resolver->resolve($request);
+        $cart = $this->resolver->resolveForMutation($request);
         $action->execute($cart, $request->validated('filter_categories', []));
 
         return $this->responder->build($cart);
@@ -99,7 +103,7 @@ class CartController extends Controller
     /** PATCH — change customer type (real person / legal entity / ...) */
     public function updateCustomerType(UpdateCustomerTypeRequest $request): JsonResponse
     {
-        $cart = $this->resolver->resolve($request);
+        $cart = $this->resolver->resolveForMutation($request);
         $cart->update(['customer_type_id' => $request->validated('customer_type_id')]);
 
         return $this->responder->build($cart);
@@ -116,7 +120,7 @@ class CartController extends Controller
      */
     public function storeCoupon(StoreCartCouponRequest $request): JsonResponse
     {
-        $cart = $this->resolver->resolve($request);
+        $cart = $this->resolver->resolveForMutation($request);
 
         $code = $request->validated('coupon_code');
         $cart->update([Cart::COUPON_CODE => $code !== null && $code !== '' ? $code : null]);
