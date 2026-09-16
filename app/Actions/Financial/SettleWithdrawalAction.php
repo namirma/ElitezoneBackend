@@ -3,11 +3,13 @@
 namespace App\Actions\Financial;
 
 use App\Events\Financial\TransactionProcessed;
+use App\Exceptions\BusinessException;
 use App\Models\User;
 use App\Models\WalletTransaction;
 use App\Services\PodiumServices\PodiumWithdrawalService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Pays out a PENDING withdraw transaction to the user's approved bank account
@@ -59,16 +61,14 @@ final class SettleWithdrawalAction
         // حالا خودِ claim گارد است: تا وقتی `state = 'sending'` است و کهنه نشده،
         // ورود بسته است. TTL لازم است چون اگر پروسه بینِ فاز A و C کرش کند، بدون
         // آن ردیف برای همیشه قفل می‌ماند و هیچ ادمینی نمی‌تواند تسویه را تمام کند.
-        $claimTtl = (int) config('podium.settlement.claim_ttl_minutes', 15);
-
-        $claimed = DB::transaction(function () use ($transaction, $claimTtl) {
+        $claimed = DB::transaction(function () use ($transaction) {
             $locked = WalletTransaction::where('id', $transaction->id)->lockForUpdate()->first();
 
             if (! $locked || $locked->status !== WalletTransaction::STATUS_PENDING) {
                 throw new \RuntimeException(__('admin.wallet.already_processed'));
             }
 
-            if ($this->hasLiveClaim($locked, $claimTtl)) {
+            if ($this->hasLiveClaim($locked)) {
                 throw new \RuntimeException(__('wallet.settlement.in_progress'));
             }
 
@@ -104,7 +104,9 @@ final class SettleWithdrawalAction
         }
 
         // ── Phase C: record success under a short lock ───────────────────────────
-        return DB::transaction(function () use ($claimed, $response, $admin, $note) {
+        $result = $response['result'] ?? [];
+
+        $settled = DB::transaction(function () use ($claimed, $response, $result, $admin, $note) {
             $locked = WalletTransaction::where('id', $claimed->id)->lockForUpdate()->first();
 
             // Another worker finished first — return the settled row, don't double-write.
@@ -112,7 +114,28 @@ final class SettleWithdrawalAction
                 return $locked ?? $claimed;
             }
 
-            $result = $response['result'] ?? [];
+            // ⚠️ فقط از PENDING به CONFIRMED — هرگز روی REJECTED.
+            //
+            // ‏`ProcessTransactionAction` ردِ برداشت را تا وقتی claim زنده است نمی‌پذیرد،
+            // ولی اگر تماسِ بانکی از TTL طولانی‌تر شود claim کهنه می‌شود و رد عبور
+            // می‌کند (وجه به کیف پول برمی‌گردد). وقتی پاسخِ موفقِ پادیوم بعد از آن
+            // می‌رسد، پول **هم** به شبا رفته **هم** به کیف پول برگشته. قبلاً این‌جا
+            // REJECTED بی‌صدا با CONFIRMED بازنویسی می‌شد و ردِ پرداخت پاک می‌شد.
+            // حالا وضعیت دست نمی‌خورد، اثرِ بانکی برای تطبیق ثبت می‌شود و پایین‌تر
+            // لاگِ critical + خطای ۴۰۹ — تصمیم با انسان است، نه با کد.
+            if ($locked->status !== WalletTransaction::STATUS_PENDING) {
+                $locked->meta = $this->withSettlement($locked, [
+                    'state' => 'sent_after_rejection',
+                    'claimed_at' => null,
+                    'reference_number' => $response['referenceNumber'] ?? null,
+                    'podium_id' => data_get($result, 'id'),
+                    'podium_status' => data_get($result, 'status'),
+                    'tool_code' => data_get($result, 'toolCode'),
+                ]);
+                $locked->save();
+
+                return null;
+            }
 
             $locked->status = WalletTransaction::STATUS_CONFIRMED;
             $locked->meta = $this->withSettlement($locked, [
@@ -148,6 +171,23 @@ final class SettleWithdrawalAction
 
             return $locked;
         });
+
+        if ($settled === null) {
+            Log::channel('financial')->critical(
+                "SettleWithdrawalAction: withdrawal {$claimed->id} was rejected (and refunded to the wallet) while its Podium payout was in flight; the bank transfer went out too. Manual reconciliation required.",
+                [
+                    'transaction_id' => $claimed->id,
+                    'wallet_id' => $claimed->wallet_id,
+                    'amount' => $claimed->amount,
+                    'reference_number' => $response['referenceNumber'] ?? null,
+                    'admin_id' => $admin?->id,
+                ]
+            );
+
+            throw new BusinessException(__('wallet.settlement.paid_out_after_rejection'), 409);
+        }
+
+        return $settled;
     }
 
     /**
@@ -189,9 +229,13 @@ final class SettleWithdrawalAction
      * «در جریان» یعنی `state === 'sending'` و `claimed_at` از TTL جوان‌تر باشد.
      * یک claim بدونِ `claimed_at` (ردیف‌های قبل از این تغییر که وسطِ راه مانده‌اند)
      * کهنه فرض می‌شود — وگرنه با استقرارِ این کد قفل می‌شدند.
+     *
+     * عمومی است چون ردِ برداشت (`ProcessTransactionAction`) باید دقیقاً همین قاعده
+     * را بخواند — دو تعریف از «در جریان» یعنی یک پنجره‌ی رد-و-واریزِ هم‌زمان.
      */
-    private function hasLiveClaim(WalletTransaction $transaction, int $ttlMinutes): bool
+    public function hasLiveClaim(WalletTransaction $transaction): bool
     {
+        $ttlMinutes = (int) config('podium.settlement.claim_ttl_minutes', 15);
         $settlement = ($transaction->meta ?? [])['settlement'] ?? [];
 
         if (($settlement['state'] ?? null) !== 'sending') {

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Actions\Financial\ProcessTransactionAction;
+use App\Exceptions\BusinessException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UpdateTransactionStatusRequest;
 use App\Http\Resources\Financial\WalletTransactionResource;
@@ -80,6 +81,9 @@ class AdminWalletController extends Controller
                 new WalletTransactionResource($updatedTransaction),
                 __('admin.wallet.status_updated')
             );
+        } catch (BusinessException $e) {
+            // تسویه‌ی بانکیِ برداشت در جریان است، یا واریز پس از ردِ آن انجام شده.
+            return error($e->getMessage(), [], 409);
         } catch (\Exception $e) {
             Log::error('Admin wallet process failed', [
                 'transaction_id' => $transaction->id,

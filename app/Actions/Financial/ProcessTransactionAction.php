@@ -3,6 +3,7 @@
 namespace App\Actions\Financial;
 
 use App\Events\Financial\TransactionProcessed;
+use App\Exceptions\BusinessException;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
@@ -54,6 +55,18 @@ class ProcessTransactionAction
 
             if (! $locked || $locked->status !== WalletTransaction::STATUS_PENDING) {
                 throw new Exception(__('admin.wallet.already_processed'));
+            }
+
+            // ⚠️ برداشتی که تسویه‌ی بانکی‌اش در جریان است قابل رد نیست.
+            //
+            // ردیف تا پایانِ فاز C در `SettleWithdrawalAction` عمداً PENDING می‌ماند، پس
+            // گاردِ بالا جلوی ردِ هم‌زمان را نمی‌گیرد: ادمینِ دوم وجه را به کیف پول
+            // برمی‌گرداند در حالی که پادیوم همان پول را به شبا می‌فرستد. همان قاعده‌ی
+            // claim و TTLِ مسیرِ تأیید (`hasLiveClaim`) اینجا هم گارد است — زیرِ قفل.
+            if ($locked->type === WalletTransaction::TYPE_WITHDRAW
+                && $newStatus === WalletTransaction::STATUS_REJECTED
+                && $this->settleWithdrawal->hasLiveClaim($locked)) {
+                throw new BusinessException(__('wallet.settlement.reject_while_in_progress'), 409);
             }
 
             // قفل کردن کیف پول کاربر برای جلوگیری از تداخل (Race Condition)
