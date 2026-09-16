@@ -129,6 +129,8 @@ class CheckoutController extends Controller
                 'shipping_with_vat' => (string) $breakdown['shipping'],
                 'coupon_discount' => (string) $breakdown['discount'],
                 'shipping_included' => $breakdown['shipping_included'],
+                // کوپنِ روی سبد که صفر شمرده شد، با دلیل — همان پیامی که `pay` می‌داد.
+                'coupon_error' => $breakdown['coupon_error'],
             ],
         ]), 'global.received_successfully');
     }

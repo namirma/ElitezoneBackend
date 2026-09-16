@@ -196,6 +196,45 @@ class CouponSourceOfTruthTest extends TestCase
     }
 
     #[Test]
+    public function an_elite_yar_funded_coupon_on_a_cart_without_that_elite_yar_is_refused_in_the_preview_too(): void
+    {
+        $eliteYAR = User::factory()->create();
+        Wallet::create([Wallet::USER_ID => $eliteYAR->id, Wallet::BALANCE => 50_000_000, Wallet::BALANCE_HOLD => 0]);
+
+        $coupon = Coupon::create([
+            Coupon::CODE => 'EY-'.strtoupper(Str::random(6)),
+            Coupon::USER_ID => $this->buyer->id,
+            Coupon::TYPE => Coupon::TYPE_PERCENT,
+            Coupon::AMOUNT => 100,
+        ]);
+        $coupon->funders()->create([
+            CouponFunder::FUNDER_TYPE => CouponFunder::TYPE_ELITE_YAR,
+            CouponFunder::FUNDER_USER_ID => $eliteYAR->id,
+            CouponFunder::SHARE_PERCENT => 100,
+            CouponFunder::STATUS => CouponFunder::STATUS_ACCEPTED,
+            CouponFunder::RESPONDED_AT => now(),
+        ]);
+
+        $this->fillCart(10, $coupon->code);
+        Sanctum::actingAs($this->buyer);
+
+        // QA 2026-09-15: این‌جا «۰ ریال قابل پرداخت» بود و تازه `pay` رد می‌کرد.
+        $data = $this->getJson('/api/checkout/payment-options')->assertOk()->json('data');
+
+        $this->assertSame('0', $data['breakdown']['coupon_discount']);
+        $this->assertStringContainsString('الیت‌یار', (string) $data['breakdown']['coupon_error']);
+        $this->assertGreaterThan(0, (float) $data['final_amount']);
+        $this->assertEqualsWithDelta(
+            (float) $data['breakdown']['goods_with_vat'] + (float) $data['breakdown']['shipping_with_vat'],
+            (float) $data['final_amount'],
+            1.0
+        );
+
+        // ثبت هم با همان پیام رد می‌شود — دو مسیر، یک تصمیم.
+        $this->pay()->assertStatus(422)->assertJsonPath('message', $data['breakdown']['coupon_error']);
+    }
+
+    #[Test]
     public function a_cart_without_a_coupon_is_still_placed_without_one(): void
     {
         $this->fillCart(100, null);

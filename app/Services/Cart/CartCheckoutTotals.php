@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Services\Cart;
 
 use App\DataTransferObjects\Pricing\PricingContextData;
+use App\Exceptions\BusinessException;
 use App\Models\Cart;
 use App\Models\PriceFilterCategory;
 use App\Models\User;
 use App\Services\Financial\SettlementCalculatorService;
+use App\Services\Marketing\CouponFundingService;
 use App\Services\Marketing\CouponService;
 use App\Services\Pricing\CartPricingCalculator;
 use App\Services\Shipping\CartShippingQuoteService;
@@ -33,6 +35,7 @@ final class CartCheckoutTotals
         private readonly CartPricingCalculator $pricing,
         private readonly CartResolver $resolver,
         private readonly CouponService $coupons,
+        private readonly CouponFundingService $funding,
         private readonly CartShippingQuoteService $shippingQuotes,
         private readonly SettlementCalculatorService $settlement,
     ) {}
@@ -74,7 +77,7 @@ final class CartCheckoutTotals
      * کرایه‌ی واقعاً رایگان جدا نبود؛ حالا `ShipmentGroup::$ratePriced` تفکیکش
      * می‌کند. کرایه‌ی صفرِ **قیمت‌گذاری‌شده** همچنان `true` است.
      *
-     * @return array{final_amount: float, gross: float, shipping: float, shipping_included: bool, discount: float}
+     * @return array{final_amount: float, gross: float, shipping: float, shipping_included: bool, discount: float, coupon_error: ?string}
      */
     public function breakdownFor(Cart $cart, ?User $user, ?int $addressId = null): array
     {
@@ -83,13 +86,15 @@ final class CartCheckoutTotals
         [$shipping, $included] = $this->shippingFor($cart, $user, $addressId);
 
         $withShipping = Money::add((string) $gross, (string) $shipping);
-        $discount = $this->couponDiscount($cart, $user, Money::toFloat($withShipping));
+        ['discount' => $discount, 'error' => $couponError] = $this->couponFor($cart, $user, Money::toFloat($withShipping));
 
         return [
             'gross' => $gross,
             'shipping' => $shipping,
             'shipping_included' => $included,
             'discount' => $discount,
+            // چرا کوپنِ روی سبد صفر شمرده شد — تا فرانت به‌جای «۰ ریال» دلیل را بگوید.
+            'coupon_error' => $couponError,
             // ریالِ صحیح — تخفیف از قبل گرد شده، ولی خودِ جمع هم صراحتاً گرد
             // می‌شود تا هیچ مصرف‌کننده‌ای عددِ اعشاری نبیند.
             'final_amount' => max(0.0, round(Money::toFloat(Money::sub($withShipping, (string) $discount)))),
@@ -158,19 +163,43 @@ final class CartCheckoutTotals
     /** تخفیفِ کوپنِ ذخیره‌شده روی سبد، یا صفر اگر کدی نباشد/معتبر نباشد. */
     public function couponDiscount(Cart $cart, ?User $user, float $payable): float
     {
+        return $this->couponFor($cart, $user, $payable)['discount'];
+    }
+
+    /**
+     * تخفیف **و دلیلِ صفر بودنش**.
+     *
+     * پیش‌نمایش همان دو گاردِ ثبتِ سفارش را می‌گذراند: اعتبارِ خودِ کد
+     * (`validateForCheckout`) و هویتِ تأمین‌کننده‌ها (`assertFundersMatch` —
+     * همان که `PlaceOrderAction::assertCouponFundable` از راهِ `plan()` می‌زند).
+     * کوپنِ الیت‌یاری روی سبدِ بی‌الیت‌یار دیگر «۰ ریال» نمی‌شود؛ صفر با پیام.
+     *
+     * الیت‌یارِ سفارش در پیش‌نمایش `null` است: `payment-options` ورودیِ
+     * `elite_yar_user_id` ندارد، و در `PlaceOrderAction` هم پرداخت‌کننده‌ای که
+     * خودش الیت‌یار است «کمیسیون‌گیر» شمرده نمی‌شود — پس همان تصمیمِ ثبت است.
+     *
+     * @return array{discount: float, error: ?string}
+     */
+    public function couponFor(Cart $cart, ?User $user, float $payable): array
+    {
         $code = $cart->{Cart::COUPON_CODE};
 
         if ($code === null || $code === '' || $user === null) {
-            return 0.0;
+            return ['discount' => 0.0, 'error' => null];
         }
 
         try {
-            return $this->coupons->calculateDiscount(
-                $this->coupons->validateForCheckout($user, $code),
-                $payable
-            );
+            $coupon = $this->coupons->validateForCheckout($user, $code);
+
+            $supplierId = $cart->{Cart::SUPPLIER_USER_ID}
+                ?? $cart->items->first()?->factory?->supplier_user_id;
+            $this->funding->assertFundersMatch($coupon, $supplierId !== null ? (int) $supplierId : null, null);
+
+            return ['discount' => $this->coupons->calculateDiscount($coupon, $payable), 'error' => null];
+        } catch (BusinessException $e) {
+            return ['discount' => 0.0, 'error' => $e->getMessage()];
         } catch (\Throwable) {
-            return 0.0;
+            return ['discount' => 0.0, 'error' => null];
         }
     }
 }

@@ -46,6 +46,8 @@ class CouponFundingService
             throw new BusinessException(__('coupons.funding_not_ready'), 422);
         }
 
+        $this->assertFundersMatch($coupon, $supplierId, $eliteYARId);
+
         $legs = $this->split($coupon->fundingRows(), $discount);
 
         foreach ($legs as ['funder' => $funder, 'amount' => $amount]) {
@@ -58,16 +60,10 @@ class CouponFundingService
 
             switch ($funder->{CouponFunder::FUNDER_TYPE}) {
                 case CouponFunder::TYPE_SUPPLIER:
-                    if ((int) $funder->{CouponFunder::FUNDER_USER_ID} !== (int) $supplierId) {
-                        throw new BusinessException(__('coupons.funder_supplier_mismatch', ['funder' => $name]), 422);
-                    }
                     $this->assertWalletCovers($funder, $amount, $name, $share);
                     break;
 
                 case CouponFunder::TYPE_ELITE_YAR:
-                    if ($eliteYARId === null || (int) $funder->{CouponFunder::FUNDER_USER_ID} !== (int) $eliteYARId) {
-                        throw new BusinessException(__('coupons.funder_elite_yar_mismatch', ['funder' => $name]), 422);
-                    }
                     if ($amount > $caps['elite_yar']) {
                         throw new BusinessException(__('coupons.elite_yar_cap_exceeded', [
                             'funder' => $name,
@@ -89,6 +85,38 @@ class CouponFundingService
         }
 
         return $legs;
+    }
+
+    /**
+     * هویتِ تأمین‌کننده‌ها با این سفارش می‌خواند؟ — بخشِ **بدونِ عدد**ِ `plan()`.
+     *
+     * جدا شده تا پیش‌نمایش (`CartCheckoutTotals`, `payment-options`) همان چیزی را
+     * بگوید که ثبتِ سفارش می‌گوید: کوپنی که الیت‌یارِ دیگری تأمینش می‌کند روی سبدِ
+     * بی‌الیت‌یار «۰ ریال قابل پرداخت» نشان می‌داد و تازه لحظه‌ی پرداخت رد می‌شد
+     * (QA 2026-09-15). سقف و موجودی همچنان فقط در `plan()` سنجیده می‌شوند —
+     * به اعدادِ سفارش نیاز دارند.
+     *
+     * @throws BusinessException
+     */
+    public function assertFundersMatch(Coupon $coupon, ?int $supplierId, ?int $eliteYARId): void
+    {
+        foreach ($coupon->fundingRows() as $funder) {
+            $name = $funder->displayName();
+
+            switch ($funder->{CouponFunder::FUNDER_TYPE}) {
+                case CouponFunder::TYPE_SUPPLIER:
+                    if ((int) $funder->{CouponFunder::FUNDER_USER_ID} !== (int) $supplierId) {
+                        throw new BusinessException(__('coupons.funder_supplier_mismatch', ['funder' => $name]), 422);
+                    }
+                    break;
+
+                case CouponFunder::TYPE_ELITE_YAR:
+                    if ($eliteYARId === null || (int) $funder->{CouponFunder::FUNDER_USER_ID} !== (int) $eliteYARId) {
+                        throw new BusinessException(__('coupons.funder_elite_yar_mismatch', ['funder' => $name]), 422);
+                    }
+                    break;
+            }
+        }
     }
 
     /**
