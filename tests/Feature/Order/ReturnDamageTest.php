@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Order;
 
+use App\Exceptions\BusinessException;
 use App\Models\DebtEntry;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -218,7 +219,55 @@ class ReturnDamageTest extends TestCase
         );
     }
 
+    /**
+     * دفاعِ دوم: بدهی‌ای که از راهِ دیگری بسته شده (بازپرداختِ عمومیِ پیش از اصلاحِ
+     * `/profile/debts/repay`) نباید با پرداختِ خسارت دوباره از خریدار گرفته شود.
+     */
+    #[Test]
+    public function a_damage_whose_debt_was_already_repaid_is_not_charged_again(): void
+    {
+        $damage = $this->fullyApprove();
+        app(DebtEngine::class)->repay((int) $this->buyer->id, 1_000_000, null, 'بازپرداخت عمومی');
+
+        try {
+            $this->service->settle($damage->fresh());
+            $this->fail('settle must refuse a damage whose debt is already closed');
+        } catch (BusinessException $e) {
+            $this->assertSame(__('shipments.damage_settle_debt_cleared'), $e->getMessage());
+        }
+
+        $this->assertSame(50_000_000.0, (float) Wallet::where(Wallet::USER_ID, $this->buyer->id)->value(Wallet::BALANCE));
+        $this->assertSame(0.0, (float) Wallet::where(Wallet::USER_ID, $this->supplier->id)->value(Wallet::BALANCE));
+        $this->assertNull($damage->fresh()->{ReturnDamage::SETTLED_AT});
+    }
+
     // ── سقف ──────────────────────────────────────────────────────────────────
+
+    /**
+     * پس از سقف، کالا از آنِ تأمین‌کننده است و بدهی با خودِ کالا صفر شده. پرداختِ
+     * خسارتِ تأییدشده‌ی قبلی یعنی تأمین‌کننده هم کالا را بگیرد هم پول را — و
+     * محموله‌ی سفارشِ لغوشده «آماده‌ی حمل» شود.
+     */
+    #[Test]
+    public function a_damage_cannot_be_paid_after_the_cap_handed_the_goods_over(): void
+    {
+        $first = $this->fullyApprove(5_000_000);
+        $this->shipment->forceFill([Shipment::RETURNED_AT => now()])->save();
+        $this->fullyApprove(5_000_000);
+        $this->assertSame(Order::STATUS_CANCELLED, $this->order->fresh()->{Order::STATUS});
+
+        try {
+            $this->service->settle($first->fresh());
+            $this->fail('settle must refuse once the cap transferred the goods');
+        } catch (BusinessException $e) {
+            $this->assertSame(__('shipments.damage_settle_order_closed'), $e->getMessage());
+        }
+
+        $this->assertSame(50_000_000.0, (float) Wallet::where(Wallet::USER_ID, $this->buyer->id)->value(Wallet::BALANCE));
+        $this->assertSame(0.0, (float) Wallet::where(Wallet::USER_ID, $this->supplier->id)->value(Wallet::BALANCE));
+        $this->assertNull($first->fresh()->{ReturnDamage::SETTLED_AT});
+        $this->assertNotNull($this->shipment->fresh()->{Shipment::RETURNED_AT}, 'محموله‌ی سفارشِ لغوشده باز نمی‌شود.');
+    }
 
     #[Test]
     public function reaching_the_goods_value_transfers_the_goods_and_ends_the_order(): void

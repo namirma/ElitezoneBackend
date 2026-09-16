@@ -13,8 +13,10 @@ use App\Models\OrderItem;
 use App\Models\ReturnDamage;
 use App\Models\Shipment;
 use App\Models\User;
+use App\Models\Wallet;
 use App\Services\Financial\DebtEngine;
 use App\Services\Financial\WalletTransactionEngine;
+use App\Support\Money;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -158,7 +160,35 @@ class ReturnDamageService
                 ->lockForUpdate()
                 ->first();
 
-            $amount = (float) $damage->{ReturnDamage::AMOUNT};
+            // گاردِ بیرونیِ `SETTLED_AT` زیرِ قفل تکرار می‌شود: دو تسویه‌ی هم‌زمان با
+            // کلیدِ idempotencyِ متفاوت (یا این روت و `/profile/debts/repay`) هر دو
+            // از آن گذشته بودند.
+            /** @var ReturnDamage $locked */
+            $locked = ReturnDamage::whereKey($damage->getKey())->lockForUpdate()->first();
+
+            if ($locked->{ReturnDamage::SETTLED_AT} !== null) {
+                return $locked;
+            }
+
+            $amount = (float) $locked->{ReturnDamage::AMOUNT};
+            $payerId = $order->payerUserId();
+            $closed = $order->{Order::STATUS} === Order::STATUS_CANCELLED;
+
+            // ⚠️ پیش از هر لِگی: آیا بدهیِ این خسارت **هنوز باز است**؟ دو راه آن را
+            // بی‌پول می‌بندند و بعد از هر دو، این متد پول را کامل جابه‌جا می‌کرد
+            // (`repay()` فقط بی‌صدا به صفر clamp می‌شد):
+            //   • سقف — `settleAgainstGoods()` بدهی را با خودِ کالا صفر کرده؛ پرداخت
+            //     یعنی تأمین‌کننده هم کالا را بگیرد هم پول را.
+            //   • بازپرداختِ عمومی (پیش از اصلاحِ `/profile/debts/repay`) — پول به
+            //     سازه رفته بود و این مسیر خریدار را بارِ دوم می‌دوشید.
+            // قفلِ کیف پول پیش از قفلِ کاربر، همان ترتیبِ `chargeOverweight`.
+            Wallet::where(Wallet::USER_ID, $payerId)->lockForUpdate()->first();
+
+            if (Money::lt($this->debtEngine->outstandingForOrder($payerId, (int) $order->id), $amount)) {
+                throw new BusinessException(__($closed
+                    ? 'shipments.damage_settle_order_closed'
+                    : 'shipments.damage_settle_debt_cleared'), 422);
+            }
 
             // از راه کوئری و نه رابطه‌ی بارگذاری‌شده: larastan روی شاخه‌ی L13
             // آیتم را `Model` می‌بیند و `->supplier_user_id` خطا می‌دهد.
@@ -174,30 +204,34 @@ class ReturnDamageService
 
             $this->walletEngine->debitBuyer($order, $amount, FinancialCodes::STATUS_AVAILABLE, $description);
             $this->walletEngine->creditSupplier($order, $amount, FinancialCodes::STATUS_AVAILABLE, $supplierId, $description);
-            $this->debtEngine->repay($order->payerUserId(), $amount, $order, $description);
+            $this->debtEngine->repay($payerId, $amount, $order, $description);
 
-            $damage->forceFill([ReturnDamage::SETTLED_AT => now()])->save();
+            $locked->forceFill([ReturnDamage::SETTLED_AT => now()])->save();
 
-            /** @var Shipment $shipment */
-            $shipment = Shipment::where(Shipment::ID, $damage->{ReturnDamage::SHIPMENT_ID})
-                ->lockForUpdate()
-                ->first();
+            // سفارشِ لغوشده حملِ مجددی ندارد: بازکردنِ محموله‌اش یک بارِ «آماده‌ی
+            // حمل» روی سفارشی می‌ساخت که دیگر وجود ندارد.
+            if (! $closed) {
+                /** @var Shipment $shipment */
+                $shipment = Shipment::where(Shipment::ID, $locked->{ReturnDamage::SHIPMENT_ID})
+                    ->lockForUpdate()
+                    ->first();
 
-            $shipment->forceFill([
-                Shipment::STATUS => Shipment::STATUS_PENDING,
-                Shipment::RETURNED_AT => null,
-                Shipment::ARRIVED_AT => null,
-                Shipment::ARRIVAL_SOURCE => null,
-                Shipment::DELIVERY_DEADLINE => null,
-                // بارنامه هم پاک می‌شود تا حملِ مجدد بتواند شماره‌ی تازه بگیرد؛
-                // گاردِ idempotency در `RegisterShipmentAction` روی همین ستون است.
-                Shipment::REGISTERED_AT => null,
-                Shipment::WAYBILL_REF => null,
-            ])->save();
+                $shipment->forceFill([
+                    Shipment::STATUS => Shipment::STATUS_PENDING,
+                    Shipment::RETURNED_AT => null,
+                    Shipment::ARRIVED_AT => null,
+                    Shipment::ARRIVAL_SOURCE => null,
+                    Shipment::DELIVERY_DEADLINE => null,
+                    // بارنامه هم پاک می‌شود تا حملِ مجدد بتواند شماره‌ی تازه بگیرد؛
+                    // گاردِ idempotency در `RegisterShipmentAction` روی همین ستون است.
+                    Shipment::REGISTERED_AT => null,
+                    Shipment::WAYBILL_REF => null,
+                ])->save();
 
-            $this->notifySettled($order);
+                $this->notifySettled($order);
+            }
 
-            return $damage->fresh();
+            return $locked->fresh();
         });
     }
 
