@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\User;
 
 use App\Actions\Order\ProcessFullOrderPaymentAction;
+use App\Exceptions\BusinessException;
 use App\Exceptions\InsufficientBalanceException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Order\PayFullOrderRequest;
@@ -48,6 +49,11 @@ class OrderPaymentController extends Controller
             ]);
         } catch (InsufficientBalanceException $e) {
             return $this->balanceError($e->available, $e->required);
+        } catch (BusinessException $e) {
+            // رزروِ منقضی (`orders.reserve_expired_cannot_complete`) — قبلاً catch پایین
+            // آن را به ۵۰۰ و «خطا در پردازش پرداخت» تبدیل می‌کرد. `error()` با وضعیتِ
+            // لفظی و نه `$e->render()`، تا Scramble پاسخ‌های این متد را ببیند.
+            return error($e->getMessage(), [], 422);
         } catch (Exception $e) {
             Log::error('Order full payment failed', [
                 'order_id' => $order->id,

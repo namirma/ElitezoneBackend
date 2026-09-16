@@ -12,6 +12,7 @@ use App\Services\Financial\SettlementCalculatorService;
 use App\Services\Financial\WalletTransactionEngine;
 use App\Services\Invoice\InvoiceGenerator;
 use App\Services\Marketing\CouponFundingService;
+use App\Support\Money;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -48,6 +49,21 @@ class ProcessPreScalePaymentAction
                 Log::channel('financial')->warning("Race detected: order {$locked->id} already paid.");
 
                 return;
+            }
+
+            // ⚠️ سفارشی که بیعانه‌ی رزرو دارد هرگز از این مسیر پرداخت نمی‌شود.
+            //
+            // این اکشن کلِ POO را از خریدار می‌گیرد و هولدِ PTR روی WSSG را نمی‌بیند.
+            // اگر روی یک رزرو اجرا شود، خریدار دوبار می‌پردازد و بیعانه برای همیشه
+            // در `balance_hold` می‌ماند (انقضا و لغو فقط `reserved` را برمی‌گردانند).
+            // `WalletPaymentController` دقیقاً همین کار را می‌کرد. تکمیلِ رزرو فقط از
+            // `ProcessReservationCompletionAction` می‌رود که اول هولد را آزاد می‌کند.
+            // سفارشِ رزروِ تکمیل‌شده `paid` است و گاردِ بالا زودتر برش گردانده.
+            if (Money::cmp((float) ($locked->{Order::PAYMENT_TO_RESERVE} ?? 0), 0.0) > 0) {
+                Log::channel('financial')->critical(
+                    "ProcessPreScalePaymentAction refused: order {$locked->id} carries a reservation deposit — it must be completed via ProcessReservationCompletionAction."
+                );
+                throw new \RuntimeException(__('orders.prescale_refused_reserved_order'));
             }
 
             $locked->load('items', 'eliteYAR.badge');
