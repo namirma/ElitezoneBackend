@@ -13,6 +13,7 @@ use Dedoc\Scramble\Scramble;
 use Dedoc\Scramble\Support\Generator\OpenApi;
 use Dedoc\Scramble\Support\Generator\Server;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
@@ -46,6 +47,11 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureRateLimiters();
+
+        // پراکسی‌های مورد اعتماد (Cloudflare) — این‌جا و نه در `bootstrap/app.php`، چون
+        // آن closure پیش از لودِ config اجرا می‌شود. boot پیش از pipelineِ هر درخواست
+        // اجرا می‌شود و با config:cache هم درست کار می‌کند. config/security.php را ببینید.
+        TrustProxies::at(config('security.trusted_proxies'));
 
         Gate::define('viewApiDocs', function (?User $user = null) {
             if (app()->environment('local')) {

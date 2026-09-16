@@ -94,6 +94,27 @@ return Application::configure(basePath: dirname(__DIR__))
 
         /*
         |----------------------------------------------------------------------
+        | TrustProxies — Cloudflare
+        |----------------------------------------------------------------------
+        | میدل‌ورِ `TrustProxies` در استکِ سراسریِ L11+ هست، ولی بدونِ فهرست به هیچ
+        | پراکسی اعتماد نمی‌کند؛ و `app/Http/Middleware/TrustProxies.php` روی L11+
+        | خوانده نمی‌شود (کدِ مرده). نتیجه: `request()->ip()` آدرسِ لبهٔ Cloudflare بود.
+        |
+        | این‌جا فقط **هدرها** تعیین می‌شوند. فهرستِ IPها (`security.trusted_proxies`)
+        | در `AppServiceProvider::boot()` به `TrustProxies::at()` داده می‌شود، چون این
+        | closure هنگامِ resolve شدنِ HTTP Kernel اجرا می‌شود — در `public/index.php`
+        | **پیش از** bootstrap، وقتی `config` هنوز bind نشده (اندازه‌گیری‌شده:
+        | `app()->bound('config') === false`). `config()` این‌جا روی وب خطا می‌داد در
+        | حالی که تست‌ها (که اول bootstrap می‌کنند) سبز می‌ماندند. `env()` هم راه نیست:
+        | `.env` هم هنوز لود نشده و با `config:cache` اصلاً لود نمی‌شود.
+        |
+        | فقط FOR و PROTO: Host/Port/Prefix لازم نیست و اعتماد به آن‌ها فقط سطحِ جعل
+        | را بزرگ‌تر می‌کند (Host را `trustHosts` بالا می‌سنجد).
+        */
+        $middleware->trustProxies(headers: Request::HEADER_X_FORWARDED_FOR | Request::HEADER_X_FORWARDED_PROTO);
+
+        /*
+        |----------------------------------------------------------------------
         | API Middleware Group
         |----------------------------------------------------------------------
         | SecurityHeaders قبل از middleware پیش‌فرض API اضافه می‌شود.
