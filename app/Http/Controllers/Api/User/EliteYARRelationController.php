@@ -104,7 +104,9 @@ class EliteYARRelationController extends Controller
 
             if ($status === EmployerEliteYAR::STATUS_REJECTED) {
                 if ($updatedAt->diffInHours(now()) < 24) {
-                    $hoursLeft = 24 - $updatedAt->diffInHours(now());
+                    // Carbon 3 اعشاری برمی‌گرداند («22.4999 ساعت» در پیام). رو به بالا تا
+                    // «۰ ساعت» هم هرگز نشان داده نشود.
+                    $hoursLeft = (int) ceil(24 - $updatedAt->diffInHours(now()));
 
                     return error(__('elite_yar.retry_delay', ['hours' => $hoursLeft]), [], 429);
                 }

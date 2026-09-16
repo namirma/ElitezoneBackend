@@ -52,7 +52,8 @@ class BusinessHours
 
         while ($remaining > 0) {
             $endOfDay = $cursor->copy()->setTime($dayEnd, 0);
-            $available = $cursor->diffInMinutes($endOfDay, false);
+            // `(int)`: Carbon 3 اعشاری برمی‌گرداند و `$remaining` دقیقهٔ صحیح است.
+            $available = (int) $cursor->diffInMinutes($endOfDay, false);
 
             if ($available >= $remaining) {
                 return $cursor->addMinutes($remaining)->setTimezone($originalTz);

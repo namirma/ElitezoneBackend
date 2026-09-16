@@ -72,8 +72,9 @@ class ShipmentResource extends BaseJsonResource
                 'deadline' => $this->delivery_deadline?->toIso8601String(),
                 // نسبی و نه مطلق، به همان دلیلِ سبد: ساعتِ کلاینت ممکن است
                 // اختلاف داشته باشد و شمارش معکوس روی عدد مطلق غلط درمی‌آید.
+                // `(int)`: Carbon 3 اعشاری برمی‌گرداند و JSON عددِ کسری می‌شد.
                 'remaining_seconds' => $this->delivery_deadline && $this->delivered_at === null && $this->returned_at === null
-                    ? max(0, now()->diffInSeconds($this->delivery_deadline, false))
+                    ? (int) max(0, now()->diffInSeconds($this->delivery_deadline, false))
                     : null,
                 'delivered_at' => $this->delivered_at?->toIso8601String(),
                 'returned_at' => $this->returned_at?->toIso8601String(),
