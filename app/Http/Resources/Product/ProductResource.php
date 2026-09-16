@@ -6,6 +6,7 @@ use App\Http\Resources\BaseJsonResource;
 use App\Models\Product;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * @mixin Product
@@ -52,7 +53,9 @@ class ProductResource extends BaseJsonResource
                 return $this->images->map(function ($image) {
                     return [
                         Product::ID => $image->id,
-                        'image_path' => $image->image_path,
+                        'image_path' => $image->image_path
+                            ? (str_starts_with($image->image_path, 'http') ? $image->image_path : Storage::disk('public')->url($image->image_path))
+                            : null,
                         'is_primary' => (bool) $image->is_primary,
                     ];
                 });

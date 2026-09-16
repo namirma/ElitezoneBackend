@@ -44,6 +44,10 @@ class ProductVariantResource extends BaseJsonResource
             'attributes' => ProductVariantAttributeResource::collection(
                 $this->whenLoaded('variantAttributes', $this->variantAttributes)
             ),
+            // تصویرِ واریانت = تصاویرِ محصولش (`product_images` ستونِ واریانت ندارد).
+            // تا ۲۶ شهریور هیچ فهرستی این کلید را نمی‌داد و کارتِ سایت عکسِ آزمایشی
+            // نشان می‌داد؛ حالا کارت عکسِ واقعی دارد و محصولِ بی‌عکس کارتِ بی‌عکس.
+            'images' => $this->whenLoaded('product', fn () => ProductImageResource::collection($this->product->images)),
             'prices' => $this->whenLoaded('prices', function () use ($request) {
                 $withDebug = $request->boolean('debug_prices');
 
