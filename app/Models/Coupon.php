@@ -116,10 +116,18 @@ class Coupon extends Model
         return $this->belongsTo(User::class, self::CREATED_BY_USER_ID);
     }
 
-    /** @return HasMany<CouponFunder, $this> */
+    /**
+     * ترتیبِ صریح لازم است: `CouponFundingService::split()` باقی‌مانده‌ی ریالی را به
+     * ردیفِ **آخر** می‌دهد. بدونِ `orderBy`، MySQL 8 ردیف‌ها را از ایندکسِ یکتای
+     * `(coupon_id, funder_type, funder_user_id)` می‌خواند (company پیش از supplier) و
+     * MariaDB به ترتیبِ کلید — پس «چه کسی یک ریال بیشتر می‌دهد» به موتورِ دیتابیس
+     * بستگی داشت و پیش‌نمایش و پرداخت روی دو سرور می‌توانستند متفاوت باشند.
+     *
+     * @return HasMany<CouponFunder, $this>
+     */
     public function funders(): HasMany
     {
-        return $this->hasMany(CouponFunder::class, CouponFunder::COUPON_ID);
+        return $this->hasMany(CouponFunder::class, CouponFunder::COUPON_ID)->orderBy(CouponFunder::ID);
     }
 
     /** @return HasMany<CouponFundingLeg, $this> */
