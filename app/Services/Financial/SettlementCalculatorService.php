@@ -306,12 +306,19 @@ class SettlementCalculatorService
      */
     private function badgeShares(?string $badgeCode): array
     {
-        return match (strtolower(trim($badgeCode ?? ''))) {
-            'gold', 'golden' => ['ow' => 40.0, 'co' => 37.5, 'ssg' => 22.5],
-            'silver' => ['ow' => 40.0, 'co' => 32.5, 'ssg' => 27.5],
-            'bronze' => ['ow' => 40.0, 'co' => 30.0, 'ssg' => 30.0],
-            default => ['ow' => 40.0, 'co' => 25.0, 'ssg' => 35.0], // normal / pioneer
+        // سهم‌ها از price_settings (پنل: پارامترهای مالی) — پیش‌فرض‌ها همان اعدادِ
+        // هاردکدِ سابق. SSG باقی‌مانده است تا جمع همیشه ۱۰۰ بماند.
+        $coCode = match (strtolower(trim($badgeCode ?? ''))) {
+            'gold', 'golden' => PriceSetting::CODE_CO_SHARE_GOLD,
+            'silver' => PriceSetting::CODE_CO_SHARE_SILVER,
+            'bronze' => PriceSetting::CODE_CO_SHARE_BRONZE,
+            default => PriceSetting::CODE_CO_SHARE_DEFAULT, // normal / pioneer
         };
+        $catalog = PriceSetting::catalog();
+        $ow = PriceSetting::getValueAsFloat(PriceSetting::CODE_OW_SHARE, (float) $catalog[PriceSetting::CODE_OW_SHARE]['default']);
+        $co = PriceSetting::getValueAsFloat($coCode, (float) $catalog[$coCode]['default']);
+
+        return ['ow' => $ow, 'co' => $co, 'ssg' => (float) Money::sub(Money::sub('100', $ow), $co)];
     }
 
     /**

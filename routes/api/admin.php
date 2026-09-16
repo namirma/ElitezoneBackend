@@ -35,6 +35,7 @@ use App\Http\Controllers\Api\Admin\AdminPriceAdjustmentController;
 use App\Http\Controllers\Api\Admin\AdminPriceFilterCategoryController;
 use App\Http\Controllers\Api\Admin\AdminPriceFilterController;
 use App\Http\Controllers\Api\Admin\AdminPriceFilterTypeController;
+use App\Http\Controllers\Api\Admin\AdminPriceSettingController;
 use App\Http\Controllers\Api\Admin\AdminProductCategoryController;
 use App\Http\Controllers\Api\Admin\AdminProductChangeRequestController;
 use App\Http\Controllers\Api\Admin\AdminProductController;
@@ -631,6 +632,13 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
     // هویتِ عمومیِ برندند (تلفن، ایمیل، شبکه‌ها، نمادهای اعتماد) و یک مقدارِ غلط
     // مستقیماً روی صفحه‌ی همه‌ی بازدیدکنندگان می‌نشیند.
     Route::controller(AdminSettingController::class)->prefix('settings')->middleware('admin.permission:manage-content')->group(function () {
+        Route::get('/', 'index');
+        Route::put('/', 'update')->middleware('admin.level:1');
+    });
+
+    // پارامترهای مالیِ تسویه (%TC، VAT، سهم‌های OW/CO) — روی محاسبه‌ی هر سفارشِ بعدی اثر
+    // دارد؛ نوشتن سطح ۱ می‌خواهد مثلِ تنظیمات سایت.
+    Route::controller(AdminPriceSettingController::class)->prefix('price-settings')->middleware('admin.permission:manage-financial')->group(function () {
         Route::get('/', 'index');
         Route::put('/', 'update')->middleware('admin.level:1');
     });
