@@ -29,12 +29,12 @@ class EventServiceProvider extends ServiceProvider
     /**
      * The event to listener mappings for the application.
      *
+     * `Registered → SendEmailVerificationNotification` عمداً این‌جا نیست — پایینِ
+     * `configureEmailVerification()` را ببینید.
+     *
      * @var array<class-string, array<int, class-string>>
      */
     protected $listen = [
-        Registered::class => [
-            SendEmailVerificationNotification::class,
-        ],
         OrderPaid::class => [
             SendOrderPaymentNotification::class,
             SendSupplierOrderNotification::class,
@@ -78,5 +78,19 @@ class EventServiceProvider extends ServiceProvider
     public function shouldDiscoverEvents(): bool
     {
         return false;
+    }
+
+    /**
+     * عمداً خالی — فریم‌ورک خودش `Registered → SendEmailVerificationNotification` را ثبت می‌کند.
+     *
+     * روی L11+ `withEvents()` (که `Application::configure()` خودش صدا می‌زند) یک
+     * `Foundation\Support\Providers\EventServiceProvider` هم ثبت می‌کند و آن در `booted`
+     * همین شنونده را اضافه می‌کند. هر provider فقط `$listen` خودش را می‌بیند، پس هر ثبتِ
+     * دیگری این‌جا (از `$listen` یا از این متد) شنونده را دو بار اجرا می‌کرد. پین:
+     * `Security/EventListenersRegisteredOnceTest`.
+     */
+    protected function configureEmailVerification(): void
+    {
+        //
     }
 }

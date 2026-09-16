@@ -41,6 +41,20 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
+    /*
+    |--------------------------------------------------------------------------
+    | Event discovery — OFF
+    |--------------------------------------------------------------------------
+    | `Application::configure()` خودش `withEvents()` را با discovery روشن صدا
+    | می‌زند و `Foundation\Support\Providers\EventServiceProvider` را ثبت می‌کند که
+    | `app/Listeners` را اسکن می‌کند. `App\Providers\EventServiceProvider` هم همان
+    | listenerها را از `$listen` ثبت می‌کند → هر listener دو بار (`event:list` هر
+    | کدام را دو بار نشان می‌داد) و یک `OrderPaid` هر پیامک را دو بار می‌فرستاد.
+    |
+    | منبعِ واحد: `$listen`. discovery را برنگردانید مگر آن نقشه را حذف کنید.
+    | پین: `Security/EventListenersRegisteredOnceTest`.
+    */
+    ->withEvents(discover: false)
     ->withMiddleware(function (Middleware $middleware) {
 
         /*
