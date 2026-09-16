@@ -6,6 +6,7 @@ use App\Exceptions\BusinessException;
 use App\Models\Cart;
 use App\Models\User;
 use App\Services\Cart\CartParkService;
+use App\Services\Cart\CartResolver;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -69,6 +70,22 @@ class SingleSupplierCartTest extends TestCase
         $this->service()->assertSupplierAllowed($cart->fresh(), $supplier->id);
 
         $this->assertSame($supplier->id, $cart->fresh()->{Cart::SUPPLIER_USER_ID});
+    }
+
+    #[Test]
+    public function resolving_an_empty_cart_drops_a_stale_supplier_lock(): void
+    {
+        $user = User::factory()->create();
+        $cart = Cart::create([Cart::USER_ID => $user->id]);
+        $this->service()->lockSupplier($cart, User::factory()->create()->id);
+
+        $this->actingAs($user);
+        $resolved = app(CartResolver::class)->resolve(request());
+
+        $this->assertSame($cart->id, $resolved->id);
+        $this->assertNull($resolved->fresh()->{Cart::SUPPLIER_USER_ID});
+        // هر تأمین‌کننده‌ای دوباره مجاز است — خریدِ تازه بسته نمی‌ماند.
+        $this->service()->assertSupplierAllowed($resolved->fresh(), User::factory()->create()->id);
     }
 
     #[Test]

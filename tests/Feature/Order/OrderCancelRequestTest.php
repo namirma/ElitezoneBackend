@@ -332,6 +332,12 @@ class OrderCancelRequestTest extends TestCase
         $this->assertSame(Order::STATUS_PROCESSING, $this->order->fresh()->{Order::STATUS});
         $this->assertSame(0.0, $this->balance($this->buyer));
         $this->assertSame($before + 2, UserNotification::count());
+        // مهلت با تصمیم عوض نمی‌شود (QA 2026-09-15: «۵ ساعت عقب می‌رفت» — ستونِ
+        // `TIMESTAMP NOT NULL` در MariaDB خودبه‌خود ON UPDATE current_timestamp داشت).
+        $this->assertTrue(
+            $request->fresh()->{OrderCancelRequest::RESPOND_UNTIL}->equalTo($request->{OrderCancelRequest::RESPOND_UNTIL}),
+            'respond_until باید پس از تصمیم ادمین دست‌نخورده بماند.'
+        );
 
         // تصمیم نهایی است — بارِ دوم ۴۰۹.
         $this->postJson("/api/admin/order-cancel-requests/{$request->id}/approve", [

@@ -191,6 +191,14 @@ class ContentController extends Controller
         // بدون آن اصلاً نمی‌تواند اشتراک بسازد.
         $values['vapid_public_key'] = (string) config('services.push.vapid.public_key');
 
+        // فلگ‌های ماژول (config/features.php): فلگِ خاموش یعنی روت اصلاً ثبت نشده،
+        // پس سایت باید **پیش از فراخوانی** بداند — نه اینکه ۴۰۴ بخورد و بعد مخفی
+        // کند (QA 2026-09-15: ۴۰۴ِ `products/{cuid}/reviews` در کنسول).
+        $values['features'] = [
+            'product_reviews' => (bool) config('features.product_reviews'),
+            'order_surveys' => (bool) config('features.order_surveys'),
+        ];
+
         return success($values, __('content.settings_received'));
     }
 

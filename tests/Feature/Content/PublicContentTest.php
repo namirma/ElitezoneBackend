@@ -114,5 +114,8 @@ class PublicContentTest extends TestCase
 
         $this->assertSame('الیت زون', $data['site_title'] ?? null);
         $this->assertArrayNotHasKey('secret_internal', $data);
+        // فلگ‌های ماژول همیشه حاضرند (بولی)، تا سایت بخشِ بسته را اصلاً صدا نزند.
+        $this->assertSame((bool) config('features.product_reviews'), $data['features']['product_reviews']);
+        $this->assertIsBool($data['features']['order_surveys']);
     }
 }

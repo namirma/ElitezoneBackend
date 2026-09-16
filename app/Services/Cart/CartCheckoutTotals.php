@@ -90,7 +90,9 @@ final class CartCheckoutTotals
             'shipping' => $shipping,
             'shipping_included' => $included,
             'discount' => $discount,
-            'final_amount' => max(0.0, Money::toFloat(Money::sub($withShipping, (string) $discount))),
+            // ریالِ صحیح — تخفیف از قبل گرد شده، ولی خودِ جمع هم صراحتاً گرد
+            // می‌شود تا هیچ مصرف‌کننده‌ای عددِ اعشاری نبیند.
+            'final_amount' => max(0.0, round(Money::toFloat(Money::sub($withShipping, (string) $discount)))),
         ];
     }
 

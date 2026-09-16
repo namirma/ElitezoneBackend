@@ -24,6 +24,7 @@ class CartResolver
     public function __construct(
         private readonly PricingRoleResolver $roleResolver,
         private readonly CartPaymentLinkService $paymentLinks,
+        private readonly CartParkService $park,
     ) {}
 
     /**
@@ -34,6 +35,14 @@ class CartResolver
     {
         $cart = $this->loadOrCreateCart($request);
         $this->syncContext($cart);
+
+        // قفلِ تأمین‌کننده روی سبدِ خالی معنایی ندارد و فقط خریدِ بعدی را می‌بندد
+        // (QA 2026-09-15، سبد ۱۴۹: `releaseIfEmpty` فقط در حذفِ آیتم صدا زده می‌شد؛
+        // مسیرهای دیگرِ خالی‌شدن — ثبت سفارش، انقضا، حذفِ واریانت — قفل را جا
+        // می‌گذاشتند). هر resolve، اگر قفل هست و آیتمی نیست، آزادش می‌کند.
+        if ($cart->{Cart::SUPPLIER_USER_ID} !== null) {
+            $this->park->releaseIfEmpty($cart);
+        }
 
         return $cart;
     }

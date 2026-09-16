@@ -94,6 +94,11 @@ class CouponService
 
     /**
      * مبلغ تخفیف (ریال) برای یک مبلغ قابل پرداخت — هرگز بیشتر از خود مبلغ نمی‌شود.
+     *
+     * **ریالِ صحیح.** ستون‌های پول عددِ صحیح‌اند (`standardise_money_columns_to_integer_rials`)
+     * و این تنها جایی است که کوپن به مبلغ تبدیل می‌شود (پیش‌نمایش، `payment-options`،
+     * ثبت سفارش، لِگ‌های تأمین). با `round(…, 2)` کوپنِ درصدی روی مبلغِ فرد
+     * `final_amount = 501553.8` می‌ساخت — عددِ نمایش‌داده‌شده، POO و لِگ‌ها یکی نبودند.
      */
     public function calculateDiscount(Coupon $coupon, float $payable): float
     {
@@ -101,7 +106,7 @@ class CouponService
             ? $payable * ((float) $coupon->{Coupon::AMOUNT} / 100)
             : (float) $coupon->{Coupon::AMOUNT};
 
-        return round(min(max($discount, 0), $payable), 2);
+        return round(min(max($discount, 0), $payable));
     }
 
     /**

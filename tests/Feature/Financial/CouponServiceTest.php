@@ -144,6 +144,11 @@ class CouponServiceTest extends TestCase
         $this->assertSame(300_000.0, $this->service->calculateDiscount($fixed, 1_000_000));
         // سقف: تخفیف هرگز از مبلغ قابل پرداخت بیشتر نمی‌شود
         $this->assertSame(200_000.0, $this->service->calculateDiscount($fixed, 200_000));
+
+        // ریالِ صحیح: ۱۰٪ از ۵۵۷٬۲۸۲ = ۵۵٬۷۲۸.۲ → ۵۵٬۷۲۸، نه عددِ اعشاری (QA 2026-09-15:
+        // `final_amount = 501553.8`). ستون‌های پول integer rial هستند.
+        $this->assertSame(55_728.0, $this->service->calculateDiscount($percent, 557_282));
+        $this->assertSame(0.0, fmod($this->service->calculateDiscount($percent, 557_282), 1.0));
     }
 
     #[Test]
