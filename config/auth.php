@@ -191,13 +191,19 @@ return [
     | Non-Production OTP Shortcut
     |--------------------------------------------------------------------------
     |
-    | In any non-production environment, generateVerifyCode() returns this
-    | fixed code instead of a random one, so testers can log in without a real
-    | SMS. Production ALWAYS uses a fresh CSPRNG code — this value is ignored
-    | there. Keep it a 6-digit numeric string.
+    | OPT-IN. When OTP_DEBUG_CODE is set AND the environment is not production,
+    | generateVerifyCode() returns this fixed code instead of a random one, so a
+    | local clone can log in without a real SMS. Unset (the default) → random.
+    | Production ALWAYS uses a fresh CSPRNG code, even if this is set.
+    |
+    | ⚠️ There is deliberately NO default. It used to default to '111111', which
+    | applied to every non-production env — and staging runs APP_ENV=local
+    | against real users, so anyone who knew a mobile number could log in as
+    | it. Staging logs in with real SMS to TSMS_DEV_ALLOWLIST numbers instead;
+    | never set OTP_DEBUG_CODE on a server that holds real accounts.
     |
     */
 
-    'otp_debug_code' => env('OTP_DEBUG_CODE', '111111'),
+    'otp_debug_code' => env('OTP_DEBUG_CODE'),
 
 ];

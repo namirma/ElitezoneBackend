@@ -41,12 +41,16 @@ function error(string $message, array $errors, int $status)
 
 function generateVerifyCode(): int
 {
-    // In any non-production environment (staging/local) return a fixed, known OTP
-    // so testers can log in without waiting for a real SMS. Gate matches the
-    // `! environment('production')` convention used by DebugController.
+    // The fixed OTP is opt-in: only when `auth.otp_debug_code` (OTP_DEBUG_CODE) is
+    // set AND the environment is not production. It used to apply in every
+    // non-production env with a '111111' default — staging runs APP_ENV=local on
+    // real users, so that was an account takeover for anyone who knew a mobile.
     // PRODUCTION ALWAYS falls through to the CSPRNG code below — never the fixed one.
-    if (! app()->environment('production')) {
-        return (int) config('auth.otp_debug_code', 111111);
+    // Pinned by Auth/OtpDebugCodeTest.
+    $debugCode = (string) config('auth.otp_debug_code');
+
+    if ($debugCode !== '' && ! app()->environment('production')) {
+        return (int) $debugCode;
     }
 
     // Use a cryptographically-secure PRNG for OTP / password-reset codes.

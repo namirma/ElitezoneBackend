@@ -51,5 +51,9 @@
              too late. ProductReviewRoutesAreGatedTest asserts the gating itself. -->
         <env name="FEATURE_PRODUCT_REVIEWS" value="true"/>
         <env name="FEATURE_ORDER_SURVEYS" value="true"/>
+        <!-- The fixed OTP is opt-in (config/auth.php has no default): generateVerifyCode()
+             returns it only outside production AND when this is set. Tests log in with it;
+             Auth/OtpDebugCodeTest pins all three cases. -->
+        <env name="OTP_DEBUG_CODE" value="111111"/>
     </php>
 </phpunit>
