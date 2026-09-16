@@ -83,9 +83,11 @@ class WeighbridgeReconciler
         }
 
         // Formula-variant flags are snapshotted onto the order at payment time
-        // so they are immutable for the life of the order.
-        $transCommission = (bool) ($order->{Order::TRANS_COMMISSION} ?? true);
-        $transVat = (bool) ($order->{Order::TRANS_VAT} ?? true);
+        // (pre-scale payment, or reservation payment for the reserve path) so they
+        // are immutable for the life of the order. The columns are NOT NULL DEFAULT
+        // true, so a `?? true` fallback here could never fire — read them straight.
+        $transCommission = (bool) $order->{Order::TRANS_COMMISSION};
+        $transVat = (bool) $order->{Order::TRANS_VAT};
 
         $newPOO = $this->calculator->calculatePOO(
             $trans, $op, $billingWeight,

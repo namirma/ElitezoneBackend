@@ -6,6 +6,8 @@ namespace App\Actions\Financial;
 
 use App\Constants\FinancialCodes;
 use App\Models\Order;
+use App\Models\OrderItem;
+use App\Models\SupplierProfile;
 use App\Services\Financial\WalletTransactionEngine;
 use App\Services\Invoice\InvoiceGenerator;
 use Carbon\CarbonInterface;
@@ -53,9 +55,30 @@ class ProcessReservationPaymentAction
 
             $this->walletEngine->creditSystem($locked, $reserveAmount, FinancialCodes::STATUS_HOLD, "امانت مبلغ رزرو سفارش {$locked->order_number}");
 
+            // ── فلگ‌های فرمولِ قراردادِ تأمین‌کننده (±TC / ±VAT) — همین‌جا اسنپ‌شات ──
+            //
+            // ‏`orders.trans_*` ستون‌های `NOT NULL DEFAULT true` هستند و تا امروز در مسیرِ
+            // رزرو هیچ‌کس پیش از تکمیل آن‌ها را نمی‌نوشت؛ `ProcessReservationCompletionAction`
+            // با `??` از پروفایل فالبک می‌گرفت که هرگز فایر نمی‌شد. نتیجه: تأمین‌کننده‌ی
+            // −TC/−VAT همیشه با فرمولِ +TC/+VAT تسویه می‌شد.
+            //
+            // چرا اینجا و نه در `PlaceOrderAction`: در تنها مسیرِ زنده
+            // (`CheckoutController::createAndSettle`) ثبت و همین اکشن در **یک** تراکنشِ
+            // دیتابیس اجرا می‌شوند، پس نقطه‌ی زودتری که قابل مشاهده باشد وجود ندارد.
+            // اینجا زیرِ قفلِ سفارش است، تأمین‌کننده را از `items`ِ خودِ سفارش می‌خواند
+            // (همان منبعِ تکمیل و `ProcessPreScalePaymentAction`) و کنارِ بقیه‌ی
+            // اسنپ‌شات‌های رزرو (PTR، مهلت، ارفاق) می‌نشیند. نبودِ پروفایل = `true`،
+            // همان پیش‌فرضِ `ProcessPreScalePaymentAction` و `transVatFlagForSupplier()`.
+            $supplierId = OrderItem::where(OrderItem::ORDER_ID, $order->id)->value(OrderItem::SUPPLIER_USER_ID);
+            $supplierProfile = $supplierId === null
+                ? null
+                : SupplierProfile::where(SupplierProfile::USER_ID, $supplierId)->first();
+
             $locked->forceFill([
                 Order::STATUS => Order::STATUS_RESERVED,
                 Order::PAYMENT_TO_RESERVE => $reserveAmount,
+                Order::TRANS_COMMISSION => (bool) ($supplierProfile->{SupplierProfile::TRANS_COMMISSION} ?? true),
+                Order::TRANS_VAT => (bool) ($supplierProfile->{SupplierProfile::TRANS_VAT} ?? true),
                 // هر سه با هم نوشته می‌شوند: مهلتِ جاری، مهلتِ اولیه (که هرگز
                 // عوض نمی‌شود و مبنای پنجره‌ی لغو خریدار است) و اسنپ‌شاتِ ارفاق.
                 Order::RESERVE_DEADLINE => $deadline,

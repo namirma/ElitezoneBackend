@@ -9,7 +9,6 @@ use App\Events\Order\OrderPaid;
 use App\Exceptions\BusinessException;
 use App\Exceptions\InsufficientBalanceException;
 use App\Models\Order;
-use App\Models\SupplierProfile;
 use App\Models\Wallet;
 use App\Services\Financial\SettlementCalculatorService;
 use App\Services\Financial\WalletTransactionEngine;
@@ -120,15 +119,15 @@ class ProcessReservationCompletionAction
             $ssg = $rates['ssg_final_rate'];
             $co = $rates['co_final_rate'];
 
-            // ── Snapshot formula-variant flags from supplier contract ──────────
-            // Prefer the already-snapshotted value on the order (set during the
-            // reservation payment step), but fall back to the supplier profile in
-            // case the order pre-dates this feature.
-            $realSupplierId = $firstItem->supplier_user_id;
-            $transCommission = $locked->{Order::TRANS_COMMISSION}
-                ?? (bool) (SupplierProfile::where(SupplierProfile::USER_ID, $realSupplierId)->value(SupplierProfile::TRANS_COMMISSION) ?? true);
-            $transVat = $locked->{Order::TRANS_VAT}
-                ?? (bool) (SupplierProfile::where(SupplierProfile::USER_ID, $realSupplierId)->value(SupplierProfile::TRANS_VAT) ?? true);
+            // ── Formula-variant flags: the snapshot, never the live profile ─────
+            //
+            // ‏`ProcessReservationPaymentAction` این دو را از قراردادِ تأمین‌کننده روی
+            // سفارش اسنپ‌شات می‌کند. قبلاً اینجا `$locked->trans_* ?? profile` بود، ولی
+            // ستون‌ها `NOT NULL DEFAULT true` هستند و هیچ‌کس پیش از تکمیل آن‌ها را
+            // نمی‌نوشت — `??` هرگز فالبک نمی‌گرفت، پس تأمین‌کننده‌ی −TC/−VAT همیشه با
+            // فرمولِ +TC/+VAT تسویه می‌شد و همان `true` برای باسکول اسنپ‌شات می‌شد.
+            $transCommission = (bool) $locked->{Order::TRANS_COMMISSION};
+            $transVat = (bool) $locked->{Order::TRANS_VAT};
 
             $POO = $this->calculator->calculatePOO($trans, $op, $wbs, $ow, $vat, $transCommission, $transVat);
             $PTS = $this->calculator->calculatePTS($trans, $op, $wbs, $ow, $ssg, $co, $vat, $transCommission, $transVat);
