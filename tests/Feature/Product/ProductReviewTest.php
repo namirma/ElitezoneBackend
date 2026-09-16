@@ -183,6 +183,29 @@ class ProductReviewTest extends TestCase
         $this->assertCount(2, $data['reviews']);
     }
 
+    #[Test]
+    public function public_listing_masks_the_reviewer_mobile_but_admin_sees_it(): void
+    {
+        // endpointِ عمومی بدونِ احراز است؛ قبلاً موبایلِ خامِ نویسنده را به هر کسی می‌داد.
+        $product = $this->makeProduct();
+        $author = User::factory()->create([User::MOBILE => '09123456789']);
+        $review = ProductReview::create([
+            ProductReview::USER_ID => $author->id,
+            ProductReview::PRODUCT_ID => $product->id,
+            ProductReview::RATING => 5,
+        ]);
+        $review->forceFill([ProductReview::STATUS => ProductReview::STATUS_APPROVED])->save();
+
+        $this->getJson("/api/products/{$product->cuid}/reviews")
+            ->assertOk()
+            ->assertJsonPath('data.reviews.0.user.mobile', '0912****789');
+
+        Sanctum::actingAs($this->admin());
+        $this->getJson("/api/admin/reviews/{$review->id}")
+            ->assertOk()
+            ->assertJsonPath('data.user.mobile', '09123456789');
+    }
+
     // ── My reviews ────────────────────────────────────────────────────────
 
     #[Test]
