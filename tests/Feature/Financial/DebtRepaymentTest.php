@@ -4,14 +4,23 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Financial;
 
+use App\Jobs\Financial\CheckSupplierBalancesJob;
 use App\Models\DebtEntry;
+use App\Models\Order;
+use App\Models\OrderItem;
+use App\Models\ReturnDamage;
+use App\Models\Shipment;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use App\Services\Financial\DebtEngine;
+use App\Services\Financial\SupplierDebtHandler;
+use App\Services\Shipping\ReturnDamageService;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -169,6 +178,159 @@ class DebtRepaymentTest extends TestCase
         // نکته‌ی اصلیِ این تست: کسرِ ناموفق نباید دفتر را ببندد. ترتیبِ
         // «اول کیف پول، بعد دفتر» دقیقاً برای همین است.
         $this->assertSame(9_000_000.0, $this->debtEngine->balanceFor((int) $this->user->id));
+    }
+
+    private function wallet(User $user): float
+    {
+        return (float) Wallet::where(Wallet::USER_ID, $user->id)->value(Wallet::BALANCE);
+    }
+
+    // ── هر بدهی از جریانِ خودش ───────────────────────────────────────────────
+
+    /**
+     * کسری باسکول: پیش‌تر بازپرداخت پرچم سفارش را باز می‌گذاشت و کران همان ۲
+     * میلیون را دوباره از تأمین‌کننده برمی‌داشت — بدهیِ ۲ میلیونی، ۴ میلیون.
+     */
+    #[Test]
+    public function a_weighbridge_deficit_is_reclaimed_once_and_the_buyer_is_refunded(): void
+    {
+        Queue::fake();
+        // سازه پس از پرداخت فقط کمیسیون را نگه می‌دارد؛ عودت از طلب بزرگ‌تر است.
+        Wallet::where(Wallet::USER_ID, $this->systemUser->id)->update([Wallet::BALANCE => 1_000_000]);
+        $buyer = User::factory()->create();
+        Wallet::create([Wallet::USER_ID => $buyer->id, Wallet::BALANCE => 0, Wallet::BALANCE_HOLD => 0]);
+
+        $order = Order::create([
+            Order::PLACER_USER_ID => $buyer->id,
+            Order::ORDER_NUMBER => 'DEF-'.Str::random(10),
+            Order::STATUS => Order::STATUS_SHIPPED,
+            Order::PAYMENT_STATUS => Order::PAYMENT_PAID,
+        ]);
+        OrderItem::factory()->create([OrderItem::ORDER_ID => $order->id, OrderItem::SUPPLIER_USER_ID => $this->user->id]);
+
+        Wallet::where(Wallet::USER_ID, $this->user->id)->update([Wallet::BALANCE => 0]); // تأمین‌کننده خالی → پارک
+        app(SupplierDebtHandler::class)->handle($order->load('items'), 3_000_000, 2_000_000);
+        Wallet::where(Wallet::USER_ID, $this->user->id)->update([Wallet::BALANCE => 5_000_000]); // شارژ
+
+        Sanctum::actingAs($this->user);
+        $this->postJson('/api/profile/debts/repay')->assertOk()->assertJsonPath('data.repaid', '2000000');
+
+        app(CheckSupplierBalancesJob::class)->handle(app(SupplierDebtHandler::class));
+
+        $this->assertSame(3_000_000.0, $this->wallet($this->user), 'طلب فقط یک بار وصول می‌شود.');
+        $this->assertSame(3_000_000.0, $this->wallet($buyer), 'عودتِ خریدار با همان تسویه پرداخت می‌شود.');
+        $this->assertSame(0.0, $this->wallet($this->systemUser));
+        $this->assertSame(0.0, $this->debtEngine->balanceFor((int) $this->user->id));
+        $this->assertFalse((bool) $order->fresh()->{Order::SUPPLIER_DEBT_PENDING});
+    }
+
+    /**
+     * خسارت عودت: پیش‌تر پول به سازه می‌رفت نه تأمین‌کننده، خسارت باز می‌ماند و
+     * پرداختِ خسارت خریدار را دوباره می‌دوشید.
+     */
+    #[Test]
+    public function a_return_damage_debt_pays_the_supplier_and_is_never_charged_twice(): void
+    {
+        Queue::fake();
+        $supplier = User::factory()->create();
+        Wallet::create([Wallet::USER_ID => $supplier->id, Wallet::BALANCE => 0, Wallet::BALANCE_HOLD => 0]);
+
+        $order = Order::create([
+            Order::PLACER_USER_ID => $this->user->id,
+            Order::ORDER_NUMBER => 'RTN-'.Str::random(10),
+            Order::STATUS => Order::STATUS_RETURNED_TO_ORIGIN,
+            Order::PAYMENT_STATUS => Order::PAYMENT_PAID,
+            Order::SUBTOTAL => 10_000_000,
+        ]);
+        OrderItem::factory()->create([OrderItem::ORDER_ID => $order->id, OrderItem::SUPPLIER_USER_ID => $supplier->id]);
+        $shipment = Shipment::create([
+            Shipment::ORDER_ID => $order->id, Shipment::WEIGHT => 1000, Shipment::SHIPPING_COST => 0,
+            Shipment::STATUS => Shipment::STATUS_RETURNED,
+        ]);
+        $shipment->forceFill([Shipment::RETURNED_AT => now()])->save();
+
+        $damages = app(ReturnDamageService::class);
+        $damage = $damages->record($shipment->fresh(), 1_000_000, 'کرایه عودت');
+        $damages->approveByBackoffice($damage, 1);
+        $damages->approveByBuyer($damage->fresh());
+
+        Sanctum::actingAs($this->user);
+        $this->postJson('/api/profile/debts/repay')->assertOk();
+        $this->postJson("/api/profile/damages/{$damage->id}/settle")->assertOk();
+
+        $this->assertSame(4_000_000.0, $this->wallet($this->user));
+        $this->assertSame(1_000_000.0, $this->wallet($supplier), 'هزینه‌ی عودت مالِ تأمین‌کننده است.');
+        $this->assertSame(0.0, $this->wallet($this->systemUser));
+        $this->assertNotNull($damage->fresh()->{ReturnDamage::SETTLED_AT});
+        $this->assertSame(Shipment::STATUS_PENDING, $shipment->fresh()->{Shipment::STATUS});
+    }
+
+    /**
+     * اضافه‌بار: سازه کلِ مابه‌التفاوت را در باسکول گرفته بود، پس اعتبارِ دوباره‌ی
+     * سازه پول می‌ساخت؛ و بارِ متوقف آزاد نمی‌شد.
+     */
+    #[Test]
+    public function an_overweight_debt_goes_through_its_own_settlement_and_releases_the_load(): void
+    {
+        $order = Order::create([
+            Order::PLACER_USER_ID => $this->user->id,
+            Order::ORDER_NUMBER => 'OW-'.Str::random(10),
+            Order::STATUS => Order::STATUS_AWAITING_WEIGHT_CORRECTION,
+            Order::PAYMENT_STATUS => Order::PAYMENT_PAID,
+        ]);
+        $order->forceFill([Order::WEIGHING_COMPLETED_AT => now()])->save();
+        $this->debtEngine->incur((int) $this->user->id, 250_000, DebtEntry::TYPE_OVERWEIGHT, $order, 'اضافه‌بار');
+
+        Sanctum::actingAs($this->user);
+        $this->postJson('/api/profile/debts/repay')->assertOk();
+
+        $this->assertSame(4_750_000.0, $this->wallet($this->user));
+        $this->assertSame(0.0, $this->wallet($this->systemUser), 'سازه پیش‌تر اعتبار گرفته؛ دومی پول خلق می‌کند.');
+        $this->assertSame(Order::STATUS_SHIPPED, $order->fresh()->{Order::STATUS});
+        $this->assertSame(0.0, $this->debtEngine->balanceFor((int) $this->user->id));
+    }
+
+    #[Test]
+    public function a_partial_amount_never_pays_an_order_bound_debt_in_part(): void
+    {
+        $order = Order::create([
+            Order::PLACER_USER_ID => $this->user->id,
+            Order::ORDER_NUMBER => 'OW-'.Str::random(10),
+            Order::STATUS => Order::STATUS_SHIPPED,
+            Order::PAYMENT_STATUS => Order::PAYMENT_PAID,
+        ]);
+        $order->forceFill([Order::WEIGHING_COMPLETED_AT => now()])->save();
+        $this->debtEngine->incur((int) $this->user->id, 2_000_000, DebtEntry::TYPE_OVERWEIGHT, $order, 'اضافه‌بار');
+
+        Sanctum::actingAs($this->user);
+        $this->postJson('/api/profile/debts/repay', ['amount' => 500_000])
+            ->assertStatus(422)
+            ->assertJsonPath('message', __('orders.debt_repay_amount_too_small'));
+
+        $this->assertSame(2_000_000.0, $this->debtEngine->balanceFor((int) $this->user->id));
+        $this->assertSame(5_000_000.0, $this->wallet($this->user));
+    }
+
+    /** نوعی که جریانش در دسترس نیست پول جابه‌جا نمی‌کند؛ ۴۲۲ و نامِ مسیرِ درست. */
+    #[Test]
+    public function a_debt_that_cannot_be_routed_is_refused_without_moving_money(): void
+    {
+        $order = Order::create([
+            Order::PLACER_USER_ID => User::factory()->create()->id,
+            Order::ORDER_NUMBER => 'DEF-'.Str::random(10),
+            Order::STATUS => Order::STATUS_SHIPPED,
+            Order::PAYMENT_STATUS => Order::PAYMENT_PAID,
+        ]);
+        // ردیفِ کسری بدون پرچمِ سفارش — جریانِ تأمین‌کننده چیزی برای تسویه ندارد.
+        $this->debtEngine->incur((int) $this->user->id, 1_000_000, DebtEntry::TYPE_WEIGHBRIDGE_DEFICIT, $order, 'کسری');
+
+        Sanctum::actingAs($this->user);
+        $this->postJson('/api/profile/debts/repay')
+            ->assertStatus(422)
+            ->assertJsonPath('message', __('orders.debt_route_unavailable', ['order' => $order->order_number]));
+
+        $this->assertSame(5_000_000.0, $this->wallet($this->user));
+        $this->assertSame(1_000_000.0, $this->debtEngine->balanceFor((int) $this->user->id));
     }
 
     #[Test]

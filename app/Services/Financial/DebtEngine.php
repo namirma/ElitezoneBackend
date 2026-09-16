@@ -150,6 +150,28 @@ class DebtEngine
     }
 
     /**
+     * همان `outstandingOnOrder`، ولی خوانده‌شده **زیرِ قفلِ ردیفِ کاربر** — داخلِ
+     * تراکنشِ فراخوان صدا بزنید.
+     *
+     * ⚠️ هر مسیری که پیش از جابه‌جاییِ پول می‌پرسد «این بدهی هنوز باز است؟» باید
+     * از این بخواند. بدهیِ یک سفارش سه راهِ تسویه دارد (جریانِ خودش، کرانِ کسری،
+     * `/profile/debts/repay`) و `repay()` مبلغِ اضافه را **بی‌صدا** به صفر clamp
+     * می‌کند: مسیرِ دوم پول را کامل جابه‌جا می‌کرد و فقط دفتر چیزی نمی‌نوشت. یعنی
+     * بدهیِ ۲ میلیونی ۴ میلیون از کیف پول می‌برد و هیچ استثنایی دیده نمی‌شد.
+     */
+    public function outstandingForOrder(int $userId, int $orderId): float
+    {
+        $balance = (float) $this->lockedBalance($userId);
+
+        $orderDebt = (float) DebtEntry::query()
+            ->where(DebtEntry::USER_ID, $userId)
+            ->where(DebtEntry::ORDER_ID, $orderId)
+            ->sum(DebtEntry::AMOUNT);
+
+        return self::outstandingOnOrder($orderDebt, $balance);
+    }
+
+    /**
      * آیا این مبلغ بدهی درون سقف اعتبار جا می‌شود؟
      *
      * سند (بند ۳.۱۲): `debt_after ≤ credit_limit` ⇒ سفارش متوقف نمی‌شود؛ در غیر

@@ -1051,18 +1051,6 @@ parameters:
 			path: app/Jobs/Analytics/RollupProductViewsJob.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$supplier_debt_pending\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/Financial/CheckSupplierBalancesJob.php
-
-		-
-			message: '#^Using nullsafe property access on non\-nullable type App\\Models\\User\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Jobs/Financial/CheckSupplierBalancesJob.php
-
-		-
 			message: '#^Negated boolean expression is always false\.$#'
 			identifier: booleanNot.alwaysFalse
 			count: 1

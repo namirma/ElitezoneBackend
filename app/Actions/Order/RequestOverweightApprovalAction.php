@@ -8,10 +8,10 @@ use App\Actions\Financial\ProcessWeighbridgeResultAction;
 use App\Constants\FinancialCodes;
 use App\Exceptions\BusinessException;
 use App\Jobs\Notification\SendSmsJob;
-use App\Models\DebtEntry;
 use App\Models\Order;
 use App\Models\Shipment;
 use App\Models\User;
+use App\Models\Wallet;
 use App\Services\Financial\DebtEngine;
 use App\Services\Financial\WalletTransactionEngine;
 use App\Services\Sales\SalesSettings;
@@ -195,70 +195,65 @@ class RequestOverweightApprovalAction
         }
 
         $payerId = $order->payerUserId();
-        $outstanding = $this->outstandingForOrder($payerId, $order);
 
-        if ($outstanding <= 0.0) {
-            // بدهی از راه دیگری تسویه شده — اگر بار هنوز متوقف است آزادش کن.
-            if ($order->{Order::STATUS} === Order::STATUS_AWAITING_WEIGHT_CORRECTION) {
-                $order->forceFill([Order::STATUS => Order::STATUS_SHIPPED])->save();
+        $outstanding = DB::transaction(function () use ($order, $payerId) {
+            // ⚠️ بدهی **زیرِ قفل** دوباره خوانده می‌شود. نسخه‌ی قبلی آن را بیرون از
+            // تراکنش می‌خواند، پس دو تسویه‌ی هم‌زمان (این روت و `/profile/debts/repay`
+            // که حالا بدهیِ اضافه‌بار را به همین متد می‌سپارد) هر دو مانده‌ی کامل را
+            // می‌دیدند و هر دو از کیف پول کم می‌کردند؛ `repay()` دومی را بی‌صدا به
+            // صفر clamp می‌کرد. ترتیبِ قفل همان `chargeOverweight` است:
+            // سفارش → کیف پول → کاربر.
+            /** @var Order $locked */
+            $locked = Order::whereKey($order->getKey())->lockForUpdate()->first();
+            Wallet::where(Wallet::USER_ID, $payerId)->lockForUpdate()->first();
 
-                return $order;
+            // بدهیِ **همین سفارش**، نه کل بدهی شخص — وگرنه خریداری که بابت سفارشِ
+            // دیگری هم بدهکار است، با این پرداخت کلِ بدهی‌اش را می‌داد. فرمول مشترک
+            // است: `OrderResource` با همان تصمیم می‌گیرد دکمه را نشان بدهد یا نه.
+            $outstanding = $this->debtEngine->outstandingForOrder($payerId, (int) $locked->getKey());
+            $held = $locked->{Order::STATUS} === Order::STATUS_AWAITING_WEIGHT_CORRECTION;
+
+            // بدهی از راه دیگری تسویه شده و باری هم متوقف نیست — کاری نمانده.
+            if ($outstanding <= 0.0 && ! $held) {
+                throw new BusinessException(__('orders.overweight_no_shortfall'), 422);
             }
 
-            throw new BusinessException(__('orders.overweight_no_shortfall'), 422);
-        }
+            if ($outstanding > 0.0) {
+                // ترتیب اجباری: اول از کیف پول کم کن، بعد دفتر بدهی را ببند. عکسش
+                // یعنی بدهی صفر شود و بعد کسرِ کیف پول با موجودیِ ناکافی throw کند —
+                // آن‌وقت rollback هست، ولی تا آن لحظه سفارش «تسویه‌شده» دیده می‌شد.
+                //
+                // عمداً **بدون** `creditSystem`: `chargeOverweight` کلِ `deltaPOO` را
+                // همان لحظه به سازه داده بود (شرکت کمبود را جلو انداخت)، پس اینجا
+                // فقط سهمِ خریدار برمی‌گردد و لِگِ کیف پول‌ها متوازن می‌شود.
+                $this->walletEngine->debitBuyer(
+                    $locked, $outstanding, FinancialCodes::STATUS_AVAILABLE,
+                    "تسویه‌ی بدهی اضافه‌بار سفارش {$locked->order_number}"
+                );
 
-        DB::transaction(function () use ($order, $payerId, $outstanding) {
-            // ترتیب اجباری: اول از کیف پول کم کن، بعد دفتر بدهی را ببند. عکسش
-            // یعنی بدهی صفر شود و بعد کسرِ کیف پول با موجودیِ ناکافی throw کند —
-            // آن‌وقت rollback هست، ولی تا آن لحظه سفارش «تسویه‌شده» دیده می‌شد.
-            $this->walletEngine->debitBuyer(
-                $order, $outstanding, FinancialCodes::STATUS_AVAILABLE,
-                "تسویه‌ی بدهی اضافه‌بار سفارش {$order->order_number}"
-            );
-
-            $this->debtEngine->repay(
-                $payerId, $outstanding, $order,
-                "تسویه‌ی بدهی اضافه‌بار سفارش {$order->order_number}"
-            );
+                $this->debtEngine->repay(
+                    $payerId, $outstanding, $locked,
+                    "تسویه‌ی بدهی اضافه‌بار سفارش {$locked->order_number}"
+                );
+            }
 
             // فقط بارِ **متوقف** آزاد می‌شود. حالا که گارد وضعیت‌های دیگر را هم
             // می‌پذیرد، نوشتنِ بی‌قیدِ `SHIPPED` سفارشِ تحویل‌شده را به عقب
             // برمی‌گرداند — بدهی تسویه می‌شد و وضعیت خراب.
-            if ($order->{Order::STATUS} === Order::STATUS_AWAITING_WEIGHT_CORRECTION) {
-                $order->forceFill([Order::STATUS => Order::STATUS_SHIPPED])->save();
+            if ($held) {
+                $locked->forceFill([Order::STATUS => Order::STATUS_SHIPPED])->save();
             }
+
+            return $outstanding;
         });
 
-        Log::channel('financial')->info(
-            "Order {$order->id}: overweight shortfall of {$outstanding} settled; load released."
-        );
+        if ($outstanding > 0.0) {
+            Log::channel('financial')->info(
+                "Order {$order->id}: overweight shortfall of {$outstanding} settled; load released."
+            );
+        }
 
         return $order->refresh();
-    }
-
-    /**
-     * بدهیِ باقی‌ماندهٔ **همین سفارش**، نه کل بدهی شخص.
-     *
-     * ‏`DebtEngine::balanceFor()` مانده‌ی شخصی را می‌دهد؛ استفاده از آن اینجا
-     * یعنی خریداری که بابت سفارش دیگری هم بدهکار است، با پرداختِ اضافه‌بارِ این
-     * سفارش **کلِ** بدهی‌اش از کیف پول کسر شود. دفتر بدهی `order_id` دارد و
-     * ردیف بازپرداخت منفی نوشته می‌شود، پس جمعِ ردیف‌های این سفارش دقیقاً همان
-     * مانده‌ی همین سفارش است.
-     *
-     * سقفِ مانده‌ی شخصی هم اعمال می‌شود چون `repay()` خودش clamp می‌کند و بدون
-     * این سقف ممکن بود بیشتر از بدهیِ واقعی از کیف پول کم شود.
-     */
-    private function outstandingForOrder(int $payerId, Order $order): float
-    {
-        $orderDebt = (float) DebtEntry::query()
-            ->where(DebtEntry::USER_ID, $payerId)
-            ->where(DebtEntry::ORDER_ID, $order->getKey())
-            ->sum(DebtEntry::AMOUNT);
-
-        // فرمول مشترک است: `OrderResource` با همین تصمیم می‌گیرد دکمه‌ی تسویه را
-        // نشان بدهد یا نه، و این دو نباید هرگز جوابِ متفاوت بدهند.
-        return DebtEngine::outstandingOnOrder($orderDebt, $this->debtEngine->balanceFor($payerId));
     }
 
     private function assertOpen(Order $order): void

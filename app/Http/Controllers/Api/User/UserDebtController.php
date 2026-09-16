@@ -4,19 +4,16 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\User;
 
-use App\Actions\Financial\DebitWalletAction;
-use App\Actions\Financial\FundWalletAction;
+use App\Actions\Financial\RepayUserDebtAction;
 use App\Exceptions\BusinessException;
 use App\Http\Controllers\Controller;
 use App\Models\DebtEntry;
 use App\Models\Order;
 use App\Models\User;
-use App\Models\WalletTransaction;
 use App\Services\Financial\DebtEngine;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 
 /**
  * بدهی خودِ کاربر — `GET /api/profile/debts` (§۷.۴).
@@ -100,18 +97,13 @@ class UserDebtController extends Controller
      * رویداد دیگر تکرار نمی‌شد، **هیچ کاری نمی‌توانست بکند** — نه خودش، نه
      * ادمین (که فقط `credit_limit` را می‌تواند بگذارد، نه مانده را صفر کند).
      *
-     * ترتیب لِگ‌ها همان `settleShortfall` است: اول کسر از کیف پول، بعد بستن
-     * دفتر. عکسش یعنی بدهی صفر شود و بعد کسر با موجودیِ ناکافی throw کند.
-     *
-     * ‏`creditSystem` هم می‌خورد چون بدهی یعنی شرکت پول را جلو انداخته بود؛
-     * بازپرداخت باید به همان کیف پولِ سازه برگردد وگرنه دفترِ کیف پول‌ها
-     * نامتوازن می‌ماند و `financial:doctor` آن را «پول خلق‌شده» می‌بیند.
+     * هر بدهی از جریانِ خودش تسویه می‌شود (اضافه‌بار، خسارت عودت، کسری باسکول) —
+     * جزئیات و دلیلش در `RepayUserDebtAction`.
      */
     public function repay(
         Request $request,
         DebtEngine $debtEngine,
-        DebitWalletAction $debit,
-        FundWalletAction $fund,
+        RepayUserDebtAction $action,
     ): JsonResponse {
         /** @var User|null $user */
         $user = User::whereKey((int) Auth::id())->first();
@@ -135,39 +127,10 @@ class UserDebtController extends Controller
         // نتواند بیش از بدهی‌اش بپردازد و طلبکارِ سازه شود.
         $amount = min((float) ($data['amount'] ?? $balance), $balance);
 
-        // ‏`DebitWalletAction`/`FundWalletAction` و نه `WalletTransactionEngine`:
-        // موتور order-scoped است و بدهی می‌تواند ردیفِ بی‌سفارش هم داشته باشد
-        // (تعدیل دستیِ بک‌آفیس). این دو اکشن دقیقاً برای همین حالت‌اند.
-        $systemUser = User::whereKey((int) config('financial.system_user_id', 1))->first();
-
-        DB::transaction(function () use ($user, $systemUser, $amount, $debit, $fund, $debtEngine) {
-            // ترتیب اجباری: اول کسر از کیف پول، بعد بستن دفتر. عکسش یعنی بدهی
-            // صفر شود و بعد کسر با موجودیِ ناکافی throw کند.
-            $debit->execute($user, $amount, __('orders.debt_repay_description'), [
-                'kind' => 'debt_repayment',
-            ]);
-
-            // بدهی یعنی شرکت پول را جلو انداخته بود؛ بازپرداخت باید به همان
-            // کیف پول سازه برگردد وگرنه لِگِ کیف پول‌ها نامتوازن می‌ماند.
-            // ⚠️ `STATUS_CONFIRMED` صریح، و این پارامتر تا امروز اصلاً وجود
-            // نداشت. پیش‌فرضِ `FundWalletAction` یک ردیفِ `deposit/pending`
-            // می‌ساخت که موجودی را **تکان نمی‌داد** — یعنی کیف پولِ بدهکار
-            // فوراً کسر می‌شد، کیف پولِ سازه چیزی نمی‌گرفت، و بدهی هم بسته
-            // می‌شد: پول از سیستم ناپدید می‌شد. اینجا بازپرداخت است نه درخواستِ
-            // واریز، پس اعتبار باید همان لحظه بنشیند.
-            if ($systemUser !== null) {
-                $fund->execute(
-                    $systemUser, $amount, WalletTransaction::METHOD_BANK_TRANSFER,
-                    __('orders.debt_repay_description'), null, ['kind' => 'debt_repayment'],
-                    WalletTransaction::STATUS_CONFIRMED
-                );
-            }
-
-            $debtEngine->repay((int) $user->id, $amount, null, __('orders.debt_repay_description'));
-        });
+        $repaid = $action->execute($user, $amount);
 
         return success([
-            'repaid' => (string) $amount,
+            'repaid' => (string) $repaid,
             'debt_balance' => (string) $debtEngine->balanceFor((int) $user->id),
         ], __('orders.debt_repaid'));
     }

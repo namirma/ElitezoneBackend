@@ -10,6 +10,9 @@ use App\Models\DebtEntry;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Wallet;
+use App\Models\WalletTransaction;
+use App\Support\Money;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -155,5 +158,261 @@ class SupplierDebtHandler
         );
 
         return 'deficit_pending_supplier';
+    }
+
+    /**
+     * تسویه‌ی کسریِ پارک‌شده‌ی یک سفارش — قرینه‌ی `parkDebtAndNotify`.
+     *
+     * ⚠️ **تنها مسیرِ تسویه‌ی `weighbridge_deficit`، با دو فراخوان:**
+     * `CheckSupplierBalancesJob` (پس از شارژِ کیف پول) و `RepayUserDebtAction`
+     * (تأمین‌کننده خودش از تبِ بدهی می‌پردازد). پیش از این، `/profile/debts/repay`
+     * لِگ‌های عمومی را می‌زد و پرچم‌های سفارش را دست نمی‌زد؛ کران بعداً همان طلب
+     * را **دوباره** از تأمین‌کننده برمی‌داشت (`repay()` آن‌جا به صفر clamp می‌شد و
+     * کسی نمی‌دید) — بدهیِ ۲ میلیونی ۴ میلیون خرج داشت. کپیِ این بدنه در دو جا
+     * یعنی روزی یکی عوض شود و همان باگ برگردد.
+     *
+     * خودش تراکنش و قفل می‌گیرد: سفارش → کیف پولِ تأمین‌کننده → کاربر.
+     *
+     * Context — the refund is paid only AFTER the reclaim (WS → WSSG → WO), so the
+     * money always exists before it moves; the platform deliberately does not
+     * front the buyer's refund (management decision, round-2 question 2).
+     *
+     * @return bool true = پرچم بسته شد؛ false = هنوز نه (موجودیِ ناکافی، پرچمی
+     *              نمانده، یا بدهیِ دفتر دیگر باز نیست) و فراخوان تصمیم می‌گیرد.
+     */
+    public function settlePending(Order $order): bool
+    {
+        return DB::transaction(function () use ($order) {
+            /** @var Order|null $locked */
+            $locked = Order::whereKey($order->getKey())->lockForUpdate()->first();
+
+            if (! $locked || ! $locked->{Order::SUPPLIER_DEBT_PENDING}) {
+                return false; // Already handled by a concurrent run
+            }
+
+            $debtAmount = (float) $locked->{Order::SUPPLIER_DEBT_AMOUNT};
+
+            // مالیاتِ معلق (بند ۸.۴) عمداً ستونِ خودش را دارد و در بدهی جمع نمی‌شود:
+            // بدهی به کیف پول سازه وصول می‌شود ولی مالیات باید در کیف پولِ خودِ
+            // تأمین‌کننده هولد شود. یک سفارش می‌تواند فقط مالیاتِ معلق داشته باشد —
+            // وقتی کسری‌ای در کار نبوده ولی موجودی برای هولد کم آمده.
+            $vatPending = (float) ($locked->{Order::SUPPLIER_VAT_PENDING_AMOUNT} ?? 0);
+
+            if ($debtAmount <= 0 && $vatPending <= 0) {
+                // Debt already cleared or zero — just unflag
+                $locked->forceFill([
+                    Order::SUPPLIER_DEBT_PENDING => false,
+                    Order::SUPPLIER_DEBT_AMOUNT => 0,
+                ])->save();
+
+                return true;
+            }
+
+            if ($debtAmount > 0) {
+                $supplierId = (int) $locked->items()->value(OrderItem::SUPPLIER_USER_ID);
+
+                // فقط خودِ طلب سنجیده می‌شود، نه طلب + مالیات. حالا که مالیات هولد
+                // نمی‌شود (تصمیم مدیریت ۲۰۲۶-۰۹-۰۹، بندِ ۶)، افزودنِ `$vatPending` به
+                // این آستانه یک **باگ** بود: تأمین‌کننده‌ای که دقیقاً به‌اندازه‌ی طلب
+                // پول داشت، تا ابد رد می‌شد.
+                $supplierWallet = $supplierId > 0
+                    ? Wallet::where(Wallet::USER_ID, $supplierId)->lockForUpdate()->first()
+                    : null;
+
+                if (! $supplierWallet || (float) $supplierWallet->balance < $debtAmount) {
+                    return false; // Still insufficient — try again next run
+                }
+
+                // دفاعِ دوم: پرچمِ سفارش و دفترِ بدهی دو ثبتِ جدا از یک طلب‌اند. اگر
+                // دفتر از راهِ دیگری بسته شده باشد (بازپرداختِ عمومیِ پیش از این
+                // اصلاح)، وصولِ دوباره یعنی همان پول دو بار — `repay()` پایین فقط
+                // بی‌صدا صفر برمی‌گرداند. پس رد و لاگ، نه وصول.
+                $outstanding = $this->debtEngine->outstandingForOrder($supplierId, (int) $locked->id);
+
+                if (Money::lt($outstanding, $debtAmount)) {
+                    Log::channel('financial')->error(
+                        "Order {$locked->id}: supplier_debt_pending is set for {$debtAmount} but only {$outstanding} "
+                        .'is outstanding on the debt ledger — reclaim skipped, needs manual review.'
+                    );
+
+                    return false;
+                }
+
+                // ۱ و ۲. وصول طلب از تأمین‌کننده و سپس پرداخت عودت به خریدار.
+                $this->settleDebtAndRefundBuyer($locked, $debtAmount, $supplierId);
+
+                // دفترِ بدهیِ سطحِ شخص هم بسته می‌شود، وگرنه گاردِ برداشت
+                // (بند ۳.۱۲) این تأمین‌کننده را برای همیشه بدهکار می‌دید.
+                $this->debtEngine->repay(
+                    $supplierId,
+                    $debtAmount,
+                    $locked,
+                    "تسویه کسری باسکول سفارش {$locked->order_number}",
+                );
+            }
+
+            // ۳. **دیگر هولدی گذاشته نمی‌شود** — تصمیم مدیریت ۲۰۲۶-۰۹-۰۹، بندِ ۶:
+            //    مالیاتِ تأمین‌کننده «اصلاً نباید مسدود شود».
+            //
+            //    ستونِ `SUPPLIER_VAT_PENDING_AMOUNT` روی سفارش‌های **قدیمی** هنوز
+            //    مقدار دارد. آن عدد هرگز از کیف پول برداشته نشده بود — فقط ثبت
+            //    شده بود که «این‌قدر باید بعداً هولد شود». حالا که هولدی در کار
+            //    نیست، درست‌ترین کار پاک‌کردنِ همان یادداشت است (بندِ ۴ پایین)،
+            //    نه برداشتِ پول از تأمین‌کننده.
+            //
+            //    ⚠️ پس عمداً هیچ تراکنشِ مالی‌ای این‌جا اجرا نمی‌شود.
+
+            // 4. Clear the pending debt flags on the order
+            $locked->forceFill([
+                Order::SUPPLIER_DEBT_PENDING => false,
+                Order::SUPPLIER_DEBT_AMOUNT => 0,
+                Order::BUYER_REFUND_PENDING_AMOUNT => null,
+                Order::SUPPLIER_VAT_PENDING_AMOUNT => null,
+            ])->save();
+
+            Log::channel('financial')->info(
+                "Supplier debt cleared for order {$locked->id}. Debt: {$debtAmount}, suspended VAT: {$vatPending}"
+            );
+
+            return true;
+        });
+    }
+
+    /**
+     * بند ۱ و ۲ بند ۸.۴: اول طلب از تأمین‌کننده وصول می‌شود، بعد عودت به خریدار
+     * پرداخت می‌گردد — به همین ترتیب، تا کیف پول سازه هرگز منفی نشود.
+     *
+     * Must run inside the caller's transaction, with the order already locked.
+     */
+    private function settleDebtAndRefundBuyer(Order $lockedOrder, float $debtAmount, int $supplierId): void
+    {
+        $reclaimDescription = __('wallet.descriptions.supplier_debt_reclaim', [
+            'order_number' => $lockedOrder->order_number,
+        ]);
+
+        $this->walletEngine->debitSupplier(
+            $lockedOrder, $debtAmount, FinancialCodes::STATUS_AVAILABLE, $supplierId, $reclaimDescription
+        );
+        $this->walletEngine->creditSystem(
+            $lockedOrder, $debtAmount, FinancialCodes::STATUS_AVAILABLE, $reclaimDescription
+        );
+
+        // ۲. عودتِ خریدار **حالا** پرداخت می‌شود: WSSG(−) → WO(+).
+        //
+        // تا فاز ۸ این مبلغ در لحظه‌ی باسکول از کیف پول سازه جلو انداخته و
+        // در هولدِ خریدار پارک می‌شد، و اینجا فقط هولد آزاد می‌گشت. ولی کیف
+        // پول سازه آن موقع پولش را ندارد، پس آن مسیر می‌شکست و کلِ باسکول
+        // rollback می‌شد. حالا هیچ پولی پیش از وصول جابه‌جا نمی‌شود: بند ۱
+        // بالا تازه طلب را از تأمین‌کننده گرفته و به سازه ریخته، پس همین
+        // الان پولِ پرداخت به خریدار موجود است.
+        $refundAmount = (float) ($lockedOrder->{Order::BUYER_REFUND_PENDING_AMOUNT} ?? 0);
+
+        // کیف پولِ پرداخت‌کننده و نه ثبت‌کننده (فاز ۶) — عودت به همان کیفی
+        // برمی‌گردد که پول از آن رفته است.
+        $buyerWallet = Wallet::where('user_id', $lockedOrder->payerUserId())->lockForUpdate()->first();
+
+        if (! $buyerWallet) {
+            throw new \RuntimeException(
+                "Order {$lockedOrder->id}: buyer wallet missing — parked refund cannot be paid."
+            );
+        }
+
+        $refundDescription = __('wallet.descriptions.buyer_refund_released', [
+            'order_number' => $lockedOrder->order_number,
+        ]);
+
+        /** @var Wallet $buyerWallet */
+        $legacyHold = $this->outstandingRefundHold($buyerWallet, (int) $lockedOrder->id);
+
+        if ($legacyHold) {
+            // سفارش‌هایی که **پیش از فاز ۸** پارک شده‌اند واقعاً یک هولد در کیف
+            // پول خریدار دارند: آن موقع سازه پول را جلو انداخته بود. برای آن‌ها
+            // مسیر درست همان آزادسازیِ هولد است — اگر فقط مسیر تازه را اجرا
+            // می‌کردیم، آن پول برای همیشه در هولد می‌ماند و یک بار دیگر هم از
+            // سازه پرداخت می‌شد.
+            $this->walletEngine->releaseHold(
+                $lockedOrder->payerUserId(),
+                (float) $legacyHold->amount,
+                $lockedOrder,
+                $refundDescription,
+                $legacyHold,
+            );
+            $refundAmount = (float) $legacyHold->amount;
+        } elseif ($refundAmount <= 0) {
+            // نه هولدِ قدیمی، نه مبلغِ ثبت‌شده — یعنی ردیف خراب است: پرچمِ
+            // بدهی هست ولی هیچ‌جا ننوشته چقدر به خریدار بدهکاریم.
+            //
+            // **باید پرتاب کند، نه بی‌صدا رد شود.** اگر ادامه می‌داد، مرحله‌ی
+            // ۳ پرچم را پاک می‌کرد در حالی که طلب از تأمین‌کننده وصول شده —
+            // پس پول به سازه می‌رسید، پرچم بسته می‌شد، و خریدار برای همیشه
+            // چیزی نمی‌گرفت بدون هیچ رویدادی که بعداً اصلاحش کند.
+            throw new \RuntimeException(
+                "Order {$lockedOrder->id}: supplier debt is pending but no buyer refund amount or hold was found."
+            );
+        } else {
+            $this->walletEngine->debitSystem(
+                $lockedOrder, $refundAmount, FinancialCodes::STATUS_AVAILABLE, $refundDescription
+            );
+            $this->walletEngine->creditBuyer(
+                $lockedOrder, $refundAmount, FinancialCodes::STATUS_AVAILABLE, $refundDescription
+            );
+        }
+
+        // Notify buyer — dispatched AFTER the transaction commits (afterCommit)
+        // so the blocking SMS HTTP call never runs while this holds the
+        // order + both wallet row locks, and no "refund released" SMS is sent
+        // if the transaction later rolls back.
+        // کیف پول بدون کاربر وجود ندارد (کلید خارجی)، پس `?->` اینجا چیزی نمی‌گرفت.
+        if ($buyerWallet->user->mobile && $refundAmount > 0) {
+            SendSmsJob::template($buyerWallet->user->mobile, 'buyer_refund_released', [
+                'amount' => number_format((int) $refundAmount),
+                'order_number' => $lockedOrder->order_number,
+            ])->afterCommit();
+        }
+    }
+
+    /**
+     * ردیفِ هولدِ عودت که هنوز آزاد نشده — با **حذفِ** آن‌هایی که قبلاً آزاد شده‌اند،
+     * نه با تغییرِ وضعیتِ خودشان.
+     *
+     * ⚠️ اینجا عمداً `status` هیچ ردیفی عوض نمی‌شود — و این تنها راهِ درست است.
+     *
+     * قبلاً بعد از `releaseHold()` یک `$holdTx->update(['status' => AVAILABLE])`
+     * هم اجرا می‌شد تا ردیف دیگر «هولدِ باز» شمرده نشود. ولی `LedgerReconciler`
+     * موجودی را از روی همین ستون‌ها **بازپخش** می‌کند و قاعده‌اش این است:
+     *
+     *   deposit + hold      → balance ۰   ، hold +مبلغ
+     *   deposit + confirmed → balance +مبلغ، hold ۰
+     *   hold_release        → balance +مبلغ، hold −مبلغ
+     *
+     * پس با آن `update`، ردیفِ اصلی از سطرِ اول به سطرِ دوم می‌پرید و بازپخش
+     * `balance = +۲×مبلغ` و `hold = −مبلغ` می‌داد، در حالی که کیف واقعی
+     * `+۱×مبلغ` و `۰` دارد. یعنی **هر آزادسازیِ بدهیِ سوپلایر، کیف پول خریدار را
+     * برای همیشه در `financial:doctor` مغایر می‌کرد** — به اندازهٔ کلِ مبلغِ عودت،
+     * در هر دو ستون. ردیفِ دفتر یک *رویدادِ گذشته* است؛ آن رویداد واقعاً «قرار
+     * دادنِ هولد» بود و بازنویسی‌اش تاریخ را عوض می‌کند.
+     *
+     * «آزاد شده یا نه» از خودِ دفتر خوانده می‌شود: `releaseHold()` در
+     * `meta.source_hold_id` به ردیفِ مبدأ اشاره می‌کند. (`orphanHolds()` هم
+     * مستقلاً درست کار می‌کند، چون +hold و −hold_release را با هم جمع می‌زند.)
+     */
+    private function outstandingRefundHold(Wallet $buyerWallet, int $orderId): ?WalletTransaction
+    {
+        $releasedHoldIds = $buyerWallet->transactions()
+            ->where('order_id', $orderId)
+            ->where('type', WalletTransaction::TYPE_HOLD_RELEASE)
+            ->get(['id', 'meta'])
+            ->map(fn (WalletTransaction $tx) => is_array($tx->meta) ? ($tx->meta['source_hold_id'] ?? null) : null)
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        return $buyerWallet->transactions()
+            ->where('order_id', $orderId)
+            ->where('type', WalletTransaction::TYPE_DEPOSIT)
+            ->where('status', FinancialCodes::STATUS_HOLD)
+            ->whereNotIn('id', $releasedHoldIds)
+            ->latest()
+            ->first();
     }
 }

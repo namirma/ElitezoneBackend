@@ -6,6 +6,7 @@ namespace Tests\Feature\Financial;
 
 use App\Constants\FinancialCodes;
 use App\Jobs\Financial\CheckSupplierBalancesJob;
+use App\Models\DebtEntry;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\User;
@@ -13,6 +14,7 @@ use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use App\Services\Financial\DebtEngine;
 use App\Services\Financial\LedgerReconciler;
+use App\Services\Financial\SupplierDebtHandler;
 use App\Services\Financial\WalletTransactionEngine;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Queue;
@@ -105,6 +107,12 @@ class SupplierDebtReleaseTest extends TestCase
             Order::SUPPLIER_DEBT_PENDING => true,
             Order::SUPPLIER_DEBT_AMOUNT => self::DEBT,
         ])->save();
+
+        // پارکِ واقعی دفترِ بدهی را هم می‌نویسد، و job حالا پیش از وصول می‌سنجد
+        // که آن ردیف هنوز باز است — فیکسچرِ بی‌دفتر یعنی «بدهی‌ای که وجود ندارد».
+        app(DebtEngine::class)->incur(
+            (int) $this->supplier->id, self::DEBT, DebtEntry::TYPE_WEIGHBRIDGE_DEFICIT, $this->order, 'کسری باسکول'
+        );
     }
 
     private function buyerWallet(): Wallet
@@ -114,10 +122,26 @@ class SupplierDebtReleaseTest extends TestCase
 
     private function runJob(): void
     {
-        app(CheckSupplierBalancesJob::class)->handle(
-            app(WalletTransactionEngine::class),
-            app(DebtEngine::class),
+        app(CheckSupplierBalancesJob::class)->handle(app(SupplierDebtHandler::class));
+    }
+
+    #[Test]
+    public function a_debt_already_closed_on_the_ledger_is_never_reclaimed_again(): void
+    {
+        // همان باگِ دو-مسیره: بازپرداختِ عمومیِ `/profile/debts/repay` (پیش از
+        // اصلاح) دفتر را می‌بست ولی پرچم سفارش را نه. job بعدی دوباره وصول می‌کرد
+        // و `repay()` بی‌صدا صفر برمی‌گرداند — تأمین‌کننده دو بار می‌پرداخت.
+        app(DebtEngine::class)->repay((int) $this->supplier->id, self::DEBT, null, 'بازپرداخت عمومی');
+
+        $this->runJob();
+
+        $this->assertEqualsWithDelta(
+            self::DEBT,
+            (float) Wallet::where(Wallet::USER_ID, $this->supplier->id)->value(Wallet::BALANCE),
+            0.5,
+            'طلبی که دفترش بسته است نباید دوباره از کیف پول تأمین‌کننده برداشته شود.'
         );
+        $this->assertTrue((bool) $this->order->fresh()->{Order::SUPPLIER_DEBT_PENDING}, 'پرچم برای بررسیِ دستی می‌ماند.');
     }
 
     // ─────────────────────────────────────────────────────────────────────────
