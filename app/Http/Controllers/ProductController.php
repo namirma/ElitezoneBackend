@@ -130,6 +130,28 @@ class ProductController extends Controller
      * می‌کرد؛ واریانتی که در صفحه‌ی بعدی بود یا به محصولِ اصلیِ دیگری تعلق داشت هرگز
      * پیدا نمی‌شد و «محصول موردنظر یافت نشد» نشان داده می‌شد.
      */
+    /**
+     * ثبتِ بازدیدِ صفحه‌ی محصول (واریانت).
+     *
+     * صفحه‌ی محصولِ سایت معمولاً از فهرستِ از-پیش-گرفته‌شده رندر می‌شود و هیچ
+     * درخواستی به سرور نمی‌زند، پس بازدید باید صریحاً ثبت شود. همان کارِ صفِ
+     * `show` — فیلترِ ربات، dedup (یک‌بار در روز)، IP ناشناس — به‌علاوه‌ی
+     * `product_variants.view_count` که مرتب‌سازیِ «پربازدیدترین» روی آن است.
+     */
+    public function recordVariantView(ProductVariant $variant): JsonResponse
+    {
+        LogProductView::dispatch(
+            productId: $variant->product_id,
+            userId: Auth::id(),
+            ipAddress: request()->ip(),
+            userAgent: request()->userAgent(),
+            sessionId: request()->cookie('cart_session_id'),
+            variantId: $variant->id,
+        )->afterResponse();
+
+        return success(null, 'global.received_successfully');
+    }
+
     public function showVariant(ProductVariant $variant, VariantPriceHydrator $priceHydrator): JsonResponse
     {
         $variant->load([

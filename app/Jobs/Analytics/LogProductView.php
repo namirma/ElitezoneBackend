@@ -3,6 +3,7 @@
 namespace App\Jobs\Analytics;
 
 use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\ProductView;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -19,7 +20,10 @@ class LogProductView implements ShouldQueue
         protected ?int $userId,
         protected ?string $ipAddress,
         protected ?string $userAgent,
-        protected ?string $sessionId
+        protected ?string $sessionId,
+        // بازدیدِ صفحه‌ی محصولِ سایت (`/product/{variantId}`) — «پربازدیدترین» در فهرستِ
+        // واریانت‌ها روی همین شمارنده مرتب می‌شود؛ بدونِ آن هیچ داده‌ای نداشت.
+        protected ?int $variantId = null,
     ) {}
 
     public function handle(): void
@@ -37,6 +41,7 @@ class LogProductView implements ShouldQueue
 
         ProductView::create([
             ProductView::PRODUCT_ID => $this->productId,
+            ProductView::PRODUCT_VARIANT_ID => $this->variantId,
             ProductView::USER_ID => $this->userId,
             // IP برای حریم خصوصی ناشناس می‌شود (اوکتت/هگزِ آخر صفر) — برای آمار جغرافیایی
             // کافی است ولی فرد قابل شناسایی نیست.
@@ -47,6 +52,10 @@ class LogProductView implements ShouldQueue
         ]);
 
         Product::where('id', $this->productId)->increment('view_count');
+
+        if ($this->variantId) {
+            ProductVariant::where('id', $this->variantId)->increment(ProductVariant::VIEW_COUNT);
+        }
     }
 
     private function isBot(?string $agent): bool
@@ -67,13 +76,18 @@ class LogProductView implements ShouldQueue
 
     private function isDuplicate(): bool
     {
-        $window = (int) config('intelligence.product_views.dedup_seconds', 30);
+        // بازدیدِ واریانت یک‌بار در روز به‌ازای هر بازدیدکننده شمرده می‌شود (نه هر
+        // ۳۰ ثانیه): رفت‌وبرگشتِ بینِ کارت و صفحه‌ی محصول نباید «پربازدیدترین» را باد کند.
+        $window = $this->variantId
+            ? (int) config('intelligence.product_views.variant_dedup_seconds', 86400)
+            : (int) config('intelligence.product_views.dedup_seconds', 30);
         if ($window <= 0) {
             return false;
         }
 
         // کلیدِ dedup: کاربر لاگین‌شده با user_id، مهمان با session_id، در نبود هر دو با IP.
         $query = ProductView::where(ProductView::PRODUCT_ID, $this->productId)
+            ->where(ProductView::PRODUCT_VARIANT_ID, $this->variantId)
             ->where(ProductView::VIEWED_AT, '>=', now()->subSeconds($window));
 
         if ($this->userId) {

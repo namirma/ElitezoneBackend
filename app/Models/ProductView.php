@@ -46,6 +46,8 @@ class ProductView extends Model
 
     const PRODUCT_ID = 'product_id';
 
+    const PRODUCT_VARIANT_ID = 'product_variant_id';
+
     const USER_ID = 'user_id';
 
     const IP_ADDRESS = 'ip_address';
@@ -61,6 +63,7 @@ class ProductView extends Model
     /* -------------------------------------------------------------------------- */
     protected $fillable = [
         self::PRODUCT_ID,
+        self::PRODUCT_VARIANT_ID,
         self::USER_ID,
         self::IP_ADDRESS,
         self::USER_AGENT,
@@ -70,6 +73,7 @@ class ProductView extends Model
 
     protected $casts = [
         self::PRODUCT_ID => 'integer',
+        self::PRODUCT_VARIANT_ID => 'integer',
         self::USER_ID => 'integer',
         self::VIEWED_AT => 'datetime',
     ];

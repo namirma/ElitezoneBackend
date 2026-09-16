@@ -69,6 +69,7 @@ Route::prefix('products')->middleware(['attach.price.category'])->group(function
     Route::get('/', [ProductController::class, 'index']);
     // قبل از {product:cuid} — وگرنه «variants» به‌عنوان مقدار cuid تفسیر و ۴۰۴ می‌گیرد
     Route::get('/variants/{variant}', [ProductController::class, 'showVariant']);
+    Route::post('/variants/{variant}/view', [ProductController::class, 'recordVariantView'])->middleware('throttle:60,1');
     Route::get('/{product:cuid}', [ProductController::class, 'show']);
     Route::get('/{product:cuid}/variants', [ProductController::class, 'variants']);
     Route::get('/{product:cuid}/filters', [ProductController::class, 'filters']);

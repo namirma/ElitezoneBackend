@@ -29,7 +29,12 @@ class ProductVariantFilterRequest extends FormRequest
             // گزینه‌ی مشخص («A3») — چیزی که سایدبار واقعاً تیک می‌خورد.
             'filter_values' => 'nullable|array',
             'filter_values.*' => 'integer|exists:attribute_values,id',
-            'sort' => 'nullable|in:newest,oldest,cheapest,most_expensive,best_selling',
+            // `most_viewed` → `product_variants.view_count` (نوشته‌ی `LogProductView` از
+            // `POST /products/variants/{variant}/view`)؛ `best_selling` → جمعِ
+            // `order_items.quantity`.
+            'sort' => 'nullable|in:newest,oldest,cheapest,most_expensive,most_viewed,best_selling',
+            // موجودی از روی جمعِ نمایشیِ `stock_quantity` (رول‌آپِ factory_stocks).
+            'availability' => 'nullable|in:all,in_stock,out_of_stock',
             'page' => 'nullable|integer|min:1',
             'per_page' => 'nullable|integer|min:1|max:100',
         ];

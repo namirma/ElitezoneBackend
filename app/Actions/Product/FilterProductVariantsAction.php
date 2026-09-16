@@ -52,6 +52,18 @@ class FilterProductVariantsAction
             ));
         }
 
+        // موجودی — تا ۱۴۰۵/۰۶/۲۵ سایت این را می‌فرستاد و اینجا بی‌صدا دور ریخته می‌شد
+        // (کنترلِ بی‌اثر، خلافِ قاعده‌ی صداقت).
+        match ($filters['availability'] ?? 'all') {
+            'in_stock' => $query->where(ProductVariant::STOCK_QUANTITY, '>', 0),
+            'out_of_stock' => $query->where(ProductVariant::STOCK_QUANTITY, '<=', 0),
+            default => null,
+        };
+
+        // ponytail: «پرفروش‌ترین» = جمعِ مقدارِ فروخته‌شده‌ی `order_items.quantity`، فارغ
+        // از وضعیتِ پرداخت؛ اگر روزی «فروشِ واقعی» لازم شد، روی سفارش‌های paid محدود شود.
+        $query->withSum('orderItems', 'quantity');
+
         // ۳. دریافت و محاسبه قیمت
         $variants = $query->get();
 
@@ -73,6 +85,8 @@ class FilterProductVariantsAction
         $sorted = match ($sortKey) {
             'cheapest' => $variants->sortBy($getter),
             'most_expensive' => $variants->sortByDesc($getter),
+            'best_selling' => $variants->sortByDesc(fn ($v) => (float) ($v->order_items_sum_quantity ?? 0)),
+            'most_viewed' => $variants->sortByDesc(fn ($v) => (int) ($v->view_count ?? 0)),
             default => $variants->sortByDesc('created_at'),
         };
 

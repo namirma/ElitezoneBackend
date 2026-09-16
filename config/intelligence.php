@@ -103,6 +103,9 @@ return [
         // ثبت نمی‌شود (جلوگیری از تورم view_count با رفرش/اسکرپ).
         'dedup_seconds' => env('PRODUCT_VIEWS_DEDUP_SECONDS', 30),
 
+        // بازدیدِ واریانت (صفحه‌ی محصولِ سایت): یک‌بار در روز به‌ازای هر بازدیدکننده.
+        'variant_dedup_seconds' => env('PRODUCT_VARIANT_VIEWS_DEDUP_SECONDS', 86400),
+
         // الگوهای User-Agent رباتی که نباید در آنالیتیکس شمرده شوند.
         'bot_user_agents' => [
             'bot', 'crawler', 'spider', 'slurp', 'mediapartners',

@@ -248,6 +248,11 @@ class ProductVariant extends Model
         return $this->pendingPriceChanges()->exists();
     }
 
+    public function orderItems(): HasMany
+    {
+        return $this->hasMany(OrderItem::class, OrderItem::PRODUCT_VARIANT_ID);
+    }
+
     public function stockSubscriptions(): HasMany
     {
         return $this->hasMany(StockSubscription::class, StockSubscription::PRODUCT_VARIANT_ID);
