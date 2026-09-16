@@ -22,6 +22,7 @@ use App\Services\Supplier\SupplierEarningsReport;
 use Exception;
 use Hekmatinasser\Verta\Verta;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -418,6 +419,10 @@ class SupplierOrderController extends Controller
 
         try {
             $action->execute($order, $request->validated('moadian_ref'));
+        } catch (QueryException $e) {
+            // QueryException هم RuntimeException است: بدونِ این، SQL با bindingها در ۴۲۲
+            // به کلاینت می‌رسید. Handler روی پروداکشن پیامِ عمومی می‌دهد.
+            throw $e;
         } catch (\RuntimeException $e) {
             return error($e->getMessage(), [], 422);
         } catch (Exception $e) {

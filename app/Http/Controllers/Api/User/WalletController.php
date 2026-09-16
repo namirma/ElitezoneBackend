@@ -18,6 +18,7 @@ use App\Models\WalletTransaction;
 use App\Services\Financial\ShenasehVarizService;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -193,6 +194,10 @@ class WalletController extends Controller
 
         try {
             $updated = $this->attachReceiptAction->execute($transaction, Auth::id(), $request->file('receipt'));
+        } catch (QueryException $e) {
+            // QueryException هم RuntimeException است: بدونِ این، SQL با bindingها (و کدِ
+            // SQLSTATE به‌جای status) به کلاینت می‌رسید. Handler پیامِ عمومی می‌دهد.
+            throw $e;
         } catch (RuntimeException $e) {
             return error($e->getMessage(), [], $e->getCode() ?: 400);
         }
@@ -270,6 +275,10 @@ class WalletController extends Controller
     {
         try {
             $this->deleteReceiptAction->execute($transaction, Auth::id());
+        } catch (QueryException $e) {
+            // QueryException هم RuntimeException است: بدونِ این، SQL با bindingها (و کدِ
+            // SQLSTATE به‌جای status) به کلاینت می‌رسید. Handler پیامِ عمومی می‌دهد.
+            throw $e;
         } catch (RuntimeException $e) {
             return error($e->getMessage(), [], $e->getCode() ?: 400);
         }

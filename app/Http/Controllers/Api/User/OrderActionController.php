@@ -11,6 +11,7 @@ use App\Http\Requests\Order\SubmitMoadianInvoiceRequest;
 use App\Http\Resources\Order\OrderResource;
 use App\Models\Order;
 use Exception;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -100,6 +101,10 @@ class OrderActionController extends Controller
                 $order,
                 $request->validated('moadian_ref')
             );
+        } catch (QueryException $e) {
+            // QueryException هم RuntimeException است: بدونِ این، SQL با bindingها در ۴۲۲
+            // به کلاینت می‌رسید. Handler روی پروداکشن پیامِ عمومی می‌دهد.
+            throw $e;
         } catch (\RuntimeException $e) {
             return error($e->getMessage(), [], 422);
         } catch (Exception $e) {

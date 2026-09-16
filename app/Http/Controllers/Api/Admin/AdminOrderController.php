@@ -17,6 +17,7 @@ use App\Services\Order\OrderTimelineService;
 use App\Support\JalaliDate;
 use Exception;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -168,6 +169,10 @@ class AdminOrderController extends Controller
 
         try {
             $action->execute($order, $request->validated('moadian_ref'));
+        } catch (QueryException $e) {
+            // QueryException هم RuntimeException است: بدونِ این، SQL با bindingها در ۴۲۲
+            // به کلاینت می‌رسید. Handler روی پروداکشن پیامِ عمومی می‌دهد.
+            throw $e;
         } catch (\RuntimeException $e) {
             return error($e->getMessage(), [], 422);
         } catch (Exception $e) {
