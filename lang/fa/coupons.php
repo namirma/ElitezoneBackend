@@ -69,4 +69,6 @@ return [
     'funder_already_responded' => 'به این درخواست قبلاً پاسخ داده شده است.',
     'funder_not_yours' => 'این درخواست تأمین متعلق به شما نیست.',
     'funder_not_company' => 'این ردیف تأمین متعلق به شرکت نیست و پاسخش با خودِ تأمین‌کننده است.',
+    'weighbridge_clawback_description' => 'برگشت مازاد تخفیف کوپن :code بابت کسری باسکول سفارش :order',
+    'weighbridge_extra_description' => 'تخفیف تکمیلی کوپن :code بابت اضافه‌بار سفارش :order',
 ];

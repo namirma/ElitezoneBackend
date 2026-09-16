@@ -217,6 +217,123 @@ class CouponFundingService
         return true;
     }
 
+    // ── باسکول: اختلافِ تخفیفِ کوپنِ درصدی (`WeighbridgeReconciler::recalculateCoupon`) ──
+
+    /**
+     * سهمِ هر تأمین‌کننده از اختلافِ تخفیف در باسکول.
+     *
+     * به نسبتِ لِگ‌های پرداختِ **همین سفارش** — نه ردیف‌های فعلیِ کوپن — با همان
+     * قاعده‌ی `split()` (آخری باقی‌مانده را می‌گیرد، پس جمعِ لِگ‌ها دقیقاً تخفیفِ تازه
+     * می‌شود). سفارشی که پیش از تأمینِ سه‌منبعی پرداخت شده لِگ ندارد: کلِ تخفیف را
+     * سازه داده بود (لِگِ قدیمیِ WSSG→WO)، پس اختلاف یک سهمِ شرکت است.
+     *
+     * @return list<array{leg: CouponFundingLeg|null, type: string, user_id: int|null, delta: float}>
+     *                                                                                                delta منفی = برگشت به تأمین‌کننده، مثبت = برداشت از او
+     */
+    public function weighbridgeShares(Order $order, float $credited, float $newDiscount): array
+    {
+        $legs = CouponFundingLeg::where(CouponFundingLeg::ORDER_ID, $order->id)
+            ->whereNull(CouponFundingLeg::REVERSED_AT)
+            ->orderBy(CouponFundingLeg::ID)
+            ->get();
+
+        $old = (float) $legs->sum(fn (CouponFundingLeg $leg) => (float) $leg->{CouponFundingLeg::AMOUNT});
+        $total = round($newDiscount);
+
+        if ($old <= 0) {
+            return [['leg' => null, 'type' => CouponFunder::TYPE_COMPANY, 'user_id' => null, 'delta' => $total - round($credited)]];
+        }
+
+        $last = $legs->count() - 1;
+        $allocated = 0.0;
+        $shares = [];
+
+        foreach ($legs->values() as $i => $leg) {
+            $current = (float) $leg->{CouponFundingLeg::AMOUNT};
+            $amount = $i === $last ? $total - $allocated : floor($total * $current / $old);
+            $allocated += $amount;
+            $userId = $leg->{CouponFundingLeg::FUNDER_USER_ID};
+
+            $shares[] = [
+                'leg' => $leg,
+                'type' => (string) $leg->{CouponFundingLeg::FUNDER_TYPE},
+                'user_id' => $userId !== null ? (int) $userId : null,
+                'delta' => $amount - $current,
+            ];
+        }
+
+        return $shares;
+    }
+
+    /**
+     * افزایشِ تخفیف فقط وقتی اعمال می‌شود که کیف پولِ هر تأمین‌کننده‌ی کاربری سهمِ
+     * اضافه‌اش را پوشش دهد — وگرنه یک کیف پولِ خالیِ الیت‌یار کلِ باسکول را rollback
+     * می‌کرد. سهمِ شرکت چک نمی‌شود: از WSSG و پس از دریافتِ مابه‌التفاوت برداشته می‌شود.
+     *
+     * @param  list<array{leg: CouponFundingLeg|null, type: string, user_id: int|null, delta: float}>  $shares
+     * @param  array<int, float>  $incoming  پولی که همین تسویه پیش از برداشت به کیف کاربر می‌ریزد (ΔPTS)
+     */
+    public function canFundIncrease(array $shares, array $incoming = []): bool
+    {
+        foreach ($shares as $share) {
+            if ($share['delta'] <= 0 || $share['user_id'] === null) {
+                continue;
+            }
+
+            $balance = (float) (Wallet::where(Wallet::USER_ID, $share['user_id'])->value(Wallet::BALANCE) ?? 0);
+
+            if ($balance + ($incoming[$share['user_id']] ?? 0.0) < $share['delta']) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * لِگ‌های تأمین را با اختلافِ باسکول هم‌راستا می‌کند: delta منفی به کیف پولِ همان
+     * تأمین‌کننده برمی‌گردد، مثبت از آن برداشته می‌شود. مبلغِ هر لِگ به‌روز می‌شود تا
+     * `reverseLegs()` در استردادِ بعدی دقیقاً همان را برگرداند. لِگِ خریدار با فراخوان است.
+     *
+     * @param  list<array{leg: CouponFundingLeg|null, type: string, user_id: int|null, delta: float}>  $shares
+     */
+    public function applyWeighbridgeShares(Order $order, array $shares, string $description): void
+    {
+        foreach ($shares as ['leg' => $leg, 'type' => $type, 'user_id' => $userId, 'delta' => $delta]) {
+            if ($delta == 0.0) {
+                continue;
+            }
+
+            $amount = abs($delta);
+
+            if ($delta < 0) {
+                match ($type) {
+                    CouponFunder::TYPE_SUPPLIER => $this->walletEngine->creditSupplier($order, $amount, FinancialCodes::STATUS_AVAILABLE, (int) $userId, $description),
+                    CouponFunder::TYPE_ELITE_YAR => $this->walletEngine->creditEliteYAR($order, $amount, FinancialCodes::STATUS_AVAILABLE, (int) $userId, $description),
+                    default => $this->walletEngine->creditSystem($order, $amount, FinancialCodes::STATUS_AVAILABLE, $description),
+                };
+            } else {
+                match ($type) {
+                    CouponFunder::TYPE_SUPPLIER => $this->walletEngine->debitSupplier($order, $amount, FinancialCodes::STATUS_AVAILABLE, (int) $userId, $description),
+                    CouponFunder::TYPE_ELITE_YAR => $this->walletEngine->debitEliteYAR($order, $amount, FinancialCodes::STATUS_AVAILABLE, (int) $userId, $description),
+                    default => $this->walletEngine->debitSystem($order, $amount, FinancialCodes::STATUS_AVAILABLE, $description),
+                };
+            }
+
+            $leg?->forceFill([CouponFundingLeg::AMOUNT => (float) $leg->{CouponFundingLeg::AMOUNT} + $delta])->save();
+        }
+    }
+
+    public function weighbridgeDescription(Order $order, string $key): string
+    {
+        $coupon = $order->coupon;
+
+        return __($key, [
+            'code' => $coupon instanceof Coupon ? (string) $coupon->code : '-',
+            'order' => $order->order_number,
+        ]);
+    }
+
     /**
      * تقسیمِ تخفیف به نسبتِ `share_percent`، ریالِ صحیح. سهمِ **آخر** باقی‌مانده را
      * می‌گیرد تا جمع ساختاری دقیق باشد — همان قاعده‌ی `ShippingCostCalculator`.

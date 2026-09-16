@@ -6,11 +6,13 @@ namespace App\Services\Financial;
 
 use App\Constants\FinancialCodes;
 use App\Jobs\Notification\SendSmsJob;
+use App\Models\CouponFundingLeg;
 use App\Models\DebtEntry;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
+use App\Services\Marketing\CouponFundingService;
 use App\Support\Money;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -31,12 +33,15 @@ class SupplierDebtHandler
     public function __construct(
         protected WalletTransactionEngine $walletEngine,
         protected DebtEngine $debtEngine,
+        protected CouponFundingService $couponFunding,
     ) {}
 
     /**
+     * @param  list<array{leg: CouponFundingLeg|null, type: string, user_id: int|null, delta: float}>  $couponShares
+     *                                                                                                                برگشتِ مازادِ تخفیفِ کوپن به تأمین‌کنندگان (`CouponFundingService::weighbridgeShares`)
      * @return 'deficit'|'deficit_pending_supplier'
      */
-    public function handle(Order $order, float $refundAmount, float $reclaimAmount): string
+    public function handle(Order $order, float $refundAmount, float $reclaimAmount, array $couponShares = []): string
     {
         $supplierId = (int) $order->items->first()->supplier_user_id;
 
@@ -45,9 +50,13 @@ class SupplierDebtHandler
         $supplierCanCover = $supplierWallet && ((float) $supplierWallet->balance >= $reclaimAmount);
 
         if ($supplierCanCover) {
-            return $this->settleImmediately($order, $refundAmount, $reclaimAmount, $supplierId);
+            return $this->settleImmediately($order, $refundAmount, $reclaimAmount, $supplierId, $couponShares);
         }
 
+        // ⚠️ `$couponShares` عمداً این‌جا اعمال نمی‌شود: پارک هیچ پولی جابه‌جا نمی‌کند، و
+        // برگشت‌دادنِ سهمِ تأمین‌کنندگان منبعی ندارد (خریدار شاید موجودی نداشته باشد،
+        // WSSG شاید شناوری). پس تخفیفِ ثبت‌شده هم عوض نمی‌شود — orchestrator فقط وقتی
+        // تخفیفِ تازه را می‌نویسد که وضعیت `deficit` باشد.
         return $this->parkDebtAndNotify($order, $refundAmount, $reclaimAmount);
     }
 
@@ -74,6 +83,7 @@ class SupplierDebtHandler
         float $refundAmount,
         float $reclaimAmount,
         int $supplierId,
+        array $couponShares = [],
     ): string {
         // ۱) اول از سوپلایر پس بگیر — منبعِ واقعیِ این پول، اضافه‌دریافتیِ اوست.
         $this->walletEngine->debitSupplier(
@@ -83,6 +93,17 @@ class SupplierDebtHandler
             $order, $reclaimAmount, FinancialCodes::STATUS_AVAILABLE,
             "بازپس‌گیری از تامین‌کننده بابت کسری باسکول سفارش {$order->order_number}"
         );
+
+        // ۱ب) مازادِ تخفیفِ کوپن به **همان تأمین‌کنندگانِ** لِگ‌های پرداخت و به همان نسبت
+        //     (شرکت → WSSG، تأمین‌کننده → WS، الیت‌یار → WEY). بستانکاری‌ها **پیش از**
+        //     برداشتِ عودت می‌آیند تا سهمِ شرکت WSSG را پیش از پرداخت تأمین کند؛ بدهکاریِ
+        //     خریدار **پس از** واریزِ عودت (پایین) تا او فقط به «عودت − مازاد» نیاز داشته باشد.
+        $couponClawback = (float) -array_sum(array_column($couponShares, 'delta'));
+        $couponDesc = '';
+        if ($couponClawback > 0) {
+            $couponDesc = $this->couponFunding->weighbridgeDescription($order, 'coupons.weighbridge_clawback_description');
+            $this->couponFunding->applyWeighbridgeShares($order, $couponShares, $couponDesc);
+        }
 
         // ۲) حالا که سازه تأمین شده، به خریدار برگردان. مابه‌التفاوتِ
         //    `refundAmount − reclaimAmount` همان کمیسیونی است که سازه باید از
@@ -94,6 +115,10 @@ class SupplierDebtHandler
         $this->walletEngine->creditBuyer(
             $order, $refundAmount, FinancialCodes::STATUS_AVAILABLE, 'بازگشت وجه ناشی از کسری باسکول'
         );
+
+        if ($couponClawback > 0) {
+            $this->walletEngine->debitBuyer($order, $couponClawback, FinancialCodes::STATUS_AVAILABLE, $couponDesc);
+        }
 
         return 'deficit';
     }

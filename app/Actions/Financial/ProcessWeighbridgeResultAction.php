@@ -7,6 +7,7 @@ namespace App\Actions\Financial;
 use App\Actions\Order\RequestOverweightApprovalAction;
 use App\Constants\FinancialCodes;
 use App\DataTransferObjects\Order\WeighbridgeReconcileResult;
+use App\Models\CouponFundingLeg;
 use App\Models\DebtEntry;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -18,6 +19,7 @@ use App\Services\Financial\WeighbridgeReconciler;
 use App\Services\Financial\WeighbridgeVatRouter;
 use App\Services\InventoryService;
 use App\Services\Invoice\InvoiceGenerator;
+use App\Services\Marketing\CouponFundingService;
 use App\Services\Sales\SalesSettings;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -40,6 +42,7 @@ class ProcessWeighbridgeResultAction
         protected WalletTransactionEngine $walletEngine,
         protected DebtEngine $debtEngine,
         protected SalesSettings $salesSettings,
+        protected CouponFundingService $couponFunding,
     ) {}
 
     public function execute(Order $order, float $actualWeight): array
@@ -173,10 +176,42 @@ class ProcessWeighbridgeResultAction
             $isSurplus = $result->diffPOO > $this->tolerance();
             $status = 'equal';
 
+            // تخفیفِ کوپنِ درصدی با POOM عوض می‌شود، پس پولش هم باید جابه‌جا شود —
+            // وگرنه در کم‌تحویلی خریدار کلِ تخفیفِ اولیه را نگه می‌داشت و سفارش عددِ
+            // کوچک‌تری ثبت می‌کرد (WSSG ضرر)، و در اضافه‌بار برعکس. اختلاف فقط وقتی
+            // اعمال می‌شود که لِگ‌های همان جهت اجرا شوند؛ درونِ تلورانس هیچ لِگی نیست
+            // و تخفیفِ ثبت‌شده هم دست نمی‌خورد.
+            //
+            // از ۲۰۲۶-۰۹-۱۵ تخفیف را سه منبع تأمین می‌کنند (`coupon_funding_legs`)، پس
+            // اختلاف هم به **همان تأمین‌کنندگان و به همان نسبتِ لِگ‌های پرداخت** برمی‌گردد
+            // یا از آن‌ها برداشته می‌شود، نه فقط WSSG↔WO.
+            $couponShares = [];
+            if (($isDeficit && $result->couponDiscountDelta < 0) || ($isSurplus && $result->couponDiscountDelta > 0)) {
+                $couponShares = $this->couponFunding->weighbridgeShares(
+                    $locked,
+                    $result->newCouponDiscount - $result->couponDiscountDelta,
+                    $result->newCouponDiscount,
+                );
+            }
+            $couponApplied = false;
+
             if ($isDeficit) {
-                $status = $this->debtHandler->handle($locked, abs($result->diffPOO), abs($result->diffPTS));
+                $status = $this->debtHandler->handle($locked, abs($result->diffPOO), abs($result->diffPTS), $couponShares);
+                // پارک (`deficit_pending_supplier`) پول جابه‌جا نمی‌کند و سهم‌ها را اعمال نمی‌کند.
+                $couponApplied = $couponShares !== [] && $status === 'deficit';
             } elseif ($isSurplus) {
-                $status = $this->chargeOverweight($locked, $result);
+                $firstItem = $locked->items->first();
+                /** @var OrderItem|null $firstItem */
+                $incoming = $firstItem ? [(int) $firstItem->supplier_user_id => max(0.0, $result->diffPTS)] : [];
+
+                // تأمین‌کننده‌ای که پولِ سهمِ اضافه را ندارد نباید کلِ باسکول را rollback کند؛
+                // در آن حالت تخفیفِ اضافه داده نمی‌شود و تخفیفِ ثبت‌شده همان می‌ماند.
+                if ($couponShares !== [] && ! $this->couponFunding->canFundIncrease($couponShares, $incoming)) {
+                    $couponShares = [];
+                }
+
+                $status = $this->chargeOverweight($locked, $result, $couponShares);
+                $couponApplied = $couponShares !== [];
             }
 
             // Doc I (always) + LO/LS (only when deficit)
@@ -196,7 +231,11 @@ class ProcessWeighbridgeResultAction
                 Order::PAYMENT_TO_SUPPLIER => $result->newPTS,
                 Order::PAYMENT_TO_ELITE_YAR => $eliteYARGross,
                 Order::SHIPPING_COST => $result->newShippingCost,
-                Order::COUPON_DISCOUNT_AMOUNT => $result->newCouponDiscount,
+                // عددِ ثبت‌شده باید همان باشد که پولش جابه‌جا شد — `RefundOrderToWalletAction`
+                // همین ستون را برعکس می‌کند.
+                Order::COUPON_DISCOUNT_AMOUNT => $couponApplied
+                    ? $result->newCouponDiscount
+                    : $locked->{Order::COUPON_DISCOUNT_AMOUNT},
                 Order::FINAL_AMOUNT => $result->newPOO,
                 // درخواستِ اضافه‌بار با اجرای تعدیل بسته می‌شود. مهرهای تأیید
                 // عمداً می‌مانند (رد پای تصمیم دو طرف)؛ فقط مبلغ و مهلت پاک
@@ -242,7 +281,10 @@ class ProcessWeighbridgeResultAction
      * بدهی **باز هم ثبت می‌شود** ولی سفارش تا پرداخت `awaiting_weight_correction`
      * می‌ماند — سند صریحاً می‌گوید هر دو، نه یکی.
      */
-    private function chargeOverweight(Order $order, WeighbridgeReconcileResult $result): string
+    /**
+     * @param  list<array{leg: CouponFundingLeg|null, type: string, user_id: int|null, delta: float}>  $couponShares
+     */
+    private function chargeOverweight(Order $order, WeighbridgeReconcileResult $result, array $couponShares = []): string
     {
         $deltaPOO = $result->diffPOO;
         $deltaPTS = $result->diffPTS;
@@ -251,6 +293,16 @@ class ProcessWeighbridgeResultAction
         $firstItem = $order->items->first();
         /** @var OrderItem|null $firstItem */
         $supplierId = $firstItem ? (int) $firstItem->supplier_user_id : 0;
+
+        // تخفیفِ تکمیلیِ کوپن — همان ترتیبِ پرداخت: اعتبار به خریدار **پیش از** خواندنِ
+        // موجودی و برداشت، تا فقط «مابه‌التفاوت − تخفیف» لازم باشد (و کمتر به بدهی برود)؛
+        // برداشت از تأمین‌کنندگان پایین‌تر و پس از لِگِ PTS، تا WSSG و WS منفی نشوند.
+        $couponExtra = (float) array_sum(array_column($couponShares, 'delta'));
+        $couponDesc = '';
+        if ($couponExtra > 0) {
+            $couponDesc = $this->couponFunding->weighbridgeDescription($order, 'coupons.weighbridge_extra_description');
+            $this->walletEngine->creditBuyer($order, $couponExtra, FinancialCodes::STATUS_AVAILABLE, $couponDesc);
+        }
 
         $balance = (float) (Wallet::where(Wallet::USER_ID, $payerId)->lockForUpdate()->value(Wallet::BALANCE) ?? 0);
         $available = min($deltaPOO, $balance);
@@ -289,6 +341,10 @@ class ProcessWeighbridgeResultAction
                 $order, $deltaPTS, FinancialCodes::STATUS_AVAILABLE, $supplierId,
                 "سهم اضافه‌بار سفارش {$order->order_number}"
             );
+        }
+
+        if ($couponExtra > 0) {
+            $this->couponFunding->applyWeighbridgeShares($order, $couponShares, $couponDesc);
         }
 
         // وضعیت را اینجا نمی‌نویسیم — `forceFill` بعدیِ orchestrator رویش
