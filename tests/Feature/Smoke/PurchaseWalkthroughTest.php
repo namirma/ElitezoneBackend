@@ -12,6 +12,7 @@ use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\ProductPrice;
 use App\Models\ProductVariant;
+use App\Models\Shipment;
 use App\Models\ShippingMethod;
 use App\Models\ShippingRate;
 use App\Models\User;
@@ -269,6 +270,14 @@ class PurchaseWalkthroughTest extends TestCase
             'payment_status' => $order->payment_status,
             'payment_to_supplier' => (string) $order->payment_to_supplier,
         ]);
+
+        // اسنپ‌شاتِ نرخِ کرایه روی مسیرِ واقعیِ ثبتِ سفارش (`FreightRateSnapshotTest`):
+        // باسکول کرایه را از همین دو ستون می‌خواند، نه از `shipping_rates` زنده.
+        $shipment = $order->shipments()->firstOrFail();
+        $this->assertSame(
+            [1_000_000.0, 100.0],
+            [(float) $shipment->{Shipment::RATE_FLAT_COST}, (float) $shipment->{Shipment::RATE_UNIT_COST}],
+        );
 
         // ─────────────── ۸. سفارش و اسناد ───────────────
         $r = $this->getJson("/api/profile/orders/{$order->id}");

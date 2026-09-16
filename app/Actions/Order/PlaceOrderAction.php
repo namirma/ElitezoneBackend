@@ -479,7 +479,7 @@ class PlaceOrderAction
         $map = [];
 
         foreach ($shipments as $group) {
-            $shipment = Shipment::create([
+            $shipment = new Shipment([
                 Shipment::ORDER_ID => $order->id,
                 Shipment::FACTORY_ID => $group->factoryId,
                 Shipment::FACTORY_LOCATION_ID => $group->factoryLocationId,
@@ -492,6 +492,14 @@ class PlaceOrderAction
                 Shipment::SHIPPING_COST => $group->cost,
                 Shipment::STATUS => Shipment::STATUS_PENDING,
             ]);
+
+            // اسنپ‌شاتِ نرخ — همان الگوی `orders.commission_rate`. باسکول کرایه را
+            // از این دو ستون با وزنِ واقعی بازمحاسبه می‌کند؛ بدونِ آن ویرایشِ
+            // `shipping_rates` پس از ثبت، سفارشی با وزنِ یکسان را بی‌رضایت شارژ می‌کرد.
+            $shipment->forceFill([
+                Shipment::RATE_FLAT_COST => $group->rateFlatCost,
+                Shipment::RATE_UNIT_COST => $group->rateUnitCost,
+            ])->save();
 
             foreach ($group->lineKeys as $cartItemId) {
                 $map[$cartItemId] = $shipment->id;

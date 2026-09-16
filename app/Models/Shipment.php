@@ -83,6 +83,16 @@ class Shipment extends Model
 
     public const SHIPPING_COST = 'shipping_cost';
 
+    /**
+     * اسنپ‌شاتِ نرخی که این محموله با آن قیمت شد — `flat_cost` مسیر و هزینه‌ی واحدِ
+     * همان `cost_basis` (هر کیلوگرم یا هر عدد). باسکول کرایه را از همین‌ها با وزنِ
+     * واقعی بازمحاسبه می‌کند، نه از `shipping_rates` زنده. `null` = محموله‌ی قدیمی.
+     * عمداً fillable نیستند؛ فقط `PlaceOrderAction` با `forceFill` می‌نویسدشان.
+     */
+    public const RATE_FLAT_COST = 'rate_flat_cost';
+
+    public const RATE_UNIT_COST = 'rate_unit_cost';
+
     public const STATUS = 'status';
 
     public const STATUS_PENDING = 'pending';
@@ -194,6 +204,8 @@ class Shipment extends Model
         self::BILLED_COUNT => 'decimal:3',
         self::COST_BASIS => ShippingCostBasis::class,
         self::SHIPPING_COST => 'decimal:0',
+        self::RATE_FLAT_COST => 'decimal:0',
+        self::RATE_UNIT_COST => 'decimal:0',
         self::ACTUAL_WEIGHT => 'decimal:3',
         self::REGISTERED_AT => 'datetime',
         self::IS_FINAL => 'boolean',

@@ -5,27 +5,25 @@ declare(strict_types=1);
 namespace App\Services\Financial;
 
 use App\DataTransferObjects\Order\WeighbridgeReconcileResult;
+use App\Enums\Shipping\ShippingCostBasis;
 use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\Shipment;
-use App\Services\Marketing\CouponService;
-use App\Services\Shipping\ShippingCostCalculator;
+use App\Support\Money;
 
 /**
  * Recalculation service for post-weighbridge settlement.
  *
  * **No writes, no wallet ops, no side effects** — it only reads. (It does read:
- * shipment rows and shipping rates for the freight recompute, and the coupon
- * row; the invariant that matters is that nothing here mutates state.) Given an
- * Order and the scale's actual weight, produces a WeighbridgeReconcileResult
+ * shipment rows with their rate snapshot for the freight recompute, and the
+ * coupon row; the invariant that matters is that nothing here mutates state.)
+ * Given an Order and the scale's actual weight, produces a WeighbridgeReconcileResult
  * that every downstream step reads from.
  */
 class WeighbridgeReconciler
 {
     public function __construct(
         protected SettlementCalculatorService $calculator,
-        protected ShippingCostCalculator $shippingCalculator,
-        protected CouponService $couponService,
     ) {}
 
     public function reconcile(Order $order, float $actualWeight): WeighbridgeReconcileResult
@@ -101,6 +99,8 @@ class WeighbridgeReconciler
             $transCommission, $transVat
         );
 
+        [$couponDiscount, $couponDelta] = $this->recalculateCoupon($order, $newPOO);
+
         return new WeighbridgeReconcileResult(
             billingWeight: $billingWeight,
             newPOO: $newPOO,
@@ -111,7 +111,8 @@ class WeighbridgeReconciler
             vat: $vat,
             overweightPercent: $overweightPercent,
             newShippingCost: $trans,
-            newCouponDiscount: $this->recalculateCoupon($order, $newPOO),
+            newCouponDiscount: $couponDiscount,
+            couponDiscountDelta: $couponDelta,
         );
     }
 
@@ -133,48 +134,96 @@ class WeighbridgeReconciler
             return (float) $order->shipping_cost;
         }
 
-        // هر محموله یک «خط» می‌شود؛ چون کلیدِ گروه‌بندیِ ماشین‌حساب همان
-        // (مبدأ، مقصد) است، هر خط دقیقاً به یک لِگ نگاشت می‌شود.
-        $lines = [];
+        $total = '0';
         foreach ($shipments as $shipment) {
             /** @var Shipment $shipment */
-            $lines[(string) $shipment->id] = [
-                'factory_id' => $shipment->{Shipment::FACTORY_ID},
-                'factory_location_id' => $shipment->{Shipment::FACTORY_LOCATION_ID},
-                'address_id' => $shipment->{Shipment::ADDRESS_ID},
-                'destination_province_id' => $shipment->{Shipment::DESTINATION_PROVINCE_ID},
-                'destination_city_id' => $shipment->{Shipment::DESTINATION_CITY_ID},
-                'weight' => (float) $shipment->{Shipment::ACTUAL_WEIGHT},
-                // مبنای تعدادی با وزن عوض نمی‌شود — تعدادِ صورت‌حساب‌شده همان است.
-                'count' => (float) ($shipment->{Shipment::BILLED_COUNT} ?? 0),
-            ];
+            $total = Money::add($total, $this->legFreight($shipment));
         }
 
-        return $this->shippingCalculator->quote($lines)->total;
+        return Money::toFloat($total, 0);
     }
 
     /**
-     * کوپن درصدی با POOM بازمحاسبه می‌شود، مبلغ ثابت دست نمی‌خورد (بند ۸.۲ گام ۴).
+     * کرایه‌ی یک محموله در وزنِ واقعی — **هرگز از `shipping_rates` زنده**.
+     *
+     * ‏`%TC` را ببینید: نرخِ کرایه هم یک مقدارِ قابل‌ویرایش است. پیش از این همین‌جا
+     * `ShippingCostCalculator::quote()` روی جدولِ زنده صدا زده می‌شد، پس افزایشِ
+     * `flat_cost` یک مسیر پس از ثبتِ سفارش، سفارشی با وزنِ **دقیقاً برابر** را
+     * `surplus` می‌کرد و خریدار را بی‌رضایت شارژ می‌کرد (گاردِ رضایتِ دوطرفه فقط
+     * وزن را می‌سنجد)؛ کاهشِ نرخ هم عودت و بدهیِ تأمین‌کننده می‌ساخت.
+     *
+     *   • اسنپ‌شات دارد: `rate_flat_cost + rate_unit_cost × متریک`، متریک = وزنِ واقعی
+     *     برای مبنای وزنی، `billed_count` (ثابت) برای مبنای تعدادی.
+     *   • اسنپ‌شات ندارد (محموله‌ی پیش از مهاجرتِ ۲۰۲۶-۰۹-۱۵): کرایه‌ی **ثبت‌شده**
+     *     به نسبتِ وزنِ واقعی به وزنِ ثبت‌شده مقیاس می‌شود؛ مبنای تعدادی و وزنِ
+     *     ثبت‌نشده همان کرایه‌ی ثبت‌شده را می‌گیرند. نرخِ زنده هیچ‌وقت خوانده نمی‌شود.
+     *
+     * ponytail: مسیرِ قدیمی `flat_cost` را هم مقیاس می‌کند (نرخِ آن زمان معلوم نیست)؛
+     * خطا به اندازه‌ی «flat × درصدِ اختلافِ وزن» است و با تمام‌شدنِ سفارش‌های
+     * قدیمیِ در جریان خودبه‌خود از بین می‌رود.
+     */
+    private function legFreight(Shipment $shipment): string
+    {
+        $basis = ShippingCostBasis::fromValue($shipment->{Shipment::COST_BASIS});
+        $actualWeight = (string) $shipment->{Shipment::ACTUAL_WEIGHT};
+
+        if ($shipment->{Shipment::RATE_FLAT_COST} !== null) {
+            $metric = $basis === ShippingCostBasis::COUNT
+                ? (string) ($shipment->{Shipment::BILLED_COUNT} ?? '0')
+                : $actualWeight;
+
+            return Money::add(
+                (string) $shipment->{Shipment::RATE_FLAT_COST},
+                Money::mul((string) ($shipment->{Shipment::RATE_UNIT_COST} ?? '0'), $metric),
+            );
+        }
+
+        $placedCost = (string) ($shipment->{Shipment::SHIPPING_COST} ?? '0');
+        $placedWeight = (string) ($shipment->{Shipment::WEIGHT} ?? '0');
+
+        if ($basis === ShippingCostBasis::COUNT || Money::cmp($placedWeight, '0') <= 0) {
+            return $placedCost;
+        }
+
+        return Money::div(Money::mul($placedCost, $actualWeight), $placedWeight);
+    }
+
+    /**
+     * کوپنِ درصدی به نسبتِ POOM/POO مقیاس می‌شود، مبلغ ثابت دست نمی‌خورد (بند ۸.۲ گام ۴).
      *
      * دلیلش این است که تخفیفِ درصدی یک نسبت از مبلغ است، پس وقتی مبلغ با وزن
      * واقعی عوض می‌شود، تخفیف هم باید عوض شود؛ وگرنه اضافه‌بار با تخفیفِ سفارشِ
      * کوچک‌ترِ اولیه حساب می‌شد.
+     *
+     * ⚠️ مقیاس، نه `درصد × POOM`: تخفیف هنگامِ ثبت روی `final_amount` محاسبه
+     * می‌شود نه POO، پس `درصد × POOM` حتی با وزنِ یکسان با تخفیفِ پرداخت‌شده
+     * فرق داشت — و این اختلاف حالا واقعاً پول جابه‌جا می‌کند. مبنا هم تخفیفی
+     * است که هنگامِ پرداخت **واقعاً** اعتبار خورد: `min(discount, POO)`.
+     *
+     * @return array{0: float, 1: float} [تخفیفِ تازه, تازه − پرداخت‌شده]
      */
-    private function recalculateCoupon(Order $order, float $newPOO): float
+    private function recalculateCoupon(Order $order, float $newPOO): array
     {
         $couponId = $order->{Order::COUPON_ID};
         $current = (float) ($order->{Order::COUPON_DISCOUNT_AMOUNT} ?? 0);
+        $oldPOO = (float) $order->payment_of_owner;
 
         if (! $couponId || $current <= 0) {
-            return 0.0;
+            return [0.0, 0.0];
         }
 
         $coupon = Coupon::find($couponId);
 
-        if (! $coupon || $coupon->{Coupon::TYPE} !== Coupon::TYPE_PERCENT) {
-            return $current;
+        if (! $coupon || $coupon->{Coupon::TYPE} !== Coupon::TYPE_PERCENT || $oldPOO <= 0) {
+            return [$current, 0.0];
         }
 
-        return $this->couponService->calculateDiscount($coupon, $newPOO);
+        $credited = min($current, $oldPOO);
+        $new = min(
+            Money::toFloat(Money::div(Money::mul($credited, $newPOO), $oldPOO), 0),
+            max($newPOO, 0.0),
+        );
+
+        return [$new, Money::toFloat(Money::sub($new, $credited), 0)];
     }
 }

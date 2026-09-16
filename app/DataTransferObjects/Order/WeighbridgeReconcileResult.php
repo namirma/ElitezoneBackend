@@ -40,5 +40,11 @@ final class WeighbridgeReconcileResult
         public readonly float $newShippingCost = 0.0,
         /** تخفیفِ کوپن پس از بازمحاسبه با POOM (بند ۸.۲ گام ۴). */
         public readonly float $newCouponDiscount = 0.0,
+        /**
+         * ‏`newCouponDiscount − تخفیفی که هنگام پرداخت واقعاً به خریدار داده شد`.
+         * مثبت = تخفیفِ تکمیلی به خریدار، منفی = خریدار مازاد را برمی‌گرداند.
+         * کوپنِ مبلغ‌ثابت همیشه صفر.
+         */
+        public readonly float $couponDiscountDelta = 0.0,
     ) {}
 }

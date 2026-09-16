@@ -88,6 +88,12 @@ class ShippingCostCalculator
                 costBasis: $basis,
                 ratePriced: $rate !== null,
                 cost: $cost,
+                // اسنپ‌شاتِ همان مؤلفه‌هایی که این لِگ را قیمت کردند — باسکول از این‌ها
+                // می‌خواند، نه از نرخِ زنده (ویرایشِ نرخ نباید سفارشِ ثبت‌شده را جابه‌جا کند).
+                rateFlatCost: (float) ($rate->{ShippingRate::FLAT_COST} ?? 0),
+                rateUnitCost: (float) ($rate->{$basis === ShippingCostBasis::COUNT
+                    ? ShippingRate::PER_COUNT_COST
+                    : ShippingRate::PER_KG_COST} ?? 0),
                 lineKeys: $group['line_keys'],
             );
         }

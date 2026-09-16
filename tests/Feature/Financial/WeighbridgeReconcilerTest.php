@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Financial;
 
+use App\Enums\Shipping\ShippingCostBasis;
 use App\Models\Coupon;
 use App\Models\Factory;
 use App\Models\FactoryLocation;
@@ -139,17 +140,23 @@ class WeighbridgeReconcilerTest extends TestCase
     // مخزن assert نمی‌شدند — در حالی که `ProcessWeighbridgeResultAction`
     // هر دو را مستقیم روی سفارش می‌نویسد.
 
+    /**
+     * ‏قبلاً فیکسچر محموله‌ی بدونِ اسنپ‌شات می‌ساخت و بازمحاسبه از نرخِ **زنده**
+     * را قفل می‌کرد — همان باگی که ویرایشِ نرخ را به شارژِ بی‌رضایت تبدیل می‌کرد.
+     * حالا محموله مثل `PlaceOrderAction` اسنپ‌شات دارد و نرخِ زنده عمداً عوض می‌شود.
+     */
     #[Test]
     public function freight_is_repriced_from_the_actual_shipment_weights(): void
     {
         $location = $this->makeFreightRoute(flat: 100_000.0, perKg: 50.0);
 
         $order = $this->makeOrder(wbs: 10_000.0);
-        $this->makeShipment($order, $location, 2_000.0);
+        $this->makeShipment($order, $location, 2_000.0, $this->snapshot(100_000, 50, placedWeight: 1_500));
+        $this->editLiveRate($location, flat: 900_000, perKg: 900);
 
         $result = $this->reconciler->reconcile($order->fresh('items'), actualWeight: 2_000.0);
 
-        // 100_000 + 50 * 2_000 = 200_000 — نه کرایه‌ی اولیه‌ی 500_000.
+        // 100_000 + 50 * 2_000 = 200_000 — نه کرایه‌ی اولیه‌ی 500_000، نه نرخِ زنده.
         $this->assertEqualsWithDelta(200_000.0, $result->newShippingCost, 0.01);
         $this->assertNotEquals(
             self::SHIPPING,
@@ -168,15 +175,71 @@ class WeighbridgeReconcilerTest extends TestCase
         $location = $this->makeFreightRoute(flat: 80_000.0, perKg: 40.0);
 
         $order = $this->makeOrder(wbs: 10_000.0);
-        $this->makeShipment($order, $location, 5_000.0);
-        $this->makeShipment($order, $location, 3_000.0);
+        $this->makeShipment($order, $location, 5_000.0, $this->snapshot(80_000, 40, placedWeight: 5_000));
+        $this->makeShipment($order, $location, 3_000.0, $this->snapshot(80_000, 40, placedWeight: 3_000));
 
         $result = $this->reconciler->reconcile($order->fresh('items'), actualWeight: 8_000.0);
 
-        // دو لِگ با همان (مبدأ، مقصد) یک محموله‌ی تجمیعی‌اند:
-        // 80_000 + 40 * (5_000 + 3_000) = 400_000.
-        $this->assertEqualsWithDelta(400_000.0, $result->newShippingCost, 0.01);
+        // هر ردیفِ محموله یک لِگِ ثبت‌شده با اسنپ‌شاتِ خودش است (ثبتِ سفارش هرگز دو
+        // ردیف با یک (مبدأ، مقصد) نمی‌سازد)، پس هر کدام flat خودش را دارد:
+        // (80_000 + 40×5_000) + (80_000 + 40×3_000) = 480_000.
+        $this->assertEqualsWithDelta(480_000.0, $result->newShippingCost, 0.01);
         $this->assertNotEquals(self::SHIPPING, $result->newShippingCost);
+    }
+
+    #[Test]
+    public function a_count_billed_leg_is_repriced_from_its_snapshot_and_ignores_the_weight(): void
+    {
+        $location = $this->makeFreightRoute(flat: 100_000.0, perKg: 50.0);
+
+        $order = $this->makeOrder(wbs: 10_000.0);
+        $this->makeShipment($order, $location, 2_500.0, $this->snapshot(70_000, 1_200, placedWeight: 2_000) + [
+            Shipment::COST_BASIS => ShippingCostBasis::COUNT,
+            Shipment::BILLED_COUNT => 40,
+        ]);
+
+        $result = $this->reconciler->reconcile($order->fresh('items'), actualWeight: 2_500.0);
+
+        // 70_000 + 1_200 × 40 — وزنِ واقعی مبنای تعدادی را جابه‌جا نمی‌کند.
+        $this->assertEqualsWithDelta(118_000.0, $result->newShippingCost, 0.01);
+    }
+
+    /**
+     * محموله‌ی پیش از اسنپ‌شات: کرایه‌ی **ثبت‌شده** به نسبتِ وزن مقیاس می‌شود و نرخِ
+     * زنده (که 100_000 + 50×2_500 = 225_000 می‌داد) هرگز خوانده نمی‌شود.
+     */
+    #[Test]
+    public function a_legacy_shipment_without_a_rate_snapshot_scales_its_placed_freight(): void
+    {
+        $location = $this->makeFreightRoute(flat: 100_000.0, perKg: 50.0);
+
+        $order = $this->makeOrder(wbs: 10_000.0);
+        $this->makeShipment($order, $location, 2_500.0, [
+            Shipment::WEIGHT => 2_000,
+            Shipment::SHIPPING_COST => 300_000,
+        ]);
+
+        $result = $this->reconciler->reconcile($order->fresh('items'), actualWeight: 2_500.0);
+
+        $this->assertEqualsWithDelta(375_000.0, $result->newShippingCost, 0.01);
+    }
+
+    #[Test]
+    public function a_legacy_count_billed_shipment_keeps_its_placed_freight(): void
+    {
+        $location = $this->makeFreightRoute(flat: 100_000.0, perKg: 50.0);
+
+        $order = $this->makeOrder(wbs: 10_000.0);
+        $this->makeShipment($order, $location, 2_500.0, [
+            Shipment::WEIGHT => 2_000,
+            Shipment::BILLED_COUNT => 40,
+            Shipment::COST_BASIS => ShippingCostBasis::COUNT,
+            Shipment::SHIPPING_COST => 300_000,
+        ]);
+
+        $result = $this->reconciler->reconcile($order->fresh('items'), actualWeight: 2_500.0);
+
+        $this->assertEqualsWithDelta(300_000.0, $result->newShippingCost, 0.01);
     }
 
     #[Test]
@@ -211,9 +274,18 @@ class WeighbridgeReconcilerTest extends TestCase
 
         $result = $this->reconciler->reconcile($order->fresh('items'), actualWeight: 12_000.0);
 
-        // ۱۰٪ از POOMِ تازه — نه از مبلغِ سفارشِ اولیه.
-        $this->assertEqualsWithDelta($result->newPOO * 0.10, $result->newCouponDiscount, 0.01);
+        // ‏قبلاً «۱۰٪ از POOMِ تازه» را قفل می‌کرد. ولی تخفیف هنگامِ ثبت روی
+        // `final_amount` محاسبه می‌شود نه POO، پس `۱۰٪ × POOM` حتی با وزنِ یکسان با
+        // همین ۱_۰۰۰ فرق داشت — و آن اختلاف حالا واقعاً پول جابه‌جا می‌کند. تخفیفِ
+        // پرداخت‌شده به نسبتِ POOM/POO مقیاس می‌شود.
+        $oldPOO = (float) $order->payment_of_owner;
+        $this->assertEqualsWithDelta(1_000.0 * $result->newPOO / $oldPOO, $result->newCouponDiscount, 1.0);
         $this->assertGreaterThan(1_000.0, $result->newCouponDiscount);
+        $this->assertEqualsWithDelta($result->newCouponDiscount - 1_000.0, $result->couponDiscountDelta, 0.01);
+
+        $exact = $this->reconciler->reconcile($order->fresh('items'), actualWeight: 10_000.0);
+        $this->assertEqualsWithDelta(0.0, $exact->couponDiscountDelta, 0.01,
+            'با وزنِ یکسان هیچ پولی بابتِ کوپن نباید جابه‌جا شود.');
     }
 
     #[Test]
@@ -234,6 +306,7 @@ class WeighbridgeReconcilerTest extends TestCase
         $result = $this->reconciler->reconcile($order->fresh('items'), actualWeight: 12_000.0);
 
         $this->assertEqualsWithDelta(250_000.0, $result->newCouponDiscount, 0.01);
+        $this->assertSame(0.0, $result->couponDiscountDelta);
     }
 
     // ─── پرچم‌های ±TC / ±VAT ──────────────────────────────────
@@ -347,8 +420,12 @@ class WeighbridgeReconcilerTest extends TestCase
         return $location;
     }
 
-    /** `actual_weight` عمداً `forceFill` است — ستون fillable نیست. */
-    private function makeShipment(Order $order, FactoryLocation $location, ?float $actualWeight): Shipment
+    /**
+     * `actual_weight` عمداً `forceFill` است — ستون fillable نیست.
+     *
+     * @param  array<string, mixed>  $columns  ستون‌های ثبتِ سفارش (وزن، کرایه، اسنپ‌شاتِ نرخ)
+     */
+    private function makeShipment(Order $order, FactoryLocation $location, ?float $actualWeight, array $columns = []): Shipment
     {
         $shipment = Shipment::create([
             Shipment::ORDER_ID => $order->id,
@@ -360,8 +437,26 @@ class WeighbridgeReconcilerTest extends TestCase
             Shipment::FACTORY_LOCATION_ID => $location->id,
             Shipment::DESTINATION_PROVINCE_ID => self::PROVINCE_ID,
             Shipment::ACTUAL_WEIGHT => $actualWeight,
-        ])->save();
+        ] + $columns)->save();
 
         return $shipment;
+    }
+
+    /** @return array<string, mixed> همان ستون‌هایی که `PlaceOrderAction` برای یک لِگِ وزنی می‌نویسد. */
+    private function snapshot(int $flat, int $perUnit, int $placedWeight): array
+    {
+        return [
+            Shipment::WEIGHT => $placedWeight,
+            Shipment::SHIPPING_COST => $flat + $perUnit * $placedWeight,
+            Shipment::RATE_FLAT_COST => $flat,
+            Shipment::RATE_UNIT_COST => $perUnit,
+        ];
+    }
+
+    /** ویرایشِ نرخِ مسیر پس از ثبتِ سفارش — نباید روی باسکول اثر کند. */
+    private function editLiveRate(FactoryLocation $location, int $flat, int $perKg): void
+    {
+        ShippingRate::where(ShippingRate::FACTORY_LOCATION_ID, $location->id)
+            ->update([ShippingRate::FLAT_COST => $flat, ShippingRate::PER_KG_COST => $perKg]);
     }
 }

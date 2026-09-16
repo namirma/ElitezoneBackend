@@ -33,5 +33,9 @@ readonly class ShipmentGroup
         public readonly bool $ratePriced,
         /** The line keys (e.g. cart item ids) that belong to this shipment. */
         public readonly array $lineKeys,
+        /** Rate component actually used: the route's flat cost (0 when no rate matched). */
+        public readonly float $rateFlatCost = 0.0,
+        /** Rate component actually used: per-unit cost for `costBasis` (per kg or per piece). */
+        public readonly float $rateUnitCost = 0.0,
     ) {}
 }

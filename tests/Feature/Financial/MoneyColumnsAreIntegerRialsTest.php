@@ -43,7 +43,7 @@ class MoneyColumnsAreIntegerRialsTest extends TestCase
         'coupon_funding_legs' => ['amount'],
         'invoices' => ['amount'],
         'return_damages' => ['amount'],
-        'shipments' => ['shipping_cost'],
+        'shipments' => ['shipping_cost', 'rate_flat_cost', 'rate_unit_cost'],
         'shipping_rates' => ['flat_cost', 'per_kg_cost', 'per_count_cost'],
         'users' => ['badge_purchase_amount', 'debt_balance', 'credit_limit'],
     ];
