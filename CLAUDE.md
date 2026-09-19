@@ -958,12 +958,30 @@ supplier's open order is irrelevant).
 only ways to clear it were three event-driven paths (overweight, return damage, damage
 cap). A user whose debt came from one of those, where the event never recurred, was locked
 out permanently — they could not clear it and neither could an admin, who can set
-`credit_limit` but never zero a balance. Order of legs matters: debit the wallet, credit
-Saze (the company fronted the money, so repayment must return there or the wallet ledger
-stays unbalanced), then close the debt ledger. An insufficient balance therefore rolls
-back **without** zeroing the debt. Omitting `amount` repays everything; a larger amount is
-clamped to the balance. Uses `DebitWalletAction`/`FundWalletAction`, not
-`WalletTransactionEngine` — the engine is order-scoped and a debt row may have no order.
+`credit_limit` but never zero a balance.
+
+**Each debt type settles through its own flow (2026-09-19, `RepayUserDebtAction`).** The
+first version closed every debt with one generic leg, which was wrong for three types:
+
+| Debt type | Settled by | What the generic leg broke |
+|---|---|---|
+| `return_damage` | `ReturnDamageService::settle` | Paid Saze, not the supplier. The damage stayed unsettled, so the next settle charged the buyer again. |
+| `weighbridge_deficit` | `SupplierDebtHandler::settlePending` | Left the order flags open, so the cron reclaimed the same debt a second time. |
+| `overweight` | `RequestOverweightApprovalAction::settleShortfall` | Saze had already received the difference at the weighbridge, so it credited Saze twice. The held load was never released. |
+| `adjustment`, or a debt with no order | the generic leg | Correct for these. |
+
+- The generic leg debits the wallet, credits Saze, then closes the ledger. It uses
+  `DebitWalletAction`/`FundWalletAction`, because a debt row may have no order.
+- An order-linked debt is settled **whole or not at all**. With a partial `amount`, the
+  oldest debts that fit are paid and the rest are skipped.
+- Everything runs in one transaction, so an insufficient wallet rolls back the whole
+  request without zeroing any debt.
+- An unknown type gets a 422 rather than a guess. So does an amount too small for any
+  whole debt (`orders.debt_repay_amount_too_small`) and a debt whose flow is closed
+  (`orders.debt_route_unavailable`).
+- `ReturnDamageService::settle` refuses a damage whose debt is already closed.
+
+Pinned by `Financial/DebtRepaymentTest`.
 
 **Financial ledgers are `restrictOnDelete`.** `wallet_transactions.wallet_id`,
 `debt_entries.user_id` and `invoices.order_id/user_id` were `cascadeOnDelete`, and none of
@@ -2277,14 +2295,22 @@ weight**, tripping the deficit branch — a real refund to the buyer and a real 
 recorded against the supplier with not one kilogram changed.
 
 - `getCommissionRates($badgeCode)` — live rate; use only **before/at** payment.
-- `getCommissionRatesForTc($badgeCode, $tc)` — explicit rate; use for **everything after**
-  payment. Orders with no snapshot (legacy rows, `commission_rate` null/0) fall back to the
-  live rate for backward compatibility.
+- `getCommissionRatesForOrder($order, $badgeCode)` — use for **everything after** payment.
+  It reads `%TC` *and* the OW/CO shares from the order. Orders with no `%TC` snapshot
+  (legacy rows, `commission_rate` null/0) fall back to the live rate for backward
+  compatibility.
 - `SAZE_SHARE_RATE` / `ELITE_YAR_SHARE_RATE` are no longer dead columns — keep writing them.
 
-Pinned by `Financial/CommissionRateSnapshotTest`. Note the badge itself is safe to change
-mid-flight: `%OW` is 40 % for every badge and `ow+co+ssg` always totals 100 % of TC, so
-POO/PTS are badge-independent — only the WEY/WSSG split shifts.
+**The OW/CO shares are snapshotted too (2026-09-19).** Since `a411c4f` they are editable
+in the panel (`PriceSetting` `ow_share` / `co_share_*`), and the reconciler read them live,
+so editing the OW share between payment and weighbridge was the same bug as `%TC`: money
+moved at identical weight. Both payment actions now write `orders.ow_share_percent` and
+`co_share_percent` (`decimal(7,4)`). The existing `*_rate` columns can't be used for this,
+because `decimal(5,2)` rounds 0.375 to 0.38. A NULL share snapshot means the order was
+paid before the change. It is priced with the **catalog defaults** (40 / 37.5 / 32.5 / 30
+/ 25), the constants those orders were actually paid with, never the live panel value.
+
+Pinned by `Financial/CommissionRateSnapshotTest`.
 
 ### Release a hold BEFORE spending it — reservation completion leg order
 
@@ -3128,6 +3154,53 @@ test env to `array`. Pinned by `Security/IdempotencyScopeTest`.
 
 `predis/predis` is in `composer.json` but nothing in `app/` uses Redis yet; it is kept
 deliberately so the client exists *before* an env flip to `redis`, not after.
+
+### Fixes merged from the 2026-09-15 review branches
+
+These fixes came from the four `fix/*` review branches and were merged onto trunk on
+2026-09-19. Each one is pinned by the test named in its entry.
+
+- **Each listener runs once.** `bootstrap/app.php` sets `withEvents(discover: false)`.
+  `Application::configure()` enables discovery by default, so every listener was registered
+  both by discovery and by `EventServiceProvider::$listen`, and every SMS went out twice.
+  `$listen` is the single source. Pinned by `Security/EventListenersRegisteredOnceTest`.
+- **The fixed OTP is opt-in.** `auth.otp_debug_code` (`OTP_DEBUG_CODE`) has no default.
+  `generateVerifyCode()` uses it only outside production **and** only when it is set.
+  `phpunit.xml` sets it to 111111; a deployed staging must leave it unset. Pinned by
+  `Auth/OtpDebugCodeTest`.
+- **`$request->ip()` is the real client behind Cloudflare.** `TrustProxies::at()` reads
+  `security.trusted_proxies` in `AppServiceProvider::boot()`. The env is `TRUSTED_PROXIES`,
+  and the default is Cloudflare's published ranges. Without it every throttle, the admin IP
+  allowlist and the logged IPs all saw the Cloudflare edge. **Never `*`**: the origin is
+  reachable directly, so a forged `X-Forwarded-For` would pick any IP. Pinned by
+  `Security/TrustedProxiesTest`.
+- **A `QueryException` is rethrown, never returned.** Five catch sites sent
+  `$e->getMessage()` (SQL plus bindings) to the client. Pinned by
+  `Security/QueryExceptionIsNotLeakedTest`.
+- **Public review listings mask the reviewer's mobile** (`ProductReviewResource`).
+- **Carbon 3 `diffIn*` returns a float.** Cast it to `int` where the payload or the logic
+  expects an integer. Pinned by `Order/CarbonThreeIntegerDiffTest`.
+- **Freight is repriced from a per-shipment rate snapshot.** `shipments.rate_flat_cost` and
+  `rate_unit_cost` are written at placement, and the weighbridge reprices from them, not
+  from the live `shipping_rates`. A legacy shipment without a snapshot scales its own
+  `shipping_cost`. Pinned by `Financial/FreightRateSnapshotTest`.
+- **A coupon's weighbridge difference moves through `coupon_funding_legs`.** It goes pro
+  rata to the same funders and wallets that paid the discount. A funder who can't cover an
+  extra discount is not charged, and the extra discount is not granted. Pinned by
+  `Financial/WeighbridgeCouponSettlementTest`.
+- **`POST /payment/wallet` completes a reservation instead of charging it twice.**
+  `WalletPaymentController` goes through `ProcessFullOrderPaymentAction`.
+  `ProcessPreScalePaymentAction` refuses an order with `payment_to_reserve > 0`. Pinned by
+  `Payment/WalletPaymentRouteCompletesReservationTest`.
+- **A payout in flight cannot also be refunded.** Rejecting a withdrawal returns 409 while
+  `SettleWithdrawalAction::hasLiveClaim()` holds. Phase C records a result only from
+  `PENDING`. A bank success that arrives after a rejection is stored as
+  `sent_after_rejection` for manual follow-up. Pinned by `Financial/WithdrawalSettlementTest`.
+- **Reservations settle on the supplier's `±TC`/`±VAT` contract.** `trans_commission` and
+  `trans_vat` are `NOT NULL DEFAULT true` and were never written before completion, so the
+  `??` fallback to the supplier profile never fired. `ProcessReservationPaymentAction` now
+  snapshots them. Migration `2026_09_16_110100` backfills still-reserved orders. Pinned by
+  `Financial/ReservationTransFlagSnapshotTest`.
 
 ## Key Conventions
 
