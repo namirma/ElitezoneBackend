@@ -4,6 +4,7 @@ namespace Tests\Feature\Financial;
 
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\PriceSetting;
 use App\Services\Financial\SettlementCalculatorService;
 use App\Services\Financial\WeighbridgeReconciler;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
@@ -70,6 +71,44 @@ class CommissionRateSnapshotTest extends TestCase
     }
 
     #[Test]
+    public function editing_the_commission_shares_after_payment_cannot_move_money(): void
+    {
+        // از `a411c4f` سهم‌های OW/CO در پنل قابلِ ویرایش‌اند و باسکول آن‌ها را زنده
+        // می‌خواند: ویرایشِ سهمِ OW بینِ پرداخت و باسکول، POOM را با وزنِ یکسان جابه‌جا
+        // می‌کرد — عودت یا کسرِ واقعی بدونِ یک کیلوگرم تفاوت.
+        $calculator = app(SettlementCalculatorService::class);
+        $reconciler = app(WeighbridgeReconciler::class);
+        $order = $this->makeWeighableOrder($calculator, snapshotTc: 1.0);
+        $wbs = (float) $order->{Order::WEIGHT_BEFORE_SCALE};
+
+        PriceSetting::updateOrCreate([PriceSetting::CODE => PriceSetting::CODE_OW_SHARE], [PriceSetting::NAME => 'ow', PriceSetting::VALUE => '30']);
+        PriceSetting::updateOrCreate([PriceSetting::CODE => PriceSetting::CODE_CO_SHARE_DEFAULT], [PriceSetting::NAME => 'co', PriceSetting::VALUE => '45']);
+
+        $result = $reconciler->reconcile($order->fresh(['items', 'eliteYAR.badge']), $wbs);
+
+        $this->assertEqualsWithDelta(0.0, $result->diffPOO, 0.01);
+        $this->assertEqualsWithDelta(0.0, $result->diffPTS, 0.01);
+    }
+
+    #[Test]
+    public function an_order_paid_before_the_share_snapshot_uses_the_catalog_defaults(): void
+    {
+        // سفارش‌های پیش از این تغییر با اعدادِ ثابتِ آن زمان پرداخت شده‌اند، نه با
+        // مقدارِ زنده‌ی امروزِ پنل.
+        $calculator = app(SettlementCalculatorService::class);
+        $order = $this->makeWeighableOrder($calculator, snapshotTc: 1.0);
+        $order->forceFill([Order::OW_SHARE_PERCENT => null, Order::CO_SHARE_PERCENT => null])->save();
+
+        PriceSetting::updateOrCreate([PriceSetting::CODE => PriceSetting::CODE_OW_SHARE], [PriceSetting::NAME => 'ow', PriceSetting::VALUE => '30']);
+
+        $rates = $calculator->getCommissionRatesForOrder($order->fresh(), null);
+
+        $this->assertSame(40.0, $rates['ow_percent_of_tc']);
+        $this->assertSame(25.0, $rates['co_percent_of_tc']);
+        $this->assertSame(35.0, $rates['ssg_percent_of_tc']);
+    }
+
+    #[Test]
     public function extract_vat_net_and_vat_sum_exactly_to_gross(): void
     {
         $calculator = app(SettlementCalculatorService::class);
@@ -124,6 +163,8 @@ class CommissionRateSnapshotTest extends TestCase
             Order::OWNER_DISCOUNT_RATE => $rates['ow_final_rate'],
             Order::SAZE_SHARE_RATE => $rates['ssg_final_rate'],
             Order::ELITE_YAR_SHARE_RATE => $rates['co_final_rate'],
+            Order::OW_SHARE_PERCENT => $rates['ow_percent_of_tc'],
+            Order::CO_SHARE_PERCENT => $rates['co_percent_of_tc'],
             Order::TRANS_COMMISSION => true,
             Order::TRANS_VAT => true,
             Order::PAYMENT_OF_OWNER => $poo,

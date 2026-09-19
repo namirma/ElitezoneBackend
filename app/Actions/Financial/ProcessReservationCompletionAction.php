@@ -244,6 +244,8 @@ class ProcessReservationCompletionAction
                 Order::OWNER_DISCOUNT_RATE => $ow,
                 Order::SAZE_SHARE_RATE => $ssg,
                 Order::ELITE_YAR_SHARE_RATE => $co,
+                Order::OW_SHARE_PERCENT => $rates['ow_percent_of_tc'],
+                Order::CO_SHARE_PERCENT => $rates['co_percent_of_tc'],
                 Order::TRANS_COMMISSION => $transCommission,
                 Order::TRANS_VAT => $transVat,
                 Order::PAID_AT => now(),

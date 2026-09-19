@@ -145,6 +145,8 @@ class ProcessPreScalePaymentAction
                 // در CLAUDE.md جزو فیلدهای اسنپ‌شات مستند شده‌اند.
                 Order::SAZE_SHARE_RATE => $sazeShareRate,
                 Order::ELITE_YAR_SHARE_RATE => $eliteYARRate,
+                Order::OW_SHARE_PERCENT => $rates['ow_percent_of_tc'],
+                Order::CO_SHARE_PERCENT => $rates['co_percent_of_tc'],
                 Order::TRANS_COMMISSION => $transCommission,
                 Order::TRANS_VAT => $transVat,
             ])->save();

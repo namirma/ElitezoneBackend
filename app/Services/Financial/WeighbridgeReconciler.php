@@ -59,10 +59,8 @@ class WeighbridgeReconciler
         // دور می‌کرد و شاخهٔ «کسری» را فعال می‌کرد — یعنی عودتِ واقعی به خریدار و
         // ثبتِ بدهیِ واقعی برای تأمین‌کننده، بدون آنکه هیچ کیلوگرمی جابه‌جا شده باشد.
         // سفارش‌های قدیمی که این ستون را ندارند به مقدارِ زنده برمی‌گردند (سازگاری).
-        $snapshotTc = (float) ($order->{Order::COMMISSION_RATE} ?? 0);
-        $rates = $snapshotTc > 0
-            ? $this->calculator->getCommissionRatesForTc($badgeCode, $snapshotTc)
-            : $this->calculator->getCommissionRates($badgeCode);
+        // سهم‌های OW/CO هم از اسنپ‌شات — از `a411c4f` در پنل قابلِ ویرایش‌اند.
+        $rates = $this->calculator->getCommissionRatesForOrder($order, $badgeCode);
 
         // کرایه با وزن **واقعیِ هر محموله** بازمحاسبه می‌شود (بند ۸.۲ گام ۲).
         // per-shipment و نه per-order، چون نرخ به مبدأ و مقصد وابسته است و دو

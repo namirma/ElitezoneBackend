@@ -203,6 +203,18 @@ class Order extends Model
 
     public const ELITE_YAR_SHARE_RATE = 'elite_yar_share_rate';
 
+    /**
+     * سهمِ OW و CO از %TC، **درصدِ دقیق** لحظه‌ی پرداخت (SSG = ۱۰۰ − این دو).
+     *
+     * سه ستونِ بالا نرخِ نهایی را با `decimal(5,2)` نگه می‌دارند — ۰٫۳۷۵ می‌شود
+     * ۰٫۳۸ — پس برای بازسازیِ POOM در باسکول قابلِ اتکا نیستند. از `a411c4f`
+     * سهم‌ها از پنل قابلِ ویرایش‌اند؛ بدونِ این دو ستون، ویرایشِ آن‌ها بینِ پرداخت و
+     * باسکول با وزنِ یکسان پول جابه‌جا می‌کرد. `null` = سفارشِ پیش از این مهاجرت.
+     */
+    public const OW_SHARE_PERCENT = 'ow_share_percent';
+
+    public const CO_SHARE_PERCENT = 'co_share_percent';
+
     public const VAT_RATE = 'vat_rate';
 
     public const PAYMENT_OF_OWNER = 'payment_of_owner';

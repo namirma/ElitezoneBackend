@@ -101,8 +101,55 @@ class SettlementCalculatorService
      */
     public function getCommissionRatesForTc(?string $badgeCode, float $tcPercentage): array
     {
-        $shares = $this->badgeShares($badgeCode);
+        return $this->ratesFromShares($this->badgeShares($badgeCode), $tcPercentage);
+    }
 
+    /**
+     * نرخ‌های یک سفارشِ **پرداخت‌شده** — هم %TC و هم سهم‌های OW/CO از اسنپ‌شاتِ خودِ
+     * سفارش، هرگز از تنظیمِ زنده. هر محاسبه‌ی پس از پرداخت (باسکول) باید از این
+     * استفاده کند.
+     *
+     * از `a411c4f` سهم‌ها در پنل قابلِ ویرایش‌اند؛ `getCommissionRatesForTc` فقط %TC
+     * را از اسنپ‌شات می‌گرفت و سهم‌ها را زنده می‌خواند، پس ویرایشِ سهمِ OW بینِ پرداخت
+     * و باسکول POOM را با وزنِ یکسان از POO دور می‌کرد — همان باگِ قدیمیِ %TC.
+     *
+     * سفارشِ بدونِ اسنپ‌شاتِ سهم (پرداخت‌شده پیش از این تغییر) با **پیش‌فرض‌های
+     * کاتالوگ** حساب می‌شود، نه مقدارِ زنده: همان اعدادی که پیش از قابلِ‌ویرایش‌شدنِ
+     * سهم‌ها در کد ثابت بودند و آن سفارش‌ها با آن‌ها پرداخت شدند.
+     *
+     * @return array{
+     *   ow_percent_of_tc: float, co_percent_of_tc: float, ssg_percent_of_tc: float,
+     *   ow_final_rate: float, co_final_rate: float, ssg_final_rate: float,
+     * }
+     */
+    public function getCommissionRatesForOrder(Order $order, ?string $badgeCode): array
+    {
+        $tc = (float) ($order->{Order::COMMISSION_RATE} ?? 0);
+
+        // بی‌اسنپ‌شاتِ %TC: سفارش‌های خیلی قدیمی — همان رفتارِ سازگاریِ قبلی (زنده).
+        if ($tc <= 0) {
+            return $this->getCommissionRates($badgeCode);
+        }
+
+        $ow = $order->{Order::OW_SHARE_PERCENT};
+        $co = $order->{Order::CO_SHARE_PERCENT};
+
+        $shares = ($ow !== null && $co !== null)
+            ? ['ow' => (float) $ow, 'co' => (float) $co, 'ssg' => (float) Money::sub(Money::sub('100', (string) $ow), (string) $co)]
+            : $this->defaultBadgeShares($badgeCode);
+
+        return $this->ratesFromShares($shares, $tc);
+    }
+
+    /**
+     * @param  array{ow: float, co: float, ssg: float}  $shares
+     * @return array{
+     *   ow_percent_of_tc: float, co_percent_of_tc: float, ssg_percent_of_tc: float,
+     *   ow_final_rate: float, co_final_rate: float, ssg_final_rate: float,
+     * }
+     */
+    private function ratesFromShares(array $shares, float $tcPercentage): array
+    {
         return [
             'ow_percent_of_tc' => $shares['ow'],
             'co_percent_of_tc' => $shares['co'],
@@ -317,6 +364,26 @@ class SettlementCalculatorService
         $catalog = PriceSetting::catalog();
         $ow = PriceSetting::getValueAsFloat(PriceSetting::CODE_OW_SHARE, (float) $catalog[PriceSetting::CODE_OW_SHARE]['default']);
         $co = PriceSetting::getValueAsFloat($coCode, (float) $catalog[$coCode]['default']);
+
+        return ['ow' => $ow, 'co' => $co, 'ssg' => (float) Money::sub(Money::sub('100', $ow), $co)];
+    }
+
+    /**
+     * همان سهم‌ها از **پیش‌فرضِ کاتالوگ** — اعدادی که پیش از `a411c4f` در کد ثابت بودند.
+     *
+     * @return array{ow: float, co: float, ssg: float}
+     */
+    private function defaultBadgeShares(?string $badgeCode): array
+    {
+        $coCode = match (strtolower(trim($badgeCode ?? ''))) {
+            'gold', 'golden' => PriceSetting::CODE_CO_SHARE_GOLD,
+            'silver' => PriceSetting::CODE_CO_SHARE_SILVER,
+            'bronze' => PriceSetting::CODE_CO_SHARE_BRONZE,
+            default => PriceSetting::CODE_CO_SHARE_DEFAULT,
+        };
+        $catalog = PriceSetting::catalog();
+        $ow = (float) $catalog[PriceSetting::CODE_OW_SHARE]['default'];
+        $co = (float) $catalog[$coCode]['default'];
 
         return ['ow' => $ow, 'co' => $co, 'ssg' => (float) Money::sub(Money::sub('100', $ow), $co)];
     }
