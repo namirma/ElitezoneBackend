@@ -30,7 +30,7 @@ use Mpdf\Mpdf;
  *
  * تا پیش از این پیش‌فاکتور فقط بعد از `POST /checkout` قابل دانلود بود
  * (`GET /profile/orders/{order}/invoices/initial`)، یعنی خریدار برای گرفتنِ یک
- * برگهٔ قیمت مجبور بود اول سفارشِ واقعی ثبت کند — که موجودی کم می‌کند، مهلتِ
+ * برگه‌ی قیمت مجبور بود اول سفارشِ واقعی ثبت کند — که موجودی کم می‌کند، مهلتِ
  * دو ساعته می‌گیرد و بعد باید لغو شود. این اکشن همان سند را از خودِ سبد می‌سازد.
  *
  * ## چرا یک `Order`ِ درون‌حافظه‌ای؟
@@ -47,14 +47,14 @@ use Mpdf\Mpdf;
  *
  * از `CartPricingCalculator` — همان سرویسی که `CartResponseBuilder` برای ساختِ
  * `totals`ِ پاسخِ سبد استفاده می‌کند. پس عددِ روی PDF دقیقاً همان عددی است که
- * کاربر در صفحهٔ سبد می‌بیند، نه یک بازمحاسبهٔ مستقل.
+ * کاربر در صفحه‌ی سبد می‌بیند، نه یک بازمحاسبه‌ی مستقل.
  *
- * ## هزینهٔ حمل
+ * ## هزینه‌ی حمل
  *
  * فقط وقتی وارد پیش‌فاکتور می‌شود که `address_id` داده شود — چون کرایه بدونِ
  * مقصد تعریف نشده است. بدونِ آدرس، ردیفِ حمل صفر است و مبلغ، مبلغِ کالا + مالیات.
  * محاسبه از `CartShippingQuoteService` می‌آید که `PlaceOrderAction` هم از آن
- * استفاده می‌کند، پس برآورد با کرایهٔ واقعی برابر است.
+ * استفاده می‌کند، پس برآورد با کرایه‌ی واقعی برابر است.
  *
  * پین‌شده توسط تستِ Tests\Feature\Cart\CartPreInvoiceTest — عمداً به‌صورت متن و نه
  * تگِ ‎@see‎، چون فیکسرِ `fully_qualified_strict_types` پینت آن را به یک
@@ -141,7 +141,7 @@ class BuildCartPreInvoiceAction
     // Internals
     // ─────────────────────────────────────────────────────────────────────────
 
-    /** همان زمینهٔ قیمت‌گذاریِ CartResponseBuilder — تا PDF و صفحهٔ سبد یک عدد بدهند. */
+    /** همان زمینه‌ی قیمت‌گذاریِ CartResponseBuilder — تا PDF و صفحه‌ی سبد یک عدد بدهند. */
     private function pricingContext(Cart $cart): PricingContextData
     {
         $activeCode = $this->resolver->activeCode();
@@ -170,7 +170,7 @@ class BuildCartPreInvoiceAction
      *   final_amount    = subtotal − discount + vat + shipping
      *
      * (`CartPricingCalculator` زیرمجموعه را **پس از** تخفیفِ واریانت می‌دهد، پس
-     *  تخفیف دوباره به آن اضافه می‌شود تا معادلهٔ بالا برقرار بماند.)
+     *  تخفیف دوباره به آن اضافه می‌شود تا معادله‌ی بالا برقرار بماند.)
      */
     private function buildTransientOrder(
         Cart $cart,
@@ -201,7 +201,7 @@ class BuildCartPreInvoiceAction
             Order::RESERVATION_EXPIRES_AT => $this->priceValidity->resolve($cart),
         ]);
 
-        // ⚠️ همهٔ relationها باید دستی نشانده شوند: مدل ذخیره نشده و کلیدِ اصلی
+        // ⚠️ همه‌ی relationها باید دستی نشانده شوند: مدل ذخیره نشده و کلیدِ اصلی
         // ندارد، پس هر lazy-load یک کوئریِ `where ..._id is null` می‌زند.
         $order->setRelation('placer', $user->loadMissing('profile'));
         $order->setRelation('address', $address?->loadMissing(['city', 'province']));
@@ -254,7 +254,7 @@ class BuildCartPreInvoiceAction
     }
 
     /**
-     * شناسهٔ پیش‌نمایش — عمداً **شمارهٔ سند نیست**.
+     * شناسه‌ی پیش‌نمایش — عمداً **شماره‌ی سند نیست**.
      *
      * شماره‌های واقعی (`EZ-QTE-RB-140502-70300100`) از `DocumentSequenceService`
      * می‌آیند و با ذخیره‌شدنِ رکورد رزرو می‌شوند. اینجا چیزی ذخیره نمی‌شود، پس اگر

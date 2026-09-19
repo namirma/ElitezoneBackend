@@ -16,12 +16,12 @@ use Tests\TestCase;
 /**
  * تطبیقِ دفترِ مالی با موجودیِ کیف‌ها.
  *
- * ارزشِ کلِ این ابزار به درست بودنِ «قاعدهٔ بازپخش» بند است — اگر قاعده حتی برای یک
+ * ارزشِ کلِ این ابزار به درست بودنِ «قاعده‌ی بازپخش» بند است — اگر قاعده حتی برای یک
  * ترکیبِ (نوع، وضعیت) غلط باشد، ابزار یا مغایرتِ کاذب می‌سازد (و بعد از چند بار
  * نادیده گرفته می‌شود) یا مغایرتِ واقعی را می‌بلعد. پس هر سطرِ آن جدول اینجا
  * جداگانه پین شده، نه فقط مسیرِ خوشحال.
  *
- * تست‌ها با `userId`/`orderId` محدود می‌شوند تا به دادهٔ باقی‌مانده در دیتابیسِ تست
+ * تست‌ها با `userId`/`orderId` محدود می‌شوند تا به داده‌ی باقی‌مانده در دیتابیسِ تست
  * وابسته نباشند.
  */
 class LedgerReconcilerTest extends TestCase
@@ -45,7 +45,7 @@ class LedgerReconcilerTest extends TestCase
     {
         $wallet = Wallet::factory()->create();
 
-        // یک ترکیبِ واقع‌گرایانه از همهٔ حالت‌های مؤثر:
+        // یک ترکیبِ واقع‌گرایانه از همه‌ی حالت‌های مؤثر:
         //   +۱۰۰۰ واریزِ تأییدشده، −۳۰۰ برداشتِ تأییدشده، +۵۰۰ هولد
         $this->ledgerRow($wallet, 1000, WalletTransaction::TYPE_DEPOSIT, WalletTransaction::STATUS_CONFIRMED);
         $this->ledgerRow($wallet, 300, WalletTransaction::TYPE_WITHDRAW, WalletTransaction::STATUS_CONFIRMED);
@@ -108,8 +108,8 @@ class LedgerReconcilerTest extends TestCase
     #[Test]
     public function a_pending_withdrawal_does_debit_the_balance(): void
     {
-        // نقطهٔ مقابلِ تستِ بالا و ضدشهودی‌ترین سطرِ قاعده: RequestWithdrawalAction
-        // پول را همان لحظه برمی‌دارد و ردیف را pending می‌گذارد؛ تسویهٔ بانکی فقط
+        // نقطه‌ی مقابلِ تستِ بالا و ضدشهودی‌ترین سطرِ قاعده: RequestWithdrawalAction
+        // پول را همان لحظه برمی‌دارد و ردیف را pending می‌گذارد؛ تسویه‌ی بانکی فقط
         // وضعیت را عوض می‌کند. اگر این را «هنوز کسر نشده» فرض کنیم، هر کاربری که
         // درخواستِ برداشتِ در جریان دارد به‌غلط مغایر گزارش می‌شود.
         $wallet = Wallet::factory()->create([Wallet::BALANCE => 1000]);
@@ -179,7 +179,7 @@ class LedgerReconcilerTest extends TestCase
     {
         $buyer = User::factory()->create();
         // کیف از قبل شارژ شده (خارج از دفتر) تا پرداختِ زیر رد شود — این تست
-        // دربارهٔ تراز شدنِ *سفارش* است، نه شارژِ اولیه.
+        // درباره‌ی تراز شدنِ *سفارش* است، نه شارژِ اولیه.
         Wallet::factory()->create([Wallet::USER_ID => $buyer->id, Wallet::BALANCE => 5_000_000]);
 
         $order = Order::factory()->create([Order::PLACER_USER_ID => $buyer->id]);
@@ -295,7 +295,7 @@ class LedgerReconcilerTest extends TestCase
     public function an_unmodelled_type_is_reported_instead_of_being_silently_ignored(): void
     {
         // `fee_hold` امروز توسط هیچ کدی ساخته نمی‌شود ولی ثابتش هنوز هست. اگر
-        // برگردد، شاخهٔ ELSE 0 آن را بی‌صدا صفر می‌گرفت و ابزار «سالم» می‌گفت در
+        // برگردد، شاخه‌ی ELSE 0 آن را بی‌صدا صفر می‌گرفت و ابزار «سالم» می‌گفت در
         // حالی که پولِ آن ردیف اصلاً شمرده نشده بود.
         $wallet = Wallet::factory()->create();
         $this->ledgerRow($wallet, 1_000, WalletTransaction::TYPE_FEE_HOLD, WalletTransaction::STATUS_CONFIRMED);

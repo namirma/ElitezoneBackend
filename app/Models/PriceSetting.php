@@ -142,7 +142,7 @@ class PriceSetting extends Model
 
     public static function getValueAsFloat(string $code, float $default = 0.0): float
     {
-        // از همان کشِ getValue استفاده می‌کنیم؛ قبلاً این متد روی هر محاسبهٔ VAT-inclusive
+        // از همان کشِ getValue استفاده می‌کنیم؛ قبلاً این متد روی هر محاسبه‌ی VAT-inclusive
         // یک کوئری مستقیم و بدون‌کش می‌زد، در حالی‌که یک مقدارِ تنظیماتیِ کم‌تغییر است.
         return (float) self::getValue($code, $default);
     }

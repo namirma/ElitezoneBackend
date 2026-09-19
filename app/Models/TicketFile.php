@@ -47,7 +47,7 @@ class TicketFile extends Model
     /** دیسکِ خصوصیِ نگهداریِ پیوست‌ها — هرگز 'public' نشود. */
     public const DISK = 'local';
 
-    /** پوشهٔ ذخیره روی دیسکِ خصوصی. */
+    /** پوشه‌ی ذخیره روی دیسکِ خصوصی. */
     public const DIRECTORY = 'ticket-files';
 
     public const ID = 'id';

@@ -106,7 +106,7 @@ class OfficialPriceSnapshotTest extends TestCase
         $this->assertEqualsWithDelta(10, $weight, 0.001, 'وزن کل باید ۱۰ باشد.');
         $this->assertEqualsWithDelta(1_100_000, $op, 1, 'official_price باید میانگینِ وزنی باشد.');
 
-        // نکتهٔ اصلی: حاصل‌ضربی که تسویه استفاده می‌کند باید ارزشِ واقعیِ کالا را بدهد.
+        // نکته‌ی اصلی: حاصل‌ضربی که تسویه استفاده می‌کند باید ارزشِ واقعیِ کالا را بدهد.
         $this->assertEqualsWithDelta(11_000_000, $op * $weight, 10);
 
         // و همان چیزی که قبلاً تولید می‌شد، صریحاً رد شود.
@@ -116,7 +116,7 @@ class OfficialPriceSnapshotTest extends TestCase
     #[Test]
     public function a_freshly_placed_order_is_clean_under_financial_doctor(): void
     {
-        // بررسیِ سرتاسری: چیزی که PlaceOrderAction می‌نویسد باید از invariant تازهٔ
+        // بررسیِ سرتاسری: چیزی که PlaceOrderAction می‌نویسد باید از invariant تازه‌ی
         // financial:doctor رد شود — وگرنه هر سفارشِ جدید بلافاصله علامت می‌خورد.
         Cache::flush();
         Event::fake([OrderPlaced::class]);

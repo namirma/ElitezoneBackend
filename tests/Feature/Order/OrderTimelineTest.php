@@ -22,7 +22,7 @@ use Tests\TestCase;
  *
  * ارزشِ این سرویس در «کنارِ هم چیدن» است، نه در خواندنِ تک‌تکِ جدول‌ها — پس تست‌ها
  * روی همان تمرکز دارند: آیا هر چهار منبع واقعاً می‌آیند، آیا ترتیب درست است، و آیا
- * فاصلهٔ زمانیِ بین رویدادها حساب می‌شود.
+ * فاصله‌ی زمانیِ بین رویدادها حساب می‌شود.
  */
 class OrderTimelineTest extends TestCase
 {
@@ -50,7 +50,7 @@ class OrderTimelineTest extends TestCase
         $this->assertContains('money', $tracks);
         $this->assertContains('document', $tracks);
 
-        // ترتیب باید اکیداً غیرنزولی باشد — کلِ فایدهٔ ادغام همین است.
+        // ترتیب باید اکیداً غیرنزولی باشد — کلِ فایده‌ی ادغام همین است.
         $times = array_column($events, 'at');
         $sorted = $times;
         sort($sorted);
@@ -76,7 +76,7 @@ class OrderTimelineTest extends TestCase
     public function it_labels_an_order_with_the_order_status_not_the_fee_status(): void
     {
         // پین‌کردنِ دورزدنِ یک برخوردِ واقعی: `PAYMENT_PENDING` و
-        // `FEE_PAYMENT_PENDING` هر دو رشتهٔ 'pending' هستند و در آرایهٔ مشترکِ
+        // `FEE_PAYMENT_PENDING` هر دو رشته‌ی 'pending' هستند و در آرایه‌ی مشترکِ
         // قدیمی آخری روی بقیه می‌نشست. اگر روزی کسی این سرویس را به آن آرایه
         // برگرداند، برچسبِ وضعیتِ سفارش با برچسبِ سهم جابه‌جا می‌شود.
         $order = Order::factory()->create([Order::STATUS => Order::STATUS_PROCESSING]);
@@ -201,7 +201,7 @@ class OrderTimelineTest extends TestCase
     #[Test]
     public function the_weighbridge_event_spells_out_the_weight_difference(): void
     {
-        // اختلافِ وزن همان چیزی است که کلِ تسویهٔ پس از باسکول رویش می‌چرخد.
+        // اختلافِ وزن همان چیزی است که کلِ تسویه‌ی پس از باسکول رویش می‌چرخد.
         $order = Order::factory()->create();
         $order->forceFill([
             Order::WEIGHING_COMPLETED_AT => now(),

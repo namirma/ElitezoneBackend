@@ -32,14 +32,14 @@ class VapidKeyGenerationTest extends TestCase
         $this->assertSame(65, strlen($validated['publicKey']));
         $this->assertSame(32, strlen($validated['privateKey']));
 
-        // بایتِ اولِ نقطهٔ فشرده‌نشدهٔ منحنی همیشه 0x04 است.
+        // بایتِ اولِ نقطه‌ی فشرده‌نشده‌ی منحنی همیشه 0x04 است.
         $this->assertSame("\x04", $validated['publicKey'][0]);
     }
 
     #[Test]
     public function each_run_produces_a_different_keypair(): void
     {
-        // اگر روزی به یک مقدارِ ثابت تبدیل شود، همهٔ نصب‌ها یک کلیدِ خصوصی
+        // اگر روزی به یک مقدارِ ثابت تبدیل شود، همه‌ی نصب‌ها یک کلیدِ خصوصی
         // مشترک می‌گیرند و هر کسی می‌تواند به مشترکانِ بقیه نوتیف بفرستد.
         $this->assertNotSame(
             GenerateVapidKeys::createKeys()['privateKey'],

@@ -17,7 +17,7 @@ return [
     'wallet_funded_subject' => 'شارژ کیف پول',
     // [flow1] انقضای درخواستِ تغییرِ قیمت — به تأمین‌کننده
     'price_change_expired_subject' => 'انقضای درخواست تغییر قیمت',
-    'transaction_subject' => 'نتیجهٔ تراکنش',
+    'transaction_subject' => 'نتیجه‌ی تراکنش',
 
     // ── [flow2] تمدیدِ رزرو و لغوِ دوطرفه (پرسش ۳ و ۴ مدیریت) ────────────────
     'reserve_extension_proposed_subject' => 'پیشنهاد تمدید رزرو',

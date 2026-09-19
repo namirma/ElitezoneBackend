@@ -101,7 +101,7 @@ class SingleSupplierCartTest extends TestCase
     #[Test]
     public function a_factory_without_a_supplier_does_not_lock_the_cart(): void
     {
-        // کارخانه‌ی بدون `supplier_user_id` دادهٔ ناقص است؛ `PlaceOrderAction`
+        // کارخانه‌ی بدون `supplier_user_id` داده‌ی ناقص است؛ `PlaceOrderAction`
         // جداگانه جلویش را می‌گیرد. اینجا نباید سبد را به `null` قفل کند و
         // بعد هر تأمین‌کننده‌ی واقعی را رد کند.
         $cart = Cart::create([Cart::USER_ID => User::factory()->create()->id]);

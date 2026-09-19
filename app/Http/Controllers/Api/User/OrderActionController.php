@@ -85,7 +85,7 @@ class OrderActionController extends Controller
         $user = Auth::user();
 
         // فقط الیت یارِ سفارش (کسی که کمیسیون WEY به او تعلق دارد) مجاز است.
-        // این باید elite_yar_user_id باشد، نه beneficiary_user_id (گیرندهٔ کالا) —
+        // این باید elite_yar_user_id باشد، نه beneficiary_user_id (گیرنده‌ی کالا) —
         // هولد کمیسیون در WeighbridgeVatRouter/ReleaseEliteYARHoldAction روی
         // elite_yar_user_id ثبت/آزاد می‌شود، پس گارد مجوز هم باید با همان هم‌تراز باشد.
         if ((int) $order->{Order::ELITE_YAR_USER_ID} !== (int) $user->id) {

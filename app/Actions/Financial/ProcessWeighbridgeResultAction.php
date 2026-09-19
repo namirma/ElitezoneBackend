@@ -92,7 +92,7 @@ class ProcessWeighbridgeResultAction
                 ]));
             }
 
-            // larastan نتیجهٔ `lockForUpdate()->first()` را `Model` می‌بیند نه `Order`؛
+            // larastan نتیجه‌ی `lockForUpdate()->first()` را `Model` می‌بیند نه `Order`؛
             // گاردهای بالا این تنگ‌سازی را تضمین می‌کنند و بدون آن، فراخوانیِ
             // متدهایی که `Order` می‌خواهند یک ورودیِ تازه به baseline اضافه می‌کرد.
             /** @var Order $locked */
@@ -102,7 +102,7 @@ class ProcessWeighbridgeResultAction
 
             // Physical stock adjusts by the REAL weight delta (not the billing delta).
             //
-            // اختلاف بین **همهٔ** ردیف‌ها به‌نسبتِ وزنشان تقسیم می‌شود. پیش از این
+            // اختلاف بین **همه‌ی** ردیف‌ها به‌نسبتِ وزنشان تقسیم می‌شود. پیش از این
             // کلِ اختلاف روی `items->first()` می‌نشست، پس در سفارشِ چندردیفی
             // موجودیِ ردیفِ اول بیش از حد و بقیه اصلاً اصلاح نمی‌شد.
             $weightDiff = $actualWeight - (float) $locked->weight_before_scale;

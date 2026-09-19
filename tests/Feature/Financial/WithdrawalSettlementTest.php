@@ -231,7 +231,7 @@ class WithdrawalSettlementTest extends TestCase
 
         Http::fake(function () use ($tx, &$reentry, &$attempted) {
             // فقط یک بار بازورود — بدون این گارد، کدِ *معیوب* بی‌نهایت بازگشتی
-            // می‌شد (هر تماس یک تسویهٔ تازه می‌ساخت) و کلِ اجرای تست را با
+            // می‌شد (هر تماس یک تسویه‌ی تازه می‌ساخت) و کلِ اجرای تست را با
             // memory exhaustion می‌کشت به‌جای اینکه تمیز fail شود.
             if (! $attempted) {
                 $attempted = true;
@@ -289,7 +289,7 @@ class WithdrawalSettlementTest extends TestCase
         $tx = $this->pendingWithdraw($user, 500_000);
 
         // یک fake با دو پاسخِ پشتِ‌هم: تلاشِ اول شکست، تلاشِ دوم موفق. (فراخوانِ
-        // دوبارهٔ `Http::fake()` استابِ قبلی را جایگزین نمی‌کند، ادغام می‌کند.)
+        // دوباره‌ی `Http::fake()` استابِ قبلی را جایگزین نمی‌کند، ادغام می‌کند.)
         Http::fake(['*doServiceCall*' => Http::sequence()
             ->push(['hasError' => true, 'message' => 'خطا', 'errorCode' => 1], 200)
             ->push([

@@ -97,7 +97,7 @@ class TicketLifecycleTest extends TestCase
         // جمعه تعطیل است، پس ۷ ساعت باقی‌مانده از شنبه ۰۹:۰۰ مصرف می‌شود
         // → موعد شنبه ۱۶:۰۰ تهران.
         //
-        // فیکسچر قبلاً `'2026-07-16 16:00:00'` بود که یک لحظهٔ **UTC** می‌سازد
+        // فیکسچر قبلاً `'2026-07-16 16:00:00'` بود که یک لحظه‌ی **UTC** می‌سازد
         // (`app.timezone` = UTC). آن موقع با سناریوی بالا می‌خواند فقط به این دلیل
         // که تقویم هم ساعتِ UTC را ساعتِ کاری فرض می‌کرد. ۱۶:۰۰ UTC در واقع
         // ۱۹:۳۰ تهران است — یعنی بعد از پایان کار، نه «۱ ساعت مانده به تعطیلی».
@@ -227,8 +227,8 @@ class TicketLifecycleTest extends TestCase
     #[Test]
     public function opening_message_attachments_are_persisted_against_the_ticket(): void
     {
-        // پیوست‌ها روی دیسک خصوصی می‌نشینند، نه public — پیوستِ تیکت دادهٔ
-        // محرمانهٔ کاربر است (TicketAttachmentPrivacyTest قرارداد کامل را pin می‌کند).
+        // پیوست‌ها روی دیسک خصوصی می‌نشینند، نه public — پیوستِ تیکت داده‌ی
+        // محرمانه‌ی کاربر است (TicketAttachmentPrivacyTest قرارداد کامل را pin می‌کند).
         Storage::fake(TicketFile::DISK);
         Storage::fake('public');
         Sanctum::actingAs($this->user);

@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Schema;
 
 /**
  * ایندکس‌های گمشده روی مسیرهای داغِ مالی/حمل (یافته‌های CC-20/CC-21):
- *  - wallet_transactions(wallet_id, status): پرترددترین خواندنِ تاریخچهٔ کیف‌پولِ کاربر
+ *  - wallet_transactions(wallet_id, status): پرترددترین خواندنِ تاریخچه‌ی کیف‌پولِ کاربر
  *    که با type/status فیلتر می‌شود؛ فقط ایندکس‌های تک‌ستونی داشت.
  *  - order_items.factory_id / factory_location_id: بدون ایندکس (کوئری‌های عملیات تأمین).
  *  - shipments.factory_id / destination_province_id / destination_city_id: بدون ایندکس.

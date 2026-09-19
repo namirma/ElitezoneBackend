@@ -16,7 +16,7 @@ use Tests\TestCase;
  * پین‌کردن برابری Enum ها با ثابت‌های رشته‌ای مدل.
  *
  * کدبیس در runtime از ثابت‌های مدل (Order::STATUS_CANCELLED) استفاده می‌کند و
- * Enum ها آینهٔ type-safe همان مقادیرند. بدون این تست، اضافه‌شدن یک ثابت جدید به
+ * Enum ها آینه‌ی type-safe همان مقادیرند. بدون این تست، اضافه‌شدن یک ثابت جدید به
  * مدل بدون کیس Enum (یا برعکس) بی‌صدا واگرا می‌شد — دقیقاً همان اتفاقی که برای
  * TYPE_HOLD_RELEASE افتاده بود و این تست آن را آشکار کرد.
  */
@@ -61,7 +61,7 @@ class EnumModelConstantParityTest extends TestCase
     }
 
     /**
-     * مقادیر Enum باید دقیقاً برابر مجموعهٔ ثابت‌های رشته‌ایِ مدل با پیشوند داده‌شده باشد.
+     * مقادیر Enum باید دقیقاً برابر مجموعه‌ی ثابت‌های رشته‌ایِ مدل با پیشوند داده‌شده باشد.
      */
     private function assertEnumMatchesConstants(string $enumClass, string $modelClass, string $prefix): void
     {

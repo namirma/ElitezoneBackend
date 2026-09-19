@@ -5,9 +5,9 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * `supplier_profiles.reserve_grace_hours` — الحاقیهٔ ۱، تغییر ۳.
+ * `supplier_profiles.reserve_grace_hours` — الحاقیه‌ی ۱، تغییر ۳.
  *
- * تصمیم تازهٔ مدیریت: پنج ساعت **پیش‌فرضِ بک‌آفیس** است و تأمین‌کننده می‌تواند
+ * تصمیم تازه‌ی مدیریت: پنج ساعت **پیش‌فرضِ بک‌آفیس** است و تأمین‌کننده می‌تواند
  * مدتِ ارفاق را خودش تنظیم کند. الگو دقیقاً همان `delivery_deadline_hours`:
  * پیش‌فرض بک‌آفیس → override تأمین‌کننده → اسنپ‌شات روی سفارش.
  *

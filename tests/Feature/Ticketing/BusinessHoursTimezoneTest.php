@@ -74,7 +74,7 @@ class BusinessHoursTimezoneTest extends TestCase
     #[Test]
     public function the_returned_instant_keeps_the_callers_timezone(): void
     {
-        // خروجی مستقیم در `sla_due_at` ذخیره می‌شود و بقیهٔ سیستم UTC می‌نویسد.
+        // خروجی مستقیم در `sla_due_at` ذخیره می‌شود و بقیه‌ی سیستم UTC می‌نویسد.
         $start = Carbon::parse('2026-08-02 10:00:00', 'UTC');
 
         $due = BusinessHours::addWorkingHours($start, 1);

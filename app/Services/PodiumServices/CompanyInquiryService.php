@@ -25,7 +25,7 @@ class CompanyInquiryService
 
         $serviceConfig = Config::get('services.company_inquiry');
 
-        // تنها سرویسِ پادیوم بود که این گارد را نداشت — همهٔ خواهرهایش
+        // تنها سرویسِ پادیوم بود که این گارد را نداشت — همه‌ی خواهرهایش
         // (CardInquiry، CardToIban، IdentityInquirySc2، MobileNidMatch) دارند.
         //
         // تا وقتی کلیدِ واقعی در فالبکِ `env()` نشسته بود این تفاوت دیده نمی‌شد،

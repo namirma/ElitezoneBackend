@@ -76,7 +76,7 @@ class ProductVariantResource extends BaseJsonResource
                         'golden_figure' => (string) ($price->golden_figure ?? 0),
                         'final_price' => (string) $final,
 
-                        // مالیات — از `VariantPriceHydrator` می‌آید (نه محاسبهٔ اینجا).
+                        // مالیات — از `VariantPriceHydrator` می‌آید (نه محاسبه‌ی اینجا).
                         // بدون این‌ها، باکس خریدِ سایت مجبور بود نرخ را `× ۱٫۱۰`
                         // هاردکد کند و با تغییر نرخ در `price_settings`، پیش‌نمایشِ
                         // قیمت از مبلغی که واقعاً در سبد کسر می‌شود واگرا می‌شد.

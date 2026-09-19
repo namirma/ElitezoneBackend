@@ -41,7 +41,7 @@ class ProcessPreScalePaymentAction
                 throw new \RuntimeException(__('orders.internal_order_not_found'));
             }
 
-            // larastan نتیجهٔ `lockForUpdate()->first()` را `Model` می‌بیند، نه `Order`؛
+            // larastan نتیجه‌ی `lockForUpdate()->first()` را `Model` می‌بیند، نه `Order`؛
             // بعد از گاردِ بالا این تنگ‌سازی درست است و `resolveVatRate(Order)` را
             // بدون افزودن ورودی به baseline قابل فراخوانی می‌کند.
             /** @var Order $locked */
@@ -80,7 +80,7 @@ class ProcessPreScalePaymentAction
                 $officialPrice = (float) $firstItem->unit_price;
             }
 
-            // قیمت صفر یعنی دادهٔ خراب، نه «رایگان». هم‌الگو با گاردِ
+            // قیمت صفر یعنی داده‌ی خراب، نه «رایگان». هم‌الگو با گاردِ
             // weight_before_scale پایین‌تر: POO/PTS روی قیمتِ صفر تقریباً صفر
             // می‌شوند و بعداً در باسکول یک «کسریِ» بزرگ می‌سازند که کلِ مبلغ را به
             // خریدار عودت می‌دهد. باید متوقف کند، نه پول جابه‌جا کند.
@@ -100,7 +100,7 @@ class ProcessPreScalePaymentAction
             $vatRate = $this->calculator->resolveVatRate($locked);
 
             // نرخ کمیسیون بر اساس نشانِ الیت‌یارِ صاحب کمیسیون (elite_yar_user_id) خوانده می‌شود،
-            // نه beneficiary (گیرندهٔ کالا). ProcessWeighbridgeResultAction هم از همین eliteYAR.badge
+            // نه beneficiary (گیرنده‌ی کالا). ProcessWeighbridgeResultAction هم از همین eliteYAR.badge
             // استفاده می‌کند؛ خواندن از beneficiary باعث ناسازگاری نرخ بین pre-scale و باسکول می‌شد.
             $badgeCode = $locked->eliteYAR?->badge?->code ?? 'pioneer';
 
@@ -156,12 +156,12 @@ class ProcessPreScalePaymentAction
             // ترتیبِ چهار لِگ عمدی است: creditBuyer(تخفیف) *قبل* از debitBuyer(POO)
             // اجرا می‌شود تا خریدار فقط به «POO − تخفیف» موجودی نیاز داشته باشد؛
             // پیش از این، debit اول اجرا می‌شد و کاربری که دقیقاً مبلغِ
-            // تخفیف‌خوردهٔ نمایش‌داده‌شده را داشت InsufficientBalanceException می‌گرفت.
+            // تخفیف‌خورده‌ی نمایش‌داده‌شده را داشت InsufficientBalanceException می‌گرفت.
             // متقابلاً debitSystem(تخفیف) *بعد* از creditSystem(POO) می‌آید تا کیف
             // پول سازه در هیچ لحظه‌ای منفی نشود (POO > تخفیف همیشه برقرار است).
             //
             // مبالغ، لِگ‌ها و شرحِ تراکنش‌ها تغییری نکرده‌اند: تخفیف همچنان یک
-            // هزینهٔ بازاریابیِ صریح و قابل‌ممیزیِ سازه است و POO/PTS دست‌نخورده
+            // هزینه‌ی بازاریابیِ صریح و قابل‌ممیزیِ سازه است و POO/PTS دست‌نخورده
             // می‌مانند — پس RefundOrderToWalletAction هم که همین لِگ را برعکس
             // می‌کند بدون تغییر درست کار می‌کند.
             $couponDiscount = min((float) ($locked->{Order::COUPON_DISCOUNT_AMOUNT} ?? 0), $POO);

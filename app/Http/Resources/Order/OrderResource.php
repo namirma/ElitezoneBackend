@@ -31,9 +31,9 @@ class OrderResource extends BaseJsonResource
         //
         // قبلاً معیار `hasRole('supplier')` بود، که یعنی یک تأمین‌کننده وقتی برای
         // دفترِ خودش میلگرد می‌خرید، روی سفارشِ خریدِ خودش نمای سانسورشده می‌گرفت و
-        // مالیات/کرایهٔ خودش را نمی‌دید. حالا که بلوکِ مالیِ تأمین‌کننده هم به همین
+        // مالیات/کرایه‌ی خودش را نمی‌دید. حالا که بلوکِ مالیِ تأمین‌کننده هم به همین
         // پرچم گره می‌خورد، این تفاوت دیگر صرفاً آزاردهنده نیست: با معیارِ سراسری،
-        // مبلغِ تسویهٔ تأمین‌کننده روی سفارشی که او فقط خریدارش است هم ظاهر می‌شد.
+        // مبلغِ تسویه‌ی تأمین‌کننده روی سفارشی که او فقط خریدارش است هم ظاهر می‌شد.
         $viewerRoles = $this->partyRolesFor($viewerId);
         $isSupplier = in_array(OrderDocumentCatalog::AUDIENCE_SUPPLIER, $viewerRoles, true);
 
@@ -128,7 +128,7 @@ class OrderResource extends BaseJsonResource
                 $val = (float) ($item->weight ?? 0);
                 $unit = 'کیلوگرم';
 
-                // ‏`quantity_details` روی مدل به array کست می‌شود، پس شاخهٔ رشته‌ایِ
+                // ‏`quantity_details` روی مدل به array کست می‌شود، پس شاخه‌ی رشته‌ایِ
                 // قبلی و چکِ `is_array` هرگز اجرا نمی‌شدند — و `! empty()` روی آرایه
                 // یعنی ناتهی، پس `count() > 0` هم همیشه درست بود. larastan روی L13
                 // هر سه را «همیشه‌ثابت» می‌گیرد؛ اینجا حذف شده‌اند، نه سرکوب.
@@ -188,7 +188,7 @@ class OrderResource extends BaseJsonResource
                 'is_self' => ($this->{Order::PAYER_USER_ID} ?? $this->{Order::PLACER_USER_ID}) === $viewerId,
             ],
 
-            // --- رضایتِ دوطرفهٔ اختلافِ وزن (بندِ ۲ تصمیمِ مدیریت ۲۰۲۶-۰۹-۰۹) ---
+            // --- رضایتِ دوطرفه‌ی اختلافِ وزن (بندِ ۲ تصمیمِ مدیریت ۲۰۲۶-۰۹-۰۹) ---
             //
             // ⚠️ چهار ستونِ `overweight_*` و چهار روتِ `overweight/{approve,accept,
             // reject,settle}` از فاز ۸ وجود داشتند، ولی **هیچ Resourceای هیچ‌کدام

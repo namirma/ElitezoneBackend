@@ -102,7 +102,7 @@ class WalletTransactionEngine
         // گاردِ علامت — پیش از هر چیز. گاردهای «موجودی کافی» پایین‌تر با `<` مقایسه
         // می‌کنند، پس یک مبلغِ منفی از آن‌ها رد می‌شد و معنای عملیات را برعکس می‌کرد:
         // credit با مبلغ منفی موجودی را *کم* می‌کرد (بدون هیچ چک کفایت موجودی) و
-        // debit با مبلغ منفی پول *خلق* می‌کرد. همهٔ فراخوان‌های امروزی خودشان
+        // debit با مبلغ منفی پول *خلق* می‌کرد. همه‌ی فراخوان‌های امروزی خودشان
         // `<= 0` را فیلتر می‌کنند، ولی این invariant جای خودش در موتور است نه در
         // فراخوان‌ها — یک فراخوانِ جدیدِ بی‌گارد نباید بتواند لجر را نامتوازن کند.
         if (! is_finite($amount) || $amount <= 0) {
@@ -127,8 +127,8 @@ class WalletTransactionEngine
             $isHold = ($status === FinancialCodes::STATUS_HOLD || $status === 'hold');
 
             // موجودی‌ها ستون decimal هستند و Eloquent آن‌ها را رشته برمی‌گرداند؛
-            // جمع/تفریق با bcmath انجام می‌شود تا با قاعدهٔ «ریاضیِ پول bcmath است»
-            // هم‌راستا باشد و هیچ مرحلهٔ میانی به float تبدیل نشود.
+            // جمع/تفریق با bcmath انجام می‌شود تا با قاعده‌ی «ریاضیِ پول bcmath است»
+            // هم‌راستا باشد و هیچ مرحله‌ی میانی به float تبدیل نشود.
             $balance = (string) $wallet->balance;
             $hold = (string) $wallet->balance_hold;
             $delta = Money::s($amount);
@@ -253,7 +253,7 @@ class WalletTransactionEngine
                 throw new InsufficientBalanceException($amount, (float) $hold);
             }
 
-            // bcmath — همان قاعدهٔ process(): هیچ مرحلهٔ میانیِ float روی موجودی.
+            // bcmath — همان قاعده‌ی process(): هیچ مرحله‌ی میانیِ float روی موجودی.
             $wallet->balance_hold = Money::sub($hold, $delta);
             $wallet->balance = Money::add((string) $wallet->balance, $delta);
             $wallet->save();

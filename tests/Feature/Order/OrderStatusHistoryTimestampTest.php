@@ -17,7 +17,7 @@ use Tests\TestCase;
  * ولی `created_at` در `$fillable` نبود — پس mass-assignment آن را بی‌صدا دور می‌ریخت
  * و ستون از `DEFAULT CURRENT_TIMESTAMP` مایگریشن پر می‌شد. چون `config('app.timezone')`
  * برابر UTC است ولی `@@session.time_zone` مای‌اس‌کیوال `SYSTEM` است، هر ردیفِ تاریخچه
- * به‌اندازهٔ آفستِ سرور با بقیهٔ رویدادها جابه‌جا می‌شد و در خطِ زمانیِ سفارش، «تغییر
+ * به‌اندازه‌ی آفستِ سرور با بقیه‌ی رویدادها جابه‌جا می‌شد و در خطِ زمانیِ سفارش، «تغییر
  * وضعیت» پیش از «ثبت سفارش» ظاهر می‌شد.
  *
  * این تست خودِ قرارداد را pin می‌کند، نه فقط نشانه‌اش را — تا اگر کسی `created_at` را
@@ -46,7 +46,7 @@ class OrderStatusHistoryTimestampTest extends TestCase
             ->orderBy(OrderStatusHistory::CREATED_AT)
             ->first();
 
-        $this->assertNotNull($history, 'OrderObserver باید ردیفِ تاریخچهٔ اولیه را بسازد.');
+        $this->assertNotNull($history, 'OrderObserver باید ردیفِ تاریخچه‌ی اولیه را بسازد.');
 
         // هر دو ستون باید از یک ساعت آمده باشند. اگر تاریخچه از
         // DEFAULT CURRENT_TIMESTAMP پر شود، این اختلاف برابرِ آفستِ tz سرور می‌شود
@@ -117,7 +117,7 @@ class OrderStatusHistoryTimestampTest extends TestCase
         $this->assertSame(
             45,
             (int) $duration,
-            'مدتِ توقف باید ۴۵ دقیقهٔ مثبت باشد. مقدارِ منفی یعنی ترتیبِ عملوندهای '
+            'مدتِ توقف باید ۴۵ دقیقه‌ی مثبت باشد. مقدارِ منفی یعنی ترتیبِ عملوندهای '
             .'diffInMinutes برعکس است و Carbon 3 علامت‌دار برمی‌گرداند.'
         );
     }

@@ -6,7 +6,7 @@
 |--------------------------------------------------------------------------
 |
 | این فایل قبلاً وجود نداشت. app.locale = fa و app.fallback_locale = en بود،
-| پس هر قاعدهٔ اعتبارسنجی که messages() اختصاصی نداشت به lang/en/validation.php
+| پس هر قاعده‌ی اعتبارسنجی که messages() اختصاصی نداشت به lang/en/validation.php
 | برمی‌گشت و پیام انگلیسی به کاربر می‌داد — با نام فیلدِ فارسی قاطیِ متن انگلیسی
 | («The selected آدرس گیرنده is invalid.»).
 |
@@ -87,7 +87,7 @@ return [
     'ip' => 'فیلد :attribute باید یک نشانی IP معتبر باشد.',
     'ipv4' => 'فیلد :attribute باید یک نشانی IPv4 معتبر باشد.',
     'ipv6' => 'فیلد :attribute باید یک نشانی IPv6 معتبر باشد.',
-    'json' => 'فیلد :attribute باید یک رشتهٔ JSON معتبر باشد.',
+    'json' => 'فیلد :attribute باید یک رشته‌ی JSON معتبر باشد.',
     'lowercase' => 'فیلد :attribute باید با حروف کوچک باشد.',
 
     'lt' => [
@@ -172,8 +172,8 @@ return [
     ],
 
     'starts_with' => 'فیلد :attribute باید با یکی از این مقادیر شروع شود: :values.',
-    'string' => 'فیلد :attribute باید یک رشتهٔ متنی باشد.',
-    'timezone' => 'فیلد :attribute باید یک منطقهٔ زمانی معتبر باشد.',
+    'string' => 'فیلد :attribute باید یک رشته‌ی متنی باشد.',
+    'timezone' => 'فیلد :attribute باید یک منطقه‌ی زمانی معتبر باشد.',
     'unique' => 'مقدار :attribute قبلاً ثبت شده است.',
     'uploaded' => 'آپلود فایل :attribute ناموفق بود.',
     'uppercase' => 'فیلد :attribute باید با حروف بزرگ باشد.',
@@ -222,7 +222,7 @@ return [
         'price' => 'قیمت',
         'quantity' => 'تعداد',
         'reason' => 'دلیل',
-        'slug' => 'شناسهٔ یکتا',
+        'slug' => 'شناسه‌ی یکتا',
         'status' => 'وضعیت',
         'title' => 'عنوان',
         'username' => 'نام کاربری',
@@ -235,10 +235,10 @@ return [
         'general_price' => 'قیمت عمومی',
         'special_price' => 'قیمت ویژه',
         'golden_figure' => 'رقم طلایی',
-        'cost_basis' => 'مبنای محاسبهٔ هزینه',
-        'flat_cost' => 'هزینهٔ ثابت',
-        'per_kg_cost' => 'هزینهٔ هر کیلوگرم',
-        'per_count_cost' => 'هزینهٔ هر واحد',
+        'cost_basis' => 'مبنای محاسبه‌ی هزینه',
+        'flat_cost' => 'هزینه‌ی ثابت',
+        'per_kg_cost' => 'هزینه‌ی هر کیلوگرم',
+        'per_count_cost' => 'هزینه‌ی هر واحد',
         'destination_province_id' => 'استان مقصد',
         'destination_city_id' => 'شهر مقصد',
 

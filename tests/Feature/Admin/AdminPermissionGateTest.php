@@ -16,9 +16,9 @@ use Tests\TestCase;
  * قرارداد fail-closed برای EnsureAdminHasPermission.
  *
  * پیش از این، «ادمینِ بدون هیچ مجوز user-level» دسترسیِ کامل داشت. این دقیقاً
- * وارونهٔ نیتِ AdminManagerController::update بود که با permissions=[] قصدِ
+ * وارونه‌ی نیتِ AdminManagerController::update بود که با permissions=[] قصدِ
  * سلبِ دسترسی دارد — یعنی محدودکردنِ یک ادمین، او را به سوپرادمین تبدیل می‌کرد
- * و مسیرهای manage-financial (تسویهٔ بانکی Podium و شارژ دستیِ کیف‌پول) را
+ * و مسیرهای manage-financial (تسویه‌ی بانکی Podium و شارژ دستیِ کیف‌پول) را
  * برایش باز می‌گذاشت.
  */
 class AdminPermissionGateTest extends TestCase
@@ -106,7 +106,7 @@ class AdminPermissionGateTest extends TestCase
     {
         // داشبورد تا دور پنجم تنها روتِ /admin بود که سطح‌بندی نشده بود. هر پنج بلوکِ
         // پاسخش مالی/سفارشی است (فروش امروز، pipeline، هشدارهای مالی، روند هفتگی،
-        // خلاصهٔ ماه)، پس همان مجوزِ /admin/financial/* را می‌گیرد.
+        // خلاصه‌ی ماه)، پس همان مجوزِ /admin/financial/* را می‌گیرد.
         $restricted = $this->admin();
         $restricted->syncPermissions([$this->permissionId('manage-content')]);
 

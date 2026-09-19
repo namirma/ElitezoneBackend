@@ -20,7 +20,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
- * ترتیبِ legها در تکمیلِ وجهِ رزرو — شاخهٔ افتِ قیمت.
+ * ترتیبِ legها در تکمیلِ وجهِ رزرو — شاخه‌ی افتِ قیمت.
  *
  * بیعانه (PTR) در `ProcessReservationPaymentAction` با وضعیت HOLD روی کیف سازه
  * می‌نشیند، یعنی داخل `balance_hold` است نه `balance`. هر `debitSystem(...)` با
@@ -28,23 +28,23 @@ use Tests\TestCase;
  *
  * اگر قیمت بین رزرو و تکمیل پایین بیاید (POO < PTR)، مابه‌التفاوت باید به خریدار
  * برگردد. تا پیش از این، آن برداشت **قبل از** آزادسازیِ هولد اجرا می‌شد — یعنی
- * سازه باید پولی را جلو می‌انداخت که همان بیعانهٔ همین سفارش بود و دو خط پایین‌تر
+ * سازه باید پولی را جلو می‌انداخت که همان بیعانه‌ی همین سفارش بود و دو خط پایین‌تر
  * آزاد می‌شد. روی یک نصبِ تازه (کیف سازه صفر) نتیجه `InsufficientBalanceException`
  * و rollback شدنِ کلِ تکمیل وجه بود.
  *
- * سازه اینجا عمداً **هیچ موجودیِ آزادی ندارد**: تنها منبعِ پول، بیعانهٔ خودِ سفارش
+ * سازه اینجا عمداً **هیچ موجودیِ آزادی ندارد**: تنها منبعِ پول، بیعانه‌ی خودِ سفارش
  * است. این همان شرطی است که باگ را آشکار می‌کند.
  *
- * DatabaseTransactions: همهٔ نوشتن‌ها برمی‌گردند؛ دیتابیس زنده دست نمی‌خورد.
+ * DatabaseTransactions: همه‌ی نوشتن‌ها برمی‌گردند؛ دیتابیس زنده دست نمی‌خورد.
  */
 class ReservationCompletionLegOrderTest extends TestCase
 {
     use DatabaseTransactions;
 
-    /** بیعانهٔ پرداخت‌شده در لحظهٔ رزرو — عمداً خیلی بزرگ‌تر از POO. */
+    /** بیعانه‌ی پرداخت‌شده در لحظه‌ی رزرو — عمداً خیلی بزرگ‌تر از POO. */
     private const RESERVE = 100_000_000.0;
 
-    /** قیمت واحد در لحظهٔ تکمیل، برای وزنِ ۱ — POO از این بسیار کوچک‌تر از PTR درمی‌آید. */
+    /** قیمت واحد در لحظه‌ی تکمیل، برای وزنِ ۱ — POO از این بسیار کوچک‌تر از PTR درمی‌آید. */
     private const OFFICIAL_PRICE = 1_000_000.0;
 
     private User $system;
@@ -90,10 +90,10 @@ class ReservationCompletionLegOrderTest extends TestCase
             OrderItem::QUANTITY => 1,
         ]);
 
-        // مرحلهٔ ۱ — رزرو واقعی: خریدار می‌پردازد، سازه بیعانه را **هولد** می‌کند.
+        // مرحله‌ی ۱ — رزرو واقعی: خریدار می‌پردازد، سازه بیعانه را **هولد** می‌کند.
         app(ProcessReservationPaymentAction::class)->execute($this->order, self::RESERVE, now()->addHours(2), graceHours: 0);
 
-        // اسنپ‌شاتِ قیمت در لحظهٔ تکمیل: قیمت افت کرده است.
+        // اسنپ‌شاتِ قیمت در لحظه‌ی تکمیل: قیمت افت کرده است.
         $this->order->refresh()->forceFill([
             Order::OFFICIAL_PRICE => self::OFFICIAL_PRICE,
             Order::WEIGHT_BEFORE_SCALE => 1,
@@ -128,13 +128,13 @@ class ReservationCompletionLegOrderTest extends TestCase
         $this->assertSame(
             Order::STATUS_PROCESSING,
             $this->order->status,
-            'تکمیل وجه نباید به‌خاطر ترتیبِ legها شکست بخورد — پولِ عودت همان بیعانهٔ همین سفارش است.'
+            'تکمیل وجه نباید به‌خاطر ترتیبِ legها شکست بخورد — پولِ عودت همان بیعانه‌ی همین سفارش است.'
         );
         $this->assertSame(Order::PAYMENT_PAID, $this->order->payment_status);
 
         $poo = (float) $this->order->{Order::PAYMENT_OF_OWNER};
         $this->assertGreaterThan(0.0, $poo);
-        $this->assertLessThan(self::RESERVE, $poo, 'سناریو باید واقعاً شاخهٔ افتِ قیمت را بزند.');
+        $this->assertLessThan(self::RESERVE, $poo, 'سناریو باید واقعاً شاخه‌ی افتِ قیمت را بزند.');
 
         // خریدار: RESERVE پرداخت کرده، (RESERVE − POO) پس گرفته → خالص POO کسر شده.
         $this->assertEqualsWithDelta(
@@ -176,7 +176,7 @@ class ReservationCompletionLegOrderTest extends TestCase
         $this->assertNotNull($release, 'آزادسازی باید یک ردیفِ مجزای hold_release بنویسد، نه جابه‌جاییِ خام.');
         $this->assertEqualsWithDelta(self::RESERVE, (float) $release->amount, 0.5);
 
-        // ردیفِ هولدِ اصلی دست‌نخورده می‌ماند (همان قاعدهٔ CheckSupplierBalancesJob).
+        // ردیفِ هولدِ اصلی دست‌نخورده می‌ماند (همان قاعده‌ی CheckSupplierBalancesJob).
         $placement = WalletTransaction::where('wallet_id', $this->walletOf($this->system)->id)
             ->where('order_id', $this->order->id)
             ->where('type', WalletTransaction::TYPE_DEPOSIT)

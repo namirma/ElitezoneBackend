@@ -20,7 +20,7 @@ class FilterProductVariantsAction
     public function execute(Product $product, array $filters, string $roleCode): LengthAwarePaginator
     {
         // ۱. ساخت کوئری
-        // 'cartItems' حذف شد: همهٔ ردیف‌های cart_items همهٔ کاربران را برای هر واریانت لود
+        // 'cartItems' حذف شد: همه‌ی ردیف‌های cart_items همه‌ی کاربران را برای هر واریانت لود
         // می‌کرد، در حالی که نه در VariantPriceHydrator و نه در ProductVariantResource خوانده
         // می‌شود — اتلافِ حافظه/کوئری روی یک endpoint عمومیِ داغ.
         // واریانتی که درخواستِ تغییرِ قیمتِ باز دارد از کاتالوگ بیرون است

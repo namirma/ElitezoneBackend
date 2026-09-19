@@ -19,7 +19,7 @@ class SendOrderPlacedNotification implements ShouldQueue
         $order = $event->order;
         $user = $order->placer;
 
-        // `instanceof` و نه فقط `! $user`: رابطهٔ `placer` روی شاخهٔ L13 از
+        // `instanceof` و نه فقط `! $user`: رابطه‌ی `placer` روی شاخه‌ی L13 از
         // دیدِ larastan `Model` است، و این گارد هم null و هم نوعِ اشتباه را
         // با هم رد می‌کند — بدونِ cast و بدونِ حاشیه‌نویسیِ شاخه‌به‌شاخه.
         if (! $user instanceof User) {

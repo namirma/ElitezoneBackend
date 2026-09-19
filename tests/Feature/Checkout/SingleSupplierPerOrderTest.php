@@ -16,17 +16,17 @@ use Tests\Feature\Pricing\CreatesPricingFixtures;
 use Tests\TestCase;
 
 /**
- * یک سفارش = یک تأمین‌کننده (تا زمان نوشتن تسویهٔ چندخطی).
+ * یک سفارش = یک تأمین‌کننده (تا زمان نوشتن تسویه‌ی چندخطی).
  *
  * سبد خرید عمداً چندمبدأی است — کل زیرسیستم Shipment برای همین ساخته شده و
- * AddToCartAction هر factory_id را می‌پذیرد. اما تسویهٔ مالی یک‌خطی است: هر پنج
- * نقطهٔ تسویه با `items->first()` کار می‌کنند. پس یک سفارشِ دوتأمین‌کننده‌ای:
+ * AddToCartAction هر factory_id را می‌پذیرد. اما تسویه‌ی مالی یک‌خطی است: هر پنج
+ * نقطه‌ی تسویه با `items->first()` کار می‌کنند. پس یک سفارشِ دوتأمین‌کننده‌ای:
  *
- *   • کلِ PTS را به تأمین‌کنندهٔ آیتمِ اول می‌داد و دومی **هیچ** نمی‌گرفت،
+ *   • کلِ PTS را به تأمین‌کننده‌ی آیتمِ اول می‌داد و دومی **هیچ** نمی‌گرفت،
  *   • مالیات امانی و بدهیِ کسری را فقط روی اولی ثبت می‌کرد،
  *   • و حتی POO را با `قیمتِ آیتم اول × وزنِ کل` حساب می‌کرد.
  *
- * این تست گاردِ ثبت را پین می‌کند. وقتی تسویهٔ چندخطی پیاده شد، این تست باید
+ * این تست گاردِ ثبت را پین می‌کند. وقتی تسویه‌ی چندخطی پیاده شد، این تست باید
  * عوض شود (نه حذف) تا توزیعِ درستِ چندتأمین‌کننده را اثبات کند.
  */
 class SingleSupplierPerOrderTest extends TestCase
@@ -40,7 +40,7 @@ class SingleSupplierPerOrderTest extends TestCase
         $buyer = User::factory()->create();
         $cart = Cart::create([Cart::USER_ID => $buyer->id, Cart::SESSION_ID => null]);
 
-        // دو کارخانه که به دو تأمین‌کنندهٔ *متفاوت* تعلق دارند.
+        // دو کارخانه که به دو تأمین‌کننده‌ی *متفاوت* تعلق دارند.
         $supplierA = User::factory()->create();
         $supplierB = User::factory()->create();
 
@@ -67,7 +67,7 @@ class SingleSupplierPerOrderTest extends TestCase
         $buyer = User::factory()->create();
         $cart = Cart::create([Cart::USER_ID => $buyer->id, Cart::SESSION_ID => null]);
 
-        // دو کارخانهٔ متفاوت ولی متعلق به *یک* تأمین‌کننده — چندمبدأیِ مجاز.
+        // دو کارخانه‌ی متفاوت ولی متعلق به *یک* تأمین‌کننده — چندمبدأیِ مجاز.
         $supplier = User::factory()->create();
         $this->addCartLine($cart, $supplier);
         $this->addCartLine($cart, $supplier);
@@ -88,7 +88,7 @@ class SingleSupplierPerOrderTest extends TestCase
     }
 
     /**
-     * یک خطِ سبد با کارخانهٔ تازه‌ای که مالکش $supplier است.
+     * یک خطِ سبد با کارخانه‌ی تازه‌ای که مالکش $supplier است.
      */
     private function addCartLine(Cart $cart, User $supplier): CartItem
     {

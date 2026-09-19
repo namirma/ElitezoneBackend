@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Log;
  *
  * چرا لازم است: `GET /api/cart` پشتِ optional.sanctum است و هر درخواستِ بدونِ
  * کوکیِ cart_session_id یک ردیفِ carts می‌سازد. مرورگرِ واقعی کوکی را نگه
- * می‌دارد و دفعهٔ بعد همان سبد را می‌گیرد، ولی خزندهٔ موتور جستجو / ربات کوکی
+ * می‌دارد و دفعه‌ی بعد همان سبد را می‌گیرد، ولی خزنده‌ی موتور جستجو / ربات کوکی
  * برنمی‌گرداند — پس تک‌تکِ بازدیدهایشان یک سبدِ یتیم می‌سازد که هیچ‌وقت پاک
  * نمی‌شد. هیچ سیاستِ نگهداشتی برای این جدول وجود نداشت.
  *
@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\Log;
  */
 class PruneGuestCarts extends Command
 {
-    protected $signature = 'carts:prune-guests {--days= : بازهٔ نگهداشت (پیش‌فرض از config/cart.php)}';
+    protected $signature = 'carts:prune-guests {--days= : بازه‌ی نگهداشت (پیش‌فرض از config/cart.php)}';
 
     protected $description = 'حذف سبدهای خرید مهمانِ رهاشده و آیتم‌هایشان';
 
@@ -31,21 +31,21 @@ class PruneGuestCarts extends Command
         $chunk = (int) config('cart.prune_chunk', 1000);
 
         if ($days < 1) {
-            $this->error('بازهٔ نگهداشت باید حداقل ۱ روز باشد.');
+            $this->error('بازه‌ی نگهداشت باید حداقل ۱ روز باشد.');
 
             return self::FAILURE;
         }
 
         $cutoff = now()->subDays($days);
 
-        // `prune_chunk` اندازهٔ **هر تراکنش** است، نه سقفِ کارِ یک اجرا.
+        // `prune_chunk` اندازه‌ی **هر تراکنش** است، نه سقفِ کارِ یک اجرا.
         //
         // پیش از این فقط یک chunk برداشته می‌شد و تمام. کرون روزانه است، پس اگر
-        // ورودیِ روزانهٔ سبدهای یتیم از chunk بیشتر بود، صف هرگز کوتاه نمی‌شد و
+        // ورودیِ روزانه‌ی سبدهای یتیم از chunk بیشتر بود، صف هرگز کوتاه نمی‌شد و
         // سیاستِ نگهداشتی که این دستور برای اعمالش وجود دارد هیچ‌وقت اجرا
         // نمی‌شد — طبق توضیحِ بالا هر بازدیدِ رباتِ بی‌کوکی یک ردیف می‌سازد، پس
         // ورودی به‌راحتی از هزارتا رد می‌شود. حالا تا ته می‌رود.
-        $maxIterations = 10000; // گاردِ حلقهٔ بی‌پایان اگر حذف بی‌اثر بماند
+        $maxIterations = 10000; // گاردِ حلقه‌ی بی‌پایان اگر حذف بی‌اثر بماند
         $deleted = 0;
 
         for ($i = 0; $i < $maxIterations; $i++) {
@@ -63,7 +63,7 @@ class PruneGuestCarts extends Command
             }
 
             // آیتم‌ها صریحاً حذف می‌شوند — به cascade در سطح دیتابیس تکیه نمی‌کنیم
-            // چون در همهٔ محیط‌ها تضمین‌شده نیست.
+            // چون در همه‌ی محیط‌ها تضمین‌شده نیست.
             DB::transaction(function () use ($ids) {
                 CartItem::whereIn('cart_id', $ids)->delete();
                 Cart::whereIn(Cart::ID, $ids)->delete();
@@ -71,7 +71,7 @@ class PruneGuestCarts extends Command
 
             $deleted += $ids->count();
 
-            // صفحهٔ ناقص یعنی چیزی باقی نمانده — یک کوئری اضافه نزنیم.
+            // صفحه‌ی ناقص یعنی چیزی باقی نمانده — یک کوئری اضافه نزنیم.
             if ($ids->count() < $chunk) {
                 break;
             }

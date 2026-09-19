@@ -24,13 +24,13 @@ return [
     'default_gateway' => env('PAYMENT_GATEWAY', 'wallet'),
 
     /*
-    | درگاهی که پشتِ روشِ «پرداخت اینترنتی» صفحهٔ /order می‌نشیند.
+    | درگاهی که پشتِ روشِ «پرداخت اینترنتی» صفحه‌ی /order می‌نشیند.
     |
     | `CheckoutController::paymentInfo` وضعیتِ `is_active` آن روش را از
     | `isConfigured()` همین driver می‌خواند. پس وقتی مجوزِ پاسارگاد آمد و
     | PASARGAD_* در .env پر شد، آن روش **خودبه‌خود** فعال می‌شود و هیچ تغییری در
     | کد لازم نیست. این عمداً از `default_gateway` جدا است: پیش‌فرضِ سامانه
-    | `wallet` است و کیف پول هرگز نمی‌تواند نمایندهٔ رِیلِ کارت بانکی باشد.
+    | `wallet` است و کیف پول هرگز نمی‌تواند نماینده‌ی رِیلِ کارت بانکی باشد.
     */
     'online_gateway' => env('PAYMENT_ONLINE_GATEWAY', 'pasargad'),
 

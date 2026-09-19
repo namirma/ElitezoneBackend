@@ -7,9 +7,9 @@ use Database\Seeders\AdminPermissionSeeder;
 use Laratrust\Models\Permission;
 
 /**
- * دادنِ همهٔ مجوزهای user-level به یک ادمینِ تستی.
+ * دادنِ همه‌ی مجوزهای user-level به یک ادمینِ تستی.
  *
- * `EnsureAdminHasPermission` از نسخهٔ fail-closed به بعد، ادمینِ بدون مجوز را
+ * `EnsureAdminHasPermission` از نسخه‌ی fail-closed به بعد، ادمینِ بدون مجوز را
  * ۴۰۳ می‌کند. در پروداکشن هر ادمین مجوزهایش را از `AdminPermissionSeeder` یا از
  * `AdminManagerController::store` (که پیش‌فرضش «همه» است) می‌گیرد؛ تست‌هایی که
  * ادمین را دستی با `addRole('admin')` می‌سازند باید همان کار را بکنند، وگرنه

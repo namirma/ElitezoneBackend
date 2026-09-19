@@ -36,7 +36,7 @@ class PaymentController extends Controller
             ->first();
 
         if (! $transaction) {
-            // لاگِ callbackِ بی‌تطبیق (جعلی/تکراری/شناسهٔ اشتباه) — قبلاً بی‌صدا برمی‌گشت.
+            // لاگِ callbackِ بی‌تطبیق (جعلی/تکراری/شناسه‌ی اشتباه) — قبلاً بی‌صدا برمی‌گشت.
             Log::channel('financial')->warning('Payment callback: no pending transaction matched', [
                 'transaction_id' => $transactionId,
             ]);

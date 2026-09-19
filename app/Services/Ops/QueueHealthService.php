@@ -7,11 +7,11 @@ namespace App\Services\Ops;
 use Illuminate\Support\Facades\DB;
 
 /**
- * سنجشِ سلامتِ صف — منبعِ واحدِ هم دستورِ `queue:health` و هم صفحهٔ سلامتِ سامانه.
+ * سنجشِ سلامتِ صف — منبعِ واحدِ هم دستورِ `queue:health` و هم صفحه‌ی سلامتِ سامانه.
  *
  * منطق از خودِ دستور بیرون کشیده شد تا آستانه‌ها و متن‌های هشدار در دو جا تکرار
- * نشوند؛ دو نسخهٔ همین قواعد دیر یا زود از هم واگرا می‌شدند و آن‌وقت پنل و ترمینال
- * دو حرفِ متفاوت می‌زدند دربارهٔ یک سیستم.
+ * نشوند؛ دو نسخه‌ی همین قواعد دیر یا زود از هم واگرا می‌شدند و آن‌وقت پنل و ترمینال
+ * دو حرفِ متفاوت می‌زدند درباره‌ی یک سیستم.
  */
 final class QueueHealthService
 {
@@ -59,7 +59,7 @@ final class QueueHealthService
 
         if ($stats['recent_failures'] > config('ops.queue.max_recent_failures')) {
             $problems[] = sprintf(
-                '%d شکست در %d دقیقهٔ اخیر (آستانه %d).',
+                '%d شکست در %d دقیقه‌ی اخیر (آستانه %d).',
                 $stats['recent_failures'],
                 config('ops.queue.recent_failure_window_minutes'),
                 config('ops.queue.max_recent_failures')

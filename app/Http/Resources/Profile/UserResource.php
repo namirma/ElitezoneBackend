@@ -131,7 +131,7 @@ class UserResource extends BaseJsonResource
      *   - غیرِ الیت یار (کارفرما/تأمین‌کننده/بی‌نقش) → null (بدون بج)
      *
      * نکته: `engineer`/`contractor` نقشِ مدرک‌اند و فقط بعد از تأیید وصل می‌شوند،
-     * پس نمی‌شود «الیت یار بودن» را از آن‌ها فهمید. نقشِ `elite_yar` همان لحظهٔ
+     * پس نمی‌شود «الیت یار بودن» را از آن‌ها فهمید. نقشِ `elite_yar` همان لحظه‌ی
      * انتخابِ نقش وصل می‌شود و همین را جواب می‌دهد.
      *
      * کنترلر از پیش engineerProfile / contractorProfile / roles را لود کرده، N+1 نیست.
@@ -161,7 +161,7 @@ class UserResource extends BaseJsonResource
      * آیا کاربر الیت یار است؟ — از روی نقشِ `elite_yar`.
      *
      * عمداً `hasRole()` صدا زده نمی‌شود: آن روی relationِ لودنشده کوئری می‌زند و
-     * در لیست‌ها N+1 می‌سازد. مثل نسخهٔ قبلی (که type را می‌خواند)، اگر relation
+     * در لیست‌ها N+1 می‌سازد. مثل نسخه‌ی قبلی (که type را می‌خواند)، اگر relation
      * لود نشده باشد false برمی‌گردد و بج نمایش داده نمی‌شود.
      */
     private function isEliteYar(): bool

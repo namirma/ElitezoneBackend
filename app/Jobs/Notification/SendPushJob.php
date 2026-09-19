@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 /**
- * ارسالِ پوش خارج از چرخهٔ درخواست — همان دلیلِ `SendSmsJob`: هیچ چیز روی
+ * ارسالِ پوش خارج از چرخه‌ی درخواست — همان دلیلِ `SendSmsJob`: هیچ چیز روی
  * مسیرِ پاسخ نباید منتظرِ یک سرویسِ بیرونی بماند.
  */
 class SendPushJob implements ShouldQueue

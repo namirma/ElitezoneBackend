@@ -18,7 +18,7 @@ use Tests\TestCase;
  *
  * لِگ‌های دفتری تغییری نکرده‌اند (WO→WSSG کل POO و WSSG→WO تخفیف) — فقط ترتیبشان
  * اصلاح شده. پیش از این `debitBuyer(POO)` اول اجرا می‌شد، پس کاربری که دقیقاً
- * مبلغِ تخفیف‌خوردهٔ نمایش‌داده‌شده در UI را داشت InsufficientBalanceException
+ * مبلغِ تخفیف‌خورده‌ی نمایش‌داده‌شده در UI را داشت InsufficientBalanceException
  * می‌گرفت — یعنی کوپن عملاً غیرقابل‌استفاده بود مگر با موجودیِ کاملِ بدون تخفیف.
  */
 class CouponBalanceGuardTest extends TestCase
@@ -61,7 +61,7 @@ class CouponBalanceGuardTest extends TestCase
     }
 
     /**
-     * یک سفارشِ آمادهٔ پرداخت با (یا بدونِ) کوپن، به‌همراه کیف‌پولِ خریدار و تامین‌کننده.
+     * یک سفارشِ آماده‌ی پرداخت با (یا بدونِ) کوپن، به‌همراه کیف‌پولِ خریدار و تامین‌کننده.
      *
      * @return array{0: Order, 1: Wallet}
      */

@@ -16,7 +16,7 @@ class TicketFileResource extends BaseJsonResource
         return [
             'id' => $this->id,
             'name' => $this->original_name,
-            // URLِ نامحافظت‌شدهٔ دیسک public جایش را به روتِ دانلودِ احراز
+            // URLِ نامحافظت‌شده‌ی دیسک public جایش را به روتِ دانلودِ احراز
             // هویت‌شده داد — پیوست تیکت داده‌ی خصوصیِ کاربر است و نباید با
             // داشتنِ صرفِ لینک قابل دریافت باشد.
             'url' => route('ticket.file.download', ['ticketFile' => $this->id], false),

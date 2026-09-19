@@ -14,7 +14,7 @@ use Tests\TestCase;
 /**
  * دو اثرِ جانبیِ کوپن که هیچ‌کدام «تخفیف» نیستند:
  *   M3 — تولید کدِ اختصاصی نباید روی برخورد بترکد.
- * به‌علاوهٔ قاعدهٔ تازهٔ بند ۱۱.۱ برای نمایش مرحلهٔ رزرو.
+ * به‌علاوه‌ی قاعده‌ی تازه‌ی بند ۱۱.۱ برای نمایش مرحله‌ی رزرو.
  */
 class CouponSideEffectsTest extends TestCase
 {
@@ -52,7 +52,7 @@ class CouponSideEffectsTest extends TestCase
         $titles = array_column($reserved->fresh()->dashboard_progress['steps'] ?? [], 'title');
         $this->assertNotEmpty(
             array_filter($titles, fn ($t) => str_contains($t, 'رزرو')),
-            'سفارشی که بیعانه پرداخت کرده باید مرحلهٔ رزرو را داشته باشد.',
+            'سفارشی که بیعانه پرداخت کرده باید مرحله‌ی رزرو را داشته باشد.',
         );
 
         $paidOutright = $this->orderWorth(finalAmount: 50_000_000, discount: 5_000_000);
@@ -60,7 +60,7 @@ class CouponSideEffectsTest extends TestCase
         $titles = array_column($paidOutright->fresh()->dashboard_progress['steps'] ?? [], 'title');
         $this->assertEmpty(
             array_filter($titles, fn ($t) => str_contains($t, 'رزرو')),
-            'سفارشی که یکجا پرداخت شده نباید مرحلهٔ رزرو داشته باشد.',
+            'سفارشی که یکجا پرداخت شده نباید مرحله‌ی رزرو داشته باشد.',
         );
     }
 

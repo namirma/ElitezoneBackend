@@ -10,7 +10,7 @@ use Tests\TestCase;
  * config/cors.php تنها منبعِ حقیقتِ CORS است.
  *
  * قبلاً یک میدل‌ورِ دستیِ دوم (App\Http\Middleware\Cors) با allowlistِ هاردکد
- * روی همهٔ روت‌های API سوار بود و چون هدر را در مسیرِ خروج بی‌قید می‌نوشت،
+ * روی همه‌ی روت‌های API سوار بود و چون هدر را در مسیرِ خروج بی‌قید می‌نوشت،
  * مقدارِ HandleCors را بازنویسی می‌کرد. نتیجه: روی پروداکشن هم
  * `http://localhost:5173` با Allow-Credentials مجاز بود — دقیقاً همان چیزی که
  * config/cors.php آن را پشتِ APP_ENV=local گِیت کرده.
@@ -52,7 +52,7 @@ class CorsAllowlistTest extends TestCase
     #[Test]
     public function the_hand_rolled_cors_middleware_is_gone(): void
     {
-        // با file_exists چک می‌شود نه class_exists — نقشهٔ classmap کامپوزر ممکن است
+        // با file_exists چک می‌شود نه class_exists — نقشه‌ی classmap کامپوزر ممکن است
         // هنوز مدخلِ حذف‌شده را داشته باشد و class_exists را به include شکست‌خورده بکشاند.
         $this->assertFileDoesNotExist(
             app_path('Http/Middleware/Cors.php'),

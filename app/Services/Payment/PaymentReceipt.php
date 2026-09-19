@@ -3,7 +3,7 @@
 namespace App\Services\Payment;
 
 /**
- * نتیجهٔ تأیید (verify) یک پرداخت توسط درگاه.
+ * نتیجه‌ی تأیید (verify) یک پرداخت توسط درگاه.
  *
  * این value object قرارداد مشترکی است که ProcessPaymentCallbackAction روی آن
  * تکیه می‌کند: isSuccessful() و getReferenceId(). پیش از این هیچ درگاهی این متدها

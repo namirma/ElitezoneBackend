@@ -26,7 +26,7 @@ use Illuminate\Support\Facades\Schema;
  *     `UserFactory`/ثبت‌نام استفاده می‌کنند (`slug = customer`) پر می‌شود، وگرنه
  *     خودِ ALTER شکست می‌خورد.
  *  ۳. اگر آن نوع وجود نداشته باشد، مهاجرت **کاری نمی‌کند** و لاگ می‌زند — هرگز
- *     یک شناسهٔ دلخواه نمی‌نویسد.
+ *     یک شناسه‌ی دلخواه نمی‌نویسد.
  */
 return new class extends Migration
 {

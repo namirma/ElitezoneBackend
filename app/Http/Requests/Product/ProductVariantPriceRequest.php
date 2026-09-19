@@ -6,7 +6,7 @@ use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
 
-// مسیر دقیق هِلپرها را در پروژهٔ خود ست کنید
+// مسیر دقیق هِلپرها را در پروژه‌ی خود ست کنید
 
 class ProductVariantPriceRequest extends FormRequest
 {

@@ -48,7 +48,7 @@ class UpdateCouponRequest extends FormRequest
         $coupon = $this->route('coupon');
 
         $validator->sometimes(Coupon::AMOUNT, 'max:100', function ($input) use ($coupon) {
-            // در PUTِ جزئی که فقط amount می‌آید (type ارسال نمی‌شود)، به typeِ ذخیره‌شدهٔ
+            // در PUTِ جزئی که فقط amount می‌آید (type ارسال نمی‌شود)، به typeِ ذخیره‌شده‌ی
             // کوپن fallback می‌کنیم؛ وگرنه گاردِ max:100 برای کوپنِ درصدی دور زده می‌شد.
             $type = $input->{Coupon::TYPE}
                 ?? ($coupon instanceof Coupon ? $coupon->{Coupon::TYPE} : null);

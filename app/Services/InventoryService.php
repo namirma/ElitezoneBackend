@@ -122,7 +122,7 @@ class InventoryService
 
         if ($totalWeight <= 0) {
             // بدون وزنِ ردیفی نمی‌شود سهم‌بندی کرد. سکوت نمی‌کنیم: این یعنی
-            // سفارشی به باسکول رسیده که ردیف‌هایش وزن ندارند — دادهٔ خراب.
+            // سفارشی به باسکول رسیده که ردیف‌هایش وزن ندارند — داده‌ی خراب.
             Log::channel('orders')->warning(
                 "updateStockAfterWeighbridgeForOrder: order {$order->id} has no line weights; stock left untouched."
             );
@@ -213,7 +213,7 @@ class InventoryService
      * هر ردیفِ سفارش `factory_id`/`factory_location_id` را دارد (همان چیزی که
      * زیرسیستمِ حمل برای مبدأ استفاده می‌کند)، پس کسر دقیقاً از همان مبدأیی
      * انجام می‌شود که کالا از آن فروخته شده. پیش از این از یک استخرِ سراسری کم
-     * می‌شد و فروشِ یک تأمین‌کننده موجودیِ تأمین‌کنندهٔ دیگر را کم می‌کرد.
+     * می‌شد و فروشِ یک تأمین‌کننده موجودیِ تأمین‌کننده‌ی دیگر را کم می‌کرد.
      */
     private function deductItemStock(OrderItem $item): void
     {
@@ -285,7 +285,7 @@ class InventoryService
 
             if ($amountRestored > 0) {
                 // به همان مبدأیی برمی‌گردد که از آن کم شده بود — وگرنه لغوِ سفارش
-                // موجودی را از تأمین‌کنندهٔ A به استخرِ سراسری منتقل می‌کرد.
+                // موجودی را از تأمین‌کننده‌ی A به استخرِ سراسری منتقل می‌کرد.
                 $stock = FactoryStock::lockRow(
                     (int) $item->product_variant_id,
                     (int) $item->{OrderItem::FACTORY_ID} ?: null,

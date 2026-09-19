@@ -32,7 +32,7 @@ class PublicCacheInvalidationTest extends TestCase
         Cache::put('pricing:categories_with_filters', 'stale', 3600);
 
         PriceFilterCategory::create([
-            'name' => 'دستهٔ تست',
+            'name' => 'دسته‌ی تست',
             'code' => 'pfc_'.Str::random(8),
         ]);
 

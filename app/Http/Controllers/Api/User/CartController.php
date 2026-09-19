@@ -132,11 +132,11 @@ class CartController extends Controller
      * GET — پیش‌فاکتور (Doc 0) از سبدِ جاری، **پیش از ثبت سفارش**.
      *
      * تا پیش از این تنها راهِ گرفتنِ پیش‌فاکتور، ثبتِ سفارشِ واقعی و بعد دانلود از
-     * `/profile/orders/{order}/invoices/initial` بود — یعنی برای یک برگهٔ قیمت،
+     * `/profile/orders/{order}/invoices/initial` بود — یعنی برای یک برگه‌ی قیمت،
      * موجودی کم می‌شد و یک سفارشِ دوساعته ساخته می‌شد که باید لغو می‌شد.
      *
-     * هیچ سفارشی، هیچ رکورد `Invoice` و هیچ شمارهٔ سندی مصرف نمی‌شود؛ خروجی یک PDF
-     * با شناسهٔ آشکارا موقت است. با دادنِ `address_id` کرایهٔ حمل هم در سند می‌آید.
+     * هیچ سفارشی، هیچ رکورد `Invoice` و هیچ شماره‌ی سندی مصرف نمی‌شود؛ خروجی یک PDF
+     * با شناسه‌ی آشکارا موقت است. با دادنِ `address_id` کرایه‌ی حمل هم در سند می‌آید.
      */
     public function preInvoice(Request $request, BuildCartPreInvoiceAction $action)
     {

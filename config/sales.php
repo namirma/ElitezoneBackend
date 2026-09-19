@@ -12,7 +12,7 @@
  * `SalesSettings` که تنظیمِ ادمین را هم می‌بیند. خواندنِ مستقیمِ config یعنی
  * نادیده‌گرفتنِ هر تغییری که ادمین داده.
  *
- * مبالغ به **ریال** است (نه تومان) — قاعدهٔ سراسری پروژه.
+ * مبالغ به **ریال** است (نه تومان) — قاعده‌ی سراسری پروژه.
  */
 return [
 
@@ -27,7 +27,7 @@ return [
 
     /*
     | مبلغ بیعانه. اعتبارسنجی: ≤ shaparak_value — هم در فرمِ ادمین و هم در
-    | لحظهٔ خواندن (SalesSettings::reserveValue) clamp می‌شود.
+    | لحظه‌ی خواندن (SalesSettings::reserveValue) clamp می‌شود.
     */
     'reserve_value' => (float) env('SALES_RESERVE_VALUE_RIALS', 2_000_000_000),
 

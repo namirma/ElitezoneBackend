@@ -149,7 +149,7 @@ class EmittedUrlsMatchSpaRoutesTest extends TestCase
     public function every_dashboard_alert_url_is_a_real_spa_route(): void
     {
         // آرایه‌ی `makeAlert` آدرس را به‌صورت رشته‌ی خام می‌سازد، پس به‌جای
-        // اجرای سرویس (که به دادهٔ زیاد نیاز دارد) خودِ سورس جارو می‌شود.
+        // اجرای سرویس (که به داده‌ی زیاد نیاز دارد) خودِ سورس جارو می‌شود.
         $source = file_get_contents((new ReflectionClass(DashboardAlertsService::class))->getFileName());
 
         preg_match_all("#'(/(?:profile|product|rebar|admin|order|role|faq|p)[^']*)'#", $source, $matches);
@@ -171,7 +171,7 @@ class EmittedUrlsMatchSpaRoutesTest extends TestCase
     {
         // ⚠️ چند وضعیت، نه یکی.
         //
-        // این تست قبلاً فقط سفارشِ **لغوشده** را می‌گشت. روی آن، مرحلهٔ رزرو
+        // این تست قبلاً فقط سفارشِ **لغوشده** را می‌گشت. روی آن، مرحله‌ی رزرو
         // حالتِ `cancelled` می‌گیرد نه `current` — و شاخه‌ای که اکشنِ «پرداخت
         // فاکتور» را می‌ساخت `if ($state === 'current')` بود. پس آن لینک هرگز
         // تولید نمی‌شد، تست هرگز نمی‌دیدش، و یک مقصدِ مرده در SPA سبز رد می‌شد.

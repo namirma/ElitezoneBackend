@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\DB;
  * تا وقتی مجوزِ درگاه نیامده، پرداختِ واقعی از مسیرِ کیف پول انجام می‌شود
  * (`ProcessFullOrderPaymentAction` → `ProcessPreScalePaymentAction` /
  * `ProcessReservationCompletionAction`). این کلاس عمداً نگه داشته شده تا وقتی
- * درگاه وصل شد نقطهٔ شروع داشته باشد.
+ * درگاه وصل شد نقطه‌ی شروع داشته باشد.
  *
  * تا امروز این **تنها** جایی بود که `OrderPaid` را dispatch می‌کرد، و چون هرگز
  * اجرا نمی‌شد، رویداد در هیچ مسیرِ زنده‌ای شلیک نمی‌شد و پیامکِ پرداخت برای هیچ‌کس

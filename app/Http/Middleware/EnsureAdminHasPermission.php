@@ -14,7 +14,7 @@ use Symfony\Component\HttpFoundation\Response;
  * ادمین لیست مجوزها را sync می‌کند). استفاده: middleware('admin.permission:manage-financial')
  *
  * fail-closed: نبودِ مجوز = ۴۰۳. قبلاً «صفر مجوز = دسترسی کامل» بود که دقیقاً
- * وارونهٔ نیتِ AdminManagerController::update بود — فرستادن permissions=[] برای
+ * وارونه‌ی نیتِ AdminManagerController::update بود — فرستادن permissions=[] برای
  * سلبِ دسترسی، به ادمین دسترسیِ کامل (از جمله manage-financial) می‌داد.
  * سازگاری عقب‌رو حالا یک‌بار و برای همیشه در مایگریشنِ
  * 2026_07_25_100000_backfill_admin_permissions انجام می‌شود.

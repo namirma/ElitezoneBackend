@@ -138,7 +138,7 @@ Route::middleware(['optional.sanctum', 'attach.price.category'])->group(function
         // استعلام هزینه حمل پیش از checkout — نیازمند آدرس کاربر (auth الزامی)
         Route::post('/shipping-quote', 'shippingQuote')->middleware('auth:sanctum');
         // پیش‌فاکتور سبدِ هنوز ثبت‌نشده — سند مالی است، پس مهمان اجازه ندارد.
-        // هیچ سفارشی ساخته نمی‌شود و هیچ رکورد Invoice/شمارهٔ سندی مصرف نمی‌شود.
+        // هیچ سفارشی ساخته نمی‌شود و هیچ رکورد Invoice/شماره‌ی سندی مصرف نمی‌شود.
         Route::get('/pre-invoice', 'preInvoice')->middleware('auth:sanctum');
         // الیت‌یار سبد را برای کارفرما پیامک می‌کند (فاز ۶). throttle چون هر
         // فراخوانی یک پیامکِ پولی می‌فرستد.
@@ -203,10 +203,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
         Route::post('/real', [ProfileController::class, 'updateRealProfile']);
         Route::post('/legal', [ProfileController::class, 'updateLegalProfile']);
-        // throttle: هر فراخوانی یک استعلامِ **پولیِ** پودیوم از سامانهٔ ثبت شرکت‌هاست
+        // throttle: هر فراخوانی یک استعلامِ **پولیِ** پودیوم از سامانه‌ی ثبت شرکت‌هاست
         // (services.company_inquiry) و هیچ کشی هم ندارد. بدون سقف، این endpoint یک
         // پروکسیِ نامحدود روی حساب مالکِ سرویس بود: یک اکانتِ رایگان می‌توانست فضای
-        // شناسهٔ ملیِ اشخاص حقوقی را جاروب کند و رجیستری را با هزینهٔ ما آینه کند.
+        // شناسه‌ی ملیِ اشخاص حقوقی را جاروب کند و رجیستری را با هزینه‌ی ما آینه کند.
         // هم‌تراز با education/fetch که دقیقاً به همین دلیل throttle:5,1 دارد.
         Route::post('/legal/fetch', [ProfileController::class, 'fetchLegalData'])
             ->middleware('throttle:5,1');
@@ -236,7 +236,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::delete('/email', [AccountSecurityController::class, 'deleteEmail']);
         // ⚠️ سقف روی **مرحله‌ی درست** باشد. تا پیش از این تنها گامِ ۲ throttle داشت —
         // همان گامی که فقط می‌خوانَد و چیزی را مصرف نمی‌کند. گامِ ۱ یک پیامکِ واقعی
-        // می‌فرستد و گامِ ۳ کدِ ۶ رقمی را مصرف می‌کند، رمز را می‌نویسد و بقیهٔ توکن‌ها
+        // می‌فرستد و گامِ ۳ کدِ ۶ رقمی را مصرف می‌کند، رمز را می‌نویسد و بقیه‌ی توکن‌ها
         // را باطل می‌کند؛ یعنی گامِ تصاحبِ حساب بی‌سقف‌ترین‌شان بود. `AccountSecurity`
         // برخلافِ `AuthController` قفلِ تجمعی هم ندارد، پس تنها گاردِ باقی‌مانده
         // `throttle:api` سراسری بود. هم‌ردیفِ change-mobile پایین.
@@ -288,7 +288,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         // Education (elite yar only)
         Route::prefix('education')->middleware('role.elite_yar')->controller(EduixController::class)->group(function () {
             Route::get('/', 'index')->middleware('track:education');
-            // throttle: هر فراخوانی یک scrape واقعی روی سامانهٔ msrt.ir است؛
+            // throttle: هر فراخوانی یک scrape واقعی روی سامانه‌ی msrt.ir است؛
             // بدون سقف، endpoint به یک پروکسیِ استعلامِ نامحدود تبدیل می‌شد.
             Route::post('/fetch', 'fetch')->middleware('throttle:5,1');
             Route::delete('/{record}', 'destroy');
@@ -358,12 +358,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
             // Invoice downloads
             //
-            // فهرست از `OrderDocumentCatalog` می‌آید، نه دستی. نسخهٔ دستیِ قبلی
-            // (`['initial', 'final', 'tax']`) با نقشهٔ مخاطبانِ کنترلر واگرا شده بود:
+            // فهرست از `OrderDocumentCatalog` می‌آید، نه دستی. نسخه‌ی دستیِ قبلی
+            // (`['initial', 'final', 'tax']`) با نقشه‌ی مخاطبانِ کنترلر واگرا شده بود:
             // آن سه اسلاگ همگی buyer-only بودند و هشت سندِ سوپلایر — از جمله Doc K
             // «بارنامه/مجوز خروج» و Doc C «دستور بارگیری» — اصلاً با روت نمی‌خواندند.
             // نتیجه: سوپلایر و الیت‌یار هیچ سندی نمی‌توانستند دانلود کنند (۴۰۴/۴۰۳).
-            // مجوز همچنان کارِ نقشهٔ مخاطبان است؛ این قید فقط تعیین می‌کند درخواست به
+            // مجوز همچنان کارِ نقشه‌ی مخاطبان است؛ این قید فقط تعیین می‌کند درخواست به
             // کنترلر برسد یا نه.
             Route::get('/{order}/invoice/{type}', [OrderInvoiceController::class, 'download'])
                 ->whereNumber('order')
@@ -541,12 +541,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
                 // اعلامِ اعتبارِ قیمت‌ها — تا وقتی ثبت نشود، کالاهای این
                 // تأمین‌کننده قابل سفارش نیستند (بند ۳.۲).
                 // throttle — این یکی «یک پیامک» نمی‌فرستد: `notifyWaitingCarts()`
-                // به **همهٔ** کاربرانی که سبدِ پارک‌شده روی این تأمین‌کننده دارند
+                // به **همه‌ی** کاربرانی که سبدِ پارک‌شده روی این تأمین‌کننده دارند
                 // پیامک می‌دهد و مهلتشان را هم تمدید می‌کند.
                 //
                 // سقفِ `sms` (۲ در دقیقه) عمداً به کار نرفت: تنظیمِ مهلتِ اعتبار یک
                 // کارِ عادیِ پنل است و تأمین‌کننده ممکن است چند بار پشتِ‌هم اصلاحش
-                // کند. گاردِ اصلی `wasChanged()` در کنترلر است — ارسالِ دوبارهٔ همان
+                // کند. گاردِ اصلی `wasChanged()` در کنترلر است — ارسالِ دوباره‌ی همان
                 // مقدار دیگر هیچ پیامکی تولید نمی‌کند؛ این سقف فقط جلوی تغییرِ
                 // پیاپیِ عمدی را می‌گیرد.
                 Route::put('/reserve-time', [SupplierController::class, 'updateReserveTime'])
@@ -558,8 +558,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
                 Route::post('/drivers', [SupplierDriverController::class, 'store']);
                 Route::put('/drivers/{driver}', [SupplierDriverController::class, 'update'])->whereNumber('driver');
                 Route::delete('/drivers/{driver}', [SupplierDriverController::class, 'destroy'])->whereNumber('driver');
-                // throttle:sms — شمارهٔ راننده ورودیِ آزادِ خودِ تأمین‌کننده است، پس
-                // این مسیر به شماره‌ای که او انتخاب می‌کند پیامک می‌فرستد؛ و شاخهٔ
+                // throttle:sms — شماره‌ی راننده ورودیِ آزادِ خودِ تأمین‌کننده است، پس
+                // این مسیر به شماره‌ای که او انتخاب می‌کند پیامک می‌فرستد؛ و شاخه‌ی
                 // `code` هم یک کدِ ۶ رقمی را بی‌سقف مقایسه می‌کند، در حالی که همان
                 // فلگِ `verified` چیزی است که ثبتِ بارنامه به آن اعتماد می‌کند.
                 Route::post('/drivers/{driver}/verify', [SupplierDriverController::class, 'verify'])
@@ -640,7 +640,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
                 // Stocks — موجودی به‌ازای کارخانه/انبارِ خودم.
                 // پیش از جدولِ factory_stocks این پنل ممکن نبود: موجودی یک ستونِ
-                // سراسری روی هر واریانت بود، پس نوشتنِ تأمین‌کنندهٔ A موجودیِ B را
+                // سراسری روی هر واریانت بود، پس نوشتنِ تأمین‌کننده‌ی A موجودیِ B را
                 // صفر می‌کرد.
                 Route::controller(SupplierStockController::class)->prefix('stocks')->group(function () {
                     Route::get('/', 'index');

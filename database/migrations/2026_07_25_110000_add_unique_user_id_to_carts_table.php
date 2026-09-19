@@ -75,7 +75,7 @@ return new class extends Migration
     /**
      * اقلام سبدِ اضافی به سبدِ بازمانده منتقل می‌شوند؛ اگر همان
      * (واریانت، کارخانه، مبدأ) از قبل در سبدِ بازمانده باشد، قلمِ تکراری
-     * حذف می‌شود (همان قاعدهٔ CartResolver::mergeGuestCart).
+     * حذف می‌شود (همان قاعده‌ی CartResolver::mergeGuestCart).
      */
     private function moveItems(int $survivorId, int $duplicateId): void
     {

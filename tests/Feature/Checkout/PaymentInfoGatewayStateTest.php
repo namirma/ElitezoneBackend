@@ -59,7 +59,7 @@ class PaymentInfoGatewayStateTest extends TestCase
             ->json('data.gateways');
 
         $this->assertFalse($this->gateway($gateways, WalletTransaction::METHOD_GATEWAY)['is_active'],
-            'بدون اعتبارنامهٔ بانک، رِیلِ پرداخت اینترنتی نباید فعال اعلام شود');
+            'بدون اعتبارنامه‌ی بانک، رِیلِ پرداخت اینترنتی نباید فعال اعلام شود');
     }
 
     #[Test]
@@ -118,7 +118,7 @@ class PaymentInfoGatewayStateTest extends TestCase
     #[Test]
     public function an_unknown_configured_gateway_reports_inactive_instead_of_500ing(): void
     {
-        // یک تنظیمِ اشتباه نباید صفحهٔ تسویه را بترکاند؛ فقط باید آن روش را خاموش
+        // یک تنظیمِ اشتباه نباید صفحه‌ی تسویه را بترکاند؛ فقط باید آن روش را خاموش
         // نشان دهد.
         config()->set('payment.online_gateway', 'a-gateway-that-does-not-exist');
 

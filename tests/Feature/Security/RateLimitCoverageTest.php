@@ -21,7 +21,7 @@ use Tests\TestCase;
  * چرا این تست وجود دارد: پنج مسیر با **دقیقاً یک شکل** از پنج دورِ سخت‌سازی جا
  * مانده بودند — `/profile/password` (که کدِ OTP را مصرف می‌کرد و رمز را می‌نوشت،
  * در حالی که سقف روی گامِ فقط-خواندنیِ کنارش بود)، `/profile/password/otp`،
- * `/profile/supplier/reserve-time` (که به **همهٔ** سبدهای پارک‌شده پیامک می‌دهد)،
+ * `/profile/supplier/reserve-time` (که به **همه‌ی** سبدهای پارک‌شده پیامک می‌دهد)،
  * `/profile/supplier/drivers/{driver}/verify` (پیامک به شماره‌ای که خودِ
  * تأمین‌کننده وارد کرده) و `POST /profile/financial/accounts` (دو استعلامِ پولیِ
  * Podium در هر فراخوانی).
@@ -30,7 +30,7 @@ use Tests\TestCase;
  * همین مسئله را برای دسترسیِ ادمین با **جاروی جدولِ روت** حل کرد، نه با نمونه‌گیری؛
  * این تست همان کار را برای سقفِ نرخ می‌کند.
  *
- * روش: بدنهٔ متدِ کنترلرِ هر روت را از روی فایل می‌خوانیم (نه کلِ کلاس — وگرنه یک
+ * روش: بدنه‌ی متدِ کنترلرِ هر روت را از روی فایل می‌خوانیم (نه کلِ کلاس — وگرنه یک
  * متدِ پیامکی، ۱۰ متدِ بی‌ربطِ همان کنترلر را هم علامت‌دار می‌کرد) و دنبالِ نشانه‌ها
  * می‌گردیم. سطحی است و عمداً هم سطحی مانده: یک هیوریستیکِ ساده که کسی نمی‌شکندش،
  * بهتر از تحلیلِ فراخوانیِ کاملی است که با اولین ریفکتور از کار می‌افتد.
@@ -46,8 +46,8 @@ class RateLimitCoverageTest extends TestCase
     private const EXPENSIVE = [
         'SendSmsJob',        // پیامکِ صف‌شده
         'SendInviteSmsJob',  // پیامکِ دعوت
-        'notifyWaitingCarts', // فن‌اوتِ پیامک به همهٔ سبدهای پارک‌شده
-        'OtpSecret::matches', // مقایسهٔ کدِ ۶ رقمی
+        'notifyWaitingCarts', // فن‌اوتِ پیامک به همه‌ی سبدهای پارک‌شده
+        'OtpSecret::matches', // مقایسه‌ی کدِ ۶ رقمی
         'PodiumServices\\',  // استعلامِ پولی (use-شده با نامِ کامل)
         'InquiryService',    // CardInquiry / ShebaInquiry / CompanyInquiry …
         'CardToIbanService',
@@ -78,13 +78,13 @@ class RateLimitCoverageTest extends TestCase
         return false;
     }
 
-    /** سورسِ بدنهٔ متدِ کنترلرِ این روت، یا null اگر قابلِ تحلیل نباشد. */
+    /** سورسِ بدنه‌ی متدِ کنترلرِ این روت، یا null اگر قابلِ تحلیل نباشد. */
     private function actionSource(RoutingRoute $route): ?string
     {
         $action = $route->getActionName();
 
         if (! str_contains($action, '@')) {
-            return null; // closure یا invokable — خارج از دامنهٔ این جارو
+            return null; // closure یا invokable — خارج از دامنه‌ی این جارو
         }
 
         [$class, $method] = explode('@', $action, 2);
@@ -159,7 +159,7 @@ class RateLimitCoverageTest extends TestCase
         $this->assertSame(
             [],
             $unthrottled,
-            "این مسیرها پیامک/سرویسِ پولی/مقایسهٔ راز دارند ولی throttle ندارند:\n  ".
+            "این مسیرها پیامک/سرویسِ پولی/مقایسه‌ی راز دارند ولی throttle ندارند:\n  ".
             implode("\n  ", $unthrottled)
         );
     }
@@ -174,7 +174,7 @@ class RateLimitCoverageTest extends TestCase
         //   * `throttle:N,1`های ساده — استثنای لاراول را بالا می‌دهند، که
         //     `Handler::handleApiException()` به همان پاکت تبدیلش می‌کند.
         //
-        // شاخهٔ دوم تا امروز پیامِ پیش‌فرضِ **انگلیسیِ** لاراول را می‌داد
+        // شاخه‌ی دوم تا امروز پیامِ پیش‌فرضِ **انگلیسیِ** لاراول را می‌داد
         // («Too Many Attempts.») در اپی که `locale=fa` است. کلیدِ ترجمه‌اش
         // (`global.too_many_requests`) از قبل وجود داشت و فقط وصل نبود.
         // نقش لازم است: `role.employer` پیش از سقفِ روت اجرا می‌شود، پس کاربرِ
@@ -184,7 +184,7 @@ class RateLimitCoverageTest extends TestCase
 
         Sanctum::actingAs($user);
 
-        // `/profile/elite-yars/invite` سقفِ سادهٔ ۳ در دقیقه دارد. بدنهٔ نامعتبر
+        // `/profile/elite-yars/invite` سقفِ ساده‌ی ۳ در دقیقه دارد. بدنه‌ی نامعتبر
         // می‌فرستیم: هدف رسیدن به ۴۲۹ است، نه موفق‌شدنِ خودِ دعوت.
         $last = null;
         for ($i = 0; $i < 6; $i++) {

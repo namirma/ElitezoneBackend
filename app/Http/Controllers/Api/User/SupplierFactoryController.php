@@ -118,7 +118,7 @@ class SupplierFactoryController extends Controller
             // تبدیل به XSS ذخیره‌شده می‌شود (با FILESYSTEM_PUBLIC_DRIVER=local — که
             // پیش‌فرضِ .env.example است — همان مبدأِ خودِ اپ سرو می‌شود و CSP هم
             // script-src 'self' دارد، پس جلویش را نمی‌گیرد). این مسیر از همه بدتر بود
-            // چون کاربرِ عادی (تأمین‌کنندهٔ تأییدشده) به آن دسترسی دارد، نه فقط ادمین.
+            // چون کاربرِ عادی (تأمین‌کننده‌ی تأییدشده) به آن دسترسی دارد، نه فقط ادمین.
             Factory::LOGO => ['nullable', 'file', 'mimes:png,jpg,jpeg,webp', 'max:2048'],
         ];
     }

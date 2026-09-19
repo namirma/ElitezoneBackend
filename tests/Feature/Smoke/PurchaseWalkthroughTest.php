@@ -32,7 +32,7 @@ use Tests\TestCase;
  * پیمایشِ صفر تا صدِ خرید، از راهِ همان endpointهایی که فرانت صدا می‌زند.
  *
  * هدف «assert کردنِ یک عدد» نیست — دیدنِ این است که آیا مسیر واقعاً از ابتدا تا
- * انتها کار می‌کند. هر گام وضعیتش را چاپ می‌کند و در صورت شکست، بدنهٔ پاسخ را،
+ * انتها کار می‌کند. هر گام وضعیتش را چاپ می‌کند و در صورت شکست، بدنه‌ی پاسخ را،
  * تا معلوم شود دقیقاً کجا می‌ایستد.
  */
 class PurchaseWalkthroughTest extends TestCase
@@ -71,7 +71,7 @@ class PurchaseWalkthroughTest extends TestCase
         // اسناد PDF فونتِ فارسی می‌خواهند که gitignore شده — مسیر را تست می‌کنیم نه رندر را.
         // ثبت‌نام یک استعلامِ هویتیِ **واقعی** به پودیوم می‌زند (تطبیق موبایل ↔ کد ملی).
         // در این محیط کردنشیال ندارد و پس از ~۱۱ ثانیه با ۵۰۲ برمی‌گردد، پس آن یک گام
-        // را stub می‌کنیم تا بقیهٔ مسیرِ خرید قابل اجرا شود. این خودش یک واقعیتِ
+        // را stub می‌کنیم تا بقیه‌ی مسیرِ خرید قابل اجرا شود. این خودش یک واقعیتِ
         // عملیاتی است: بدون دسترسیِ پودیوم، هیچ کاربر تازه‌ای نمی‌تواند ثبت‌نام کند.
         // اکشنِ هویت `final` است، پس مرزِ واقعی — یعنی خودِ کلاینتِ پودیوم — را
         // stub می‌کنیم: تطبیقِ موبایل↔کدملی و استعلامِ تاریخ تولد هر دو موفق.
@@ -190,7 +190,7 @@ class PurchaseWalkthroughTest extends TestCase
         $this->step('۲. تأیید کد و دریافت توکن', $r->status(), $r->status() >= 300 ? $r->json() : 'token گرفته شد');
 
         if ($r->status() >= 300) {
-            $this->fail('ورود ناموفق — بقیهٔ مسیر قابل اجرا نیست.');
+            $this->fail('ورود ناموفق — بقیه‌ی مسیر قابل اجرا نیست.');
         }
 
         /** @var User $user */
@@ -201,7 +201,7 @@ class PurchaseWalkthroughTest extends TestCase
         $r = $this->postJson('/api/profile/type', ['roles' => ['employer']]);
         $this->step('۳. انتخاب نقش (کارفرما)', $r->status(), $r->json('message'));
 
-        // ─────────────── ۳. مشاهدهٔ محصول ───────────────
+        // ─────────────── ۳. مشاهده‌ی محصول ───────────────
         $r = $this->getJson('/api/products');
         $this->step('۴. فهرست محصولات (عمومی)', $r->status(), 'count='.count((array) $r->json('data')));
 
@@ -230,7 +230,7 @@ class PurchaseWalkthroughTest extends TestCase
 
         $r = $this->getJson('/api/cart');
         $cartTotal = $r->json('data.totals.total') ?? $r->json('data.total');
-        $this->step('۷. مشاهدهٔ سبد', $r->status(), 'total='.json_encode($cartTotal));
+        $this->step('۷. مشاهده‌ی سبد', $r->status(), 'total='.json_encode($cartTotal));
 
         // ─────────────── ۶. شارژ کیف پول (پیش از سفارش) ───────────────
         //
@@ -249,7 +249,7 @@ class PurchaseWalkthroughTest extends TestCase
         config(['financial.system_user_id' => $sys->id]);
         Wallet::create([Wallet::USER_ID => $sys->id, Wallet::BALANCE => 0, Wallet::BALANCE_HOLD => 0]);
 
-        // ─────────────── ۷. شاخهٔ پرداخت ───────────────
+        // ─────────────── ۷. شاخه‌ی پرداخت ───────────────
         $r = $this->getJson('/api/checkout/payment-options');
         $this->step('۹. گزینه‌های پرداخت', $r->status(), $r->json('data.branch'));
 
@@ -281,7 +281,7 @@ class PurchaseWalkthroughTest extends TestCase
 
         // ─────────────── ۸. سفارش و اسناد ───────────────
         $r = $this->getJson("/api/profile/orders/{$order->id}");
-        $this->step('۱۱. مشاهدهٔ سفارش', $r->status());
+        $this->step('۱۱. مشاهده‌ی سفارش', $r->status());
 
         $r = $this->get("/api/profile/orders/{$order->id}/invoice/receipt");
         $this->step('۱۲. دانلود رسید خریدار (سند A)', $r->status());

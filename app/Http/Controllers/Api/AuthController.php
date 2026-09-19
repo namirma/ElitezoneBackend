@@ -183,7 +183,7 @@ class AuthController extends Controller
      * با IPهای متعدد قابل brute-force اند.
      *
      * دو اسکوپ عمداً از هم جدا شده‌اند: تا پیش از این هر دو مسیر یک کلیدِ
-     * `otp_lock:{mobile}` مشترک داشتند، یعنی کسی که فقط شمارهٔ موبایلِ قربانی را
+     * `otp_lock:{mobile}` مشترک داشتند، یعنی کسی که فقط شماره‌ی موبایلِ قربانی را
      * می‌دانست می‌توانست با چند کدِ اشتباه، *ورود با رمزِ* او را هم قفل کند —
      * یک بردار DoS بدون نیاز به هیچ اطلاعات دیگری. حالا شکستِ OTP فقط OTP را
      * قفل می‌کند و شکستِ رمز فقط رمز را.
@@ -237,7 +237,7 @@ class AuthController extends Controller
             : (int) config('auth.otp_lockout_minutes', 10);
     }
 
-    /** پیام ۴۲۹ متناسب با اسکوپ — «کد» و «رمز» دو تجربهٔ متفاوت‌اند. */
+    /** پیام ۴۲۹ متناسب با اسکوپ — «کد» و «رمز» دو تجربه‌ی متفاوت‌اند. */
     private function tooManyAttempts(string $scope): JsonResponse
     {
         return error(
@@ -274,7 +274,7 @@ class AuthController extends Controller
         // roles پشتِ whenLoaded است و permissions هم برای پنلِ ادمین لازم است —
         // بدون این eager load، /user نه نقش برمی‌گرداند نه مجوز، و پنل از وقتی
         // EnsureAdminHasPermission به fail-closed تغییر کرد راهی برای تصمیم‌گیری
-        // دربارهٔ نمایشِ تب‌ها نداشت جز خوردنِ ۴۰۳.
+        // درباره‌ی نمایشِ تب‌ها نداشت جز خوردنِ ۴۰۳.
         return success(new UserResource(
             $request->user()->load(['profile', 'type', 'roles', 'permissions'])
         ));
@@ -321,7 +321,7 @@ class AuthController extends Controller
                 User::BIRTH_DATE => $birthDate,
             ]);
         } else {
-            // ثبت‌نام نقش را انتخاب نمی‌کند، پس `type_id` تا مرحلهٔ انتخابِ نقش
+            // ثبت‌نام نقش را انتخاب نمی‌کند، پس `type_id` تا مرحله‌ی انتخابِ نقش
             // NULL می‌ماند. اینجا قبلاً یک UserTypeِ ساختگی («مشتری») نشانده
             // می‌شد تا ستونِ NOT NULL پر شود؛ نتیجه‌اش این بود که «هنوز نقشی
             // انتخاب نکرده» و «نقشش مشتری است» از هم قابلِ تفکیک نبودند.
@@ -455,7 +455,7 @@ class AuthController extends Controller
 
         // صف، نه همزمان: این استعلام یک درخواست HTTP به پودیوم با timeout ۳۰
         // ثانیه است و برای موفقیتِ ورود لازم نیست. اجرای همزمانش یعنی وقتی
-        // پودیوم کند باشد، ورودِ همهٔ کاربران هم کند می‌شود.
+        // پودیوم کند باشد، ورودِ همه‌ی کاربران هم کند می‌شود.
         SyncIdentityToProfileJob::dispatch($user->id);
 
         if ($isNewUser) {
@@ -650,7 +650,7 @@ class AuthController extends Controller
         if ($token instanceof PersonalAccessToken) {
             $token->delete();
         } else {
-            // شاخهٔ stateful (کوکی SPA) — session را استک Sanctum ست کرده است؛ گارد
+            // شاخه‌ی stateful (کوکی SPA) — session را استک Sanctum ست کرده است؛ گارد
             // hasSession برای وقتی است که این شاخه بدون session فراخوانی شود (دفاعی).
             Auth::guard('web')->logout();
             if ($request->hasSession()) {

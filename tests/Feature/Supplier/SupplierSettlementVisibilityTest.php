@@ -132,7 +132,7 @@ class SupplierSettlementVisibilityTest extends TestCase
             ->json('data.financial');
 
         $this->assertArrayNotHasKey('supplier_settlement', $financial);
-        // در عوض خریدار تفکیکِ هزینهٔ خودش را می‌بیند.
+        // در عوض خریدار تفکیکِ هزینه‌ی خودش را می‌بیند.
         $this->assertArrayHasKey('vat_amount', $financial);
     }
 
@@ -140,7 +140,7 @@ class SupplierSettlementVisibilityTest extends TestCase
     public function a_supplier_buying_for_themselves_gets_the_buyer_view_of_their_own_order(): void
     {
         // معیارِ قبلی نقشِ سراسری (`hasRole('supplier')`) بود، پس یک تأمین‌کننده روی
-        // سفارشِ خریدِ خودش هم نمای سانسورشده می‌گرفت و مالیات/کرایهٔ خودش را
+        // سفارشِ خریدِ خودش هم نمای سانسورشده می‌گرفت و مالیات/کرایه‌ی خودش را
         // نمی‌دید. حالا معیار نقش در همان سفارش است — و مهم‌تر: بلوکِ تسویه روی
         // سفارشی که او فقط خریدارش است ظاهر نمی‌شود.
         $supplier = $this->makeSupplier();

@@ -18,7 +18,7 @@ use Tests\TestCase;
  * زنده خوانده می‌شد — هم زمان پرداخت، هم زمان باسکول — در حالی که
  * `orders.commission_rate` عددِ هاردکدِ 1.0 را ذخیره می‌کرد و هرگز خوانده نمی‌شد.
  * پس ویرایشِ آن تنظیم بین پرداخت و باسکول، POOM را با وزنِ *کاملاً یکسان* از POO
- * دور می‌کرد و شاخهٔ «کسری» را فعال می‌کرد: عودتِ واقعی به خریدار + ثبتِ بدهیِ
+ * دور می‌کرد و شاخه‌ی «کسری» را فعال می‌کرد: عودتِ واقعی به خریدار + ثبتِ بدهیِ
  * واقعی برای تأمین‌کننده، بدون آنکه یک کیلوگرم جابه‌جا شده باشد.
  */
 class CommissionRateSnapshotTest extends TestCase
@@ -31,7 +31,7 @@ class CommissionRateSnapshotTest extends TestCase
         $calculator = app(SettlementCalculatorService::class);
         $reconciler = app(WeighbridgeReconciler::class);
 
-        // سفارشی با نرخِ اسنپ‌شات‌شدهٔ ۱٪ که POO/PTS آن با همان ۱٪ محاسبه شده.
+        // سفارشی با نرخِ اسنپ‌شات‌شده‌ی ۱٪ که POO/PTS آن با همان ۱٪ محاسبه شده.
         $order = $this->makeWeighableOrder($calculator, snapshotTc: 1.0);
         $wbs = (float) $order->{Order::WEIGHT_BEFORE_SCALE};
 
@@ -127,7 +127,7 @@ class CommissionRateSnapshotTest extends TestCase
     }
 
     /**
-     * سفارشِ پرداخت‌شدهٔ آمادهٔ باسکول با POO/PTS محاسبه‌شده بر مبنای $snapshotTc.
+     * سفارشِ پرداخت‌شده‌ی آماده‌ی باسکول با POO/PTS محاسبه‌شده بر مبنای $snapshotTc.
      */
     private function makeWeighableOrder(SettlementCalculatorService $calculator, float $snapshotTc): Order
     {

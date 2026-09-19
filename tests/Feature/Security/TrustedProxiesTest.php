@@ -18,7 +18,7 @@ use Tests\TestCase;
 /**
  * پشتِ Cloudflare، `request()->ip()` IPِ واقعیِ کلاینت است — و فقط پشتِ Cloudflare.
  *
- * بدونِ `trustProxies` آدرسِ لبه برمی‌گشت: همهٔ کاربرانِ پشتِ یک لبه یک سطلِ throttle
+ * بدونِ `trustProxies` آدرسِ لبه برمی‌گشت: همه‌ی کاربرانِ پشتِ یک لبه یک سطلِ throttle
  * داشتند و allowlistِ IPِ ادمین هرگز IPِ واقعی را نمی‌دید. از آن طرف، اعتماد به همه
  * (`'*'`) هم غلط است چون origin مستقیم در دسترس است و X-Forwarded-For جعل‌پذیر.
  */
@@ -109,7 +109,7 @@ class TrustedProxiesTest extends TestCase
     /**
      * `public/index.php` کرنلِ HTTP را **پیش از** bootstrap resolve می‌کند، پس closureِ
      * `withMiddleware` بدونِ config اجرا می‌شود. `config()` آن‌جا روی وب خطا می‌داد در
-     * حالی که بقیهٔ تست‌ها (که اول bootstrap می‌کنند) سبز می‌ماندند. همین مسیر را بازسازی
+     * حالی که بقیه‌ی تست‌ها (که اول bootstrap می‌کنند) سبز می‌ماندند. همین مسیر را بازسازی
      * می‌کند.
      */
     #[Test]

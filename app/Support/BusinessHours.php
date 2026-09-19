@@ -30,17 +30,17 @@ class BusinessHours
         /** @var list<int> $weekend روزهای تعطیل — Carbon dayOfWeek (جمعه = 5) */
         $weekend = $config['weekend_days'] ?? [Carbon::FRIDAY];
 
-        // کلِ حساب‌وکتاب در زمانِ **محلیِ کسب‌وکار** انجام می‌شود و نتیجه به منطقهٔ
+        // کلِ حساب‌وکتاب در زمانِ **محلیِ کسب‌وکار** انجام می‌شود و نتیجه به منطقه‌ی
         // زمانیِ ورودی برمی‌گردد.
         //
         // «۹ تا ۱۷» و «جمعه تعطیل» مفاهیمِ محلی‌اند، ولی `app.timezone` روی UTC است
-        // و `TicketService` با `now()` صدا می‌زند. پس مقایسهٔ `$cursor->hour` با
+        // و `TicketService` با `now()` صدا می‌زند. پس مقایسه‌ی `$cursor->hour` با
         // `start_hour` عملاً ساعتِ UTC را با ساعتِ کاریِ ایران می‌سنجید: تیکتی که
         // ۲۰:۰۰ تهران (۱۶:۳۰ UTC) ثبت می‌شد «داخل ساعت کاری» شمرده می‌شد و مهلتش
         // نیمه‌شب می‌افتاد، و تیکتِ ۱۱:۰۰ تهران «پیش از ۹» دیده می‌شد.
         //
-        // برگرداندن به منطقهٔ اولیه لازم است چون خروجی مستقیم در `sla_due_at`
-        // ذخیره می‌شود و بقیهٔ سیستم UTC می‌نویسد.
+        // برگرداندن به منطقه‌ی اولیه لازم است چون خروجی مستقیم در `sla_due_at`
+        // ذخیره می‌شود و بقیه‌ی سیستم UTC می‌نویسد.
         $originalTz = $start->getTimezone();
         $businessTz = (string) ($config['timezone'] ?? 'Asia/Tehran');
 
@@ -52,7 +52,7 @@ class BusinessHours
 
         while ($remaining > 0) {
             $endOfDay = $cursor->copy()->setTime($dayEnd, 0);
-            // `(int)`: Carbon 3 اعشاری برمی‌گرداند و `$remaining` دقیقهٔ صحیح است.
+            // `(int)`: Carbon 3 اعشاری برمی‌گرداند و `$remaining` دقیقه‌ی صحیح است.
             $available = (int) $cursor->diffInMinutes($endOfDay, false);
 
             if ($available >= $remaining) {

@@ -21,8 +21,8 @@ interface PaymentGatewayInterface
      * تأیید پرداخت با درگاه پس از بازگشت از بانک (Callback).
      *
      * @param  float  $amount  مبلغ تراکنش (ریال) برای تطبیق سمت سرور
-     * @param  string  $authority  توکن/شناسهٔ تأیید بازگشتی از درگاه
-     * @return PaymentReceipt|null رسید نتیجهٔ تأیید؛ null یا رسید ناموفق یعنی پرداخت تأیید نشد
+     * @param  string  $authority  توکن/شناسه‌ی تأیید بازگشتی از درگاه
+     * @return PaymentReceipt|null رسید نتیجه‌ی تأیید؛ null یا رسید ناموفق یعنی پرداخت تأیید نشد
      *
      * @throws \Exception در صورت خطای ارتباط با درگاه
      */
@@ -42,7 +42,7 @@ interface PaymentGatewayInterface
      * استثنا پرتاب می‌کند — یعنی فرانت دکمه‌ای را فعال نشان می‌داد که کلیک روی آن
      * حتماً شکست می‌خورد.
      *
-     * قاعدهٔ `CLAUDE.md` («هرگز متدی از درگاه صدا نزن که interface اعلامش نکرده»)
+     * قاعده‌ی `CLAUDE.md` («هرگز متدی از درگاه صدا نزن که interface اعلامش نکرده»)
      * ایجاب می‌کند این متد اینجا اعلام شود، نه فقط روی یک driver.
      */
     public function isConfigured(): bool;

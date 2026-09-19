@@ -66,7 +66,7 @@ class PromoOverlayMultipartTest extends TestCase
         $this->assertNotNull($overlay->image, 'image stored');
         Storage::disk('public')->assertExists($overlay->image);
 
-        // ساختاردارها نباید به رشتهٔ «[object Object]» تبدیل شده باشند
+        // ساختاردارها نباید به رشته‌ی «[object Object]» تبدیل شده باشند
         $this->assertIsArray($overlay->buttons);
         $this->assertSame('/role', $overlay->buttons[0]['value']);
         $this->assertSame('guest', $overlay->audience['rules'][0]['value']);
@@ -155,7 +155,7 @@ class PromoOverlayMultipartTest extends TestCase
     {
         Storage::fake('public');
 
-        // قاعدهٔ سراسریِ ریپو: هیچ آپلودِ دیسکِ public نباید svg بپذیرد
+        // قاعده‌ی سراسریِ ریپو: هیچ آپلودِ دیسکِ public نباید svg بپذیرد
         // (SVGِ حاوی <script> از همان origin سرو می‌شود = XSSِ ذخیره‌شده)
         $this->post('/api/admin/promo-overlays', [
             'title' => 'با svg',

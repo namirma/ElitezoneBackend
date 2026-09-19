@@ -268,7 +268,7 @@ class AdminOrderUnitTest extends TestCase
     #[Test]
     public function product_resource_exposes_amount_and_max_quantity_together(): void
     {
-        // باکس خرید هر دو را لازم دارد: amount برای محاسبهٔ وزن، max_quantity برای سقف
+        // باکس خرید هر دو را لازم دارد: amount برای محاسبه‌ی وزن، max_quantity برای سقف
         // انتخاب. پیش از نشست ۲۱ هیچ endpointی هر دو را با هم نمی‌داد و فرانت مجبور
         // بود ۲۵۰۰۰/۵۰۰۰ را هاردکد کند.
         Sanctum::actingAs($this->admin());
@@ -285,7 +285,7 @@ class AdminOrderUnitTest extends TestCase
             ->json('data.order_unit_limits');
 
         $this->assertCount(2, $limits);
-        // ترتیب: بستهٔ بزرگ‌تر اول، واحد پایه آخر — همان ترتیبی که سایت رندر می‌کند.
+        // ترتیب: بسته‌ی بزرگ‌تر اول، واحد پایه آخر — همان ترتیبی که سایت رندر می‌کند.
         $this->assertSame($big->id, $limits[0]['order_unit_id']);
         $this->assertSame($base->id, $limits[1]['order_unit_id']);
 

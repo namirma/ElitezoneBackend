@@ -88,7 +88,7 @@ class SearchController extends Controller
      * حالی که کوئریِ `LIKE` روی collation‌ـی مثل `utf8mb4_unicode_ci` **نیست**.
      * پس هر دسته‌ای با نامِ لاتین از دیتابیس برمی‌گشت و بعد در PHP دور ریخته
      * می‌شد: جستجوی «steel» ردیفِ «Steel Co» را می‌آورد و همان‌جا حذفش می‌کرد.
-     * نتیجه صفر نتیجه بود و `results_count` هم صفر لاگ می‌شد — یعنی دادهٔ
+     * نتیجه صفر نتیجه بود و `results_count` هم صفر لاگ می‌شد — یعنی داده‌ی
      * آنالیتیکس هم همراهش خراب می‌شد.
      *
      * `mb_stripos` و نه `Str::contains(..., ignoreCase: true)`: چندبایتی است

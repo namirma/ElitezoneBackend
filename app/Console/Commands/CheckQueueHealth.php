@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Log;
 /**
  * پایشِ سلامتِ صف — «worker خوابیده» را از یک خرابیِ خاموش به یک خطای صریح تبدیل می‌کند.
  *
- * همهٔ listenerهای پروژه ShouldQueue هستند و صف روی درایورِ database است. اگر
+ * همه‌ی listenerهای پروژه ShouldQueue هستند و صف روی درایورِ database است. اگر
  * workerها متوقف شوند هیچ استثنایی پرتاب نمی‌شود: پیامک OTP، اعلان سفارش و ایمیل
  * صرفاً در جدول `jobs` می‌مانند. چون ورود کاربر به پیامک OTP وابسته است، این
  * خرابیِ خاموش عملاً یعنی قطعیِ ورود — بدون هیچ ردی در لاگ.
@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\Log;
  * می‌تواند روی همین کد alert بگذارد؛ لاگِ `error` هم اگر Sentry DSN ست باشد به
  * error-tracker می‌رود.
  *
- * قواعد و آستانه‌ها در QueueHealthService است تا صفحهٔ سلامتِ سامانه هم دقیقاً
+ * قواعد و آستانه‌ها در QueueHealthService است تا صفحه‌ی سلامتِ سامانه هم دقیقاً
  * همان‌ها را ببیند.
  */
 class CheckQueueHealth extends Command

@@ -30,8 +30,8 @@ class VatSplitRoundingTest extends TestCase
     #[Test]
     public function the_two_credits_always_sum_to_the_single_debit(): void
     {
-        // جاروب روی بازهٔ واقعیِ کمیسیون با گام‌های اعشاری، تا حالت‌های مرزیِ
-        // گردکردن واقعاً دیده شوند — نه یک نمونهٔ خوش‌شانس.
+        // جاروب روی بازه‌ی واقعیِ کمیسیون با گام‌های اعشاری، تا حالت‌های مرزیِ
+        // گردکردن واقعاً دیده شوند — نه یک نمونه‌ی خوش‌شانس.
         $mismatches = 0;
         $checked = 0;
 

@@ -71,7 +71,7 @@ class PromoOverlayAdminTest extends TestCase
         $id = $res->json('data.id');
         $overlay = PromoOverlay::findOrFail($id);
 
-        // فیلدهای ساختاردار باید کامل ذخیره شوند — نه رشتهٔ خالی، نه null
+        // فیلدهای ساختاردار باید کامل ذخیره شوند — نه رشته‌ی خالی، نه null
         $this->assertCount(2, $overlay->buttons, 'buttons persisted');
         $this->assertSame('/role', $overlay->buttons[0]['value']);
         $this->assertSame('and', $overlay->audience['op']);
@@ -101,8 +101,8 @@ class PromoOverlayAdminTest extends TestCase
     }
 
     /**
-     * فرمِ بک‌آفیس برای فیلدهای عددیِ خالی رشتهٔ "" می‌فرستد (نه null).
-     * قانونِ `nullable|integer` رشتهٔ خالی را رد می‌کند، پس اگر پاک نشود کلِ
+     * فرمِ بک‌آفیس برای فیلدهای عددیِ خالی رشته‌ی "" می‌فرستد (نه null).
+     * قانونِ `nullable|integer` رشته‌ی خالی را رد می‌کند، پس اگر پاک نشود کلِ
      * ذخیره ۴۲۲ می‌گیرد — همان «ویرایش نمی‌شود»ی که گزارش شد.
      */
     #[Test]

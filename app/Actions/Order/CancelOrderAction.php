@@ -76,7 +76,7 @@ class CancelOrderAction
                 throw new Exception(__('orders.internal_order_not_found'));
             }
 
-            // larastan نتیجهٔ `lockForUpdate()->first()` را `Model` می‌بیند نه
+            // larastan نتیجه‌ی `lockForUpdate()->first()` را `Model` می‌بیند نه
             // `Order`؛ بعد از گاردِ بالا این تنگ‌سازی درست است و گاردِ کرانِ
             // پایین‌تر را بدون افزودن ورودی به baseline ممکن می‌کند.
             /** @var Order $locked */

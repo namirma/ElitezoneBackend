@@ -81,7 +81,7 @@ class SearchPrivacyAndMatchingTest extends TestCase
      * ⚠️ کوئریِ `LIKE` روی collationِ `..._ci` بی‌تفاوت است، ولی فیلترِ بعدیِ PHP
      * `Str::contains()` بود که **حساس** است. پس ردیف از دیتابیس برمی‌گشت و
      * بلافاصله در PHP دور ریخته می‌شد: نتیجه صفر، و `results_count` هم صفر
-     * لاگ می‌شد — یعنی دادهٔ آنالیتیکس هم با همان باگ خراب می‌شد.
+     * لاگ می‌شد — یعنی داده‌ی آنالیتیکس هم با همان باگ خراب می‌شد.
      */
     #[Test]
     public function a_latin_category_matches_regardless_of_letter_case(): void

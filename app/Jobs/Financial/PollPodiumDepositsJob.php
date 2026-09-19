@@ -20,8 +20,8 @@ use Illuminate\Support\Facades\Log;
  *
  * هر ۵ دقیقه اجرا می‌شود.
  *
- * پنجره زمانی: از **watermarkِ آخرین polling موفق** (منهای overlap) تا لحظهٔ حال.
- * پنجرهٔ ثابتِ «۱۵ دقیقهٔ گذشته» یعنی هر بازه‌ای که در آن worker نمی‌دوید برای
+ * پنجره زمانی: از **watermarkِ آخرین polling موفق** (منهای overlap) تا لحظه‌ی حال.
+ * پنجره‌ی ثابتِ «۱۵ دقیقه‌ی گذشته» یعنی هر بازه‌ای که در آن worker نمی‌دوید برای
  * همیشه از دست می‌رفت؛ با watermark، اجرای بعدی همان بازه را جبران می‌کند.
  *
  * ایمنی:
@@ -60,7 +60,7 @@ class PollPodiumDepositsJob implements ShouldBeUnique, ShouldQueue
         $from = $this->windowStart($to);
 
         // ساعتِ بانک محلی است، نه UTC. `app.timezone` روی UTC است، پس تبدیلِ مستقیمِ
-        // یک لحظهٔ UTC به «تاریخ شمسی + ساعت» پنجره را ۳٫۵ ساعت عقب می‌برد: هر واریز
+        // یک لحظه‌ی UTC به «تاریخ شمسی + ساعت» پنجره را ۳٫۵ ساعت عقب می‌برد: هر واریز
         // در نهایت دیده می‌شد، ولی با ۳٫۵ ساعت تأخیر در شارژِ کیف پول.
         $tz = (string) config('podium.deposit.statement.timezone', 'Asia/Tehran');
         $fromLocal = $from->copy()->setTimezone($tz);
@@ -111,7 +111,7 @@ class PollPodiumDepositsJob implements ShouldBeUnique, ShouldQueue
             }
         }
 
-        // watermark فقط وقتی جلو می‌رود که **همهٔ** ردیف‌ها پردازش شده باشند.
+        // watermark فقط وقتی جلو می‌رود که **همه‌ی** ردیف‌ها پردازش شده باشند.
         // اگر حتی یکی خطا داد، بازه را باز نگه می‌داریم تا اجرای بعدی دوباره
         // ببیندش — تکرار بی‌خطر است چون `doc_number` یکتاست.
         if ($errors === 0) {
@@ -132,7 +132,7 @@ class PollPodiumDepositsJob implements ShouldBeUnique, ShouldQueue
     /**
      * ابتدای پنجره — از watermarkِ آخرین polling موفق، نه از `now()-15min`.
      *
-     * پیش از این پنجره ثابت بود: هر اجرا فقط ۱۵ دقیقهٔ گذشته را می‌دید و **هیچ
+     * پیش از این پنجره ثابت بود: هر اجرا فقط ۱۵ دقیقه‌ی گذشته را می‌دید و **هیچ
      * جبرانی** نداشت. اگر worker یا scheduler چند ساعت می‌خوابید، آن پنجره‌ها
      * صرفاً از دست می‌رفتند — نه دیر، اصلاً خوانده نمی‌شدند. و طبق مستنداتِ خودِ
      * پروژه مرگِ worker بی‌صداست، پس هیچ‌کس متوجه نمی‌شد.
@@ -166,7 +166,7 @@ class PollPodiumDepositsJob implements ShouldBeUnique, ShouldQueue
             $from = $floor;
         }
 
-        // ساعتِ سرور می‌تواند عقب برود؛ پنجرهٔ معکوس بی‌معناست.
+        // ساعتِ سرور می‌تواند عقب برود؛ پنجره‌ی معکوس بی‌معناست.
         return $from->gt($to) ? $to->copy()->subMinutes($default) : $from;
     }
 

@@ -7,8 +7,8 @@ use Illuminate\Support\Facades\DB;
  * ستون tickets.status در مایگریشنِ اولیه فقط ('pending','answered','closed') را می‌پذیرفت،
  * اما مدل App\Models\Ticket پنج وضعیتِ دیگر هم دارد (open, in_progress, waiting_customer,
  * waiting_supplier, resolved). نوشتنِ هر یک از این پنج مقدار روی MySQL خطای truncation
- * می‌داد (یا در حالت non-strict مقدار '' درج می‌کرد) و عملاً چرخهٔ کاملِ تیکتینگ را
- * در سطح schema مسدود می‌کرد. این مایگریشن enum را به مجموعهٔ کاملِ Ticket::STATUSES گسترش می‌دهد.
+ * می‌داد (یا در حالت non-strict مقدار '' درج می‌کرد) و عملاً چرخه‌ی کاملِ تیکتینگ را
+ * در سطح schema مسدود می‌کرد. این مایگریشن enum را به مجموعه‌ی کاملِ Ticket::STATUSES گسترش می‌دهد.
  */
 return new class extends Migration
 {

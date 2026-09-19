@@ -24,7 +24,7 @@ use Tests\TestCase;
  * کارفرما سندِ مالیاتیِ شخصیِ مشاورش را می‌گرفت و روی اسنادِ خودش ۴۰۳ می‌خورد.
  *
  * `OrderDocumentAccessTest` این را نمی‌دید چون هیچ فیکسچرِ آن
- * `beneficiary_user_id` را پر نمی‌کند — همهٔ ۵۱ ترکیبش روی مسیرِ
+ * `beneficiary_user_id` را پر نمی‌کند — همه‌ی ۵۱ ترکیبش روی مسیرِ
  * «کارفرما خودش سفارش می‌دهد» می‌دود، جایی که این ستون همیشه NULL است.
  */
 class BeneficiaryDocumentAudienceTest extends TestCase

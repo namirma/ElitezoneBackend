@@ -13,9 +13,9 @@ class OrderInvoiceController extends Controller
     /**
      * دانلود سندِ سفارش.
      *
-     * نقشهٔ «اسلاگ → کد» و نقشهٔ «سند → مخاطب» هر دو در `OrderDocumentCatalog`
+     * نقشه‌ی «اسلاگ → کد» و نقشه‌ی «سند → مخاطب» هر دو در `OrderDocumentCatalog`
      * زندگی می‌کنند، چون روتِ همین متد هم به همان فهرست نیاز دارد. وقتی این دانش
-     * اینجا کپی شده بود، whitelist روت از نقشهٔ مخاطبان واگرا شد و برای سوپلایر و
+     * اینجا کپی شده بود، whitelist روت از نقشه‌ی مخاطبان واگرا شد و برای سوپلایر و
      * الیت‌یار هیچ سندی باقی نماند.
      */
     public function download(Order $order, string $type, InvoiceGenerator $generator)

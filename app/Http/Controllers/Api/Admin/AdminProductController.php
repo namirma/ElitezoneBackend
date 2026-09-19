@@ -69,7 +69,7 @@ class AdminProductController extends Controller
      * واحدهای سفارشِ مجازِ این محصول + سقف تعداد هرکدام (پیوت `product_order_units`).
      *
      * جایگزینیِ کامل است (`sync`) — همان قرارداد `syncAttributes` واریانت و
-     * `syncFilters` دستهٔ فیلتر قیمت.
+     * `syncFilters` دسته‌ی فیلتر قیمت.
      *
      * ⚠️ محصولی که هیچ ردیفی اینجا ندارد **قابل افزودن به سبد نیست**:
      * `AddToCartAction::validateOrderUnitCounts` هر واحدی را که در این پیوت نباشد

@@ -213,7 +213,7 @@ class PageBlockSchemaTest extends TestCase
         $this->assertArrayHasKey('data.style.gap', $rules);
 
         // و اسلاتی که اعلام نکرده قاعده نمی‌گیرد، پس
-        // `excludeUnvalidatedArrayKeys` حذفش می‌کند و دادهٔ بی‌مصرف ذخیره نمی‌شود.
+        // `excludeUnvalidatedArrayKeys` حذفش می‌کند و داده‌ی بی‌مصرف ذخیره نمی‌شود.
         $this->assertArrayNotHasKey('data.style.padTop', $rules);
         $this->assertArrayNotHasKey('data.style.bodySize', $rules);
     }

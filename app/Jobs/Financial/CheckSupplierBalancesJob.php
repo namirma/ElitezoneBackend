@@ -33,7 +33,7 @@ use Illuminate\Support\Facades\Log;
 class CheckSupplierBalancesJob implements ShouldBeUnique, ShouldQueue
 {
     /**
-     * جابِ زمان‌بندی‌شدهٔ singleton — قفلِ سراسری تا دو نمونه (به‌دلیل backlog صف یا
+     * جابِ زمان‌بندی‌شده‌ی singleton — قفلِ سراسری تا دو نمونه (به‌دلیل backlog صف یا
      * cadenceِ هر-دقیقه) هم‌زمان اجرا نشوند. ۱۰ دقیقه سقفِ نگه‌داریِ قفل است.
      */
     public int $uniqueFor = 600;

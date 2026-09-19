@@ -28,7 +28,7 @@ use Tests\TestCase;
  *   ۲. هیچ رکورد `Invoice`ای ساخته نمی‌شود — نه شماره‌ای مصرف می‌شود، نه آرشیوی
  *   ۳. سبد بعد از دانلود دست‌نخورده می‌ماند (برخلافِ ثبتِ سفارش که سبد را خالی می‌کند)
  *
- * DatabaseTransactions: همهٔ نوشتن‌ها rollback می‌شوند.
+ * DatabaseTransactions: همه‌ی نوشتن‌ها rollback می‌شوند.
  */
 class CartPreInvoiceTest extends TestCase
 {
@@ -142,9 +142,9 @@ class CartPreInvoiceTest extends TestCase
         $this->assertSame('application/pdf', $response->headers->get('content-type'));
 
         $this->assertSame($ordersBefore, Order::count(),
-            'پیش‌فاکتور نباید سفارش بسازد — کلِ نکتهٔ این اندپوینت همین است');
+            'پیش‌فاکتور نباید سفارش بسازد — کلِ نکته‌ی این اندپوینت همین است');
         $this->assertSame($invoicesBefore, Invoice::count(),
-            'پیش‌فاکتور نباید رکورد Invoice بسازد و شمارهٔ سند مصرف کند');
+            'پیش‌فاکتور نباید رکورد Invoice بسازد و شماره‌ی سند مصرف کند');
 
         $this->assertSame(1, $cart->items()->count(),
             'سبد باید دست‌نخورده بماند — برخلاف ثبت سفارش که سبد را خالی می‌کند');
@@ -154,7 +154,7 @@ class CartPreInvoiceTest extends TestCase
     public function the_pre_invoice_total_equals_the_cart_response_total(): void
     {
         // مهم‌ترین خاصیتِ این اندپوینت: عددِ روی PDF همان عددی است که کاربر در
-        // صفحهٔ سبد می‌بیند. اگر پیش‌فاکتور مسیرِ محاسباتیِ دومی داشته باشد، همان
+        // صفحه‌ی سبد می‌بیند. اگر پیش‌فاکتور مسیرِ محاسباتیِ دومی داشته باشد، همان
         // الگویی تکرار می‌شود که در `features.product_offers` مستند شده — کاربر یک
         // عدد می‌بیند و عددِ دیگری می‌پردازد.
         $cart = $this->cartWithOneLine();
@@ -184,14 +184,14 @@ class CartPreInvoiceTest extends TestCase
                 + (float) $preInvoice->vat_amount
                 + (float) $preInvoice->shipping_cost,
             1.0,
-            'معادلهٔ حسابداری سند باید بسته باشد'
+            'معادله‌ی حسابداری سند باید بسته باشد'
         );
     }
 
     #[Test]
     public function the_preview_number_is_never_a_real_document_number(): void
     {
-        // شمارهٔ واقعی از DocumentSequenceService می‌آید و با ذخیرهٔ رکورد رزرو
+        // شماره‌ی واقعی از DocumentSequenceService می‌آید و با ذخیره‌ی رکورد رزرو
         // می‌شود. اینجا چیزی ذخیره نمی‌شود، پس اگر همان قالب استفاده شود، همان عدد
         // بعداً روی یک سندِ واقعیِ دیگر می‌نشیند و مشتری دو مدرک با یک شماره دارد.
         $cart = $this->cartWithOneLine();
@@ -200,9 +200,9 @@ class CartPreInvoiceTest extends TestCase
         $this->get('/api/cart/pre-invoice')->assertOk();
 
         $this->assertSame(0, Invoice::where('invoice_number', 'like', 'PRE-%')->count(),
-            'شناسهٔ پیش‌نمایش هرگز نباید در جدول اسناد بنشیند');
+            'شناسه‌ی پیش‌نمایش هرگز نباید در جدول اسناد بنشیند');
         $this->assertSame(0, Invoice::where('invoice_number', 'like', 'EZ-QTE-%')
             ->where('created_at', '>=', now()->subMinute())->count(),
-            'پیش‌فاکتور نباید شمارهٔ دنبالهٔ QTE مصرف کند');
+            'پیش‌فاکتور نباید شماره‌ی دنباله‌ی QTE مصرف کند');
     }
 }

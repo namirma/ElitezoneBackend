@@ -49,7 +49,7 @@ class AdminFactoryStockController extends Controller
         return success(FactoryStockResource::collection($stocks), __('admin.stocks.list_received'));
     }
 
-    /** upsert — همان قرارداد نسخهٔ تأمین‌کننده، بدون گاردِ مالکیت. */
+    /** upsert — همان قرارداد نسخه‌ی تأمین‌کننده، بدون گاردِ مالکیت. */
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([

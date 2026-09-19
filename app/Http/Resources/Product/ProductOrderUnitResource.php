@@ -14,12 +14,12 @@ use Illuminate\Support\Collection;
  * @mixin OrderUnit
  *
  * باکس خریدِ سایت اصلی برای رندر یک اسلات **هر دو** عدد را لازم دارد:
- *  • `amount`       ضریب تبدیل به واحد پایه — مبنای محاسبهٔ وزن (و در نتیجه قیمت)
- *  • `max_quantity` سقف تعداد از پیوت `product_order_units` — دامنهٔ ورودی
+ *  • `amount`       ضریب تبدیل به واحد پایه — مبنای محاسبه‌ی وزن (و در نتیجه قیمت)
+ *  • `max_quantity` سقف تعداد از پیوت `product_order_units` — دامنه‌ی ورودی
  *
  * تا نشست ۲۱ هیچ endpointی هر دو را با هم نمی‌داد (`ProductResource` فقط دومی،
  * `ProductDetailResource` فقط اولی)، پس فرانت مجبور بود ۲۵۰۰۰/۵۰۰۰ را هاردکد کند و
- * سقفِ ثبت‌شدهٔ ادمین هرگز به مشتری نمی‌رسید. این Resource همان شکلِ واحد را به هر سه
+ * سقفِ ثبت‌شده‌ی ادمین هرگز به مشتری نمی‌رسید. این Resource همان شکلِ واحد را به هر سه
  * مصرف‌کننده (لیست محصول، جزئیات محصول، آیتم سبد) می‌دهد.
  *
  * ⚠️ روی این Resource باید pivot لود شده باشد (`$product->orderUnits`).
@@ -42,7 +42,7 @@ class ProductOrderUnitResource extends BaseJsonResource
     }
 
     /**
-     * مجموعه‌ای مرتب‌شده: بستهٔ بزرگ‌تر اول، واحد پایه آخر — همان ترتیبی که سایت
+     * مجموعه‌ای مرتب‌شده: بسته‌ی بزرگ‌تر اول، واحد پایه آخر — همان ترتیبی که سایت
      * اسلات‌ها را رندر می‌کند، تا ترتیب بصری به ترتیب insert در دیتابیس وابسته نباشد.
      */
     public static function sortedCollection(?Collection $orderUnits): AnonymousResourceCollection

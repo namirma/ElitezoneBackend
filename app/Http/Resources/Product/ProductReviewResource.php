@@ -38,7 +38,7 @@ class ProductReviewResource extends BaseJsonResource
 
     /**
      * فهرستِ نظراتِ محصول عمومی است (بدونِ احراز): موبایلِ خامِ نویسنده فقط برای خودش و
-     * ادمین، بقیه نسخهٔ mask‌شده — هم‌الگو با `UserResource`. قبلاً برای هر بازدیدکننده
+     * ادمین، بقیه نسخه‌ی mask‌شده — هم‌الگو با `UserResource`. قبلاً برای هر بازدیدکننده
      * خام برمی‌گشت.
      */
     private function reviewerMobileFor(Request $request): ?string

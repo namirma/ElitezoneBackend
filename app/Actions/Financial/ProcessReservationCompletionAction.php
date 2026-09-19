@@ -44,7 +44,7 @@ class ProcessReservationCompletionAction
                 throw new \RuntimeException(__('orders.internal_order_not_found'));
             }
 
-            // larastan نتیجهٔ `lockForUpdate()->first()` را `Model` می‌بیند، نه `Order`؛
+            // larastan نتیجه‌ی `lockForUpdate()->first()` را `Model` می‌بیند، نه `Order`؛
             // بعد از گاردِ بالا این تنگ‌سازی درست است و `resolveVatRate(Order)` را
             // بدون افزودن ورودی به baseline قابل فراخوانی می‌کند.
             /** @var Order $locked */
@@ -82,7 +82,7 @@ class ProcessReservationCompletionAction
 
             $op = (float) ($locked->official_price ?: ($firstItem->unit_price ?? 0));
 
-            // قیمت صفر = دادهٔ خراب (هم‌الگو با گاردِ weight_before_scale پایین‌تر).
+            // قیمت صفر = داده‌ی خراب (هم‌الگو با گاردِ weight_before_scale پایین‌تر).
             if ($op <= 0) {
                 Log::channel('financial')->critical(
                     "Order {$order->id}: official_price and item unit_price are both zero — completion aborted."
@@ -106,7 +106,7 @@ class ProcessReservationCompletionAction
             }
 
             // نرخ کمیسیون از نشانِ الیت‌یارِ صاحب کمیسیون (elite_yar_user_id) خوانده می‌شود،
-            // نه beneficiary (گیرندهٔ کالا) — هم‌راستا با ProcessWeighbridgeResultAction.
+            // نه beneficiary (گیرنده‌ی کالا) — هم‌راستا با ProcessWeighbridgeResultAction.
             $badgeCode = $locked->eliteYAR?->badge?->code ?? 'pioneer';
 
             // %TC اسنپ‌شات می‌شود (هم‌الگو با ProcessPreScalePaymentAction) — این مسیر
@@ -181,16 +181,16 @@ class ProcessReservationCompletionAction
             // سازه نشسته، یعنی داخل `balance_hold` است نه `balance`. هر `debitSystem(...)`
             // با وضعیت AVAILABLE فقط `balance` را می‌بیند.
             //
-            // این بلوک قبلاً **پایین‌تر** از شاخهٔ افتِ قیمت بود. پس وقتی POO < PTR
+            // این بلوک قبلاً **پایین‌تر** از شاخه‌ی افتِ قیمت بود. پس وقتی POO < PTR
             // (قیمت بین رزرو و تکمیل پایین آمده) و باید مابه‌التفاوت به خریدار برگردد،
             // سازه باید آن را از موجودیِ آزادِ خودش جلو می‌انداخت — در حالی که پولِ
-            // لازم همان بیعانهٔ همین سفارش بود و دو خط پایین‌تر آزاد می‌شد. نتیجه:
+            // لازم همان بیعانه‌ی همین سفارش بود و دو خط پایین‌تر آزاد می‌شد. نتیجه:
             // `InsufficientBalanceException` و rollback شدنِ کلِ تکمیل وجه، با پیام
             // «موجودی کیف پول کافی نیست» که انگار مشکلِ خریدار است.
             //
             // برخلافِ `SupplierDebtHandler::parkDebtAndNotify` اینجا هیچ انتخابِ
             // سیاستی در کار نیست: منبعِ پول از قبل موجود است و فقط ترتیبش غلط بود.
-            // ترتیب جدید هم قاعدهٔ «WSSG هیچ‌وقت منفی نشود» را نگه می‌دارد: بعد از
+            // ترتیب جدید هم قاعده‌ی «WSSG هیچ‌وقت منفی نشود» را نگه می‌دارد: بعد از
             // آزادسازی، سازه PTR در دسترس دارد و بزرگ‌ترین برداشتِ ممکنِ این شاخه
             // (PTR − POO) از آن کوچک‌تر است.
             $systemUserId = (int) config('financial.system_user_id', 1);

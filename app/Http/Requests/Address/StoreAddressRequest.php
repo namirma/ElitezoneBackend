@@ -33,7 +33,7 @@ class StoreAddressRequest extends FormRequest
     // کلیدها با «_» جدا می‌شوند نه «.» — lang/fa/address.php صاف است
     // (`receiver_name_required`). قبلاً اینجا `address.receiver_name.required`
     // ساخته می‌شد که در فایل وجود نداشت، و چون __() کلیدِ پیدانشده را عیناً
-    // برمی‌گرداند، کاربر به‌جای پیام فارسی رشتهٔ خامِ کلید را می‌دید.
+    // برمی‌گرداند، کاربر به‌جای پیام فارسی رشته‌ی خامِ کلید را می‌دید.
     public function messages(): array
     {
         return [

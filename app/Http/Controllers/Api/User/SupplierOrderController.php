@@ -47,7 +47,7 @@ class SupplierOrderController extends Controller
         // یک تایپو به‌جای ۴۲۲ یک لیستِ خالی برمی‌گرداند — که از دید پنل با «سفارشی
         // نداری» یکسان است.
         $request->validate([
-            // فهرست از enum می‌آید نه یک آرایهٔ دستیِ تازه: `EnumModelConstantParityTest`
+            // فهرست از enum می‌آید نه یک آرایه‌ی دستیِ تازه: `EnumModelConstantParityTest`
             // تضمین می‌کند OrderStatus با `Order::STATUS_*` هم‌گام می‌ماند. مقدارِ
             // اعتبارسنجی‌شده همچنان string است، پس هیچ مقایسه‌ای در کد عوض نمی‌شود.
             'status' => ['nullable', 'string', Rule::in(array_column(OrderStatus::cases(), 'value'))],
@@ -316,7 +316,7 @@ class SupplierOrderController extends Controller
      * تنها متدِ این کنترلر بود که **هیچ گاردی نداشت**: نه وضعیت را چک می‌کرد و نه
      * idempotent بود، پس روی سفارشِ لغوشده هم اجرا می‌شد و هر بار صدا زدن، شناسه را
      * با `time()`ِ تازه بازنویسی می‌کرد — یعنی مرجعی که به سیستم بیرونی داده شده
-     * بی‌صدا بی‌اعتبار می‌شد. حالا مثل بقیهٔ گذارها زیر قفل بررسی می‌شود.
+     * بی‌صدا بی‌اعتبار می‌شد. حالا مثل بقیه‌ی گذارها زیر قفل بررسی می‌شود.
      */
     /**
      * PUT /profile/orders/{order}/reserve-deadline — تمدید مهلت رزرو (بند ۳.۴).
@@ -367,7 +367,7 @@ class SupplierOrderController extends Controller
      *
      * دو نقص داشت: گاردِ وضعیت نداشت (روی سفارشِ پرداخت‌نشده هم می‌نشست) و هنگام
      * جایگزینی، فایل قبلی را روی دیسکِ `financial` یتیم رها می‌کرد — دیسکی که
-     * اسنادِ مالی حساس روی آن می‌نشیند و هیچ چرخهٔ پاک‌سازی‌ای ندارد.
+     * اسنادِ مالی حساس روی آن می‌نشیند و هیچ چرخه‌ی پاک‌سازی‌ای ندارد.
      */
     public function attachPaymentReceipt(UploadOrderReceiptRequest $request, Order $order): JsonResponse
     {

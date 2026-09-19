@@ -141,7 +141,7 @@ class AdminPromoOverlayController extends Controller
         }
 
         // ستون‌هایی که NOT NULL هستند و default دارند: اگر ادمین فیلد را خالی
-        // بگذارد، `ConvertEmptyStringsToNull` (میدل‌ورِ سراسریِ لاراول) رشتهٔ ""
+        // بگذارد، `ConvertEmptyStringsToNull` (میدل‌ورِ سراسریِ لاراول) رشته‌ی ""
         // را به null تبدیل می‌کند، قانونِ `nullable` هم اجازه‌اش می‌دهد، و null
         // به ستونِ NOT NULL می‌رسد → خطای SQL و پاسخِ ۵۰۰. یعنی «ذخیره نمی‌شود»
         // بدون هیچ پیامِ قابل‌فهمی.

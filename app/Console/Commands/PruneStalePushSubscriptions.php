@@ -40,11 +40,11 @@ class PruneStalePushSubscriptions extends Command
 {
     protected $signature = 'push:prune-stale {--days= : چند روز دیده‌نشدن (پیش‌فرض از config/services.php)}';
 
-    protected $description = 'حذف اشتراک‌های پوشی که بیش از بازهٔ تعیین‌شده دیده نشده‌اند';
+    protected $description = 'حذف اشتراک‌های پوشی که بیش از بازه‌ی تعیین‌شده دیده نشده‌اند';
 
     private const CHUNK = 1000;
 
-    /** گاردِ حلقهٔ بی‌پایان اگر حذف بی‌اثر بماند. */
+    /** گاردِ حلقه‌ی بی‌پایان اگر حذف بی‌اثر بماند. */
     private const MAX_ITERATIONS = 10000;
 
     public function handle(): int
@@ -52,7 +52,7 @@ class PruneStalePushSubscriptions extends Command
         $days = (int) ($this->option('days') ?? config('services.push.stale_after_days', 90));
 
         if ($days < 1) {
-            $this->error('بازهٔ دیده‌نشدن باید حداقل ۱ روز باشد.');
+            $this->error('بازه‌ی دیده‌نشدن باید حداقل ۱ روز باشد.');
 
             return self::FAILURE;
         }

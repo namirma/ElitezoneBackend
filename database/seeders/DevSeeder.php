@@ -266,7 +266,7 @@ class DevSeeder extends Seeder
                 WalletTransaction::AMOUNT => $balance,
                 WalletTransaction::TYPE => WalletTransaction::TYPE_DEPOSIT,
                 WalletTransaction::STATUS => WalletTransaction::STATUS_CONFIRMED,
-                WalletTransaction::DESCRIPTION => 'شارژ اولیهٔ محیط توسعه (DevSeeder)',
+                WalletTransaction::DESCRIPTION => 'شارژ اولیه‌ی محیط توسعه (DevSeeder)',
                 WalletTransaction::META => ['source' => 'dev_seeder'],
             ]);
         }
@@ -297,7 +297,7 @@ class DevSeeder extends Seeder
         );
 
         // `official_price` و `vat_rate` ستون‌های اسنپ‌شاتِ مالی‌اند و در $fillable
-        // نیستند، پس داخل آرایهٔ firstOrCreate بالا **بی‌صدا دور ریخته می‌شدند**.
+        // نیستند، پس داخل آرایه‌ی firstOrCreate بالا **بی‌صدا دور ریخته می‌شدند**.
         //
         // ضمناً OFFICIAL_PRICE قیمتِ **هر واحد** است نه مبلغِ کل: تسویه با
         // `OP × weight` کار می‌کند (SettlementCalculatorService::calculatePOO)،

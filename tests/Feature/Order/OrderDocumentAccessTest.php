@@ -20,7 +20,7 @@ use Tests\TestCase;
  * دانلودِ اسنادِ سفارش — یک تستِ جارویی روی **کلِ** کاتالوگ، نه چند مورد نمونه.
  *
  * انگیزه‌اش یک نقصِ واقعی است: دانشِ «کدام سند مالِ کیست» در دو جا کپی شده بود —
- * نقشهٔ مخاطبان در کنترلر، و یک whitelist دستی روی روت — و آن دو واگرا شدند تا
+ * نقشه‌ی مخاطبان در کنترلر، و یک whitelist دستی روی روت — و آن دو واگرا شدند تا
  * جایی که اشتراکشان برای تأمین‌کننده و الیت‌یار تهی شد:
  *
  *     supplier_report → ۴۰۴    bill_of_lading → ۴۰۴    tax_supplier → ۴۰۴
@@ -32,7 +32,7 @@ use Tests\TestCase;
  *
  * چون تستِ نمونه‌ای این را نمی‌گرفت (هر سه اسلاگی که تست می‌شدند مالِ خریدار
  * بودند و کار می‌کردند)، این تست روی هر اسلاگِ کاتالوگ × هر سه مخاطب حرکت می‌کند.
- * افزودنِ سندِ تازه یا تنگ‌کردنِ دوبارهٔ whitelist روت، همین‌جا قرمز می‌شود.
+ * افزودنِ سندِ تازه یا تنگ‌کردنِ دوباره‌ی whitelist روت، همین‌جا قرمز می‌شود.
  */
 class OrderDocumentAccessTest extends TestCase
 {
@@ -119,7 +119,7 @@ class OrderDocumentAccessTest extends TestCase
             }
         }
 
-        $this->assertSame([], $failures, "دسترسی به اسناد با نقشهٔ مخاطبان نمی‌خواند:\n".implode("\n", $failures));
+        $this->assertSame([], $failures, "دسترسی به اسناد با نقشه‌ی مخاطبان نمی‌خواند:\n".implode("\n", $failures));
     }
 
     #[Test]
@@ -137,7 +137,7 @@ class OrderDocumentAccessTest extends TestCase
     #[Test]
     public function a_supplier_still_cannot_read_the_buyers_documents(): void
     {
-        // نقشهٔ مخاطبان برای بستنِ همین نشت نوشته شده بود؛ باز کردنِ روت نباید
+        // نقشه‌ی مخاطبان برای بستنِ همین نشت نوشته شده بود؛ باز کردنِ روت نباید
         // آن را هم باز کرده باشد.
         Sanctum::actingAs($this->supplier);
 
@@ -151,7 +151,7 @@ class OrderDocumentAccessTest extends TestCase
     {
         Sanctum::actingAs($this->stranger);
 
-        // گاردِ عمومیِ OrderPolicy::view — پیش از نقشهٔ مخاطبان.
+        // گاردِ عمومیِ OrderPolicy::view — پیش از نقشه‌ی مخاطبان.
         $this->get($this->url('initial'))->assertForbidden();
         $this->get($this->url('supplier_report'))->assertForbidden();
     }
@@ -185,7 +185,7 @@ class OrderDocumentAccessTest extends TestCase
     public function the_route_whitelist_is_derived_from_the_catalog_not_hand_written(): void
     {
         // این تست دقیقاً واگراییِ اصلی را می‌گیرد: whitelist روت باید برابرِ کلِ
-        // کاتالوگ منهای اسنادِ خارج از دامنهٔ محصول باشد. اگر کسی دوباره فهرستی
+        // کاتالوگ منهای اسنادِ خارج از دامنه‌ی محصول باشد. اگر کسی دوباره فهرستی
         // دستی بنویسد، شمارش‌ها از هم می‌پاشند.
         $slugs = OrderDocumentCatalog::downloadableSlugs();
 

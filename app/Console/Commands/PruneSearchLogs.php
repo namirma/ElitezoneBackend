@@ -19,7 +19,7 @@ use Illuminate\Console\Command;
  * بسته شده بود؛ `searches` جا مانده بود. دو پیامد داشت:
  *
  *  1. رشدِ نامحدودِ جدول — با throttle:30,1 و بدونِ سقفِ تعدادِ IP، ورودی واقعی است.
- *  2. نگه‌داشتنِ **ابدیِ** تاریخچه‌ی جستجوی کاربران، در حالی که برای دادهٔ
+ *  2. نگه‌داشتنِ **ابدیِ** تاریخچه‌ی جستجوی کاربران، در حالی که برای داده‌ی
  *     هم‌جنسِ `product_views` سقفِ ۹۰ روز تعریف شده بود.
  *
  * حذف روی `created_at` است و chunk-شده، تا یک اجرا روی جدولِ انباشته قفلِ
@@ -27,13 +27,13 @@ use Illuminate\Console\Command;
  */
 class PruneSearchLogs extends Command
 {
-    protected $signature = 'searches:prune {--days= : بازهٔ نگهداشت (پیش‌فرض از config/intelligence.php)}';
+    protected $signature = 'searches:prune {--days= : بازه‌ی نگهداشت (پیش‌فرض از config/intelligence.php)}';
 
-    protected $description = 'حذف لاگ‌های جستجوی قدیمی‌تر از بازهٔ نگهداشت';
+    protected $description = 'حذف لاگ‌های جستجوی قدیمی‌تر از بازه‌ی نگهداشت';
 
     private const CHUNK = 1000;
 
-    /** گاردِ حلقهٔ بی‌پایان اگر حذف بی‌اثر بماند. */
+    /** گاردِ حلقه‌ی بی‌پایان اگر حذف بی‌اثر بماند. */
     private const MAX_ITERATIONS = 10000;
 
     public function handle(): int
@@ -41,7 +41,7 @@ class PruneSearchLogs extends Command
         $days = (int) ($this->option('days') ?? config('intelligence.searches.retention_days', 90));
 
         if ($days < 1) {
-            $this->error('بازهٔ نگهداشت باید حداقل ۱ روز باشد.');
+            $this->error('بازه‌ی نگهداشت باید حداقل ۱ روز باشد.');
 
             return self::FAILURE;
         }
@@ -63,7 +63,7 @@ class PruneSearchLogs extends Command
             $deleted += Search::whereIn(Search::ID, $ids)->delete();
         }
 
-        // پیامِ کنسول مثل بقیهٔ کامندهای این پروژه به‌صورت رشتهٔ درجا است
+        // پیامِ کنسول مثل بقیه‌ی کامندهای این پروژه به‌صورت رشته‌ی درجا است
         // (خروجیِ اپراتور، نه پاسخِ API — پس کلیدِ ترجمه لازم ندارد).
         $this->info("حذف {$deleted} لاگ جستجوی قدیمی‌تر از {$days} روز.");
 

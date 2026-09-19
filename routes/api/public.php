@@ -41,7 +41,7 @@ Route::match(['get', 'post'], '/payment/callback', [PaymentController::class, 'c
 // عمومی قابل flood بود و «جستجوهای محبوب» دستکاری می‌شد.
 Route::get('/search', [SearchController::class, 'search'])->middleware('throttle:30,1');
 // throttle: endpoint عمومیِ ثبتِ سوال بدونِ سقف قابلِ اسپم/flood بود (هر درخواست یک
-// رکورد می‌سازد). مثلِ بقیهٔ endpointهای عمومی محدود شد.
+// رکورد می‌سازد). مثلِ بقیه‌ی endpointهای عمومی محدود شد.
 Route::post('/new-question', [QuestionController::class, 'submitQuestion'])->middleware('throttle:10,1');
 
 // ── Authentication ────────────────────────────────────────────────────────

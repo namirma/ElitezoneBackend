@@ -94,12 +94,12 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
 
     // Dashboard — KPI اجرایی، پشتِ manage-financial.
     // هر پنج بلوکِ پاسخ مالی/سفارشی‌اند (فروش امروز، pipeline سفارش‌ها، هشدارهای مالی،
-    // روند هفتگی، خلاصهٔ ماه) — هیچ‌چیزی در آن نیست که ادمینِ محتوا لازم داشته باشد،
+    // روند هفتگی، خلاصه‌ی ماه) — هیچ‌چیزی در آن نیست که ادمینِ محتوا لازم داشته باشد،
     // پس همان مجوزی را می‌گیرد که /admin/financial/* می‌گیرد.
     //
-    // پیامد سمت کلاینت: ادمینی که manage-financial ندارد روی صفحهٔ خانهٔ پنل ۴۰۳
+    // پیامد سمت کلاینت: ادمینی که manage-financial ندارد روی صفحه‌ی خانه‌ی پنل ۴۰۳
     // می‌گیرد. پنل باید کاربر را به اولین تبی که مجوزش را دارد بفرستد، نه اینکه
-    // داشبورد را صفحهٔ فرود ثابت فرض کند.
+    // داشبورد را صفحه‌ی فرود ثابت فرض کند.
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])
         ->middleware('admin.permission:manage-financial');
 
@@ -131,7 +131,7 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
 
     // Users — back-office lookup endpoints (group 1)
     // این گروه همان اطلاعات هویتی/مالیِ گروه ۲ را برمی‌گرداند (پروفایل کامل، سفارش‌ها،
-    // سابقهٔ تراکنش) ولی بدونِ مجوز باز بود — یک ناسازگاری در سطح‌بندی. حالا هر دو
+    // سابقه‌ی تراکنش) ولی بدونِ مجوز باز بود — یک ناسازگاری در سطح‌بندی. حالا هر دو
     // گروه پشت manage-users هستند.
     Route::prefix('users')->controller(AdminUserController::class)->middleware('admin.permission:manage-users')->group(function () {
         Route::post('/fetch-profile', 'getUserProfileForBackOffice');
@@ -216,7 +216,7 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
         //   manage-financial → «به کدام بخش دسترسی دارد». `updateFormula` فلگ‌های
         //     trans_commission/trans_vat را می‌نویسد که تعیین می‌کنند کدام‌یک از
         //     چهار واریانتِ POO/PTS اجرا شود؛ ادمینِ پشتیبانیِ کاربران نباید بتواند
-        //     نحوهٔ محاسبهٔ کمیسیون و مالیات را عوض کند.
+        //     نحوه‌ی محاسبه‌ی کمیسیون و مالیات را عوض کند.
         //
         //   admin.level:1 → «تا کجا حق دارد». این فلگ‌ها روی هر سفارشِ بعدیِ آن
         //     تأمین‌کننده snapshot می‌شوند و پس از پرداخت غیرقابلِ بازگشت‌اند، پس
@@ -256,7 +256,7 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
     Route::controller(AdminOrderController::class)->prefix('orders')->middleware('admin.permission:manage-orders')->group(function () {
         Route::get('/', 'index');
         Route::get('/{order}/history', 'history');
-        // روایتِ کاملِ سفارش (چرخهٔ عمر + وضعیت + پول + اسناد در یک خط زمانی).
+        // روایتِ کاملِ سفارش (چرخه‌ی عمر + وضعیت + پول + اسناد در یک خط زمانی).
         // مثل /history باید پیش از wildcard /{order} بیاید.
         Route::get('/{order}/timeline', 'timeline');
         Route::get('/{order}', 'show');
@@ -285,7 +285,7 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
         // وزن حالا همراهِ بارنامه و مشخصاتِ راننده توسط **تأمین‌کننده** ثبت
         // می‌شود: `POST /profile/orders/{order}/shipments/{shipment}/waybill`.
         // ادمین دیگر نقطه‌ی ورودی به باسکول ندارد — نه این روت، نه aliasِ
-        // قدیمیِ بی‌مجوزِ ریشهٔ /admin.
+        // قدیمیِ بی‌مجوزِ ریشه‌ی /admin.
         //
         // ‏`Admin/AdminPermissionCoverageTest::the_weighbridge_has_no_admin_entry_point_left`
         // این را قفل کرده؛ اگر برگردد، سوئیت قرمز می‌شود.
@@ -466,7 +466,7 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
         });
 
     // Order Units — واحدهای سفارش (ظرفیت/بندیل/خرده‌فروشی…). `amount` ضریب تبدیل به
-    // کیلوگرم است و مبنای وزنِ سبد، کرایهٔ حمل و تسویه — پس همان سطحِ کاتالوگ را می‌گیرد.
+    // کیلوگرم است و مبنای وزنِ سبد، کرایه‌ی حمل و تسویه — پس همان سطحِ کاتالوگ را می‌گیرد.
     Route::controller(AdminOrderUnitController::class)->prefix('order-units')->middleware('admin.permission:manage-catalog')->group(function () {
         Route::get('/', 'index');
         Route::post('/', 'store');
@@ -476,7 +476,7 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
     });
 
     // Product Variants — واریانت‌ها (لیست/ساخت زیر محصول، بقیه با id واریانت)
-    // manage-catalog قبلاً روی این گروه نبود در حالی که همهٔ گروه‌های هم‌ردیفِ کاتالوگ
+    // manage-catalog قبلاً روی این گروه نبود در حالی که همه‌ی گروه‌های هم‌ردیفِ کاتالوگ
     // داشتند — واریانت مبنای قیمت و موجودی است، پس همان سطح دسترسی را می‌خواهد.
     Route::controller(AdminProductVariantController::class)->middleware('admin.permission:manage-catalog')->group(function () {
         Route::get('/products/{product}/variants', 'index');

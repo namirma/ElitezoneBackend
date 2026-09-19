@@ -56,7 +56,7 @@ class AdminFactoryLocationController extends Controller
             return error(__('admin.factory_locations.in_use'), [], 422);
         }
 
-        // مثل نسخهٔ تأمین‌کننده — `FactoryLocation::booted()` موجودیِ مبدأ را پیش از
+        // مثل نسخه‌ی تأمین‌کننده — `FactoryLocation::booted()` موجودیِ مبدأ را پیش از
         // حذف پاک و رول‌آپ را بازسازی می‌کند، پس هر دو باید یک‌جا اتفاق بیفتند.
         DB::transaction(fn () => $factoryLocation->delete());
 

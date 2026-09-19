@@ -111,7 +111,7 @@ class DepositStatementService
     }
 
     /**
-     * **همهٔ** صورت‌حساب‌های بازه — صفحه‌به‌صفحه تا انتها.
+     * **همه‌ی** صورت‌حساب‌های بازه — صفحه‌به‌صفحه تا انتها.
      *
      * چرا لازم است: `getStatements()` یک صفحه می‌گیرد و پیش از این تنها فراخوانش
      * (`getIncomingDeposits`) پارامترهای صفحه‌بندی را نه می‌گرفت و نه پاس می‌داد،
@@ -121,7 +121,7 @@ class DepositStatementService
      * قابل تشخیص نیست.
      *
      * حلقه وقتی می‌ایستد که صفحه‌ای کوتاه‌تر از `page_size` برگردد. `max_pages`
-     * گاردِ حلقهٔ بی‌پایان است اگر بانک همیشه صفحهٔ پر بدهد.
+     * گاردِ حلقه‌ی بی‌پایان است اگر بانک همیشه صفحه‌ی پر بدهد.
      *
      * @return list<array<string,mixed>>
      */
@@ -145,7 +145,7 @@ class DepositStatementService
                 $all[] = $stmt;
             }
 
-            // صفحهٔ کوتاه = پایانِ بازه.
+            // صفحه‌ی کوتاه = پایانِ بازه.
             if ($count < $pageSize) {
                 return $all;
             }
@@ -176,7 +176,7 @@ class DepositStatementService
         string $fromTime = '00:00:00',
         string $toTime = '23:59:59',
     ): array {
-        // فیلتر روی **کلِ** بازه اجرا می‌شود، نه روی صفحهٔ اول.
+        // فیلتر روی **کلِ** بازه اجرا می‌شود، نه روی صفحه‌ی اول.
         $statements = $this->getAllStatements($fromDate, $toDate, $fromTime, $toTime);
 
         return array_values(array_filter($statements, function (array $stmt): bool {

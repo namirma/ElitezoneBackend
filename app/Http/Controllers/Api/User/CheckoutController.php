@@ -548,7 +548,7 @@ class CheckoutController extends Controller
 
     /**
      * وضعیتِ پیکربندیِ یک driver. نامِ ناشناخته یعنی «غیرفعال» — یک تنظیمِ اشتباه
-     * نباید باعثِ ۵۰۰ شدنِ صفحهٔ تسویه شود، فقط باید آن روش را خاموش نشان دهد.
+     * نباید باعثِ ۵۰۰ شدنِ صفحه‌ی تسویه شود، فقط باید آن روش را خاموش نشان دهد.
      */
     private function gatewayIsConfigured(string $gatewayName): bool
     {

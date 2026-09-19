@@ -30,7 +30,7 @@ use Illuminate\Support\Facades\Hash;
  *     (placer = کاربر، beneficiary = کارفرما). نمایش: تب «خرید برای دیگران».
  *       B1 weighbridge_done  | B2 shipped | B3 cancelled
  *
- * چون خودِ کاربر الیت یار است، الیت یارِ همهٔ این سفارش‌ها خودِ اوست → «الیت یار: شما».
+ * چون خودِ کاربر الیت یار است، الیت یارِ همه‌ی این سفارش‌ها خودِ اوست → «الیت یار: شما».
  *
  * ⚠️ حسابِ کاربرِ واقعی فقط خوانده می‌شود و هرگز تغییر نمی‌کند.
  */
@@ -71,7 +71,7 @@ class RealEliteYARTimelineSeeder extends Seeder
         // دو کارفرما که کاربر را به‌عنوان الیت یار معرفی کرده‌اند (سناریو A)
         $employerA = $this->makePersona('بهرام', 'رستگار', '09131045820', $this->nationalCode('128400637'), '13550312', 250_000_000);
         $employerB = $this->makePersona('کیوان', 'شفیعی', '09122847391', $this->nationalCode('006273841'), '13601125', 180_000_000);
-        // کارفرمایی که کاربر برایش خرید کرده (سناریو B — گیرندهٔ سفارش)
+        // کارفرمایی که کاربر برایش خرید کرده (سناریو B — گیرنده‌ی سفارش)
         $client = $this->makePersona('امیرحسین', 'تقوی', '09139962475', $this->nationalCode('127995310'), '13680508', 90_000_000);
 
         // ─── سوپلایر و محصول ────────────────────────────────────────────
@@ -98,7 +98,7 @@ class RealEliteYARTimelineSeeder extends Seeder
         $this->makeOrder($eliteYAR->id, $client->id, 'ORD-CONS-B1', Order::STATUS_SHIPPED);
         $this->makeOrder($eliteYAR->id, $client->id, 'ORD-CONS-B2', Order::STATUS_SHIPPED);
         $this->makeOrder($eliteYAR->id, $client->id, 'ORD-CONS-B3', Order::STATUS_CANCELLED);
-        // تحویل‌شده: پورسانت آزاد شده → هر ۴ مرحلهٔ تایم‌لاین الیت یار completed
+        // تحویل‌شده: پورسانت آزاد شده → هر ۴ مرحله‌ی تایم‌لاین الیت یار completed
         $this->makeOrder($eliteYAR->id, $client->id, 'ORD-CONS-B4', Order::STATUS_DELIVERED, [
             Order::ELITE_YAR_MOADIAN_REF => '1402-CON-B4-88120',
             Order::ELITE_YAR_HOLD_RELEASED_AT => now()->subDay(),
@@ -135,7 +135,7 @@ class RealEliteYARTimelineSeeder extends Seeder
             Order::whereIn('id', $oldOrderIds)->delete();
         }
 
-        // موبایل‌های placeholder نسخهٔ قبلی این seeder
+        // موبایل‌های placeholder نسخه‌ی قبلی این seeder
         $oldFakeMobiles = ['09120000111', '09120000222'];
         foreach (User::whereIn(User::MOBILE, $oldFakeMobiles)->get() as $fu) {
             Wallet::where(Wallet::USER_ID, $fu->id)->delete();

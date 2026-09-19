@@ -13,7 +13,7 @@ use Tests\TestCase;
  * ذخیره‌شده می‌شود؛ CSP هم `script-src 'self'` دارد و جلویش را نمی‌گیرد.
  *
  * سه مسیر جا مانده بودند و یکی‌شان (SupplierFactoryController) اصلاً ادمین‌محور
- * نبود — هر تأمین‌کنندهٔ تأییدشده به آن دسترسی دارد.
+ * نبود — هر تأمین‌کننده‌ی تأییدشده به آن دسترسی دارد.
  */
 class PublicDiskUploadRulesTest extends TestCase
 {

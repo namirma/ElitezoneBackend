@@ -17,7 +17,7 @@ use Tests\Feature\Cart\CartPriceValidityTest;
  * دهد، نه صفر یا تاریخِ گذشته.
  *
  * چرا یک سرویسِ جدا و نه یک خط داخل CartResponseBuilder: قرار بود این مهلت در
- * آینده از سمتِ تأمین‌کننده بیاید و این کلاس تنها نقطهٔ اتصال باشد — و دقیقاً
+ * آینده از سمتِ تأمین‌کننده بیاید و این کلاس تنها نقطه‌ی اتصال باشد — و دقیقاً
  * همان شد. حالا مقدار از `supplier_profiles.reserve_time` می‌آید و هیچ‌کدام از
  * کنترلر/Resource/قراردادِ پاسخ عوض نشدند.
  *
@@ -64,7 +64,7 @@ class CartPriceValidityResolver
         return $base->copy()->addMinutes((int) $ttlMinutes);
     }
 
-    /** همان مقدار، در قالبِ رشتهٔ ISO-8601 که پاسخِ API برمی‌گرداند. */
+    /** همان مقدار، در قالبِ رشته‌ی ISO-8601 که پاسخِ API برمی‌گرداند. */
     public function resolveAsIso(Cart $cart): ?string
     {
         return $this->resolve($cart)?->toIso8601String();

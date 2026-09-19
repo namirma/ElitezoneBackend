@@ -9,7 +9,7 @@ use Illuminate\Auth\Access\HandlesAuthorization;
 use Illuminate\Auth\Access\Response;
 
 /**
- * موجودیِ یک مبدأ فقط مالِ تأمین‌کنندهٔ همان کارخانه است.
+ * موجودیِ یک مبدأ فقط مالِ تأمین‌کننده‌ی همان کارخانه است.
  *
  * هم‌الگو با `ProductPricePolicy` — route-model binding هر `{stock}` را با id
  * پیدا می‌کند، پس این policy تنها چیزی است که بین موجودیِ دو تأمین‌کننده ایستاده.

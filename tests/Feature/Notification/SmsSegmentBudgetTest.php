@@ -14,15 +14,15 @@ use Tests\TestCase;
  * پیامکی که فرستاده می‌شود.
  *
  * این تست فقط قالب‌هایی را می‌گیرد که به‌ازای هر سفارش/تراکنش می‌روند — نه
- * قالب‌های کم‌تکرار مثل خوش‌آمدگویی. دو قالبِ پرداخت در نسخهٔ اولشان ۲ سگمنت
+ * قالب‌های کم‌تکرار مثل خوش‌آمدگویی. دو قالبِ پرداخت در نسخه‌ی اولشان ۲ سگمنت
  * بودند و کسی متوجه نشد، چون هیچ چیز طول را اندازه نمی‌گرفت.
  *
- * شمارهٔ سفارش خودش ۲۵ کاراکتر است، پس بودجه واقعاً تنگ است. اگر متنی را عوض
+ * شماره‌ی سفارش خودش ۲۵ کاراکتر است، پس بودجه واقعاً تنگ است. اگر متنی را عوض
  * می‌کنید و این تست قرمز شد، **متن را کوتاه کنید؛ سقف را بالا نبرید.**
  */
 class SmsSegmentBudgetTest extends TestCase
 {
-    /** نمونهٔ واقعیِ خروجی DocumentSequenceService — بلندترین حالتِ ممکن. */
+    /** نمونه‌ی واقعیِ خروجی DocumentSequenceService — بلندترین حالتِ ممکن. */
     private const SAMPLE_ORDER_NUMBER = 'EZ-ORD-RB-140502-70300100';
 
     private const SINGLE_SEGMENT = 70;
@@ -30,9 +30,9 @@ class SmsSegmentBudgetTest extends TestCase
     private const MULTIPART_SEGMENT = 67;
 
     /**
-     * بودجهٔ سگمنتِ هر قالب — عددی که **امروز** واقعاً هزینه می‌شود.
+     * بودجه‌ی سگمنتِ هر قالب — عددی که **امروز** واقعاً هزینه می‌شود.
      *
-     * دو قالبِ باسکول ۳۸ کاراکتر داده حمل می‌کنند (شمارهٔ سفارش + مبلغ)، پس یک
+     * دو قالبِ باسکول ۳۸ کاراکتر داده حمل می‌کنند (شماره‌ی سفارش + مبلغ)، پس یک
      * سگمنت برایشان دست‌نیافتنی است و ۲ کفِ واقعی است — فارسی را برای رسیدن به
      * عددی که ممکن نیست خراب نمی‌کنیم. عددها اینجا ثبت شده‌اند تا رشدِ تصادفی
      * گرفته شود، نه اینکه وضع موجود تأیید شود.
@@ -65,7 +65,7 @@ class SmsSegmentBudgetTest extends TestCase
     {
         $rendered = __($key, $replace);
 
-        $this->assertNotSame($key, $rendered, "کلید ترجمهٔ {$key} وجود ندارد.");
+        $this->assertNotSame($key, $rendered, "کلید ترجمه‌ی {$key} وجود ندارد.");
 
         $length = mb_strlen($rendered);
         $segments = $length <= self::SINGLE_SEGMENT
@@ -95,7 +95,7 @@ class SmsSegmentBudgetTest extends TestCase
             $this->assertStringContainsString(
                 self::SAMPLE_ORDER_NUMBER,
                 __($key, ['order_number' => self::SAMPLE_ORDER_NUMBER]),
-                "{$key} شمارهٔ سفارش را جایگذاری نمی‌کند."
+                "{$key} شماره‌ی سفارش را جایگذاری نمی‌کند."
             );
         }
     }

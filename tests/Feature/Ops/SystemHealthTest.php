@@ -17,7 +17,7 @@ use Tests\Concerns\GrantsAdminPermissions;
 use Tests\TestCase;
 
 /**
- * صفحهٔ سلامتِ سامانه.
+ * صفحه‌ی سلامتِ سامانه.
  *
  * مهم‌ترین خاصیتی که باید پین شود این است که صفحه در حضورِ مشکل **سبز نشود**؛
  * یک داشبوردِ سلامت که مشکل را قورت بدهد از نبودنش بدتر است، چون به آن اعتماد
@@ -52,7 +52,7 @@ class SystemHealthTest extends TestCase
     #[Test]
     public function a_ledger_drift_makes_the_whole_report_unhealthy(): void
     {
-        // موجودیِ بدونِ پشتوانهٔ دفتر — همان الگویی که در پروداکشن یعنی پولِ خلق‌شده.
+        // موجودیِ بدونِ پشتوانه‌ی دفتر — همان الگویی که در پروداکشن یعنی پولِ خلق‌شده.
         Wallet::factory()->create([Wallet::BALANCE => 250_000_000]);
 
         $report = $this->health->report();

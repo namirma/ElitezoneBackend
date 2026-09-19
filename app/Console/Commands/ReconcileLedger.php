@@ -28,7 +28,7 @@ class ReconcileLedger extends Command
         {--order= : بررسی فقط یک سفارش}
         {--user= : بررسی فقط کیف پولِ یک کاربر}';
 
-    protected $description = 'تطبیق دفتر مالی با موجودی کیف‌ها، بررسی صفر شدن تسویهٔ سفارش‌ها و کشف هولدهای آزادنشده';
+    protected $description = 'تطبیق دفتر مالی با موجودی کیف‌ها، بررسی صفر شدن تسویه‌ی سفارش‌ها و کشف هولدهای آزادنشده';
 
     public function handle(LedgerReconciler $reconciler): int
     {
@@ -74,8 +74,8 @@ class ReconcileLedger extends Command
     private function renderTables(array $report): void
     {
         if ($report['unknown_combinations'] !== []) {
-            // اول چاپ می‌شود چون اعتبارِ بقیهٔ جدول‌ها را زیر سؤال می‌برد.
-            $this->error('ترکیب‌های مدل‌نشده در دفتر — نتیجهٔ زیر تا رفعِ این‌ها قابل اتکا نیست:');
+            // اول چاپ می‌شود چون اعتبارِ بقیه‌ی جدول‌ها را زیر سؤال می‌برد.
+            $this->error('ترکیب‌های مدل‌نشده در دفتر — نتیجه‌ی زیر تا رفعِ این‌ها قابل اتکا نیست:');
             $this->table(
                 ['نوع', 'وضعیت', 'تعداد ردیف'],
                 array_map(fn ($row) => [$row['type'], $row['status'], $row['rows']], $report['unknown_combinations']),

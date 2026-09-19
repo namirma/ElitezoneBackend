@@ -17,9 +17,9 @@ use Tests\TestCase;
  * ۱. سقفِ ۵۰ ردیف بدونِ صفحه‌بندی. بانک واریز و برداشت را با هم می‌دهد و فیلترِ
  *    «فقط واریز» *بعد* از بریده‌شدن اجرا می‌شد، پس بازه‌ای با ۵۰ برداشتِ اول
  *    «۰ واریز» گزارش می‌کرد — که از «واریزی نبود» قابل تشخیص نیست.
- * ۲. پنجرهٔ ثابتِ `now()-15min` بدونِ هیچ جبرانی: هر بازه‌ای که worker نمی‌دوید
+ * ۲. پنجره‌ی ثابتِ `now()-15min` بدونِ هیچ جبرانی: هر بازه‌ای که worker نمی‌دوید
  *    برای همیشه از دست می‌رفت.
- * ۳. لحظهٔ UTC به‌عنوان تاریخ/ساعتِ محلیِ بانک فرستاده می‌شد — پنجره ۳٫۵ ساعت عقب.
+ * ۳. لحظه‌ی UTC به‌عنوان تاریخ/ساعتِ محلیِ بانک فرستاده می‌شد — پنجره ۳٫۵ ساعت عقب.
  */
 class PodiumDepositPollingTest extends TestCase
 {
@@ -39,7 +39,7 @@ class PodiumDepositPollingTest extends TestCase
     {
         config(['podium.deposit.statement.page_size' => 50]);
 
-        // صفحهٔ اول: ۵۰ برداشت (هیچ واریزی). صفحهٔ دوم: ۲ واریزِ واقعی.
+        // صفحه‌ی اول: ۵۰ برداشت (هیچ واریزی). صفحه‌ی دوم: ۲ واریزِ واقعی.
         $page1 = [];
         for ($i = 0; $i < 50; $i++) {
             $page1[] = $this->statement("DEBIT-{$i}", 0);
@@ -56,7 +56,7 @@ class PodiumDepositPollingTest extends TestCase
 
         $deposits = $service->getIncomingDeposits('1405/05/10', '1405/05/10', '10:00:00', '10:15:00');
 
-        // پیش از اصلاح این آرایه خالی بود — هر دو واریز پشتِ صفحهٔ اول گم می‌شدند.
+        // پیش از اصلاح این آرایه خالی بود — هر دو واریز پشتِ صفحه‌ی اول گم می‌شدند.
         $this->assertCount(2, $deposits);
         $this->assertSame(['REAL-1', 'REAL-2'], array_column($deposits, 'DocNumber'));
     }
@@ -72,7 +72,7 @@ class PodiumDepositPollingTest extends TestCase
         }
 
         $service = Mockery::mock(DepositStatementService::class)->makePartial();
-        // همیشه صفحهٔ پر — بدون سقف، حلقه بی‌پایان می‌شد.
+        // همیشه صفحه‌ی پر — بدون سقف، حلقه بی‌پایان می‌شد.
         $service->shouldReceive('getStatements')->times(3)->andReturn($full);
 
         $deposits = $service->getIncomingDeposits('1405/05/10', '1405/05/10');
@@ -99,7 +99,7 @@ class PodiumDepositPollingTest extends TestCase
         $this->assertGreaterThan(
             300,
             $from->diffInMinutes(Carbon::now()),
-            'پس از یک قطعی، بازهٔ جامانده باید جبران شود نه اینکه دور انداخته شود.'
+            'پس از یک قطعی، بازه‌ی جامانده باید جبران شود نه اینکه دور انداخته شود.'
         );
     }
 

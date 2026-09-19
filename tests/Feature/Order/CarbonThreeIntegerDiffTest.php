@@ -16,7 +16,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
- * Carbon 3 (شاخهٔ L13) از `diffIn*` عددِ اعشاری برمی‌گرداند؛ Carbon 2 عددِ صحیح.
+ * Carbon 3 (شاخه‌ی L13) از `diffIn*` عددِ اعشاری برمی‌گرداند؛ Carbon 2 عددِ صحیح.
  * دو جایی که آن عدد مستقیم به کاربر می‌رسید.
  */
 class CarbonThreeIntegerDiffTest extends TestCase

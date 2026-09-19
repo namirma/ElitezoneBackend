@@ -35,7 +35,7 @@ class EduixController extends Controller
         // گاردِ هویتی: استعلام فقط برای کد ملیِ *خودِ* کاربر مجاز است.
         // قبلاً شرط `if ($user->national_code && ...)` بود، یعنی کاربری که هنوز
         // احراز هویت نکرده (national_code = null) می‌توانست کد ملیِ هر شخص دیگری
-        // را استعلام کند و سابقهٔ تحصیلیِ او را زیر پروفایل خودش ثبت کند.
+        // را استعلام کند و سابقه‌ی تحصیلیِ او را زیر پروفایل خودش ثبت کند.
         $ownNationalCode = $user->{User::NATIONAL_CODE};
 
         if (! $ownNationalCode) {
@@ -56,7 +56,7 @@ class EduixController extends Controller
                 ],
                 array_merge($data, [
                     EduixRecord::USER_ID => $user->id,
-                    // کد ملیِ *تأییدشدهٔ* پروفایل، نه هرچه از صفحهٔ scrape شده درآمده.
+                    // کد ملیِ *تأییدشده‌ی* پروفایل، نه هرچه از صفحه‌ی scrape شده درآمده.
                     // هم منبع را معتبر می‌کند و هم ستون NOT NULL را تضمین می‌کند
                     // (اگر سامانه فیلد کدملی را برنگرداند، insert می‌شکست).
                     EduixRecord::NATIONAL_CODE => $ownNationalCode,

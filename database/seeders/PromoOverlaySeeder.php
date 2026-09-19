@@ -54,7 +54,7 @@ class PromoOverlaySeeder extends Seeder
                         ['type' => PromoOverlay::RULE_AUTH_STATE, 'value' => 'guest'],
                     ],
                 ],
-                // اورلیِ خوش‌آمد تاریخاً فقط در صفحهٔ خرید میلگرد بود
+                // اورلیِ خوش‌آمد تاریخاً فقط در صفحه‌ی خرید میلگرد بود
                 PromoOverlay::ROUTES => ['include' => ['/rebar*'], 'exclude' => []],
                 PromoOverlay::DELAY_SECONDS => 30,
                 PromoOverlay::FREQUENCY => PromoOverlay::FREQ_DAY,

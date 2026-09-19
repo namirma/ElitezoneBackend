@@ -24,7 +24,7 @@ class WalletGateway implements PaymentGatewayInterface
 
     /**
      * کیف پول همیشه در دسترس است — رِیلِ داخلیِ خودِ سامانه است و به هیچ مجوز یا
-     * اعتبارنامهٔ بیرونی وابسته نیست. («موجودی کافی دارد یا نه» سؤالِ دیگری است و
+     * اعتبارنامه‌ی بیرونی وابسته نیست. («موجودی کافی دارد یا نه» سؤالِ دیگری است و
      * در `paymentInfo` با `has_credit` جواب داده می‌شود، نه با `is_active`.)
      */
     public function isConfigured(): bool

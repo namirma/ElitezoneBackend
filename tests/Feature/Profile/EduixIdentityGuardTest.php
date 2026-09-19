@@ -35,7 +35,7 @@ class EduixIdentityGuardTest extends TestCase
             User::TYPE_ID => $type->id,
             User::NATIONAL_CODE => $nationalCode,
         ]);
-        // `elite_yar` = قصد (لحظهٔ انتخابِ نقش)، `engineer` = مدرکِ تأییدشده.
+        // `elite_yar` = قصد (لحظه‌ی انتخابِ نقش)، `engineer` = مدرکِ تأییدشده.
         // گاردِ مسیر فقط اولی را می‌خواند؛ دومی اینجا می‌ماند چون این تست
         // مسیرِ استعلامِ مدارک تحصیلی را می‌زند.
         $user->addRole(Role::firstOrCreate(['name' => 'elite_yar'], ['display_name' => 'الیت یار']));

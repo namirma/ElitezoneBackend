@@ -119,17 +119,17 @@ class InvoiceGenerator
      *
      * ۱. **هیچ رکورد `Invoice` ساخته نمی‌شود.** هنوز سفارشی وجود ندارد که سند به
      *    آن بچسبد؛ ساختنِ رکورد یعنی یک فاکتورِ یتیم با `order_id` نامعتبر.
-     * ۲. **هیچ شمارهٔ دنباله‌ای مصرف نمی‌شود.** `DocumentSequenceService` شماره را
+     * ۲. **هیچ شماره‌ی دنباله‌ای مصرف نمی‌شود.** `DocumentSequenceService` شماره را
      *    از روی آخرین ردیفِ ذخیره‌شده می‌سازد؛ چون اینجا چیزی ذخیره نمی‌شود، شماره
      *    رزرو هم نمی‌شود و همان عدد بعداً به یک سندِ واقعی می‌رسید. یعنی مشتری یک
      *    PDF با شماره‌ای در دست داشت که بعداً روی سندِ بی‌ربطِ دیگری می‌نشست. پس
-     *    شمارهٔ پیش‌نمایش از بیرون داده می‌شود و باید **آشکارا موقت** باشد.
+     *    شماره‌ی پیش‌نمایش از بیرون داده می‌شود و باید **آشکارا موقت** باشد.
      * ۳. **`loadMissing` اجرا نمی‌شود.** سفارشِ ورودی transient است (`id = null`)،
      *    و هر eager-load روی آن یک کوئریِ `where order_id is null` می‌زند. تمام
      *    relationها باید از قبل با `setRelation()` روی مدل نشسته باشند.
      *
-     * @param  Order  $transientOrder  سفارشِ درون‌حافظه‌ای (ذخیره‌نشده) ساختهٔ سبد
-     * @param  string  $previewNumber  شناسهٔ آشکارا موقتِ پیش‌نمایش
+     * @param  Order  $transientOrder  سفارشِ درون‌حافظه‌ای (ذخیره‌نشده) ساخته‌ی سبد
+     * @param  string  $previewNumber  شناسه‌ی آشکارا موقتِ پیش‌نمایش
      * @return Mpdf|LaravelMpdf
      *
      * @see BuildCartPreInvoiceAction
@@ -223,7 +223,7 @@ class InvoiceGenerator
             ? ($order->items->first()->supplier_user_id ?? $order->payerUserId())
             : $order->payerUserId();
 
-        // مبلغِ ثبت‌شدهٔ هر سند باید «موضوعِ واقعیِ» همان سند باشد، نه همیشه final_amount.
+        // مبلغِ ثبت‌شده‌ی هر سند باید «موضوعِ واقعیِ» همان سند باشد، نه همیشه final_amount.
         // لِگ‌های کیف‌پول مستقل و درست‌اند؛ این فقط فیلدِ گزارشیِ invoices.amount را دقیق می‌کند.
         // هر سند «موضوعِ واقعیِ» خودش را ثبت می‌کند؛ اگر آن فیلد هنوز مقدار ندارد (مثلاً
         // سندی که پیش از مقداردهیِ آن فیلد تولید شود)، به final_amount برمی‌گردیم تا
@@ -231,10 +231,10 @@ class InvoiceGenerator
         $amount = match ($docType) {
             FinancialCodes::DOC_RESERVE_RECEIPT,
             FinancialCodes::DOC_RESERVE_REPORT => $order->{Order::PAYMENT_TO_RESERVE} ?? $order->final_amount,
-            // اسنادِ اصلاحیِ باسکول: مبلغِ اصلاح‌شدهٔ هر طرف (POOM خریدار / PTSM سوپلایر).
+            // اسنادِ اصلاحیِ باسکول: مبلغِ اصلاح‌شده‌ی هر طرف (POOM خریدار / PTSM سوپلایر).
             FinancialCodes::DOC_MODIFIED_INVOICE_OWNER => $order->{Order::PAYMENT_OF_OWNER} ?? $order->final_amount,
             FinancialCodes::DOC_MODIFIED_INVOICE_SUPPLIER => $order->{Order::PAYMENT_TO_SUPPLIER} ?? $order->final_amount,
-            // فاکتورهای مودیان: مبلغی که هر فاکتور دربارهٔ آن است.
+            // فاکتورهای مودیان: مبلغی که هر فاکتور درباره‌ی آن است.
             FinancialCodes::DOC_TAX_INVOICE_SUPPLIER => $order->{Order::PAYMENT_TO_SUPPLIER} ?? $order->final_amount, // O
             FinancialCodes::DOC_TAX_INVOICE_BUYER => $order->{Order::PAYMENT_OF_OWNER} ?? $order->final_amount,        // P
             FinancialCodes::DOC_TAX_INVOICE_ELITE_YAR => $order->{Order::PAYMENT_TO_ELITE_YAR} ?? $order->final_amount, // Q

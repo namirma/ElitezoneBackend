@@ -12,7 +12,7 @@ use Tests\Feature\Pricing\CreatesPricingFixtures;
 use Tests\TestCase;
 
 /**
- * اصلاحِ موجودی پس از باسکول باید بین **همهٔ** ردیف‌ها تقسیم شود.
+ * اصلاحِ موجودی پس از باسکول باید بین **همه‌ی** ردیف‌ها تقسیم شود.
  *
  * باسکول یک عددِ واحد می‌دهد (وزنِ واقعیِ کلِ بار). تا پیش از این کلِ اختلاف روی
  * `items->first()` اعمال می‌شد: سفارشِ دو ردیفی با ۲۰۰ کیلو کسری، هر ۲۰۰ کیلو را
@@ -188,7 +188,7 @@ class WeighbridgeStockAllocationTest extends TestCase
     #[Test]
     public function an_order_whose_lines_have_no_weight_is_left_untouched(): void
     {
-        // دادهٔ خراب نباید موجودی را جابه‌جا کند (و تقسیم بر صفر هم نشود).
+        // داده‌ی خراب نباید موجودی را جابه‌جا کند (و تقسیم بر صفر هم نشود).
         $a = $this->variantWithStock(1000);
         $order = $this->orderWith([['variant' => $a, 'weight' => 0]]);
 

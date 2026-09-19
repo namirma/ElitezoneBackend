@@ -58,7 +58,7 @@ class PushDeviceTokenTest extends TestCase
         $this->postJson('/api/profile/devices', $this->payload())->assertOk();
 
         // اپ در هر اجرا ثبت می‌کند؛ دو ردیف یعنی هر کاربر بعد از یک هفته
-        // ده‌ها نسخهٔ تکراری از یک دستگاه دارد و هر نوتیف چند بار می‌رسد.
+        // ده‌ها نسخه‌ی تکراری از یک دستگاه دارد و هر نوتیف چند بار می‌رسد.
         $this->assertSame(1, DeviceToken::where(DeviceToken::ENDPOINT, self::ENDPOINT)->count());
     }
 
@@ -167,8 +167,8 @@ class PushDeviceTokenTest extends TestCase
     #[Test]
     public function the_whole_chain_runs_without_faking_the_queue(): void
     {
-        // بقیهٔ تست‌ها صف را fake می‌کنند، پس بدنهٔ جاب هرگز اجرا نمی‌شود و یک
-        // خطای تایپی در `SendPushJob::handle` (مثلاً امضای عوض‌شدهٔ
+        // بقیه‌ی تست‌ها صف را fake می‌کنند، پس بدنه‌ی جاب هرگز اجرا نمی‌شود و یک
+        // خطای تایپی در `SendPushJob::handle` (مثلاً امضای عوض‌شده‌ی
         // PushService) از همه‌شان سبز رد می‌شد. اینجا `QUEUE_CONNECTION=sync`
         // تستی کار خودش را می‌کند: قلاب → جاب → سرویس → گارد، واقعی.
         config([

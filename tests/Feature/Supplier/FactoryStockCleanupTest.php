@@ -25,7 +25,7 @@ use Tests\TestCase;
  * **سطح دیتابیس هیچ رویداد Eloquent نمی‌زند**. پس حذفِ یک انبار ردیف‌های موجودی
  * را بی‌صدا می‌برد در حالی که `product_variants.stock_quantity` روی جمعِ قدیمی
  * می‌ماند. و چون `InventoryService::availableAt()` برای هر سه‌تاییِ بدونِ ردیف به
- * همان ستون برمی‌گردد، آن عددِ متورم می‌تواند سفارشی را تأیید کند که پشتوانهٔ
+ * همان ستون برمی‌گردد، آن عددِ متورم می‌تواند سفارشی را تأیید کند که پشتوانه‌ی
  * موجودی ندارد.
  *
  * گاردِ `in_use` جلوی این را نمی‌گرفت: آن فقط `ProductPrice` را می‌دید، و یک
@@ -152,7 +152,7 @@ class FactoryStockCleanupTest extends TestCase
     {
         $admin = User::factory()->create();
         $admin->addRole(Role::firstOrCreate(['name' => 'admin'], ['display_name' => 'Admin']));
-        // `EnsureAdminHasPermission` از نسخهٔ fail-closed به بعد، ادمینِ بدون
+        // `EnsureAdminHasPermission` از نسخه‌ی fail-closed به بعد، ادمینِ بدون
         // مجوز را ۴۰۳ می‌کند — این روت زیر `manage-catalog` است.
         $this->grantAllAdminPermissions($admin);
 

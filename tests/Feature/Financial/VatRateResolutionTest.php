@@ -15,7 +15,7 @@ use Tests\TestCase;
  * نرخ مالیات باید از یک منبع بیاید و هرگز صفر نشود.
  *
  * پیش‌زمینه: `orders.vat_rate` از نوع `decimal(5,2) NOT NULL DEFAULT 0.00` است و
- * هیچ‌کس پیش از پرداخت پرش نمی‌کند. سه محلِ محاسبهٔ تسویه `$order->vat_rate ?? 10.0`
+ * هیچ‌کس پیش از پرداخت پرش نمی‌کند. سه محلِ محاسبه‌ی تسویه `$order->vat_rate ?? 10.0`
  * می‌نوشتند؛ چون مقدار `0.00` است و نه `null`، عملگر `??` هیچ‌وقت فعال نمی‌شد و
  * POO/PTS با **مالیات صفر** حساب می‌شد — در حالی که سبد خرید مالیات ۱۰٪ گرفته بود.
  * پیامد دوم: `sazeVat = gross × 0` می‌شد، پس هولد امانیِ مالیات ثبت نمی‌شد و اسناد
@@ -23,7 +23,7 @@ use Tests\TestCase;
  */
 class VatRateResolutionTest extends TestCase
 {
-    // `DatabaseTransactions` مثل بقیهٔ تست‌ها، نه `RefreshDatabase`.
+    // `DatabaseTransactions` مثل بقیه‌ی تست‌ها، نه `RefreshDatabase`.
     // `RefreshDatabase` وسط اجرا `migrate:fresh` می‌زند: اسکیما drop و دوباره
     // ساخته می‌شود، پس هر تستی که هم‌زمان روی همان دیتابیس بدود ممکن است ستونی را
     // نبیند که وجود دارد. تنها چیزی که این را از دیتابیسِ زنده دور نگه می‌داشت
@@ -76,7 +76,7 @@ class VatRateResolutionTest extends TestCase
     #[Test]
     public function a_real_snapshot_on_the_order_wins_over_the_live_setting(): void
     {
-        // نرخ لحظهٔ پرداخت باید ثابت بماند: اگر بعداً نرخ عوض شود، بازاجرای
+        // نرخ لحظه‌ی پرداخت باید ثابت بماند: اگر بعداً نرخ عوض شود، بازاجرای
         // باسکول همان سفارش نباید با نرخ جدید حساب شود.
         PriceSetting::updateOrCreate(
             [PriceSetting::CODE => PriceSetting::CODE_VAT_RATE],
@@ -84,7 +84,7 @@ class VatRateResolutionTest extends TestCase
         );
 
         // `VAT_RATE` عمداً در `$fillable` نیست (ستون‌های اسنپ‌شات مالی فقط با
-        // forceFill نوشته می‌شوند) — سازندهٔ معمولی بی‌صدا آن را دور می‌ریزد.
+        // forceFill نوشته می‌شوند) — سازنده‌ی معمولی بی‌صدا آن را دور می‌ریزد.
         $order = (new Order)->forceFill([Order::VAT_RATE => '10.00']);
 
         $this->assertSame(10.0, $this->calculator->resolveVatRate($order));
