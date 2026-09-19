@@ -44,6 +44,14 @@ final class SyncUserRolesAction
         if ($newDisplayRoles->contains('supplier')) {
             $profile = $user->supplier()->firstOrCreate([SupplierProfile::USER_ID => $user->id]);
 
+            // انتخابِ نقش فقط یک پیش‌نویس می‌سازد؛ تا متقاضی فرمِ درخواست را
+            // ارسال نکند (`SupplierController::store`) در صفِ ادمین دیده نمی‌شود.
+            // پیش‌فرضِ ستون `pending` مانده تا پروفایل‌های ساخته‌شده در تست‌ها و
+            // داده‌های قدیمی همان معنا را داشته باشند.
+            if ($profile->wasRecentlyCreated) {
+                $profile->forceFill([SupplierProfile::STATUS => SupplierProfile::STATUS_DRAFT])->save();
+            }
+
             // سوپلایر قبلاً تأییدشده که نقشش (مثلاً با تغییر نقش موقت) جدا شده،
             // بدون نیاز به تأیید مجدد ادمین نقش را پس می‌گیرد.
             if ($profile->isApproved() && ! $currentRoles->contains('supplier')) {

@@ -34,6 +34,12 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    // پنلِ تأمین‌کننده (SupplierPanel، پورت ۵۱۷۵ در dev) — لینکش در پیامکِ «تأییدِ صلاحیت»
+    // می‌رود. هرگز env() را مستقیم نخوانید؛ config('services.supplier_panel.url').
+    'supplier_panel' => [
+        'url' => env('SUPPLIER_PANEL_URL', 'http://localhost:5175'),
+    ],
+
     'tesna' => [
         'class' => TesnaService::class,
         'url' => env('TESNA_BASE_URL', 'https://gateway.tesna.ir'),

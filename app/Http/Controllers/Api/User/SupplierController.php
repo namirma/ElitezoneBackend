@@ -13,6 +13,7 @@ use App\Models\Cart;
 use App\Models\Factory;
 use App\Models\Order;
 use App\Models\SupplierActivityCategory;
+use App\Models\SupplierDocument;
 use App\Models\SupplierProfile;
 use App\Models\User;
 use App\Services\Cart\CartParkService;
@@ -155,6 +156,15 @@ class SupplierController extends Controller
         return success(SupplierCategoryResource::collection(SupplierActivityCategory::getAll()));
     }
 
+    /**
+     * ثبت / ویرایشِ درخواستِ احرازِ صلاحیت.
+     *
+     * یک بدنه، دو معنا (§۴-۱ اسپکِ یکپارچه‌سازی): برای پروفایلِ `draft` /
+     * `rejected` / `needs_correction` یعنی **ارسالِ درخواست** (→ `pending`)؛
+     * برای `approved` یعنی ویرایشِ مشخصاتِ شرکت از پنل، بدونِ ازدست‌دادنِ تأیید.
+     * شخصِ حقوقی بدونِ «آگهی تأسیس» ارسال نمی‌شود — مدارک را قبل از این فرم
+     * می‌فرستند (`SupplierDocumentController`، بیرونِ `role.supplier`).
+     */
     public function store(StoreSupplierProfileRequest $request)
     {
         // Load the existing profile so partial updates don't overwrite unsubmitted fields
@@ -162,47 +172,61 @@ class SupplierController extends Controller
         // that always evaluated to null (same data-loss bug fixed in Employer/EngineerController).
         $existing = SupplierProfile::where(SupplierProfile::USER_ID, Auth::id())->first();
 
+        $submitting = $existing === null || $existing->isSubmittable();
+        $entityType = $request->validated(SupplierProfile::ENTITY_TYPE)
+            ?? $existing->{SupplierProfile::ENTITY_TYPE}
+            ?? SupplierProfile::ENTITY_COMPANY;
+
+        if ($submitting && $entityType === SupplierProfile::ENTITY_COMPANY
+            && ! ($existing?->documents()->where(SupplierDocument::KIND, SupplierDocument::KIND_GAZETTE)->exists() ?? false)) {
+            return error(__('supplier.qualification.gazette_required'), [], 422);
+        }
+
+        $optional = fn (string $key) => $request->validated($key) ?? $existing?->{$key};
+
         $supplierProfile = SupplierProfile::updateOrCreate(
             [
                 SupplierProfile::USER_ID => Auth::id(),
             ],
             [
                 SupplierProfile::USER_ID => Auth::id(),
-                SupplierProfile::ACTIVITY_DESCRIPTION => $request->validated('activity_description') ?? $existing?->activity_description,
-                SupplierProfile::BRANDS => $request->validated('brands') ?? $existing?->brands,
+                SupplierProfile::ACTIVITY_DESCRIPTION => $optional(SupplierProfile::ACTIVITY_DESCRIPTION),
+                SupplierProfile::BRANDS => $optional(SupplierProfile::BRANDS),
                 SupplierProfile::BRANDS_NOT_RELATED => $request->validated('brands_not_related') ?? $existing?->brands_not_related ?? 1, // default to true
-                SupplierProfile::ACTIVITY_HISTORY => $request->validated('activity_history') ?? $existing?->activity_history,
-                SupplierProfile::ACTIVITY_PROVINCES => $request->validated('activity_provinces') ?? $existing?->activity_provinces,
-                SupplierProfile::PRODUCTION_AMOUNT => $request->validated('production_amount') ?? $existing?->production_amount,
-                SupplierProfile::STANDARDS => $request->validated('standards') ?? $existing?->standards,
+                SupplierProfile::ACTIVITY_HISTORY => $optional(SupplierProfile::ACTIVITY_HISTORY),
+                SupplierProfile::ACTIVITY_PROVINCES => $optional(SupplierProfile::ACTIVITY_PROVINCES),
+                SupplierProfile::PRODUCTION_AMOUNT => $optional(SupplierProfile::PRODUCTION_AMOUNT),
+                SupplierProfile::STANDARDS => $optional(SupplierProfile::STANDARDS),
                 SupplierProfile::STANDARDS_NOT_RELATED => $request->validated('standards_not_related') ?? $existing?->standards_not_related ?? 1, // default to true
-                SupplierProfile::WEBSITE => $request->validated('website') ?? $existing?->website,
+                SupplierProfile::WEBSITE => $optional(SupplierProfile::WEBSITE),
                 SupplierProfile::WEBSITE_NOT_RELATED => $request->validated('website_not_related') ?? $existing?->website_not_related ?? 1, // default to true
-                SupplierProfile::COMPANY => $request->validated('company') ?? $existing?->company,
+                SupplierProfile::COMPANY => $request->validated(SupplierProfile::COMPANY),
+                SupplierProfile::ENTITY_TYPE => $entityType,
+                SupplierProfile::NATIONAL_ID => $request->validated(SupplierProfile::NATIONAL_ID),
+                SupplierProfile::REGISTRATION_NUMBER => $request->validated(SupplierProfile::REGISTRATION_NUMBER),
+                SupplierProfile::ECONOMIC_CODE => $request->validated(SupplierProfile::ECONOMIC_CODE),
+                SupplierProfile::REPRESENTATIVE_NAME => $request->validated(SupplierProfile::REPRESENTATIVE_NAME),
+                SupplierProfile::REPRESENTATIVE_NATIONAL_CODE => $request->validated(SupplierProfile::REPRESENTATIVE_NATIONAL_CODE),
+                SupplierProfile::LANDLINE => $request->validated(SupplierProfile::LANDLINE),
+                SupplierProfile::PROVINCE_ID => $request->validated(SupplierProfile::PROVINCE_ID),
+                SupplierProfile::CITY_ID => $request->validated(SupplierProfile::CITY_ID),
+                SupplierProfile::FACTORY_ADDRESS => $request->validated(SupplierProfile::FACTORY_ADDRESS),
+                SupplierProfile::POSTAL_CODE => $request->validated(SupplierProfile::POSTAL_CODE),
+                SupplierProfile::IBAN => $request->validated(SupplierProfile::IBAN),
             ]
         );
-        if ($request->has('activity_category_id')) {
-            $supplierProfile->activities()->sync($request->validated('activity_category_id'));
-        }
+        $supplierProfile->activities()->sync($request->validated('activity_category_id'));
 
-        // ⚠️ بن‌بستِ متقاضیِ ردشده.
-        //
-        // `status` عمداً fillable نیست، پس `updateOrCreate` بالا هرگز لمسش
-        // نمی‌کند. نتیجه: کسی که ردش کرده‌اند می‌توانست پروفایلش را اصلاح کند —
-        // همان کاری که انتظار داریم بعد از رد بکند — و برای همیشه `rejected`
-        // بماند. صفِ ادمین او را نشان نمی‌داد (چون `pending` نبود) و خودش هم
-        // هیچ راهی برای بازگشت نداشت. نه خطایی، نه پیامی؛ فقط یک درخواست که
-        // دیگر هیچ‌وقت بررسی نمی‌شد.
-        //
-        // ویرایشِ پروفایل پس از رد **یعنی** درخواستِ دوباره، پس همان‌جا به صف
-        // برمی‌گردد. عمداً فقط از `rejected`: پروفایلِ `approved` نباید با یک
-        // ویرایشِ ساده تأییدش را از دست بدهد، و `pending` از قبل در صف است.
-        if ($supplierProfile->{SupplierProfile::STATUS} === SupplierProfile::STATUS_REJECTED) {
+        // ارسالِ درخواست: از draft (انتخابِ نقش)، rejected و needs_correction به صف
+        // می‌رود. `status` عمداً fillable نیست، پس `updateOrCreate` بالا لمسش
+        // نمی‌کند. عمداً نه از `approved`: پروفایلِ تأییدشده با یک ویرایشِ ساده
+        // تأییدش را از دست نمی‌دهد، و `pending` از قبل در صف است. دلیلِ قبلیِ
+        // ادمین مالِ نسخه‌ی قبلیِ پروفایل است و با ارسالِ تازه پاک می‌شود.
+        if ($submitting) {
             $supplierProfile->forceFill([
                 SupplierProfile::STATUS => SupplierProfile::STATUS_PENDING,
-                // دلیلِ ردِ قبلی مالِ نسخه‌ی قبلیِ پروفایل است؛ نگه‌داشتنش روی
-                // درخواستِ تازه یعنی ادمین متنی را ببیند که دیگر صدق نمی‌کند.
                 SupplierProfile::REJECTION_REASON => null,
+                SupplierProfile::SUBMITTED_AT => now(),
             ])->save();
         }
 

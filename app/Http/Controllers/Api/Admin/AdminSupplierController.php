@@ -2,17 +2,22 @@
 
 namespace App\Http\Controllers\Api\Admin;
 
+use App\Exceptions\BusinessException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UpdateSupplierFormulaRequest;
 use App\Http\Resources\Order\OrderResource;
 use App\Http\Resources\Profile\UserResource;
+use App\Jobs\Notification\SendSmsJob;
 use App\Models\Order;
+use App\Models\SupplierDocument;
 use App\Models\SupplierProfile;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * پنل مدیریت — مدیریت سوپلایرها
@@ -30,14 +35,14 @@ class AdminSupplierController extends Controller
      * Query params:
      *   search (optional) — جستجو در موبایل، نام، نام شرکت
      *   is_active (optional, boolean) — فیلتر وضعیت فعال/غیرفعال
-     *   status (optional) — فیلتر وضعیت احراز: pending | approved | rejected
+     *   status (optional) — فیلتر وضعیت احراز: draft | pending | needs_correction | approved | rejected
      */
     public function index(Request $request): JsonResponse
     {
         $request->validate([
             'search' => ['nullable', 'string', 'min:2'],
             'is_active' => ['nullable', 'boolean'],
-            'status' => ['nullable', 'string', 'in:pending,approved,rejected'],
+            'status' => ['nullable', 'string', 'in:draft,pending,needs_correction,approved,rejected'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
@@ -86,7 +91,8 @@ class AdminSupplierController extends Controller
             __('admin.suppliers.not_found')
         );
 
-        $user->load(['profile', 'supplier', 'wallet', 'roles', 'badges']);
+        // مدارک همراهِ پروفایل می‌آیند تا صفِ صلاحیت بتواند «آگهی تأسیس» را ببیند.
+        $user->load(['profile', 'supplier.documents', 'wallet', 'roles', 'badges']);
 
         // آمار سفارشات این سوپلایر به تفکیک وضعیت
         $orderStats = Order::query()
@@ -182,6 +188,7 @@ class AdminSupplierController extends Controller
                 // دلیلِ ردِ قبلی باید برود، وگرنه پروفایلِ تأییدشده هنوز
                 // متنِ «چرا ردت کردیم» را نشان می‌دهد.
                 SupplierProfile::REJECTION_REASON => null,
+                SupplierProfile::REVIEWED_AT => now(),
             ])->save();
 
             if (! $user->hasRole('supplier')) {
@@ -194,6 +201,12 @@ class AdminSupplierController extends Controller
             ->causedBy(auth()->user())
             ->withProperties(['supplier_user_id' => $user->id])
             ->log('درخواست سوپلایری تأیید شد.');
+
+        // از این لحظه محلِ کارِ تأمین‌کننده پنل است (اسپکِ یکپارچه‌سازی §۴-۳) —
+        // پیامک لینکِ پنل را می‌دهد؛ ورود با همان شماره و OTP/رمزِ سایت است.
+        SendSmsJob::template($user->{User::MOBILE}, 'supplier_approved', [
+            'panel_url' => (string) config('services.supplier_panel.url'),
+        ]);
 
         return success(['supplier_status' => SupplierProfile::STATUS_APPROVED], __('admin.suppliers.approved'));
     }
@@ -247,6 +260,7 @@ class AdminSupplierController extends Controller
             $profile->forceFill([
                 SupplierProfile::STATUS => SupplierProfile::STATUS_REJECTED,
                 SupplierProfile::REJECTION_REASON => $data['reason'],
+                SupplierProfile::REVIEWED_AT => now(),
             ])->save();
 
             if ($user->hasRole('supplier')) {
@@ -260,7 +274,77 @@ class AdminSupplierController extends Controller
             ->withProperties(['supplier_user_id' => $user->id, 'reason' => $data['reason']])
             ->log('درخواست سوپلایری رد شد.');
 
+        SendSmsJob::template($user->{User::MOBILE}, 'supplier_rejected', ['reason' => $data['reason']]);
+
         return success(['supplier_status' => SupplierProfile::STATUS_REJECTED], __('admin.suppliers.rejected'));
+    }
+
+    /**
+     * «نیاز به اصلاح» — حالتِ سومِ صفِ صلاحیت
+     *
+     * برای وقتی که درخواست ناقص است ولی رد کردنش زیاده‌روی است (مدرکِ ناخوانا،
+     * کدپستیِ غلط). نقش وصل نمی‌شود، متقاضی دلیل را در پروفایلِ سایت می‌بیند و
+     * با ارسالِ دوباره (`SupplierController::store`) به `pending` برمی‌گردد.
+     * روی تأمین‌کننده‌ی تأییدشده معنا ندارد — آن‌جا مسیر `reject` است.
+     */
+    public function requestCorrection(Request $request, User $user): JsonResponse
+    {
+        $data = $request->validate([
+            'reason' => ['required', 'string', 'min:10', 'max:1000'],
+        ], [
+            'reason.required' => __('admin.suppliers.correction_reason_required'),
+            'reason.min' => __('admin.suppliers.correction_reason_too_short'),
+        ]);
+
+        $profile = SupplierProfile::query()->where(SupplierProfile::USER_ID, $user->id)->first();
+
+        if (! $profile) {
+            return error(__('admin.suppliers.profile_not_found'), [], 404);
+        }
+
+        if ($profile->isApproved() || $user->hasRole('supplier')) {
+            return error(__('admin.suppliers.cannot_correct_approved'), [], 409);
+        }
+
+        $profile->forceFill([
+            SupplierProfile::STATUS => SupplierProfile::STATUS_NEEDS_CORRECTION,
+            SupplierProfile::REJECTION_REASON => $data['reason'],
+            SupplierProfile::REVIEWED_AT => now(),
+        ])->save();
+
+        activity()
+            ->performedOn($profile)
+            ->causedBy(auth()->user())
+            ->withProperties(['supplier_user_id' => $user->id, 'reason' => $data['reason']])
+            ->log('برای درخواست سوپلایری اصلاح خواسته شد.');
+
+        SendSmsJob::template($user->{User::MOBILE}, 'supplier_needs_correction', ['reason' => $data['reason']]);
+
+        return success(['supplier_status' => SupplierProfile::STATUS_NEEDS_CORRECTION], __('admin.suppliers.correction_requested'));
+    }
+
+    /**
+     * دانلودِ یک مدرکِ متقاضی از دیسکِ خصوصی
+     *
+     * همان فایلی که `SupplierDocumentController::download` به صاحبش می‌دهد؛ این
+     * مسیر زیرِ `manage-users` است تا ادمینِ صفِ صلاحیت لازم نباشد از مسیرِ
+     * پروفایلِ کاربر رد شود. مدرک باید مالِ همین کاربر باشد — نه هر شناسه‌ای.
+     */
+    public function downloadDocument(User $user, SupplierDocument $document): StreamedResponse
+    {
+        $profile = $user->supplier;
+
+        if (! $profile || (int) $document->{SupplierDocument::SUPPLIER_PROFILE_ID} !== (int) $profile->getKey()) {
+            throw new BusinessException(__('admin.suppliers.document_not_found'), 404);
+        }
+
+        $path = $document->{SupplierDocument::PATH};
+
+        if (! Storage::disk(SupplierDocument::DISK)->exists($path)) {
+            throw new BusinessException(__('supplier.documents.file_missing'), 404);
+        }
+
+        return Storage::disk(SupplierDocument::DISK)->download($path, $document->{SupplierDocument::ORIGINAL_NAME});
     }
 
     /**

@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\Supplier;
 
+use App\Http\Controllers\Api\User\SupplierDocumentController;
 use App\Http\Resources\BaseJsonResource;
 use App\Models\SupplierProfile;
 use Illuminate\Http\Request;
@@ -37,6 +38,24 @@ class SupplierProfileResource extends BaseJsonResource
             // متقاضیِ ردشده باید بداند چه چیزی را اصلاح کند — بدونِ این،
             // مسیرِ «ویرایش = درخواستِ دوباره» مقصدی ندارد.
             SupplierProfile::REJECTION_REASON => $this->rejection_reason,
+
+            // درخواستِ احرازِ صلاحیت (اسپکِ یکپارچه‌سازی §۴-۱) — همان چیزی که سایت
+            // در فرم پر می‌کند و پنل بعد از تأیید در «مشخصات شرکت» ویرایش می‌کند.
+            SupplierProfile::ENTITY_TYPE => $this->entity_type,
+            SupplierProfile::NATIONAL_ID => $this->national_id,
+            SupplierProfile::REGISTRATION_NUMBER => $this->registration_number,
+            SupplierProfile::ECONOMIC_CODE => $this->economic_code,
+            SupplierProfile::REPRESENTATIVE_NAME => $this->representative_name,
+            SupplierProfile::REPRESENTATIVE_NATIONAL_CODE => $this->representative_national_code,
+            SupplierProfile::LANDLINE => $this->landline,
+            SupplierProfile::PROVINCE_ID => $this->province_id,
+            SupplierProfile::CITY_ID => $this->city_id,
+            SupplierProfile::FACTORY_ADDRESS => $this->factory_address,
+            SupplierProfile::POSTAL_CODE => $this->postal_code,
+            SupplierProfile::IBAN => $this->iban,
+            SupplierProfile::SUBMITTED_AT => $this->submitted_at,
+            SupplierProfile::REVIEWED_AT => $this->reviewed_at,
+            'documents' => $this->whenLoaded('documents', fn () => $this->resource->documents->map(fn ($d) => SupplierDocumentController::present($d))->all()),
 
             // ⚠️ این چهار فیلد **در هیچ پاسخی نمی‌آمدند** — نه اینجا، نه در
             // داشبورد، نه در هیچ ریسورسِ دیگری (کلِ مخزن گرفته شد).

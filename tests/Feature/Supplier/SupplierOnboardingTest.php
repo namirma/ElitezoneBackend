@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Supplier;
 
-use App\Models\SupplierActivityCategory;
 use App\Models\SupplierDocument;
 use App\Models\SupplierProfile;
 use App\Models\User;
@@ -14,6 +13,7 @@ use Illuminate\Support\Facades\Storage;
 use Laratrust\Models\Role;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Concerns\BuildsSupplierQualification;
 use Tests\Concerns\GrantsAdminPermissions;
 use Tests\TestCase;
 
@@ -30,7 +30,7 @@ use Tests\TestCase;
  */
 class SupplierOnboardingTest extends TestCase
 {
-    use DatabaseTransactions, GrantsAdminPermissions;
+    use BuildsSupplierQualification, DatabaseTransactions, GrantsAdminPermissions;
 
     private User $applicant;
 
@@ -167,11 +167,9 @@ class SupplierOnboardingTest extends TestCase
 
         // ویرایشِ پروفایل = درخواستِ دوباره؛ دلیلِ قبلی باید برود، وگرنه ادمین
         // متنی را می‌بیند که دیگر صدق نمی‌کند.
-        $category = SupplierActivityCategory::create(['name' => 'میلگرد '.uniqid()]);
-        $this->postJson('/api/profile/supplier', [
+        $this->postJson('/api/profile/supplier', $this->qualificationPayload([
             'company' => 'شرکت اصلاح‌شده',
-            'activity_category_id' => [$category->id],
-        ])->assertOk();
+        ]))->assertOk();
 
         $fresh = SupplierProfile::where(SupplierProfile::USER_ID, $this->applicant->id)->firstOrFail();
         $this->assertSame(SupplierProfile::STATUS_PENDING, $fresh->{SupplierProfile::STATUS});

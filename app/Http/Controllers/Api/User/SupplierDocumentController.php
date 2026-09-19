@@ -51,16 +51,20 @@ class SupplierDocumentController extends Controller
     {
         $documents = $this->profile()->documents()->latest(SupplierDocument::ID)->get();
 
-        return success($documents->map(fn (SupplierDocument $d) => $this->present($d))->all());
+        return success($documents->map(fn (SupplierDocument $d) => self::present($d))->all());
     }
 
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
             'title' => ['required', 'string', 'max:150'],
+            // نوعِ مدرک (§۴-۱ اسپکِ یکپارچه‌سازی) — «آگهی تأسیس» برای شخصِ حقوقی
+            // شرطِ ارسالِ درخواست است، پس ادمین باید بداند کدام فایل است.
+            'kind' => ['sometimes', 'in:'.implode(',', SupplierDocument::KINDS)],
             // ‏svg عمداً نیست — همان قاعده‌ی سراسریِ آپلودها. اینجا دیسک خصوصی
             // است ولی فهرست را یکسان نگه می‌داریم تا استثنا لازم نشود توضیح داد.
-            'file' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:5120'],
+            // xlsx/xls/csv برای «فهرستِ محصولات» لازم شد؛ فهرست عمداً یکی است.
+            'file' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png,webp,xlsx,xls,csv', 'max:5120'],
         ], [
             'file.required' => __('supplier.documents.file_required'),
             'file.mimes' => __('supplier.documents.file_type'),
@@ -78,13 +82,14 @@ class SupplierDocumentController extends Controller
 
         $document = $profile->documents()->create([
             SupplierDocument::TITLE => $data['title'],
+            SupplierDocument::KIND => $data['kind'] ?? SupplierDocument::KIND_OTHER,
             SupplierDocument::PATH => $path,
             SupplierDocument::ORIGINAL_NAME => $file->getClientOriginalName(),
             SupplierDocument::MIME_TYPE => $file->getMimeType() ?? $file->getClientMimeType(),
             SupplierDocument::SIZE => $file->getSize(),
         ]);
 
-        return created($this->present($document), __('supplier.documents.uploaded'));
+        return created(self::present($document), __('supplier.documents.uploaded'));
     }
 
     public function destroy(SupplierDocument $document): JsonResponse
@@ -135,11 +140,12 @@ class SupplierDocumentController extends Controller
     }
 
     /** @return array<string, mixed> */
-    private function present(SupplierDocument $document): array
+    public static function present(SupplierDocument $document): array
     {
         return [
             'id' => $document->getKey(),
             SupplierDocument::TITLE => $document->{SupplierDocument::TITLE},
+            SupplierDocument::KIND => $document->{SupplierDocument::KIND},
             SupplierDocument::ORIGINAL_NAME => $document->{SupplierDocument::ORIGINAL_NAME},
             SupplierDocument::MIME_TYPE => $document->{SupplierDocument::MIME_TYPE},
             SupplierDocument::SIZE => $document->{SupplierDocument::SIZE},

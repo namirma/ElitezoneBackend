@@ -43,6 +43,43 @@ class SupplierProfile extends Model
 
     const COMPANY = 'company';
 
+    // ── درخواستِ احرازِ صلاحیت (§۴-۱ `SUPPLIER_CONSOLIDATION_2026-09-19.md`) ──
+    // شخصِ حقوقی/کارخانه‌ی ایرانی. همه fillable‌اند چون خودِ متقاضی می‌نویسد؛
+    // اعتبارسنجی در `StoreSupplierProfileRequest`.
+    const ENTITY_TYPE = 'entity_type';
+
+    const ENTITY_COMPANY = 'company';
+
+    const ENTITY_INDIVIDUAL = 'individual';
+
+    const NATIONAL_ID = 'national_id';
+
+    const REGISTRATION_NUMBER = 'registration_number';
+
+    const ECONOMIC_CODE = 'economic_code';
+
+    const REPRESENTATIVE_NAME = 'representative_name';
+
+    const REPRESENTATIVE_NATIONAL_CODE = 'representative_national_code';
+
+    const LANDLINE = 'landline';
+
+    const PROVINCE_ID = 'province_id';
+
+    const CITY_ID = 'city_id';
+
+    const FACTORY_ADDRESS = 'factory_address';
+
+    const POSTAL_CODE = 'postal_code';
+
+    const IBAN = 'iban';
+
+    /** آخرین باری که متقاضی درخواستش را ارسال کرد (draft/needs_correction/rejected → pending). */
+    const SUBMITTED_AT = 'submitted_at';
+
+    /** آخرین تصمیمِ ادمین (approve/reject/request-correction). */
+    const REVIEWED_AT = 'reviewed_at';
+
     /** +%TC: کمیسیون روی هزینه حمل اعمال می‌شود؟ (پیش‌فرض: بله) */
     const TRANS_COMMISSION = 'trans_commission';
 
@@ -52,7 +89,13 @@ class SupplierProfile extends Model
     /** وضعیت احراز سوپلایر — نقش supplier فقط پس از تأیید ادمین متصل می‌شود. */
     const STATUS = 'status';
 
+    /** انتخابِ نقش انجام شده ولی درخواست هنوز ارسال نشده — در صفِ ادمین نیست. */
+    const STATUS_DRAFT = 'draft';
+
     const STATUS_PENDING = 'pending';
+
+    /** ادمین اصلاح خواسته؛ دلیل در `rejection_reason`. ویرایش و ارسالِ دوباره → pending. */
+    const STATUS_NEEDS_CORRECTION = 'needs_correction';
 
     const STATUS_APPROVED = 'approved';
 
@@ -103,6 +146,18 @@ class SupplierProfile extends Model
         self::WEBSITE,
         self::WEBSITE_NOT_RELATED,
         self::COMPANY,
+        self::ENTITY_TYPE,
+        self::NATIONAL_ID,
+        self::REGISTRATION_NUMBER,
+        self::ECONOMIC_CODE,
+        self::REPRESENTATIVE_NAME,
+        self::REPRESENTATIVE_NATIONAL_CODE,
+        self::LANDLINE,
+        self::PROVINCE_ID,
+        self::CITY_ID,
+        self::FACTORY_ADDRESS,
+        self::POSTAL_CODE,
+        self::IBAN,
         // این دو **برخلافِ** ردیف زیر عمداً fillable هستند: خودِ تأمین‌کننده
         // تنظیمشان می‌کند (بند ۴.۳)، نه ادمین. گاردهای «باید در آینده باشد» و
         // «کاهش ممنوع» در `UpdateSupplierReserveTimeRequest` اعمال می‌شوند.
@@ -133,11 +188,31 @@ class SupplierProfile extends Model
         return $this->{self::STATUS} === self::STATUS_APPROVED;
     }
 
+    /**
+     * آیا ذخیره‌ی فرم یعنی «ارسالِ درخواست»؟ فقط از این سه وضعیت به صف می‌رود؛
+     * پروفایلِ approved با ویرایش تأییدش را از دست نمی‌دهد و pending از قبل در صف است.
+     */
+    public function isSubmittable(): bool
+    {
+        return in_array($this->{self::STATUS}, [
+            self::STATUS_DRAFT,
+            self::STATUS_REJECTED,
+            self::STATUS_NEEDS_CORRECTION,
+        ], true);
+    }
+
+    public function isCompany(): bool
+    {
+        return $this->{self::ENTITY_TYPE} !== self::ENTITY_INDIVIDUAL;
+    }
+
     /** @var array<string, string> */
     protected $casts = [
         self::TRANS_COMMISSION => 'boolean',
         self::TRANS_VAT => 'boolean',
         self::RESERVE_TIME => 'datetime',
+        self::SUBMITTED_AT => 'datetime',
+        self::REVIEWED_AT => 'datetime',
         self::RESERVE_AUTO_EXTEND_MINUTES => 'integer',
         self::RESERVE_GRACE_HOURS => 'integer',
     ];

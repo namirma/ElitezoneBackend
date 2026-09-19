@@ -30,6 +30,30 @@ class SupplierDocument extends Model
 
     public const TITLE = 'title';
 
+    /** نوعِ مدرک — ادمین با همین می‌فهمد «آگهی تأسیس» کدام فایل است (§۴-۱ اسپکِ یکپارچه‌سازی). */
+    public const KIND = 'kind';
+
+    public const KIND_GAZETTE = 'gazette';
+
+    public const KIND_LICENSE = 'license';
+
+    public const KIND_ISO = 'iso';
+
+    public const KIND_REPRESENTATIVE_LETTER = 'representative_letter';
+
+    public const KIND_PRODUCT_LIST = 'product_list';
+
+    public const KIND_OTHER = 'other';
+
+    public const KINDS = [
+        self::KIND_GAZETTE,
+        self::KIND_LICENSE,
+        self::KIND_ISO,
+        self::KIND_REPRESENTATIVE_LETTER,
+        self::KIND_PRODUCT_LIST,
+        self::KIND_OTHER,
+    ];
+
     public const PATH = 'path';
 
     public const ORIGINAL_NAME = 'original_name';
@@ -41,6 +65,7 @@ class SupplierDocument extends Model
     protected $fillable = [
         self::SUPPLIER_PROFILE_ID,
         self::TITLE,
+        self::KIND,
         self::PATH,
         self::ORIGINAL_NAME,
         self::MIME_TYPE,

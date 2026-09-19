@@ -126,7 +126,8 @@ if (config('features.product_reviews')) {
 Route::middleware(['optional.sanctum', 'attach.price.category'])->group(function () {
     Route::prefix('cart')->controller(CartController::class)->group(function () {
         Route::get('/', 'getCart');
-        Route::post('/items', 'addToCart');
+        // تأمین‌کننده خریدار نیست (اسپکِ یکپارچه‌سازی §۴-۲) — همان گیتِ pay/reserve.
+        Route::post('/items', 'addToCart')->middleware('not.supplier');
         Route::patch('/items/{item}', 'updateCartItem');
         Route::delete('/items/{item}', 'removeCartItem');
         Route::patch('/filters', 'updateCartFilters');
@@ -155,8 +156,9 @@ Route::middleware(['auth:sanctum', 'attach.price.category'])->group(function () 
         Route::get('/payment-options', 'paymentOptions');
         // شاخه‌ی الف/ب و شاخه‌ی ج (بند ۳.۳). هر دو سفارش را **می‌سازند** — پیش
         // از اینها هیچ رکورد سفارشی وجود ندارد. idempotency چون عملیات مالی‌اند.
-        Route::post('/pay', 'pay')->middleware(['idempotency', 'throttle:financial', EnsureRoleIsSelected::class]);
-        Route::post('/reserve', 'reserve')->middleware(['idempotency', 'throttle:financial', EnsureRoleIsSelected::class]);
+        // `not.supplier`: حسابِ تأمین‌کننده حسابِ فروش است و خرید نمی‌کند (§۴-۲ اسپکِ یکپارچه‌سازی).
+        Route::post('/pay', 'pay')->middleware(['idempotency', 'throttle:financial', 'not.supplier', EnsureRoleIsSelected::class]);
+        Route::post('/reserve', 'reserve')->middleware(['idempotency', 'throttle:financial', 'not.supplier', EnsureRoleIsSelected::class]);
         // پیش‌نمایش کد تخفیف (throttle تا brute-force کد ممکن نباشد)
         Route::post('/coupon-preview', 'couponPreview')->middleware('throttle:10,1');
 
@@ -167,7 +169,7 @@ Route::middleware(['auth:sanctum', 'attach.price.category'])->group(function () 
         // احراز هویت گاردِ دسترسی است و `assertPayableBy` تطبیق را می‌سنجد.
         Route::get('/pay-for/{cart}', 'showPaymentLink');
         Route::post('/pay-for/{cart}', 'payForBeneficiary')
-            ->middleware(['idempotency', 'throttle:financial', EnsureRoleIsSelected::class]);
+            ->middleware(['idempotency', 'throttle:financial', 'not.supplier', EnsureRoleIsSelected::class]);
         // ── لغوِ لینکِ پرداخت (تصمیم مدیریت ۲۰۲۶-۰۹-۱۴، گزینه‌ی ب) ─────────────
         // تا لینک باز است سبد قفل است (`CartResolver::resolveForMutation` ۴۰۹
         // می‌دهد)؛ این تنها راهِ بازکردنش است. بی‌اثر روی سبدِ بدونِ لینک.

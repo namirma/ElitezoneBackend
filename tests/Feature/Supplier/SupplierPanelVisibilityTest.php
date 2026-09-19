@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Laratrust\Models\Role;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Concerns\BuildsSupplierQualification;
 use Tests\TestCase;
 
 /**
@@ -31,7 +32,7 @@ use Tests\TestCase;
  */
 class SupplierPanelVisibilityTest extends TestCase
 {
-    use DatabaseTransactions;
+    use BuildsSupplierQualification, DatabaseTransactions;
 
     private User $supplier;
 
@@ -132,13 +133,11 @@ class SupplierPanelVisibilityTest extends TestCase
     {
         $applicant = User::factory()->create();
         $this->profileFor($applicant, [SupplierProfile::STATUS => SupplierProfile::STATUS_REJECTED]);
-        $category = SupplierActivityCategory::create(['name' => 'میلگرد '.uniqid()]);
 
         Sanctum::actingAs($applicant);
-        $this->postJson('/api/profile/supplier', [
+        $this->postJson('/api/profile/supplier', $this->qualificationPayload([
             'company' => 'شرکت اصلاح‌شده',
-            'activity_category_id' => [$category->id],
-        ])->assertOk();
+        ]))->assertOk();
 
         $this->assertSame(
             SupplierProfile::STATUS_PENDING,
@@ -151,13 +150,11 @@ class SupplierPanelVisibilityTest extends TestCase
     public function editing_an_approved_profile_does_not_drop_the_approval(): void
     {
         $this->profileFor($this->supplier, [SupplierProfile::STATUS => SupplierProfile::STATUS_APPROVED]);
-        $category = SupplierActivityCategory::create(['name' => 'ورق '.uniqid()]);
 
         Sanctum::actingAs($this->supplier);
-        $this->postJson('/api/profile/supplier', [
+        $this->postJson('/api/profile/supplier', $this->qualificationPayload([
             'company' => 'نامِ تازه',
-            'activity_category_id' => [$category->id],
-        ])->assertOk();
+        ]))->assertOk();
 
         $this->assertSame(
             SupplierProfile::STATUS_APPROVED,

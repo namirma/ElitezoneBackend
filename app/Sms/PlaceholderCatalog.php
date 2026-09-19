@@ -42,6 +42,7 @@ final class PlaceholderCatalog
         'old_segment' => ['بخشِ قبلیِ مشتری در تحلیل RFM', 'loyal'],
         'new_segment' => ['بخشِ جدیدِ مشتری در تحلیل RFM', 'at_risk'],
         'status' => ['وضعیتِ تراکنش پس از تصمیم ادمین', 'confirmed'],
+        'panel_url' => ['نشانیِ پنلِ تأمین‌کننده (config services.supplier_panel.url)', 'https://panel.elitezone.me'],
     ];
 
     /** @var array<string, array<string, array{0: string, 1: string}>> key => name => [meaning, example] */

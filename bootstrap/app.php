@@ -11,6 +11,7 @@ use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\EnsureUserIsEliteYAR;
 use App\Http\Middleware\EnsureUserIsEmployer;
+use App\Http\Middleware\EnsureUserIsNotSupplier;
 use App\Http\Middleware\EnsureUserIsSupplier;
 use App\Http\Middleware\Idempotency;
 use App\Http\Middleware\OptionalSanctum;
@@ -169,6 +170,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role.elite_yar' => EnsureUserIsEliteYAR::class,
             'role.employer' => EnsureUserIsEmployer::class,
             'role.supplier' => EnsureUserIsSupplier::class,
+            'not.supplier' => EnsureUserIsNotSupplier::class,
             'admin.permission' => EnsureAdminHasPermission::class,
             'admin.level' => EnsureAdminHasLevel::class,
             'admin.ip' => RestrictAdminByIp::class,

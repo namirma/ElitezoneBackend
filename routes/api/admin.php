@@ -209,8 +209,14 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
     Route::controller(AdminSupplierController::class)->prefix('suppliers')->middleware('admin.permission:manage-users')->group(function () {
         Route::get('/', 'index');
         Route::get('/{user}', 'show');
-        Route::post('/{user}/approve', 'approve'); // اتصال نقش supplier — تنها مسیر مجاز
-        Route::post('/{user}/reject', 'reject');
+        // هر سه تصمیم به متقاضی پیامک می‌دهند (RateLimitCoverageTest): سقفِ ۳۰ در دقیقه.
+        Route::post('/{user}/approve', 'approve')->middleware('throttle:30,1'); // اتصال نقش supplier — تنها مسیر مجاز
+        Route::post('/{user}/reject', 'reject')->middleware('throttle:30,1');
+        // «نیاز به اصلاح» — حالتِ سومِ صفِ صلاحیت (اسپکِ یکپارچه‌سازی §۴-۵): نقش وصل
+        // نمی‌شود، متقاضی دلیل را می‌بیند و با ارسالِ دوباره به صف برمی‌گردد.
+        Route::post('/{user}/request-correction', 'requestCorrection')->middleware('throttle:30,1');
+        // مدارکِ متقاضی از دیسکِ خصوصی — همان فایل، از مسیرِ ادمین (بدونِ حدسِ نامِ فایل).
+        Route::get('/{user}/documents/{document}/file', 'downloadDocument')->whereNumber('document');
         // دو لایه، چون دو پرسشِ متفاوت‌اند و هر دو باید پاس شوند:
         //
         //   manage-financial → «به کدام بخش دسترسی دارد». `updateFormula` فلگ‌های
