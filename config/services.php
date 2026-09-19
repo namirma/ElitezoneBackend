@@ -36,8 +36,12 @@ return [
 
     // پنلِ تأمین‌کننده (SupplierPanel، پورت ۵۱۷۵ در dev) — لینکش در پیامکِ «تأییدِ صلاحیت»
     // می‌رود. هرگز env() را مستقیم نخوانید؛ config('services.supplier_panel.url').
+    //
+    // پیش‌فرضِ localhost فقط روی `local`: روی سروری که این کلید را ندارد، تأمین‌کننده‌ی
+    // واقعی پیامکی با لینکِ localhost می‌گرفت — لینکی که کار نمی‌کند و مشکوک به نظر
+    // می‌رسد. پیامِ بی‌لینک از لینکِ غلط بهتر است.
     'supplier_panel' => [
-        'url' => env('SUPPLIER_PANEL_URL', 'http://localhost:5175'),
+        'url' => env('SUPPLIER_PANEL_URL', env('APP_ENV') === 'local' ? 'http://localhost:5175' : null),
     ],
 
     'tesna' => [
