@@ -139,7 +139,7 @@ class ReservationTransFlagSnapshotTest extends TestCase
     #[Test]
     public function the_backfill_fixes_open_reservations_and_leaves_paid_orders_alone(): void
     {
-        $migration = require database_path('migrations/2026_09_16_100000_snapshot_trans_flags_on_open_reservations.php');
+        $migration = require database_path('migrations/2026_09_16_110100_snapshot_trans_flags_on_open_reservations.php');
 
         // A reservation placed before the fix: the flags hold the column default.
         $this->order->forceFill([Order::TRANS_COMMISSION => true, Order::TRANS_VAT => true])->save();
