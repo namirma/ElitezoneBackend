@@ -17,9 +17,8 @@ use App\Models\OrderItem;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
-use App\Services\Financial\DebtEngine;
 use App\Services\Financial\SettlementCalculatorService;
-use App\Services\Financial\WalletTransactionEngine;
+use App\Services\Financial\SupplierDebtHandler;
 use App\Services\Invoice\InvoiceGenerator;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Event;
@@ -130,7 +129,7 @@ class WeighbridgeCouponSettlementTest extends TestCase
 
         // تأمین‌کننده شارژ می‌کند و کرون هر دو لِگ را اجرا می‌کند.
         $this->ledger($this->supplier, $supplierBalance, WalletTransaction::TYPE_DEPOSIT);
-        app(CheckSupplierBalancesJob::class)->handle(app(WalletTransactionEngine::class), app(DebtEngine::class));
+        app(CheckSupplierBalancesJob::class)->handle(app(SupplierDebtHandler::class));
 
         $this->assertBuyerPaidTheFinalInvoice($order->refresh());
         $this->assertLedgerIsHealthy($order);
