@@ -1996,7 +1996,13 @@ single-line behaviour is unchanged.
 (`LedgerReconciler::mispricedOrders()`): it recomputes the effective basis the same
 way the code does — including the `first()` fallback — so it also flags **older**
 orders that have no snapshot. Tolerance is `ops.financial.pricing_tolerance`
-(1,000 Rials) because the average is rounded to 2 decimals. Note the ledger stays
+(1,000 Rials) **plus `0.5 × weight_before_scale`**. That second half is not slack:
+`official_price` is a price *per kilo* and its column became `decimal(20,0)` in the
+integer-rial migration, so a correct order rounds by up to half a rial per kilo — 5,000
+Rials on a 10-tonne order, well past the flat tolerance. Without it every heavy
+multi-line order whose weighted average is not a whole rial was reported, and an alert
+that always fires is not an alert. A genuinely wrong basis (the first line's price) is
+off by thousands of Rials *per kilo* and is still reported. Note the ledger stays
 balanced when this bug fires — the wrong POO is distributed consistently across
 wallets — so the wallet-replay check cannot see it. That is why it needed its own
 invariant. Pinned by `Financial/OrderPricingBasisTest` and

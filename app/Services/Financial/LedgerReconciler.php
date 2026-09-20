@@ -378,7 +378,16 @@ final class LedgerReconciler
             // WHERE و نه HAVING: کوئریِ بیرونی هیچ GROUP BY ندارد (تجمیع داخلِ
             // زیرکوئری‌های همبسته است)، و MariaDB در آن حالت HAVING روی ستونِ
             // غیرگروهی را رد می‌کند: «Non-grouping field used in HAVING clause».
-            ->whereRaw("ABS(($effectiveOp * o.weight_before_scale) - $goodsValue) > ?", [$tolerance])
+            //
+            // ‏`+ 0.5 × وزن` سهمِ **ثابت‌شده‌ی** گردکردن است، نه شل‌کردنِ آستانه:
+            // `official_price` قیمتِ هر کیلوست و ستونش از مهاجرتِ ریالِ صحیح
+            // `decimal(20,0)` است، پس تا نیم ریال در هر کیلو گرد می‌شود — روی ۱۰
+            // تن یعنی تا ۵٬۰۰۰ ریال، چند برابرِ آستانه‌ی ثابتِ ۱٬۰۰۰ ریالی. بدونِ
+            // این جمله هر سفارشِ چندردیفیِ سنگینی که میانگینِ وزنی‌اش رُند نباشد
+            // «بدقیمت» گزارش می‌شد؛ هشداری که همیشه می‌زند، هشدار نیست. مبنای
+            // واقعاً غلط (قیمتِ ردیفِ اول) هزاران ریال در هر کیلو فاصله دارد و
+            // همچنان گزارش می‌شود.
+            ->whereRaw("ABS(($effectiveOp * o.weight_before_scale) - $goodsValue) > ? + (0.5 * o.weight_before_scale)", [$tolerance])
             ->orderBy('o.id');
 
         if ($orderId !== null) {

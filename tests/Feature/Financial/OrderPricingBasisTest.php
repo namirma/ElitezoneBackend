@@ -138,6 +138,23 @@ class OrderPricingBasisTest extends TestCase
     }
 
     #[Test]
+    public function whole_rial_rounding_on_a_heavy_order_is_not_reported(): void
+    {
+        // `orders.official_price` از مهاجرتِ ریالِ صحیح `decimal(20,0)` است و
+        // `PlaceOrderAction` هم از `5e3306c` همان را گرد می‌کند. این گردکردنِ
+        // زیرِ یک ریال **در هر کیلو** است، پس روی ۱۰ تن تا ۵٬۰۰۰ ریال اختلاف
+        // می‌سازد — یعنی بالاتر از آستانه‌ی ثابتِ ۱٬۰۰۰ ریال، بی‌آنکه مبنای
+        // قیمت غلط باشد. آستانه باید سهمِ گردکردن را بشناسد وگرنه هر سفارشِ
+        // چندردیفیِ سنگین «بدقیمت» گزارش می‌شود و هشدار بی‌معنی می‌شود.
+        $lines = [['weight' => 3333, 'unit_price' => 100_001], ['weight' => 6667, 'unit_price' => 110_003]];
+        $goods = 3333 * 100_001 + 6667 * 110_003;
+
+        $order = $this->orderWithLines($lines, officialPrice: round($goods / 10_000));
+
+        $this->assertSame([], $this->reconciler->mispricedOrders($order->id));
+    }
+
+    #[Test]
     public function an_order_with_no_weight_is_skipped_rather_than_divided_by_zero(): void
     {
         $order = Order::factory()->create();
