@@ -90,7 +90,11 @@ final class PriceChangeApprovalGate
 
         return [
             'product_price_id' => $existing->getKey(),
-            'change_percent' => round($maxPercent, 2),
+            // «از صفر» درصد ندارد: `INF` از `json_encode` رد نمی‌شود و ساختنِ ردیفِ
+            // صف با `JsonEncodingException` ۵۰۰ می‌داد — یعنی دقیقاً همان قیمتی که
+            // باید به صف می‌رفت هرگز نمی‌رفت. `null` در پنل پنهان می‌ماند (قاعده‌ی
+            // صداقت)؛ `baseline_*` می‌گوید مبنا صفر بوده.
+            'change_percent' => is_finite($maxPercent) ? round($maxPercent, 2) : null,
             ...$payload,
         ];
     }

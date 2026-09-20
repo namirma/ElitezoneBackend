@@ -45,12 +45,24 @@ class CheckoutController extends Controller
     /**
      * پیش‌نمایش کد تخفیف قبل از ثبت سفارش — اعتبارسنجی + نوع و مقدار.
      * اعمال واقعی هنگام placeOrder (با coupon_code) و پرداخت انجام می‌شود.
+     *
+     * اعتبارِ خودِ کد کافی نیست: کوپنی که تأمین‌کننده‌اش با سبدِ فعلی نمی‌خواند
+     * (مثلاً کوپنِ الیت‌یاری روی سبدِ بی‌الیت‌یار) این‌جا «معتبر» می‌گفت، روی سبد
+     * می‌نشست و تازه `pay` ردش می‌کرد (QA 2026-09-15، یافته‌ی ۱). حالا همان گاردِ
+     * `payment-options`/`pay` را می‌زند — با همان پیام، همان لحظه. بدونِ سبد چیزی
+     * برای سنجیدن نیست و فقط خودِ کد سنجیده می‌شود.
      */
-    public function couponPreview(Request $request, CouponService $couponService): JsonResponse
+    public function couponPreview(Request $request, CouponService $couponService, CartCheckoutTotals $totals): JsonResponse
     {
         $validated = $request->validate(['code' => ['required', 'string', 'max:100']]);
 
         $coupon = $couponService->validateForCheckout(Auth::user(), $validated['code']);
+
+        $cart = Cart::queryForUser(Auth::id())->with('items.factory')->first();
+
+        if ($cart !== null) {
+            $totals->assertCouponFundableOn($coupon, $cart);
+        }
 
         return success([
             'code' => $coupon->code,

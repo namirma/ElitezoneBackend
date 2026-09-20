@@ -7,6 +7,7 @@ namespace App\Services\Cart;
 use App\DataTransferObjects\Pricing\PricingContextData;
 use App\Exceptions\BusinessException;
 use App\Models\Cart;
+use App\Models\Coupon;
 use App\Models\PriceFilterCategory;
 use App\Models\User;
 use App\Services\Financial\SettlementCalculatorService;
@@ -81,9 +82,14 @@ final class CartCheckoutTotals
      */
     public function breakdownFor(Cart $cart, ?User $user, ?int $addressId = null): array
     {
-        $gross = $this->grossTotalFor($cart);
+        // ریالِ صحیح در مرز، نه فقط روی جمع: `gross` از قیمت‌گذاریِ ۴رقمی و
+        // `shipping` از نرخِ ۲رقمی می‌آیند. تا پیش از این فقط `final_amount` گرد
+        // می‌شد، پس `goods + shipping − coupon` روی سیم با خودِ `final_amount`
+        // نمی‌خواند و هر مصرف‌کننده‌ای که اجزا را جمع می‌زد عددِ دیگری می‌گرفت.
+        $gross = round($this->grossTotalFor($cart));
 
         [$shipping, $included] = $this->shippingFor($cart, $user, $addressId);
+        $shipping = round($shipping);
 
         $withShipping = Money::add((string) $gross, (string) $shipping);
         ['discount' => $discount, 'error' => $couponError] = $this->couponFor($cart, $user, Money::toFloat($withShipping));
@@ -95,8 +101,7 @@ final class CartCheckoutTotals
             'discount' => $discount,
             // چرا کوپنِ روی سبد صفر شمرده شد — تا فرانت به‌جای «۰ ریال» دلیل را بگوید.
             'coupon_error' => $couponError,
-            // ریالِ صحیح — تخفیف از قبل گرد شده، ولی خودِ جمع هم صراحتاً گرد
-            // می‌شود تا هیچ مصرف‌کننده‌ای عددِ اعشاری نبیند.
+            // اجزا و تخفیف همه صحیح‌اند؛ گردکردنِ جمع فقط برای اطمینان می‌ماند.
             'final_amount' => max(0.0, round(Money::toFloat(Money::sub($withShipping, (string) $discount)))),
         ];
     }
@@ -174,9 +179,8 @@ final class CartCheckoutTotals
      * همان که `PlaceOrderAction::assertCouponFundable` از راهِ `plan()` می‌زند).
      * کوپنِ الیت‌یاری روی سبدِ بی‌الیت‌یار دیگر «۰ ریال» نمی‌شود؛ صفر با پیام.
      *
-     * الیت‌یارِ سفارش در پیش‌نمایش `null` است: `payment-options` ورودیِ
-     * `elite_yar_user_id` ندارد، و در `PlaceOrderAction` هم پرداخت‌کننده‌ای که
-     * خودش الیت‌یار است «کمیسیون‌گیر» شمرده نمی‌شود — پس همان تصمیمِ ثبت است.
+     * الیت‌یارِ سفارش از خودِ سبد خوانده می‌شود (`commissionedEliteYARFor`) —
+     * همان قاعده‌ای که ثبت دارد، پس پیش‌نمایش و ثبت یک تصمیم می‌گیرند.
      *
      * @return array{discount: float, error: ?string}
      */
@@ -190,10 +194,7 @@ final class CartCheckoutTotals
 
         try {
             $coupon = $this->coupons->validateForCheckout($user, $code);
-
-            $supplierId = $cart->{Cart::SUPPLIER_USER_ID}
-                ?? $cart->items->first()?->factory?->supplier_user_id;
-            $this->funding->assertFundersMatch($coupon, $supplierId !== null ? (int) $supplierId : null, null);
+            $this->assertCouponFundableOn($coupon, $cart);
 
             return ['discount' => $this->coupons->calculateDiscount($coupon, $payable), 'error' => null];
         } catch (BusinessException $e) {
@@ -201,5 +202,49 @@ final class CartCheckoutTotals
         } catch (\Throwable) {
             return ['discount' => 0.0, 'error' => null];
         }
+    }
+
+    /**
+     * هویتِ تأمین‌کننده‌های کوپن با این سبد می‌خواند؟ — همان گاردی که `couponFor()`
+     * برای پیش‌نمایش و `PlaceOrderAction` از راهِ `plan()` برای ثبت می‌زند.
+     *
+     * عمومی است تا `POST checkout/coupon-preview` هم همین را بپرسد: کدِ «معتبر»ی
+     * که سبدِ فعلی نمی‌تواند تأمینش کند باید همان لحظه و با همان پیام رد شود،
+     * نه بعد از نشستن روی سبد (QA 2026-09-15، یافته‌ی ۱). یک قاعده، یک جا.
+     *
+     * @throws BusinessException
+     */
+    public function assertCouponFundableOn(Coupon $coupon, Cart $cart): void
+    {
+        $supplierId = $cart->{Cart::SUPPLIER_USER_ID}
+            ?? $cart->items->first()?->factory?->supplier_user_id;
+
+        $this->funding->assertFundersMatch(
+            $coupon,
+            $supplierId !== null ? (int) $supplierId : null,
+            $this->commissionedEliteYARFor($cart),
+        );
+    }
+
+    /**
+     * الیت‌یارِ کمیسیون‌گیرِ این سبد، به همان قاعده‌ی `PlaceOrderAction`:
+     * الیت‌یارِ مؤثر = صاحبِ سبد **اگر** `isEliteYAR()` باشد (بدنه‌ی `pay-for` هیچ
+     * `elite_yar_user_id`ای ندارد)، و کمیسیون‌گیر یعنی «ست‌شده و غیر از پرداخت‌کننده».
+     * در خریدِ مستقیم پرداخت‌کننده خودِ صاحبِ سبد است، پس هیچ‌کس — کوپنِ الیت‌یاری
+     * روی آن رد می‌شود، همان‌طور که ثبت ردش می‌کند. در سبدِ لینک‌شده برای کارفرما
+     * (`payForBeneficiary`) کارفرما می‌پردازد، پس صاحبِ سبد — به شرطِ همان نقشی
+     * که ثبت می‌سنجد؛ پیش از این پیش‌نمایشِ کارفرما (`pay-for/{cart}`) کوپنِ همان
+     * الیت‌یار را صفر می‌شمرد در حالی که ثبت آن را کسر می‌کرد — کارفرما ناچار بود
+     * بیش از مبلغِ واقعی شارژ کند.
+     */
+    private function commissionedEliteYARFor(Cart $cart): ?int
+    {
+        if (! $cart->isForBeneficiary()) {
+            return null;
+        }
+
+        $cart->loadMissing('user');
+
+        return $cart->user?->isEliteYAR() ? (int) $cart->{Cart::USER_ID} : null;
     }
 }

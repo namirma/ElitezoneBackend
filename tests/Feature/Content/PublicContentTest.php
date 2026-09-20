@@ -117,5 +117,12 @@ class PublicContentTest extends TestCase
         // فلگ‌های ماژول همیشه حاضرند (بولی)، تا سایت بخشِ بسته را اصلاً صدا نزند.
         $this->assertSame((bool) config('features.product_reviews'), $data['features']['product_reviews']);
         $this->assertIsBool($data['features']['order_surveys']);
+
+        // هر دو شاخه — phpunit.xml فلگ‌ها را روشن می‌کند، پس «خاموش» را جداگانه
+        // می‌سنجیم؛ وگرنه `true`ِ ثابت در کنترلر هم از این تست رد می‌شد.
+        config(['features.product_reviews' => false, 'features.order_surveys' => false]);
+        $off = $this->getJson('/api/settings/public')->assertOk()->json('data.features');
+        $this->assertFalse($off['product_reviews']);
+        $this->assertFalse($off['order_surveys']);
     }
 }

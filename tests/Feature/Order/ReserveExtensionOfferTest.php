@@ -179,6 +179,13 @@ class ReserveExtensionOfferTest extends TestCase
         );
         $this->assertSame($original->toIso8601String(), $fresh->{Order::RESERVE_DEADLINE_ORIGINAL}->toIso8601String());
         $this->assertSame(OrderExtensionOffer::STATUS_ACCEPTED, $offer->fresh()->{OrderExtensionOffer::STATUS});
+        // مقدارِ **ذخیره‌شده** پس از save()ِ پذیرش دست‌نخورده است — ستونِ
+        // `proposed_until` هم مثلِ `respond_until` در MariaDB خودبه‌خود
+        // `ON UPDATE current_timestamp` می‌گرفت (مایگریشنِ 2026_09_16_090000).
+        $this->assertSame(
+            $offer->{OrderExtensionOffer::PROPOSED_UNTIL}->toIso8601String(),
+            $offer->fresh()->{OrderExtensionOffer::PROPOSED_UNTIL}->toIso8601String(),
+        );
 
         // تأمین‌کننده خبر می‌گیرد.
         $this->assertSame(1, UserNotification::where(UserNotification::USER_ID, $this->supplier->id)->count());

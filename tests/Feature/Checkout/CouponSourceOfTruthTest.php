@@ -12,11 +12,13 @@ use App\Models\CouponFunder;
 use App\Models\FactoryStock;
 use App\Models\Order;
 use App\Models\OrderUnit;
+use App\Models\Role;
 use App\Models\Setting;
 use App\Models\ShippingMethod;
 use App\Models\SupplierProfile;
 use App\Models\User;
 use App\Models\Wallet;
+use App\Services\Cart\CartCheckoutTotals;
 use App\Services\Invoice\InvoiceGenerator;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Cache;
@@ -232,6 +234,111 @@ class CouponSourceOfTruthTest extends TestCase
 
         // ثبت هم با همان پیام رد می‌شود — دو مسیر، یک تصمیم.
         $this->pay()->assertStatus(422)->assertJsonPath('message', $data['breakdown']['coupon_error']);
+
+        // و خودِ پیش‌نمایشِ کد (لحظه‌ی واردکردن در overlay) هم — سه مسیر، همان یک تصمیم.
+        // تا پیش از این «کد معتبر است» می‌گفت و کد روی سبد می‌نشست.
+        $this->postJson('/api/checkout/coupon-preview', ['code' => $coupon->code])
+            ->assertStatus(422)
+            ->assertJsonPath('message', $data['breakdown']['coupon_error']);
+    }
+
+    #[Test]
+    public function the_coupon_preview_refuses_another_suppliers_coupon_with_the_placement_message(): void
+    {
+        $other = User::factory()->create();
+        Wallet::create([Wallet::USER_ID => $other->id, Wallet::BALANCE => 50_000_000, Wallet::BALANCE_HOLD => 0]);
+        SupplierProfile::create([SupplierProfile::USER_ID => $other->id]);
+
+        $coupon = Coupon::create([
+            Coupon::CODE => 'OS-'.strtoupper(Str::random(6)),
+            Coupon::USER_ID => $this->buyer->id,
+            Coupon::TYPE => Coupon::TYPE_FIXED,
+            Coupon::AMOUNT => 1_000_000,
+        ]);
+        $coupon->funders()->create([
+            CouponFunder::FUNDER_TYPE => CouponFunder::TYPE_SUPPLIER,
+            CouponFunder::FUNDER_USER_ID => $other->id,
+            CouponFunder::SHARE_PERCENT => 100,
+            CouponFunder::STATUS => CouponFunder::STATUS_ACCEPTED,
+            CouponFunder::RESPONDED_AT => now(),
+        ]);
+
+        // سبدِ تأمین‌کننده‌ی این تست (نه `$other`) — کد هنوز روی سبد ننشسته.
+        $this->fillCart(10, null);
+        Sanctum::actingAs($this->buyer);
+
+        $preview = $this->postJson('/api/checkout/coupon-preview', ['code' => $coupon->code]);
+        $preview->assertStatus(422);
+        $this->assertStringContainsString('همان تأمین‌کننده', (string) $preview->json('message'));
+
+        // کوپنی که واقعاً مالِ همین سبد است همچنان می‌گذرد.
+        $ok = Coupon::create([
+            Coupon::CODE => 'MINE-'.strtoupper(Str::random(6)),
+            Coupon::USER_ID => $this->buyer->id,
+            Coupon::TYPE => Coupon::TYPE_FIXED,
+            Coupon::AMOUNT => 1_000_000,
+        ]);
+        $ok->funders()->create([
+            CouponFunder::FUNDER_TYPE => CouponFunder::TYPE_SUPPLIER,
+            CouponFunder::FUNDER_USER_ID => $this->supplierId,
+            CouponFunder::SHARE_PERCENT => 100,
+            CouponFunder::STATUS => CouponFunder::STATUS_ACCEPTED,
+            CouponFunder::RESPONDED_AT => now(),
+        ]);
+
+        $this->postJson('/api/checkout/coupon-preview', ['code' => $ok->code])
+            ->assertOk()
+            ->assertJsonPath('data.code', $ok->code);
+    }
+
+    /**
+     * قرینه‌ی یافته‌ی ۱ در مسیرِ «خرید برای دیگری»: صاحبِ سبد الیت‌یار است و کارفرما
+     * می‌پردازد، پس ثبت (`payForBeneficiary` → `PlaceOrderAction`) او را الیت‌یارِ
+     * کمیسیون‌گیر می‌شمارد و کوپنِ خودش را کسر می‌کند — ولی پیش‌نمایش با الیت‌یارِ
+     * `null` همان کوپن را صفر می‌شمرد؛ کارفرما مبلغِ بدونِ تخفیف می‌دید و ناچار بود
+     * بیش از مبلغِ واقعی شارژ کند. پیش‌نمایش حالا الیت‌یار را از خودِ سبد می‌خواند.
+     */
+    #[Test]
+    public function the_preview_counts_the_cart_owner_as_the_elite_yar_only_when_the_cart_is_for_a_beneficiary(): void
+    {
+        Wallet::where(Wallet::USER_ID, $this->buyer->id)->update([Wallet::BALANCE => 50_000_000]);
+
+        $coupon = Coupon::create([
+            Coupon::CODE => 'OWN-'.strtoupper(Str::random(6)),
+            Coupon::USER_ID => $this->buyer->id,
+            Coupon::TYPE => Coupon::TYPE_FIXED,
+            Coupon::AMOUNT => 1_000_000,
+        ]);
+        $coupon->funders()->create([
+            CouponFunder::FUNDER_TYPE => CouponFunder::TYPE_ELITE_YAR,
+            CouponFunder::FUNDER_USER_ID => $this->buyer->id,
+            CouponFunder::SHARE_PERCENT => 100,
+            CouponFunder::STATUS => CouponFunder::STATUS_ACCEPTED,
+            CouponFunder::RESPONDED_AT => now(),
+        ]);
+
+        $cart = $this->fillCart(10, $coupon->code);
+        $totals = app(CartCheckoutTotals::class);
+
+        // خریدِ مستقیم: صاحبِ سبد خودش می‌پردازد ⇒ کمیسیون‌گیری در کار نیست ⇒ رد.
+        $direct = $totals->couponFor($cart, $this->buyer, 9_900_000.0);
+        $this->assertSame(0.0, $direct['discount']);
+        $this->assertStringContainsString('الیت‌یار', (string) $direct['error']);
+
+        // سبدِ لینک‌شده برای کارفرما، ولی صاحبِ سبد نقشِ الیت‌یاری ندارد ⇒ ثبت
+        // (`$user->isEliteYAR()`) او را الیت‌یارِ سفارش نمی‌شمارد ⇒ پیش‌نمایش هم نه.
+        $cart->forceFill([Cart::BENEFICIARY_USER_ID => User::factory()->create()->id])->save();
+
+        $linkedNoRole = $totals->couponFor($cart->fresh(['items']), $this->buyer, 9_900_000.0);
+        $this->assertSame(0.0, $linkedNoRole['discount']);
+        $this->assertStringContainsString('الیت‌یار', (string) $linkedNoRole['error']);
+
+        // با نقش ⇒ صاحبِ سبد الیت‌یارِ سفارش است و کارفرما می‌پردازد ⇒ همان تصمیمِ ثبت.
+        $this->buyer->addRole(Role::firstOrCreate(['name' => 'engineer'], ['display_name' => 'engineer']));
+
+        $forEmployer = $totals->couponFor($cart->fresh(['items', 'user']), $this->buyer, 9_900_000.0);
+        $this->assertSame(1_000_000.0, $forEmployer['discount']);
+        $this->assertNull($forEmployer['error']);
     }
 
     #[Test]

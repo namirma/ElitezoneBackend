@@ -190,6 +190,43 @@ class PaymentBaseIncludesShippingTest extends TestCase
         );
     }
 
+    /**
+     * QA 2026-09-15 یافته‌ی ۲ (قرینه): پس از گردکردنِ `final_amount`، اجزای همان
+     * پاسخ (`goods_with_vat`، `shipping_with_vat`) اعشاری می‌ماندند و جمعِ اجزا
+     * با خودِ `final_amount` نمی‌خواند. نرخ‌های حمل ریالِ صحیح‌اند ولی وزنِ
+     * لجستیکی = تعداد × ضریبِ واحد، و ضریب می‌تواند اعشاری باشد («شاخه» = ۱٫۵
+     * کیلو): «۱٬۲۳۳ ریال × ۱۰٫۵ کیلو» کرایه‌ی اعشاری می‌سازد که عیناً به پایه
+     * می‌رسید — همه‌ی اعداد باید روی سیم ریالِ صحیح و جمع‌پذیر باشند.
+     */
+    #[Test]
+    public function every_breakdown_figure_on_the_wire_is_whole_rials_and_adds_up(): void
+    {
+        $address = $this->address();
+        $cart = $this->fillCart($address, 7);
+        OrderUnit::whereKey(array_key_first($cart->items->first()->{CartItem::QUANTITIES}))
+            ->update([OrderUnit::AMOUNT => 1.5]);
+        ShippingRate::create([
+            'factory_location_id' => $this->location->id,
+            'destination_province_id' => (int) $address->province_id,
+            'destination_city_id' => null,
+            'flat_cost' => 0,
+            'per_kg_cost' => 1_233,
+            'is_active' => true,
+        ]);
+
+        $data = $this->branchOptions();
+        $b = $data['breakdown'];
+
+        foreach (['goods_with_vat', 'shipping_with_vat', 'coupon_discount'] as $key) {
+            $this->assertSame(0.0, fmod((float) $b[$key], 1.0), "{$key} باید ریالِ صحیح باشد، نه {$b[$key]}");
+        }
+        $this->assertSame(0.0, fmod((float) $data['final_amount'], 1.0));
+        $this->assertSame(
+            (float) $b['goods_with_vat'] + (float) $b['shipping_with_vat'] - (float) $b['coupon_discount'],
+            (float) $data['final_amount']
+        );
+    }
+
     #[Test]
     public function the_branch_flips_when_the_wallet_covers_goods_but_not_freight(): void
     {

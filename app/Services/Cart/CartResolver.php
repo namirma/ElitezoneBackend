@@ -37,14 +37,26 @@ class CartResolver
         $this->syncContext($cart);
 
         // قفلِ تأمین‌کننده روی سبدِ خالی معنایی ندارد و فقط خریدِ بعدی را می‌بندد
-        // (QA 2026-09-15، سبد ۱۴۹: `releaseIfEmpty` فقط در حذفِ آیتم صدا زده می‌شد؛
-        // مسیرهای دیگرِ خالی‌شدن — ثبت سفارش، انقضا، حذفِ واریانت — قفل را جا
-        // می‌گذاشتند). هر resolve، اگر قفل هست و آیتمی نیست، آزادش می‌کند.
-        if ($cart->{Cart::SUPPLIER_USER_ID} !== null) {
-            $this->park->releaseIfEmpty($cart);
-        }
+        // (QA 2026-09-15، سبد ۱۴۹: `releaseIfEmpty` فقط در حذفِ آیتم صدا زده می‌شد).
+        // ثبتِ سفارش و انقضا خودِ ردیفِ سبد را پاک می‌کنند و قفلی جا نمی‌گذارند؛
+        // آنچه قفل را با سبدِ خالی جا می‌گذارد، حذفِ آیتم‌ها از **بیرونِ** اکشن‌های
+        // سبد است — cascade از حذفِ واریانت/کارخانه، یا ویرایشِ مستقیمِ دیتابیس.
+        // هر resolve، اگر قفل هست و آیتمی نیست، آزادش می‌کند (سبدِ مهمان هم).
+        // برای سبدِ کاربر این پیش از ادغامِ سبدِ مهمان هم در `loadOrCreateCart`
+        // اجرا می‌شود — ببینید چرا.
+        $this->releaseStaleLock($cart);
 
         return $cart;
+    }
+
+    private function releaseStaleLock(Cart $cart): void
+    {
+        // مهلتِ پارک هم مثلِ قفل: سبدی که با کارخانه‌ی بی‌تأمین‌کننده پارک شده ولی
+        // قفل نگرفته، اگر خالی شود `parked_until` را جا می‌گذارد و انقضا یک
+        // «سبدِ رهاشده»ی بی‌قلم اسنپ‌شات می‌گیرد.
+        if ($cart->{Cart::SUPPLIER_USER_ID} !== null || $cart->{Cart::PARKED_UNTIL} !== null) {
+            $this->park->releaseIfEmpty($cart);
+        }
     }
 
     /**
@@ -103,6 +115,12 @@ class CartResolver
             // هم از همان استفاده می‌کند تا سبدی که نمایش داده می‌شود همان سبدی باشد
             // که سفارش از رویش ثبت می‌شود.
             $cart = Cart::resolveForUser($userId);
+
+            // قفلِ کهنه‌ی سبدِ خالی باید **پیش از** ادغامِ سبدِ مهمان برود: وگرنه
+            // اقلامِ مهمان (که می‌توانند مالِ تأمین‌کننده‌ی دیگری باشند) زیرِ قفلِ
+            // تأمین‌کننده‌ی قبلی می‌نشینند، `releaseIfEmpty` دیگر سبد را خالی
+            // نمی‌بیند، و همان قفلِ کهنه با اقلامِ بیگانه می‌ماند.
+            $this->releaseStaleLock($cart);
             $this->mergeGuestCart($request, $cart);
 
             return $cart;
@@ -163,6 +181,14 @@ class CartResolver
         }
 
         $guestCart->delete();
+
+        // سبدی که حالا قلم دارد باید قفلِ تأمین‌کننده‌ی همان اقلام را داشته باشد —
+        // همان کاری که `AddToCartAction` برای قلمِ اول می‌کند. بدونِ این، سبدِ
+        // ادغام‌شده بی‌قفل می‌ماند و قلمِ تأمین‌کننده‌ی دیگری تا لحظه‌ی ثبت رد نمی‌شد.
+        if ($userCart->{Cart::SUPPLIER_USER_ID} === null) {
+            $supplierId = $userCart->load('items.factory')->items->first()?->factory?->supplier_user_id;
+            $this->park->lockSupplier($userCart, $supplierId !== null ? (int) $supplierId : null);
+        }
     }
 
     private function syncContext(Cart $cart): void

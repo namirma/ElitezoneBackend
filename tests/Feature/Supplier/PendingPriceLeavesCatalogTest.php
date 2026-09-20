@@ -297,6 +297,49 @@ class PendingPriceLeavesCatalogTest extends TestCase
         $this->assertNull($other['pending_change']);
     }
 
+    /**
+     * QA 2026-09-15 یافته‌ی ۸ («صف ردیفِ pending را نشان نداد») روی dev بازتولید
+     * نشد، ولی هیچ تستی هم شاخه‌ی پیش‌فرضِ صف (بدونِ فیلتر ⇒ pending) را نمی‌سنجید.
+     */
+    #[Test]
+    public function the_admin_queue_lists_a_fresh_pending_price_change_by_default(): void
+    {
+        $request = $this->queueChange();
+
+        $this->actAsAdmin();
+        $response = $this->getJson('/api/admin/supplier-requests')->assertOk();
+
+        $row = collect($response->json('data'))->firstWhere('id', $request->id);
+
+        $this->assertNotNull($row, 'ردیفِ pendingِ تازه باید بدونِ هیچ فیلتری در صف باشد.');
+        $this->assertSame('pending', $row['status']);
+        $this->assertSame('price_change', $row['type']);
+        $this->assertGreaterThanOrEqual(1, $response->json('meta.total'));
+    }
+
+    /** قیمتِ پایه‌ی صفر: درخواست باید واقعاً به صف برسد، نه اینکه روی `INF` ۵۰۰ بدهد. */
+    #[Test]
+    public function pricing_a_row_from_zero_reaches_the_queue(): void
+    {
+        // مبنای تأییدشده هم صفر — ردیفی که هرگز قیمت‌گذاری نشده.
+        $this->price->forceFill([
+            ProductPrice::GENERAL_PRICE => 0,
+            ProductPrice::SPECIAL_PRICE => 0,
+            ProductPrice::APPROVED_GENERAL_PRICE => 0,
+            ProductPrice::APPROVED_SPECIAL_PRICE => 0,
+        ])->save();
+
+        Sanctum::actingAs($this->supplier);
+        $this->putJson("/api/profile/supplier/prices/{$this->price->id}", [
+            ProductPrice::GENERAL_PRICE => 1_400_000,
+        ])->assertOk()->assertJsonPath('data.queued_for_approval', true);
+
+        $request = SupplierRequest::query()->pendingPriceChange()->latest('id')->firstOrFail();
+
+        $this->assertSame($this->price->id, (int) $request->{SupplierRequest::PRODUCT_PRICE_ID});
+        $this->assertNull($request->{SupplierRequest::PAYLOAD}['change_percent']);
+    }
+
     #[Test]
     public function the_admin_queue_marks_an_expired_request_apart_from_an_admin_rejection(): void
     {

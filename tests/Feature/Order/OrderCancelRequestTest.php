@@ -334,9 +334,13 @@ class OrderCancelRequestTest extends TestCase
         $this->assertSame($before + 2, UserNotification::count());
         // مهلت با تصمیم عوض نمی‌شود (QA 2026-09-15: «۵ ساعت عقب می‌رفت» — ستونِ
         // `TIMESTAMP NOT NULL` در MariaDB خودبه‌خود ON UPDATE current_timestamp داشت).
+        // ⚠️ لنگر باید لحظه‌ی **ثبت** باشد، نه `$request` که بعد از UPDATEِ ردِ
+        // تأمین‌کننده خوانده شده: روی اسکیمای قدیم هر دو طرفِ `equalTo` همان
+        // `current_timestamp()`ِ یک ثانیه بودند و تست سبز می‌ماند. مهلتِ ثبت ۴۸ ساعت
+        // است؛ پس از دو UPDATE (ردِ تأمین‌کننده + تصمیمِ ادمین) باید همان‌جا باشد.
         $this->assertTrue(
-            $request->fresh()->{OrderCancelRequest::RESPOND_UNTIL}->equalTo($request->{OrderCancelRequest::RESPOND_UNTIL}),
-            'respond_until باید پس از تصمیم ادمین دست‌نخورده بماند.'
+            $request->fresh()->{OrderCancelRequest::RESPOND_UNTIL}->between(now()->addHours(47), now()->addHours(49)),
+            'respond_until باید پس از تصمیم ادمین همان مهلتِ ۴۸ ساعته‌ی لحظه‌ی ثبت بماند، نه «الان».'
         );
 
         // تصمیم نهایی است — بارِ دوم ۴۰۹.

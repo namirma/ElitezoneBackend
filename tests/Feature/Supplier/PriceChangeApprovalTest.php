@@ -100,6 +100,10 @@ class PriceChangeApprovalTest extends TestCase
         );
 
         $this->assertNotNull($queued, 'صفر → قیمت نباید بی‌صدا از دروازه رد شود.');
+        // «از صفر» درصد ندارد. `INF` از `json_encode` رد نمی‌شود و ساختنِ ردیفِ صف
+        // ۵۰۰ می‌داد — یعنی همین درخواست هرگز به صف نمی‌رسید (قرینه‌ی یافته‌ی ۸ِ QA).
+        $this->assertNull($queued['change_percent']);
+        $this->assertNotFalse(json_encode($queued));
     }
 
     #[Test]
