@@ -322,6 +322,28 @@ class PlaceOrderAction
         );
         $totalVat += $shippingVat;
 
+        // ریالِ صحیح — **یک بار و همین‌جا**، نه ستون‌به‌ستون توسطِ MySQL.
+        //
+        // ستون‌های پول `decimal(*,0)`اند (`standardise_money_columns_to_integer_rials`)،
+        // ولی این تابع تا امروز floatِ خام می‌داد (وزنِ ۳رقمی × قیمتِ ۴رقمی، کرایه‌ی
+        // ۲رقمی) و هر ستون جداگانه در لحظه‌ی INSERT گرد می‌شد. پیامدها: مجموعِ
+        // ستون‌های ذخیره‌شده تا ۱ ریال با `final_amount` نمی‌خواند، مدلِ در حافظه
+        // (که همان تراکنش برای کوپن، سقفِ تأمین و کسر از کیف پول می‌خواند) با
+        // ردیفِ ذخیره‌شده فرق داشت، و کوپنِ درصدی روی پایه‌ی اعشاری حساب می‌شد.
+        // حالا اجزا اول گرد می‌شوند و `final` از اجزای گردشده ساخته می‌شود، پس
+        // «Subtotal − Discount + Tax + Shipping = Final» روی خودِ ردیف هم برقرار است.
+        // پیش‌نمایش (`CartCheckoutTotals::breakdownFor`) همین کار را با اجزای خودش
+        // می‌کند؛ اختلافِ ≤۱ ریالِ دو تجزیه‌ی متفاوت پذیرفته است (تست‌ها delta=1).
+        $subtotal = round($subtotal);
+        $totalDiscount = round($totalDiscount);
+        $totalVat = round($totalVat);
+        $shippingCost = round($shippingCost);
+        foreach ($itemsData as $itemId => $line) {
+            $itemsData[$itemId]['unit_price'] = round($line['unit_price']);
+            $itemsData[$itemId]['total_price'] = round($line['total_price']);
+            $itemsData[$itemId]['shipping_cost'] = round($line['shipping_cost']);
+        }
+
         // Now that subtotal is pre-discount, we subtract the totalDiscount to get the actual final goods value,
         // then add VAT and shipping. This preserves the standard accounting formula:
         // Subtotal - Discount + Tax + Shipping = Final
@@ -347,8 +369,10 @@ class PlaceOrderAction
         //
         // با یک ردیف، این فرمول دقیقاً همان unit_price را می‌دهد — پس رفتار
         // سفارش‌های تک‌ردیفی ذره‌ای تغییر نمی‌کند.
+        // ریالِ صحیح مثلِ بقیه‌ی اجزا — ستونش `decimal(*,0)` است و سقفِ تأمینِ کوپن
+        // (`couponFundingCaps(op:)`) در همین تراکنش از مقدارِ در حافظه می‌خواند.
         $officialPrice = $totalWeight > 0
-            ? Money::toFloat(Money::div($goodsValue, $totalWeight))
+            ? round(Money::toFloat(Money::div($goodsValue, $totalWeight)))
             : 0.0;
 
         return [
