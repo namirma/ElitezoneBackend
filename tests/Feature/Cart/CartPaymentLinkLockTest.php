@@ -8,6 +8,8 @@ use App\Jobs\Notification\SendSmsJob;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\OrderUnit;
+use App\Models\PurchaseParameterGroup;
+use App\Models\PurchaseParameterValue;
 use App\Models\Setting;
 use App\Models\ShippingMethod;
 use App\Models\SmsTemplate;
@@ -184,6 +186,65 @@ class CartPaymentLinkLockTest extends TestCase
         // هیچ‌کدام اثری نگذاشته‌اند.
         $this->assertCount(1, $cart->fresh()->items);
         $this->assertSame(100.0, (float) $item->fresh()->{CartItem::QUANTITY});
+    }
+
+    /**
+     * پارامترهای خرید هم تغییرِ سبدند — دسته‌ی فیلترِ قیمت و نوعِ مشتری را عوض
+     * می‌کنند، یعنی قیمت‌ها را. این اندپوینت سبد را از سرویسِ خودش می‌گرفت و
+     * گاردِ لینک را نمی‌دید، پس الیت‌یار می‌توانست بعد از پیامک مبلغ را عوض کند.
+     */
+    #[Test]
+    public function purchase_parameters_cannot_be_changed_while_the_link_is_outstanding(): void
+    {
+        Queue::fake();
+        $cart = $this->lockedCart();
+        $values = $this->makeParameterValues();
+        $before = $cart->purchaseParameters()->pluck('purchase_parameter_values.id')->all();
+
+        $response = $this->postJson('/api/purchase-parameters/user', ['parameters' => $values]);
+
+        $response->assertStatus(409);
+        $this->assertSame(__('checkout.cart_locked_by_payment_link'), $response->json('message'));
+        $this->assertSame($before, $cart->fresh()->purchaseParameters()->pluck('purchase_parameter_values.id')->all());
+    }
+
+    /**
+     * دو مقدارِ پارامتر از **دو گروهِ متفاوت** — درخواست از هر گروه فقط یکی
+     * می‌پذیرد و حداقل دوتا می‌خواهد.
+     *
+     * @return list<int>
+     */
+    private function makeParameterValues(): array
+    {
+        // کدهای گروه و مقدار همان‌هایی‌اند که درخواست می‌شناسد: بدونِ
+        // `customer_type` و `elite_yar_status` اعتبارسنجی پیش از رسیدن به گارد
+        // ۴۲۲ می‌دهد و تست چیزی را نمی‌سنجد.
+        return collect(['customer_type' => 'employer', 'elite_yar_status' => 'without_elite_yar'])
+            ->map(function (string $code, string $groupCode) {
+                $group = PurchaseParameterGroup::firstOrCreate(
+                    [PurchaseParameterGroup::CODE => $groupCode],
+                    [
+                        PurchaseParameterGroup::NAME => $groupCode,
+                        PurchaseParameterGroup::ORDER => 1,
+                        PurchaseParameterGroup::IS_ACTIVE => true,
+                    ],
+                );
+
+                return PurchaseParameterValue::firstOrCreate(
+                    [
+                        PurchaseParameterValue::GROUP_ID => $group->id,
+                        PurchaseParameterValue::CODE => $code,
+                    ],
+                    [
+                        PurchaseParameterValue::NAME => $code,
+                        PurchaseParameterValue::SLUG => $code,
+                        PurchaseParameterValue::ORDER => 1,
+                        PurchaseParameterValue::IS_ACTIVE => true,
+                    ],
+                )->id;
+            })
+            ->values()
+            ->all();
     }
 
     #[Test]
