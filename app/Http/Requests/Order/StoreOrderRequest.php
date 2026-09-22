@@ -3,9 +3,7 @@
 namespace App\Http\Requests\Order;
 
 use App\DataTransferObjects\Order\PlaceOrderData;
-use App\Models\ContractorProfile;
 use App\Models\EmployerEliteYAR;
-use App\Models\EngineerProfile;
 use App\Models\User;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
@@ -147,21 +145,12 @@ class StoreOrderRequest extends FormRequest
     // ── helpers ────────────────────────────────────────────────────────────────
 
     /**
-     * بررسی تأیید مدارک الیت یار (engineer یا contractor profile).
+     * تأییدِ الیت یار — همان محمولِ یگانه‌ی مدل. قبلاً نسخه‌ی خودش را داشت که
+     * سازه ۹۰ را نمی‌شمرد و عضوِ سازه ۹۰ را روی سفارش ۴۲۲ می‌کرد.
      */
     private function isEliteYARVerified(User $eliteYAR): bool
     {
-        $engineerProfile = EngineerProfile::where(EngineerProfile::USER_ID, $eliteYAR->id)->first();
-        if ($engineerProfile) {
-            return (bool) $engineerProfile->{EngineerProfile::IS_VERIFIED};
-        }
-
-        $contractorProfile = ContractorProfile::where(ContractorProfile::USER_ID, $eliteYAR->id)->first();
-        if ($contractorProfile) {
-            return (bool) $contractorProfile->{ContractorProfile::IS_VERIFIED};
-        }
-
-        return false;
+        return $eliteYAR->isVerifiedEliteYAR();
     }
 
     // ── پیام‌ها و نام‌های نمایشی ─────────────────────────────────────────────

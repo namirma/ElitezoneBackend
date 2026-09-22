@@ -6,6 +6,7 @@ use App\Models\Badge;
 use App\Models\EngineerProfile;
 use App\Models\User;
 use App\Services\Saze90BadgeService;
+use App\Services\Saze90Unavailable;
 use App\Support\PhoneNumber;
 use Illuminate\Support\Collection;
 
@@ -27,8 +28,15 @@ use Illuminate\Support\Collection;
  *  - `users.badge_id` ← ONLY the commission tiers (gold/silver/bronze). A null badge_id
  *    already maps to pioneer/default rates in SettlementCalculator. Never cleared on a null
  *    result (a transient saze90 outage must not silently downgrade a eliteYAR).
- *  - `engineer_profiles.is_saze90_user` ← backend-determined (read-only for the frontend).
+ *  - `users.is_saze90_user` ← backend-determined; the value `User::isVerifiedEliteYAR()`
+ *    reads. Lives on the user (not the engineer profile) because since 1405/06/30 saze90
+ *    membership is the only launch-time verification path and most members never create
+ *    a document profile. `engineer_profiles.is_saze90_user` is still written for the
+ *    consumers that read it (rule one: nothing deleted).
  *  - `badge_user` pivot ← the managed badge set (tier|saze90 + pioneer) for "my badges".
+ *
+ * Outage: when saze90.com cannot answer, the LAST KNOWN state is reused (membership from
+ * `users.is_saze90_user`, refined by the tier in `badge_id`) so nobody is silently unverified.
  */
 class SyncUserBadgeAction
 {
@@ -46,7 +54,12 @@ class SyncUserBadgeAction
     public function execute(User $user): array
     {
         $mobile = $user->{User::MOBILE} ? PhoneNumber::to09((string) $user->{User::MOBILE}) : '';
-        $sazeCode = $mobile ? $this->saze90->getCertificate($mobile) : null;
+
+        try {
+            $sazeCode = $mobile ? $this->saze90->getCertificate($mobile) : null;
+        } catch (Saze90Unavailable) {
+            $sazeCode = $this->lastKnownCode($user);
+        }
 
         $isSaze90User = $sazeCode !== null;                                  // any saze90 record
         $isTier = $sazeCode !== null && in_array($sazeCode, self::TIER_CODES, true);
@@ -77,7 +90,18 @@ class SyncUserBadgeAction
             }
         }
 
-        // 2) is_saze90_user → persist on the engineer profile when one exists (read-only field).
+        // 2) is_saze90_user → persist on the user (what the verification predicate reads),
+        //    and on the engineer profile when one exists (legacy readers).
+        //    A flip is a verification-status change, so it leaves an audit trail
+        //    (activity log on the user) — nothing this sensitive changes silently.
+        if ((bool) $user->{User::IS_SAZE90_USER} !== $isSaze90User) {
+            $user->forceFill([User::IS_SAZE90_USER => $isSaze90User])->save();
+
+            activity()
+                ->performedOn($user)
+                ->withProperties(['is_saze90_user' => $isSaze90User, 'code' => $sazeCode, 'source' => 'saze90.com'])
+                ->log($isSaze90User ? 'عضویت سازه ۹۰ تشخیص داده شد.' : 'عضویت سازه ۹۰ دیگر تشخیص داده نمی‌شود.');
+        }
         $engineer = $user->engineer;
         if ($engineer && (bool) $engineer->{EngineerProfile::IS_SAZE90_USER} !== $isSaze90User) {
             $engineer->forceFill([EngineerProfile::IS_SAZE90_USER => $isSaze90User])->save();
@@ -105,5 +129,26 @@ class SyncUserBadgeAction
             'is_saze90_user' => $isSaze90User,
             'badges' => $badges,
         ];
+    }
+
+    /**
+     * آخرین وضعیتِ شناخته‌شده، بازسازی‌شده از همان چیزی که قبلاً نوشته‌ایم.
+     *
+     * عضویت (`users.is_saze90_user`) حقیقتِ زنده است — یک «نه»ی قطعی آن را false
+     * می‌کند و قطعیِ بعدی نباید از `badge_id` (که عمداً هرگز پاک نمی‌شود) دوباره
+     * عضوش کند. رده فقط عضویتِ موجود را دقیق‌تر می‌کند.
+     */
+    private function lastKnownCode(User $user): ?string
+    {
+        if (! $user->{User::IS_SAZE90_USER}) {
+            return null;
+        }
+
+        $tier = $user->badge?->{Badge::CODE};
+        if (is_string($tier) && in_array($tier, self::TIER_CODES, true)) {
+            return $tier;
+        }
+
+        return 'saze90';
     }
 }

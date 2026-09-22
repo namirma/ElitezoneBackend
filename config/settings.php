@@ -75,6 +75,20 @@ return [
         'overweight_response_hours',
         'coupon_visibility',
         'reserve_warning_threshold_minutes',
+
+        /*
+        | روش‌های تأیید الیت یار — «1»/«0» (اعتبارسنجی `in:0,1` در PUT).
+        |
+        | تصمیمِ مدیریت ۱۴۰۵/۰۶/۳۰: در لانچ فقط سازه ۹۰؛ تحصیلی و شغلی «به‌زودی».
+        | پیش‌فرض و تنها خواننده: `App\Services\Profile\EliteYARVerificationMethods`.
+        |
+        | ⚠️ عمداً در `public_keys` نیستند: سایت مقدارِ **حل‌شده** را از
+        | `GET /settings/public › elite_yar_verification` (بولی، با پیش‌فرض اعمال‌شده)
+        | می‌گیرد تا هیچ فرانتی پیش‌فرض را دوباره‌سازی نکند.
+        */
+        'elite_yar_verify_education',
+        'elite_yar_verify_job',
+        'elite_yar_verify_saze90',
     ],
 
     /*

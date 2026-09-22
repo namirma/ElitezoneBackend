@@ -30,6 +30,9 @@ class ContractorProfileResource extends BaseJsonResource
             ContractorProfile::PROJECT_DONE => $this->project_done,
             ContractorProfile::PROJECT_IN_PROGRESS => $this->project_in_progress,
             ContractorProfile::TRUSTED_CONTRACTOR => $this->trusted_contractor,
+            // پرچمِ خودِ ستون: مدارک توسط ادمین تأیید شده (دکمه‌ی «تأیید مدارک»).
+            ContractorProfile::IS_VERIFIED => (bool) $this->is_verified,
+            ContractorProfile::VERIFIED_AT => $this->verified_at,
             ContractorProfile::CREATED_AT => $this->created_at,
             'created_at_p' => $this->created_at_p,
             'created_at_diff' => $this->created_at_diff,

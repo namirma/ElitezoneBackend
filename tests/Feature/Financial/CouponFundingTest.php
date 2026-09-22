@@ -206,7 +206,8 @@ class CouponFundingTest extends TestCase
     /** الیت‌یارِ تأییدشده و وصل‌شده به خریدار (مسیرِ کارفرما با الیت‌یار). */
     private function makeVerifiedEliteYARFor(User $employer, float $wallet): User
     {
-        $eliteYAR = User::factory()->create();
+        // تأییدِ لانچ = عضویتِ سازه ۹۰؛ پرچمِ مدرکیِ پایین فقط با روشِ مدرکیِ روشن می‌شمارد.
+        $eliteYAR = User::factory()->create([User::IS_SAZE90_USER => true]);
         $eliteYAR->addRole(Role::firstOrCreate(['name' => 'engineer'], ['display_name' => 'engineer']));
         EngineerProfile::create([
             EngineerProfile::USER_ID => $eliteYAR->id,

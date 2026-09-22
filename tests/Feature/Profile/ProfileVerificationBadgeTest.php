@@ -10,6 +10,7 @@ use App\Models\UserType;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Concerns\EnablesVerificationMethods;
 use Tests\TestCase;
 
 /**
@@ -17,12 +18,14 @@ use Tests\TestCase;
  *
  * قرارداد:
  *   - الیت یار (type.slug = elite_yar) با پروفایل تأییدشده → true
+ *     (فقط وقتی یکی از دو روشِ مدرکی در تنظیمات روشن است — سیاستِ لانچ
+ *     ۱۴۰۵/۰۶/۳۰ هر دو را خاموش می‌کارد؛ `EliteYARVerificationPolicyTest`)
  *   - الیت یار با پروفایل تأییدنشده (یا بدون مدرک) → false
  *   - نقش‌های غیرالیت یار (employer/supplier/customer) → null
  */
 class ProfileVerificationBadgeTest extends TestCase
 {
-    use DatabaseTransactions;
+    use DatabaseTransactions, EnablesVerificationMethods;
 
     private function userType(string $slug): UserType
     {
@@ -62,6 +65,7 @@ class ProfileVerificationBadgeTest extends TestCase
     #[Test]
     public function verified_engineer_returns_is_verified_true(): void
     {
+        $this->enableVerificationMethod('education');
         $user = $this->eliteYarUser();
         EngineerProfile::forceCreate([
             EngineerProfile::USER_ID => $user->id,
@@ -100,6 +104,7 @@ class ProfileVerificationBadgeTest extends TestCase
     #[Test]
     public function verified_contractor_returns_is_verified_true(): void
     {
+        $this->enableVerificationMethod('education');
         $user = $this->eliteYarUser();
         ContractorProfile::forceCreate([
             ContractorProfile::USER_ID => $user->id,

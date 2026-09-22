@@ -17,6 +17,7 @@ use App\Models\MenuItem;
 use App\Models\Page;
 use App\Models\PageBlock;
 use App\Models\Setting;
+use App\Services\Profile\EliteYARVerificationMethods;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -198,6 +199,10 @@ class ContentController extends Controller
             'product_reviews' => (bool) config('features.product_reviews'),
             'order_surveys' => (bool) config('features.order_surveys'),
         ];
+
+        // روش‌های تأیید الیت یار — تنظیمِ ادمین، حل‌شده به بولی (پیش‌فرض اعمال‌شده)
+        // تا سایت روشِ خاموش را «به‌زودی» نشان دهد و صفحه‌اش را نسازد.
+        $values['elite_yar_verification'] = EliteYARVerificationMethods::enabled();
 
         return success($values, __('content.settings_received'));
     }

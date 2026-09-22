@@ -4,8 +4,6 @@ namespace App\Http\Resources\Profile;
 
 use App\Http\Resources\BaseJsonResource;
 use App\Http\Resources\Supplier\SupplierProfileResource;
-use App\Models\ContractorProfile;
-use App\Models\EngineerProfile;
 use App\Models\User;
 use Illuminate\Http\Request;
 
@@ -104,6 +102,8 @@ class UserResource extends BaseJsonResource
             'created_at_p' => $this->created_at_p,
             'created_at_diff' => $this->created_at_diff,
             'is_verified' => $this->getIsVerified(),
+            // عضو سازه ۹۰ است (تشخیص خودکار از saze90.com).
+            'is_saze90_user' => (bool) $this->{User::IS_SAZE90_USER},
         ];
     }
 
@@ -131,40 +131,29 @@ class UserResource extends BaseJsonResource
     }
 
     /**
-     * وضعیت تأیید مدارک کاربر — فقط برای «الیت یار» (مهندس یا پیمانکار).
+     * وضعیت تأیید الیت یار — فقط برای «الیت یار».
      *
-     * منطق:
-     *   - پروفایل مهندس/پیمانکار لود شده و موجود است → مقدار واقعی is_verified
-     *   - کاربر الیت یار است ولی هنوز پروفایل تأییدشده‌ای ندارد (نقش را انتخاب
-     *     کرده ولی مدرکی آپلود/تأیید نکرده) → false
-     *     (تا فرانت بَج «تأیید نشده» + CTA آپلود مدارک را نشان دهد)
+     *   - الیت یار (نقشِ `elite_yar`، یا پروفایلِ مهندس/پیمانکارِ لودشده) →
+     *     `User::isVerifiedEliteYAR()` — تنها محمول، با احترام به روش‌های روشن
      *   - غیرِ الیت یار (کارفرما/تأمین‌کننده/بی‌نقش) → null (بدون بج)
      *
-     * نکته: `engineer`/`contractor` نقشِ مدرک‌اند و فقط بعد از تأیید وصل می‌شوند،
-     * پس نمی‌شود «الیت یار بودن» را از آن‌ها فهمید. نقشِ `elite_yar` همان لحظه‌ی
-     * انتخابِ نقش وصل می‌شود و همین را جواب می‌دهد.
+     * نکته: `engineer`/`contractor` نقشِ مدرک‌اند و فقط با ارسالِ مدرک ساخته
+     * می‌شوند، پس «الیت یار بودن» از نقشِ `elite_yar` خوانده می‌شود که همان
+     * لحظه‌ی انتخابِ نقش وصل می‌شود.
      *
-     * کنترلر از پیش engineerProfile / contractorProfile / roles را لود کرده، N+1 نیست.
+     * کنترلرها engineer / contractor / roles را از پیش لود می‌کنند؛ عضویتِ
+     * سازه ۹۰ (روشِ لانچ) یک ستونِ خودِ کاربر است و هیچ relationای نمی‌خواهد.
      */
     private function getIsVerified(): ?bool
     {
-        if ($this->relationLoaded(User::RELATION_ENGINEER) && $this->{User::RELATION_ENGINEER}) {
-            $eng = $this->{User::RELATION_ENGINEER};
+        $hasDocProfile = ($this->relationLoaded(User::RELATION_ENGINEER) && $this->{User::RELATION_ENGINEER})
+            || ($this->relationLoaded(User::RELATION_CONTRACTOR) && $this->{User::RELATION_CONTRACTOR});
 
-            // saze90 membership auto-verifies, alongside the admin-reviewed docs flag.
-            return (bool) ($eng->{EngineerProfile::IS_VERIFIED} || $eng->{EngineerProfile::IS_SAZE90_USER});
+        if (! $hasDocProfile && ! $this->isEliteYar()) {
+            return null;
         }
 
-        if ($this->relationLoaded(User::RELATION_CONTRACTOR) && $this->{User::RELATION_CONTRACTOR}) {
-            return (bool) $this->{User::RELATION_CONTRACTOR}->{ContractorProfile::IS_VERIFIED};
-        }
-
-        // الیت یارِ تأییدنشده (هنوز مدرکی ندارد) → false، در غیر این صورت null
-        if ($this->isEliteYar()) {
-            return false;
-        }
-
-        return null;
+        return $this->resource->isVerifiedEliteYAR();
     }
 
     /**

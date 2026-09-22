@@ -39,7 +39,8 @@ class CarbonThreeIntegerDiffTest extends TestCase
         $employer = User::factory()->create();
         $employer->addRole(Role::firstOrCreate(['name' => 'employer'], ['display_name' => 'کارفرما']));
 
-        $eliteYar = User::factory()->create();
+        // تأییدِ لانچ = عضویتِ سازه ۹۰ (پرچمِ مدرکیِ پایین بدونِ روشِ مدرکیِ روشن نمی‌شمارد).
+        $eliteYar = User::factory()->create([User::IS_SAZE90_USER => true]);
         $eliteYar->addRole(Role::firstOrCreate(['name' => 'elite_yar'], ['display_name' => 'الیت یار']));
         EngineerProfile::create([
             EngineerProfile::USER_ID => $eliteYar->id,

@@ -13,6 +13,7 @@ use App\Http\Middleware\EnsureUserIsEliteYAR;
 use App\Http\Middleware\EnsureUserIsEmployer;
 use App\Http\Middleware\EnsureUserIsNotSupplier;
 use App\Http\Middleware\EnsureUserIsSupplier;
+use App\Http\Middleware\EnsureVerificationMethodEnabled;
 use App\Http\Middleware\Idempotency;
 use App\Http\Middleware\OptionalSanctum;
 use App\Http\Middleware\RedirectIfAuthenticated;
@@ -168,6 +169,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'attach.price.category' => AttachActivePriceCategory::class,
             'role.admin' => EnsureUserIsAdmin::class,
             'role.elite_yar' => EnsureUserIsEliteYAR::class,
+            // روشِ تأییدِ الیت یار (education|job) فقط وقتی در تنظیماتِ ادمین روشن است
+            'verification.method' => EnsureVerificationMethodEnabled::class,
             'role.employer' => EnsureUserIsEmployer::class,
             'role.supplier' => EnsureUserIsSupplier::class,
             'not.supplier' => EnsureUserIsNotSupplier::class,

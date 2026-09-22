@@ -13,6 +13,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Concerns\EnablesVerificationMethods;
 use Tests\TestCase;
 
 /**
@@ -24,7 +25,14 @@ use Tests\TestCase;
  */
 class ProfileFixesTest extends TestCase
 {
-    use DatabaseTransactions;
+    use DatabaseTransactions, EnablesVerificationMethods;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // سوابقِ شغلی فقط با روشِ روشن ثبت می‌شوند؛ سیاستِ لانچ آن را خاموش می‌کارد.
+        $this->enableVerificationMethod('job');
+    }
 
     private function eliteYarUser(): User
     {

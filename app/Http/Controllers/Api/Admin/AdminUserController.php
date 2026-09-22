@@ -16,6 +16,7 @@ use App\Models\User;
 use App\Models\UserNote;
 use App\Models\UserProfile;
 use App\Models\WalletTransaction;
+use App\Services\Profile\EliteYARVerificationMethods;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -28,7 +29,9 @@ class AdminUserController extends Controller
         $users = User::query()
             // type لود می‌شود تا UserResource بتواند «نوع کاربر» (مثلاً مشتری) را برای
             // کاربرانی که هنوز نقش Laratrust خاصی انتخاب نکرده‌اند نمایش دهد.
-            ->with(['profile', 'roles', User::RELATION_TYPE])
+            // engineer/contractor هم: `User::isVerifiedEliteYAR()` وقتی روشِ مدرکی روشن
+            // است این دو را می‌خواند و بدون eager-load هر ردیفِ الیت‌یار دو کوئری می‌زد.
+            ->with(['profile', 'roles', User::RELATION_TYPE, User::RELATION_ENGINEER, User::RELATION_CONTRACTOR])
             // ستون «یادداشت‌ها» در لیست بک‌آفیس فقط به تعداد نیاز دارد، نه متن.
             ->withCount('notes')
             ->when(
@@ -231,6 +234,13 @@ class AdminUserController extends Controller
      */
     public function verifyEliteYAR(User $user): JsonResponse
     {
+        // تأییدِ دستی پشتِ دو روشِ مدرکی است (تنظیمات › تأیید الیت یار). با
+        // خاموش‌بودنِ هر دو، `is_verified` در محمولِ تأیید نمی‌شمارد — پس ثبتش
+        // یک تیکِ بی‌اثر می‌شد که ادمین «تأییدشده» می‌خواند و سایت نه.
+        if (! EliteYARVerificationMethods::documentReviewEnabled()) {
+            return error(__('admin.users.manual_verification_disabled'), [], 422);
+        }
+
         $profile = $this->resolveEliteYARProfile($user);
 
         if (! $profile) {

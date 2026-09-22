@@ -288,21 +288,25 @@ Route::middleware(['auth:sanctum'])->group(function () {
         });
 
         // Education (elite yar only)
+        //
+        // `verification.method:*` فقط روی نوشتن: روشِ تأییدی که ادمین خاموش کرده
+        // (تنظیمات › تأیید الیت یار) نباید از API مدرک بپذیرد، ولی خواندن و حذفِ
+        // رکوردهای قدیمی باز می‌ماند.
         Route::prefix('education')->middleware('role.elite_yar')->controller(EduixController::class)->group(function () {
             Route::get('/', 'index')->middleware('track:education');
             // throttle: هر فراخوانی یک scrape واقعی روی سامانه‌ی msrt.ir است؛
             // بدون سقف، endpoint به یک پروکسیِ استعلامِ نامحدود تبدیل می‌شد.
-            Route::post('/fetch', 'fetch')->middleware('throttle:5,1');
+            Route::post('/fetch', 'fetch')->middleware(['throttle:5,1', 'verification.method:education']);
             Route::delete('/{record}', 'destroy');
         });
 
         // Job experiences (elite yar only)
         Route::prefix('job-experiences')->middleware('role.elite_yar')->controller(JobExperienceController::class)->group(function () {
             Route::get('/', 'index')->middleware('track:job');
-            Route::post('/', 'store');
+            Route::post('/', 'store')->middleware('verification.method:job');
             // PUT for text-only edits (JSON); POST (multipart) when replacing the attachment,
             // since PHP does not populate uploaded files on a raw PUT body.
-            Route::match(['put', 'post'], '/{jobExperience}', 'update');
+            Route::match(['put', 'post'], '/{jobExperience}', 'update')->middleware('verification.method:job');
             Route::get('/{jobExperience}/file', 'download')->name('job-experience.file');
             Route::delete('/{jobExperience}', 'destroy');
         });

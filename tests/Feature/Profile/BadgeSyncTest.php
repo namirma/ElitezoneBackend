@@ -55,6 +55,27 @@ class BadgeSyncTest extends TestCase
     }
 
     #[Test]
+    public function an_unknown_mobile_is_not_a_member(): void
+    {
+        // Observed LIVE (1405/06/30): a mobile saze90 has never seen answers HTTP 200 with
+        // {"message":"No user found.","status":401}. Read as a badge code, that string made
+        // every unknown user a "member" — and, once membership is the only verification
+        // path, a verified EliteYAR.
+        Http::fake(['*get-certificate*' => Http::response(['message' => 'No user found.', 'status' => 401], 200)]);
+
+        $user = User::factory()->create([User::IS_SAZE90_USER => true]);
+        Sanctum::actingAs($user);
+
+        $this->getJson('/api/profile/badge')
+            ->assertOk()
+            ->assertJsonPath('data.badge', null)
+            ->assertJsonPath('data.is_saze90_user', false);
+
+        $this->assertFalse((bool) $user->fresh()->{User::IS_SAZE90_USER});
+        $this->assertFalse($user->badges()->where('badges.code', 'saze90')->exists());
+    }
+
+    #[Test]
     public function it_persists_a_gold_tier_from_saze90_onto_the_user(): void
     {
         $this->fakeSaze90('gold');
@@ -128,16 +149,72 @@ class BadgeSyncTest extends TestCase
     public function a_saze90_outage_fails_safe_and_never_clears_an_existing_tier(): void
     {
         $gold = Badge::create([Badge::NAME => 'طلایی', Badge::CODE => 'gold']);
-        $user = User::factory()->create([User::BADGE_ID => $gold->id]);
+        // A tier holder is a member by definition; a gold badge_id with is_saze90_user=false is
+        // the REVOKED state (saze90 said "no" later), which an outage must not resurrect.
+        $user = User::factory()->create([User::BADGE_ID => $gold->id, User::IS_SAZE90_USER => true]);
+        Sanctum::actingAs($user);
+
+        Http::fake(['*get-certificate*' => Http::response('', 500)]);
+
+        // Since 1405/06/30 an outage reuses the last known state instead of answering
+        // "no badge": the tier the user still holds is what the response says.
+        $this->getJson('/api/profile/badge')
+            ->assertOk()
+            ->assertJsonPath('data.badge', 'gold');
+
+        $this->assertSame($gold->id, (int) $user->fresh()->badge_id, 'transient outage must not downgrade the tier');
+    }
+
+    #[Test]
+    public function a_saze90_outage_does_not_resurrect_a_revoked_member_from_their_old_tier(): void
+    {
+        // badge_id is deliberately never cleared (commission history); once saze90 has said
+        // "no", an outage must reuse THAT answer, not the stale tier.
+        $gold = Badge::create([Badge::NAME => 'طلایی', Badge::CODE => 'gold']);
+        $user = User::factory()->create([User::BADGE_ID => $gold->id, User::IS_SAZE90_USER => false]);
         Sanctum::actingAs($user);
 
         Http::fake(['*get-certificate*' => Http::response('', 500)]);
 
         $this->getJson('/api/profile/badge')
             ->assertOk()
-            ->assertJsonPath('data.badge', null);
+            ->assertJsonPath('data.badge', null)
+            ->assertJsonPath('data.is_saze90_user', false);
 
-        $this->assertSame($gold->id, (int) $user->fresh()->badge_id, 'transient outage must not downgrade the tier');
+        $this->assertFalse((bool) $user->fresh()->{User::IS_SAZE90_USER});
+    }
+
+    #[Test]
+    public function a_saze90_outage_keeps_a_known_member_a_member(): void
+    {
+        // The launch policy makes saze90 membership the only verification path, so an
+        // outage that flipped members to "not a member" would drop every EliteYAR out of
+        // orders and invites for as long as saze90.com is down.
+        $user = User::factory()->create([User::IS_SAZE90_USER => true]);
+        Sanctum::actingAs($user);
+
+        Http::fake(['*get-certificate*' => Http::response('', 500)]);
+
+        $this->getJson('/api/profile/badge')
+            ->assertOk()
+            ->assertJsonPath('data.is_saze90_user', true)
+            ->assertJsonPath('data.badge', 'saze90');
+
+        $this->assertTrue((bool) $user->fresh()->{User::IS_SAZE90_USER});
+    }
+
+    #[Test]
+    public function a_confirmed_non_member_answer_does_clear_membership(): void
+    {
+        // Only a real "no" from saze90 revokes membership — not an outage.
+        $user = User::factory()->create([User::IS_SAZE90_USER => true]);
+        Sanctum::actingAs($user);
+
+        Http::fake(['*get-certificate*' => Http::response(['message' => false, 'status' => 200], 200)]);
+
+        $this->getJson('/api/profile/badge')->assertOk()->assertJsonPath('data.is_saze90_user', false);
+
+        $this->assertFalse((bool) $user->fresh()->{User::IS_SAZE90_USER});
     }
 
     #[Test]
@@ -209,11 +286,13 @@ class BadgeSyncTest extends TestCase
         // The badge sync persists is_saze90_user on the engineer profile…
         $this->getJson('/api/profile/badge')->assertOk()->assertJsonPath('data.is_saze90_user', true);
 
-        // …and GET /api/profile then reflects it + auto-verifies the engineer.
+        // …and GET /api/profile then reflects it: the root verdict is "verified" (membership
+        // is the launch method) while the nested engineer flag stays the raw admin-docs column.
         $this->getJson('/api/profile')
             ->assertOk()
             ->assertJsonPath('data.engineer.is_saze90_user', true)
-            ->assertJsonPath('data.engineer.is_verified', true)
-            ->assertJsonPath('data.is_verified', true);
+            ->assertJsonPath('data.engineer.is_verified', false)
+            ->assertJsonPath('data.is_verified', true)
+            ->assertJsonPath('data.is_saze90_user', true);
     }
 }

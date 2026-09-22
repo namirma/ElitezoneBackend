@@ -9,6 +9,7 @@ use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Laratrust\Models\Role;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Concerns\EnablesVerificationMethods;
 use Tests\TestCase;
 
 /**
@@ -21,7 +22,14 @@ use Tests\TestCase;
  */
 class EduixIdentityGuardTest extends TestCase
 {
-    use DatabaseTransactions;
+    use DatabaseTransactions, EnablesVerificationMethods;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // این تست مسیرِ استعلامِ مدرک را می‌زند؛ سیاستِ لانچ آن را خاموش می‌کارد.
+        $this->enableVerificationMethod('education');
+    }
 
     private function eliteYar(?string $nationalCode): User
     {

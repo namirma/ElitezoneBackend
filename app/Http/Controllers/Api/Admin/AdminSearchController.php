@@ -19,7 +19,7 @@ class AdminSearchController extends Controller
         $keyword = $request->input('query');
 
         $users = User::query()
-            ->with([User::RELATION_PROFILE, 'wallet', User::RELATION_ROLES, User::RELATION_TYPE])
+            ->with([User::RELATION_PROFILE, 'wallet', User::RELATION_ROLES, User::RELATION_TYPE, User::RELATION_ENGINEER, User::RELATION_CONTRACTOR])
             ->where(function (Builder $query) use ($keyword) {
                 $query->where(User::MOBILE, 'like', "%{$keyword}%")
                     ->orWhere(User::NATIONAL_CODE, 'like', "%{$keyword}%")

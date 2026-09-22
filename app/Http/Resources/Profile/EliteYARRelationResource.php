@@ -4,9 +4,7 @@ namespace App\Http\Resources\Profile;
 
 use App\Enums\Shared\StatusTone;
 use App\Http\Resources\BaseJsonResource;
-use App\Models\ContractorProfile;
 use App\Models\EmployerEliteYAR;
-use App\Models\EngineerProfile;
 use App\Models\User;
 use App\Models\UserProfile;
 use Illuminate\Http\Request;
@@ -65,34 +63,15 @@ class EliteYARRelationResource extends BaseJsonResource
     }
 
     /**
-     * تشخیص وضعیت تأیید مدارک از روی پروفایل مهندس یا پیمانکار.
+     * تأییدِ الیت یار — همان محمولِ یگانه‌ی مدل (`User::isVerifiedEliteYAR()`).
      *
-     * الیت یار می‌تواند مهندس (engineer) یا پیمانکار (contractor) باشد؛
-     * هر دو پروفایل دارای is_verified/verified_at هستند (migration 200100).
+     * نسخه‌ی قبلی نامِ relationهای ناموجود (`engineerProfile`/`contractorProfile`)
+     * را چک می‌کرد، پس همیشه به کوئریِ per-row می‌افتاد و سازه ۹۰ را هم
+     * نمی‌شمرد. کنترلر حالا `engineer`/`contractor` را eager-load می‌کند.
      */
     private function getEliteYARVerifiedStatus(): bool
     {
-        // ترجیح: اگر پروفایل از پیش لود شده، از آن استفاده می‌کنیم
-        if ($this->relationLoaded('engineerProfile') && $this->engineerProfile) {
-            return (bool) $this->engineerProfile->{EngineerProfile::IS_VERIFIED};
-        }
-
-        if ($this->relationLoaded('contractorProfile') && $this->contractorProfile) {
-            return (bool) $this->contractorProfile->{ContractorProfile::IS_VERIFIED};
-        }
-
-        // fallback: یک کوئری کوچک می‌زنیم (برای لیست‌های کوچک قابل قبول است)
-        $engineerProfile = EngineerProfile::where(EngineerProfile::USER_ID, $this->id)->first();
-        if ($engineerProfile) {
-            return (bool) $engineerProfile->{EngineerProfile::IS_VERIFIED};
-        }
-
-        $contractorProfile = ContractorProfile::where(ContractorProfile::USER_ID, $this->id)->first();
-        if ($contractorProfile) {
-            return (bool) $contractorProfile->{ContractorProfile::IS_VERIFIED};
-        }
-
-        return false;
+        return $this->resource->isVerifiedEliteYAR();
     }
 
     /** هم‌الگو با `UserResource` و `EliteYARRelationController::listRegisteredClients`. */

@@ -2,14 +2,13 @@
 
 namespace App\Http\Controllers\Api\User;
 
+use App\Actions\Profile\SyncUserBadgeAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Profile\InviteEliteYARRequest;
 use App\Http\Requests\Profile\RejectInvitationRequest;
 use App\Http\Resources\Profile\EliteYARRelationResource;
 use App\Jobs\Notification\SendSmsJob;
-use App\Models\ContractorProfile;
 use App\Models\EmployerEliteYAR;
-use App\Models\EngineerProfile;
 use App\Models\SmsTemplate;
 use App\Models\User;
 use App\Models\UserNotification;
@@ -24,7 +23,7 @@ class EliteYARRelationController extends Controller
     {
         $employer = Auth::user();
         $eliteYARs = $employer->technicalEliteYARs()
-            ->with('profile')
+            ->with(['profile', 'engineer', 'contractor'])
             ->get();
 
         return success(EliteYARRelationResource::collection($eliteYARs), __('elite_yar.list_received'));
@@ -39,7 +38,7 @@ class EliteYARRelationController extends Controller
                 EmployerEliteYAR::STATUS_APPROVED,
                 EmployerEliteYAR::STATUS_REJECTED,
             ])
-            ->with('profile')
+            ->with(['profile', 'engineer', 'contractor'])
             ->orderByPivot('updated_at', 'desc')
             ->get();
 
@@ -85,6 +84,12 @@ class EliteYARRelationController extends Controller
         }
 
         // ── خروجی ② : registered ولی not_verified ──────────────────────────
+        // عضویتِ سازه ۹۰ فقط با خواندنِ پروفایلِ خودِ الیت یار تازه می‌شود؛ دعوت
+        // یک نگاهِ تازه می‌اندازد (کش ۳۰ دقیقه، قطعی = آخرین وضعیت) تا گیت روی
+        // پرچمی که هفته‌ها پیش نوشته شده تصمیم نگیرد.
+        app(SyncUserBadgeAction::class)->execute($eliteYAR);
+        $eliteYAR->refresh();
+
         if (! $this->isEliteYARVerified($eliteYAR)) {
             return error(__('elite_yar.elite_yar_not_verified'), [], 422);
         }
@@ -158,7 +163,7 @@ class EliteYARRelationController extends Controller
         $eliteYAR = Auth::user();
         $invitations = $eliteYAR->associatedEmployers()
             ->where(EmployerEliteYAR::STATUS, EmployerEliteYAR::STATUS_PENDING)
-            ->with('profile')
+            ->with(['profile', 'engineer', 'contractor'])
             ->get();
 
         return success(EliteYARRelationResource::collection($invitations), __('elite_yar.invitations_list_received'));
@@ -242,20 +247,12 @@ class EliteYARRelationController extends Controller
     }
 
     /**
-     * بررسی تأیید مدارک الیت یار از روی پروفایل مهندس یا پیمانکار.
+     * تأییدِ الیت یار — همان محمولِ یگانه‌ی مدل. قبلاً کپیِ نسخه‌ی
+     * `StoreOrderRequest` بود که سازه ۹۰ را نمی‌شمرد و دعوتِ عضوِ سازه ۹۰
+     * را ۴۲۲ می‌کرد، در حالی که پروفایلش «تأییدشده» نشان می‌داد.
      */
     private function isEliteYARVerified(User $eliteYAR): bool
     {
-        $engineerProfile = EngineerProfile::where(EngineerProfile::USER_ID, $eliteYAR->id)->first();
-        if ($engineerProfile) {
-            return (bool) $engineerProfile->{EngineerProfile::IS_VERIFIED};
-        }
-
-        $contractorProfile = ContractorProfile::where(ContractorProfile::USER_ID, $eliteYAR->id)->first();
-        if ($contractorProfile) {
-            return (bool) $contractorProfile->{ContractorProfile::IS_VERIFIED};
-        }
-
-        return false;
+        return $eliteYAR->isVerifiedEliteYAR();
     }
 }

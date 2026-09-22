@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\HasOrders;
 use App\Models\Concerns\HasWallet;
+use App\Services\Profile\EliteYARVerificationMethods;
 use App\Traits\PersianDate;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -40,6 +41,15 @@ class User extends Authenticatable
      * NULL = no paid badge on record → the eliteYAR is uncapped.
      */
     public const BADGE_PURCHASE_AMOUNT = 'badge_purchase_amount';
+
+    /**
+     * عضوِ سازه ۹۰ است؟ — تشخیصِ بک‌اند از saze90.com، تنها نویسنده
+     * `SyncUserBadgeAction` با `forceFill()`. عمداً در `$fillable` نیست.
+     *
+     * روی کاربر است نه پروفایلِ مهندس، چون آن ردیف فقط با ارسالِ مدرک ساخته
+     * می‌شود و در لانچ (فقط سازه ۹۰) هیچ الیت‌یاری مدرک نمی‌فرستد.
+     */
+    public const IS_SAZE90_USER = 'is_saze90_user';
 
     public const MOBILE = 'mobile';
 
@@ -160,6 +170,7 @@ class User extends Authenticatable
         // میلادی تفسیر می‌کند.
         self::SECRET_EXPIRES_AT => 'datetime',
         self::IS_ACTIVE => 'boolean',
+        self::IS_SAZE90_USER => 'boolean',
         self::COUPON_ENABLED => 'boolean',
         self::BADGE_PURCHASE_AMOUNT => 'decimal:0',
         self::DEBT_BALANCE => 'decimal:0',
@@ -193,14 +204,46 @@ class User extends Authenticatable
         return $this->hasRole('engineer') || $this->hasRole('contractor');
     }
 
-    public function engineer(): HasOne
+    /**
+     * تنها محمولِ «الیت‌یارِ تأییدشده». همه‌جا — Resourceها، گیتِ سفارش، گیتِ
+     * دعوت، فهرست‌های کارفرما — از همین بخوانید.
+     *
+     * تا ۱۴۰۵/۰۶/۳۰ پنج نسخه‌ی پراکنده داشت با دو فرمولِ متفاوت: دو Resource
+     * سازه ۹۰ را می‌شمردند و سه گیت نه. نتیجه این بود که عضوِ سازه ۹۰ روی
+     * پروفایلش «تأییدشده» می‌دید ولی دعوت و انتخابش روی سفارش ۴۲۲ می‌گرفت.
+     *
+     * فرمول: هر روش فقط وقتی می‌شمارد که در تنظیماتِ ادمین روشن باشد
+     * (`EliteYARVerificationMethods`). تأییدِ دستیِ ادمین (`is_verified`ِ
+     * پروفایل) پشتِ دو روشِ مدرکی است — با خاموش‌بودنِ هر دو، بی‌اثر است.
+     */
+    public function isVerifiedEliteYAR(): bool
     {
-        return $this->hasOne(EngineerProfile::class);
+        $methods = EliteYARVerificationMethods::enabled();
+
+        if ($methods[EliteYARVerificationMethods::SAZE90] && (bool) $this->{self::IS_SAZE90_USER}) {
+            return true;
+        }
+
+        if ($methods[EliteYARVerificationMethods::EDUCATION] || $methods[EliteYARVerificationMethods::JOB]) {
+            return (bool) ($this->engineer?->{EngineerProfile::IS_VERIFIED}
+                || $this->contractor?->{ContractorProfile::IS_VERIFIED});
+        }
+
+        return false;
     }
 
+    // `chaperone()`: وقتی پروفایل از راهِ کاربر لود می‌شود، `$profile->user` بدون
+    // کوئریِ اضافه همان کاربر است — Resourceِ پروفایل برای `is_verified` لازمش دارد.
+    /** @return HasOne<EngineerProfile, $this> */
+    public function engineer(): HasOne
+    {
+        return $this->hasOne(EngineerProfile::class)->chaperone();
+    }
+
+    /** @return HasOne<ContractorProfile, $this> */
     public function contractor(): HasOne
     {
-        return $this->hasOne(ContractorProfile::class);
+        return $this->hasOne(ContractorProfile::class)->chaperone();
     }
 
     public function supplier(): HasOne
@@ -247,6 +290,7 @@ class User extends Authenticatable
         return $this->belongsTo(UserType::class, self::TYPE_ID);
     }
 
+    /** @return BelongsTo<Badge, $this> */
     public function badge(): BelongsTo
     {
         return $this->belongsTo(Badge::class, self::BADGE_ID);

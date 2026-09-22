@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
+use App\Services\Profile\EliteYARVerificationMethods;
 use App\Services\Sales\SalesSettings;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -81,7 +82,8 @@ class AdminSettingController extends Controller
      */
     private function validateSalesSettings(array $settings): ?JsonResponse
     {
-        $rules = SalesSettings::validationRules();
+        // روش‌های تأیید الیت یار هم تایپ‌دارند («1»/«0») — همان مسیر، بدون کنترلرِ دوم.
+        $rules = SalesSettings::validationRules() + EliteYARVerificationMethods::validationRules();
         $subject = array_intersect_key($settings, $rules);
 
         if ($subject === []) {

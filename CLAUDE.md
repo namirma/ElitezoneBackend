@@ -2773,10 +2773,12 @@ Podium PAYA/SATNA settlement. Flow:
   compare on zero-padded `YYYY-MM-DD`; today = `verta()->format('Y-m-d')`). `end_date` is
   `nullable` — an ongoing project sends `null`/omits it. Never use `date_format:Y-m-d`
   (rejects valid Jalali dates) — see the global Jalali-date convention below.
-- **Engineer profile `is_saze90_user`** (self-declared «کاربر سازه ۹۰») — boolean column on
-  `engineer_profiles` (migration `2026_06_21_*`), wired through request/controller/resource.
-  It is currently **inert** (stored only); the actual badge sync from `saze90.com` does not
-  exist in this codebase (see below).
+- **`is_saze90_user`** — since 1405/06/30 lives on **`users`** (migration `2026_09_21_100000`,
+  backfilled from the engineer flag) and is written only by `SyncUserBadgeAction` from the
+  saze90.com lookup; `engineer_profiles.is_saze90_user` (`2026_06_21_*`) is still written
+  for legacy readers but is no longer what verification reads. ⚠️ An earlier version of this
+  paragraph called the flag "self-declared" and "inert" — both were stale once the proxy below
+  landed; `ProfileFixesTest` pins that the frontend cannot set it.
 - **`EngineerController::store` partial-update fix.** Like `EmployerController`, it now loads
   the existing profile and falls back to `$existing?->field` instead of the non-existent
   `$this->field` controller properties (the silent-null data-loss bug).
@@ -2790,9 +2792,17 @@ integration was always **frontend-only** (`axios.get('https://www.saze90.com/get
 mobile=…')`), which broke under CORS. It is now proxied server-side:
 
 - `Saze90BadgeService::getCertificate($mobile)` → `GET {base}/get-certificate?mobile=09…`
-  (no auth). Live response shape (verified against the real server): `{"message": "gold"|
-  "silver"|"bronze"|<code>|false, "status": 200}` — `message:false` means "no badge".
-  Fail-safe: any error/`false`/empty → null. Circuit breaker + success-only cache.
+  (no auth). Live response shapes (verified against the real server): a known mobile
+  `{"message": "gold"|"silver"|"bronze"|<code>|false, "status": 200}` — `message:false` means
+  "no badge"; an **unknown** mobile `{"message":"No user found.","status":401}` with **HTTP 200**
+  (observed 1405/06/30). The payload's own `status >= 400` is read as "no badge" — until that
+  check existed, the string was taken as a badge code and every unknown mobile became a
+  "member" (`BadgeSyncTest::an_unknown_mobile_is_not_a_member`).
+  Two fail-safe shapes the caller must tell apart: a confirmed "no badge" returns null (cached
+  briefly); an outage / circuit open / `SAZE90_BADGE_ENABLED=false` **throws
+  `Saze90Unavailable`** and is never cached — `SyncUserBadgeAction` then reuses the last
+  known state (tier from `badge_id`, membership from `users.is_saze90_user`) so nobody is
+  silently unverified while saze90.com is down.
   Config: `config('services.saze90.*')` (`SAZE90_BADGE_ENABLED` default true, no creds needed).
 - `SyncUserBadgeAction` resolves the saze90 tier + **pioneer** (granted internally for the
   member's **first year**: `created_at > now()-1y`, NOT from saze90), and persists
@@ -2801,6 +2811,30 @@ mobile=…')`), which broke under CORS. It is now proxied server-side:
   (a transient saze90 outage must not silently downgrade a elite yar's commission rate).
 - `BadgeController::show` → `GET /api/profile/badge` returns `{badge, is_pioneer, badges}`.
   The frontend should call this instead of saze90 directly. Tests: `Profile/BadgeSyncTest`.
+
+### EliteYAR verification — one predicate, admin-switchable methods (1405/06/30)
+
+Management's launch decision: an EliteYAR is verified **only** through Sazeh 90 membership;
+the two document methods (education records, job experiences → manual `verify-elite-yar`)
+are switched off and shown as «به‌زودی» on the site, to be re-enabled from the panel later.
+
+- **Single predicate:** `User::isVerifiedEliteYAR()` — `(saze90 on && users.is_saze90_user)
+  || ((education on || job on) && engineer/contractor is_verified)`. Every consumer goes through
+  it: `UserResource`, `EngineerProfileResourse` (via `chaperone()`d `user`),
+  `StoreOrderRequest`, `EliteYARRelationController::inviteEliteYAR`, `EliteYARRelationResource`.
+  Before this there were five copies with two formulas — the three gates ignored saze90, so a
+  saze90-only member saw «تأیید شده» on their profile but got 422 on invites and orders.
+- **Switches:** settings keys `elite_yar_verify_{education,job,saze90}` ('1'/'0', launch
+  defaults 0/0/1 seeded by `2026_09_21_100100`, cache flushed there). Only reader:
+  `AppServicesProfileEliteYARVerificationMethods` (defaults live there and nowhere else).
+  Exposed resolved as `GET /settings/public › elite_yar_verification` (booleans) — the raw keys
+  are deliberately NOT in `public_keys`.
+- **Enforcement of an off method:** middleware `verification.method:{education|job}` on the
+  write routes (`POST education/fetch`, `POST|PUT job-experiences`) → 422
+  `elite_yar.method_disabled`; reads and deletes stay open. `verifyEliteYAR` (admin) → 422
+  `admin.users.manual_verification_disabled` while both document methods are off (its flag
+  would not count). Tests: `Profile/EliteYARVerificationPolicyTest`; tests that walk the
+  document paths enable the method with `TestsConcernsEnablesVerificationMethods`.
 
 **Still dormant — the elite yar lifetime cap.** `get-certificate` returns only the tier, NOT
 the badge **purchase amount** (`users.badge_purchase_amount`), so the cap stays dormant. The
