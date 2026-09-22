@@ -82,6 +82,55 @@ class PageBlocksSeederTest extends TestCase
         );
     }
 
+    /**
+     * `Block8Audiences` از `c527901` دکمه‌ی هر کارت را فقط با `link.to` رندر
+     * می‌کند (قاعده‌ی صداقت — دکمه‌ی بی‌مقصد نه). سیدر تا ۱۴۰۵/۰۶/۳۱ لینکی
+     * نمی‌کاشت، پس سه کارتِ آبیِ هوم هفده روز بی‌دکمه بودند و هیچ تستی
+     * چیزی برای دیدن نداشت. این تست همان قرارداد را روی سید پین می‌کند.
+     */
+    #[Test]
+    public function every_home_glass_card_carries_a_button_destination(): void
+    {
+        $this->seed(PageBlocksSeeder::class);
+
+        $cards = PageBlock::where(PageBlock::PAGE, PageBlock::PAGE_HOME)
+            ->where(PageBlock::TYPE, 'glass_cards')->firstOrFail()->{PageBlock::DATA}['cards'];
+
+        $this->assertCount(3, $cards);
+        foreach ($cards as $card) {
+            $this->assertMatchesRegularExpression('#^/[a-z]#', $card['link']['to'] ?? '', "کارتِ «{$card['title']}» مقصدِ دکمه ندارد — سایت دکمه را رندر نمی‌کند");
+            $this->assertSame($card['cta'], $card['link']['label']);
+        }
+    }
+
+    /**
+     * ردیفِ موجود روی استیجینگ/dev از همان سیدرِ بی‌لینک آمده و `firstOrCreate`
+     * عوضش نمی‌کند؛ مهاجرتِ `2026_09_22_100000` باید لینکِ خالی را پر کند و به
+     * لینکی که ادمین خودش گذاشته دست نزند.
+     */
+    #[Test]
+    public function the_fill_links_migration_fills_only_empty_links_of_seeded_cards(): void
+    {
+        $legacy = PageBlock::create([
+            PageBlock::PAGE => 'home-legacy-test', PageBlock::SORT_ORDER => 1, PageBlock::TYPE => 'glass_cards',
+            PageBlock::IS_ACTIVE => true,
+            PageBlock::DATA => ['cards' => [
+                ['title' => 'a', 'sub' => '', 'body' => '', 'cta' => 'شبکه خود را بسازید'],
+                ['title' => 'b', 'sub' => '', 'body' => '', 'cta' => 'خرید خود را آغاز کنید', 'link' => ['label' => 'x', 'to' => '/faq']],
+                ['title' => 'c', 'sub' => '', 'body' => '', 'cta' => 'متنی که ادمین خودش نوشته'],
+            ]],
+        ]);
+
+        $migration = require database_path('migrations/2026_09_22_100000_fill_home_glass_cards_links.php');
+        $migration->up();
+        $migration->up(); // idempotent
+
+        $cards = $legacy->fresh()->{PageBlock::DATA}['cards'];
+        $this->assertSame(['label' => 'شبکه خود را بسازید', 'to' => '/role'], $cards[0]['link']);
+        $this->assertSame(['label' => 'x', 'to' => '/faq'], $cards[1]['link'], 'لینکِ خودِ ادمین نباید بازنویسی شود');
+        $this->assertArrayNotHasKey('link', $cards[2], 'کارتی با متنِ ناشناخته نباید لینکِ حدسی بگیرد');
+    }
+
     #[Test]
     public function home_blocks_never_carry_an_id_since_their_components_do_not_take_one(): void
     {
