@@ -56,6 +56,25 @@ class PollPodiumDepositsJob implements ShouldBeUnique, ShouldQueue
         DepositStatementService $statementService,
         ProcessPodiumDepositAction $processAction,
     ): void {
+        /*
+         * گاردِ محیط — لایه‌ی دوم. زمان‌بندی در `routes/console.php` بیرون از
+         * production اصلاً ثبت نمی‌شود، ولی یک dispatchِ دستی (tinker، تستِ کسی،
+         * یک jobِ باقی‌مانده در صف) همان صورت‌حسابِ **واقعیِ** بانکی را می‌خواند و
+         * کیف پولِ همان محیط را شارژ می‌کند. پس این‌جا هم می‌ایستد.
+         *
+         * `warning` و نه `info`: اگر این خط در لاگ دیده شود یعنی کسی در محیطی که
+         * پولینگ خاموش است آن را صدا زده — رویدادی که باید دیده شود، نه نویزِ
+         * هر پنج دقیقه (در حالتِ خاموش، زمان‌بند هیچ‌وقت صدایش نمی‌زند).
+         */
+        if (! config('podium.deposit.polling_enabled')) {
+            Log::channel('financial')->warning('PollPodiumDepositsJob رد شد: پولینگِ واریز در این محیط خاموش است.', [
+                'env' => app()->environment(),
+                'hint' => 'PODIUM_DEPOSIT_POLLING_ENABLED',
+            ]);
+
+            return;
+        }
+
         $to = Carbon::now();
         $from = $this->windowStart($to);
 

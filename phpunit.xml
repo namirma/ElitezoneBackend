@@ -55,5 +55,11 @@
              returns it only outside production AND when this is set. Tests log in with it;
              Auth/OtpDebugCodeTest pins all three cases. -->
         <env name="OTP_DEBUG_CODE" value="111111"/>
+        <!-- Podium deposit polling defaults to ON only in production (config/podium.php),
+             because the job reads the company's REAL bank statement and credits whatever
+             environment it runs in. Tests turn it on so the polling module stays verified;
+             PodiumDepositPollingTest flips it off in one case to pin the guard, and pins
+             the schedule gate at source level because routes/console.php registers at boot. -->
+        <env name="PODIUM_DEPOSIT_POLLING_ENABLED" value="true"/>
     </php>
 </phpunit>

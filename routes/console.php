@@ -110,10 +110,17 @@ Schedule::job(new CheckSupplierBalancesJob)
     ->onOneServer();
 
 // Polling صورت‌حساب سپرده پادیوم — شارژ خودکار کیف‌پول با شناسه واریز
-Schedule::job(new PollPodiumDepositsJob)
-    ->everyFiveMinutes()
-    ->withoutOverlapping()
-    ->onOneServer();
+//
+// بیرون از production زمان‌بندی **ثبت نمی‌شود** (`podium.deposit.polling_enabled`).
+// عمداً به‌جای یک early-returnِ تنها داخلِ جاب: این‌طور `schedule:list` روی سرور
+// خودش نشان می‌دهد که پولینگ نیست — یعنی وضعیت قابلِ سنجش است، نه چیزی که باید
+// به لاگ اعتماد کرد. گاردِ داخلِ خودِ جاب هم سرِ جایش می‌ماند، برای dispatchِ دستی.
+if (config('podium.deposit.polling_enabled')) {
+    Schedule::job(new PollPodiumDepositsJob)
+        ->everyFiveMinutes()
+        ->withoutOverlapping()
+        ->onOneServer();
+}
 
 // حذف توکن‌های Sanctum منقضی‌شده — روزانه (۱۶۸ ساعت = ۷ روز)
 Schedule::command('sanctum:prune-expired --hours=168')

@@ -136,6 +136,64 @@ class PodiumDepositPollingTest extends TestCase
         $this->assertEqualsWithDelta(15, $from->diffInMinutes($now), 1);
     }
 
+    // ──────────── گاردِ محیط: پولینگ بیرون از production خاموش است ────────────
+
+    /*
+     * چرا این گارد هست: جاب صورت‌حسابِ **واقعیِ** بانکیِ شرکت را می‌خواند و هر
+     * واریزِ شناسه‌دار را به کیف پولِ همان محیط می‌نشاند. روی استیجینگ یعنی واریزِ
+     * واقعیِ یک مشتری، کیف پولِ آزمایشی را شارژ می‌کند. تا قبل از این هیچ کلیدِ
+     * خاموش‌کردنی نبود (`podium.settlement.enabled` فقط برداشت است) و تنها راه
+     * «خالی‌کردنِ دستیِ دو کلیدِ .env روی سرور» بود — یک قاعده‌ی ایمنی که به یادِ
+     * یک آدم سپرده شده بود.
+     */
+
+    #[Test]
+    public function polling_disabled_stops_the_job_before_it_reads_the_bank(): void
+    {
+        config(['podium.deposit.polling_enabled' => false]);
+
+        // هر تماسی با سرویسِ صورت‌حساب یعنی گارد کار نکرده — پس اصلاً نباید صدا شود.
+        $service = Mockery::mock(DepositStatementService::class);
+        $service->shouldNotReceive('getStatements');
+        $service->shouldNotReceive('getIncomingDeposits');
+
+        $action = Mockery::mock(\App\Actions\Financial\ProcessPodiumDepositAction::class);
+        $action->shouldNotReceive('execute');
+
+        $before = Setting::where(Setting::KEY, self::WATERMARK)->value(Setting::VALUE);
+
+        (new PollPodiumDepositsJob)->handle($service, $action);
+
+        // و watermark هم جلو نرفته باشد: یک جابِ ردشده نباید بازه را «خوانده‌شده»
+        // علامت بزند، وگرنه روشن‌کردنِ بعدیِ پولینگ همان بازه را برای همیشه می‌بازد.
+        $this->assertSame(
+            $before,
+            Setting::where(Setting::KEY, self::WATERMARK)->value(Setting::VALUE),
+            'جابِ خاموش watermark را جلو برد — بازه‌ی خوانده‌نشده برای همیشه گم می‌شود.'
+        );
+    }
+
+    #[Test]
+    public function the_schedule_is_gated_at_source(): void
+    {
+        /*
+         * زمان‌بندی در بوت ثبت می‌شود، پس یک `config()` داخلِ تست دیر است — همان
+         * دلیلی که `Product/ProductReviewRoutesAreGatedTest` گیت را در سطحِ سورس
+         * پین می‌کند. این‌جا هم همان کار: می‌سنجیم که خطِ زمان‌بندی داخلِ شرط است.
+         *
+         * دو لایه داریم و این تست لایه‌ی بیرونی را می‌پاید: بدونِ آن، سرور هر ۵
+         * دقیقه جاب را صدا می‌زند و فقط لاگِ هشدار می‌گیریم؛ با آن، `schedule:list`
+         * روی سرور خودش نشان می‌دهد که پولینگ نیست.
+         */
+        $source = file_get_contents(base_path('routes/console.php'));
+
+        $this->assertMatchesRegularExpression(
+            '/if\s*\(\s*config\(\s*[\'"]podium\.deposit\.polling_enabled[\'"]\s*\)\s*\)\s*\{[^}]*PollPodiumDepositsJob/s',
+            $source,
+            'زمان‌بندیِ PollPodiumDepositsJob دیگر پشتِ شرطِ podium.deposit.polling_enabled نیست.'
+        );
+    }
+
     private function invokeWindowStart(PollPodiumDepositsJob $job, Carbon $to): Carbon
     {
         $m = new \ReflectionMethod($job, 'windowStart');
