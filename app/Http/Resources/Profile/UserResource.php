@@ -51,6 +51,16 @@ class UserResource extends BaseJsonResource
             // فرانت با رشته کار می‌کند تا دقتِ اعشاری در JSON از بین نرود.
             User::CREDIT_LIMIT => $canSeeMobile ? (string) $this->{User::CREDIT_LIMIT} : null,
             User::DEBT_BALANCE => $canSeeMobile ? (string) $this->{User::DEBT_BALANCE} : null,
+            // موجودی و امانیِ کیف پول (رشته‌ی decimal مثلِ `WalletResource`) — فقط وقتی
+            // رابطه‌ی `wallet` لود شده باشد (لیست/جزئیات/جست‌وجوی کاربرانِ ادمین) و فقط
+            // برای خودِ شخص یا ادمین. `null` یعنی کیف پول هنوز ساخته نشده، نه موجودیِ صفر.
+            'wallet' => $this->when(
+                $canSeeMobile && $this->relationLoaded('wallet'),
+                fn () => $this->wallet ? [
+                    'balance' => (string) $this->wallet->balance,
+                    'balance_hold' => (string) $this->wallet->balance_hold,
+                ] : null
+            ),
             User::CREATED_AT => $this->{User::CREATED_AT},
             User::PASSWORD => (bool) $this->{User::PASSWORD},
             User::RELATION_PROFILE => new UserProfileResource($this->whenLoaded(User::RELATION_PROFILE)),

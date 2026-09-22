@@ -32,6 +32,9 @@ class WalletTransactionResource extends BaseJsonResource
             WalletTransaction::TYPE_WITHDRAW => 'برداشت از کیف پول',
             WalletTransaction::TYPE_FEE_HOLD => 'سهم رزرو شده',
             WalletTransaction::TYPE_FEE_RELEASE => 'آزادسازی سهم',
+            // ردیفِ `releaseHold()` (تکمیلِ رزرو، بدهیِ تأمین‌کننده) — تا ۱۴۰۵/۰۶/۳۱ برچسب
+            // نداشت و اسلاگِ `hold_release` عیناً به کارتِ سایت و جدولِ پنل‌ها می‌رسید.
+            WalletTransaction::TYPE_HOLD_RELEASE => 'آزادسازی هولد',
             default => $this->type,
         };
 

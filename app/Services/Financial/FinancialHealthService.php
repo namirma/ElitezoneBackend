@@ -36,12 +36,16 @@ class FinancialHealthService
         $supplierDebtCount = Order::where(Order::SUPPLIER_DEBT_PENDING, true)->count();
         $supplierDebtAmount = (float) Order::where(Order::SUPPLIER_DEBT_PENDING, true)->sum(Order::SUPPLIER_DEBT_AMOUNT);
 
+        // `user_id` همراهِ هر کیف پولِ پلتفرم: با آن دفترِ همان کیف از
+        // `GET /admin/wallet/transactions?user_id=` خوانده می‌شود (صفحه‌ی «کیف پول»ِ بک‌آفیس).
         return [
             'system_wallet' => $systemWallet ? [
+                'user_id' => $systemUserId,
                 'balance' => (float) $systemWallet->{Wallet::BALANCE},
                 'balance_hold' => (float) $systemWallet->{Wallet::BALANCE_HOLD},
             ] : null,
             'vat_wallet' => $vatWallet ? [
+                'user_id' => $vatUserId,
                 'balance' => (float) $vatWallet->{Wallet::BALANCE},
                 'balance_hold' => (float) $vatWallet->{Wallet::BALANCE_HOLD},
             ] : null,
