@@ -289,6 +289,24 @@ class SupplierQualificationTest extends TestCase
     }
 
     #[Test]
+    public function leaving_an_identity_field_out_does_not_wipe_it_past_the_lock(): void
+    {
+        // `store()` هر فیلدِ هویتی را از `validated()` می‌نویسد، پس کلیدِ نفرستاده
+        // یعنی نوشتنِ null — نه «بدونِ تغییر». شبا `nullable` است؛ درخواستی بدونِ
+        // آن از قفل رد می‌شد و شبای تأییدشده را بی‌صدا و بی‌لاگ پاک می‌کرد.
+        Bus::fake([SendSmsJob::class]);
+        $this->approvedProfile();
+        $iban = 'IR'.str_repeat('1', 24);
+        SupplierProfile::where(SupplierProfile::USER_ID, $this->applicant->id)->update([SupplierProfile::IBAN => $iban]);
+
+        $this->postJson('/api/profile/supplier', $this->qualificationPayload())
+            ->assertStatus(422)
+            ->assertJsonPath('errors.iban.0', __('supplier.qualification.identity_locked_field'));
+
+        $this->assertSame($iban, SupplierProfile::where(SupplierProfile::USER_ID, $this->applicant->id)->value(SupplierProfile::IBAN));
+    }
+
+    #[Test]
     public function the_admin_reopens_an_approved_profile_for_an_identity_change_and_the_role_survives(): void
     {
         Bus::fake([SendSmsJob::class]);

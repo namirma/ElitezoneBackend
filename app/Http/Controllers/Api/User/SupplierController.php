@@ -189,8 +189,16 @@ class SupplierController extends Controller
         // فیلدها (برند، وب‌سایت، توضیح…) مثلِ قبل مستقیم ذخیره می‌شوند. مسیرِ تغییر:
         // ادمین با «نیاز به اصلاح» فرم را باز می‌کند و نقش می‌ماند. طرحِ کاملِ
         // «پیشنهادِ تغییر + پذیرشِ ادمین با جدولِ قبلی/جدید» بعد از go-live.
+        //
+        // مقایسه با همان چیزی که `updateOrCreate` پایین می‌نویسد: فیلدهای هویتی از
+        // `validated()` نوشته می‌شوند، پس کلیدِ نفرستاده یعنی null (شبا و کد اقتصادی
+        // `nullable`اند و بدونِ این، حذفشان بی‌صدا از قفل رد می‌شد)؛ نوع فقط `$entityType`.
         if ($existing !== null && $existing->isApproved()) {
-            $changes = $existing->identityChanges($request->validated());
+            $changes = $existing->identityChanges(array_merge(
+                array_fill_keys(SupplierProfile::IDENTITY_FIELDS, null),
+                $request->validated(),
+                [SupplierProfile::ENTITY_TYPE => $entityType],
+            ));
             if ($changes !== []) {
                 activity()
                     ->performedOn($existing)

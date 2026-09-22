@@ -1399,6 +1399,14 @@ pricing resolution and the settlement formula flags — is attached **only** by
 role without re-approval only when the profile is already `approved`. Never add an
 `addRole('supplier')` call on a user-reachable path.
 
+**Approved identity is locked** (a22a2098, 1405/06/31): on an `approved` profile
+`SupplierController::store` answers 422 per changed field in `SupplierProfile::IDENTITY_FIELDS`
+(legal identity, representative, IBAN, factory address) and logs the attempt. `store()`
+writes those fields straight from `validated()`, so an **omitted** key counts as a change
+to null — never compare only the keys that were sent. The one exception: a blank `company`
+may be filled once. The reviewed way to change them is `/request-correction`, which now works
+on an approved profile and keeps the role; resubmission → `pending` → `approve` again.
+
 **Expert role removal is non-destructive for records.** `SyncUserRolesAction` no
 longer deletes `eduixRecords`/`jobExperiences` when the expert role is dropped —
 deleting them was irreversible (approved records + attached files, with the files
@@ -1412,7 +1420,9 @@ querying `slug = 'consultant'` (the old bug) returned null and never attached th
 ### External Service Integrations
 
 - **Podium** — identity verification, bank settlement, NID-mobile matching (via `PodiumClient`);
-  deposit statement polling every 5 min (via `DepositStatementService` + `ProcessPodiumDepositAction`)
+  deposit statement polling every 5 min (via `DepositStatementService` + `ProcessPodiumDepositAction`) —
+  **production only**: `podium.deposit.polling_enabled` (`PODIUM_DEPOSIT_POLLING_ENABLED`, default
+  `APP_ENV === production`) decides whether the schedule is registered at all (a9666cd)
 - **TSMS** — SMS OTP delivery (via `SmsService`, dispatched as `SendSmsJob`)
 - **Espadana** — loading order commands for suppliers
 
