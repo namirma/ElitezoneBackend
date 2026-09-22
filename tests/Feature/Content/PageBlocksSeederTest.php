@@ -126,8 +126,12 @@ class PageBlocksSeederTest extends TestCase
         $migration->up(); // idempotent
 
         $cards = $legacy->fresh()->{PageBlock::DATA}['cards'];
-        $this->assertSame(['label' => 'شبکه خود را بسازید', 'to' => '/role'], $cards[0]['link']);
-        $this->assertSame(['label' => 'x', 'to' => '/faq'], $cards[1]['link'], 'لینکِ خودِ ادمین نباید بازنویسی شود');
+        // `assertEquals` و نه `assertSame`: ستونِ `data` از نوعِ JSON است و MySQL 8
+        // کلیدهای شیءِ JSON را هنگامِ ذخیره مرتب می‌کند (اول کوتاه‌تر)، پس
+        // `{label, to}` به‌صورتِ `{to, label}` برمی‌گردد. ترتیبِ کلید برای فرانت
+        // بی‌معناست؛ MariaDBِ محلی ترتیب را نگه می‌دارد و فقط CI این را می‌دید.
+        $this->assertEquals(['label' => 'شبکه خود را بسازید', 'to' => '/role'], $cards[0]['link']);
+        $this->assertEquals(['label' => 'x', 'to' => '/faq'], $cards[1]['link'], 'لینکِ خودِ ادمین نباید بازنویسی شود');
         $this->assertArrayNotHasKey('link', $cards[2], 'کارتی با متنِ ناشناخته نباید لینکِ حدسی بگیرد');
     }
 

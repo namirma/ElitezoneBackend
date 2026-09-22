@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Financial;
 
+use App\Actions\Financial\ProcessPodiumDepositAction;
 use App\Jobs\Financial\PollPodiumDepositsJob;
 use App\Models\Setting;
 use App\Services\PodiumServices\DepositStatementService;
@@ -157,7 +158,7 @@ class PodiumDepositPollingTest extends TestCase
         $service->shouldNotReceive('getStatements');
         $service->shouldNotReceive('getIncomingDeposits');
 
-        $action = Mockery::mock(\App\Actions\Financial\ProcessPodiumDepositAction::class);
+        $action = Mockery::mock(ProcessPodiumDepositAction::class);
         $action->shouldNotReceive('execute');
 
         $before = Setting::where(Setting::KEY, self::WATERMARK)->value(Setting::VALUE);
