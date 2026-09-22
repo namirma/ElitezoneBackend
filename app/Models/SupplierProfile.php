@@ -206,6 +206,54 @@ class SupplierProfile extends Model
         return $this->{self::ENTITY_TYPE} !== self::ENTITY_INDIVIDUAL;
     }
 
+    /**
+     * فیلدهایی که بعد از تأیید بی‌سروصدا عوض نمی‌شوند (قانون دو، علی ۱۴۰۵/۰۶/۳۱):
+     * هویتِ حقوقی، نماینده، شبا و نشانیِ کارخانه. تا آن تاریخ `POST profile/supplier`
+     * روی پروفایلِ approved این‌ها را مستقیم می‌نوشت — زنده سنجیده شد: شناسه‌ی ملی
+     * عوض شد و تأیید ماند. مسیرِ تغییرِ مشروع: ادمین با «نیاز به اصلاح» فرم را باز
+     * می‌کند (نقش می‌ماند)، تأمین‌کننده اصلاح و ارسال می‌کند، ادمین دوباره تأیید می‌کند.
+     *
+     * @var list<string>
+     */
+    public const IDENTITY_FIELDS = [
+        self::COMPANY,
+        self::ENTITY_TYPE,
+        self::NATIONAL_ID,
+        self::REGISTRATION_NUMBER,
+        self::ECONOMIC_CODE,
+        self::REPRESENTATIVE_NAME,
+        self::REPRESENTATIVE_NATIONAL_CODE,
+        self::PROVINCE_ID,
+        self::CITY_ID,
+        self::FACTORY_ADDRESS,
+        self::POSTAL_CODE,
+        self::IBAN,
+    ];
+
+    /**
+     * کدام فیلدهای هویتی در این ورودی با مقدارِ ذخیره‌شده فرق دارند.
+     * فقط کلیدهایی که واقعاً فرستاده شده‌اند سنجیده می‌شوند؛ null و رشته‌ی خالی یکی‌اند.
+     *
+     * @param  array<string, mixed>  $incoming
+     * @return array<string, array{from: mixed, to: mixed}>
+     */
+    public function identityChanges(array $incoming): array
+    {
+        $changed = [];
+        foreach (self::IDENTITY_FIELDS as $field) {
+            if (! array_key_exists($field, $incoming)) {
+                continue;
+            }
+            $new = $incoming[$field] === null ? '' : trim((string) $incoming[$field]);
+            $old = $this->{$field} === null ? '' : trim((string) $this->{$field});
+            if ($new !== $old) {
+                $changed[$field] = ['from' => $this->{$field}, 'to' => $incoming[$field]];
+            }
+        }
+
+        return $changed;
+    }
+
     /** @var array<string, string> */
     protected $casts = [
         self::TRANS_COMMISSION => 'boolean',

@@ -198,10 +198,105 @@ class SupplierQualificationTest extends TestCase
                 && $inner[2]['panel_url'] === 'https://panel.example.test';
         });
 
-        // تأییدشده «نیاز به اصلاح» نمی‌گیرد — مسیرش رد است.
+        // تا ۱۴۰۵/۰۶/۳۱ این‌جا ۴۰۹ بود («تأییدشده نیاز به اصلاح نمی‌گیرد — مسیرش رد
+        // است»). با قفلِ فیلدهای هویتی بعد از تأیید، همین اکشن کانالِ تغییرِ
+        // مشروع شد: مجاز است و نقش می‌ماند (کسب‌وکار قطع نمی‌شود).
         $this->postJson("/api/admin/suppliers/{$this->applicant->id}/request-correction", [
-            'reason' => 'این دیگر معنا ندارد چون تأیید شده است.',
-        ])->assertStatus(409);
+            'reason' => 'نماینده‌ی قانونی عوض شده؛ لطفاً مشخصات را اصلاح کنید.',
+        ])->assertOk()->assertJsonPath('data.supplier_status', SupplierProfile::STATUS_NEEDS_CORRECTION);
+        $this->assertTrue($this->applicant->fresh()->hasRole('supplier'));
+    }
+
+    /** پروفایلِ تأییدشده با نقشِ وصل‌شده، همان‌طور که ادمین می‌سازد. */
+    private function approvedProfile(): void
+    {
+        $this->draft();
+        Sanctum::actingAs($this->applicant);
+        $this->postJson('/api/profile/supplier', $this->qualificationPayload())->assertOk();
+        Sanctum::actingAs($this->admin);
+        $this->postJson("/api/admin/suppliers/{$this->applicant->id}/approve")->assertOk();
+        Sanctum::actingAs($this->applicant);
+    }
+
+    #[Test]
+    public function an_approved_supplier_cannot_change_identity_fields_silently(): void
+    {
+        // قانون دو (علی ۱۴۰۵/۰۶/۳۱). تا آن روز این درخواست ۲۰۰ می‌داد و شناسه/کد ملی
+        // را عوض می‌کرد در حالی که approved می‌ماند — زنده روی حسابِ علی سنجیده شد.
+        Bus::fake([SendSmsJob::class]);
+        $this->approvedProfile();
+
+        $before = SupplierProfile::where(SupplierProfile::USER_ID, $this->applicant->id)->first();
+
+        $response = $this->postJson('/api/profile/supplier', $this->qualificationPayload([
+            'representative_national_code' => '1234567891',
+            'postal_code' => '8158913812',
+        ]));
+        $response->assertStatus(422)
+            ->assertJsonPath('message', __('supplier.qualification.identity_locked'))
+            ->assertJsonPath('errors.representative_national_code.0', __('supplier.qualification.identity_locked_field'))
+            ->assertJsonPath('errors.postal_code.0', __('supplier.qualification.identity_locked_field'))
+            ->assertJsonMissingPath('errors.company');
+
+        $after = $before->fresh();
+        $this->assertSame($before->{SupplierProfile::REPRESENTATIVE_NATIONAL_CODE}, $after->{SupplierProfile::REPRESENTATIVE_NATIONAL_CODE});
+        $this->assertSame($before->{SupplierProfile::POSTAL_CODE}, $after->{SupplierProfile::POSTAL_CODE});
+        $this->assertSame(SupplierProfile::STATUS_APPROVED, $after->{SupplierProfile::STATUS});
+
+        // ردِ حسابرسی: پشتیبانی باید تلاش را ببیند.
+        $this->assertDatabaseHas('activity_log', [
+            'subject_type' => SupplierProfile::class,
+            'subject_id' => $before->id,
+            'causer_id' => $this->applicant->id,
+            'description' => 'تلاش برای تغییر مشخصات هویتی تأمین‌کننده‌ی تأییدشده رد شد.',
+        ]);
+    }
+
+    #[Test]
+    public function an_approved_supplier_still_edits_the_free_fields_directly(): void
+    {
+        Bus::fake([SendSmsJob::class]);
+        $this->approvedProfile();
+
+        $this->postJson('/api/profile/supplier', $this->qualificationPayload([
+            'brands' => 'آزمون‌فولاد',
+            'website' => 'https://example.test',
+        ]))->assertOk();
+
+        $profile = SupplierProfile::where(SupplierProfile::USER_ID, $this->applicant->id)->first();
+        $this->assertSame('آزمون‌فولاد', $profile->{SupplierProfile::BRANDS});
+        $this->assertSame(SupplierProfile::STATUS_APPROVED, $profile->{SupplierProfile::STATUS});
+        $this->assertTrue($this->applicant->fresh()->hasRole('supplier'));
+    }
+
+    #[Test]
+    public function the_admin_reopens_an_approved_profile_for_an_identity_change_and_the_role_survives(): void
+    {
+        Bus::fake([SendSmsJob::class]);
+        $this->approvedProfile();
+
+        // ۱. ادمین (بعد از تماسِ پشتیبانی) پرونده را باز می‌کند — با دلیل و پیامک.
+        Sanctum::actingAs($this->admin);
+        $this->postJson("/api/admin/suppliers/{$this->applicant->id}/request-correction", [
+            'reason' => 'نماینده‌ی قانونی طبق آگهی تغییرات عوض شده است.',
+        ])->assertOk();
+        $this->assertSame(SupplierProfile::STATUS_NEEDS_CORRECTION, $this->profileStatus());
+        $this->assertTrue($this->applicant->fresh()->hasRole('supplier'), 'نقش نباید برود — پنل و تسویه ادامه دارد');
+
+        // ۲. حالا همان تغییری که قفل بود، مجاز است و به صف برمی‌گردد.
+        Sanctum::actingAs($this->applicant);
+        $this->postJson('/api/profile/supplier', $this->qualificationPayload([
+            'representative_national_code' => '1234567891',
+        ]))->assertOk();
+        $profile = SupplierProfile::where(SupplierProfile::USER_ID, $this->applicant->id)->first();
+        $this->assertSame('1234567891', $profile->{SupplierProfile::REPRESENTATIVE_NATIONAL_CODE});
+        $this->assertSame(SupplierProfile::STATUS_PENDING, $profile->{SupplierProfile::STATUS});
+
+        // ۳. تأییدِ دوباره؛ نقش از قبل هست و دوباره وصل نمی‌شود.
+        Sanctum::actingAs($this->admin);
+        $this->postJson("/api/admin/suppliers/{$this->applicant->id}/approve")->assertOk();
+        $this->assertSame(SupplierProfile::STATUS_APPROVED, $this->profileStatus());
+        $this->assertSame(1, $this->applicant->fresh()->roles()->where('name', 'supplier')->count());
     }
 
     #[Test]

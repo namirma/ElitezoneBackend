@@ -149,17 +149,25 @@ class SupplierPanelVisibilityTest extends TestCase
     #[Test]
     public function editing_an_approved_profile_does_not_drop_the_approval(): void
     {
-        $this->profileFor($this->supplier, [SupplierProfile::STATUS => SupplierProfile::STATUS_APPROVED]);
+        // تا ۱۴۰۵/۰۶/۳۱ این تست نامِ ثبتی را روی پروفایلِ تأییدشده عوض می‌کرد و ۲۰۰
+        // می‌خواست. با قانون دو (قفلِ مشخصاتِ هویتی بعد از تأیید) همان تغییر ۴۲۲ است؛
+        // «تأیید نمی‌پرد» برای فیلدهای آزاد همچنان درست است و همین‌جا پین می‌شود.
+        $payload = $this->qualificationPayload();
+        $identity = array_intersect_key($payload, array_flip(SupplierProfile::IDENTITY_FIELDS));
+        $this->profileFor($this->supplier, [SupplierProfile::STATUS => SupplierProfile::STATUS_APPROVED] + $identity);
 
         Sanctum::actingAs($this->supplier);
-        $this->postJson('/api/profile/supplier', $this->qualificationPayload([
-            'company' => 'نامِ تازه',
-        ]))->assertOk();
+        $this->postJson('/api/profile/supplier', $payload + ['brands' => 'برندِ تازه'])->assertOk();
 
-        $this->assertSame(
-            SupplierProfile::STATUS_APPROVED,
-            SupplierProfile::where(SupplierProfile::USER_ID, $this->supplier->id)->value(SupplierProfile::STATUS)
-        );
+        $profile = SupplierProfile::where(SupplierProfile::USER_ID, $this->supplier->id)->first();
+        $this->assertSame(SupplierProfile::STATUS_APPROVED, $profile->{SupplierProfile::STATUS});
+        $this->assertSame('برندِ تازه', $profile->{SupplierProfile::BRANDS});
+
+        // و فیلدِ هویتی همان‌جا می‌ایستد — با تأییدِ دست‌نخورده.
+        $this->postJson('/api/profile/supplier', $this->qualificationPayload(['company' => 'نامِ تازه']))
+            ->assertStatus(422)
+            ->assertJsonPath('errors.company.0', __('supplier.qualification.identity_locked_field'));
+        $this->assertSame(SupplierProfile::STATUS_APPROVED, $profile->fresh()->{SupplierProfile::STATUS});
     }
 
     #[Test]

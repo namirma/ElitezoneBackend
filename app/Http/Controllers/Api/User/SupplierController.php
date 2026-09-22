@@ -182,6 +182,31 @@ class SupplierController extends Controller
             return error(__('supplier.qualification.gazette_required'), [], 422);
         }
 
+        // قانون دو (علی ۱۴۰۵/۰۶/۳۱): بعد از تأیید، مشخصاتِ هویتی و نشانیِ کارخانه
+        // (`SupplierProfile::IDENTITY_FIELDS`) بی‌سروصدا عوض نمی‌شوند — بک‌آفیس و
+        // پشتیبانی باید در جریان باشند. فعلاً قفلِ سخت: هر فیلدِ تغییرکرده ۴۲۲ با
+        // پیامِ خودش می‌گیرد، تلاش در لاگِ فعالیت می‌ماند تا پشتیبانی ببیند، و بقیه‌ی
+        // فیلدها (برند، وب‌سایت، توضیح…) مثلِ قبل مستقیم ذخیره می‌شوند. مسیرِ تغییر:
+        // ادمین با «نیاز به اصلاح» فرم را باز می‌کند و نقش می‌ماند. طرحِ کاملِ
+        // «پیشنهادِ تغییر + پذیرشِ ادمین با جدولِ قبلی/جدید» بعد از go-live.
+        if ($existing !== null && $existing->isApproved()) {
+            $changes = $existing->identityChanges($request->validated());
+            if ($changes !== []) {
+                activity()
+                    ->performedOn($existing)
+                    ->causedBy(Auth::user())
+                    ->withProperties(['supplier_user_id' => Auth::id(), 'attempted' => $changes])
+                    ->log('تلاش برای تغییر مشخصات هویتی تأمین‌کننده‌ی تأییدشده رد شد.');
+
+                $errors = [];
+                foreach (array_keys($changes) as $field) {
+                    $errors[$field] = [__('supplier.qualification.identity_locked_field')];
+                }
+
+                return error('supplier.qualification.identity_locked', $errors, 422);
+            }
+        }
+
         $optional = fn (string $key) => $request->validated($key) ?? $existing?->{$key};
 
         $supplierProfile = SupplierProfile::updateOrCreate(

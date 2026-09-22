@@ -283,12 +283,19 @@ class AdminSupplierController extends Controller
      * «نیاز به اصلاح» — حالتِ سومِ صفِ صلاحیت
      *
      * برای وقتی که درخواست ناقص است ولی رد کردنش زیاده‌روی است (مدرکِ ناخوانا،
-     * کدپستیِ غلط). نقش وصل نمی‌شود، متقاضی دلیل را در پروفایلِ سایت می‌بیند و
-     * با ارسالِ دوباره (`SupplierController::store`) به `pending` برمی‌گردد.
-     * روی تأمین‌کننده‌ی تأییدشده معنا ندارد — آن‌جا مسیر `reject` است.
+     * کدپستیِ غلط). متقاضی دلیل را در پروفایلِ سایت می‌بیند و با ارسالِ دوباره
+     * (`SupplierController::store`) به `pending` برمی‌گردد. روی تأمین‌کننده‌ی
+     * تأییدشده هم مجاز است و نقش می‌ماند: این تنها راهِ تغییرِ مشخصاتِ هویتی و
+     * نشانی بعد از تأیید است.
      */
     public function requestCorrection(Request $request, User $user): JsonResponse
     {
+        // قانون دو (علی ۱۴۰۵/۰۶/۳۱): تا این تاریخ روی پروفایلِ approved ۴۰۹ می‌داد
+        // («مسیرش رد است»)، ولی با قفل‌شدنِ فیلدهای هویتی بعد از تأیید
+        // (`SupplierController::store`)، «رد» یعنی کندنِ نقش و قطعِ کسب‌وکار برای یک
+        // تغییرِ مشروع. حالا این اکشن همان کانالِ بازبینی‌شده‌ی تغییر است: نقش
+        // سرِ جایش می‌ماند (پنل باز، قیمت‌گذاری و تسویه دست‌نخورده)، فرم باز می‌شود،
+        // و ارسالِ دوباره به صفِ تأیید می‌رود.
         $data = $request->validate([
             'reason' => ['required', 'string', 'min:10', 'max:1000'],
         ], [
@@ -300,10 +307,6 @@ class AdminSupplierController extends Controller
 
         if (! $profile) {
             return error(__('admin.suppliers.profile_not_found'), [], 404);
-        }
-
-        if ($profile->isApproved() || $user->hasRole('supplier')) {
-            return error(__('admin.suppliers.cannot_correct_approved'), [], 409);
         }
 
         $profile->forceFill([
