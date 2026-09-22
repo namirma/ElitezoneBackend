@@ -253,6 +253,25 @@ class SupplierQualificationTest extends TestCase
     }
 
     #[Test]
+    public function a_blank_company_name_may_be_filled_once_after_approval_and_then_locks(): void
+    {
+        // علی ۱۴۰۵/۰۶/۳۱: نامِ شرکت کنارِ نامِ شخص بالای منوی پنل می‌نشیند و اگر نداریم
+        // در ورودِ اول می‌پرسیم — پس پرکردنِ خلأ مجاز است، تغییرِ مقدارِ پرشده نه.
+        Bus::fake([SendSmsJob::class]);
+        $this->approvedProfile();
+        SupplierProfile::where(SupplierProfile::USER_ID, $this->applicant->id)->update([SupplierProfile::COMPANY => null]);
+
+        $this->postJson('/api/profile/supplier', $this->qualificationPayload(['company' => 'فولاد آزمون الیت']))->assertOk();
+        $profile = SupplierProfile::where(SupplierProfile::USER_ID, $this->applicant->id)->first();
+        $this->assertSame('فولاد آزمون الیت', $profile->{SupplierProfile::COMPANY});
+        $this->assertSame(SupplierProfile::STATUS_APPROVED, $profile->{SupplierProfile::STATUS});
+
+        $this->postJson('/api/profile/supplier', $this->qualificationPayload(['company' => 'نامِ دیگر']))
+            ->assertStatus(422)
+            ->assertJsonPath('errors.company.0', __('supplier.qualification.identity_locked_field'));
+    }
+
+    #[Test]
     public function an_approved_supplier_still_edits_the_free_fields_directly(): void
     {
         Bus::fake([SendSmsJob::class]);

@@ -246,6 +246,13 @@ class SupplierProfile extends Model
             }
             $new = $incoming[$field] === null ? '' : trim((string) $incoming[$field]);
             $old = $this->{$field} === null ? '' : trim((string) $this->{$field});
+            // نامِ ثبتیِ خالی مقدارِ تأییدشده نیست، خلأ است (داده‌ی قدیمی/آزمایشی):
+            // یک بار پر می‌شود — پنل در همان ورودِ اول می‌پرسد (علی ۱۴۰۵/۰۶/۳۱) —
+            // و از آن به بعد مثلِ بقیه قفل است. فقط همین فیلد؛ شبای خالی را
+            // بی‌بازبینی نمی‌شود پر کرد.
+            if ($field === self::COMPANY && $old === '' && $new !== '') {
+                continue;
+            }
             if ($new !== $old) {
                 $changed[$field] = ['from' => $this->{$field}, 'to' => $incoming[$field]];
             }
