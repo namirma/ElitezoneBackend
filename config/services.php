@@ -105,6 +105,10 @@ return [
             'trim',
             explode(',', (string) env('TSMS_DEV_ALLOWLIST', ''))
         ))),
+
+        // `true` روی یک محیطِ دیپلوی‌شده‌ی غیرپروداکشن (استیجینگ) = پیامک به **همه**،
+        // مثلِ شرایطِ عادی. روی `local`/`testing` نادیده گرفته می‌شود (SmsService::allowAllHonoured).
+        'dev_allow_all' => filter_var(env('TSMS_DEV_ALLOW_ALL', false), FILTER_VALIDATE_BOOLEAN),
     ],
 
     // نشانِ همکاریِ الیت یار از سایت legacy «سازه ۹۰» (saze90.com).

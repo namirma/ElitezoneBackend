@@ -53,7 +53,7 @@ class SmsService
         //
         // true برمی‌گردانیم (نه false) تا جاب retry/fail نشود — از دیدِ اپلیکیشن
         // «ارسال شد»، فقط جایی نرفته است.
-        if (! app()->environment('production') && ! $this->allowedInNonProduction($to)) {
+        if (! app()->environment('production') && ! self::allowAllHonoured() && ! $this->allowedInNonProduction($to)) {
             Log::info('SmsService: پیامک در محیط غیرپروداکشن ارسال نشد (خارج از allowlist).', [
                 'to' => $to,
                 'env' => app()->environment(),
@@ -132,7 +132,7 @@ class SmsService
             );
         }
 
-        if ((array) config('services.tsms.dev_allowlist', []) === []) {
+        if (! self::allowAllHonoured() && (array) config('services.tsms.dev_allowlist', []) === []) {
             return sprintf(
                 'TSMS_DEV_ALLOWLIST در محیط «%s» خالی است — هیچ پیامکی تحویل نمی‌شود و ورود با OTP ممکن نیست.',
                 app()->environment()
@@ -140,6 +140,20 @@ class SmsService
         }
 
         return null;
+    }
+
+    /**
+     * آیا `TSMS_DEV_ALLOW_ALL` در این محیط اثر دارد؟ (علی، ۱۴۰۵/۰۷/۰۱ — استیجینگ باید
+     * مثل شرایطِ عادی به همه پیامک بدهد تا مدیریت بتواند با هر شماره‌ای وارد شود.)
+     *
+     * روی `local`/`testing` عمداً **نادیده** گرفته می‌شود: کلِ این گارد برای لپ‌تاپی
+     * ساخته شد که صفِ انباشته را به مشتریِ واقعی فرستاد، و یک `.env` استیجینگ که روی
+     * لپ‌تاپی کپی شود نباید بتواند همان حادثه را تکرار کند.
+     */
+    private static function allowAllHonoured(): bool
+    {
+        return (bool) config('services.tsms.dev_allow_all', false)
+            && ! app()->environment('local', 'testing');
     }
 
     /**

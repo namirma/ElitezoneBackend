@@ -138,6 +138,47 @@ class SmsDevAllowlistTest extends TestCase
     }
 
     #[Test]
+    public function allow_all_on_a_deployed_staging_reaches_an_unlisted_number(): void
+    {
+        // علی ۱۴۰۵/۰۷/۰۱: استیجینگ باید مثلِ شرایطِ عادی به همه پیامک بدهد.
+        $this->configureGateway();
+        config()->set('services.tsms.dev_allowlist', []);
+        config()->set('services.tsms.dev_allow_all', true);
+        app()->detectEnvironment(fn () => 'staging');
+        Http::fake(['https://sms.test/*' => Http::response('ok', 200)]);
+
+        try {
+            app(SmsService::class)->send('09121234567', 'سلام');
+            Http::assertSentCount(1);
+            // و دیگر «لیستِ خالی» به‌عنوانِ قطعیِ ورود گزارش نمی‌شود.
+            $this->assertNull(SmsService::deliveryProblem());
+        } finally {
+            app()->detectEnvironment(fn () => 'testing');
+        }
+    }
+
+    #[Test]
+    public function allow_all_never_reaches_real_numbers_from_a_laptop(): void
+    {
+        // خودِ حادثه‌ای که این گارد برایش ساخته شد: `.env` استیجینگ روی لپ‌تاپ کپی شود.
+        $this->configureGateway();
+        config()->set('services.tsms.dev_allowlist', []);
+        config()->set('services.tsms.dev_allow_all', true);
+        Http::fake();
+
+        foreach (['local', 'testing'] as $env) {
+            app()->detectEnvironment(fn () => $env);
+            try {
+                app(SmsService::class)->send('09121234567', 'سلام');
+            } finally {
+                app()->detectEnvironment(fn () => 'testing');
+            }
+        }
+
+        Http::assertNothingSent();
+    }
+
+    #[Test]
     public function production_ignores_the_allowlist_entirely(): void
     {
         $this->configureGateway();
