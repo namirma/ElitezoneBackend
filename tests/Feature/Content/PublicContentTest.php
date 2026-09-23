@@ -103,6 +103,32 @@ class PublicContentTest extends TestCase
     }
 
     #[Test]
+    public function the_font_license_badge_reaches_the_site(): void
+    {
+        // مجوزِ فونتِ یکان‌بخ (fontiran، SF4998) نمایشِ نشان را روی سایت خواسته است. اگر این
+        // کلیدها از `public_keys` بیفتند، نشان بی‌صدا از فوتر ناپدید می‌شود — هیچ خطایی نیست.
+        $values = [
+            'font_license_image_url' => 'https://fontiran.com/storage/uploads/images/2023/1/badge4-minJZec6p.png',
+            'font_license_link' => 'https://fontiran.com/license/SF4998',
+            'font_license_text' => 'این وب‌سایت به صورت قانونی از فونت یکان‌بخ استفاده می‌کند.',
+        ];
+        foreach ($values as $key => $value) {
+            Setting::updateOrCreate([Setting::KEY => $key], [Setting::VALUE => $value]);
+        }
+        Cache::forget(Setting::CACHE_KEY);
+
+        $data = $this->getJson('/api/settings/public')->assertOk()->json('data');
+
+        foreach ($values as $key => $value) {
+            $this->assertSame($value, $data[$key] ?? null, "{$key} به سایت نرسید");
+        }
+        // و ادمین می‌تواند ویرایشش کند (همان whitelistِ PUT /admin/settings).
+        foreach (array_keys($values) as $key) {
+            $this->assertContains($key, config('settings.allowed_keys'));
+        }
+    }
+
+    #[Test]
     public function public_settings_expose_only_whitelisted_keys(): void
     {
         Setting::updateOrCreate([Setting::KEY => 'site_title'], [Setting::VALUE => 'الیت زون']);
