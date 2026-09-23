@@ -140,7 +140,7 @@ return [
         'mixed' => 'فیلد :attribute باید حداقل یک حرف بزرگ و یک حرف کوچک داشته باشد.',
         'numbers' => 'فیلد :attribute باید حداقل یک عدد داشته باشد.',
         'symbols' => 'فیلد :attribute باید حداقل یک نماد داشته باشد.',
-        'uncompromised' => 'مقدار واردشده برای :attribute در نشت اطلاعات دیده شده است. لطفاً مقدار دیگری انتخاب کنید.',
+        'uncompromised' => 'مقدار واردشده برای :attribute در نشت اطلاعات دیده شده است. لطفا مقدار دیگری انتخاب کنید.',
     ],
 
     'present' => 'فیلد :attribute باید ارسال شود.',
@@ -165,7 +165,7 @@ return [
     'same' => 'مقدار :attribute و :other باید یکسان باشند.',
 
     'size' => [
-        'array' => 'فیلد :attribute باید دقیقاً :size آیتم داشته باشد.',
+        'array' => 'فیلد :attribute باید دقیقا :size آیتم داشته باشد.',
         'file' => 'حجم فایل :attribute باید :size کیلوبایت باشد.',
         'numeric' => 'مقدار :attribute باید :size باشد.',
         'string' => 'طول :attribute باید :size کاراکتر باشد.',
@@ -174,7 +174,7 @@ return [
     'starts_with' => 'فیلد :attribute باید با یکی از این مقادیر شروع شود: :values.',
     'string' => 'فیلد :attribute باید یک رشته‌ی متنی باشد.',
     'timezone' => 'فیلد :attribute باید یک منطقه‌ی زمانی معتبر باشد.',
-    'unique' => 'مقدار :attribute قبلاً ثبت شده است.',
+    'unique' => 'مقدار :attribute قبلا ثبت شده است.',
     'uploaded' => 'آپلود فایل :attribute ناموفق بود.',
     'uppercase' => 'فیلد :attribute باید با حروف بزرگ باشد.',
     'url' => 'فیلد :attribute باید یک نشانی اینترنتی معتبر باشد.',

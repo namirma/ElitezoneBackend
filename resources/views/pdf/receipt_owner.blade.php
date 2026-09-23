@@ -45,7 +45,7 @@
         <tr>
             <td colspan="1" class="bg-gray font-bold text-center" valign="top" style="border-left: none; padding-top: 10px;">توضیحات مهم</td>
             <td colspan="10" class="notes-text text-right bg-white" valign="top" style="border-right: none;">
-                این فاکتور مدرک رسمی پرداخت شما برای سفارش شماره {{ enToFa($order->order_number ?? '-') }} می‌باشد. لطفاً آن را تا پایان فرآیند تحویل کالا نزد خود نگه دارید.
+                این فاکتور مدرک رسمی پرداخت شما برای سفارش شماره {{ enToFa($order->order_number ?? '-') }} می‌باشد. لطفا آن را تا پایان فرآیند تحویل کالا نزد خود نگه دارید.
             </td>
         </tr>
     </table>

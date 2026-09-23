@@ -66,7 +66,7 @@
         <tr>
             <td colspan="1" class="bg-gray font-bold text-center" valign="top" style="border-left: none; padding-top: 10px;">توضیحات</td>
             <td colspan="10" class="notes-text text-right bg-white" valign="top" style="border-right: none;">
-                این سند صرفاً بازتابِ نظرِ ثبت‌شده‌ی الیت یار است و هیچ اثر مالی بر سفارش ندارد.
+                این سند صرفا بازتاب نظر ثبت‌شده‌ی الیت یار است و هیچ اثر مالی بر سفارش ندارد.
             </td>
         </tr>
     </table>

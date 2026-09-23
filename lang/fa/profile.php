@@ -12,7 +12,7 @@ return [
     'email_send_failed' => 'خطا در ارسال ایمیل تایید. لطفا دوباره تلاش کنید یا با پشتیبانی تماس بگیرید.',
     'cannot_delete_last_address' => 'امکان حذف آخرین آدرس وجود ندارد.',
     'company_info_received' => 'اطلاعات شرکت با موفقیت دریافت شد.',
-    'company_inquiry_failed' => 'سرویس استعلام اطلاعات شرکت در حال حاضر در دسترس نیست. لطفاً مجدداً تلاش کنید.',
+    'company_inquiry_failed' => 'سرویس استعلام اطلاعات شرکت در حال حاضر در دسترس نیست. لطفا مجددا تلاش کنید.',
     'search_initial_data' => 'اطلاعات اولیه جستجوی پروفایل.',
     'search_saved_successfully' => 'جستجو با موفقیت ثبت شد.',
     'search_history_cleared' => 'تاریخچه جستجو پاک شد.',
@@ -36,7 +36,7 @@ return [
     // Employer SMS invite (elite yar only)
     'invite_sent_successfully' => 'دعوت‌نامه با موفقیت ارسال شد.',
     'invite_cap_reached' => 'حداکثر تعداد دعوت‌های مجاز شما به پایان رسیده است.',
-    'invite_already_sent' => 'قبلاً به این شماره موبایل دعوت‌نامه ارسال شده است.',
+    'invite_already_sent' => 'قبلا به این شماره موبایل دعوت‌نامه ارسال شده است.',
     'remaining_invites' => 'تعداد دعوت‌های باقی‌مانده.',
     'invite_mobile_required' => 'شماره موبایل الزامی است.',
     'invite_mobile_invalid' => 'فرمت شماره موبایل صحیح نیست. باید ۱۱ رقمی و با ۰۹ شروع شود.',
@@ -63,10 +63,10 @@ return [
     // Email management
     'email_required' => 'وارد کردن ایمیل الزامی است.',
     'email_invalid' => 'فرمت ایمیل وارد شده صحیح نیست.',
-    'email_taken' => 'این ایمیل قبلاً ثبت شده است.',
-    'email_resent' => 'لینک تأیید مجدداً به ایمیل شما ارسال شد.',
+    'email_taken' => 'این ایمیل قبلا ثبت شده است.',
+    'email_resent' => 'لینک تأیید مجددا به ایمیل شما ارسال شد.',
     'email_deleted' => 'ایمیل با موفقیت حذف شد.',
     'email_none_to_resend' => 'ایمیلی برای ارسال مجدد لینک وجود ندارد.',
-    'email_already_verified' => 'ایمیل شما قبلاً تأیید شده است.',
+    'email_already_verified' => 'ایمیل شما قبلا تأیید شده است.',
     'mobile_updated_successfully' => 'شماره موبایل شما با موفقیت تغییر کرد.',
 ];

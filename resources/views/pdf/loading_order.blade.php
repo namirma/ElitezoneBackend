@@ -101,7 +101,7 @@
         <tr>
             <td colspan="1" class="bg-gray font-bold text-center" valign="top" style="border-left: none; padding-top: 10px;">توضیحات مهم</td>
             <td colspan="10" class="notes-text text-right bg-white" valign="top" style="border-right: none;">
-                لطفاً کالا را طبق مشخصات فوق آماده نموده و پس از توزین در باسکول، اطلاعات وزن را در سامانه ثبت نمایید.
+                لطفا کالا را طبق مشخصات فوق آماده نموده و پس از توزین در باسکول، اطلاعات وزن را در سامانه ثبت نمایید.
             </td>
         </tr>
     </table>

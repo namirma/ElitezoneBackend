@@ -127,7 +127,7 @@ class AvatarAndEmailTest extends TestCase
 
         $this->postJson('/api/profile/email', ['email' => 'taken@example.com'])
             ->assertStatus(422)
-            ->assertJsonValidationErrors(['email' => 'این ایمیل قبلاً ثبت شده است.']);
+            ->assertJsonValidationErrors(['email' => 'این ایمیل قبلا ثبت شده است.']);
     }
 
     #[Test]

@@ -38,7 +38,7 @@
                                 را نمی‌گفت: چه کسی، چه خواسته، و چه کاری باید انجام شود.
                             --}}
                             <h1 style="font-size: 16px; margin-bottom: 15px; line-height: 2; text-align: center;">یک پیام تازه از فرم تماس سایت</h1>
-                            <p style="font-size: 14px; margin-bottom: 20px; line-height: 2;">کاربری با مشخصات زیر پیامی ثبت کرده و منتظر پاسخ است. لطفاً با او تماس بگیرید و موضوع را تا حل شدن پیگیری کنید.</p>
+                            <p style="font-size: 14px; margin-bottom: 20px; line-height: 2;">کاربری با مشخصات زیر پیامی ثبت کرده و منتظر پاسخ است. لطفا با او تماس بگیرید و موضوع را تا حل شدن پیگیری کنید.</p>
                             <table style="width: 100%; margin: 0 auto; text-align: center;">
                                 <tr>
                                     <td style="padding: 8px 0; border-bottom: 1px solid #ddd; word-wrap: break-word; overflow-wrap: break-word; text-align: right;">

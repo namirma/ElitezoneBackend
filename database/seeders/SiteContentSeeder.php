@@ -129,7 +129,7 @@ class SiteContentSeeder extends Seeder
                     ['title' => 'فرآیندها', 'url' => null, 'children' => [
                         ['title' => 'کنترل کیفیت', 'url' => null],
                         ['title' => 'بسته بندی', 'url' => null],
-                        ['title' => 'بُرش و خَم', 'url' => null],
+                        ['title' => 'برش و خم', 'url' => null],
                         ['title' => 'جوشکاری', 'url' => null],
                     ]],
                     ['title' => 'لینک های سریع', 'url' => null, 'children' => [
@@ -172,7 +172,7 @@ class SiteContentSeeder extends Seeder
                 'title' => 'کنجکاوید', 'url' => null,
                 'children' => [
                     ['title' => 'نقش شما', 'url' => null, 'children' => [
-                        ['title' => 'دیـدگاه اِلیـت زون', 'url' => null],
+                        ['title' => 'دیـدگاه الیـت زون', 'url' => null],
                         ['title' => 'مهندس', 'url' => null],
                         ['title' => 'پیمانکار', 'url' => null],
                         ['title' => 'سوپلایر', 'url' => null],
