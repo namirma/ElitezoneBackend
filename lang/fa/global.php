@@ -31,6 +31,8 @@ return [
     'invalid_verification_token' => 'توکن تایید نامعتبر است یا قبلا استفاده شده است.',
     'model_not_found' => 'درخواستی یافت نشد.',
     'eliteYARInvitationSubject' => 'درخواست همکاری جدید',
+    'eliteYARVerifiedSubject' => 'تأیید الیت یار',
+    'eliteYARUnverifiedSubject' => 'برداشته‌شدن تأیید الیت یار',
     'system_busy_try_again' => 'سیستم در حال پردازش درخواست دیگری است. لطفاً لحظاتی دیگر مجدداً تلاش کنید.',
     'idempotency_key_reused' => 'این کلید یکتا (Idempotency-Key) قبلاً برای درخواست دیگری استفاده شده است. برای هر عملیات یک کلید تازه ارسال کنید.',
     'too_many_requests' => 'تعداد درخواست‌های شما بیش از حد مجاز است. لطفاً لحظاتی صبر کنید و دوباره تلاش کنید.',

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Admin;
 
+use App\Actions\Profile\NotifyEliteYARVerificationChange;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UserBackOfficeSearchRequest;
 use App\Http\Requests\Admin\UserSearchRequest;
@@ -247,10 +248,12 @@ class AdminUserController extends Controller
             return error(__('admin.users.no_elite_yar_profile'), [], 422);
         }
 
+        $wasVerified = $user->isVerifiedEliteYAR();
         $profile->update([
             $profile::IS_VERIFIED => true,
             $profile::VERIFIED_AT => now(),
         ]);
+        app(NotifyEliteYARVerificationChange::class)->execute($user->refresh(), $wasVerified, $user->isVerifiedEliteYAR(), 'admin');
 
         return success(
             [
@@ -276,10 +279,12 @@ class AdminUserController extends Controller
             return error(__('admin.users.no_elite_yar_profile'), [], 422);
         }
 
+        $wasVerified = $user->isVerifiedEliteYAR();
         $profile->update([
             $profile::IS_VERIFIED => false,
             $profile::VERIFIED_AT => null,
         ]);
+        app(NotifyEliteYARVerificationChange::class)->execute($user->refresh(), $wasVerified, $user->isVerifiedEliteYAR(), 'admin');
 
         return success(
             [
