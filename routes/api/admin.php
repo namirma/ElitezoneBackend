@@ -696,6 +696,10 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
             Route::post('/{user}/reject', 'reject');
         });
 
+    // ⚠️ پیش از باز کردنِ این گروه برای سطح ۲: سقفِ اعطا (`ChecksGrantableAdminLevel`)
+    // فقط جلوی دادنِ سطحِ بالاتر را می‌گیرد. «مدیر» هنوز می‌تواند رمزِ یک مدیر ارشد را
+    // عوض کند، غیرفعالش کند یا نقشش را بردارد — تغییرِ رمزِ بالادست یعنی ورود به جای او.
+    // اول یک چکِ «فقط هم‌سطح یا پایین‌تر» روی update/toggle/destroy بگذارید.
     Route::controller(AdminManagerController::class)->prefix('admins')->middleware(['admin.permission:manage-users', 'admin.level:1'])->group(function () {
         Route::get('/', 'index');
         Route::get('/{user}', 'show');

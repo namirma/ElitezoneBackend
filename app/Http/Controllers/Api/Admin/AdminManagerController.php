@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreAdminRequest;
 use App\Http\Requests\Admin\UpdateAdminRequest;
-use App\Http\Resources\Profile\UserResource;
+use App\Http\Resources\Admin\AdminManagerResource;
 use App\Models\User;
 use App\Models\UserProfile;
 use Database\Seeders\AdminPermissionSeeder;
@@ -20,7 +20,11 @@ use Laratrust\Models\Permission;
  * پنل مدیریت — مدیران سیستم (ماژول ۷ نیازمندی فرانت BackOffice).
  *
  * destroy کاربر را حذف نمی‌کند — فقط نقش admin را جدا می‌کند (حذف کاربر با سوابق
- * مالی/سفارش غیرقابل برگشت است). خود-حذفی و خود-غیرفعال‌سازی مجاز نیست.
+ * مالی/سفارش غیرقابل برگشت است). خود-حذفی، خود-غیرفعال‌سازی و تغییرِ سطحِ خود مجاز نیست.
+ *
+ * سطحِ اختیار (`admin_level`) از ۲۰۲۶-۱۰-۰۳ در ساخت الزامی است و در ویرایش قابلِ
+ * تغییر؛ پیش از آن هیچ‌جا نوشته نمی‌شد و ادمینِ تازه روی همه‌ی مسیرهای
+ * `admin.level:N` ۴۰۳ می‌گرفت. پین: `Admin/AdminManagerLevelTest`.
  */
 class AdminManagerController extends Controller
 {
@@ -43,7 +47,7 @@ class AdminManagerController extends Controller
                     ->orWhere(UserProfile::FAMILY, 'like', "%{$search}%")));
         }
 
-        return success(UserResource::collection($query->paginate($this->perPage())), __('admin.admins.list_received'));
+        return success(AdminManagerResource::collection($query->paginate($this->perPage())), __('admin.admins.list_received'));
     }
 
     // GET /admin/admins/{user}
@@ -53,7 +57,7 @@ class AdminManagerController extends Controller
             return error(__('admin.admins.not_admin'), [], 404);
         }
 
-        return success(new UserResource($user->load(['profile', 'roles', 'permissions'])), __('admin.admins.received'));
+        return success(new AdminManagerResource($user->load(['profile', 'roles', 'permissions'])), __('admin.admins.received'));
     }
 
     // POST /admin/admins
@@ -62,7 +66,7 @@ class AdminManagerController extends Controller
         $user = DB::transaction(function () use ($request) {
             // ادمین هیچ‌کدام از چهار نقشِ محصول نیست — دسترسی‌اش از نقشِ Laratrust
             // «admin» می‌آید، نه از `type_id`. NULL همان «نقشِ محصولی ندارد» است.
-            $user = User::create([
+            $user = new User([
                 User::MOBILE => $request->string(User::MOBILE),
                 User::PASSWORD => Hash::make($request->string(User::PASSWORD)),
                 User::TYPE_ID => null,
@@ -71,6 +75,9 @@ class AdminManagerController extends Controller
                 User::NATIONAL_CODE => $request->string(User::NATIONAL_CODE),
                 User::BIRTH_DATE => $request->string(User::BIRTH_DATE),
             ]);
+            // سطح در `$fillable` نیست (ستونِ اختیار است): فقط این‌جا و فقط پس از قاعده‌ی
+            // سقفِ اعطا در `StoreAdminRequest` نوشته می‌شود. یک INSERT، نه دو نوشتن.
+            $user->forceFill([User::ADMIN_LEVEL => $request->integer(User::ADMIN_LEVEL)])->save();
 
             $user->profile()->create([
                 UserProfile::NAME => $request->input('name'),
@@ -92,10 +99,14 @@ class AdminManagerController extends Controller
         });
 
         activity()->performedOn($user)->causedBy(auth()->user())
-            ->withProperties(['mobile' => $user->mobile, 'permissions' => $request->input('permissions')])
+            ->withProperties([
+                'mobile' => $user->mobile,
+                'admin_level' => $request->integer(User::ADMIN_LEVEL),
+                'permissions' => $request->input('permissions'),
+            ])
             ->log('مدیر سیستم جدید ساخته شد.');
 
-        return created(new UserResource($user->load(['profile', 'roles'])), __('admin.admins.created'));
+        return created(new AdminManagerResource($user->load(['profile', 'roles'])), __('admin.admins.created'));
     }
 
     // PUT /admin/admins/{user}
@@ -105,7 +116,17 @@ class AdminManagerController extends Controller
             return error(__('admin.admins.not_admin'), [], 404);
         }
 
-        DB::transaction(function () use ($request, $user) {
+        $levelBefore = $user->{User::ADMIN_LEVEL} === null ? null : (int) $user->{User::ADMIN_LEVEL};
+        $levelChanges = $request->has(User::ADMIN_LEVEL) && $request->integer(User::ADMIN_LEVEL) !== $levelBefore;
+
+        // سطحِ خود قابلِ تغییر نیست — همان قاعده‌ی `cannot_toggle_self`: مدیر ارشدی که
+        // خودش را تنزل دهد ممکن است آخرین مدیر ارشد باشد، و آن‌وقت دیگر هیچ‌کس به این
+        // صفحه نمی‌رسد. فرستادنِ همان سطحِ فعلی (فرمِ ویرایش پیش‌پرش می‌کند) مجاز است.
+        if ($levelChanges && $user->id === Auth::id()) {
+            return error(__('admin.levels.self_demote'), [], 422);
+        }
+
+        DB::transaction(function () use ($request, $user, $levelChanges) {
             $userData = [];
 
             if ($request->filled(User::MOBILE)) {
@@ -119,6 +140,12 @@ class AdminManagerController extends Controller
 
             if ($userData !== []) {
                 $user->update($userData);
+            }
+
+            // سطح در `$fillable` نیست؛ سقفِ اعطا را `UpdateAdminRequest` سنجیده است. اثرش
+            // فوری است: `EnsureAdminHasLevel` در هر درخواست ستون را می‌خواند.
+            if ($levelChanges) {
+                $user->forceFill([User::ADMIN_LEVEL => $request->integer(User::ADMIN_LEVEL)])->save();
             }
 
             $profileData = array_filter([
@@ -145,11 +172,14 @@ class AdminManagerController extends Controller
         activity()->performedOn($user)->causedBy(auth()->user())
             ->withProperties([
                 'password_changed' => $request->filled(User::PASSWORD),
+                'admin_level' => $levelChanges
+                    ? ['from' => $levelBefore, 'to' => $request->integer(User::ADMIN_LEVEL)]
+                    : null,
                 'permissions' => $request->has('permissions') ? $request->input('permissions') : null,
             ])
             ->log('اطلاعات مدیر سیستم ویرایش شد.');
 
-        return success(new UserResource($user->refresh()->load(['profile', 'roles'])), __('admin.admins.updated'));
+        return success(new AdminManagerResource($user->refresh()->load(['profile', 'roles'])), __('admin.admins.updated'));
     }
 
     // POST /admin/admins/{user}/toggle
@@ -174,7 +204,7 @@ class AdminManagerController extends Controller
             ->withProperties(['is_active' => $newState])
             ->log($newState ? 'حساب مدیر فعال شد.' : 'حساب مدیر غیرفعال شد.');
 
-        return success(new UserResource($user->refresh()->load(['profile', 'roles'])), __('admin.admins.toggled'));
+        return success(new AdminManagerResource($user->refresh()->load(['profile', 'roles'])), __('admin.admins.toggled'));
     }
 
     /**
@@ -199,11 +229,18 @@ class AdminManagerController extends Controller
             return error(__('admin.admins.cannot_remove_self'), [], 422);
         }
 
-        $user->removeRole('admin');
+        $levelWas = $user->{User::ADMIN_LEVEL};
+
+        // قاعده‌ی ستون: NULL یعنی «ادمین نیست». سطحِ جامانده روی کاربرِ عادی، اگر روزی
+        // نقش دوباره داده شود، بی‌صدا همان اختیارِ قبلی را برمی‌گرداند.
+        DB::transaction(function () use ($user) {
+            $user->removeRole('admin');
+            $user->forceFill([User::ADMIN_LEVEL => null])->save();
+        });
         $user->tokens()->delete();
 
         activity()->performedOn($user)->causedBy(auth()->user())
-            ->withProperties(['mobile' => $user->mobile])
+            ->withProperties(['mobile' => $user->mobile, 'admin_level_was' => $levelWas])
             ->log('نقش مدیر از کاربر جدا شد.');
 
         return success(null, __('admin.admins.removed'));

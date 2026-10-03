@@ -100,6 +100,11 @@ class DevSeeder extends Seeder
             balance     : 500_000_000,
         );
         $this->grantRole($admin, 'admin');
+        // همان قاعده‌ی `AdminSeeder`: ادمینِ بی‌سطح روی هر مسیرِ `admin.level:N` ۴۰۳
+        // می‌گیرد. فقط وقتی خالی است، تا اجرای دوباره تنزلِ عمدی را برنگرداند.
+        if ($admin->{User::ADMIN_LEVEL} === null) {
+            $admin->forceFill([User::ADMIN_LEVEL => User::ADMIN_LEVEL_OWNER])->save();
+        }
 
         // ── ۵. کارفرما ─────────────────────────────────────────────────────
         $this->command->info('▸ کارفرما...');

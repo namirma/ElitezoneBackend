@@ -258,7 +258,7 @@ class PendingPriceLeavesCatalogTest extends TestCase
         $request->refresh();
         $this->assertSame(SupplierRequest::STATUS_REJECTED, $request->{SupplierRequest::STATUS});
         $this->assertTrue($request->isExpiredByDeadline());
-        $this->assertStringContainsString('مهلتِ 48 ساعته گذشت', $request->{SupplierRequest::REVIEW_NOTE});
+        $this->assertStringContainsString('مهلت 48 ساعته گذشت', $request->{SupplierRequest::REVIEW_NOTE});
 
         // اعلان از همان مسیرِ موجود: پیامک + ردیفِ زنگوله (`Notifier`).
         // ویژگی‌های job محافظت‌شده‌اند؛ closure با bind به خودِ job می‌خواندشان.

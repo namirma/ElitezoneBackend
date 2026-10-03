@@ -139,7 +139,10 @@ class User extends Authenticatable
     protected $fillable = [
         self::MOBILE,
         self::IS_ACTIVE,
-        self::ADMIN_LEVEL,
+        // ⚠️ `ADMIN_LEVEL` عمداً بیرون است (از ۲۰۲۶-۱۰-۰۳): سطحِ اختیارِ ادمین است و
+        // یک `update($request->…)` بی‌دقت روی کاربر می‌توانست آن را بالا ببرد. فقط
+        // `AdminManagerController` (پس از قاعده‌ی سقفِ اعطا) و `AdminSeeder` با
+        // `forceFill()` می‌نویسندش.
         self::NATIONAL_CODE,
         self::BIRTH_DATE,
         self::SECRET,
@@ -407,8 +410,9 @@ class User extends Authenticatable
      * آیا این ادمین دستِ‌کم در سطحِ خواسته‌شده است؟ (عددِ کوچک‌تر = اختیارِ بیشتر)
      *
      * fail-closed: ادمینی که ستونش NULL است هیچ سطحی ندارد و رد می‌شود. این حالت
-     * نباید پیش بیاید (مایگریشن همه را پر کرده و ساختِ ادمینِ جدید سطح می‌گیرد)،
-     * ولی اگر ردیفی از راهِ دیگری ساخته شد، «سطحِ نامعلوم» باید یعنی «اجازه ندارد»
+     * نباید پیش بیاید (مایگریشن ادمین‌های موجود را پر کرد؛ `AdminManagerController::store`
+     * و `AdminSeeder` از ۲۰۲۶-۱۰-۰۳ سطح می‌نویسند — پیش از آن نمی‌نوشتند و همین
+     * حالت واقعاً رخ می‌داد)، ولی اگر ردیفی از راهِ دیگری ساخته شد، «سطحِ نامعلوم» باید یعنی «اجازه ندارد»
      * نه «اجازه دارد» — همان اشتباهی که یک‌بار در مجوزها رخ داد و ادمینِ
      * محدودشده را به دسترسیِ کامل رساند.
      */
@@ -422,5 +426,25 @@ class User extends Authenticatable
     public function isOwnerAdmin(): bool
     {
         return $this->hasAdminLevel(self::ADMIN_LEVEL_OWNER);
+    }
+
+    /**
+     * سطح‌هایی که این ادمین حقِ دادنشان را دارد: سطحِ خودش و پایین‌تر.
+     *
+     * قاعده‌ی سقفِ اعطا — هیچ‌کس اختیاری بیش از خودش به دیگری نمی‌دهد. امروز فقط مدیر
+     * ارشد به گروهِ مدیران می‌رسد، پس عملاً هر سه سطح است؛ روزی که گروه برای «مدیر»
+     * باز شود، همین جلوی ارتقای خودخواسته را می‌گیرد. بی‌سطح هیچ سطحی نمی‌دهد.
+     *
+     * @return list<int>
+     */
+    public function grantableAdminLevels(): array
+    {
+        $own = $this->{self::ADMIN_LEVEL};
+
+        if ($own === null) {
+            return [];
+        }
+
+        return array_values(array_filter(self::ADMIN_LEVELS, fn (int $level) => $level >= (int) $own));
     }
 }
