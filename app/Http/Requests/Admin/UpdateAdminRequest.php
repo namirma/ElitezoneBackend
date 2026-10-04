@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Http\Requests\Concerns\ChecksGrantableAdminLevel;
 use App\Http\Requests\Concerns\ReadsScalarInput;
 use App\Models\User;
 use App\Support\PhoneNumber;
@@ -14,6 +15,7 @@ use Illuminate\Validation\Rule;
  */
 class UpdateAdminRequest extends FormRequest
 {
+    use ChecksGrantableAdminLevel;
     use ReadsScalarInput;
 
     public function authorize(): bool
@@ -41,6 +43,10 @@ class UpdateAdminRequest extends FormRequest
             'name' => ['nullable', 'string', 'max:255'],
             'family' => ['nullable', 'string', 'max:255'],
             'email' => ['nullable', 'email', 'max:255'],
+            // سطحِ اختیار: ۱ مدیر ارشد، ۲ مدیر، ۳ کارشناس. اختیاری؛ فقط وقتی ارسال شود عوض
+            // می‌شود. سطحی بالاتر از سطحِ ویرایشگر پذیرفته نمی‌شود و ویرایشگر سطحِ خودش را
+            // نمی‌تواند عوض کند (۴۲۲، در کنترلر کنارِ `cannot_toggle_self`).
+            User::ADMIN_LEVEL => ['bail', 'sometimes', 'required', 'integer', Rule::in(User::ADMIN_LEVELS), $this->withinGrantableLevels(...)],
             // سطح دسترسی — فقط وقتی ارسال شود sync می‌شود
             'permissions' => ['nullable', 'array'],
             'permissions.*' => ['string', Rule::in(array_keys(AdminPermissionSeeder::PERMISSIONS))],
@@ -54,6 +60,9 @@ class UpdateAdminRequest extends FormRequest
             'mobile.regex' => __('admin.admins.mobile_invalid'),
             'mobile.unique' => __('admin.admins.mobile_unique'),
             'password.min' => __('admin.admins.password_min'),
+            'admin_level.required' => __('admin.levels.required'),
+            'admin_level.integer' => __('admin.levels.invalid'),
+            'admin_level.in' => __('admin.levels.invalid'),
         ];
     }
 }

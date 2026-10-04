@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Http\Requests\Concerns\ChecksGrantableAdminLevel;
 use App\Http\Requests\Concerns\ReadsScalarInput;
 use App\Models\User;
 use App\Support\PhoneNumber;
@@ -14,6 +15,7 @@ use Illuminate\Validation\Rule;
  */
 class StoreAdminRequest extends FormRequest
 {
+    use ChecksGrantableAdminLevel;
     use ReadsScalarInput;
 
     public function authorize(): bool
@@ -44,6 +46,10 @@ class StoreAdminRequest extends FormRequest
             'name' => ['nullable', 'string', 'max:255'],
             'family' => ['nullable', 'string', 'max:255'],
             'email' => ['nullable', 'email', 'max:255'],
+            // سطحِ اختیارِ مدیرِ تازه: ۱ مدیر ارشد، ۲ مدیر، ۳ کارشناس. الزامی و بی‌پیش‌فرض؛
+            // سطحی بالاتر از سطحِ خودِ سازنده پذیرفته نمی‌شود. (تا ۲۰۲۶-۱۰-۰۳ نوشته نمی‌شد
+            // و ادمینِ تازه روی هر مسیرِ `admin.level:N` ۴۰۳ می‌گرفت.)
+            User::ADMIN_LEVEL => ['bail', 'required', 'integer', Rule::in(User::ADMIN_LEVELS), $this->withinGrantableLevels(...)],
             // سطح دسترسی — بدون ارسال، همه مجوزها داده می‌شود
             'permissions' => ['nullable', 'array'],
             'permissions.*' => ['string', Rule::in(array_keys(AdminPermissionSeeder::PERMISSIONS))],
@@ -63,6 +69,9 @@ class StoreAdminRequest extends FormRequest
             'national_code.unique' => __('admin.admins.national_code_unique'),
             'birth_date.required' => __('admin.admins.birth_date_required'),
             'birth_date.regex' => __('admin.admins.birth_date_invalid'),
+            'admin_level.required' => __('admin.levels.required'),
+            'admin_level.integer' => __('admin.levels.invalid'),
+            'admin_level.in' => __('admin.levels.invalid'),
         ];
     }
 }
