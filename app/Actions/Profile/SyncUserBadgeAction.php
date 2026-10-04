@@ -46,7 +46,10 @@ class SyncUserBadgeAction
     /** All codes this action owns in the badge_user pivot (so it can replace, not accumulate). */
     private const MANAGED_CODES = ['gold', 'silver', 'bronze', 'saze90', 'pioneer'];
 
-    public function __construct(private readonly Saze90BadgeService $saze90) {}
+    public function __construct(
+        private readonly Saze90BadgeService $saze90,
+        private readonly NotifyEliteYARVerificationChange $notifyVerificationChange,
+    ) {}
 
     /**
      * @return array{badge: ?string, is_pioneer: bool, is_saze90_user: bool, badges: Collection<int,Badge>}
@@ -95,7 +98,10 @@ class SyncUserBadgeAction
         //    A flip is a verification-status change, so it leaves an audit trail
         //    (activity log on the user) — nothing this sensitive changes silently.
         if ((bool) $user->{User::IS_SAZE90_USER} !== $isSaze90User) {
+            // حکمِ تأیید پیش و پس از تغییرِ عضویت — اگر عوض شد، کاربر باخبر می‌شود.
+            $wasVerified = $user->isVerifiedEliteYAR();
             $user->forceFill([User::IS_SAZE90_USER => $isSaze90User])->save();
+            $this->notifyVerificationChange->execute($user, $wasVerified, $user->isVerifiedEliteYAR(), 'saze90');
 
             activity()
                 ->performedOn($user)
