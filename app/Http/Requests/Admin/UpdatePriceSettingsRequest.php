@@ -49,7 +49,7 @@ class UpdatePriceSettingsRequest extends FormRequest
                     continue;
                 }
                 if (Money::cmp(Money::add($ow, $effective($coCode)), '100') > 0) {
-                    $v->errors()->add("settings.{$coCode}", 'جمع سهم پلتفرم و سهم الیت یار نمی‌تواند از ۱۰۰ درصد بیشتر باشد.');
+                    $v->errors()->add("settings.{$coCode}", 'جمع تخفیف خریدار و سهم الیت یار نمی‌تواند از ۱۰۰ درصد بیشتر باشد.');
                 }
             }
         });

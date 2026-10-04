@@ -213,7 +213,7 @@ trait HasOrderProgress
                     case 'moadian':
                         $actions[] = [
                             'label' => __('orders.actions.download_moadian_invoice'),
-                            'link' => "/api/profile/orders/{$id}/invoice/tax_buyer",
+                            'link' => "/api/profile/orders/{$id}/invoice/tax",
                             'type' => 'secondary',
                             'downloadable' => true,
                         ];
@@ -435,7 +435,7 @@ trait HasOrderProgress
                     case 'received':
                         $actions[] = [
                             'label' => __('orders.actions.download_loading_order'),
-                            'link' => "/api/profile/orders/{$id}/invoice/loading_order",
+                            'link' => "/api/profile/orders/{$id}/invoice/loading",
                             'method' => 'GET',
                             'downloadable' => true,
                         ];
@@ -444,7 +444,7 @@ trait HasOrderProgress
                     case 'shipped':
                         $actions[] = [
                             'label' => __('orders.actions.download_exit_permit'),
-                            'link' => "/api/profile/orders/{$id}/invoice/exit_permit",
+                            'link' => "/api/profile/orders/{$id}/invoice/bill_of_lading",
                             'method' => 'GET',
                             'downloadable' => true,
                         ];

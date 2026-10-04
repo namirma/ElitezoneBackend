@@ -57,7 +57,9 @@ class PriceSetting extends Model
     // نرخِ کارمزدِ تراکنش (%TC) — تنظیمِ سراسریِ قابل‌ویرایش (به‌جای هاردکد در سرویس تسویه).
     const CODE_TC_PERCENTAGE = 'tc_percentage';
 
-    // سهمِ OW از %TC (درصد) — قبلاً ۴۰ هاردکد در SettlementCalculatorService::badgeShares.
+    // سهمِ OW از %TC (درصد) = تخفیف ویژه‌ی خریدار — بخشی از کارمزد که خریدار نمی‌پردازد
+    // (POO = مبنا × (۱ − %OW)). سهمِ پلتفرم SSG است، نه OW. قبلاً ۴۰ هاردکد در
+    // SettlementCalculatorService::badgeShares.
     const CODE_OW_SHARE = 'ow_share_of_tc';
 
     // سهمِ CO از %TC به تفکیکِ نشان؛ SSG باقی‌مانده است (۱۰۰ − OW − CO).
@@ -92,14 +94,14 @@ class PriceSetting extends Model
     {
         $co = fn (string $badge, string $default) => [
             'label' => "سهم الیت یار — نشان {$badge}",
-            'description' => "چند درصد از کارمزد تراکنش به الیت یارِ {$badge} می‌رسد. سهم سازه همان باقی‌مانده است: ۱۰۰ − سهم پلتفرم − این عدد.",
+            'description' => "چند درصد از کارمزد تراکنش به الیت یار {$badge} می‌رسد. سهم سازه (SSG) همان باقی‌مانده است: ۱۰۰ − تخفیف خریدار − این عدد.",
             'default' => $default, 'unit' => 'percent', 'min' => 0.0, 'max' => 100.0,
         ];
 
         return [
             self::CODE_TC_PERCENTAGE => [
                 'label' => 'کارمزد تراکنش (%TC)',
-                'description' => 'درصدی از مبنای فاکتور (کرایه + قیمت×وزن) که پلتفرم از هر سفارش برمی‌دارد. سوپلایر مبنا منهای همین درصد را می‌گیرد؛ خریدار فقط سهم پلتفرم را می‌پردازد.',
+                'description' => 'درصدی از مبنای فاکتور (کرایه + قیمت×وزن) که از سهم سوپلایر کم می‌شود: سوپلایر مبنا منهای همین درصد را می‌گیرد. این کارمزد سه بخش دارد: تخفیف ویژه‌ی خریدار (OW)، سهم الیت یار (CO) و سهم سازه (SSG).',
                 'default' => '1', 'unit' => 'percent', 'min' => 0.0, 'max' => 20.0,
             ],
             self::CODE_VAT_RATE => [
@@ -108,8 +110,8 @@ class PriceSetting extends Model
                 'default' => (string) config('financial.default_vat_rate', 10.0), 'unit' => 'percent', 'min' => 0.0, 'max' => 30.0,
             ],
             self::CODE_OW_SHARE => [
-                'label' => 'سهم پلتفرم از کارمزد (OW)',
-                'description' => 'چند درصد از کارمزد تراکنش سهم خودِ پلتفرم است. همین درصد است که واقعاً از خریدار گرفته می‌شود (مثلاً ۴۰٪ از ۱٪ = ۰٫۴٪ مبنا).',
+                'label' => 'تخفیف ویژه‌ی خریدار (OW)',
+                'description' => 'چند درصد از کارمزد تراکنش به‌صورت تخفیف به خریدار برمی‌گردد: خریدار مبنا منهای همین سهم را می‌پردازد (مثلاً ۴۰٪ از ۱٪ = ۰٫۴٪ کمتر از مبنا). این مبلغ به هیچ کیف پولی واریز نمی‌شود، چون از اول از خریدار گرفته نمی‌شود.',
                 'default' => '40', 'unit' => 'percent', 'min' => 0.0, 'max' => 100.0,
             ],
             self::CODE_CO_SHARE_GOLD => $co('طلایی', '37.5'),

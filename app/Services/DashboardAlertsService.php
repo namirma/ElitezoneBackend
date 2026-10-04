@@ -94,7 +94,9 @@ class DashboardAlertsService
             ) {
                 $alerts[] = $this->makeAlert('order_invoice', 'info', 'document-text', "/profile/orders/{$order->id}", ['order_number' => $order->order_number], $order->id);
             }
-            if ($order->status === Order::STATUS_DELIVERED && $order->survey_status !== 'completed') {
+            // نظرسنجی را مدیریت ۱۴۰۵/۰۶/۲۲ رسماً بست (پاسخِ ۱-۶) و روتِ ثبتش پشتِ همین فلگ است؛
+            // بدونِ این شرط هشدار برای هر سفارشِ تحویل‌شده ساخته می‌شد و هرگز پاک نمی‌شد.
+            if (config('features.order_surveys') && $order->status === Order::STATUS_DELIVERED && $order->survey_status !== 'completed') {
                 $alerts[] = $this->makeAlert('order_survey', 'success', 'star', "/profile/orders/{$order->id}", ['order_number' => $order->order_number], $order->id);
             }
         }

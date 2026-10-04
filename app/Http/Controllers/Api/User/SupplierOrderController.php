@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api\User;
 
 use App\Actions\Financial\RecordSupplierMoadianInvoiceAction;
 use App\Actions\Order\CorrectShipmentWeightAction;
-use App\Actions\Order\ExtendReserveDeadlineAction;
 use App\Actions\Order\RegisterShipmentAction;
 use App\Enums\Order\OrderStatus;
 use App\Http\Controllers\Controller;
@@ -319,23 +318,24 @@ class SupplierOrderController extends Controller
      * بی‌صدا بی‌اعتبار می‌شد. حالا مثل بقیه‌ی گذارها زیر قفل بررسی می‌شود.
      */
     /**
-     * PUT /profile/orders/{order}/reserve-deadline — تمدید مهلت رزرو (بند ۳.۴).
+     * PUT /profile/orders/{order}/reserve-deadline — **بسته (۴۱۰)**.
      *
-     * تمدید حقِ تأمین‌کننده است نه خریدار: کالا برای خریدار کنار گذاشته شده و
-     * هزینه‌ی این قفلِ موجودی را تأمین‌کننده می‌دهد. در مدل جدید رایگان است —
-     * `PayHoldFeeAction` و هزینه‌ی ۵ میلیون تومانی‌اش حذف شدند.
+     * تمدیدِ یک‌طرفه (بندِ ۳.۴ قدیمی) مهلتِ خریدار را بدونِ اطلاع و موافقتش جلو می‌برد.
+     * پاسخِ مدیریت به پرسشِ ۳ «ابهاماتِ توسعه» (۲۰۲۶-۰۹-۰۹): «بعد از پایان مهلت اولین
+     * رزرو، سوپلایر می‌تواند زمان رزرو را تمدید کند اما خریدار می‌تواند این موضوع را
+     * بپذیرد یا آنکه رد کند.» راهِ درست `POST /profile/orders/{order}/extension` است
+     * (ReserveExtensionController). هیچ دکمه‌ای در پنل این مسیر را صدا نمی‌زد؛ با یک
+     * درخواستِ مستقیم کار می‌کرد (پین: OneSidedReserveDeadlineClosedTest).
+     *
+     * `ExtendReserveDeadlineAction` می‌ماند — پذیرشِ خریدار در جریانِ دوطرفه از همان
+     * می‌گذرد. این روت، `ExtendReserveDeadlineRequest` و thunkِ `extendDeadline`ِ پنلِ
+     * تأمین‌کننده در CLEANUP_CANDIDATES ثبت‌اند (قانون یک).
      */
-    public function extendReserveDeadline(
-        ExtendReserveDeadlineRequest $request,
-        Order $order,
-        ExtendReserveDeadlineAction $action,
-    ): JsonResponse {
+    public function extendReserveDeadline(ExtendReserveDeadlineRequest $request, Order $order): JsonResponse
+    {
         $this->authorize('manageAsSupplier', $order);
 
-        $updated = $action->execute($order, $request->date('reserve_deadline'));
-        $updated->loadMissing(Order::resourceRelations());
-
-        return success(new OrderResource($updated), __('orders.reserve_deadline.extended'));
+        return error(__('orders.reserve_deadline.one_sided_closed'), [], 410);
     }
 
     public function issueEspadanaCommand(Order $order): JsonResponse
