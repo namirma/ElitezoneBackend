@@ -50,15 +50,21 @@ class ProcessWeighbridgeResultAction
         }
 
         $calculator = app(SettlementCalculatorService::class);
-        $buyerOp = (float) ($order->{Order::OFFICIAL_PRICE} ?: ($order->items->first()?->unit_price ?? 0));
+        $buyerOp = (float) $order->{Order::OFFICIAL_PRICE};
+        if ($buyerOp <= 0.0) {
+            $firstItem = $order->items->first();
+            $buyerOp = $firstItem ? (float) $firstItem->unit_price : 0.0;
+        }
         $deltaGoodsValue = $deltaWeight * $buyerOp;
 
         $pool = max(0.0, (float) $order->{Order::PAYMENT_OF_OWNER} - (float) $order->{Order::PAYMENT_TO_SUPPLIER});
-        $eliteYARId = $order->{Order::ELITE_YAR_USER_ID};
+        $eliteYARId = $order->getAttribute(Order::ELITE_YAR_USER_ID);
         $hasCommissionedEliteYAR = $eliteYARId !== null && (int) $eliteYARId !== $order->payerUserId();
         $companyGross = $pool;
         if ($hasCommissionedEliteYAR) {
-            $rates = $calculator->getCommissionRatesForOrder($order, $order->eliteYAR?->badge?->code ?? 'pioneer');
+            $badge = $order->eliteYAR?->getRelationValue('badge');
+            $badgeCode = $badge ? (string) ($badge->getAttribute('code') ?: 'pioneer') : 'pioneer';
+            $rates = $calculator->getCommissionRatesForOrder($order, $badgeCode);
             $coPlusSsg = $rates['co_final_rate'] + $rates['ssg_final_rate'];
             $companyGross = $coPlusSsg > 0 ? $pool * ($rates['ssg_final_rate'] / $coPlusSsg) : 0.0;
         }

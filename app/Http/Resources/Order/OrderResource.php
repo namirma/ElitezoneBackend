@@ -91,7 +91,7 @@ class OrderResource extends BaseJsonResource
         // را می‌گیرد، آن هم فقط اگر واقعاً صادر شده باشد (سفارشِ پرداخت‌نشده رسیدی ندارد).
         if ($statusKey === Order::STATUS_CANCELLED) {
             $hasRefundReceipt = $this->relationLoaded('invoices')
-                ? $this->invoices->contains(fn ($inv) => $inv->document_code === FinancialCodes::DOC_REFUND_RECEIPT)
+                ? $this->invoices->contains(fn ($inv) => $inv->getAttribute('document_code') === FinancialCodes::DOC_REFUND_RECEIPT)
                 : $this->invoices()->where('document_code', FinancialCodes::DOC_REFUND_RECEIPT)->exists();
             $invoiceSlug = ($hasRefundReceipt && ($isAdmin || in_array('buyer', $viewerRoles, true))) ? 'refund' : null;
         }

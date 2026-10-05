@@ -108,6 +108,7 @@ class PlaceOrderAction
             $couponCode = $data->couponCode ?: ($cart->{Cart::COUPON_CODE} ?: null);
 
             $coupon = null;
+            $couponLegs = [];
             if ($couponCode) {
                 $coupon = $this->couponService->validateForCheckout($user, $couponCode, lock: true);
                 $couponDiscount = $this->couponService->calculateDiscount($coupon, (float) $financials['final_amount']);
@@ -128,7 +129,7 @@ class PlaceOrderAction
             if ($coupon) {
                 // سهمِ شرکت از این تخفیف از بودجه‌ی کمپین کم می‌شود (کوپنِ معمولی: used_at).
                 $companyAmount = 0.0;
-                foreach ($couponLegs ?? [] as ['funder' => $funder, 'amount' => $amount]) {
+                foreach ($couponLegs as ['funder' => $funder, 'amount' => $amount]) {
                     if ($funder->{CouponFunder::FUNDER_TYPE} === CouponFunder::TYPE_COMPANY) {
                         $companyAmount += (float) $amount;
                     }

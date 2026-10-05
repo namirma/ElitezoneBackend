@@ -75,7 +75,7 @@ class CouponFundingService
                     break;
 
                 default:
-                    $this->assertCompanyCanFund($coupon, $amount, (float) ($caps['company'] ?? 0));
+                    $this->assertCompanyCanFund($coupon, $amount, (float) $caps['company']);
             }
         }
 
