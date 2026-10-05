@@ -279,6 +279,12 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
             ->whereNumber('order')
             ->middleware('admin.level:2');
 
+        // پرسشِ ۱۴ مدیریت (۱۴۰۵/۰۷/۱۳، گزینه‌ی الف): توضیحِ آزادِ بک‌آفیس روی سفارش
+        // («توضیح شرایط خاص»، مثلاً تأخیرِ تحویلِ کالای پرداخت‌شده) که خریدار و
+        // تأمین‌کننده در پروفایل می‌بینند؛ خالی ⇒ چیزی نمایش داده نمی‌شود.
+        Route::put('/{order}/note', 'updateNote')
+            ->whereNumber('order');
+
         // Doc P — فاکتور مودیان سیستم (سازه → خریدار)، آزادسازی WVAT hold.
         // سطح ۲: آزادسازیِ hold یعنی جابه‌جاییِ واقعیِ پول بین کیف‌پول‌ها.
         Route::post('/{order}/system-moadian-invoice', 'submitSystemMoadianInvoice')

@@ -84,6 +84,37 @@ class AdminOrderController extends Controller
         return success(new OrderResource($order));
     }
 
+    /**
+     * توضیحِ بک‌آفیس روی سفارش — پرسشِ ۱۴ مدیریت (۱۴۰۵/۰۷/۱۳، گزینه‌ی الف).
+     *
+     * متنِ آزاد، قابلِ خالی‌کردن (null). خریدار و تأمین‌کننده‌ی همین سفارش آن را در
+     * `OrderResource.admin_note` می‌بینند، فقط وقتی پر است. ردِ ممیزی دارد: متنی که به
+     * مشتری نشان داده می‌شود نباید بی‌نام‌ونشان عوض شود.
+     */
+    public function updateNote(Request $request, Order $order): JsonResponse
+    {
+        $data = $request->validate([
+            'admin_note' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $note = isset($data['admin_note']) && trim((string) $data['admin_note']) !== ''
+            ? trim((string) $data['admin_note'])
+            : null;
+
+        $before = $order->getAttribute(Order::ADMIN_NOTE);
+        $order->forceFill([Order::ADMIN_NOTE => $note])->save();
+
+        activity()
+            ->performedOn($order)
+            ->causedBy($request->user())
+            ->withProperties(['before' => $before, 'after' => $note])
+            ->log($note === null ? 'توضیح بک‌آفیس از روی سفارش برداشته شد.' : 'توضیح بک‌آفیس روی سفارش ثبت شد.');
+
+        $order->load(Order::resourceRelations());
+
+        return success(new OrderResource($order), __('admin.orders.note_updated'));
+    }
+
     public function changeStatus(Request $request, Order $order, CancelOrderAction $cancelAction): JsonResponse
     {
         // بند ۵.۳ سند بازطراحی: **تنها اختیار ادمین روی وضعیت، لغو اجباری است.**

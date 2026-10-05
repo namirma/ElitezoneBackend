@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Order;
 
+use App\Constants\FinancialCodes;
+use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Role;
@@ -98,5 +100,44 @@ class InvoiceAccessTest extends TestCase
 
         Sanctum::actingAs($this->buyer);
         $this->get($this->url('tax'))->assertOk();
+    }
+
+    /**
+     * پاسخِ مدیریت به پرسشِ ۱۶ (۱۴۰۵/۰۷/۱۳، گزینه‌ی الف): در سفارشِ لغوشده فقط رسیدِ
+     * بازگشتِ وجه دانلود می‌شود؛ فاکتورهای خرید بسته‌اند و دکمه‌ی دانلود هم به آن‌ها اشاره نمی‌کند.
+     */
+    #[Test]
+    public function a_cancelled_order_only_serves_the_refund_receipt(): void
+    {
+        $pdf = \Mockery::mock();
+        $pdf->shouldReceive('download')->andReturn(response('PDF-BYTES', 200, ['Content-Type' => 'application/pdf']));
+        $this->mock(InvoiceGenerator::class)->shouldReceive('download')->andReturn($pdf);
+
+        $this->order->update([Order::STATUS => Order::STATUS_CANCELLED]);
+        Sanctum::actingAs($this->buyer);
+
+        foreach (['initial', 'final', 'tax'] as $slug) {
+            $this->getJson($this->url($slug))->assertStatus(422);
+        }
+        $this->get($this->url('refund'))->assertOk();
+
+        // بی‌رسیدِ بازگشت (سفارشِ پرداخت‌نشده‌ی لغوشده) دکمه‌ای نیست؛ با رسید، دکمه همان رسید است.
+        $this->getJson("/api/profile/orders/{$this->order->id}")
+            ->assertOk()
+            ->assertJsonPath('data.actions.download_invoice.active', false);
+
+        Invoice::create([
+            'order_id' => $this->order->id,
+            'user_id' => $this->buyer->id,
+            'document_code' => FinancialCodes::DOC_REFUND_RECEIPT,
+            'invoice_number' => 'RF-'.Str::random(8),
+            'amount' => 0,
+            'file_path' => 'x.pdf',
+        ]);
+
+        $this->getJson("/api/profile/orders/{$this->order->id}")
+            ->assertOk()
+            ->assertJsonPath('data.actions.download_invoice.active', true)
+            ->assertJsonPath('data.actions.download_invoice.url', url($this->url('refund')));
     }
 }

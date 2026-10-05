@@ -131,12 +131,16 @@ trait HasOrderProgress
             if ($state !== 'inactive') {
                 switch ($blueprint['key']) {
                     case 'reserved':
-                        $actions[] = [
-                            'label' => __('orders.actions.get_receipt'),
-                            'link' => "/api/profile/orders/{$id}/invoice/initial",
-                            'type' => 'secondary',
-                            'downloadable' => true,
-                        ];
+                        // سفارشِ لغوشده فاکتورِ خرید ندارد (پرسشِ ۱۶ مدیریت) — دکمه‌ی دانلودِ
+                        // رسیدِ بازگشت از `OrderResource.actions.download_invoice` می‌آید.
+                        if ($state !== 'cancelled') {
+                            $actions[] = [
+                                'label' => __('orders.actions.get_receipt'),
+                                'link' => "/api/profile/orders/{$id}/invoice/initial",
+                                'type' => 'secondary',
+                                'downloadable' => true,
+                            ];
+                        }
                         // اکشنِ «پرداخت فاکتور» برداشته شد: `/checkout/payment/{id}`
                         // هیچ‌وقت روتی در SPA نداشته و react-router برای مسیرِ
                         // بی‌تطابق هیچ‌چیز رندر نمی‌کند — نه ۴۰۴، نه خطای کنسول —

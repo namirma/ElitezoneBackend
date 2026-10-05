@@ -143,6 +143,18 @@ final class OrderDocumentCatalog
      *
      * @return list<string>
      */
+    /**
+     * اسنادی که روی سفارشِ **لغوشده** هنوز قابلِ دانلودند — پاسخِ مدیریت به پرسشِ ۱۶
+     * (۱۴۰۵/۰۷/۱۳، گزینه‌ی الف): «در سفارشِ لغوشده فقط رسیدِ بازگشتِ وجه دانلود می‌شود»؛
+     * گزارشِ لغو هم همان خانواده است. فاکتورهای خرید بسته می‌شوند.
+     *
+     * @return list<string>
+     */
+    public static function slugsAllowedOnCancelledOrder(): array
+    {
+        return ['refund', 'cancel_report'];
+    }
+
     public static function downloadableSlugs(): array
     {
         return array_values(array_diff(array_keys(self::CODES), self::OUT_OF_PRODUCT_SCOPE));

@@ -152,8 +152,9 @@ return [
         FinancialCodes::DOC_REFUND_RECEIPT => 'رسید بازگشت مبلغ رزرو',
         FinancialCodes::DOC_CANCEL_REPORT => 'گزارش لغو رزرو',
         FinancialCodes::DOC_BILL_OF_LADING => 'بارنامه / مجوز خروج',
-        FinancialCodes::DOC_MODIFIED_INVOICE_OWNER => 'فاکتور اصلاح‌شده خریدار (وزن بارنامه)',
-        FinancialCodes::DOC_MODIFIED_INVOICE_SUPPLIER => 'فاکتور اصلاح‌شده تأمین‌کننده (وزن بارنامه)',
+        // پرسشِ ۱۱ مدیریت (۱۴۰۵/۰۷/۱۳، گزینه‌ی الف): دو نسخه با یک نام — «سند L».
+        FinancialCodes::DOC_MODIFIED_INVOICE_OWNER => 'سند L — فاکتور اصلاح‌شده (نسخه‌ی خریدار، وزن بارنامه)',
+        FinancialCodes::DOC_MODIFIED_INVOICE_SUPPLIER => 'سند L — فاکتور اصلاح‌شده (نسخه‌ی تأمین‌کننده، وزن بارنامه)',
         FinancialCodes::DOC_TAX_INVOICE_SUPPLIER => 'فاکتور مودیان: تأمین‌کننده ← سازه',
         FinancialCodes::DOC_TAX_INVOICE_BUYER => 'فاکتور مودیان: سازه ← خریدار',
         FinancialCodes::DOC_TAX_INVOICE_ELITE_YAR => 'فاکتور مودیان: الیت یار ← سازه',
@@ -278,7 +279,11 @@ return [
     // ----------------------------------------------------
     // ترجمه دکمه‌ها و لینک‌ها
     // ----------------------------------------------------
+    // پرسشِ ۱۶ مدیریت (۱۴۰۵/۰۷/۱۳): فاکتورِ سفارشِ لغوشده قابلِ دانلود نیست.
+    'invoice_unavailable_cancelled' => 'این سفارش لغو شده است؛ فقط رسید بازگشت وجه قابل دانلود است.',
+
     'actions' => [
+        'download_refund_receipt' => 'دانلود رسید بازگشت وجه',
         'pay_invoice' => 'پرداخت فاکتور',
         'get_receipt' => 'دریافت رسید',
         'download_initial_invoice' => 'دانلود فاکتور اولیه',

@@ -34,6 +34,13 @@ class OrderInvoiceController extends Controller
             return error(__('global.forbidden'), [], 403);
         }
 
+        // پرسشِ ۱۶ مدیریت (۱۴۰۵/۰۷/۱۳): روی سفارشِ لغوشده فقط رسیدِ بازگشتِ وجه (و گزارشِ لغو)
+        // دانلود می‌شود؛ فاکتورِ خریدِ سفارشی که دیگر وجود ندارد یک سندِ گمراه‌کننده است.
+        if ($order->{Order::STATUS} === Order::STATUS_CANCELLED
+            && ! in_array($type, OrderDocumentCatalog::slugsAllowedOnCancelledOrder(), true)) {
+            return error(__('orders.invoice_unavailable_cancelled'), [], 422);
+        }
+
         $pdf = $generator->download($order, $code);
 
         return $pdf->download("invoice-{$order->order_number}-{$type}.pdf");

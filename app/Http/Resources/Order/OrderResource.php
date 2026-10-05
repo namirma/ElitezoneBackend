@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\Order;
 
+use App\Constants\FinancialCodes;
 use App\Enums\Shared\StatusTone;
 use App\Http\Resources\BaseJsonResource;
 use App\Models\DebtEntry;
@@ -86,6 +87,15 @@ class OrderResource extends BaseJsonResource
             $invoiceSlug = OrderDocumentCatalog::primarySlugFor($role);
         }
 
+        // سفارشِ لغوشده (پرسشِ ۱۶ مدیریت): فاکتورِ خرید بسته است؛ خریدار فقط رسیدِ بازگشتِ وجه
+        // را می‌گیرد، آن هم فقط اگر واقعاً صادر شده باشد (سفارشِ پرداخت‌نشده رسیدی ندارد).
+        if ($statusKey === Order::STATUS_CANCELLED) {
+            $hasRefundReceipt = $this->relationLoaded('invoices')
+                ? $this->invoices->contains(fn ($inv) => $inv->document_code === FinancialCodes::DOC_REFUND_RECEIPT)
+                : $this->invoices()->where('document_code', FinancialCodes::DOC_REFUND_RECEIPT)->exists();
+            $invoiceSlug = ($hasRefundReceipt && ($isAdmin || in_array('buyer', $viewerRoles, true))) ? 'refund' : null;
+        }
+
         $invoiceUrl = $invoiceSlug !== null
             ? route('api.user.orders.invoice', ['order' => $this->id, 'type' => $invoiceSlug])
             : null;
@@ -93,6 +103,7 @@ class OrderResource extends BaseJsonResource
         $invoiceLabel = match ($invoiceSlug) {
             'supplier_report' => __('orders.actions.download_supplier_report'),
             'elite_yar_report' => __('orders.actions.download_elite_yar_report'),
+            'refund' => __('orders.actions.download_refund_receipt'),
             default => __('orders.actions.download_initial_invoice'),
         };
 
@@ -432,6 +443,14 @@ class OrderResource extends BaseJsonResource
 
             // --- Shipments ---
             'shipments' => ShipmentResource::collection($this->whenLoaded('shipments')),
+
+            // توضیحِ بک‌آفیس روی سفارش (پرسشِ ۱۴ مدیریت): فقط وقتی پر است، فقط برای خریدار،
+            // تأمین‌کننده و ادمین — کلیدِ غایب یعنی «چیزی برای نمایش نیست»، نه رشته‌ی خالی.
+            'admin_note' => $this->when(
+                filled($this->getAttribute(Order::ADMIN_NOTE))
+                    && ($isAdmin || $isSupplier || in_array('buyer', $viewerRoles, true)),
+                fn () => (string) $this->getAttribute(Order::ADMIN_NOTE)
+            ),
 
             // --- Actions ---
             'actions' => [

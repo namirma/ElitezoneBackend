@@ -2,7 +2,7 @@
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>فاکتور اصلاح‌شده فروش {{ $invoice_number ?? ($order->order_number ?? '') }}</title>
+    <title>سند L — فاکتور اصلاح‌شده (نسخه‌ی خریدار) {{ $invoice_number ?? ($order->order_number ?? '') }}</title>
     @include('pdf.partials.styles')
 </head>
 <body>
@@ -17,7 +17,7 @@
         <tr>
             <td class="lbl text-right">شماره سفارش :</td>
             <td class="val text-right font-bold">{{ enToFa($invoice_number ?? ($order->order_number ?? '-')) }}</td>
-            <td colspan="9" rowspan="4" class="title-main text-center bg-white">فاکتور اصلاح‌شده فروش</td>
+            <td colspan="9" rowspan="4" class="title-main text-center bg-white">سند L — فاکتور اصلاح‌شده (نسخه‌ی خریدار)</td>
         </tr>
         <tr>
             <td class="lbl text-right">تاریخ صدور :</td>

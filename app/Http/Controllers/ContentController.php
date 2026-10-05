@@ -17,6 +17,7 @@ use App\Models\MenuItem;
 use App\Models\Page;
 use App\Models\PageBlock;
 use App\Models\Setting;
+use App\Services\Payment\PaymentGatewayFactory;
 use App\Services\Profile\EliteYARVerificationMethods;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -179,6 +180,29 @@ class ContentController extends Controller
         return success(new PageResource($page), __('content.page_received'));
     }
 
+    /**
+     * @return list<array{key: string, available: bool, coming_soon: bool}>
+     */
+    private function walletDepositMethods(): array
+    {
+        $configured = function (string $gateway): bool {
+            try {
+                return app(PaymentGatewayFactory::class)->make($gateway)->isConfigured();
+            } catch (\Throwable) {
+                return false;
+            }
+        };
+
+        $podium = $configured('podium');
+        $shaparak = $configured((string) config('payment.online_gateway', 'pasargad'));
+
+        return [
+            ['key' => 'bank_transfer', 'available' => true, 'coming_soon' => false],
+            ['key' => 'podium', 'available' => $podium, 'coming_soon' => ! $podium],
+            ['key' => 'shaparak', 'available' => $shaparak, 'coming_soon' => ! $shaparak],
+        ];
+    }
+
     // GET /settings/public — فقط کلیدهای صراحتاً عمومی (config settings.public_keys)
     public function publicSettings(): JsonResponse
     {
@@ -203,6 +227,12 @@ class ContentController extends Controller
         // روش‌های تأیید الیت یار — تنظیمِ ادمین، حل‌شده به بولی (پیش‌فرض اعمال‌شده)
         // تا سایت روشِ خاموش را «به‌زودی» نشان دهد و صفحه‌اش را نسازد.
         $values['elite_yar_verification'] = EliteYARVerificationMethods::enabled();
+
+        // روش‌های شارژِ کیف پول — پرسشِ ۱۷ مدیریت (۱۴۰۵/۰۷/۱۳، گزینه‌ی ب): روشِ وصل‌نشده
+        // (حساب دیجیتال پاسارگاد، درگاه شاپرک) **نمایش داده می‌شود ولی غیرفعال، با برچسبِ
+        // «به‌زودی»** — همان الگوی روش‌های تأییدِ الیت‌یار. فرانت نباید فهرست را هاردکد کند؛
+        // روزی که درگاه در .env پیکربندی شود همین پاسخ آن را فعال نشان می‌دهد.
+        $values['wallet_deposit_methods'] = $this->walletDepositMethods();
 
         return success($values, __('content.settings_received'));
     }
