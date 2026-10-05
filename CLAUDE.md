@@ -2601,44 +2601,48 @@ were created precisely to eliminate the cross-controller call that existed betwe
 
 ### Management round-4 finance rules (1405/07/13 = 2026-10-05) — the binding money model
 
-Source:  (root workspace). These override the mind map,
-the «پروسه خرید» chart and every earlier guess. Pinned by ,
-, ,
-, .
+Source: `docs/session/MANAGEMENT_ANSWERS_2026-10-05.md` (root workspace). These override the mind map,
+the «پروسه خرید» chart and every earlier guess. Pinned by `Order/EliteYARPricingAndAttachmentTest`,
+`Financial/BuyerDiscountAndSupplierPriceTest`, `Financial/CouponFundingTest`,
+`Financial/ProcessWeighbridgeResultActionTest`, `Admin/AdminOrderNoteTest`.
 
-- **Who is an EliteYAR.**  = role  OR the legacy /  roles.  is unchanged in code but its meaning is **holder of a Sazeh 90 software
-  LICENCE** (), not a site member; no licence ⇒  =   (exposed as ). An on-hold EliteYAR may buy for themself only —  and
-   422 a beneficiary/payment link.
-- **One pricing predicate.**  (verified EliteYAR, or an employer with
-  ) drives  ( vs
-  ) and the buyer-discount preview.  is dead.
-- **The order's EliteYAR** (): a verified EliteYAR placer is the
+- **Who is an EliteYAR.** `User::isEliteYAR()` = role `elite_yar` OR the legacy `engineer`/`contractor`
+  roles. `isVerifiedEliteYAR()` is unchanged in code but its meaning is **holder of a Sazeh 90 software
+  LICENCE** (`users.is_saze90_user`), not a site member; no licence ⇒ `eliteYARStatus()` = `on_hold`
+  (exposed as `elite_yar_status`). An on-hold EliteYAR may buy for themself only — `StoreOrderRequest` and
+  `CartPaymentLinkService` 422 a beneficiary / payment link.
+- **One pricing predicate.** `User::qualifiesForEliteYARPricing()` (verified EliteYAR, or an employer with
+  `verifiedEliteYARs()`) drives `PricingRoleResolver` (`engineer_with_elite_yar` vs
+  `employer_without_elite_yar`) and the buyer-discount preview. `employer_profiles.has_elite_yar` is dead.
+- **The order's EliteYAR** (`PlaceOrderAction::resolveEffectiveEliteYARId`): a verified EliteYAR placer is the
   order's EliteYAR (self-purchase allowed, no commission to self); an employer's explicit
-  , else the **only** verified EliteYAR is attached automatically, else 422 when several.
-- **Supplier settles on their own price.**  (weighted average of the price BEFORE
-  role filters; ) is the PTS basis everywhere (both payment actions,
-  , );  stays the buyer basis. Both are
-   now. Commission %TC comes from   (, cached, flushed on profile save) with the global
-   as fallback. Role price filters can raise the buyer price (the markup is the company's)
-  but never push it below the **contract floor**  —  clamps + logs,
+  `elite_yar_user_id`, else the **only** verified EliteYAR is attached automatically, else 422 when several.
+- **Supplier settles on their own price.** `orders.supplier_price` (weighted average of the price BEFORE
+  role filters; `PricingContext::supplierPrice`) is the PTS basis everywhere (both payment actions,
+  `WeighbridgeReconciler`, `couponFundingCaps`); `official_price` stays the buyer basis. Both are
+  `decimal(20,4)` now. Commission %TC comes from `supplier_profiles.commission_percent`
+  (`SettlementCalculatorService::tcPercentageForSupplier()`, cached, flushed on profile save) with the global
+  `tc_percentage` as fallback. Role price filters can raise the buyer price (the markup is the company's)
+  but never push it below the **contract floor** `P_s(1−TC)/(1−OW)` — `ApplyPriceFilters` clamps + logs,
   the admin API refuses deeper percentage discounts.
 - **Buyer discount (%OW) only with a verified EliteYAR on the order, and as its own line.** Placement snapshots
-  the rates (,  = the APPLIED OW — 0 without an EliteYAR, shares, VAT,
-  flags), writes  and makes  the exact amount charged: both
-  payment actions charge  (= final + coupon) instead of re-running the formula, and the
-  reconciler uses . Legacy orders (no placement snapshot, ) keep
-  the old path. , ,
-  the cart pre-invoice and  print the line.
-- **Weighbridge auto tolerance.**  (default 0): under it the two-party
-  consent is skipped, but only while  the company's net share of that order.
-- **Coupon campaign budget.** : budgeted = reusable until the company's
-  share of the discounts reaches the budget (never ); the per-order  is gone —
+  the rates (`commission_rate`, `owner_discount_rate` = the APPLIED OW — 0 without an EliteYAR, shares, VAT,
+  flags), writes `orders.buyer_discount_amount` and makes `final_amount` the exact amount charged: both
+  payment actions charge `placedPooFor()` (= final + coupon) instead of re-running the formula, and the
+  reconciler uses `rates['ow_applied_rate']`. Legacy orders (no placement snapshot, `commission_rate=0`) keep
+  the old path. `payment-options.breakdown.buyer_discount`, `OrderResource.financial.buyer_discount_amount`,
+  the cart pre-invoice and `pdf/partials/items_section` print the line.
+- **Weighbridge auto tolerance.** `PriceSetting weight_tolerance_percent` (default 0): under it the two-party
+  consent is skipped, but only while `|Δweight| × official_price ≤` the company's net share of that order.
+- **Coupon campaign budget.** `coupons.budget_total/budget_used`: budgeted = reusable until the company's
+  share of the discounts reaches the budget (never `used_at`); the per-order `company_cap_exceeded` is gone —
   a company share above the order's pool is funded from WSSG and refused up front
-  () when the wallet cannot cover it.
-- **Lifetime payout cap OFF** by  (default false) until management decides.
-- **Small items.**  →  (buyer/supplier/admin, only
-  when non-empty); a cancelled order serves only / (); LO/LS are both «سند L»; .
-
+  (`coupons.company_unfunded`) when the wallet cannot cover it.
+- **Lifetime payout cap OFF** by `features.elite_yar_lifetime_cap` (default false) until management decides.
+- **Small items.** `PUT /admin/orders/{order}/note` → `OrderResource.admin_note` (buyer/supplier/admin, only
+  when non-empty); a cancelled order serves only `refund`/`cancel_report`
+  (`OrderDocumentCatalog::slugsAllowedOnCancelledOrder`); LO/LS are both «سند L»;
+  `GET /settings/public.wallet_deposit_methods`.
 
 ### Order surveys — two independent documents (S / T) — FEATURE-FLAGGED OFF
 
