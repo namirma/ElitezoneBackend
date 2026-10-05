@@ -2599,6 +2599,47 @@ were created precisely to eliminate the cross-controller call that existed betwe
 
 ## Recently Added Subsystems
 
+### Management round-4 finance rules (1405/07/13 = 2026-10-05) — the binding money model
+
+Source:  (root workspace). These override the mind map,
+the «پروسه خرید» chart and every earlier guess. Pinned by ,
+, ,
+, .
+
+- **Who is an EliteYAR.**  = role  OR the legacy /  roles.  is unchanged in code but its meaning is **holder of a Sazeh 90 software
+  LICENCE** (), not a site member; no licence ⇒  =   (exposed as ). An on-hold EliteYAR may buy for themself only —  and
+   422 a beneficiary/payment link.
+- **One pricing predicate.**  (verified EliteYAR, or an employer with
+  ) drives  ( vs
+  ) and the buyer-discount preview.  is dead.
+- **The order's EliteYAR** (): a verified EliteYAR placer is the
+  order's EliteYAR (self-purchase allowed, no commission to self); an employer's explicit
+  , else the **only** verified EliteYAR is attached automatically, else 422 when several.
+- **Supplier settles on their own price.**  (weighted average of the price BEFORE
+  role filters; ) is the PTS basis everywhere (both payment actions,
+  , );  stays the buyer basis. Both are
+   now. Commission %TC comes from   (, cached, flushed on profile save) with the global
+   as fallback. Role price filters can raise the buyer price (the markup is the company's)
+  but never push it below the **contract floor**  —  clamps + logs,
+  the admin API refuses deeper percentage discounts.
+- **Buyer discount (%OW) only with a verified EliteYAR on the order, and as its own line.** Placement snapshots
+  the rates (,  = the APPLIED OW — 0 without an EliteYAR, shares, VAT,
+  flags), writes  and makes  the exact amount charged: both
+  payment actions charge  (= final + coupon) instead of re-running the formula, and the
+  reconciler uses . Legacy orders (no placement snapshot, ) keep
+  the old path. , ,
+  the cart pre-invoice and  print the line.
+- **Weighbridge auto tolerance.**  (default 0): under it the two-party
+  consent is skipped, but only while  the company's net share of that order.
+- **Coupon campaign budget.** : budgeted = reusable until the company's
+  share of the discounts reaches the budget (never ); the per-order  is gone —
+  a company share above the order's pool is funded from WSSG and refused up front
+  () when the wallet cannot cover it.
+- **Lifetime payout cap OFF** by  (default false) until management decides.
+- **Small items.**  →  (buyer/supplier/admin, only
+  when non-empty); a cancelled order serves only / (); LO/LS are both «سند L»; .
+
+
 ### Order surveys — two independent documents (S / T) — FEATURE-FLAGGED OFF
 
 > **The whole surveys feature is disabled** (`config/features.php` →
