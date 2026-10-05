@@ -294,6 +294,11 @@ class WeighbridgeVatRouter
      */
     private function eliteYARLifetimeCeiling(int $eliteYARUserId): ?float
     {
+        // پرسشِ ۱۲ مدیریت (۱۴۰۵/۰۷/۱۳): تا اطلاعِ ثانوی هیچ سقفی — حتی با مبلغِ نشانِ پرشده.
+        if (! config('features.elite_yar_lifetime_cap')) {
+            return null;
+        }
+
         $badgePurchaseAmount = User::query()
             ->whereKey($eliteYARUserId)
             ->lockForUpdate()

@@ -63,6 +63,9 @@ class EliteYARLifetimeCapTest extends TestCase
         // (کلید واقعی elite_yar_lifetime_cap_multiplier است؛ کلید قدیمیِ consultant_*
         //  دیگر وجود ندارد و این override را بی‌اثر می‌کرد.)
         config(['financial.elite_yar_lifetime_cap_multiplier' => 2.0]);
+        // مدیریت ۱۴۰۵/۰۷/۱۳ (پرسشِ ۱۲): سقف تا اطلاعِ ثانوی برای هیچ‌کس اعمال نمی‌شود؛
+        // این سوییت منطقِ سقف را می‌سنجد، پس پرچم را روشن می‌کند.
+        config(['features.elite_yar_lifetime_cap' => true]);
 
         $buyer = User::factory()->create();
         Wallet::create([Wallet::USER_ID => $buyer->id, Wallet::BALANCE => 0, Wallet::BALANCE_HOLD => 0]);
@@ -116,6 +119,19 @@ class EliteYARLifetimeCapTest extends TestCase
         $gross = $this->router->route($this->order->fresh(), $this->resultWithPool());
 
         // Full uncapped allocation: 100M pool × 0.625
+        $this->assertEqualsWithDelta(62_500_000, $gross, 1.0);
+    }
+
+    #[Test]
+    public function with_the_feature_off_a_badge_purchase_amount_caps_nobody(): void
+    {
+        // پاسخِ مدیریت به پرسشِ ۱۲ (۱۴۰۵/۰۷/۱۳): «تا اطلاع ثانوی برای هیچ الیت یاری سقف
+        // تعیین نمی‌شود». پرچمِ خاموش باید حتی با مبلغِ خریدِ نشانِ پرشده بی‌سقف باشد.
+        config(['features.elite_yar_lifetime_cap' => false]);
+        $this->eliteYAR->forceFill([User::BADGE_PURCHASE_AMOUNT => 10_000_000])->save();
+
+        $gross = $this->router->route($this->order->fresh(), $this->resultWithPool());
+
         $this->assertEqualsWithDelta(62_500_000, $gross, 1.0);
     }
 
