@@ -67,7 +67,8 @@ class CartPaymentLinkLockTest extends TestCase
         Setting::updateOrCreate([Setting::KEY => 'reserve_value'], [Setting::VALUE => '2000000000']);
         Cache::forget(Setting::CACHE_KEY);
 
-        $this->eliteYar = User::factory()->create();
+        // تأییدشده (لایسنسِ سازه ۹۰) — الیت‌یارِ هولد لینکِ پرداخت نمی‌فرستد (پرسشِ ۱ مدیریت).
+        $this->eliteYar = User::factory()->create([User::IS_SAZE90_USER => true]);
         $this->eliteYar->addRole(Role::firstOrCreate(['name' => 'engineer'], ['display_name' => 'Engineer']));
 
         $this->employer = User::factory()->create();

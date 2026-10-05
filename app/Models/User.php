@@ -202,9 +202,70 @@ class User extends Authenticatable
         return $this->hasOne(UserProfile::class);
     }
 
+    /** وضعیتِ الیت‌یار (`eliteYARStatus()`): حکمِ تأیید برقرار است. */
+    public const ELITE_YAR_STATUS_VERIFIED = 'verified';
+
+    /**
+     * وضعیتِ الیت‌یار: نقش را دارد ولی لایسنسِ سازه ۹۰ (یا مدرکِ تأییدشده) ندارد.
+     * پاسخِ مدیریت به پرسشِ ۱ (۱۴۰۵/۰۷/۱۳): «همه‌ی الیت‌یارها باید لایسنس سازه ۹۰
+     * داشته باشند و اگر نداشته باشند وضعیت آن‌ها هولد می‌شود.»
+     */
+    public const ELITE_YAR_STATUS_ON_HOLD = 'on_hold';
+
+    /**
+     * «این کاربر الیت‌یار است» — به هر سه نامی که این نقش در تاریخِ پروژه داشته.
+     *
+     * پرسشِ ۱ مدیریت (۱۴۰۵/۰۷/۱۳): «الیت یارها هم آن‌هایی هستند که قبلاً به عنوان
+     * مهندس یا پیمانکار ثبت نام کرده‌اند و هم آن‌هایی که از این پس به عنوان الیت یار
+     * ثبت نام می‌کنند.» تا پیش از این فقط دو نقشِ قدیمی شمرده می‌شد، پس الیت‌یارِ
+     * تازه (نقشِ `elite_yar`، بدونِ پروفایلِ مهندسی) در ثبتِ سفارش و قیمت‌گذاری
+     * کارفرما حساب می‌شد.
+     *
+     * این فقط **نقش** است؛ حکمِ تأیید را `isVerifiedEliteYAR()` می‌دهد.
+     */
     public function isEliteYAR(): bool
     {
-        return $this->hasRole('engineer') || $this->hasRole('contractor');
+        return $this->hasRole('elite_yar') || $this->hasRole('engineer') || $this->hasRole('contractor');
+    }
+
+    /**
+     * وضعیتِ الیت‌یار برای نمایش: `verified` / `on_hold` / `null` (الیت‌یار نیست).
+     * مشتق است، نه ستون — دو جای نوشتن یعنی دو جای واگرایی.
+     */
+    public function eliteYARStatus(): ?string
+    {
+        if (! $this->isEliteYAR()) {
+            return null;
+        }
+
+        return $this->isVerifiedEliteYAR() ? self::ELITE_YAR_STATUS_VERIFIED : self::ELITE_YAR_STATUS_ON_HOLD;
+    }
+
+    /**
+     * الیت‌یارهای **تأییدشده‌ی** این کارفرما: پیوندِ approved به‌علاوه‌ی حکمِ تأیید.
+     * پرسشِ ۸ مدیریت: یکی ⇒ خودکار روی سفارش؛ چند تا ⇒ انتخاب در صفحه‌ی سفارش.
+     *
+     * @return \Illuminate\Support\Collection<int, User>
+     */
+    public function verifiedEliteYARs(): \Illuminate\Support\Collection
+    {
+        return $this->technicalEliteYARs()
+            ->wherePivot(EmployerEliteYAR::STATUS, EmployerEliteYAR::STATUS_APPROVED)
+            ->with(['engineer', 'contractor'])
+            ->get()
+            ->filter(fn (User $eliteYAR) => $eliteYAR->isVerifiedEliteYAR())
+            ->values();
+    }
+
+    /**
+     * «قیمتِ با تخفیف» و «تخفیفِ ویژه‌ی خریدار» به چه کسی می‌رسد — پرسش‌های ۱ و ۷
+     * مدیریت (۱۴۰۵/۰۷/۱۳): الیت‌یارِ تأییدشده، و کارفرمایی که الیت‌یارِ تأییدشده
+     * دارد. همین یک محمول هم گروهِ فیلترِ قیمت را انتخاب می‌کند (`PricingRoleResolver`)
+     * و هم پیش‌نمایشِ تخفیفِ ویژه را، تا سبد و سفارش یک تصمیم بگیرند.
+     */
+    public function qualifiesForEliteYARPricing(): bool
+    {
+        return $this->isVerifiedEliteYAR() || $this->verifiedEliteYARs()->isNotEmpty();
     }
 
     /**

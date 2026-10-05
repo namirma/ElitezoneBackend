@@ -106,7 +106,7 @@ class SyncUserBadgeAction
             activity()
                 ->performedOn($user)
                 ->withProperties(['is_saze90_user' => $isSaze90User, 'code' => $sazeCode, 'source' => 'saze90.com'])
-                ->log($isSaze90User ? 'عضویت سازه ۹۰ تشخیص داده شد.' : 'عضویت سازه ۹۰ دیگر تشخیص داده نمی‌شود.');
+                ->log($isSaze90User ? 'لایسنس سازه ۹۰ تشخیص داده شد.' : 'لایسنس سازه ۹۰ دیگر تشخیص داده نمی‌شود (الیت‌یار هولد).');
         }
         $engineer = $user->engineer;
         if ($engineer && (bool) $engineer->{EngineerProfile::IS_SAZE90_USER} !== $isSaze90User) {

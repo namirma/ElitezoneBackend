@@ -349,11 +349,7 @@ class PlaceOrderAction
         // Subtotal - Discount + Tax + Shipping = Final
         $finalAmount = max(0, $subtotal - $totalDiscount + $totalVat + $shippingCost);
 
-        // تعیین الیت یار مؤثر:
-        // — اگر خودِ خریدار الیت یار است (engineer/contractor) → الیت یار = placer (اجباری)
-        // — اگر کارفرما است → الیت یار همانی است که در elite_yar_user_id فرستاده
-        $isEliteYARPlacer = $user->isEliteYAR();
-        $effectiveEliteYARId = $isEliteYARPlacer ? $user->id : $data->eliteYARUserId;
+        $effectiveEliteYARId = $this->resolveEffectiveEliteYARId($user, $data);
 
         $commissions = $this->calculateCommissions($user, $effectiveEliteYARId, $subtotal);
 
@@ -388,6 +384,43 @@ class PlaceOrderAction
             'items_data' => $itemsData,
             'shipments' => $shippingQuote->shipments,
         ];
+    }
+
+    /**
+     * الیت‌یارِ مؤثرِ سفارش — پاسخ‌های مدیریت به پرسش‌های ۱ و ۸ (۱۴۰۵/۰۷/۱۳).
+     *
+     * — ثبت‌کننده خودش الیت‌یار است (به هر سه نامِ نقش): الیت‌یار = خودش، **فقط اگر
+     *   تأییدشده باشد**. الیت‌یارِ هولد (بی‌لایسنسِ سازه ۹۰) سهم و تخفیفِ الیت‌یاری
+     *   ندارد، پس سفارشش بی‌الیت‌یار ثبت می‌شود (StoreOrderRequest خریدِ برای
+     *   کارفرما را از او می‌گیرد). وقتی برای خودش می‌خرد سهمی نمی‌گیرد
+     *   (`WeighbridgeVatRouter`: الیت‌یار = پرداخت‌کننده ⇒ سهم به شرکت)، ولی
+     *   تخفیفِ ویژه‌ی خریدار را می‌گیرد — قیمتِ با تخفیف روی خریدِ خودش (پرسشِ ۱).
+     * — کارفرما: الیت‌یارِ فرستاده‌شده؛ اگر نفرستاده و دقیقاً **یک** الیت‌یارِ تأییدشده
+     *   دارد، خودکار همان (پرسشِ ۸، گزینه‌ی الف). با چند تا StoreOrderRequest ۴۲۲ داده
+     *   است؛ این‌جا هم دفاعِ دوم برای صداکننده‌های غیرِ HTTP.
+     *
+     * نتیجه: `elite_yar_user_id` روی سفارش همیشه یا خالی است یا **تأییدشده** — همین
+     * یک حقیقت است که `calculateOrderFinancials` برای تخفیفِ ویژه می‌خواند.
+     */
+    private function resolveEffectiveEliteYARId(User $user, PlaceOrderData $data): ?int
+    {
+        if ($user->isEliteYAR()) {
+            return $user->isVerifiedEliteYAR() ? $user->id : null;
+        }
+
+        if ($data->eliteYARUserId !== null) {
+            return $data->eliteYARUserId;
+        }
+
+        $verified = $user->verifiedEliteYARs();
+
+        if ($verified->count() > 1) {
+            throw ValidationException::withMessages([
+                'elite_yar_user_id' => __('orders.store_elite_yar_choice_required'),
+            ]);
+        }
+
+        return $verified->first()?->id;
     }
 
     /**

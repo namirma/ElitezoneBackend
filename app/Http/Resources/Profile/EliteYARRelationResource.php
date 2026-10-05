@@ -59,6 +59,9 @@ class EliteYARRelationResource extends BaseJsonResource
 
             // فلگ تأیید مدارک — فرانت از این برای نمایش badge «تأییدشده» استفاده می‌کند
             'is_verified' => $isVerified,
+            // `verified` | `on_hold` — کارفرما باید ببیند الیت‌یارش هولد است (بی‌لایسنسِ
+            // سازه ۹۰؛ پرسشِ ۱ مدیریت، ۱۴۰۵/۰۷/۱۳) و روی سفارش قابلِ انتخاب نیست.
+            'elite_yar_status' => $isVerified ? User::ELITE_YAR_STATUS_VERIFIED : User::ELITE_YAR_STATUS_ON_HOLD,
         ];
     }
 

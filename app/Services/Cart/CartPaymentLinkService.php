@@ -43,6 +43,12 @@ class CartPaymentLinkService
             throw new BusinessException(__('checkout.cart_is_empty'), 400);
         }
 
+        // الیت‌یارِ هولد (بی‌لایسنسِ سازه ۹۰) برای کارفرما نمی‌خرد — پرسشِ ۱ مدیریت
+        // (۱۴۰۵/۰۷/۱۳)، همان گاردی که StoreOrderRequest روی beneficiary_user_id دارد.
+        if (! $eliteYar->isVerifiedEliteYAR()) {
+            throw new BusinessException(__('orders.store_elite_yar_on_hold'), 422);
+        }
+
         // کارفرما باید کارفرمای **تأییدشده‌ی همین الیت‌یار** باشد. بدون این،
         // هر کسی می‌توانست سبدی ببندد و صورتحسابش را برای یک کاربر دلخواه
         // بفرستد — همان اشتباهی که `StoreOrderRequest` با قاعده‌ی closure به‌جای

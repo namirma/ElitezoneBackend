@@ -9,16 +9,21 @@ use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 /**
  * اعتبارسنجی نقش‌محور ثبت سفارش:
  *
  * مسیر کارفرما (employer):
- *   - elite_yar_user_id: اختیاری؛ باید الیت یار approved+verified خودِ کارفرما باشد
+ *   - elite_yar_user_id: اختیاری؛ باید الیت یار approved+verified خودِ کارفرما باشد.
+ *     پرسشِ ۸ مدیریت (۱۴۰۵/۰۷/۱۳): با **یک** الیت‌یارِ تأییدشده خودکار روی سفارش
+ *     می‌نشیند (PlaceOrderAction)؛ با **چند** تا باید یکی انتخاب شود — این‌جا ۴۲۲.
  *   - beneficiary_user_id: ممنوع (کارفرما گیرنده خودش است)
  *
- * مسیر الیت یار (engineer / contractor):
- *   - beneficiary_user_id: اجباری؛ باید کارفرمای approved همین الیت یار باشد
+ * مسیر الیت یار (`elite_yar`، و نقش‌های قدیمیِ engineer / contractor — پرسشِ ۱):
+ *   - beneficiary_user_id: اختیاری — خالی یعنی خریدِ خودِ الیت‌یار (پرسشِ ۱: الیت‌یارِ
+ *     تأییدشده روی خریدِ خودش قیمتِ با تخفیف می‌بیند)؛ در صورتِ ارسال باید کارفرمای
+ *     approved همین الیت یار باشد و الیت‌یار «هولد» نباشد.
  *   - elite_yar_user_id: ممنوع در request؛ توسط PlaceOrderAction = self ست می‌شود
  */
 class StoreOrderRequest extends FormRequest
@@ -31,7 +36,7 @@ class StoreOrderRequest extends FormRequest
     public function rules(): array
     {
         $user = Auth::user();
-        $isEliteYAR = $user?->hasRole('engineer') || $user?->hasRole('contractor');
+        $isEliteYAR = (bool) $user?->isEliteYAR();
 
         $rules = $isEliteYAR ? $this->eliteYARRules() : $this->employerRules();
 
@@ -40,6 +45,31 @@ class StoreOrderRequest extends FormRequest
         $rules['coupon_code'] = ['nullable', 'string', 'max:100'];
 
         return $rules;
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $v): void {
+            $user = Auth::user();
+            if (! $user instanceof User) {
+                return;
+            }
+
+            if ($user->isEliteYAR()) {
+                // الیت‌یارِ هولد (بی‌لایسنسِ سازه ۹۰) برای خودش می‌خرد، نه برای کارفرما —
+                // سهم و تخفیفِ الیت‌یاری فقط با حکمِ تأیید معنا دارد (پرسشِ ۱، قیدِ سوم).
+                if ($this->filled('beneficiary_user_id') && ! $user->isVerifiedEliteYAR()) {
+                    $v->errors()->add('beneficiary_user_id', __('orders.store_elite_yar_on_hold'));
+                }
+
+                return;
+            }
+
+            // کارفرما با چند الیت‌یارِ تأییدشده باید یکی را انتخاب کند (پرسشِ ۸، گزینه‌ی الف).
+            if (! $this->filled('elite_yar_user_id') && $user->verifiedEliteYARs()->count() > 1) {
+                $v->errors()->add('elite_yar_user_id', __('orders.store_elite_yar_choice_required'));
+            }
+        });
     }
 
     // ── مسیر کارفرما ──────────────────────────────────────────────────────────
@@ -102,7 +132,7 @@ class StoreOrderRequest extends FormRequest
         ];
     }
 
-    // ── مسیر الیت یار (engineer / contractor) ────────────────────────────────────
+    // ── مسیر الیت یار (elite_yar / engineer / contractor) ─────────────────────────
 
     private function eliteYARRules(): array
     {
@@ -112,12 +142,16 @@ class StoreOrderRequest extends FormRequest
                 'prohibited',
             ],
 
-            // اجباری: کارفرمای approved این الیت یار
+            // اختیاری: کارفرمای approved این الیت یار — خالی یعنی خریدِ خودِ الیت‌یار.
             'beneficiary_user_id' => [
-                'required',
+                'nullable',
                 'integer',
                 'exists:users,id',
                 function (string $attribute, $value, Closure $fail): void {
+                    if ($value === null) {
+                        return;
+                    }
+
                     $eliteYAR = Auth::user();
 
                     $isApprovedEmployer = $eliteYAR

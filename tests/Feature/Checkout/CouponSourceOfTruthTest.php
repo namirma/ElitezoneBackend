@@ -334,7 +334,11 @@ class CouponSourceOfTruthTest extends TestCase
         $this->assertStringContainsString('الیت‌یار', (string) $linkedNoRole['error']);
 
         // با نقش ⇒ صاحبِ سبد الیت‌یارِ سفارش است و کارفرما می‌پردازد ⇒ همان تصمیمِ ثبت.
+        // نقش کافی نیست، تأیید (لایسنسِ سازه ۹۰) هم لازم است — الیت‌یارِ هولد سهمی ندارد.
         $this->buyer->addRole(Role::firstOrCreate(['name' => 'engineer'], ['display_name' => 'engineer']));
+        $stillOnHold = $totals->couponFor($cart->fresh(['items', 'user']), $this->buyer, 9_900_000.0);
+        $this->assertSame(0.0, $stillOnHold['discount']);
+        $this->buyer->forceFill([User::IS_SAZE90_USER => true])->save();
 
         $forEmployer = $totals->couponFor($cart->fresh(['items', 'user']), $this->buyer, 9_900_000.0);
         $this->assertSame(1_000_000.0, $forEmployer['discount']);

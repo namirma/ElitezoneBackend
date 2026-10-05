@@ -102,8 +102,16 @@ class UserResource extends BaseJsonResource
             'created_at_p' => $this->created_at_p,
             'created_at_diff' => $this->created_at_diff,
             'is_verified' => $this->getIsVerified(),
-            // عضو سازه ۹۰ است (تشخیص خودکار از saze90.com).
+            // دارنده‌ی لایسنسِ نرم‌افزارِ سازه ۹۰ (تشخیص خودکار از saze90.com). پرسشِ ۱
+            // مدیریت (۱۴۰۵/۰۷/۱۳): معیار «لایسنس» است، نه «عضویت در سایت». نامِ کلید
+            // به‌خاطرِ قراردادِ سه فرانت ثابت مانده.
             'is_saze90_user' => (bool) $this->{User::IS_SAZE90_USER},
+            // `verified` | `on_hold` | null — الیت‌یارِ بی‌لایسنس «هولد» است (پرسشِ ۱، قیدِ سوم).
+            // فقط با نقشِ لودشده معنا دارد (همان قاعده‌ی `is_verified`، بدونِ N+1).
+            'elite_yar_status' => $this->when(
+                $this->relationLoaded(User::RELATION_ROLES) || $this->getIsVerified() !== null,
+                fn () => $this->resource->eliteYARStatus()
+            ),
         ];
     }
 

@@ -4,35 +4,28 @@ namespace App\Services;
 
 use App\Models\User;
 
+/**
+ * گروهِ فیلترِ قیمتِ فعال برای یک کاربر.
+ *
+ * پرسشِ ۱ مدیریت (۱۴۰۵/۰۷/۱۳، گزینه‌ی الف): «هر الیت‌یارِ تأییدشده و هر کارفرمایی
+ * که الیت‌یارِ تأییدشده دارد قیمتِ با تخفیف می‌بیند.» تا پیش از این، این‌جا نقش‌های
+ * قدیمیِ مهندس/پیمانکار و پرچمِ `employer_profiles.has_elite_yar` (که هیچ
+ * نویسنده‌ای نداشت) خوانده می‌شد؛ الیت‌یارِ تازه‌ی سازه ۹۰ و کارفرمایی که الیت‌یار
+ * تأییدشده دارد هر دو قیمتِ بی‌تخفیف می‌دیدند، و الیت‌یارِ قدیمیِ بی‌لایسنس
+ * (هولد) همچنان تخفیف می‌گرفت.
+ *
+ * تنها محمول: `User::qualifiesForEliteYARPricing()`.
+ */
 class PricingRoleResolver
 {
+    public const WITH_ELITE_YAR = 'engineer_with_elite_yar';
+
+    public const WITHOUT_ELITE_YAR = 'employer_without_elite_yar';
+
     public function resolve(User $user): string
     {
-        $user = $user->fresh(['roles', 'employer']);
+        $user = $user->fresh(['roles']) ?? $user;
 
-        $hasRole = function (string $name) use ($user): bool {
-            if (method_exists($user, 'hasRole')) {
-                return $user->hasRole($name);
-            }
-
-            return method_exists($user, 'roles')
-                ? $user->roles()->where('name', $name)->exists()
-                : false;
-        };
-
-        $isEngineer = $hasRole('engineer');
-        $isContractor = $hasRole('contractor');
-        $isEmployer = $hasRole('employer');
-
-        if ($isEngineer || $isContractor) {
-            return 'engineer_with_elite_yar';
-        }
-        if ($isEmployer) {
-            $hasEliteYAR = (bool) optional($user->employer)->has_elite_yar;
-
-            return $hasEliteYAR ? 'engineer_with_elite_yar' : 'employer_without_elite_yar';
-        }
-
-        return 'employer_without_elite_yar';
+        return $user->qualifiesForEliteYARPricing() ? self::WITH_ELITE_YAR : self::WITHOUT_ELITE_YAR;
     }
 }

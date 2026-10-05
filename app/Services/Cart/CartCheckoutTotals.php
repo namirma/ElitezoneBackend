@@ -245,6 +245,10 @@ final class CartCheckoutTotals
 
         $cart->loadMissing('user');
 
-        return $cart->user?->isEliteYAR() ? (int) $cart->{Cart::USER_ID} : null;
+        // تأییدشده هم باید باشد — همان قیدی که `PlaceOrderAction::resolveEffectiveEliteYARId`
+        // می‌گذارد (الیت‌یارِ هولد سهمی ندارد — پرسشِ ۱ مدیریت، ۱۴۰۵/۰۷/۱۳).
+        $owner = $cart->user;
+
+        return ($owner?->isEliteYAR() && $owner->isVerifiedEliteYAR()) ? (int) $cart->{Cart::USER_ID} : null;
     }
 }

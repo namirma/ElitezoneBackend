@@ -69,10 +69,10 @@ class BuyForOthersPaymentTest extends TestCase
         Setting::updateOrCreate([Setting::KEY => 'reserve_value'], [Setting::VALUE => '2000000000']);
         Cache::forget(Setting::CACHE_KEY);
 
-        // الیت‌یار باید نقشِ engineer/contractor داشته باشد وگرنه
-        // `PlaceOrderAction` او را الیت‌یارِ مؤثر نمی‌شناسد و کمیسیون مسیر
-        // نمی‌گیرد (`User::isEliteYAR`).
-        $this->eliteYar = User::factory()->create();
+        // الیت‌یار باید نقشِ الیت‌یاری داشته باشد و **تأییدشده** باشد (لایسنسِ سازه ۹۰ —
+        // پرسشِ ۱ مدیریت، ۱۴۰۵/۰۷/۱۳)، وگرنه `PlaceOrderAction` او را الیت‌یارِ مؤثر
+        // نمی‌شناسد و `CartPaymentLinkService` خریدِ برای کارفرما را از او می‌گیرد (هولد).
+        $this->eliteYar = User::factory()->create([User::IS_SAZE90_USER => true]);
         $this->eliteYar->addRole(Role::firstOrCreate(['name' => 'engineer'], ['display_name' => 'Engineer']));
 
         $this->employer = User::factory()->create();
