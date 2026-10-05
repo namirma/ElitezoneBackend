@@ -11,6 +11,7 @@ use App\Models\Address;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Coupon;
+use App\Models\CouponFunder;
 use App\Models\CustomerType;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -18,7 +19,6 @@ use App\Models\OrderUnit;
 use App\Models\PriceFilterCategory;
 use App\Models\ProductVariant;
 use App\Models\Shipment;
-use App\Models\SupplierProfile;
 use App\Models\User;
 use App\Models\UserType;
 use App\Services\DocumentSequenceService;
@@ -115,7 +115,7 @@ class PlaceOrderAction
                 // تقسیمِ تخفیف بینِ تأمین‌کننده‌ها، سقفِ سهمِ شرکت/الیت‌یار در همین
                 // سفارش و موجودیِ کیف پولِ هر تأمین‌کننده — پیش از هر نوشتنی؛ تخطی
                 // ۴۲۲ با پیامِ دقیق است، نه کاهشِ بی‌صدا.
-                $this->assertCouponFundable($coupon, $couponDiscount, $financials, $cart, ($payer ?? $user)->id);
+                $couponLegs = $this->assertCouponFundable($coupon, $couponDiscount, $financials, $cart, ($payer ?? $user)->id);
                 // ── پایانِ تأمینِ تخفیف ──
                 $financials['coupon_id'] = $coupon->id;
                 $financials['coupon_discount_amount'] = $couponDiscount;
@@ -126,7 +126,14 @@ class PlaceOrderAction
             $order = $this->createOrderRecord($user, $data, $financials, $cart, $initialStatus, $payer);
 
             if ($coupon) {
-                $this->couponService->redeem($coupon);
+                // سهمِ شرکت از این تخفیف از بودجه‌ی کمپین کم می‌شود (کوپنِ معمولی: used_at).
+                $companyAmount = 0.0;
+                foreach ($couponLegs ?? [] as ['funder' => $funder, 'amount' => $amount]) {
+                    if ($funder->{CouponFunder::FUNDER_TYPE} === CouponFunder::TYPE_COMPANY) {
+                        $companyAmount += (float) $amount;
+                    }
+                }
+                $this->couponService->redeem($coupon, $companyAmount);
             }
             $shipmentMap = $this->createShipments($order, $financials['shipments']);
             $this->createOrderItems($order, $cart, $financials['items_data'], $shipmentMap);
@@ -752,10 +759,11 @@ class PlaceOrderAction
      * کمیسیون‌گیر» عیناً همانِ `WeighbridgeVatRouter::routeEliteYAR` است: ست‌شده و
      * غیر از پرداخت‌کننده.
      */
-    private function assertCouponFundable(Coupon $coupon, float $discount, array $fins, Cart $cart, int $payerId): void
+    /** @return list<array{funder: CouponFunder, amount: float}> */
+    private function assertCouponFundable(Coupon $coupon, float $discount, array $fins, Cart $cart, int $payerId): array
     {
         if ($discount <= 0) {
-            return;
+            return [];
         }
 
         $inputs = $fins['coupon_inputs'];
@@ -778,7 +786,7 @@ class PlaceOrderAction
             owAppliedPercent: (float) $inputs['ow_applied'],
         );
 
-        $this->couponFunding->plan($coupon, $discount, $caps, $supplierId, $hasCommissionedEliteYAR ? $eliteYARId : null);
+        return $this->couponFunding->plan($coupon, $discount, $caps, $supplierId, $hasCommissionedEliteYAR ? $eliteYARId : null);
     }
 
     private function assertSingleSupplier(Cart $cart): void

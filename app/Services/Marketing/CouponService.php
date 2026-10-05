@@ -72,7 +72,12 @@ class CouponService
             throw new BusinessException(__('coupons.expired'));
         }
 
-        if (! is_null($coupon->{Coupon::USED_AT})) {
+        // کوپنِ کمپینی (پرسشِ ۱۰ مدیریت) چندمصرفه است و به‌جای used_at بودجه دارد.
+        if ($coupon->isCampaign()) {
+            if ($coupon->budgetRemaining() <= 0.0) {
+                throw new BusinessException(__('coupons.budget_exhausted'));
+            }
+        } elseif (! is_null($coupon->{Coupon::USED_AT})) {
             throw new BusinessException(__('coupons.already_used'));
         }
 
@@ -113,8 +118,18 @@ class CouponService
      * مصرف کوپن (used_at). باید داخل همان DB::transaction ثبت سفارش صدا زده شود
      * و کوپن با lock=true اعتبارسنجی شده باشد.
      */
-    public function redeem(Coupon $coupon): void
+    public function redeem(Coupon $coupon, float $companyAmount = 0.0): void
     {
+        // کمپین: سهمِ شرکت از این سفارش از بودجه کم می‌شود (قفلِ ردیف در validateForCheckout
+        // گرفته شده)؛ کوپنِ معمولی: تک‌مصرفه (پرسشِ ۱۰ مدیریت، ۱۴۰۵/۰۷/۱۳).
+        if ($coupon->isCampaign()) {
+            $coupon->forceFill([
+                Coupon::BUDGET_USED => (float) ($coupon->{Coupon::BUDGET_USED} ?? 0) + round($companyAmount),
+            ])->save();
+
+            return;
+        }
+
         $coupon->{Coupon::USED_AT} = now();
         $coupon->save();
     }
@@ -130,9 +145,25 @@ class CouponService
             return;
         }
 
-        Coupon::where(Coupon::ID, $order->coupon_id)
-            ->whereNotNull(Coupon::USED_AT)
-            ->update([Coupon::USED_AT => null]);
+        $coupon = Coupon::query()->lockForUpdate()->find($order->coupon_id);
+        if (! $coupon) {
+            return;
+        }
+
+        if ($coupon->isCampaign()) {
+            // سهمِ شرکت از تخفیفِ همین سفارش به بودجه برمی‌گردد — همان تقسیمی که ثبت کرد.
+            $companyAmount = app(CouponFundingService::class)
+                ->companyAmountFor($coupon, (float) ($order->{Order::COUPON_DISCOUNT_AMOUNT} ?? 0));
+            $coupon->forceFill([
+                Coupon::BUDGET_USED => max(0.0, (float) ($coupon->{Coupon::BUDGET_USED} ?? 0) - $companyAmount),
+            ])->save();
+
+            return;
+        }
+
+        if (! is_null($coupon->{Coupon::USED_AT})) {
+            $coupon->forceFill([Coupon::USED_AT => null])->save();
+        }
     }
 
     /**

@@ -32,6 +32,8 @@ class StoreCouponRequest extends FormRequest
             Coupon::EXPIRES_AT => ['nullable', 'date'],
             Coupon::REASON => ['nullable', 'string', 'max:500'],
             Coupon::IS_ACTIVE => ['nullable', 'boolean'],
+            // بودجه‌ی کمپین (ریال): پر = چندمصرفه تا پایانِ بودجه؛ خالی = تک‌مصرفه (پرسشِ ۱۰ مدیریت).
+            Coupon::BUDGET_TOTAL => ['nullable', 'integer', 'min:0'],
         ] + $this->funderRules(required: false);
     }
 

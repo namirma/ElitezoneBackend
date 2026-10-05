@@ -37,6 +37,7 @@ class UpdateCouponRequest extends FormRequest
             Coupon::EXPIRES_AT => ['nullable', 'date'],
             Coupon::REASON => ['nullable', 'string', 'max:500'],
             Coupon::IS_ACTIVE => ['nullable', 'boolean'],
+            Coupon::BUDGET_TOTAL => ['nullable', 'integer', 'min:0'],
         ] + $this->funderRules(required: false);
     }
 

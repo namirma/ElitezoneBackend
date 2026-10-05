@@ -26,6 +26,7 @@ use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use App\Services\Invoice\InvoiceGenerator;
 use App\Services\Marketing\CouponFundingService;
+use App\Services\Marketing\CouponService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
@@ -53,7 +54,7 @@ class CouponFundingTest extends TestCase
 
     private const SYSTEM_WALLET = 500_000_000.0;
 
-    /** تخفیفِ ۵۰/۵۰: سهمِ شرکت (۵۰۰ هزار) باید زیرِ سقفِ خالصِ شرکت روی این سفارش (≈۵۴۰ هزار) بماند. */
+    /** تخفیفِ ۵۰/۵۰: سهمِ شرکت (۵۰۰ هزار) زیرِ استخرِ همین سفارش (≈۵۴۰ هزار) می‌ماند، پس از موجودیِ سازه چیزی نمی‌رود. */
     private const SPLIT_DISCOUNT = 1_000_000.0;
 
     private User $buyer;
@@ -291,20 +292,120 @@ class CouponFundingTest extends TestCase
 
     // ── لحظه‌ی ثبت سفارش — گاردها ──────────────────────────────────────────
 
+    /**
+     * پاسخِ مدیریت به پرسشِ ۱۰ (۱۴۰۵/۰۷/۱۳، گزینه‌ی ب): سقفِ «سهمِ شرکت از همین سفارش» برداشته
+     * شد — با آن، کوپنِ ۵٪ِ بازگشتِ مشتری عملاً غیرقابل‌استفاده بود. کوپنِ شرکتیِ بزرگ‌تر از
+     * استخرِ سفارش از **موجودیِ** کیف پولِ سازه تأمین می‌شود؛ کنترلِ هزینه با بودجه‌ی کمپین است.
+     */
     #[Test]
-    public function a_company_coupon_over_the_company_share_is_rejected_with_the_cap_message(): void
+    public function a_company_coupon_larger_than_the_orders_company_share_is_funded_from_the_company_wallet(): void
     {
-        // ۵ میلیون از ~۹۹ میلیون سفارش؛ سهمِ شرکت با TC=۱٪ چند صد هزار ریال است.
+        // ۵ میلیون از ~۹۹ میلیون سفارش؛ سهمِ شرکت از استخرِ این سفارش چند صد هزار ریال است.
+        $coupon = $this->makeCoupon(5_000_000, [[CouponFunder::TYPE_COMPANY, null, 100]]);
+        $this->fillCart(100, $coupon->code);
+
+        $this->pay()->assertOk();
+
+        $order = Order::where(Order::PLACER_USER_ID, $this->buyer->id)->latest('id')->firstOrFail();
+        $poo = (float) $order->{Order::PAYMENT_OF_OWNER};
+        $pts = (float) $order->{Order::PAYMENT_TO_SUPPLIER};
+
+        $this->assertEqualsWithDelta(5_000_000.0, (float) $order->{Order::COUPON_DISCOUNT_AMOUNT}, 1.0);
+        // سازه: POO گرفته، PTS داده، ۵ میلیون تخفیف داده — بیشتر از استخرِ همین سفارش، از موجودی‌اش.
+        $this->assertEqualsWithDelta(self::SYSTEM_WALLET + $poo - $pts - 5_000_000, $this->balance($this->system), 1.0);
+        $this->assertNotNull($coupon->fresh()->{Coupon::USED_AT}, 'کوپنِ بی‌بودجه تک‌مصرفه است.');
+    }
+
+    #[Test]
+    public function a_company_coupon_the_company_wallet_cannot_cover_is_refused_before_any_write(): void
+    {
+        Wallet::where(Wallet::USER_ID, $this->system->id)->update([Wallet::BALANCE => 0]);
         $coupon = $this->makeCoupon(5_000_000, [[CouponFunder::TYPE_COMPANY, null, 100]]);
         $this->fillCart(100, $coupon->code);
 
         $response = $this->pay();
 
         $response->assertStatus(422);
-        $this->assertStringContainsString('سقف تأمین شرکت', $response->json('message'));
-        $this->assertStringContainsString('5,000,000', $response->json('message'));
+        $this->assertStringContainsString('کیف پول شرکت', $response->json('message'));
         $this->assertSame(0, Order::where(Order::PLACER_USER_ID, $this->buyer->id)->count(), 'سفارشی نباید ساخته شود.');
         $this->assertNull($coupon->fresh()->{Coupon::USED_AT}, 'کوپن نباید مصرف شود.');
+    }
+
+    // ── بودجه‌ی کمپین (پرسشِ ۱۰ مدیریت) ──────────────────────────────────────
+
+    #[Test]
+    public function a_campaign_coupon_is_reusable_until_its_budget_is_consumed(): void
+    {
+        $coupon = $this->makeCoupon(400_000, [[CouponFunder::TYPE_COMPANY, null, 100]]);
+        $coupon->forceFill([Coupon::BUDGET_TOTAL => 1_000_000])->save();
+
+        // اول و دوم: ۴۰۰ + ۴۰۰ هزار از بودجه‌ی یک میلیون.
+        foreach ([400_000, 800_000] as $expectedUsed) {
+            $this->fillCart(100, $coupon->code);
+            $this->pay()->assertOk();
+
+            $fresh = $coupon->fresh();
+            $this->assertNull($fresh->{Coupon::USED_AT}, 'کوپنِ کمپینی هرگز used_at نمی‌گیرد.');
+            $this->assertEqualsWithDelta($expectedUsed, (float) $fresh->{Coupon::BUDGET_USED}, 0.0);
+            $this->assertEqualsWithDelta(1_000_000 - $expectedUsed, $fresh->budgetRemaining(), 0.0);
+        }
+
+        // سوم: ۴۰۰ هزار > ۲۰۰ هزارِ باقی‌مانده ⇒ رد با پیامِ بودجه، بی‌هیچ نوشتنی.
+        $this->fillCart(100, $coupon->code);
+        $response = $this->pay();
+        $response->assertStatus(422);
+        $this->assertStringContainsString('بودجه', $response->json('message'));
+        $this->assertSame(2, Order::where(Order::PLACER_USER_ID, $this->buyer->id)->count());
+        $this->assertEqualsWithDelta(800_000, (float) $coupon->fresh()->{Coupon::BUDGET_USED}, 0.0);
+    }
+
+    #[Test]
+    public function a_split_campaign_coupon_only_charges_the_companys_share_to_the_budget(): void
+    {
+        // ۵۰/۵۰ با تأمین‌کننده: از ۱ میلیون تخفیف فقط ۵۰۰ هزار سهمِ شرکت است و همان از بودجه می‌رود.
+        $coupon = $this->makeCoupon(self::SPLIT_DISCOUNT, [
+            [CouponFunder::TYPE_SUPPLIER, $this->supplier->id, 50],
+            [CouponFunder::TYPE_COMPANY, null, 50],
+        ]);
+        $coupon->forceFill([Coupon::BUDGET_TOTAL => 10_000_000])->save();
+        $this->fillCart(100, $coupon->code);
+
+        $this->pay()->assertOk();
+
+        $this->assertEqualsWithDelta(self::SPLIT_DISCOUNT / 2, (float) $coupon->fresh()->{Coupon::BUDGET_USED}, 0.0);
+    }
+
+    #[Test]
+    public function releasing_a_campaign_order_returns_the_companys_share_to_the_budget(): void
+    {
+        $coupon = $this->makeCoupon(400_000, [[CouponFunder::TYPE_COMPANY, null, 100]]);
+        $coupon->forceFill([Coupon::BUDGET_TOTAL => 1_000_000, Coupon::BUDGET_USED => 400_000])->save();
+        $order = Order::factory()->create([Order::COUPON_ID => $coupon->id]);
+        $order->update([Order::COUPON_DISCOUNT_AMOUNT => 400_000]);
+
+        app(CouponService::class)->releaseForOrder($order->fresh());
+
+        $this->assertEqualsWithDelta(0.0, (float) $coupon->fresh()->{Coupon::BUDGET_USED}, 0.0);
+    }
+
+    #[Test]
+    public function the_admin_creates_a_campaign_by_giving_the_coupon_a_budget(): void
+    {
+        $admin = User::factory()->create();
+        $admin->addRole(Role::firstOrCreate(['name' => 'admin'], ['display_name' => 'admin']));
+        $this->grantAllAdminPermissions($admin);
+        Sanctum::actingAs($admin);
+
+        $created = $this->postJson('/api/admin/coupons', [
+            Coupon::CODE => 'CAMP-'.strtoupper(Str::random(5)),
+            Coupon::TYPE => Coupon::TYPE_PERCENT,
+            Coupon::AMOUNT => 5,
+            Coupon::BUDGET_TOTAL => 2_000_000,
+        ])->assertCreated()->json('data');
+
+        $this->assertTrue($created['is_campaign']);
+        $this->assertSame('2000000', $created[Coupon::BUDGET_TOTAL]);
+        $this->assertSame('2000000', $created['budget_remaining']);
     }
 
     #[Test]
@@ -423,11 +524,19 @@ class CouponFundingTest extends TestCase
 
         $this->assertTrue($coupon->isFundingReady());
 
+        // بی‌ردیف = شرکت ۱۰۰٪؛ بیشتر از استخرِ سفارش از موجودیِ سازه تأمین می‌شود (پرسشِ ۱۰ مدیریت).
+        $legs = app(CouponFundingService::class)->plan($coupon, 10_000, ['company' => 5_000, 'elite_yar' => 0], $this->supplier->id, null);
+        $this->assertCount(1, $legs);
+        $this->assertSame(CouponFunder::TYPE_COMPANY, $legs[0]['funder']->{CouponFunder::FUNDER_TYPE});
+        $this->assertEqualsWithDelta(10_000.0, $legs[0]['amount'], 0.0);
+
+        // … و وقتی سازه موجودی ندارد، همان‌جا با پیامِ روشن رد می‌شود.
+        Wallet::where(Wallet::USER_ID, $this->system->id)->update([Wallet::BALANCE => 0]);
         try {
             app(CouponFundingService::class)->plan($coupon, 10_000, ['company' => 5_000, 'elite_yar' => 0], $this->supplier->id, null);
-            $this->fail('سقفِ شرکت باید روی کوپنِ بی‌ردیف هم اعمال شود.');
+            $this->fail('بی‌موجودیِ سازه باید رد شود.');
         } catch (BusinessException $e) {
-            $this->assertStringContainsString('سقف تأمین شرکت', $e->getMessage());
+            $this->assertStringContainsString('کیف پول شرکت', $e->getMessage());
         }
     }
 

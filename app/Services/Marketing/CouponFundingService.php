@@ -75,16 +75,55 @@ class CouponFundingService
                     break;
 
                 default:
-                    if ($amount > $caps['company']) {
-                        throw new BusinessException(__('coupons.company_cap_exceeded', [
-                            'amount' => number_format($amount),
-                            'cap' => number_format($caps['company']),
-                        ]), 422);
-                    }
+                    $this->assertCompanyCanFund($coupon, $amount, (float) ($caps['company'] ?? 0));
             }
         }
 
         return $legs;
+    }
+
+    /**
+     * سهمِ شرکت — پاسخِ مدیریت به پرسشِ ۱۰ (۱۴۰۵/۰۷/۱۳، گزینه‌ی ب): سقفِ «≤ سهمِ شرکت از همین
+     * سفارش» برداشته شد (با آن کوپنِ ۵٪ِ بازگشتِ مشتری عملاً غیرقابل‌استفاده بود)؛ به‌جایش
+     * **بودجه‌ی کمپین** کنترلِ هزینه است. دو گارد می‌ماند:
+     *  ۱. کمپین: سهمِ شرکت از این سفارش ≤ باقی‌مانده‌ی بودجه.
+     *  ۲. پولِ واقعی: آنچه از استخرِ همین سفارش (POO − PTS) بیشتر است از **موجودیِ** کیف پولِ
+     *     سازه (WSSG) می‌رود؛ اگر نباشد همین‌جا با پیامِ روشن رد می‌شود، نه هنگامِ پرداخت با
+     *     «موجودی کافی نیست»ی که خریدار آن را از آنِ خودش می‌پندارد.
+     */
+    private function assertCompanyCanFund(Coupon $coupon, float $amount, float $poolShare): void
+    {
+        if ($coupon->isCampaign() && $amount > $coupon->budgetRemaining()) {
+            throw new BusinessException(__('coupons.budget_exhausted_for_order', [
+                'amount' => number_format($amount),
+                'remaining' => number_format($coupon->budgetRemaining()),
+            ]), 422);
+        }
+
+        $fromFloat = $amount - $poolShare;
+        if ($fromFloat <= 0) {
+            return;
+        }
+
+        $systemBalance = (float) (Wallet::where(Wallet::USER_ID, (int) config('financial.system_user_id'))->value(Wallet::BALANCE) ?? 0);
+        if ($systemBalance < $fromFloat) {
+            throw new BusinessException(__('coupons.company_unfunded', [
+                'amount' => number_format($amount),
+            ]), 422);
+        }
+    }
+
+    /** سهمِ شرکت از یک تخفیف، با همان تقسیمِ `split()` — برای کم/زیاد کردنِ بودجه‌ی کمپین. */
+    public function companyAmountFor(Coupon $coupon, float $discount): float
+    {
+        $company = 0.0;
+        foreach ($this->split($coupon->fundingRows(), $discount) as ['funder' => $funder, 'amount' => $amount]) {
+            if ($funder->{CouponFunder::FUNDER_TYPE} === CouponFunder::TYPE_COMPANY) {
+                $company += $amount;
+            }
+        }
+
+        return $company;
     }
 
     /**
@@ -212,6 +251,14 @@ class CouponFundingService
             };
 
             $leg->forceFill([CouponFundingLeg::REVERSED_AT => now()])->save();
+
+            // استردادِ سفارشِ کمپینی: سهمِ شرکت به بودجه برمی‌گردد (پولش هم به WSSG برگشت).
+            if ($coupon instanceof Coupon && $coupon->isCampaign()
+                && $leg->{CouponFundingLeg::FUNDER_TYPE} === CouponFunder::TYPE_COMPANY) {
+                $coupon->forceFill([
+                    Coupon::BUDGET_USED => max(0.0, (float) ($coupon->{Coupon::BUDGET_USED} ?? 0) - $amount),
+                ])->save();
+            }
         }
 
         return true;

@@ -64,6 +64,17 @@ class Coupon extends Model
 
     const USED_AT = 'used_at';
 
+    /**
+     * بودجه‌ی کلِ کمپین (ریال) — پاسخِ مدیریت به پرسشِ ۱۰ (۱۴۰۵/۰۷/۱۳، گزینه‌ی ب): «بک‌آفیس
+     * برای هر کمپینِ کوپن یک بودجه‌ی کل تعیین می‌کند؛ تا بودجه تمام نشده، کوپن روی هر
+     * سفارش قابلِ استفاده است.» NULL = کوپنِ معمولیِ **تک‌مصرفه** (used_at). بودجه فقط
+     * سهمِ **شرکت** از تخفیف را می‌شمارد؛ سهمِ تأمین‌کننده/الیت‌یار از کیف پولِ خودشان است.
+     */
+    const BUDGET_TOTAL = 'budget_total';
+
+    /** سهمِ شرکت از تخفیف‌های مصرف‌شده‌ی این کمپین تا امروز (ریال). */
+    const BUDGET_USED = 'budget_used';
+
     const REASON = 'reason';
 
     const IS_ACTIVE = 'is_active';
@@ -93,6 +104,8 @@ class Coupon extends Model
         self::REASON,
         self::IS_ACTIVE,
         self::CREATED_BY_USER_ID,
+        self::BUDGET_TOTAL,
+        // BUDGET_USED عمداً fillable نیست — فقط مسیرِ مصرف/آزادسازی می‌نویسدش.
     ];
 
     protected $casts = [
@@ -100,7 +113,25 @@ class Coupon extends Model
         self::IS_ACTIVE => 'boolean',
         self::EXPIRES_AT => 'datetime',
         self::USED_AT => 'datetime',
+        self::BUDGET_TOTAL => 'decimal:0',
+        self::BUDGET_USED => 'decimal:0',
     ];
+
+    /** کوپنِ کمپینی (بودجه‌دار) = چندمصرفه تا پایانِ بودجه؛ بی‌بودجه = تک‌مصرفه. */
+    public function isCampaign(): bool
+    {
+        return $this->{self::BUDGET_TOTAL} !== null;
+    }
+
+    /** باقی‌مانده‌ی بودجه‌ی کمپین (ریال)؛ برای کوپنِ غیرکمپینی null. */
+    public function budgetRemaining(): ?float
+    {
+        if (! $this->isCampaign()) {
+            return null;
+        }
+
+        return max(0.0, (float) $this->{self::BUDGET_TOTAL} - (float) ($this->{self::BUDGET_USED} ?? 0));
+    }
 
     /* -------------------------------------------------------------------------- */
     /* Relations */
@@ -198,8 +229,12 @@ class Coupon extends Model
             return false;
         }
 
-        // ۱. بررسی استفاده شدن
-        if (! is_null($this->{self::USED_AT})) {
+        // ۱. بررسی استفاده شدن — کوپنِ کمپینی تا پایانِ بودجه چندبار مصرف می‌شود (پرسشِ ۱۰).
+        if ($this->isCampaign()) {
+            if ($this->budgetRemaining() <= 0.0) {
+                return false;
+            }
+        } elseif (! is_null($this->{self::USED_AT})) {
             return false;
         }
 

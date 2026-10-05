@@ -28,6 +28,11 @@ class CouponResource extends BaseJsonResource
             Coupon::USER_ID => $this->user_id,
             Coupon::EXPIRES_AT => $this->expires_at,
             Coupon::USED_AT => $this->used_at,
+            // کمپین (پرسشِ ۱۰ مدیریت): بودجه‌ی کل، مصرف‌شده و باقی‌مانده؛ غیرکمپینی ⇒ null.
+            'is_campaign' => $this->isCampaign(),
+            Coupon::BUDGET_TOTAL => $this->isCampaign() ? (string) $this->{Coupon::BUDGET_TOTAL} : null,
+            Coupon::BUDGET_USED => $this->isCampaign() ? (string) ($this->{Coupon::BUDGET_USED} ?? '0') : null,
+            'budget_remaining' => $this->isCampaign() ? (string) $this->budgetRemaining() : null,
             Coupon::REASON => $this->reason,
             Coupon::IS_ACTIVE => $this->is_active,
             'is_valid' => $this->isValid() && $fundingStatus === 'ready',
