@@ -7,6 +7,7 @@ use App\Constants\FinancialCodes;
 use App\Models\Badge;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\PriceSetting;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
@@ -390,6 +391,45 @@ class ProcessWeighbridgeResultActionTest extends TestCase
      *     نمی‌شد چون `overweightPercent` علامت‌دار است و شرطِ قبلی `> tolerance`
      *     بود.
      */
+    /**
+     * پاسخِ مدیریت به پرسشِ ۹ (۱۴۰۵/۰۷/۱۳، گزینه‌ی ج): اختلافِ خیلی کوچک بدونِ تأییدِ دوطرفه
+     * عبور می‌کند — آستانه (درصد) در پارامترهای مالی، و سقفِ خودکار «کالای معادلِ سهمِ
+     * شرکت از همین سفارش». فیکسچر: ۱۰ کیلو × ۱٬۰۰۰ ریال، سهمِ شرکت ≈ ۶۰ ریالِ خالص.
+     */
+    #[Test]
+    public function a_tiny_difference_under_the_panel_threshold_settles_without_two_party_consent(): void
+    {
+        PriceSetting::updateOrCreate(
+            [PriceSetting::CODE => PriceSetting::CODE_WEIGHT_TOLERANCE_PERCENT],
+            [PriceSetting::NAME => 'tol', PriceSetting::VALUE => '2']
+        );
+
+        // ۰٫۵٪ بیشتر: ۵۰ گرم × ۱٬۰۰۰ = ۵۰ ریال کالا ≤ ۶۰ ریال سهمِ شرکت ⇒ بی‌تأیید تسویه می‌شود.
+        $this->action->execute($this->order->refresh(), 10.05);
+        $this->order->refresh();
+
+        $this->assertNotSame(Order::STATUS_AWAITING_WEIGHT_CORRECTION, $this->order->{Order::STATUS});
+        $this->assertNotNull($this->order->{Order::WEIGHING_COMPLETED_AT}, 'باسکول باید نهایی شده باشد.');
+        $this->assertFalse($this->order->hasOpenOverweightRequest());
+    }
+
+    #[Test]
+    public function the_threshold_is_capped_at_the_companys_share_of_the_order(): void
+    {
+        PriceSetting::updateOrCreate(
+            [PriceSetting::CODE => PriceSetting::CODE_WEIGHT_TOLERANCE_PERCENT],
+            [PriceSetting::NAME => 'tol', PriceSetting::VALUE => '2']
+        );
+
+        // ۱٪ بیشتر: ۱۰۰ گرم × ۱٬۰۰۰ = ۱۰۰ ریال کالا > ۶۰ ریال سهمِ شرکت ⇒ زیرِ آستانه‌ی درصدی
+        // است ولی از سقفِ خودکار می‌گذرد ⇒ تأییدِ دوطرفه.
+        $this->action->execute($this->order->refresh(), 10.1);
+        $this->order->refresh();
+
+        $this->assertSame(Order::STATUS_AWAITING_WEIGHT_CORRECTION, $this->order->{Order::STATUS});
+        $this->assertNull($this->order->{Order::WEIGHING_COMPLETED_AT});
+    }
+
     #[Test]
     public function any_weight_difference_now_halts_for_two_party_consent(): void
     {

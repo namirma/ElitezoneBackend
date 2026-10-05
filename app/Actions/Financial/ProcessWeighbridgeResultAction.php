@@ -11,8 +11,10 @@ use App\Models\CouponFundingLeg;
 use App\Models\DebtEntry;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\PriceSetting;
 use App\Models\Wallet;
 use App\Services\Financial\DebtEngine;
+use App\Services\Financial\SettlementCalculatorService;
 use App\Services\Financial\SupplierDebtHandler;
 use App\Services\Financial\WalletTransactionEngine;
 use App\Services\Financial\WeighbridgeReconciler;
@@ -27,6 +29,43 @@ use Illuminate\Support\Facades\Log;
 class ProcessWeighbridgeResultAction
 {
     private const FINANCIAL_TOLERANCE = 1000;
+
+    /**
+     * آیا اختلافِ وزن زیرِ آستانه‌ی بی‌تأیید است؟ دو شرط، هر دو لازم (پرسشِ ۹ مدیریت):
+     *  ۱. |اختلاف| ÷ وزنِ سفارش ≤ آستانه‌ی درصدیِ پنل (`weight_tolerance_percent`)؛
+     *  ۲. ارزشِ کالای معادلِ اختلاف (|Δوزن| × قیمتِ خریدار، بی‌مالیات) ≤ سهمِ شرکت از همین
+     *     سفارش (خالص از مالیات): استخرِ POO − PTS، منهای سهمِ الیت‌یار اگر سفارش الیت‌یارِ
+     *     کمیسیون‌گیر دارد — همان تقسیمِ `WeighbridgeVatRouter`.
+     */
+    private function withinAutoTolerance(Order $order, float $orderedWeight, float $actualWeight): bool
+    {
+        $thresholdPercent = PriceSetting::getValueAsFloat(PriceSetting::CODE_WEIGHT_TOLERANCE_PERCENT, 0.0);
+        if ($thresholdPercent <= 0.0 || $orderedWeight <= 0.0) {
+            return false;
+        }
+
+        $deltaWeight = abs($actualWeight - $orderedWeight);
+        if (($deltaWeight / $orderedWeight) * 100 > $thresholdPercent) {
+            return false;
+        }
+
+        $calculator = app(SettlementCalculatorService::class);
+        $buyerOp = (float) ($order->{Order::OFFICIAL_PRICE} ?: ($order->items->first()?->unit_price ?? 0));
+        $deltaGoodsValue = $deltaWeight * $buyerOp;
+
+        $pool = max(0.0, (float) $order->{Order::PAYMENT_OF_OWNER} - (float) $order->{Order::PAYMENT_TO_SUPPLIER});
+        $eliteYARId = $order->{Order::ELITE_YAR_USER_ID};
+        $hasCommissionedEliteYAR = $eliteYARId !== null && (int) $eliteYARId !== $order->payerUserId();
+        $companyGross = $pool;
+        if ($hasCommissionedEliteYAR) {
+            $rates = $calculator->getCommissionRatesForOrder($order, $order->eliteYAR?->badge?->code ?? 'pioneer');
+            $coPlusSsg = $rates['co_final_rate'] + $rates['ssg_final_rate'];
+            $companyGross = $coPlusSsg > 0 ? $pool * ($rates['ssg_final_rate'] / $coPlusSsg) : 0.0;
+        }
+        $companyNet = $calculator->extractVatInRials($companyGross, $calculator->resolveVatRate($order))['net'];
+
+        return $deltaGoodsValue <= $companyNet;
+    }
 
     private function tolerance(): int
     {
@@ -137,6 +176,17 @@ class ProcessWeighbridgeResultAction
             // می‌کند و از بازگرداندنِ یک آستانه‌ی پنهان (اپسیلون) جلوگیری می‌کند.
             $orderedWeight = (float) $locked->{Order::WEIGHT_BEFORE_SCALE};
             $weightDiffers = $orderedWeight > 0.0 && $actualWeight !== $orderedWeight;
+
+            // **پاسخِ مدیریت به پرسشِ ۹ (۱۴۰۵/۰۷/۱۳، گزینه‌ی ج):** اختلاف‌های خیلی کوچک بدونِ
+            // تأییدِ دوطرفه عبور می‌کنند؛ آستانه (درصد) در «پارامترهای مالی» است و سقفِ
+            // خودکارش «کالای معادلِ سهمِ شرکت از همین سفارش». پیش‌فرضِ صفر = رفتارِ ۰۹-۰۹.
+            if ($weightDiffers && ! $locked->isOverweightApproved() && $this->withinAutoTolerance($locked, $orderedWeight, $actualWeight)) {
+                Log::channel('financial')->info(sprintf(
+                    'Order %d: weighed %s vs ordered %s (%+.2f%%) is within the auto tolerance; settling without two-party consent.',
+                    $locked->id, $actualWeight, $orderedWeight, $result->overweightPercent,
+                ));
+                $weightDiffers = false;
+            }
 
             if ($weightDiffers && ! $locked->isOverweightApproved()) {
                 $locked->forceFill([
