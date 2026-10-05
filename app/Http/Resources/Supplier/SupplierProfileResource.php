@@ -5,6 +5,7 @@ namespace App\Http\Resources\Supplier;
 use App\Http\Controllers\Api\User\SupplierDocumentController;
 use App\Http\Resources\BaseJsonResource;
 use App\Models\SupplierProfile;
+use App\Services\Financial\SettlementCalculatorService;
 use Illuminate\Http\Request;
 
 /**
@@ -79,6 +80,10 @@ class SupplierProfileResource extends BaseJsonResource
             // شود یا نه. تا امروز فقط از داشبورد قابل دیدن بودند.
             SupplierProfile::TRANS_COMMISSION => (bool) $this->trans_commission,
             SupplierProfile::TRANS_VAT => (bool) $this->trans_vat,
+            // درصدِ کارمزدی که از فروش‌های این تأمین‌کننده کم می‌شود (پرسشِ ۴ مدیریت):
+            // قراردادی، یا در نبودش سراسری. تأمین‌کننده باید بداند با چه درصدی تسویه می‌شود.
+            'effective_commission_percent' => app(SettlementCalculatorService::class)
+                ->tcPercentageForSupplier((int) $this->{SupplierProfile::USER_ID}),
 
             SupplierProfile::CREATED_AT => $this->created_at,
             'created_at_p' => $this->created_at_p,

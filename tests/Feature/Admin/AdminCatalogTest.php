@@ -172,6 +172,37 @@ class AdminCatalogTest extends TestCase
         ]);
     }
 
+    /**
+     * پرسشِ ۶ مدیریت (۱۴۰۵/۰۷/۱۳): قیمتِ فروش هرگز از «قیمتِ تأمین‌کننده منهای کارمزد» کمتر
+     * نمی‌شود. با %TC = ۱٪ و سهمِ OW = ۴۰٪ حداکثر تخفیفِ درصدی ≈ ۰٫۶۰۲٪ است؛ یک فیلترِ
+     * −۵٪ همیشه زیرِ کف می‌رفت و در پایپ‌لاین به کف برمی‌گشت — پس همین‌جا رد می‌شود.
+     */
+    #[Test]
+    public function a_percentage_discount_filter_deeper_than_the_commission_is_rejected(): void
+    {
+        Sanctum::actingAs($this->admin());
+        $u = $this->uid();
+        $type = $this->postJson('/api/admin/price-filter-types', [
+            'name' => "نوع {$u}", 'code' => "ft-{$u}", 'apply_on' => 'special',
+        ])->assertCreated()->json('data.id');
+
+        $this->postJson('/api/admin/price-filters', [
+            'price_filter_type_id' => $type, 'name' => "فیلتر {$u}", 'code' => "fd-{$u}",
+            'amount' => -5, 'is_percentage' => true,
+        ])->assertStatus(422)->assertJsonValidationErrors(['amount']);
+
+        // تخفیفِ زیرِ سقف، افزایشِ درصدی و تخفیفِ مطلق همچنان پذیرفته می‌شوند
+        // (مطلق به قیمت وابسته است و در پایپ‌لاین به کف برمی‌گردد).
+        $this->postJson('/api/admin/price-filters', [
+            'price_filter_type_id' => $type, 'name' => "فیلتر {$u}-ok", 'code' => "fok-{$u}",
+            'amount' => -0.5, 'is_percentage' => true,
+        ])->assertCreated();
+        $this->postJson('/api/admin/price-filters', [
+            'price_filter_type_id' => $type, 'name' => "فیلتر {$u}-abs", 'code' => "fabs-{$u}",
+            'amount' => -1000, 'is_percentage' => false,
+        ])->assertCreated();
+    }
+
     // ── Customer type + price adjustment ──────────────────────────────────
 
     #[Test]

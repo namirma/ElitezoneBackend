@@ -12,6 +12,7 @@ use App\Models\Order;
 use App\Models\SupplierDocument;
 use App\Models\SupplierProfile;
 use App\Models\User;
+use App\Services\Financial\SettlementCalculatorService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -106,9 +107,16 @@ class AdminSupplierController extends Controller
                 'total_amount' => (float) $row->total_amount,
             ]);
 
-        $formulaFlags = $user->supplier ? [
-            'trans_commission' => (bool) $user->supplier->{SupplierProfile::TRANS_COMMISSION},
-            'trans_vat' => (bool) $user->supplier->{SupplierProfile::TRANS_VAT},
+        /** @var SupplierProfile|null $profile */
+        $profile = $user->supplier;
+        $formulaFlags = $profile ? [
+            'trans_commission' => (bool) $profile->{SupplierProfile::TRANS_COMMISSION},
+            'trans_vat' => (bool) $profile->{SupplierProfile::TRANS_VAT},
+            // کارمزدِ قراردادی (پرسشِ ۴ مدیریت): null = سراسری؛ `effective` همان چیزی که سفارش‌ها می‌گیرند.
+            'commission_percent' => $profile->getAttribute(SupplierProfile::COMMISSION_PERCENT) !== null
+                ? (float) $profile->getAttribute(SupplierProfile::COMMISSION_PERCENT)
+                : null,
+            'effective_commission_percent' => app(SettlementCalculatorService::class)->tcPercentageForSupplier($user->id),
         ] : null;
 
         return success([
@@ -144,14 +152,41 @@ class AdminSupplierController extends Controller
 
         // TRANS_COMMISSION/TRANS_VAT عمداً fillable نیستند (SupplierProfile) — همان
         // الگوی forceFill که برای STATUS در approve/reject استفاده می‌شود.
+        $commissionPercent = $request->filled('commission_percent')
+            ? round((float) $request->input('commission_percent'), 2)
+            : null;
+
+        $before = [
+            'trans_commission' => (bool) $supplier->getAttribute(SupplierProfile::TRANS_COMMISSION),
+            'trans_vat' => (bool) $supplier->getAttribute(SupplierProfile::TRANS_VAT),
+            'commission_percent' => $supplier->getAttribute(SupplierProfile::COMMISSION_PERCENT),
+        ];
+
         $supplier->forceFill([
             SupplierProfile::TRANS_COMMISSION => $request->boolean('trans_commission'),
             SupplierProfile::TRANS_VAT => $request->boolean('trans_vat'),
+            SupplierProfile::COMMISSION_PERCENT => $commissionPercent,
         ])->save();
 
+        // قراردادِ مالیِ یک تأمین‌کننده بی‌صدا عوض نمی‌شود (قانونِ دو) — ردِ ممیزی مثلِ approve/reject.
+        activity()
+            ->performedOn($supplier)
+            ->causedBy($request->user())
+            ->withProperties(['before' => $before, 'after' => [
+                'trans_commission' => $request->boolean('trans_commission'),
+                'trans_vat' => $request->boolean('trans_vat'),
+                'commission_percent' => $commissionPercent,
+            ]])
+            ->log('فرمول و کارمزد قراردادی تأمین‌کننده به‌روزرسانی شد.');
+
+        $fresh = $supplier->fresh();
+        $freshPercent = $fresh->getAttribute(SupplierProfile::COMMISSION_PERCENT);
+
         return success([
-            'trans_commission' => (bool) $supplier->fresh()->{SupplierProfile::TRANS_COMMISSION},
-            'trans_vat' => (bool) $supplier->fresh()->{SupplierProfile::TRANS_VAT},
+            'trans_commission' => (bool) $fresh->getAttribute(SupplierProfile::TRANS_COMMISSION),
+            'trans_vat' => (bool) $fresh->getAttribute(SupplierProfile::TRANS_VAT),
+            'commission_percent' => $freshPercent !== null ? (float) $freshPercent : null,
+            'effective_commission_percent' => app(SettlementCalculatorService::class)->tcPercentageForSupplier($user->id),
         ], __('admin.suppliers.formula_updated'));
     }
 

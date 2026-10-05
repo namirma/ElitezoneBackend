@@ -20,6 +20,9 @@ readonly class PriceCalculationResult
         public readonly ?float $variantDiscountValue,
         public readonly float $variantDiscountAmount,
         public readonly array $breakdown = [],
+        /** قیمتِ ثبت‌شده‌ی تأمین‌کننده (پیش از فیلترهای نقش) — مبنای PTS. پرسشِ ۶ مدیریت. */
+        public readonly float $supplierPrice = 0.0,
+        public readonly bool $priceFloorApplied = false,
     ) {}
 
     /**
@@ -43,6 +46,8 @@ readonly class PriceCalculationResult
             'variant_discount_type' => $this->variantDiscountType,
             'variant_discount_value' => $this->variantDiscountValue !== null ? (string) $this->variantDiscountValue : null,
             'variant_discount_amount' => (string) $this->variantDiscountAmount,
+            'supplier_price' => (string) $this->supplierPrice,
+            'price_floor_applied' => $this->priceFloorApplied,
             'breakdown' => $this->breakdown,
         ];
     }

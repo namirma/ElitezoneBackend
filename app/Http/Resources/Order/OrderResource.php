@@ -362,6 +362,11 @@ class OrderResource extends BaseJsonResource
                 $this->mergeWhen(! $isSupplier, [
                     Order::SUBTOTAL => (string) $this->{Order::SUBTOTAL},
                     Order::DISCOUNT_AMOUNT => (string) $this->{Order::DISCOUNT_AMOUNT},
+                    // تخفیفِ ویژه‌ی خریدار (سهمِ خریدار از کارمزد) — سطرِ جدا؛ صفر یعنی سفارش
+                    // الیت‌یارِ تأییدشده نداشته (پرسش‌های ۲ و ۷ مدیریت، ۱۴۰۵/۰۷/۱۳).
+                    // final_amount = subtotal − discount + vat + shipping − buyer_discount − coupon.
+                    Order::BUYER_DISCOUNT_AMOUNT => (string) ($this->{Order::BUYER_DISCOUNT_AMOUNT} ?? '0'),
+                    'has_elite_yar_discount' => (float) ($this->{Order::BUYER_DISCOUNT_AMOUNT} ?? 0) > 0,
                     Order::COUPON_DISCOUNT_AMOUNT => (string) ($this->{Order::COUPON_DISCOUNT_AMOUNT} ?? '0'),
                     'coupon_code' => $this->whenLoaded('coupon', fn () => $this->coupon?->code),
                     Order::VAT_AMOUNT => (string) $this->{Order::VAT_AMOUNT},

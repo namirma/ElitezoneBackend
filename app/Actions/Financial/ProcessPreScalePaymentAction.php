@@ -108,30 +108,53 @@ class ProcessPreScalePaymentAction
             // قابل‌تغییر است؛ اگر باسکول دوباره مقدارِ زنده را بخواند، تغییرِ آن بین
             // پرداخت و باسکول باعث می‌شود POOM با وزنِ یکسان از POO فاصله بگیرد و یک
             // کسریِ کاذب (عودت واقعی به خریدار + بدهی واقعی تأمین‌کننده) بسازد.
-            $tcPercentage = $this->calculator->currentTcPercentage();
-            $rates = $this->calculator->getCommissionRatesForTc($badgeCode, $tcPercentage);
+            $realSupplierId = $firstItem->supplier_user_id;
 
-            $ownerDiscountRate = $rates['ow_final_rate'];
+            // از ۱۴۰۵/۰۷/۱۳ ثبتِ سفارش نرخ‌ها را اسنپ‌شات می‌کند (پاسخ‌های مدیریت، پرسش‌های ۲/۴/۶/۷):
+            // %TC قراردادیِ تأمین‌کننده، %OW **اعمال‌شده** (صفر بی‌الیت‌یار)، پرچم‌های ±TC/±VAT.
+            // پرداخت همان را می‌خواند تا مبلغِ کسرشده دقیقاً همان مبلغِ نمایش‌داده‌شده باشد.
+            // سفارشِ بی‌اسنپ‌شات (ثبت‌شده پیش از آن تاریخ) همان مسیرِ قدیم: نرخِ زنده و قراردادِ پروفایل.
+            $placedPoo = $this->calculator->placedPooFor($locked);
+
+            if ($placedPoo !== null) {
+                $tcPercentage = (float) $locked->{Order::COMMISSION_RATE};
+                $rates = $this->calculator->getCommissionRatesForOrder($locked, $badgeCode);
+                $transCommission = (bool) $locked->{Order::TRANS_COMMISSION};
+                $transVat = (bool) $locked->{Order::TRANS_VAT};
+            } else {
+                $tcPercentage = $this->calculator->tcPercentageForSupplier($realSupplierId !== null ? (int) $realSupplierId : null);
+                $rates = $this->calculator->getCommissionRatesForTc($badgeCode, $tcPercentage);
+                $rates['ow_applied_rate'] = $rates['ow_final_rate'];
+
+                // ── Snapshot formula-variant flags from supplier contract ──────────
+                $supplierProfile = SupplierProfile::where(SupplierProfile::USER_ID, $realSupplierId)->first();
+                $transCommission = (bool) ($supplierProfile?->{SupplierProfile::TRANS_COMMISSION} ?? true);
+                $transVat = (bool) ($supplierProfile?->{SupplierProfile::TRANS_VAT} ?? true);
+            }
+
+            $ownerDiscountRate = $rates['ow_applied_rate'];
             $sazeShareRate = $rates['ssg_final_rate'];
             $eliteYARRate = $rates['co_final_rate'];
 
-            // ── Snapshot formula-variant flags from supplier contract ──────────
-            $realSupplierId = $firstItem->supplier_user_id;
-            $supplierProfile = SupplierProfile::where(SupplierProfile::USER_ID, $realSupplierId)->first();
-            $transCommission = (bool) ($supplierProfile?->{SupplierProfile::TRANS_COMMISSION} ?? true);
-            $transVat = (bool) ($supplierProfile?->{SupplierProfile::TRANS_VAT} ?? true);
-
-            // ── Calculate POO and PTS using the correct formula variant ────────
-            $POO = $this->calculator->calculatePOO(
+            // ── POO: مبلغِ نمایش‌داده‌شده (اسنپ‌شات) یا فرمول (قدیمی) ───────────────
+            $POO = $placedPoo ?? $this->calculator->calculatePOO(
                 $shippingCost, $officialPrice, $weightBeforeScale,
                 $ownerDiscountRate, $vatRate,
                 $transCommission, $transVat
             );
+            // ── PTS: از قیمتِ **ثبت‌شده‌ی تأمین‌کننده** (پرسشِ ۶)، نه قیمتِ خریدار ─────
             $PTS = $this->calculator->calculatePTS(
-                $shippingCost, $officialPrice, $weightBeforeScale,
-                $ownerDiscountRate, $sazeShareRate, $eliteYARRate, $vatRate,
+                $shippingCost, $this->calculator->supplierOpFor($locked, $officialPrice), $weightBeforeScale,
+                $rates['ow_final_rate'], $sazeShareRate, $eliteYARRate, $vatRate,
                 $transCommission, $transVat
             );
+
+            if ($POO < $PTS) {
+                // استخرِ کمیسیون منفی یعنی شرکت از جیبِ خودش به تأمین‌کننده می‌پردازد — کفِ
+                // قیمت (ApplyPriceFilters) باید جلوش را گرفته باشد؛ داده‌ی خراب باید متوقف کند.
+                Log::channel('financial')->critical("Order {$locked->id}: POO {$POO} is below PTS {$PTS} — payment aborted.");
+                throw new \RuntimeException(__('orders.invalid_financial_calculation'));
+            }
 
             // ── Snapshot all financial parameters onto the order ───────────────
             $locked->forceFill([

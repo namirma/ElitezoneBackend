@@ -208,6 +208,8 @@ class FreightRateSnapshotTest extends TestCase
         ]);
         $order->forceFill([
             Order::OFFICIAL_PRICE => 500, Order::VAT_RATE => 10, Order::COMMISSION_RATE => $tc,
+            // %OWِ اعمال‌شده — همان چیزی که پرداخت کنارِ commission_rate می‌نویسد (پرسشِ ۷ مدیریت).
+            Order::OWNER_DISCOUNT_RATE => $r['ow_final_rate'],
             Order::PAYMENT_OF_OWNER => $poo, Order::PAYMENT_TO_SUPPLIER => $pts,
             Order::TRANS_COMMISSION => true, Order::TRANS_VAT => true,
         ])->save();

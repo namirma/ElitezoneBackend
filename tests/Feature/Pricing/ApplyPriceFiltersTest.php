@@ -5,7 +5,11 @@ namespace Tests\Feature\Pricing;
 use App\Models\PriceFilter;
 use App\Models\PriceFilterCategory;
 use App\Models\PriceFilterType;
+use App\Models\PriceSetting;
+use App\Models\SupplierProfile;
+use App\Models\User;
 use App\Services\Pricing\Pipes\ApplyPriceFilters;
+use App\Services\Pricing\PricingContext;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\Test;
@@ -29,7 +33,26 @@ class ApplyPriceFiltersTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->pipe = new ApplyPriceFilters;
+        $this->pipe = app(ApplyPriceFilters::class);
+        PriceSetting::updateOrCreate([PriceSetting::CODE => PriceSetting::CODE_TC_PERCENTAGE], [PriceSetting::NAME => 'tc', PriceSetting::VALUE => '1']);
+        PriceSetting::updateOrCreate([PriceSetting::CODE => PriceSetting::CODE_OW_SHARE], [PriceSetting::NAME => 'ow', PriceSetting::VALUE => '40']);
+    }
+
+    /**
+     * کفِ قراردادی (پرسشِ ۶ مدیریت) نسبت به کارمزدِ تأمین‌کننده است. تست‌های حسابِ
+     * فیلتر با تخفیف‌های ۵٪ و ۱۰٪ نوشته شده‌اند، پس به تأمین‌کننده‌ای با کارمزدِ
+     * قراردادیِ ۲۰٪ وصل می‌شوند تا کف (۸۰٪ ÷ ۹۲٪ ≈ ۸۷٪) زیرِ آن‌ها بماند و فقط
+     * **حسابِ فیلتر** سنجیده شود؛ کف تستِ خودش را دارد.
+     */
+    private function makeContextWithContractCommission(float $percent = 20.0): PricingContext
+    {
+        $ctx = $this->makeContext();
+        $supplier = User::factory()->create();
+        SupplierProfile::create([SupplierProfile::USER_ID => $supplier->id])
+            ->forceFill([SupplierProfile::COMMISSION_PERCENT => $percent])->save();
+        $ctx->factory->forceFill(['supplier_user_id' => $supplier->id])->save();
+
+        return $ctx;
     }
 
     private function makeFilterType(string $applyOn): PriceFilterType
@@ -95,7 +118,7 @@ class ApplyPriceFiltersTest extends TestCase
         $type = $this->makeFilterType('general');
         $this->makeFilter($cat, $type, amount: 10, isPercent: true);
 
-        $ctx = $this->makeContext();
+        $ctx = $this->makeContextWithContractCommission();
         $ctx->payablePrice = 1_000_000;
         $ctx->listPrice = 1_200_000;
         $ctx->filterCategoryIds = [$cat->id];
@@ -114,7 +137,7 @@ class ApplyPriceFiltersTest extends TestCase
         $type = $this->makeFilterType('special');
         $this->makeFilter($cat, $type, amount: -50_000, isPercent: false);
 
-        $ctx = $this->makeContext();
+        $ctx = $this->makeContextWithContractCommission();
         $ctx->payablePrice = 1_000_000;
         $ctx->listPrice = 1_200_000;
         $ctx->filterCategoryIds = [$cat->id];
@@ -132,7 +155,7 @@ class ApplyPriceFiltersTest extends TestCase
         $type = $this->makeFilterType('both');
         $this->makeFilter($cat, $type, amount: 30_000, isPercent: false);
 
-        $ctx = $this->makeContext();
+        $ctx = $this->makeContextWithContractCommission();
         $ctx->payablePrice = 1_000_000;
         $ctx->listPrice = 1_200_000;
         $ctx->filterCategoryIds = [$cat->id];
@@ -142,21 +165,66 @@ class ApplyPriceFiltersTest extends TestCase
         $this->assertSame(1_030_000.0, $ctx->payablePrice, 'Both-side adjustment +30k applied');
     }
 
+    /**
+     * پاسخِ مدیریت به پرسشِ ۶ (۱۴۰۵/۰۷/۱۳): قیمتِ فروش هرگز از «قیمتِ ثبت‌شده‌ی
+     * تأمین‌کننده منهای کارمزدِ قراردادی» کمتر نمی‌شود. تأمین‌کننده P_s(1 − TC) می‌گیرد و
+     * خریدار پس از تخفیفِ ویژه‌اش (OW) باید دستِ‌کم همان را بپردازد:
+     * کف = P_s × (1 − TC) / (1 − OW). پیش از این فقط «منفی نشود» گارد بود.
+     */
     #[Test]
-    public function payable_price_is_clamped_to_zero(): void
+    public function payable_price_never_drops_below_the_supplier_contract_floor(): void
     {
         $cat = $this->makeFilterCategory();
         $type = $this->makeFilterType('special');
         $this->makeFilter($cat, $type, amount: -50_000_000, isPercent: false);
 
-        $ctx = $this->makeContext();
+        // TC قراردادی ۲۰٪، سهمِ OW ۴۰٪ ⇒ OW نهایی ۸٪ ⇒ کف = ۸۰۰٬۰۰۰ ÷ ۰٫۹۲
+        $ctx = $this->makeContextWithContractCommission(20.0);
         $ctx->payablePrice = 1_000_000;
         $ctx->listPrice = 1_200_000;
         $ctx->filterCategoryIds = [$cat->id];
 
         $this->pipe->handle($ctx, fn ($c) => $c);
 
-        $this->assertSame(0.0, $ctx->payablePrice, 'Never goes negative');
+        $this->assertEqualsWithDelta(800_000 / 0.92, $ctx->payablePrice, 0.01, 'به کفِ قراردادی برمی‌گردد، نه به صفر');
+        $this->assertTrue($ctx->priceFloorApplied);
+        $this->assertSame(1_000_000.0, $ctx->supplierPrice, 'قیمتِ تأمین‌کننده همان قیمتِ پیش از فیلتر می‌ماند');
+    }
+
+    #[Test]
+    public function the_floor_uses_the_global_commission_when_the_supplier_has_no_contract_rate(): void
+    {
+        $cat = $this->makeFilterCategory();
+        $type = $this->makeFilterType('special');
+        $this->makeFilter($cat, $type, amount: -50_000, isPercent: false);
+
+        // بی‌قرارداد ⇒ %TC سراسری ۱٪، OW ۰٫۴٪ ⇒ کف = ۹۹۰٬۰۰۰ ÷ ۰٫۹۹۶ ≈ ۹۹۳٬۹۷۶
+        $ctx = $this->makeContext();
+        $ctx->payablePrice = 1_000_000;
+        $ctx->filterCategoryIds = [$cat->id];
+
+        $this->pipe->handle($ctx, fn ($c) => $c);
+
+        $this->assertEqualsWithDelta(990_000 / 0.996, $ctx->payablePrice, 0.01);
+        $this->assertTrue($ctx->priceFloorApplied);
+    }
+
+    #[Test]
+    public function a_markup_above_the_supplier_price_is_never_touched_by_the_floor(): void
+    {
+        $cat = $this->makeFilterCategory();
+        $type = $this->makeFilterType('special');
+        $this->makeFilter($cat, $type, amount: 25_000, isPercent: false);
+
+        $ctx = $this->makeContext();
+        $ctx->payablePrice = 1_000_000;
+        $ctx->filterCategoryIds = [$cat->id];
+
+        $this->pipe->handle($ctx, fn ($c) => $c);
+
+        $this->assertSame(1_025_000.0, $ctx->payablePrice);
+        $this->assertFalse($ctx->priceFloorApplied);
+        $this->assertSame(1_000_000.0, $ctx->supplierPrice);
     }
 
     #[Test]
@@ -169,7 +237,7 @@ class ApplyPriceFiltersTest extends TestCase
         $this->makeFilter($cat, $type, amount: 20, isPercent: true, sortOrder: 1);
         $this->makeFilter($cat, $type, amount: -100_000, isPercent: false, sortOrder: 2);
 
-        $ctx = $this->makeContext();
+        $ctx = $this->makeContextWithContractCommission();
         $ctx->payablePrice = 1_000_000;
         $ctx->listPrice = 1_200_000;
         $ctx->filterCategoryIds = [$cat->id];
@@ -189,7 +257,7 @@ class ApplyPriceFiltersTest extends TestCase
         $filter = $this->makeFilter($cat, $type, amount: -200_000, isPercent: false);
         $filter->update(['is_active' => false]);
 
-        $ctx = $this->makeContext();
+        $ctx = $this->makeContextWithContractCommission();
         $ctx->payablePrice = 1_000_000;
         $ctx->filterCategoryIds = [$cat->id];
 

@@ -83,6 +83,39 @@ class AdminSupplierControllerTest extends TestCase
         $this->assertFalse((bool) $fresh->{SupplierProfile::TRANS_VAT});
     }
 
+    /** پرسشِ ۴ مدیریت (۱۴۰۵/۰۷/۱۳): درصدِ کارمزد به ازای قراردادِ هر تأمین‌کننده؛ خالی = سراسری. */
+    public function test_admin_can_set_and_clear_the_contract_commission_percent(): void
+    {
+        Sanctum::actingAs($this->admin);
+
+        $this->putJson("/api/admin/suppliers/{$this->supplier->id}/formula", [
+            'trans_commission' => true,
+            'trans_vat' => true,
+            'commission_percent' => 2.5,
+        ])->assertOk()
+            ->assertJsonPath('data.commission_percent', 2.5)
+            ->assertJsonPath('data.effective_commission_percent', 2.5);
+
+        $this->assertEqualsWithDelta(2.5, (float) $this->profile->fresh()->{SupplierProfile::COMMISSION_PERCENT}, 0.001);
+
+        // خالی ⇒ برمی‌گردد به مقدارِ سراسری (پیش‌فرضِ ۱٪)، نه صفر.
+        $this->putJson("/api/admin/suppliers/{$this->supplier->id}/formula", [
+            'trans_commission' => true,
+            'trans_vat' => true,
+            'commission_percent' => null,
+        ])->assertOk()
+            ->assertJsonPath('data.commission_percent', null);
+
+        $this->assertNull($this->profile->fresh()->{SupplierProfile::COMMISSION_PERCENT});
+
+        // خارج از بازه‌ی tc_percentage (۰ تا ۲۰) پذیرفته نمی‌شود.
+        $this->putJson("/api/admin/suppliers/{$this->supplier->id}/formula", [
+            'trans_commission' => true,
+            'trans_vat' => true,
+            'commission_percent' => 25,
+        ])->assertStatus(422)->assertJsonValidationErrors(['commission_percent']);
+    }
+
     public function test_updating_the_formula_flags_back_to_true_persists(): void
     {
         $this->profile->forceFill([

@@ -30,9 +30,13 @@ class MoneyColumnsAreIntegerRialsTest extends TestCase
     private const MONEY = [
         'wallets' => ['balance', 'balance_hold'],
         'wallet_transactions' => ['amount'],
+        // `official_price` و `supplier_price` **قیمتِ هر کیلو**اند نه مبلغ، و از
+        // ۱۴۰۵/۰۷/۱۳ چهار رقمِ اعشار دارند: گردکردنِ هر کیلو (تا ۰٫۵ ریال) × وزن، مبلغِ
+        // نمایش‌داده‌شده و مبلغِ کسرشده را تا ۰٫۵ ریال × وزن از هم دور می‌کرد — روی ۱۰ تن
+        // ۵٬۰۰۰ ریال — و پاسخِ مدیریت به پرسشِ ۲ می‌خواهد این دو **دقیقاً** یکی باشند.
         'orders' => [
             'subtotal', 'discount_amount', 'shipping_cost', 'vat_amount', 'final_amount',
-            'coupon_discount_amount', 'official_price', 'payment_of_owner',
+            'coupon_discount_amount', 'buyer_discount_amount', 'payment_of_owner',
             'payment_to_supplier', 'payment_to_elite_yar', 'payment_to_reserve',
             'supplier_debt_amount', 'overweight_pending_amount',
         ],

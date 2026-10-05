@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Cart;
 
+use App\DataTransferObjects\Pricing\CartPricingResult;
 use App\DataTransferObjects\Pricing\PricingContextData;
 use App\Exceptions\BusinessException;
 use App\Models\Cart;
@@ -78,7 +79,15 @@ final class CartCheckoutTotals
      * کرایه‌ی واقعاً رایگان جدا نبود؛ حالا `ShipmentGroup::$ratePriced` تفکیکش
      * می‌کند. کرایه‌ی صفرِ **قیمت‌گذاری‌شده** همچنان `true` است.
      *
-     * @return array{final_amount: float, gross: float, shipping: float, shipping_included: bool, discount: float, coupon_error: ?string}
+     * ## تخفیفِ ویژه‌ی خریدار (پرسش‌های ۲ و ۷ مدیریت، ۱۴۰۵/۰۷/۱۳)
+     *
+     * سهمِ خریدار از کارمزد (%OW) یک سطرِ جداست و فقط وقتی داده می‌شود که سفارش
+     * الیت‌یارِ تأییدشده خواهد داشت — همان قاعده‌ای که ثبت (`PlaceOrderAction`) با
+     * الیت‌یارِ مؤثر می‌سنجد. `final_amount` **پس از** این تخفیف است، یعنی دقیقاً
+     * همان مبلغی که کسر می‌شود؛ تا پیش از این سطر وجود نداشت و خریدار عددی می‌دید که
+     * از کیف پولش کمتر کم می‌شد.
+     *
+     * @return array{final_amount: float, gross: float, shipping: float, shipping_included: bool, buyer_discount: float, has_elite_yar_discount: bool, discount: float, coupon_error: ?string}
      */
     public function breakdownFor(Cart $cart, ?User $user, ?int $addressId = null): array
     {
@@ -86,18 +95,25 @@ final class CartCheckoutTotals
         // `shipping` از نرخِ ۲رقمی می‌آیند. تا پیش از این فقط `final_amount` گرد
         // می‌شد، پس `goods + shipping − coupon` روی سیم با خودِ `final_amount`
         // نمی‌خواند و هر مصرف‌کننده‌ای که اجزا را جمع می‌زد عددِ دیگری می‌گرفت.
-        $gross = round($this->grossTotalFor($cart));
+        $pricing = $this->pricingFor($cart);
+        $gross = round((float) $pricing->total);
+        $goodsNet = max(0.0, (float) $pricing->subtotal - (float) $pricing->offerDiscount);
 
-        [$shipping, $included] = $this->shippingFor($cart, $user, $addressId);
+        [$shipping, $included, $shippingNet] = $this->shippingFor($cart, $user, $addressId);
         $shipping = round($shipping);
 
-        $withShipping = Money::add((string) $gross, (string) $shipping);
+        $hasEliteYARDiscount = $this->qualifiesForEliteYARDiscount($cart, $user);
+        $buyerDiscount = $hasEliteYARDiscount ? $this->buyerDiscountFor($cart, $goodsNet, $shippingNet) : 0.0;
+
+        $withShipping = Money::sub(Money::add((string) $gross, (string) $shipping), (string) $buyerDiscount);
         ['discount' => $discount, 'error' => $couponError] = $this->couponFor($cart, $user, Money::toFloat($withShipping));
 
         return [
             'gross' => $gross,
             'shipping' => $shipping,
             'shipping_included' => $included,
+            'buyer_discount' => $buyerDiscount,
+            'has_elite_yar_discount' => $hasEliteYARDiscount,
             'discount' => $discount,
             // چرا کوپنِ روی سبد صفر شمرده شد — تا فرانت به‌جای «۰ ریال» دلیل را بگوید.
             'coupon_error' => $couponError,
@@ -107,9 +123,47 @@ final class CartCheckoutTotals
     }
 
     /**
+     * آیا این سبد با الیت‌یارِ تأییدشده ثبت خواهد شد؟ — همان حقیقتی که
+     * `PlaceOrderAction::resolveEffectiveEliteYARId` می‌سازد:
+     *  - سبدِ لینک‌شده برای کارفرما: صاحبِ سبد الیت‌یارِ سفارش است (`commissionedEliteYARFor`).
+     *  - سبدِ عادی: صاحبِ سبد الیت‌یارِ تأییدشده است، یا کارفرمایی است که یکی دارد
+     *    (`User::qualifiesForEliteYARPricing` — همان محمولِ گروهِ فیلترِ قیمت).
+     */
+    public function qualifiesForEliteYARDiscount(Cart $cart, ?User $user): bool
+    {
+        if ($cart->isForBeneficiary()) {
+            return $this->commissionedEliteYARFor($cart) !== null;
+        }
+
+        return (bool) $user?->qualifiesForEliteYARPricing();
+    }
+
+    /** تخفیفِ ویژه روی ورودی‌های همین سبد — همان `SettlementCalculatorService::buyerDiscountAmount` که ثبت می‌زند. */
+    public function buyerDiscountFor(Cart $cart, float $goodsNet, float $shippingNet): float
+    {
+        $supplierId = $cart->{Cart::SUPPLIER_USER_ID}
+            ?? $cart->items->first()?->factory?->supplier_user_id;
+        $supplierId = $supplierId !== null ? (int) $supplierId : null;
+
+        $tc = $this->settlement->tcPercentageForSupplier($supplierId);
+        // سهمِ OW به نشانِ الیت‌یار وابسته نیست؛ هر نشانی همان ow_final_rate را می‌دهد.
+        $rates = $this->settlement->getCommissionRatesForTc('pioneer', $tc);
+
+        return $this->settlement->buyerDiscountAmount(
+            $shippingNet,
+            $goodsNet,
+            1.0,
+            $rates['ow_final_rate'],
+            $this->settlement->currentVatRate(),
+            $this->settlement->transCommissionFlagForSupplier($supplierId),
+            $this->settlement->transVatFlagForSupplier($supplierId),
+        );
+    }
+
+    /**
      * کرایه + مالیاتِ کرایه، به همان شکلی که `PlaceOrderAction` حسابش می‌کند.
      *
-     * @return array{0: float, 1: bool} [مبلغ، آیا مقصد پیدا شد]
+     * @return array{0: float, 1: bool, 2: float} [مبلغ با مالیات، آیا مقصد پیدا شد، مبلغ بی‌مالیات]
      */
     private function shippingFor(Cart $cart, ?User $user, ?int $addressId): array
     {
@@ -118,7 +172,7 @@ final class CartCheckoutTotals
             ?? ($user?->addresses()->value('id'));
 
         if ($destination === null) {
-            return [0.0, false];
+            return [0.0, false, 0.0];
         }
 
         try {
@@ -126,7 +180,7 @@ final class CartCheckoutTotals
         } catch (\Throwable) {
             // نرخِ حملی برای این مسیر وارد نشده، یا مقصد به کاربر تعلق ندارد.
             // صفر با پرچمِ `false` — نه صفرِ خاموش.
-            return [0.0, false];
+            return [0.0, false, 0.0];
         }
 
         // مالیاتِ کرایه هم بخشی از `final_amount` است (بند ±VAT قراردادِ
@@ -146,23 +200,29 @@ final class CartCheckoutTotals
         $priced = $quote->shipments !== []
             && collect($quote->shipments)->every(fn ($g) => $g->ratePriced);
 
-        return [Money::toFloat(Money::add((string) $quote->total, (string) $vat)), $priced];
+        return [Money::toFloat(Money::add((string) $quote->total, (string) $vat)), $priced, (float) $quote->total];
     }
 
     /** جمعِ سبد پیش از کوپن. */
     public function grossTotalFor(Cart $cart): float
     {
+        return (float) $this->pricingFor($cart)->total;
+    }
+
+    /** قیمت‌گذاریِ سبد با گروهِ فیلترِ فعال — یک‌بار، برای جمع و برای تخفیفِ ویژه. */
+    private function pricingFor(Cart $cart): CartPricingResult
+    {
         $activeCode = $this->resolver->activeCode();
         $filterId = PriceFilterCategory::where(PriceFilterCategory::CODE, $activeCode)->value('id');
 
-        return (float) $this->pricing->calculate($cart, new PricingContextData(
+        return $this->pricing->calculate($cart, new PricingContextData(
             activeCode: $activeCode,
             customerType: $cart->customerType,
             badge: $cart->badge,
             filterCategoryIds: $filterId ? [$filterId] : $cart->priceFilterCategories->pluck('id')->all(),
             withVat: true,
             offerBasis: 'weight',
-        ))->total;
+        ));
     }
 
     /** تخفیفِ کوپنِ ذخیره‌شده روی سبد، یا صفر اگر کدی نباشد/معتبر نباشد. */

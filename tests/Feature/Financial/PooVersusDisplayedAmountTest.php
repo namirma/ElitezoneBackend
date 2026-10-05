@@ -7,7 +7,15 @@ use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
- * چرا `Order::payment_of_owner` (POO) با `Order::final_amount` یکی نیست.
+ * ✅ **بسته‌شده ۱۴۰۵/۰۷/۱۳ — پاسخِ مدیریت به پرسشِ ۲ (گزینه‌ی ج).** گپِ زیر دیگر وجود ندارد:
+ * ثبتِ سفارش تخفیفِ ویژه‌ی خریدار را یک **سطرِ جدا** می‌کند (`orders.buyer_discount_amount`)
+ * و `final_amount` را **پس از** آن می‌نویسد؛ پرداخت دقیقاً همان را کم می‌کند
+ * (`SettlementCalculatorService::placedPooFor`). و پرسشِ ۷: این تخفیف فقط با الیت‌یارِ
+ * تأییدشده داده می‌شود. رفتارِ تازه را `BuyerDiscountAndSupplierPriceTest` پین می‌کند؛
+ * تست‌های این فایل همچنان **اتحادهای ریاضیِ خودِ فرمول** را می‌سنجند (ضریبِ (۱−%OW) و
+ * مالیاتِ کرایه) که با آن تغییر دست نخورده‌اند. متنِ زیر تاریخچه‌ی گپ است.
+ *
+ * چرا `Order::payment_of_owner` (POO) با `Order::final_amount` یکی **نبود**.
  *
  * فرانت در تستِ end-to-end صفحه‌ی /order این اختلاف را گزارش کرد و پرسید باگ است
  * یا طراحی:

@@ -53,6 +53,17 @@ class PricingContext
     public float $variantDiscountAmount = 0.0;
 
     /**
+     * قیمتِ **ثبت‌شده‌ی تأمین‌کننده** (ویژه یا عمومی، پس از تخفیفِ واریانت، **پیش از**
+     * فیلترهای نقش‌محور) — مبنای تسویه‌ی تأمین‌کننده (PTS). پرسشِ ۶ مدیریت (۱۴۰۵/۰۷/۱۳):
+     * تأمین‌کننده همیشه از قیمتِ خودش منهای کارمزدِ قراردادی تسویه می‌گیرد؛ فیلترِ قیمت
+     * فقط سهمِ شرکت را کم‌وزیاد می‌کند. `ApplyPriceFilters` در ورود پرش می‌کند.
+     */
+    public float $supplierPrice = 0.0;
+
+    /** آیا فیلترها قیمت را زیرِ کفِ قراردادی بردند و به کف برگردانده شد؟ (برای گزارش/لاگ) */
+    public bool $priceFloorApplied = false;
+
+    /**
      * افزودن یک گزارش به لیست جزئیات
      */
     public function log(string $key, mixed $value, ?string $description = null): void
@@ -118,6 +129,8 @@ class PricingContext
             vatRate: $this->vatRate,
             priceWithVat: $totalWithVat,
             withVat: $this->withVat,
+            supplierPrice: $this->supplierPrice > 0 ? $this->supplierPrice : $finalPrice,
+            priceFloorApplied: $this->priceFloorApplied,
             variantDiscountType: $this->variantDiscountType,
             variantDiscountValue: $this->variantDiscountValue,
             variantDiscountAmount: $this->variantDiscountAmount,

@@ -87,14 +87,19 @@ class WeighbridgeReconciler
         $transCommission = (bool) $order->{Order::TRANS_COMMISSION};
         $transVat = (bool) $order->{Order::TRANS_VAT};
 
+        // %OW **اعمال‌شده** روی این سفارش (پرسشِ ۷ مدیریت، ۱۴۰۵/۰۷/۱۳): سفارشِ بی‌الیت‌یار
+        // تخفیفی نگرفته، پس باسکول هم نباید اعمالش کند — وگرنه با وزنِ یکسان یک «کسریِ»
+        // کاذب می‌ساخت. `ow_applied_rate` از `owner_discount_rate` اسنپ‌شات می‌آید.
         $newPOO = $this->calculator->calculatePOO(
             $trans, $op, $billingWeight,
-            $rates['ow_final_rate'], $vat,
+            $rates['ow_applied_rate'], $vat,
             $transCommission, $transVat
         );
 
+        // PTS از قیمتِ **ثبت‌شده‌ی تأمین‌کننده** (`supplier_price`، پرسشِ ۶)؛ سفارشِ قدیمی
+        // بی‌این ستون همان قیمتِ خریدار را می‌گیرد (رفتارِ پیشین).
         $newPTS = $this->calculator->calculatePTS(
-            $trans, $op, $billingWeight,
+            $trans, $this->calculator->supplierOpFor($order, $op), $billingWeight,
             $rates['ow_final_rate'], $rates['ssg_final_rate'], $rates['co_final_rate'], $vat,
             $transCommission, $transVat
         );

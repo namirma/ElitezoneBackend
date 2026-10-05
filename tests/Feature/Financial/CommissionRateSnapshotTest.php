@@ -63,11 +63,16 @@ class CommissionRateSnapshotTest extends TestCase
 
         // و مهم‌تر: اگر همان سفارش با اسنپ‌شاتِ متفاوتی محاسبه شود، عدد عوض می‌شود —
         // یعنی reconciler واقعاً از ستون اسنپ‌شات می‌خواند، نه از مقدارِ ثابتِ کد.
+        // از ۱۴۰۵/۰۷/۱۳ %TC فقط PTSM را می‌سازد؛ POOM از %OWِ **اعمال‌شده** می‌خواند که
+        // اسنپ‌شاتِ جداگانه‌ی خودش را دارد (`owner_discount_rate`، پرسشِ ۷ مدیریت) — پس
+        // تغییرِ کارمزد مبلغِ خریدار را تکان نمی‌دهد، فقط سهمِ تأمین‌کننده را.
         $order->forceFill([Order::COMMISSION_RATE => 2.0])->save();
         $shifted = $reconciler->reconcile($order->fresh(['items', 'eliteYAR.badge']), $wbs);
 
-        $this->assertNotEqualsWithDelta($withDifferentLiveRate->newPOO, $shifted->newPOO, 0.01,
-            'تغییرِ ستونِ اسنپ‌شات باید روی POOM اثر بگذارد — وگرنه نرخ از جای دیگری خوانده می‌شود.');
+        $this->assertNotEqualsWithDelta($withDifferentLiveRate->newPTS, $shifted->newPTS, 0.01,
+            'تغییرِ ستونِ اسنپ‌شات باید روی PTSM اثر بگذارد — وگرنه نرخ از جای دیگری خوانده می‌شود.');
+        $this->assertEqualsWithDelta($withDifferentLiveRate->newPOO, $shifted->newPOO, 0.01,
+            'مبلغِ خریدار به %TC وابسته نیست — %OWِ اعمال‌شده اسنپ‌شاتِ خودش را دارد.');
     }
 
     #[Test]

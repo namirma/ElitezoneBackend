@@ -52,6 +52,20 @@
             <td class="amount-cell font-bold">{{ enToFa(number_format($totals['discount'] ?? 0)) }}</td>
             <td class="amount-cell font-bold">{{ enToFa(number_format($totals['after_discount'] ?? 0)) }}</td>
             <td class="amount-cell font-bold">{{ enToFa(number_format($totals['tax'] ?? 0)) }}</td>
-            <td class="amount-cell font-bold" style="font-size: 8.5pt;">{{ enToFa(number_format($totals['final'] ?? 0)) }}</td>
+            {{-- جمعِ ستونِ «مبلغ کل» = کالا + مالیات (بدونِ کرایه و تخفیف‌های سطحِ سفارش که در سطرهای بعد می‌آیند) --}}
+            <td class="amount-cell font-bold" style="font-size: 8.5pt;">{{ enToFa(number_format($totals['goods_total'] ?? ($totals['final'] ?? 0))) }}</td>
             <td class="text-center font-bold">-</td>
         </tr>
+        {{-- ===== ORDER-LEVEL ROWS (پرسشِ ۲ مدیریت، ۱۴۰۵/۰۷/۱۳): کرایه، تخفیف ویژه‌ی خریدار، کوپن — فقط وقتی غیرصفرند ===== --}}
+        @foreach ([
+            ['label' => 'هزینه حمل (مالیات آن در ستون مالیات لحاظ شده):', 'value' => (float) ($totals['shipping'] ?? 0), 'sign' => '+'],
+            ['label' => 'تخفیف ویژه‌ی خریدار (سهم خریدار از کارمزد):', 'value' => (float) ($totals['buyer_discount'] ?? 0), 'sign' => '−'],
+            ['label' => 'تخفیف کوپن:', 'value' => (float) ($totals['coupon_discount'] ?? 0), 'sign' => '−'],
+        ] as $row)
+            @if ($row['value'] > 0)
+                <tr>
+                    <td colspan="8" class="text-left font-bold" style="font-size: 8.5pt; padding-left: 6px;">{{ $row['label'] }}</td>
+                    <td colspan="3" class="amount-cell font-bold" style="font-size: 8.5pt;">{{ $row['sign'] }} {{ enToFa(number_format($row['value'])) }}</td>
+                </tr>
+            @endif
+        @endforeach

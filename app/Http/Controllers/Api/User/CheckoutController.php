@@ -139,6 +139,10 @@ class CheckoutController extends Controller
             'breakdown' => [
                 'goods_with_vat' => (string) $breakdown['gross'],
                 'shipping_with_vat' => (string) $breakdown['shipping'],
+                // تخفیفِ ویژه‌ی خریدار — سطرِ جدا، فقط با الیت‌یار (پرسش‌های ۲ و ۷ مدیریت).
+                // `final_amount` = goods + shipping − buyer_discount − coupon_discount.
+                'buyer_discount' => (string) $breakdown['buyer_discount'],
+                'has_elite_yar_discount' => $breakdown['has_elite_yar_discount'],
                 'coupon_discount' => (string) $breakdown['discount'],
                 'shipping_included' => $breakdown['shipping_included'],
                 // کوپنِ روی سبد که صفر شمرده شد، با دلیل — همان پیامی که `pay` می‌داد.

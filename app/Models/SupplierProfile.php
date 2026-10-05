@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use App\Services\Financial\SettlementCalculatorService;
 use App\Traits\PersianDate;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * @method static updateOrCreate(array $array, array $array1)
@@ -85,6 +87,12 @@ class SupplierProfile extends Model
 
     /** +VAT: مالیات بر ارزش افزوده روی هزینه حمل اعمال می‌شود؟ (پیش‌فرض: بله) */
     const TRANS_VAT = 'trans_vat';
+
+    /**
+     * درصدِ کارمزدِ **قراردادِ این تأمین‌کننده** (پرسشِ ۴ مدیریت، ۱۴۰۵/۰۷/۱۳). NULL = مقدارِ
+     * سراسریِ `price_settings.tc_percentage`. مثلِ دو پرچمِ بالا فقط ادمین (سطح ۱) می‌نویسد.
+     */
+    const COMMISSION_PERCENT = 'commission_percent';
 
     /** وضعیت احراز سوپلایر — نقش supplier فقط پس از تأیید ادمین متصل می‌شود. */
     const STATUS = 'status';
@@ -270,7 +278,16 @@ class SupplierProfile extends Model
         self::REVIEWED_AT => 'datetime',
         self::RESERVE_AUTO_EXTEND_MINUTES => 'integer',
         self::RESERVE_GRACE_HOURS => 'integer',
+        self::COMMISSION_PERCENT => 'decimal:2',
     ];
+
+    protected static function booted(): void
+    {
+        // کارمزدِ قراردادی در پایپ‌لاینِ قیمت کش می‌شود (کفِ قیمت)؛ ویرایشِ ادمین باید فوراً اثر کند.
+        static::saved(function (self $profile): void {
+            Cache::forget(SettlementCalculatorService::supplierTcCacheKey((int) $profile->{self::USER_ID}));
+        });
+    }
 
     public function user(): BelongsTo
     {

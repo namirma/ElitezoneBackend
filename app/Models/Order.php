@@ -191,7 +191,26 @@ class Order extends Model
 
     //  Financial Constants (Elite Zone Logic)
     // =========================================================================
+    /** OP: قیمتِ هر کیلوی **خریدار** (میانگینِ وزنیِ ردیف‌ها، پس از فیلترهای نقش) — مبنای POO. چهار رقمِ اعشار. */
     public const OFFICIAL_PRICE = 'official_price';
+
+    /**
+     * قیمتِ هر کیلوی **ثبت‌شده‌ی تأمین‌کننده** (میانگینِ وزنی، پیش از فیلترهای نقش) — مبنای PTS.
+     * پاسخِ مدیریت به پرسشِ ۶ (۱۴۰۵/۰۷/۱۳): تأمین‌کننده همیشه بر اساسِ قیمتِ خودش منهای
+     * کارمزدِ قراردادی تسویه می‌گیرد؛ تفاوتِ فیلترِ قیمت (تخفیف یا افزایش) به حسابِ شرکت است.
+     * NULL = سفارشِ پیش از این قاعده (fallback به OFFICIAL_PRICE).
+     */
+    public const SUPPLIER_PRICE = 'supplier_price';
+
+    /**
+     * تخفیفِ ویژه‌ی خریدار (سهمِ خریدار از کارمزد، OW) به ریال — یک سطرِ جدا در سفارش،
+     * پیش‌فاکتور و فاکتور (پرسشِ ۲)؛ فقط وقتی سفارش الیت‌یارِ تأییدشده دارد (پرسشِ ۷).
+     * `final_amount − buyer_discount` نیست: `final_amount` خودش **پس از** این تخفیف است.
+     */
+    public const BUYER_DISCOUNT_AMOUNT = 'buyer_discount_amount';
+
+    /** توضیحِ آزادِ بک‌آفیس روی سفارش (پرسشِ ۱۴)؛ خریدار و تأمین‌کننده فقط وقتی پر است می‌بینند. */
+    public const ADMIN_NOTE = 'admin_note';
 
     public const WEIGHT_BEFORE_SCALE = 'weight_before_scale';
 
@@ -376,7 +395,9 @@ class Order extends Model
         self::PARTIAL_PAYMENT_AMOUNT => 'decimal:0',
         self::FINAL_AMOUNT => 'decimal:0',
 
-        self::OFFICIAL_PRICE => 'decimal:0',
+        self::OFFICIAL_PRICE => 'decimal:4',
+        self::SUPPLIER_PRICE => 'decimal:4',
+        self::BUYER_DISCOUNT_AMOUNT => 'decimal:0',
         self::WEIGHT_BEFORE_SCALE => 'decimal:3',
         self::COMMISSION_RATE => 'decimal:2',
         self::OWNER_DISCOUNT_RATE => 'decimal:2',

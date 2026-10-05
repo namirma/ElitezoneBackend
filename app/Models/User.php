@@ -250,12 +250,16 @@ class User extends Authenticatable
      */
     public function verifiedEliteYARs(): Collection
     {
-        return $this->technicalEliteYARs()
+        /** @var \Illuminate\Database\Eloquent\Collection<int, User> $approved */
+        $approved = $this->technicalEliteYARs()
             ->wherePivot(EmployerEliteYAR::STATUS, EmployerEliteYAR::STATUS_APPROVED)
             ->with(['engineer', 'contractor'])
-            ->get()
-            ->filter(fn (User $eliteYAR) => $eliteYAR->isVerifiedEliteYAR())
-            ->values();
+            ->get();
+
+        return $approved
+            ->filter(fn (User $eliteYAR): bool => $eliteYAR->isVerifiedEliteYAR())
+            ->values()
+            ->toBase();
     }
 
     /**

@@ -134,23 +134,34 @@ class InvoiceDataBuilder
         $vat = (float) $order->vat_amount;
         $final = (float) $order->final_amount;
 
+        // سطرهای سطحِ سفارش (پرسشِ ۲ مدیریت، ۱۴۰۵/۰۷/۱۳): کرایه (بی‌مالیات — مالیاتش در
+        // ستونِ مالیات پخش شده)، تخفیفِ ویژه‌ی خریدار و کوپن. با این سه،
+        // جمعِ ستونِ «مبلغ کل» + کرایه − تخفیف ویژه − کوپن = مبلغِ قابل پرداخت، تا ریال.
+        $orderLevel = [
+            'shipping' => (float) ($order->shipping_cost ?? 0),
+            'buyer_discount' => (float) ($order->getAttribute(Order::BUYER_DISCOUNT_AMOUNT) ?? 0),
+            'coupon_discount' => (float) ($order->getAttribute(Order::COUPON_DISCOUNT_AMOUNT) ?? 0),
+        ];
+
         if ($lineItems !== []) {
-            return [
+            return $orderLevel + [
                 'quantity' => array_sum(array_column($lineItems, 'quantity')),
                 'gross' => $subtotal > 0 ? $subtotal : array_sum(array_column($lineItems, 'gross')),
                 'discount' => $discount,
                 'after_discount' => max(0, $subtotal - $discount),
                 'tax' => $vat,
+                'goods_total' => array_sum(array_column($lineItems, 'final')),
                 'final' => $final > 0 ? $final : array_sum(array_column($lineItems, 'final')),
             ];
         }
 
-        return [
+        return $orderLevel + [
             'quantity' => 0,
             'gross' => $subtotal,
             'discount' => $discount,
             'after_discount' => max(0, $subtotal - $discount),
             'tax' => $vat,
+            'goods_total' => max(0, $subtotal - $discount) + $vat,
             'final' => $final,
         ];
     }

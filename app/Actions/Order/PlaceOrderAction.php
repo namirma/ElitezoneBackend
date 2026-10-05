@@ -199,6 +199,8 @@ class PlaceOrderAction
         $totalDiscount = 0.0;
         $totalWeight = 0.0;
         $goodsValue = 0.0;
+        // ارزشِ کالا به قیمتِ **ثبت‌شده‌ی تأمین‌کننده** (پیش از فیلترهای نقش) — مبنای PTS (پرسشِ ۶).
+        $supplierGoodsValue = 0.0;
         $itemsData = [];
 
         $roleCode = $this->roleResolver->resolve($user);
@@ -255,6 +257,7 @@ class PlaceOrderAction
             // جدا از $subtotal انباشته می‌شود چون آن عمداً پیش-از-تخفیف است؛ گره‌زدنِ
             // یک عددِ مالی به نحوه‌ی حسابداریِ تخفیف، شکننده‌اش می‌کرد.
             $goodsValue += $lineTotal;
+            $supplierGoodsValue += $itemLogisticsWeight * $pricing->supplierPrice;
 
             $itemsData[$item->id] = [
                 'weight' => $itemLogisticsWeight,
@@ -344,14 +347,14 @@ class PlaceOrderAction
             $itemsData[$itemId]['shipping_cost'] = round($line['shipping_cost']);
         }
 
-        // Now that subtotal is pre-discount, we subtract the totalDiscount to get the actual final goods value,
-        // then add VAT and shipping. This preserves the standard accounting formula:
-        // Subtotal - Discount + Tax + Shipping = Final
-        $finalAmount = max(0, $subtotal - $totalDiscount + $totalVat + $shippingCost);
+        // جمعِ حسابداریِ **پیش از تخفیفِ ویژه‌ی خریدار**:
+        // Subtotal − Discount + Tax + Shipping = Gross
+        $grossPayable = max(0, $subtotal - $totalDiscount + $totalVat + $shippingCost);
 
         $effectiveEliteYARId = $this->resolveEffectiveEliteYARId($user, $data);
+        $eliteYAR = $effectiveEliteYARId ? User::find($effectiveEliteYARId) : null;
 
-        $commissions = $this->calculateCommissions($user, $effectiveEliteYARId, $subtotal);
+        $commissions = $this->calculateCommissions($eliteYAR, $subtotal);
 
         // ── official_price: میانگینِ وزنیِ ردیف‌ها ─────────────────────────────
         // تسویه با `OP × وزنِ کلِ سفارش` کار می‌کند، پس OP باید عددی باشد که این
@@ -365,24 +368,87 @@ class PlaceOrderAction
         //
         // با یک ردیف، این فرمول دقیقاً همان unit_price را می‌دهد — پس رفتار
         // سفارش‌های تک‌ردیفی ذره‌ای تغییر نمی‌کند.
-        // ریالِ صحیح مثلِ بقیه‌ی اجزا — ستونش `decimal(*,0)` است و سقفِ تأمینِ کوپن
-        // (`couponFundingCaps(op:)`) در همین تراکنش از مقدارِ در حافظه می‌خواند.
+        //
+        // چهار رقمِ اعشار (از ۱۴۰۵/۰۷/۱۳)، نه ریالِ صحیح: گردکردنِ هر کیلو تا ۰٫۵ ریال
+        // ضربدرِ وزن، POO را تا ۰٫۵ × وزن ریال از جمعِ اجزای نمایش‌داده‌شده دور می‌کرد
+        // (۵٬۰۰۰ ریال روی ۱۰ تن) — و پاسخِ مدیریت به پرسشِ ۲ می‌خواهد مبلغِ فاکتور و
+        // مبلغِ کسرشده **دقیقاً** یکی باشند. ستون هم `decimal(20,4)` شد.
         $officialPrice = $totalWeight > 0
-            ? round(Money::toFloat(Money::div($goodsValue, $totalWeight)))
+            ? round(Money::toFloat(Money::div($goodsValue, $totalWeight), 4), 4)
             : 0.0;
+        $supplierPrice = $totalWeight > 0
+            ? round(Money::toFloat(Money::div($supplierGoodsValue, $totalWeight), 4), 4)
+            : 0.0;
+
+        // ── اسنپ‌شاتِ نرخ‌ها و مبلغِ قطعیِ خریدار — همین‌جا، لحظه‌ی ثبت ─────────────
+        // پاسخ‌های مدیریت ۱۴۰۵/۰۷/۱۳:
+        //   پرسشِ ۴ — %TC از قراردادِ تأمین‌کننده (NULL ⇒ سراسری).
+        //   پرسشِ ۷ — تخفیفِ ویژه‌ی خریدار (%OW) فقط وقتی سفارش الیت‌یارِ تأییدشده دارد؛
+        //             بی‌الیت‌یار، تخفیف و سهمِ الیت‌یار هر دو به شرکت می‌رسد.
+        //   پرسشِ ۲ — `final_amount` همان مبلغی است که از کیف پول کم می‌شود (POO)، و
+        //             تخفیفِ ویژه یک سطرِ جدا (`buyer_discount_amount`) است.
+        // پیش از این نرخ‌ها لحظه‌ی **پرداخت** اسنپ‌شات می‌شدند و `final_amount` بدونِ %OW
+        // بود، پس عددی که خریدار می‌دید با عددی که کسر می‌شد نمی‌خواند
+        // (`PooVersusDisplayedAmountTest` همان اختلاف را «قابلِ توضیح» می‌پنداشت).
+        // پرداخت حالا همین اسنپ‌شات را می‌خواند (`getCommissionRatesForOrder`) — نه نرخِ
+        // زنده — پس نمایش و کسر یک محاسبه‌اند.
+        $supplierUserId = $cart->items->first()?->factory?->supplier_user_id;
+        $supplierUserId = $supplierUserId !== null ? (int) $supplierUserId : null;
+        // نبودِ پروفایل یعنی `true` — همان پیش‌فرضِ `ProcessPreScalePaymentAction`.
+        $transCommission = $this->settlementCalculator->transCommissionFlagForSupplier($supplierUserId);
+
+        $tcPercentage = $this->settlementCalculator->tcPercentageForSupplier($supplierUserId);
+        $badgeCode = $this->badgeCodeOf($eliteYAR);
+        $rates = $this->settlementCalculator->getCommissionRatesForTc($badgeCode, $tcPercentage);
+        $vatRate = $this->settlementCalculator->currentVatRate();
+        // الیت‌یارِ مؤثر همیشه تأییدشده است (`resolveEffectiveEliteYARId`)، پس «دارد» کافی است.
+        $owApplied = $effectiveEliteYARId !== null ? (float) $rates['ow_final_rate'] : 0.0;
+
+        // تخفیفِ ویژه = POO(بی‌OW) − POO(با OW) روی همان فرمول — همان عددی که پیش‌نمایشِ
+        // سبد (`CartCheckoutTotals`) نشان می‌دهد؛ مبلغِ قطعی = Gross − تخفیف، و پرداخت
+        // دقیقاً همین را کم می‌کند (`placedPooFor`)، نه بازمحاسبه‌ی فرمول. بی‌الیت‌یار
+        // تخفیف صفر است (پرسشِ ۷).
+        $buyerDiscount = $this->settlementCalculator->buyerDiscountAmount(
+            $shippingCost, $officialPrice, $totalWeight, $owApplied, $vatRate, $transCommission, $transVat
+        );
+        $finalAmount = max(0, $grossPayable - $buyerDiscount);
 
         return [
             'subtotal' => $subtotal,
             'vat_amount' => $totalVat,
             'total_discount' => $totalDiscount,
             'shipping_cost' => $shippingCost,
+            'gross_payable' => $grossPayable,
+            'buyer_discount_amount' => $buyerDiscount,
             'final_amount' => $finalAmount,
             'total_weight' => $totalWeight,
             'official_price' => $officialPrice,
+            'supplier_price' => $supplierPrice,
             'commissions' => $commissions,
             'effective_elite_yar_id' => $effectiveEliteYARId,
             'items_data' => $itemsData,
             'shipments' => $shippingQuote->shipments,
+            // ستون‌های اسنپ‌شات (غیرِ fillable؛ `createOrderRecord` با forceFill می‌نویسد).
+            'rate_snapshot' => [
+                Order::COMMISSION_RATE => $tcPercentage,
+                Order::VAT_RATE => $vatRate,
+                Order::OWNER_DISCOUNT_RATE => $owApplied,
+                Order::SAZE_SHARE_RATE => $rates['ssg_final_rate'],
+                Order::ELITE_YAR_SHARE_RATE => $rates['co_final_rate'],
+                Order::OW_SHARE_PERCENT => $rates['ow_percent_of_tc'],
+                Order::CO_SHARE_PERCENT => $rates['co_percent_of_tc'],
+                Order::TRANS_COMMISSION => $transCommission,
+                Order::TRANS_VAT => $transVat,
+            ],
+            'coupon_inputs' => [
+                'tc' => $tcPercentage,
+                'badge_code' => $badgeCode,
+                'vat' => $vatRate,
+                'trans_commission' => $transCommission,
+                'trans_vat' => $transVat,
+                'ow_applied' => $owApplied,
+                'supplier_user_id' => $supplierUserId,
+            ],
         ];
     }
 
@@ -426,23 +492,17 @@ class PlaceOrderAction
     /**
      * محاسبه کمیسیون بر اساس الیت یار مؤثر سفارش.
      *
-     * @param  User  $placer  خریدار/ثبت‌کننده سفارش
-     * @param  int|null  $eliteYARId  elite_yar_user_id مؤثر (پس از تعیین نقش)
+     * @param  User|null  $eliteYAR  الیت‌یارِ مؤثرِ سفارش (پس از تعیین نقش)، یا null
      */
-    private function calculateCommissions(User $placer, ?int $eliteYARId, float $subtotal): array
+    private function calculateCommissions(?User $eliteYAR, float $subtotal): array
     {
         $fees = ['engineer' => 0, 'contractor' => 0];
 
-        if (! $eliteYARId) {
-            return $fees;
-        }
-
-        $eliteYAR = User::find($eliteYARId);
         if (! $eliteYAR) {
             return $fees;
         }
 
-        $badgeCode = $eliteYAR->badge?->code ?? 'pioneer';
+        $badgeCode = $this->badgeCodeOf($eliteYAR);
         $calculated = $this->settlementCalculator->calculateCommissions($subtotal, $badgeCode);
         $amount = $calculated['CO'] ?? 0;
 
@@ -458,6 +518,14 @@ class PlaceOrderAction
         }
 
         return $fees;
+    }
+
+    /** کدِ نشانِ الیت‌یار برای نرخِ سهم — بی‌الیت‌یار یا بی‌نشان ⇒ `pioneer` (نرخِ پیش‌فرض). */
+    private function badgeCodeOf(?User $eliteYAR): string
+    {
+        $badge = $eliteYAR?->badge;
+
+        return $badge ? (string) ($badge->getAttribute('code') ?: 'pioneer') : 'pioneer';
     }
 
     private function createOrderRecord(User $user, PlaceOrderData $data, array $fins, Cart $cart, string $initialStatus, ?User $payer = null): Order
@@ -516,10 +584,14 @@ class PlaceOrderAction
             Order::NOTES => $data->description,
         ]);
 
-        // `official_price` عمداً در $fillable نیست (ستونِ اسنپ‌شاتِ مالی)، پس
-        // گذاشتنش در آرایه‌ی create بالا **بی‌صدا دور ریخته می‌شد** — همان تله‌ای که
+        // `official_price` و بقیه‌ی ستون‌های اسنپ‌شاتِ مالی عمداً در $fillable نیستند، پس
+        // گذاشتنشان در آرایه‌ی create بالا **بی‌صدا دور ریخته می‌شد** — همان تله‌ای که
         // در این پروژه چند بار زده. forceFill مسیرِ مجازِ نوشتنِ این ستون‌هاست.
-        $order->forceFill([Order::OFFICIAL_PRICE => $fins['official_price']])->save();
+        $order->forceFill(array_merge($fins['rate_snapshot'], [
+            Order::OFFICIAL_PRICE => $fins['official_price'],
+            Order::SUPPLIER_PRICE => $fins['supplier_price'],
+            Order::BUYER_DISCOUNT_AMOUNT => $fins['buyer_discount_amount'],
+        ]))->save();
 
         return $order;
     }
@@ -686,28 +758,24 @@ class PlaceOrderAction
             return;
         }
 
-        $supplierId = $cart->items->first()?->factory?->supplier_user_id;
-        $supplierId = $supplierId ? (int) $supplierId : null;
+        $inputs = $fins['coupon_inputs'];
+        $supplierId = $inputs['supplier_user_id'];
         $eliteYARId = $fins['effective_elite_yar_id'] ? (int) $fins['effective_elite_yar_id'] : null;
         $hasCommissionedEliteYAR = $eliteYARId !== null && $eliteYARId !== $payerId;
 
-        $supplierProfile = $supplierId
-            ? SupplierProfile::where(SupplierProfile::USER_ID, $supplierId)->first()
-            : null;
-
-        // `badge()` جنریک ندارد — `getAttribute`، همان راهی که بقیه‌ی فایل می‌رود.
-        $badge = $eliteYARId ? User::find($eliteYARId)?->badge : null;
-        $badgeCode = $badge ? (string) ($badge->getAttribute('code') ?? 'pioneer') : 'pioneer';
-
+        // همان ورودی‌هایی که اسنپ‌شاتِ سفارش با آن‌ها ساخته شد — یک محاسبه، نه دو.
         $caps = $this->settlementCalculator->couponFundingCaps(
             trans: (float) $fins['shipping_cost'],
             op: (float) $fins['official_price'],
             weight: (float) $fins['total_weight'],
-            badgeCode: $badgeCode,
-            vatPercent: $this->settlementCalculator->currentVatRate(),
-            transCommission: (bool) ($supplierProfile->{SupplierProfile::TRANS_COMMISSION} ?? true),
-            transVat: (bool) ($supplierProfile->{SupplierProfile::TRANS_VAT} ?? true),
+            badgeCode: $inputs['badge_code'],
+            vatPercent: (float) $inputs['vat'],
+            transCommission: (bool) $inputs['trans_commission'],
+            transVat: (bool) $inputs['trans_vat'],
             hasCommissionedEliteYAR: $hasCommissionedEliteYAR,
+            tcPercentage: (float) $inputs['tc'],
+            supplierOp: (float) $fins['supplier_price'],
+            owAppliedPercent: (float) $inputs['ow_applied'],
         );
 
         $this->couponFunding->plan($coupon, $discount, $caps, $supplierId, $hasCommissionedEliteYAR ? $eliteYARId : null);

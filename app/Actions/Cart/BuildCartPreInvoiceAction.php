@@ -14,6 +14,7 @@ use App\Models\OrderItem;
 use App\Models\OrderUnit;
 use App\Models\PriceFilterCategory;
 use App\Models\User;
+use App\Services\Cart\CartCheckoutTotals;
 use App\Services\Cart\CartPriceValidityResolver;
 use App\Services\Cart\CartResolver;
 use App\Services\Financial\SettlementCalculatorService;
@@ -69,6 +70,7 @@ class BuildCartPreInvoiceAction
         private readonly CartPriceValidityResolver $priceValidity,
         private readonly SettlementCalculatorService $settlementCalculator,
         private readonly InvoiceGenerator $invoiceGenerator,
+        private readonly CartCheckoutTotals $checkoutTotals,
     ) {}
 
     /**
@@ -183,7 +185,13 @@ class BuildCartPreInvoiceAction
         $subtotalBeforeDiscount = $pricing->subtotal + $pricing->totalVariantDiscount;
         $discountAmount = $pricing->totalVariantDiscount + $pricing->offerDiscount;
         $vatAmount = $pricing->vatAmount + $shippingVat;
-        $finalAmount = max(0.0, $subtotalBeforeDiscount - $discountAmount + $vatAmount + $shippingCost);
+        // تخفیفِ ویژه‌ی خریدار — همان سطر و همان عددِ پیش‌نمایشِ پرداخت و ثبتِ سفارش
+        // (پرسشِ ۲ مدیریت): پیش‌فاکتور باید همان مبلغی را بگوید که کسر خواهد شد.
+        $goodsNet = max(0.0, $pricing->subtotal - $pricing->offerDiscount);
+        $buyerDiscount = $this->checkoutTotals->qualifiesForEliteYARDiscount($cart, $user)
+            ? $this->checkoutTotals->buyerDiscountFor($cart, $goodsNet, $shippingCost)
+            : 0.0;
+        $finalAmount = max(0.0, $subtotalBeforeDiscount - $discountAmount + $vatAmount + $shippingCost - $buyerDiscount);
 
         $order = new Order;
 
@@ -193,6 +201,7 @@ class BuildCartPreInvoiceAction
             Order::DISCOUNT_AMOUNT => $discountAmount,
             Order::VAT_AMOUNT => $vatAmount,
             Order::SHIPPING_COST => $shippingCost,
+            Order::BUYER_DISCOUNT_AMOUNT => $buyerDiscount,
             Order::FINAL_AMOUNT => $finalAmount,
             // پیش‌فاکتور همیشه پرداخت‌نشده است — برچسبِ وضعیت روی سند از همین می‌آید.
             Order::PAYMENT_STATUS => Order::PAYMENT_PENDING,

@@ -112,10 +112,20 @@ class ProcessReservationCompletionAction
             // %TC اسنپ‌شات می‌شود (هم‌الگو با ProcessPreScalePaymentAction) — این مسیر
             // تا امروز هیچ‌کدام از ستون‌های نرخ را نمی‌نوشت، پس باسکول مجبور بود نرخ را
             // زنده بخواند و با هر تغییرِ tc_percentage یک کسریِ کاذب می‌ساخت.
-            $tcPercentage = $this->calculator->currentTcPercentage();
-            $rates = $this->calculator->getCommissionRatesForTc($badgeCode, $tcPercentage);
+            // از ۱۴۰۵/۰۷/۱۳ ثبتِ سفارش نرخ‌ها را اسنپ‌شات می‌کند (پاسخ‌های مدیریت، پرسش‌های ۲/۴/۶/۷) —
+            // همان منطقِ ProcessPreScalePaymentAction: اسنپ‌شات اگر هست، وگرنه نرخِ زنده‌ی قراردادی.
+            $placedPoo = $this->calculator->placedPooFor($locked);
 
-            $ow = $rates['ow_final_rate'];
+            if ($placedPoo !== null) {
+                $tcPercentage = (float) $locked->{Order::COMMISSION_RATE};
+                $rates = $this->calculator->getCommissionRatesForOrder($locked, $badgeCode);
+            } else {
+                $tcPercentage = $this->calculator->tcPercentageForSupplier($firstItem->supplier_user_id !== null ? (int) $firstItem->supplier_user_id : null);
+                $rates = $this->calculator->getCommissionRatesForTc($badgeCode, $tcPercentage);
+                $rates['ow_applied_rate'] = $rates['ow_final_rate'];
+            }
+
+            $ow = $rates['ow_applied_rate'];
             $ssg = $rates['ssg_final_rate'];
             $co = $rates['co_final_rate'];
 
@@ -129,10 +139,15 @@ class ProcessReservationCompletionAction
             $transCommission = (bool) $locked->{Order::TRANS_COMMISSION};
             $transVat = (bool) $locked->{Order::TRANS_VAT};
 
-            $POO = $this->calculator->calculatePOO($trans, $op, $wbs, $ow, $vat, $transCommission, $transVat);
-            $PTS = $this->calculator->calculatePTS($trans, $op, $wbs, $ow, $ssg, $co, $vat, $transCommission, $transVat);
+            // POO: مبلغِ نمایش‌داده‌شده (اسنپ‌شات) یا فرمول (سفارشِ قدیمی)؛
+            // PTS: از قیمتِ **ثبت‌شده‌ی تأمین‌کننده** (پرسشِ ۶ مدیریت)، نه قیمتِ خریدار.
+            $POO = $placedPoo ?? $this->calculator->calculatePOO($trans, $op, $wbs, $ow, $vat, $transCommission, $transVat);
+            $PTS = $this->calculator->calculatePTS(
+                $trans, $this->calculator->supplierOpFor($locked, $op), $wbs,
+                $rates['ow_final_rate'], $ssg, $co, $vat, $transCommission, $transVat
+            );
 
-            if ($POO <= 0 || $PTS <= 0) {
+            if ($POO <= 0 || $PTS <= 0 || $POO < $PTS) {
                 Log::channel('financial')->critical("Invalid financial calculation for order {$locked->id}", compact('POO', 'PTS'));
                 throw new \RuntimeException(__('orders.invalid_financial_calculation'));
             }

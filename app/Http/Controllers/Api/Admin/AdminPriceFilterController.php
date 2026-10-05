@@ -5,6 +5,10 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Product\PriceFilterResource;
 use App\Models\PriceFilter;
+use App\Models\PriceSetting;
+use App\Services\Financial\SettlementCalculatorService;
+use App\Support\Money;
+use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -77,7 +81,22 @@ class AdminPriceFilterController extends Controller
             PriceFilter::PRICE_FILTER_TYPE_ID => [$req, 'integer', 'exists:price_filter_types,id'],
             PriceFilter::NAME => [$req, 'string', 'max:255'],
             PriceFilter::CODE => [$req, 'string', 'max:255', Rule::unique('price_filters', 'code')->ignore($ignoreId)],
-            PriceFilter::AMOUNT => [$req, 'numeric'],
+            PriceFilter::AMOUNT => [$req, 'numeric', function (string $attribute, $value, Closure $fail): void {
+                // کفِ قراردادی (پرسشِ ۶ مدیریت، ۱۴۰۵/۰۷/۱۳): قیمتِ خریدار پس از تخفیفِ ویژه‌اش
+                // نباید زیرِ «قیمتِ تأمین‌کننده منهای کارمزد» برود. یک فیلترِ **درصدیِ** منفی
+                // قیمت‌مستقل است، پس همین‌جا سنجیده می‌شود: حداکثر تخفیف = ۱ − (۱−TC)/(۱−OW).
+                // (فیلترِ مطلق به قیمت وابسته است و در پایپ‌لاین به کف برمی‌گردد.)
+                if (! request()->boolean(PriceFilter::IS_PERCENTAGE) || (float) $value >= 0) {
+                    return;
+                }
+                $tc = app(SettlementCalculatorService::class)->currentTcPercentage();
+                $owShare = PriceSetting::getValueAsFloat(PriceSetting::CODE_OW_SHARE, (float) PriceSetting::catalog()[PriceSetting::CODE_OW_SHARE]['default']);
+                $owFinal = (float) Money::mul($tc, Money::div($owShare, '100'));
+                $maxDiscount = 100 * (1 - (float) Money::div(Money::percentSub($tc), Money::percentSub($owFinal)));
+                if (abs((float) $value) > $maxDiscount + 1e-9) {
+                    $fail(__('admin.filters.discount_below_contract_floor', ['max' => number_format($maxDiscount, 3)]));
+                }
+            }],
             PriceFilter::IS_PERCENTAGE => ['boolean'],
             PriceFilter::IS_ACTIVE => ['boolean'],
             PriceFilter::SORT_ORDER => ['nullable', 'integer', 'min:0'],

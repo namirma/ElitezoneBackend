@@ -45,6 +45,7 @@ class SettlementDataGuardsTest extends TestCase
             Order::OFFICIAL_PRICE => 0,
             Order::VAT_RATE => 10,
             Order::COMMISSION_RATE => 1.0,
+            Order::OWNER_DISCOUNT_RATE => 0.4,
             Order::PAYMENT_OF_OWNER => 500_000_000,
             Order::PAYMENT_TO_SUPPLIER => 480_000_000,
         ])->save();
@@ -78,6 +79,7 @@ class SettlementDataGuardsTest extends TestCase
             Order::OFFICIAL_PRICE => 200_000,
             Order::VAT_RATE => 10,
             Order::COMMISSION_RATE => 1.0,
+            Order::OWNER_DISCOUNT_RATE => 0.4,
             Order::TRANS_COMMISSION => true,
             Order::TRANS_VAT => true,
             Order::PAYMENT_OF_OWNER => 0,
@@ -115,6 +117,7 @@ class SettlementDataGuardsTest extends TestCase
             Order::OFFICIAL_PRICE => 200_000,
             Order::VAT_RATE => 10,
             Order::COMMISSION_RATE => 1.0,
+            Order::OWNER_DISCOUNT_RATE => 0.4,
         ])->save();
 
         // تحویلِ بیشتر از سفارش — وزنِ صورت‌حساب همان وزنِ واقعی است.

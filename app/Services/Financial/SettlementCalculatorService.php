@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\PriceSetting;
 use App\Models\SupplierProfile;
 use App\Support\Money;
+use Illuminate\Support\Facades\Cache;
 use Tests\Feature\Financial\PooVersusDisplayedAmountTest;
 
 /**
@@ -23,8 +24,16 @@ use Tests\Feature\Financial\PooVersusDisplayedAmountTest;
  *   -VAT (transVat=false)        — Trans is excluded from VAT
  *
  * The current default %TC rate is 1 % of the invoice subtotal (ex-VAT).
- * This is a per-supplier contract parameter; a super-admin may edit it in the
- * supplier profile. The rate breakdown per badge:
+ * This is a per-supplier contract parameter (`supplier_profiles.commission_percent`,
+ * management Q4 1405/07/13 — `tcPercentageForSupplier()`); a super-admin edits it in the
+ * supplier profile, and the global `price_settings.tc_percentage` is the default.
+ *
+ * Price bases (management Q6, 1405/07/13): PTS is computed from the SUPPLIER's own
+ * registered price (`orders.supplier_price`, `supplierOpFor()`), POO from the buyer's
+ * post-filter price (`orders.official_price`). The buyer discount %OW is applied only
+ * when the order has a verified EliteYAR (Q7) — `orders.owner_discount_rate` holds the
+ * APPLIED rate (0 without one), `ow_share_percent` the share definition.
+ * The rate breakdown per badge:
  *
  *   %TC = %OW + %CO + %SSG      (%OW = 40 %, %CO+%SSG = 60 %)
  *
@@ -90,6 +99,92 @@ class SettlementCalculatorService
         return self::tcPercentage();
     }
 
+    /** کلیدِ کشِ کارمزدِ قراردادیِ یک تأمین‌کننده؛ `SupplierProfile::booted()` با هر ذخیره پاکش می‌کند. */
+    public static function supplierTcCacheKey(int $supplierUserId): string
+    {
+        return "supplier_tc:{$supplierUserId}";
+    }
+
+    /**
+     * %TC مؤثر برای سفارش‌های یک تأمین‌کننده — پاسخِ مدیریت به پرسشِ ۴ (۱۴۰۵/۰۷/۱۳):
+     * «درصد کارمزد مطابق قرارداد تامین کننده در بک آفیس ثبت می‌شود»؛ بی‌قرارداد
+     * (NULL) همان مقدارِ سراسری. کش‌شده چون پایپ‌لاینِ قیمت برای هر ردیفِ لیستِ
+     * محصولات آن را می‌خواند (کفِ قیمت، `ApplyPriceFilters`).
+     */
+    public function tcPercentageForSupplier(?int $supplierUserId): float
+    {
+        if ($supplierUserId === null) {
+            return self::tcPercentage();
+        }
+
+        $override = Cache::remember(self::supplierTcCacheKey($supplierUserId), 600, function () use ($supplierUserId): string {
+            $value = SupplierProfile::where(SupplierProfile::USER_ID, $supplierUserId)
+                ->value(SupplierProfile::COMMISSION_PERCENT);
+
+            // رشته‌ی sentinel به‌جای null — `Cache::remember` مقدارِ null را نگه نمی‌دارد.
+            return $value === null ? '' : (string) $value;
+        });
+
+        return $override === '' ? self::tcPercentage() : (float) $override;
+    }
+
+    /**
+     * قیمتِ مبنای **تأمین‌کننده** (PTS): `supplier_price` و برای سفارش‌های پیش از این
+     * قاعده `official_price` (همان رفتارِ قدیم: PTS از قیمتِ خریدار). پرسشِ ۶ مدیریت.
+     */
+    public function supplierOpFor(Order $order, float $buyerOp): float
+    {
+        $supplierOp = (float) ($order->{Order::SUPPLIER_PRICE} ?? 0);
+
+        return $supplierOp > 0 ? $supplierOp : $buyerOp;
+    }
+
+    /**
+     * مبلغِ تخفیفِ ویژه‌ی خریدار به ریال — تفاوتِ POO با و بدونِ %OW روی همان فرمول و همان
+     * پرچم‌های ±TC/±VAT. یک تعریف برای پیش‌نمایشِ سبد (op = ارزشِ خالصِ کالا، وزن = ۱) و
+     * ثبتِ سفارش (op = official_price، وزن = وزنِ سفارش)، تا سطرِ «تخفیف ویژه‌ی خریدار»
+     * در سبد، سفارش و فاکتور یک عدد باشد (پرسشِ ۲ مدیریت). صفر بی‌الیت‌یار (پرسشِ ۷).
+     */
+    public function buyerDiscountAmount(
+        float $trans,
+        float $op,
+        float $weight,
+        float $owAppliedPercent,
+        float $vatPercent,
+        bool $transCommission,
+        bool $transVat,
+    ): float {
+        if ($owAppliedPercent <= 0.0) {
+            return 0.0;
+        }
+
+        $withoutDiscount = $this->calculatePOO($trans, $op, $weight, 0.0, $vatPercent, $transCommission, $transVat);
+        $withDiscount = $this->calculatePOO($trans, $op, $weight, $owAppliedPercent, $vatPercent, $transCommission, $transVat);
+
+        return max(0.0, $withoutDiscount - $withDiscount);
+    }
+
+    /**
+     * POOِ یک سفارشِ **ثبت‌شده با اسنپ‌شات** (از ۱۴۰۵/۰۷/۱۳): همان مبلغی که به خریدار نشان
+     * داده شده — `final_amount + coupon_discount_amount` — نه بازمحاسبه‌ی فرمول.
+     *
+     * پرسشِ ۲ مدیریت: عددِ فاکتور با مبلغِ پرداختی یکی. ثبتِ سفارش `final_amount` را از
+     * همین فرمول می‌سازد (با %OW اعمال‌شده) و اجزا را روی آن می‌بندد؛ اگر پرداخت دوباره
+     * فرمول را اجرا کند، گردکردنِ مستقلِ اجزا تا ۲ ریال فاصله می‌اندازد. `null` یعنی سفارشِ
+     * بی‌اسنپ‌شات (پیش از این قاعده) — صداکننده فرمول را اجرا می‌کند، همان رفتارِ قدیم.
+     */
+    public function placedPooFor(Order $order): ?float
+    {
+        if ((float) ($order->{Order::COMMISSION_RATE} ?? 0) <= 0.0) {
+            return null;
+        }
+
+        return self::rial(Money::add(
+            (float) $order->{Order::FINAL_AMOUNT},
+            (float) ($order->{Order::COUPON_DISCOUNT_AMOUNT} ?? 0)
+        ));
+    }
+
     /**
      * همان نرخ‌های getCommissionRates اما با یک %TC مشخص (اسنپ‌شاتِ سفارش) به‌جای
      * مقدارِ زنده‌ی PriceSetting. هر محاسبه‌ی *بعد از* پرداخت باید از این استفاده کند.
@@ -119,7 +214,7 @@ class SettlementCalculatorService
      *
      * @return array{
      *   ow_percent_of_tc: float, co_percent_of_tc: float, ssg_percent_of_tc: float,
-     *   ow_final_rate: float, co_final_rate: float, ssg_final_rate: float,
+     *   ow_final_rate: float, co_final_rate: float, ssg_final_rate: float, ow_applied_rate: float,
      * }
      */
     public function getCommissionRatesForOrder(Order $order, ?string $badgeCode): array
@@ -128,7 +223,10 @@ class SettlementCalculatorService
 
         // بی‌اسنپ‌شاتِ %TC: سفارش‌های خیلی قدیمی — همان رفتارِ سازگاریِ قبلی (زنده).
         if ($tc <= 0) {
-            return $this->getCommissionRates($badgeCode);
+            $live = $this->getCommissionRates($badgeCode);
+            $live['ow_applied_rate'] = $live['ow_final_rate'];
+
+            return $live;
         }
 
         $ow = $order->{Order::OW_SHARE_PERCENT};
@@ -138,7 +236,17 @@ class SettlementCalculatorService
             ? ['ow' => (float) $ow, 'co' => (float) $co, 'ssg' => (float) Money::sub(Money::sub('100', (string) $ow), (string) $co)]
             : $this->defaultBadgeShares($badgeCode);
 
-        return $this->ratesFromShares($shares, $tc);
+        $rates = $this->ratesFromShares($shares, $tc);
+
+        // %OW **اعمال‌شده** روی این سفارش — پرسشِ ۷ مدیریت (۱۴۰۵/۰۷/۱۳): بی‌الیت‌یار صفر.
+        // `owner_discount_rate` (NOT NULL DEFAULT 0) همیشه کنارِ `commission_rate` نوشته
+        // می‌شود (ثبتِ سفارش از ۱۴۰۵/۰۷/۱۳، و پیش از آن لحظه‌ی پرداخت با همان ow_final_rate)،
+        // پس برای هر سفارشِ اسنپ‌شات‌دار معتبر است. POO و POOM باید از همین بخوانند، نه از
+        // `ow_final_rate` — وگرنه باسکول روی سفارشِ بی‌الیت‌یار تخفیفی را دوباره اعمال
+        // می‌کرد که هرگز داده نشده بود و با وزنِ یکسان یک «کسریِ» کاذب می‌ساخت.
+        $rates['ow_applied_rate'] = (float) $order->{Order::OWNER_DISCOUNT_RATE};
+
+        return $rates;
     }
 
     /**
@@ -458,6 +566,17 @@ class SettlementCalculatorService
             ->value(SupplierProfile::TRANS_VAT) ?? true);
     }
 
+    /** فلگِ ±TC قراردادِ تأمین‌کننده: «آیا کارمزد روی کرایه هم بسته می‌شود؟» — نبودِ پروفایل یعنی `true`. */
+    public function transCommissionFlagForSupplier(?int $supplierUserId): bool
+    {
+        if ($supplierUserId === null) {
+            return true;
+        }
+
+        return (bool) (SupplierProfile::where(SupplierProfile::USER_ID, $supplierUserId)
+            ->value(SupplierProfile::TRANS_COMMISSION) ?? true);
+    }
+
     /**
      * مالیاتِ متعلق به کرایه — `0` وقتی قراردادِ تأمین‌کننده `−VAT` است.
      *
@@ -511,12 +630,18 @@ class SettlementCalculatorService
         bool $transCommission,
         bool $transVat,
         bool $hasCommissionedEliteYAR,
+        ?float $tcPercentage = null,
+        ?float $supplierOp = null,
+        ?float $owAppliedPercent = null,
     ): array {
-        $rates = $this->getCommissionRatesForTc($badgeCode, self::tcPercentage());
+        // %TC قراردادیِ تأمین‌کننده (پرسشِ ۴)، PTS از قیمتِ خودِ تأمین‌کننده (پرسشِ ۶) و
+        // %OW فقط با الیت‌یار (پرسشِ ۷) — همان ورودی‌هایی که ثبتِ سفارش اسنپ‌شات می‌کند.
+        $rates = $this->getCommissionRatesForTc($badgeCode, $tcPercentage ?? self::tcPercentage());
+        $owApplied = $owAppliedPercent ?? $rates['ow_final_rate'];
 
-        $poo = $this->calculatePOO($trans, $op, $weight, $rates['ow_final_rate'], $vatPercent, $transCommission, $transVat);
+        $poo = $this->calculatePOO($trans, $op, $weight, $owApplied, $vatPercent, $transCommission, $transVat);
         $pts = $this->calculatePTS(
-            $trans, $op, $weight,
+            $trans, $supplierOp ?? $op, $weight,
             $rates['ow_final_rate'], $rates['ssg_final_rate'], $rates['co_final_rate'],
             $vatPercent, $transCommission, $transVat
         );
