@@ -136,7 +136,9 @@ class AdminManagerLevelTest extends TestCase
             ->assertJsonPath('data.admin_level', User::ADMIN_LEVEL_AGENT);
 
         $log = Activity::forSubject($manager)->where('description', 'اطلاعات مدیر سیستم ویرایش شد.')->firstOrFail();
-        $this->assertSame(['from' => 2, 'to' => 3], $log->properties['admin_level']);
+        // MySQL 8 کلیدهای JSON را به ترتیبِ خودش (طول، بعد الفبا: «to» پیش از «from») برمی‌گرداند و
+        // MariaDB متنِ خام را؛ assertSame روی آرایه ترتیب را هم می‌سنجد و فقط روی CI قرمز می‌شد.
+        $this->assertEquals(['from' => 2, 'to' => 3], $log->properties['admin_level']);
 
         // سطح در هر درخواست از ستون خوانده می‌شود: تنزل بدونِ خروج و ورودِ دوباره اثر دارد.
         $this->actingAs($manager->refresh(), 'sanctum');
