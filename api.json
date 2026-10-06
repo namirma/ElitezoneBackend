@@ -64921,6 +64921,13 @@
                                         "null"
                                     ]
                                 },
+                                "buyer_discount_percent": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "description": "\u062f\u0631\u0635\u062f\u0650 \u00ab\u062a\u062e\u0641\u06cc\u0641\u00bb \u0628\u0631\u0627\u06cc \u06a9\u0627\u0631\u062a\u0650 \u0645\u062d\u0635\u0648\u0644 (\u0641\u0642\u0637 \u06af\u0631\u0648\u0647\u0650 \u062f\u0627\u0631\u0627\u06cc \u0627\u0644\u06cc\u062a\u200c\u06cc\u0627\u0631\u060c \u0648\u06af\u0631\u0646\u0647 \"0\") \u2014\n\u0645\u062f\u06cc\u0631\u06cc\u062a\u060c \u062f\u0648\u0631\u0650 \u067e\u0646\u062c\u0645\u060c \u067e\u0631\u0633\u0634\u0650 \u06f1. \u0642\u06cc\u0645\u062a\u0650 \u067e\u0627\u06cc\u0647 \u062e\u0648\u062f\u0634 \u062a\u062e\u0641\u06cc\u0641 \u0646\u062e\u0648\u0631\u062f\u0647\u061b \u062a\u062e\u0641\u06cc\u0641 \u0633\u0637\u0631\u0650 \u062c\u062f\u0627\u06cc \u0633\u0641\u0627\u0631\u0634 \u0627\u0633\u062a."
+                                },
                                 "pricing_debug": {
                                     "type": "string"
                                 }
@@ -64939,6 +64946,7 @@
                                 "role_special_price",
                                 "role_general_price",
                                 "role_golden_figure",
+                                "buyer_discount_percent",
                                 "pricing_debug"
                             ]
                         }

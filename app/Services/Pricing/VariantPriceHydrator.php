@@ -62,6 +62,8 @@ class VariantPriceHydrator
             $price->vat_rate = $dto->vatRate;
             $price->vat_amount = $dto->vatAmount;
             $price->price_with_vat = $dto->priceWithVat;
+            // «تخفیف x٪» روی صفحه‌ی محصول — همان عددِ کارتِ فهرست (`FilterProductsAction`).
+            $price->buyer_discount_percent = $dto->buyerDiscountPercent;
 
             if ($debug) {
                 $price->pricing_debug = $dto->toArray();

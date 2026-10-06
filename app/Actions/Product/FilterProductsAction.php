@@ -161,6 +161,8 @@ class FilterProductsAction
             $price->role_special_price = $calcDto->payablePrice;
             $price->role_general_price = $calcDto->listPrice;
             $price->role_golden_figure = max(0.0, $calcDto->listPrice - $calcDto->payablePrice);
+            // «تخفیف x٪» روی کارتِ محصول — فقط گروهِ دارای الیت‌یار (مدیریت، دورِ پنجم، پرسشِ ۱).
+            $price->buyer_discount_percent = $calcDto->buyerDiscountPercent;
 
             if ($filters->debugPrices) {
                 $price->pricing_debug = $calcDto->toArray();

@@ -28,6 +28,7 @@ use Illuminate\Support\Facades\Log;
  * @property float|null $vat_rate
  * @property numeric-string|float|null $vat_amount
  * @property numeric-string|float|null $price_with_vat
+ * @property float|null $buyer_discount_percent درصدِ «تخفیف» کارتِ محصول (دورِ پنجم، پرسشِ ۱) — ستون نیست
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read Factory $factory

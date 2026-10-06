@@ -89,6 +89,9 @@ class ProductVariantResource extends BaseJsonResource
                         'role_special_price' => isset($price->role_special_price) ? (string) $price->role_special_price : null,
                         'role_general_price' => isset($price->role_general_price) ? (string) $price->role_general_price : null,
                         'role_golden_figure' => isset($price->role_golden_figure) ? (string) $price->role_golden_figure : null,
+                        // درصدِ «تخفیف» برای کارتِ محصول (فقط گروهِ دارای الیت‌یار، وگرنه "0") —
+                        // مدیریت، دورِ پنجم، پرسشِ ۱. قیمتِ پایه خودش تخفیف نخورده؛ تخفیف سطرِ جدای سفارش است.
+                        'buyer_discount_percent' => isset($price->buyer_discount_percent) ? (string) $price->buyer_discount_percent : null,
                     ];
 
                     if ($withDebug && isset($price->pricing_debug) && is_array($price->pricing_debug)) {
