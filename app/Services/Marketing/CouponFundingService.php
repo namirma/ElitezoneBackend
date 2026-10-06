@@ -198,6 +198,14 @@ class CouponFundingService
                     default => $this->walletEngine->debitCoupon($order, $amount, FinancialCodes::STATUS_AVAILABLE, $description),
                 };
             } catch (InsufficientBalanceException) {
+                // سهمِ شرکت از «کیف پول کوپن‌های تخفیف» است (مدیریت، دورِ پنجم)؛ اگر بینِ ثبت و
+                // پرداخت خالی شد، پیام همان کیف پول را بگوید، نه «کیف پول شرکت سازه».
+                if ($funder->isCompany()) {
+                    throw new BusinessException(__('coupons.coupon_wallet_empty', [
+                        'amount' => number_format($amount),
+                    ]), 422);
+                }
+
                 // پیامِ موتور «موجودی کیف پول کافی نیست» است و `CheckoutController` آن
                 // را به خریدار نشان می‌دهد — در حالی که کیف پولِ **تأمین‌کننده** خالی است.
                 throw new BusinessException(__('coupons.funder_wallet_insufficient', [

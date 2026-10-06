@@ -3,6 +3,7 @@
 namespace Tests\Feature\Financial;
 
 use App\Actions\Financial\ProcessPreScalePaymentAction;
+use App\Exceptions\BusinessException;
 use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -129,6 +130,29 @@ class CouponBalanceGuardTest extends TestCase
         $this->action->execute($order);
 
         return (float) $order->fresh()->{Order::PAYMENT_OF_OWNER};
+    }
+
+    /**
+     * کیف پولِ کوپن‌ها بینِ ثبت و پرداخت خالی شد: پیام باید همان کیف پول را بگوید، نه «کیف پول
+     * شرکت سازه» (سهمِ شرکت دیگر از آن برداشته نمی‌شود — مدیریت، دورِ پنجم) — و هیچ پولی جابه‌جا نشود.
+     */
+    #[Test]
+    public function an_empty_coupon_wallet_at_payment_names_the_coupon_wallet_and_moves_no_money(): void
+    {
+        $poo = $this->discoverPoo();
+        [$order, $buyerWallet] = $this->makePayableOrder(discount: self::DISCOUNT, buyerBalance: $poo);
+        Wallet::where(Wallet::USER_ID, $this->couponWallet->id)->update([Wallet::BALANCE => 0]);
+
+        try {
+            $this->action->execute($order);
+            $this->fail('پرداخت باید رد شود.');
+        } catch (BusinessException $e) {
+            $this->assertStringContainsString('کیف پول کوپن‌های تخفیف', $e->getMessage());
+            $this->assertStringNotContainsString('شرکت سازه', $e->getMessage());
+        }
+
+        $this->assertNotSame(Order::PAYMENT_PAID, $order->fresh()->payment_status);
+        $this->assertEqualsWithDelta($poo, (float) $buyerWallet->fresh()->balance, 0.0, 'هیچ ریالی از خریدار کم نشود.');
     }
 
     #[Test]
