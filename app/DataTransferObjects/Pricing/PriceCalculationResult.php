@@ -23,6 +23,8 @@ readonly class PriceCalculationResult
         /** قیمتِ ثبت‌شده‌ی تأمین‌کننده (پیش از فیلترهای نقش) — مبنای PTS. پرسشِ ۶ مدیریت. */
         public readonly float $supplierPrice = 0.0,
         public readonly bool $priceFloorApplied = false,
+        /** درصدِ «تخفیف» روی کارتِ محصول برای خریدارِ دارای الیت‌یار (مدیریت، دورِ پنجم، پرسشِ ۱). */
+        public readonly float $buyerDiscountPercent = 0.0,
     ) {}
 
     /**
@@ -48,6 +50,9 @@ readonly class PriceCalculationResult
             'variant_discount_amount' => (string) $this->variantDiscountAmount,
             'supplier_price' => (string) $this->supplierPrice,
             'price_floor_applied' => $this->priceFloorApplied,
+            // کارتِ محصول: «تخفیف» = این درصد از قیمتِ با مالیات؛ مبلغِ قطعی در صفحه‌ی سفارش.
+            'buyer_discount_percent' => (string) $this->buyerDiscountPercent,
+            'price_after_buyer_discount' => (string) round($this->priceWithVat * (1 - $this->buyerDiscountPercent / 100), 4),
             'breakdown' => $this->breakdown,
         ];
     }

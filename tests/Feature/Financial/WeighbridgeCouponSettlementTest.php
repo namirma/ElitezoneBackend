@@ -25,6 +25,7 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Concerns\FundsCouponWallet;
 use Tests\TestCase;
 
 /**
@@ -42,6 +43,7 @@ use Tests\TestCase;
 class WeighbridgeCouponSettlementTest extends TestCase
 {
     use DatabaseTransactions;
+    use FundsCouponWallet;
 
     private const OP = 100_000;
 
@@ -49,7 +51,11 @@ class WeighbridgeCouponSettlementTest extends TestCase
 
     private const BUYER_FUNDS = 300_000_000;
 
+    private const COUPON_WALLET = 100_000_000.0;
+
     private User $system;
+
+    private User $couponWallet;
 
     private User $buyer;
 
@@ -65,6 +71,8 @@ class WeighbridgeCouponSettlementTest extends TestCase
         $this->system = User::factory()->create();
         config(['financial.system_user_id' => $this->system->id, 'financial.vat_user_id' => $this->system->id]);
         Wallet::create([Wallet::USER_ID => $this->system->id, Wallet::BALANCE => 0, Wallet::BALANCE_HOLD => 0]);
+        // سهمِ شرکت از کوپن از «کیف پول کوپن‌های تخفیف» (مدیریت، دورِ پنجم).
+        $this->couponWallet = $this->fundCouponWallet(self::COUPON_WALLET);
 
         $this->buyer = User::factory()->create();
         $this->ledger($this->buyer, self::BUYER_FUNDS, WalletTransaction::TYPE_DEPOSIT);

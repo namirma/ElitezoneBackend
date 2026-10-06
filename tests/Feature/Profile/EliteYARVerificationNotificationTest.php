@@ -122,6 +122,85 @@ class EliteYARVerificationNotificationTest extends TestCase
         Bus::assertNotDispatched(SendSmsJob::class);
     }
 
+    // ── خبرِ هولد به کارفرما (مدیریت، دورِ پنجم، پرسشِ ۶) ──────────────────────
+
+    /** @return list<array{0: string, 1: ?string}> [موبایل، کلیدِ قالب] */
+    private function sentSms(): array
+    {
+        $sent = [];
+        Bus::assertDispatched(SendSmsJob::class, function (SendSmsJob $job) use (&$sent) {
+            $sent[] = (fn () => [$this->mobile, $this->templateKey])->call($job);
+
+            return true;
+        });
+
+        return $sent;
+    }
+
+    private function employerOf(User $eliteYAR, string $mobile, string $status): User
+    {
+        $employer = User::factory()->create([User::MOBILE => $mobile]);
+        $employer->addRole(Role::firstOrCreate(['name' => 'employer'], ['display_name' => 'کارفرما']));
+        $employer->technicalEliteYARs()->attach($eliteYAR->id, ['status' => $status]);
+
+        return $employer;
+    }
+
+    #[Test]
+    public function a_hold_tells_each_approved_employer_and_nobody_else(): void
+    {
+        Http::fake(['*get-certificate*' => Http::response(['message' => false, 'status' => 200], 200)]);
+        $user = $this->eliteYAR([User::MOBILE => '09121234511', User::IS_SAZE90_USER => true]);
+        $approved = $this->employerOf($user, '09121234512', 'approved');
+        $pending = $this->employerOf($user, '09121234513', 'pending');
+        Sanctum::actingAs($user);
+
+        $this->getJson('/api/profile/badge')->assertOk()->assertJsonPath('data.is_saze90_user', false);
+
+        $this->assertEqualsCanonicalizing([
+            ['09121234511', 'elite_yar_unverified'],
+            ['09121234512', 'elite_yar_hold_employer'],
+        ], $this->sentSms());
+        $notice = UserNotification::where(UserNotification::USER_ID, $approved->id)->sole();
+        $this->assertStringContainsString('الیت یار جدید معرفی کنید', (string) $notice->{UserNotification::BODY});
+        $this->assertSame(0, UserNotification::where(UserNotification::USER_ID, $pending->id)->count());
+    }
+
+    #[Test]
+    public function lifting_the_hold_tells_the_approved_employers_too(): void
+    {
+        Http::fake(['*get-certificate*' => Http::response(['message' => 'serial', 'status' => 200], 200)]);
+        $user = $this->eliteYAR([User::MOBILE => '09121234514']);
+        $approved = $this->employerOf($user, '09121234515', 'approved');
+        Sanctum::actingAs($user);
+
+        $this->getJson('/api/profile/badge')->assertOk()->assertJsonPath('data.is_saze90_user', true);
+
+        $this->assertEqualsCanonicalizing([
+            ['09121234514', 'elite_yar_verified'],
+            ['09121234515', 'elite_yar_restored_employer'],
+        ], $this->sentSms());
+        $this->assertSame(1, UserNotification::where(UserNotification::USER_ID, $approved->id)->count());
+    }
+
+    #[Test]
+    public function a_legacy_engineer_elite_yar_is_put_on_hold_with_the_same_messages(): void
+    {
+        // الیت‌یارِ قدیمی با نقشِ engineer (بی‌نقشِ elite_yar) هم هولد می‌شود — `User::isEliteYAR()`.
+        Http::fake(['*get-certificate*' => Http::response(['message' => false, 'status' => 200], 200)]);
+        $user = User::factory()->create([User::MOBILE => '09121234516', User::IS_SAZE90_USER => true]);
+        $user->addRole(Role::firstOrCreate(['name' => 'engineer'], ['display_name' => 'مهندس']));
+        $this->employerOf($user, '09121234517', 'approved');
+        Sanctum::actingAs($user);
+
+        $this->getJson('/api/profile/badge')->assertOk();
+
+        $this->assertEqualsCanonicalizing([
+            ['09121234516', 'elite_yar_unverified'],
+            ['09121234517', 'elite_yar_hold_employer'],
+        ], $this->sentSms());
+    }
+
     // ── تأییدِ دستیِ ادمین ───────────────────────────────────────────────────
 
     private function admin(): User

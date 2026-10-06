@@ -77,10 +77,7 @@
             <td colspan="3" class="lbl text-right font-bold">شماره سفارش</td>
             <td colspan="8" class="val text-right">{{ enToFa($order->order_number ?? '-') }}</td>
         </tr>
-        <tr>
-            <td colspan="3" class="lbl text-right font-bold">مبلغ رزرو (ریال)</td>
-            <td colspan="8" class="val text-right amount-cell">{{ enToFa(number_format($order->payment_to_reserve ?? $totals['final'] ?? 0)) }}</td>
-        </tr>
+        {{-- «مبلغ رزرو» سپرده‌ی خریدار است و تأمین‌کننده آن را نمی‌بیند (مدیریت، دورِ پنجم، پرسشِ ۷). --}}
         <tr>
             <td colspan="3" class="lbl text-right font-bold">تاریخ لغو</td>
             <td colspan="8" class="val text-right">{{ enToFa($date_shamsi ?? '-') }}</td>

@@ -56,11 +56,14 @@
             <td class="amount-cell font-bold" style="font-size: 8.5pt;">{{ enToFa(number_format($totals['goods_total'] ?? ($totals['final'] ?? 0))) }}</td>
             <td class="text-center font-bold">-</td>
         </tr>
+        {{-- سطرِ کارمزد فقط در اسنادِ تأمین‌کننده مقدار دارد (مدیریت، دورِ پنجم، پرسشِ ۷). --}}
         {{-- ===== ORDER-LEVEL ROWS (پرسشِ ۲ مدیریت، ۱۴۰۵/۰۷/۱۳): کرایه، تخفیف ویژه‌ی خریدار، کوپن — فقط وقتی غیرصفرند ===== --}}
         @foreach ([
-            ['label' => 'هزینه حمل (مالیات آن در ستون مالیات لحاظ شده):', 'value' => (float) ($totals['shipping'] ?? 0), 'sign' => '+'],
+            ['label' => $totals['shipping_label'] ?? 'هزینه حمل (مالیات آن در ستون مالیات لحاظ شده):', 'value' => (float) ($totals['shipping'] ?? 0), 'sign' => '+'],
             ['label' => 'تخفیف ویژه‌ی خریدار (سهم خریدار از کارمزد):', 'value' => (float) ($totals['buyer_discount'] ?? 0), 'sign' => '−'],
+            ['label' => 'تخفیف ویژه الیت یار:', 'value' => (float) ($totals['elite_yar_discount'] ?? 0), 'sign' => '−'],
             ['label' => 'تخفیف کوپن:', 'value' => (float) ($totals['coupon_discount'] ?? 0), 'sign' => '−'],
+            ['label' => $totals['commission_label'] ?? '', 'value' => (float) ($totals['commission'] ?? 0), 'sign' => '−'],
         ] as $row)
             @if ($row['value'] > 0)
                 <tr>

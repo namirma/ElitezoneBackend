@@ -78,6 +78,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Coupon Wallet User ID («کیف پول کوپن‌های تخفیف», WCPN)
+    |--------------------------------------------------------------------------
+    |
+    | Management round 5 (1405/07/14): the company's share of every coupon is paid
+    | ONLY from this wallet, which the company funds from BackOffice. Optional:
+    | when unset, `App\Services\Financial\CouponWallet` finds the reserved account
+    | by mobile 0990000003 (created by migration 2026_10_06_100000).
+    |
+    */
+    'coupon_wallet_user_id' => env('FINANCIAL_COUPON_WALLET_USER_ID'),
+
+    /*
+    |--------------------------------------------------------------------------
     | EliteYAR lifetime commission cap multiplier
     |--------------------------------------------------------------------------
     |

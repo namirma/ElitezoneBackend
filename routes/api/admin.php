@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\Admin\AdminBadgeController;
 use App\Http\Controllers\Api\Admin\AdminBannerController;
 use App\Http\Controllers\Api\Admin\AdminCouponController;
 use App\Http\Controllers\Api\Admin\AdminCouponFundingController;
+use App\Http\Controllers\Api\Admin\AdminCouponWalletController;
 use App\Http\Controllers\Api\Admin\AdminCustomerTypeController;
 use App\Http\Controllers\Api\Admin\AdminDashboardController;
 use App\Http\Controllers\Api\Admin\AdminDebtController;
@@ -653,6 +654,14 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
     Route::controller(AdminPriceSettingController::class)->prefix('price-settings')->middleware('admin.permission:manage-financial')->group(function () {
         Route::get('/', 'index');
         Route::put('/', 'update')->middleware('admin.level:1');
+    });
+
+    // «کیف پول کوپن‌های تخفیف» (مدیریت، دورِ پنجم، ۱۴۰۵/۰۷/۱۴) — تنها منبعِ سهمِ شرکت از کوپن.
+    // جابه‌جاییِ پول بینِ کیف‌پول‌های پلتفرم ⇒ سطح ۱، مثلِ پارامترهای مالی.
+    Route::controller(AdminCouponWalletController::class)->prefix('coupon-wallet')->middleware('admin.permission:manage-financial')->group(function () {
+        Route::get('/', 'show');
+        Route::post('/fund', 'fund')->middleware('admin.level:1');
+        Route::post('/defund', 'defund')->middleware('admin.level:1');
     });
 
     // Notifications — اعلان‌های درون‌برنامه‌ای (لیست + ارسال + آمار)

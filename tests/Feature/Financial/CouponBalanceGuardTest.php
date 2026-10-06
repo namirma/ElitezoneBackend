@@ -11,6 +11,7 @@ use App\Models\Wallet;
 use App\Services\Invoice\InvoiceGenerator;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Concerns\FundsCouponWallet;
 use Tests\TestCase;
 
 /**
@@ -24,12 +25,15 @@ use Tests\TestCase;
 class CouponBalanceGuardTest extends TestCase
 {
     use DatabaseTransactions;
+    use FundsCouponWallet;
 
     private const DISCOUNT = 500_000.0;
 
     private ProcessPreScalePaymentAction $action;
 
     private User $system;
+
+    private User $couponWallet;
 
     protected function setUp(): void
     {
@@ -49,6 +53,8 @@ class CouponBalanceGuardTest extends TestCase
         ]);
 
         $this->walletFor($this->system, 500_000_000);
+        // سهمِ شرکت از کوپن از «کیف پول کوپن‌های تخفیف» (مدیریت، دورِ پنجم).
+        $this->couponWallet = $this->fundCouponWallet(500_000_000);
     }
 
     private function walletFor(User $user, float $balance): Wallet
@@ -148,7 +154,7 @@ class CouponBalanceGuardTest extends TestCase
     }
 
     #[Test]
-    public function the_coupon_discount_is_still_an_explicit_saze_expense(): void
+    public function the_coupon_discount_is_an_explicit_coupon_wallet_expense(): void
     {
         $poo = $this->discoverPoo();
 
@@ -158,18 +164,23 @@ class CouponBalanceGuardTest extends TestCase
         );
 
         $systemBefore = (float) Wallet::where(Wallet::USER_ID, $this->system->id)->value(Wallet::BALANCE);
+        $couponBefore = (float) Wallet::where(Wallet::USER_ID, $this->couponWallet->id)->value(Wallet::BALANCE);
 
         $this->action->execute($order);
 
         $fresh = $order->fresh();
 
-        // WSSG = +POO − تخفیف − PTS — دفتر متوازن می‌ماند و تخفیف از جیب سازه است.
+        // WSSG = +POO − PTS؛ تخفیف از «کیف پول کوپن‌های تخفیف» (مدیریت، دورِ پنجم) — دفتر متوازن می‌ماند.
         $this->assertEqualsWithDelta(
             $systemBefore
                 + (float) $fresh->{Order::PAYMENT_OF_OWNER}
-                - self::DISCOUNT
                 - (float) $fresh->{Order::PAYMENT_TO_SUPPLIER},
             (float) Wallet::where(Wallet::USER_ID, $this->system->id)->value(Wallet::BALANCE),
+            1.0,
+        );
+        $this->assertEqualsWithDelta(
+            $couponBefore - self::DISCOUNT,
+            (float) Wallet::where(Wallet::USER_ID, $this->couponWallet->id)->value(Wallet::BALANCE),
             1.0,
         );
     }

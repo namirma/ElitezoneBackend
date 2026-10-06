@@ -178,7 +178,7 @@ class AdminCatalogTest extends TestCase
      * −۵٪ همیشه زیرِ کف می‌رفت و در پایپ‌لاین به کف برمی‌گشت — پس همین‌جا رد می‌شود.
      */
     #[Test]
-    public function a_percentage_discount_filter_deeper_than_the_commission_is_rejected(): void
+    public function a_negative_price_filter_is_rejected(): void
     {
         Sanctum::actingAs($this->admin());
         $u = $this->uid();
@@ -186,20 +186,19 @@ class AdminCatalogTest extends TestCase
             'name' => "نوع {$u}", 'code' => "ft-{$u}", 'apply_on' => 'special',
         ])->assertCreated()->json('data.id');
 
-        $this->postJson('/api/admin/price-filters', [
-            'price_filter_type_id' => $type, 'name' => "فیلتر {$u}", 'code' => "fd-{$u}",
-            'amount' => -5, 'is_percentage' => true,
-        ])->assertStatus(422)->assertJsonValidationErrors(['amount']);
+        // مدیریت، دورِ پنجم (۱۴۰۵/۰۷/۱۴): جز تخفیفِ الیت‌یاری و کوپن هیچ تخفیفی نیست —
+        // فیلترِ منفی (درصدی یا مطلق، هر قدر کوچک) پذیرفته نمی‌شود.
+        foreach ([[-5, true], [-0.5, true], [-1000, false]] as $i => [$amount, $isPercent]) {
+            $this->postJson('/api/admin/price-filters', [
+                'price_filter_type_id' => $type, 'name' => "فیلتر {$u}-{$i}", 'code' => "fd-{$u}-{$i}",
+                'amount' => $amount, 'is_percentage' => $isPercent,
+            ])->assertStatus(422)->assertJsonValidationErrors(['amount']);
+        }
 
-        // تخفیفِ زیرِ سقف، افزایشِ درصدی و تخفیفِ مطلق همچنان پذیرفته می‌شوند
-        // (مطلق به قیمت وابسته است و در پایپ‌لاین به کف برمی‌گردد).
+        // افزایشِ قیمت (فیلترِ مثبت) همچنان پذیرفته می‌شود.
         $this->postJson('/api/admin/price-filters', [
-            'price_filter_type_id' => $type, 'name' => "فیلتر {$u}-ok", 'code' => "fok-{$u}",
-            'amount' => -0.5, 'is_percentage' => true,
-        ])->assertCreated();
-        $this->postJson('/api/admin/price-filters', [
-            'price_filter_type_id' => $type, 'name' => "فیلتر {$u}-abs", 'code' => "fabs-{$u}",
-            'amount' => -1000, 'is_percentage' => false,
+            'price_filter_type_id' => $type, 'name' => "فیلتر {$u}-up", 'code' => "fup-{$u}",
+            'amount' => 2, 'is_percentage' => true,
         ])->assertCreated();
     }
 

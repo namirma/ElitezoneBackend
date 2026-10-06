@@ -12,6 +12,7 @@ use App\Models\CouponFunder;
 use App\Models\CouponFundingLeg;
 use App\Models\Order;
 use App\Models\Wallet;
+use App\Services\Financial\CouponWallet;
 use App\Services\Financial\WalletTransactionEngine;
 use Illuminate\Support\Collection;
 
@@ -100,14 +101,15 @@ class CouponFundingService
             ]), 422);
         }
 
-        $fromFloat = $amount - $poolShare;
-        if ($fromFloat <= 0) {
-            return;
-        }
+        // مدیریت، دورِ پنجم (۱۴۰۵/۰۷/۱۴): سهمِ شرکت از کوپن **فقط** از «کیف پول کوپن‌های تخفیف»؛
+        // «مادام که این کیف پول دارای منابع است» — نه از WSSG و نه از استخرِ همین سفارش.
+        // `$poolShare` دیگر نقشی ندارد و فقط برای سازگاریِ امضای `plan()` مانده است.
+        unset($poolShare);
+        $wallet = app(CouponWallet::class);
+        $wallet->requireUserId();
 
-        $systemBalance = (float) (Wallet::where(Wallet::USER_ID, (int) config('financial.system_user_id'))->value(Wallet::BALANCE) ?? 0);
-        if ($systemBalance < $fromFloat) {
-            throw new BusinessException(__('coupons.company_unfunded', [
+        if ($wallet->balance() < $amount) {
+            throw new BusinessException(__('coupons.coupon_wallet_empty', [
                 'amount' => number_format($amount),
             ]), 422);
         }
@@ -193,7 +195,7 @@ class CouponFundingService
                         $order, $amount, FinancialCodes::STATUS_AVAILABLE,
                         (int) $funder->{CouponFunder::FUNDER_USER_ID}, $description
                     ),
-                    default => $this->walletEngine->debitSystem($order, $amount, FinancialCodes::STATUS_AVAILABLE, $description),
+                    default => $this->walletEngine->debitCoupon($order, $amount, FinancialCodes::STATUS_AVAILABLE, $description),
                 };
             } catch (InsufficientBalanceException) {
                 // پیامِ موتور «موجودی کیف پول کافی نیست» است و `CheckoutController` آن
@@ -213,6 +215,7 @@ class CouponFundingService
                 CouponFundingLeg::FUNDER_USER_ID => $funder->isCompany() ? null : (int) $funder->{CouponFunder::FUNDER_USER_ID},
                 CouponFundingLeg::SHARE_PERCENT => $funder->{CouponFunder::SHARE_PERCENT},
                 CouponFundingLeg::AMOUNT => $amount,
+                CouponFundingLeg::WALLET_CODE => $funder->isCompany() ? FinancialCodes::WALLET_COUPON : null,
             ]);
         }
     }
@@ -247,7 +250,9 @@ class CouponFundingService
                 CouponFunder::TYPE_ELITE_YAR => $this->walletEngine->creditEliteYAR(
                     $order, $amount, FinancialCodes::STATUS_AVAILABLE, (int) $leg->{CouponFundingLeg::FUNDER_USER_ID}, $description
                 ),
-                default => $this->walletEngine->creditSystem($order, $amount, FinancialCodes::STATUS_AVAILABLE, $description),
+                default => $leg->isFromCouponWallet()
+                    ? $this->walletEngine->creditCoupon($order, $amount, FinancialCodes::STATUS_AVAILABLE, $description)
+                    : $this->walletEngine->creditSystem($order, $amount, FinancialCodes::STATUS_AVAILABLE, $description),
             };
 
             $leg->forceFill([CouponFundingLeg::REVERSED_AT => now()])->save();
@@ -323,7 +328,17 @@ class CouponFundingService
     public function canFundIncrease(array $shares, array $incoming = []): bool
     {
         foreach ($shares as $share) {
-            if ($share['delta'] <= 0 || $share['user_id'] === null) {
+            if ($share['delta'] <= 0) {
+                continue;
+            }
+
+            // سهمِ شرکت از کیف پولِ کوپن‌ها (مدیریت، دورِ پنجم): تخفیفِ اضافه فقط تا موجودیِ آن.
+            if ($share['user_id'] === null) {
+                if ($share['leg'] instanceof CouponFundingLeg && $share['leg']->isFromCouponWallet()
+                    && app(CouponWallet::class)->balance() < $share['delta']) {
+                    return false;
+                }
+
                 continue;
             }
 
@@ -357,13 +372,17 @@ class CouponFundingService
                 match ($type) {
                     CouponFunder::TYPE_SUPPLIER => $this->walletEngine->creditSupplier($order, $amount, FinancialCodes::STATUS_AVAILABLE, (int) $userId, $description),
                     CouponFunder::TYPE_ELITE_YAR => $this->walletEngine->creditEliteYAR($order, $amount, FinancialCodes::STATUS_AVAILABLE, (int) $userId, $description),
-                    default => $this->walletEngine->creditSystem($order, $amount, FinancialCodes::STATUS_AVAILABLE, $description),
+                    default => ($leg instanceof CouponFundingLeg && $leg->isFromCouponWallet())
+                        ? $this->walletEngine->creditCoupon($order, $amount, FinancialCodes::STATUS_AVAILABLE, $description)
+                        : $this->walletEngine->creditSystem($order, $amount, FinancialCodes::STATUS_AVAILABLE, $description),
                 };
             } else {
                 match ($type) {
                     CouponFunder::TYPE_SUPPLIER => $this->walletEngine->debitSupplier($order, $amount, FinancialCodes::STATUS_AVAILABLE, (int) $userId, $description),
                     CouponFunder::TYPE_ELITE_YAR => $this->walletEngine->debitEliteYAR($order, $amount, FinancialCodes::STATUS_AVAILABLE, (int) $userId, $description),
-                    default => $this->walletEngine->debitSystem($order, $amount, FinancialCodes::STATUS_AVAILABLE, $description),
+                    default => ($leg instanceof CouponFundingLeg && $leg->isFromCouponWallet())
+                        ? $this->walletEngine->debitCoupon($order, $amount, FinancialCodes::STATUS_AVAILABLE, $description)
+                        : $this->walletEngine->debitSystem($order, $amount, FinancialCodes::STATUS_AVAILABLE, $description),
                 };
             }
 

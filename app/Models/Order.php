@@ -209,6 +209,12 @@ class Order extends Model
      */
     public const BUYER_DISCOUNT_AMOUNT = 'buyer_discount_amount';
 
+    /**
+     * «تخفیف ویژه الیت یار» — وقتی الیت‌یارِ تأییدشده برای خودش می‌خرد، سهمِ الیت‌یار به‌جای کارمزد
+     * به‌صورتِ تخفیف روی همان خرید (مدیریت، دورِ پنجم، پرسشِ ۱). سطرِ جدا کنارِ تخفیفِ خریدار.
+     */
+    public const ELITE_YAR_DISCOUNT_AMOUNT = 'elite_yar_discount_amount';
+
     /** توضیحِ آزادِ بک‌آفیس روی سفارش (پرسشِ ۱۴)؛ خریدار و تأمین‌کننده فقط وقتی پر است می‌بینند. */
     public const ADMIN_NOTE = 'admin_note';
 
@@ -398,6 +404,7 @@ class Order extends Model
         self::OFFICIAL_PRICE => 'decimal:4',
         self::SUPPLIER_PRICE => 'decimal:4',
         self::BUYER_DISCOUNT_AMOUNT => 'decimal:0',
+        self::ELITE_YAR_DISCOUNT_AMOUNT => 'decimal:0',
         self::WEIGHT_BEFORE_SCALE => 'decimal:3',
         self::COMMISSION_RATE => 'decimal:2',
         self::OWNER_DISCOUNT_RATE => 'decimal:2',

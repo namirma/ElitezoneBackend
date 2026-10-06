@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Financial;
 
 use App\Actions\Order\RefundOrderToWalletAction;
+use App\Constants\FinancialCodes;
 use App\Exceptions\BusinessException;
 use App\Jobs\Notification\SendSmsJob;
 use App\Models\Address;
@@ -33,6 +34,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Concerns\FundsCouponWallet;
 use Tests\Concerns\GrantsAdminPermissions;
 use Tests\Feature\Pricing\CreatesPricingFixtures;
 use Tests\TestCase;
@@ -48,6 +50,7 @@ class CouponFundingTest extends TestCase
 {
     use CreatesPricingFixtures;
     use DatabaseTransactions;
+    use FundsCouponWallet;
     use GrantsAdminPermissions;
 
     private const SUPPLIER_WALLET = 10_000_000.0;
@@ -62,6 +65,9 @@ class CouponFundingTest extends TestCase
     private User $supplier;
 
     private User $system;
+
+    /** «کیف پول کوپن‌های تخفیف» — سهمِ شرکت از کوپن فقط از این‌جا (مدیریت، دورِ پنجم). */
+    private User $couponWallet;
 
     private $factory;
 
@@ -120,6 +126,8 @@ class CouponFundingTest extends TestCase
             'financial.vat_user_id' => $this->system->id,
         ]);
         Wallet::create([Wallet::USER_ID => $this->system->id, Wallet::BALANCE => self::SYSTEM_WALLET, Wallet::BALANCE_HOLD => 0]);
+
+        $this->couponWallet = $this->fundCouponWallet(self::SYSTEM_WALLET);
     }
 
     // ── fixtures ────────────────────────────────────────────────────────────
@@ -252,8 +260,13 @@ class CouponFundingTest extends TestCase
         $this->assertEqualsWithDelta(self::SYSTEM_WALLET - $poo + self::SPLIT_DISCOUNT, $this->balance($this->buyer), 1.0);
         // تأمین‌کننده: PTS گرفته و نصفِ تخفیف داده.
         $this->assertEqualsWithDelta(self::SUPPLIER_WALLET + $pts - self::SPLIT_DISCOUNT / 2, $this->balance($this->supplier), 1.0);
-        // سازه: POO گرفته، PTS داده، نصفِ تخفیف داده.
-        $this->assertEqualsWithDelta(self::SYSTEM_WALLET + $poo - $pts - self::SPLIT_DISCOUNT / 2, $this->balance($this->system), 1.0);
+        // سازه: POO گرفته و PTS داده؛ سهمِ شرکت از تخفیف از کیف پولِ کوپن رفته، نه از سازه.
+        $this->assertEqualsWithDelta(self::SYSTEM_WALLET + $poo - $pts, $this->balance($this->system), 1.0);
+        $this->assertEqualsWithDelta(self::SYSTEM_WALLET - self::SPLIT_DISCOUNT / 2, $this->balance($this->couponWallet), 0.0);
+        $this->assertSame(
+            FinancialCodes::WALLET_COUPON,
+            $legs->firstWhere(CouponFundingLeg::FUNDER_TYPE, CouponFunder::TYPE_COMPANY)->{CouponFundingLeg::WALLET_CODE}
+        );
 
         // لِگِ تأمین‌کننده در دفترِ کیف پولش با شرحِ تأمین ثبت شده.
         $supplierWalletId = Wallet::where(Wallet::USER_ID, $this->supplier->id)->value('id');
@@ -284,6 +297,7 @@ class CouponFundingTest extends TestCase
         $this->assertEqualsWithDelta(self::SYSTEM_WALLET, $this->balance($this->buyer), 1.0);
         $this->assertEqualsWithDelta(self::SUPPLIER_WALLET, $this->balance($this->supplier), 1.0);
         $this->assertEqualsWithDelta(self::SYSTEM_WALLET, $this->balance($this->system), 1.0);
+        $this->assertEqualsWithDelta(self::SYSTEM_WALLET, $this->balance($this->couponWallet), 0.0, 'سهمِ شرکت به کیف پولِ کوپن برمی‌گردد.');
         $this->assertSame(
             0,
             CouponFundingLeg::where(CouponFundingLeg::ORDER_ID, $order->id)->whereNull(CouponFundingLeg::REVERSED_AT)->count()
@@ -294,11 +308,11 @@ class CouponFundingTest extends TestCase
 
     /**
      * پاسخِ مدیریت به پرسشِ ۱۰ (۱۴۰۵/۰۷/۱۳، گزینه‌ی ب): سقفِ «سهمِ شرکت از همین سفارش» برداشته
-     * شد — با آن، کوپنِ ۵٪ِ بازگشتِ مشتری عملاً غیرقابل‌استفاده بود. کوپنِ شرکتیِ بزرگ‌تر از
-     * استخرِ سفارش از **موجودیِ** کیف پولِ سازه تأمین می‌شود؛ کنترلِ هزینه با بودجه‌ی کمپین است.
+     * شد. دورِ پنجم (۱۴۰۵/۰۷/۱۴): سهمِ شرکت فقط از «کیف پول کوپن‌های تخفیف» — نه از WSSG و نه از
+     * استخرِ سفارش — «مادام که این کیف پول دارای منابع است».
      */
     #[Test]
-    public function a_company_coupon_larger_than_the_orders_company_share_is_funded_from_the_company_wallet(): void
+    public function a_company_coupon_larger_than_the_orders_company_share_is_funded_from_the_coupon_wallet(): void
     {
         // ۵ میلیون از ~۹۹ میلیون سفارش؛ سهمِ شرکت از استخرِ این سفارش چند صد هزار ریال است.
         $coupon = $this->makeCoupon(5_000_000, [[CouponFunder::TYPE_COMPANY, null, 100]]);
@@ -311,22 +325,24 @@ class CouponFundingTest extends TestCase
         $pts = (float) $order->{Order::PAYMENT_TO_SUPPLIER};
 
         $this->assertEqualsWithDelta(5_000_000.0, (float) $order->{Order::COUPON_DISCOUNT_AMOUNT}, 1.0);
-        // سازه: POO گرفته، PTS داده، ۵ میلیون تخفیف داده — بیشتر از استخرِ همین سفارش، از موجودی‌اش.
-        $this->assertEqualsWithDelta(self::SYSTEM_WALLET + $poo - $pts - 5_000_000, $this->balance($this->system), 1.0);
+        // سازه فقط POO − PTS؛ ۵ میلیون تخفیف از کیف پولِ کوپن.
+        $this->assertEqualsWithDelta(self::SYSTEM_WALLET + $poo - $pts, $this->balance($this->system), 1.0);
+        $this->assertEqualsWithDelta(self::SYSTEM_WALLET - 5_000_000, $this->balance($this->couponWallet), 0.0);
         $this->assertNotNull($coupon->fresh()->{Coupon::USED_AT}, 'کوپنِ بی‌بودجه تک‌مصرفه است.');
     }
 
     #[Test]
-    public function a_company_coupon_the_company_wallet_cannot_cover_is_refused_before_any_write(): void
+    public function a_company_coupon_the_coupon_wallet_cannot_cover_is_refused_before_any_write(): void
     {
-        Wallet::where(Wallet::USER_ID, $this->system->id)->update([Wallet::BALANCE => 0]);
+        // سازه پُر است ولی کیف پولِ کوپن خالی: سهمِ شرکت دیگر از سازه برداشته نمی‌شود.
+        Wallet::where(Wallet::USER_ID, $this->couponWallet->id)->update([Wallet::BALANCE => 1_000_000]);
         $coupon = $this->makeCoupon(5_000_000, [[CouponFunder::TYPE_COMPANY, null, 100]]);
         $this->fillCart(100, $coupon->code);
 
         $response = $this->pay();
 
         $response->assertStatus(422);
-        $this->assertStringContainsString('کیف پول شرکت', $response->json('message'));
+        $this->assertStringContainsString('کیف پول کوپن‌های تخفیف', $response->json('message'));
         $this->assertSame(0, Order::where(Order::PLACER_USER_ID, $this->buyer->id)->count(), 'سفارشی نباید ساخته شود.');
         $this->assertNull($coupon->fresh()->{Coupon::USED_AT}, 'کوپن نباید مصرف شود.');
     }
@@ -524,19 +540,19 @@ class CouponFundingTest extends TestCase
 
         $this->assertTrue($coupon->isFundingReady());
 
-        // بی‌ردیف = شرکت ۱۰۰٪؛ بیشتر از استخرِ سفارش از موجودیِ سازه تأمین می‌شود (پرسشِ ۱۰ مدیریت).
+        // بی‌ردیف = شرکت ۱۰۰٪؛ بیشتر از استخرِ سفارش، از «کیف پول کوپن‌های تخفیف» (دورِ پنجم).
         $legs = app(CouponFundingService::class)->plan($coupon, 10_000, ['company' => 5_000, 'elite_yar' => 0], $this->supplier->id, null);
         $this->assertCount(1, $legs);
         $this->assertSame(CouponFunder::TYPE_COMPANY, $legs[0]['funder']->{CouponFunder::FUNDER_TYPE});
         $this->assertEqualsWithDelta(10_000.0, $legs[0]['amount'], 0.0);
 
-        // … و وقتی سازه موجودی ندارد، همان‌جا با پیامِ روشن رد می‌شود.
-        Wallet::where(Wallet::USER_ID, $this->system->id)->update([Wallet::BALANCE => 0]);
+        // … و وقتی کیف پولِ کوپن موجودی ندارد، همان‌جا با پیامِ روشن رد می‌شود — حتی با سازه‌ی پُر.
+        Wallet::where(Wallet::USER_ID, $this->couponWallet->id)->update([Wallet::BALANCE => 0]);
         try {
             app(CouponFundingService::class)->plan($coupon, 10_000, ['company' => 5_000, 'elite_yar' => 0], $this->supplier->id, null);
-            $this->fail('بی‌موجودیِ سازه باید رد شود.');
+            $this->fail('بی‌موجودیِ کیف پولِ کوپن باید رد شود.');
         } catch (BusinessException $e) {
-            $this->assertStringContainsString('کیف پول شرکت', $e->getMessage());
+            $this->assertStringContainsString('کیف پول کوپن‌های تخفیف', $e->getMessage());
         }
     }
 

@@ -91,4 +91,19 @@ return [
 
     'elite_yar_lifetime_cap' => (bool) env('FEATURE_ELITE_YAR_LIFETIME_CAP', false),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Variant discounts / win-back coupons — OFF (management round 5, 1405/07/14)
+    |--------------------------------------------------------------------------
+    |
+    | «به‌جز (۱) تخفیفِ خریدارِ دارای الیت‌یار طبقِ الگوریتم و (۲) تخفیفِ کوپن که از کیف پولِ
+    | کوپن‌های تخفیف برداشته می‌شود، هیچ تخفیفِ دیگری در سیستم وجود ندارد … تخفیفِ ناشی از
+    | بازگشتِ مشتری را متوقف و حذف کنید.» کد و داده می‌مانند (قانونِ یک)؛ فقط اعمال نمی‌شوند.
+    |
+    */
+
+    'variant_discounts' => (bool) env('FEATURE_VARIANT_DISCOUNTS', false),
+
+    'win_back_coupons' => (bool) env('FEATURE_WIN_BACK_COUPONS', false),
+
 ];

@@ -92,6 +92,9 @@ class OrderItem extends Model
 
     public const UNIT_PRICE = 'unit_price';
 
+    /** قیمتِ هر کیلو برای تأمین‌کننده (پیش از فیلترهای نقش) — مبنای اسنادِ تأمین‌کننده؛ NULL = پیش از ۱۴۰۵/۰۷/۱۴. */
+    public const SUPPLIER_UNIT_PRICE = 'supplier_unit_price';
+
     public const TOTAL_PRICE = 'total_price';
 
     public const SHIPPING_COST = 'shipping_cost';
@@ -114,6 +117,7 @@ class OrderItem extends Model
         self::QUANTITY,
         self::UNIT_NAME,
         self::UNIT_PRICE,
+        self::SUPPLIER_UNIT_PRICE,
         self::TOTAL_PRICE,
         self::SHIPPING_COST,
     ];
@@ -121,6 +125,7 @@ class OrderItem extends Model
     protected $casts = [
         self::QUANTITY_DETAILS => 'array',
         self::UNIT_PRICE => 'decimal:0',
+        self::SUPPLIER_UNIT_PRICE => 'decimal:4',
         self::TOTAL_PRICE => 'decimal:0',
         self::SHIPPING_COST => 'decimal:0',
         self::WEIGHT => 'decimal:3',

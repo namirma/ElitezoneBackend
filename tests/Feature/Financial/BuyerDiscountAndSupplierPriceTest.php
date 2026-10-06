@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace Tests\Feature\Financial;
 
 use App\Actions\Financial\ProcessWeighbridgeResultAction;
+use App\Constants\FinancialCodes;
 use App\Models\Address;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\FactoryStock;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\OrderUnit;
 use App\Models\PriceFilter;
 use App\Models\PriceFilterCategory;
@@ -21,6 +23,7 @@ use App\Models\ShippingMethod;
 use App\Models\SupplierProfile;
 use App\Models\User;
 use App\Models\Wallet;
+use App\Services\Invoice\InvoiceDataBuilder;
 use App\Services\Invoice\InvoiceGenerator;
 use App\Services\PricingRoleResolver;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
@@ -284,6 +287,106 @@ class BuyerDiscountAndSupplierPriceTest extends TestCase
         $this->assertSame('0', $preview['buyer_discount']);
     }
 
+    // ── دورِ پنجم، پرسشِ ۱: خریدِ خودِ الیت‌یار ───────────────────────────────
+
+    /**
+     * «الیت‌یاری که برای خودش می‌خرد دو تخفیف می‌گیرد: همان تخفیفِ کارفرمای دارای الیت‌یار، و
+     * تخفیفی برابر با سهمِ الیت‌یار با عنوانِ "تخفیف ویژه الیت یار"؛ کارمزدی پرداخت نمی‌شود.»
+     */
+    #[Test]
+    public function a_verified_elite_yar_buying_for_themself_gets_both_discounts_and_no_commission(): void
+    {
+        $eliteYAR = User::factory()->create([User::IS_SAZE90_USER => true]);
+        $eliteYAR->addRole(Role::firstOrCreate(['name' => 'elite_yar'], ['display_name' => 'elite_yar']));
+        Wallet::create([Wallet::USER_ID => $eliteYAR->id, Wallet::BALANCE => 500_000_000, Wallet::BALANCE_HOLD => 0]);
+        $this->fillCart($eliteYAR);
+
+        Sanctum::actingAs($eliteYAR);
+        $preview = $this->getJson('/api/checkout/payment-options')->assertOk()->json('data.breakdown');
+
+        $before = $this->balance($eliteYAR);
+        $this->pay($eliteYAR)->assertOk();
+        $order = $this->lastOrderOf($eliteYAR);
+
+        // %TC ۱٪ ⇒ OW = ۰٫۴٪ و CO (پیش‌گام، ۲۵٪ از TC) = ۰٫۲۵٪.
+        $gross = self::KG * self::SUPPLIER_PRICE * 1.1;
+        $this->assertSame($eliteYAR->id, (int) $order->{Order::ELITE_YAR_USER_ID});
+        $this->assertEqualsWithDelta($gross * 0.004, (float) $order->{Order::BUYER_DISCOUNT_AMOUNT}, 1.0, 'تخفیف (سهمِ خریدار)');
+        $this->assertEqualsWithDelta($gross * 0.0025, (float) $order->{Order::ELITE_YAR_DISCOUNT_AMOUNT}, 1.0, 'تخفیف ویژه الیت یار');
+        $this->assertEqualsWithDelta($gross * (1 - 0.0065), (float) $order->{Order::FINAL_AMOUNT}, 1.0);
+        $this->assertEqualsWithDelta(0.65, (float) $order->{Order::OWNER_DISCOUNT_RATE}, 0.001, '%OWِ اعمال‌شده = OW + CO');
+
+        // اجزا دقیقاً به جمع می‌رسند و دقیقاً همان کسر شده.
+        $components = (float) $order->subtotal - (float) $order->discount_amount + (float) $order->vat_amount
+            + (float) $order->shipping_cost - (float) $order->{Order::BUYER_DISCOUNT_AMOUNT}
+            - (float) $order->{Order::ELITE_YAR_DISCOUNT_AMOUNT};
+        $this->assertEqualsWithDelta($components, (float) $order->{Order::FINAL_AMOUNT}, 0.0);
+        $this->assertEqualsWithDelta((float) $order->{Order::FINAL_AMOUNT}, $before - $this->balance($eliteYAR), 0.0);
+
+        // پیش‌نمایش همان دو سطر را گفته بود.
+        $this->assertEqualsWithDelta((float) $order->{Order::BUYER_DISCOUNT_AMOUNT}, (float) $preview['buyer_discount'], 1.0);
+        $this->assertEqualsWithDelta((float) $order->{Order::ELITE_YAR_DISCOUNT_AMOUNT}, (float) $preview['elite_yar_discount'], 1.0);
+
+        // باسکول با وزنِ یکسان: بی‌کسری، و هیچ کارمزدی به خودِ الیت‌یار نمی‌رسد.
+        $afterPay = $this->balance($eliteYAR);
+        $order->forceFill([Order::STATUS => Order::STATUS_SHIPPED])->save();
+        $result = app(ProcessWeighbridgeResultAction::class)->execute($order->fresh(), (float) self::KG);
+        $this->assertSame('equal', $result['status']);
+        $this->assertEqualsWithDelta(0.0, (float) $order->fresh()->{Order::PAYMENT_TO_ELITE_YAR}, 0.0);
+        $this->assertEqualsWithDelta($afterPay, $this->balance($eliteYAR), 0.0);
+        $this->assertSame(0.0, (float) Wallet::where(Wallet::USER_ID, $eliteYAR->id)->value(Wallet::BALANCE_HOLD));
+    }
+
+    #[Test]
+    public function an_employer_with_an_elite_yar_gets_no_elite_yar_special_discount(): void
+    {
+        $buyer = $this->buyer(withEliteYAR: true);
+        $this->fillCart($buyer);
+
+        $this->pay($buyer)->assertOk();
+
+        $this->assertSame(0.0, (float) $this->lastOrderOf($buyer)->{Order::ELITE_YAR_DISCOUNT_AMOUNT});
+    }
+
+    // ── دورِ پنجم، پرسشِ ۷: اسنادِ تأمین‌کننده ───────────────────────────────
+
+    /** «مبلغِ قابلِ دریافتِ تأمین‌کننده (پس از کارمزد)؛ مبلغِ خریدار را نبیند.» */
+    #[Test]
+    public function supplier_documents_show_the_supplier_receivable_and_never_the_buyer_amounts(): void
+    {
+        // فیلترِ +۲۰٬۰۰۰ ریال/کیلو: قیمتِ خریدار با قیمتِ تأمین‌کننده فرق دارد.
+        $this->addRoleFilter(20_000);
+        $buyer = $this->buyer(withEliteYAR: true);
+        $this->fillCart($buyer);
+        $this->pay($buyer)->assertOk();
+        $order = $this->lastOrderOf($buyer)->load('items');
+
+        $this->assertEqualsWithDelta(self::SUPPLIER_PRICE, (float) $order->items->first()->{OrderItem::SUPPLIER_UNIT_PRICE}, 0.0001);
+
+        $builder = app(InvoiceDataBuilder::class);
+        $supplierDoc = $builder->build($order, FinancialCodes::DOC_REPORT_SUPPLIER, 'T-1');
+        $buyerDoc = $builder->build($order, FinancialCodes::DOC_RECEIPT_OWNER, 'T-2');
+        $pts = (float) $order->{Order::PAYMENT_TO_SUPPLIER};
+
+        $this->assertTrue($supplierDoc['supplier_view']);
+        $this->assertSame('مبلغ قابل دریافت:', $supplierDoc['payable_label']);
+        $this->assertEqualsWithDelta($pts, (float) $supplierDoc['totals']['final'], 0.0, 'مبلغِ قابلِ دریافت = PTS');
+        $this->assertEqualsWithDelta(self::SUPPLIER_PRICE, (float) $supplierDoc['line_items'][0]['unit_price'], 0.0001, 'قیمتِ خودِ تأمین‌کننده');
+        $this->assertSame(0.0, (float) $supplierDoc['totals']['buyer_discount']);
+        $this->assertSame(0.0, (float) $supplierDoc['totals']['coupon_discount']);
+
+        // جمع تا ریال: کالا (با مالیات) + کرایه − کارمزد = مبلغِ قابلِ دریافت؛ کارمزد ≈ ۱٪ از کالا با مالیات.
+        $t = $supplierDoc['totals'];
+        $this->assertEqualsWithDelta($t['final'], $t['goods_total'] + $t['shipping'] - $t['commission'], 0.0);
+        $this->assertEqualsWithDelta(self::KG * self::SUPPLIER_PRICE * 1.1 * 0.01, (float) $t['commission'], 2.0);
+
+        // سندِ خریدار دست نخورده: قیمتِ خریدار و مبلغِ قابلِ پرداختِ خودش.
+        $this->assertFalse($buyerDoc['supplier_view']);
+        $this->assertEqualsWithDelta(self::SUPPLIER_PRICE + 20_000, (float) $buyerDoc['line_items'][0]['unit_price'], 1.0);
+        $this->assertEqualsWithDelta((float) $order->{Order::FINAL_AMOUNT}, (float) $buyerDoc['totals']['final'], 0.0);
+        $this->assertNotEquals($buyerDoc['amount_words'], $supplierDoc['amount_words']);
+    }
+
     // ── پرسش‌های ۴ و ۶ ───────────────────────────────────────────────────────
 
     #[Test]
@@ -311,9 +414,10 @@ class BuyerDiscountAndSupplierPriceTest extends TestCase
     }
 
     #[Test]
-    public function a_role_discount_cannot_push_the_buyer_price_below_the_supplier_contract_floor(): void
+    public function a_role_discount_is_ignored_and_the_buyer_price_stays_on_the_supplier_price(): void
     {
-        // −۵۰٬۰۰۰ ریال/کیلو (۵٫۵٪) خیلی بیشتر از کلِ کارمزد (۱٪) است → به کف برمی‌گردد.
+        // مدیریت، دورِ پنجم: کف = قیمتِ اعلامیِ تأمین‌کننده؛ تخفیفِ نقش‌محور اصلاً اعمال نمی‌شود
+        // و تنها تخفیفِ خریدار سطرِ جدای «تخفیف ویژه» است.
         $this->addRoleFilter(-50_000);
         $buyer = $this->buyer(withEliteYAR: true);
         $this->fillCart($buyer);
@@ -321,8 +425,8 @@ class BuyerDiscountAndSupplierPriceTest extends TestCase
         $this->pay($buyer)->assertOk();
 
         $order = $this->lastOrderOf($buyer);
-        $floor = self::SUPPLIER_PRICE * 0.99 / 0.996;
-        $this->assertEqualsWithDelta($floor, (float) $order->{Order::OFFICIAL_PRICE}, 0.001, 'قیمتِ خریدار روی کفِ قراردادی');
+        $this->assertEqualsWithDelta(self::SUPPLIER_PRICE, (float) $order->{Order::OFFICIAL_PRICE}, 0.001, 'قیمتِ خریدار = قیمتِ تأمین‌کننده');
+        $this->assertEqualsWithDelta(self::SUPPLIER_PRICE, (float) $order->{Order::SUPPLIER_PRICE}, 0.001);
         // تأمین‌کننده همچنان قیمتِ کاملِ خودش منهای کارمزد را می‌گیرد؛ استخر ≥ ۰.
         $this->assertGreaterThanOrEqual(
             (float) $order->{Order::PAYMENT_TO_SUPPLIER},

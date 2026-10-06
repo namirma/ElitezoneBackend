@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Constants\FinancialCodes;
 use App\Traits\PersianDate;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -49,6 +50,12 @@ class CouponFundingLeg extends Model
 
     const REVERSED_AT = 'reversed_at';
 
+    /**
+     * کیف پولی که این سهم را داد. برای سهمِ شرکت از ۱۴۰۵/۰۷/۱۴ `WCPN` («کیف پول کوپن‌های تخفیف»)؛
+     * NULL = لِگِ پیش از آن (سهمِ شرکت از WSSG). استرداد و باسکول به همان کیف پول برمی‌گردند.
+     */
+    const WALLET_CODE = 'wallet_code';
+
     protected $table = self::TABLE;
 
     protected $fillable = [
@@ -60,7 +67,14 @@ class CouponFundingLeg extends Model
         self::SHARE_PERCENT,
         self::AMOUNT,
         self::REVERSED_AT,
+        self::WALLET_CODE,
     ];
+
+    /** سهمِ شرکت از کیف پولِ کوپن‌ها پرداخت شده؟ (در غیرِ این صورت لِگِ قدیمیِ WSSG) */
+    public function isFromCouponWallet(): bool
+    {
+        return $this->{self::WALLET_CODE} === FinancialCodes::WALLET_COUPON;
+    }
 
     protected $casts = [
         self::SHARE_PERCENT => 'decimal:2',

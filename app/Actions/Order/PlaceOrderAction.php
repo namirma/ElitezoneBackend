@@ -95,7 +95,7 @@ class PlaceOrderAction
             $this->assertSingleOriginAndDestination($cart, $data->addressId);
 
             // ۲. محاسبه مبالغ
-            $financials = $this->calculateOrderFinancials($cart, $user, $data);
+            $financials = $this->calculateOrderFinancials($cart, $user, $data, $payer);
 
             // ۲.۵ اعمال کوپن تخفیف (در صورت ارسال) — با lock تا مصرف همزمان نشود.
             // تخفیف روی final_amount نمایش داده می‌شود؛ leg مالی آن هنگام پرداخت
@@ -200,7 +200,7 @@ class PlaceOrderAction
         return $cart;
     }
 
-    private function calculateOrderFinancials(Cart $cart, User $user, PlaceOrderData $data): array
+    private function calculateOrderFinancials(Cart $cart, User $user, PlaceOrderData $data, ?User $payer = null): array
     {
         $subtotal = 0.0;
         $totalVat = 0.0;
@@ -272,6 +272,7 @@ class PlaceOrderAction
                 'quantity' => $itemSalesQuantity,
                 'unit_name' => $primaryUnitName ?? 'واحد',
                 'unit_price' => $pricing->finalPrice, // We keep the post-discount price per unit for the item line
+                'supplier_unit_price' => round($pricing->supplierPrice, 4),
                 'total_price' => $lineTotal,
             ];
         }
@@ -410,16 +411,33 @@ class PlaceOrderAction
         $rates = $this->settlementCalculator->getCommissionRatesForTc($badgeCode, $tcPercentage);
         $vatRate = $this->settlementCalculator->currentVatRate();
         // الیت‌یارِ مؤثر همیشه تأییدشده است (`resolveEffectiveEliteYARId`)، پس «دارد» کافی است.
-        $owApplied = $effectiveEliteYARId !== null ? (float) $rates['ow_final_rate'] : 0.0;
+        $ownerDiscount = $effectiveEliteYARId !== null ? (float) $rates['ow_final_rate'] : 0.0;
 
-        // تخفیفِ ویژه = POO(بی‌OW) − POO(با OW) روی همان فرمول — همان عددی که پیش‌نمایشِ
-        // سبد (`CartCheckoutTotals`) نشان می‌دهد؛ مبلغِ قطعی = Gross − تخفیف، و پرداخت
-        // دقیقاً همین را کم می‌کند (`placedPooFor`)، نه بازمحاسبه‌ی فرمول. بی‌الیت‌یار
-        // تخفیف صفر است (پرسشِ ۷).
-        $buyerDiscount = $this->settlementCalculator->buyerDiscountAmount(
+        // خریدِ خودِ الیت‌یار — مدیریت، دورِ پنجم، پرسشِ ۱ (۱۴۰۵/۰۷/۱۴): «سهمِ الیت‌یار به‌عنوانِ
+        // کارمزد پرداخت نمی‌شود بلکه به‌عنوانِ تخفیفِ جداگانه روی همان خرید؛ پس دو تخفیف:
+        // (۱) همان تخفیفِ کارفرمای دارای الیت‌یار و (۲) "تخفیف ویژه الیت یار" برابرِ سهمِ الیت‌یار.»
+        // الیت‌یار = پرداخت‌کننده (نه مسیرِ «پرداخت برای کارفرما» که سهم واقعاً به او می‌رسد).
+        $isSelfPurchase = $effectiveEliteYARId !== null
+            && $effectiveEliteYARId === ($payer ?? $user)->id;
+        $eliteYARSelfRate = $isSelfPurchase ? (float) $rates['co_final_rate'] : 0.0;
+
+        // %OWِ **اعمال‌شده** = هر دو تخفیف؛ POO/POOM با همین حساب می‌شوند و استخرِ POO − PTS
+        // فقط سهمِ شرکت می‌ماند (`WeighbridgeVatRouter`: الیت‌یار = پرداخت‌کننده ⇒ بی‌کارمزد).
+        $owApplied = $ownerDiscount + $eliteYARSelfRate;
+
+        // تخفیف‌ها = POO(بی‌تخفیف) − POO(با تخفیف) روی همان فرمول — همان عددی که پیش‌نمایشِ
+        // سبد (`CartCheckoutTotals`) نشان می‌دهد؛ مبلغِ قطعی = Gross − تخفیف‌ها، و پرداخت
+        // دقیقاً همین را کم می‌کند (`placedPooFor`). سطرِ دوم = کل − سطرِ اول، تا جمع دقیق بماند.
+        $allDiscounts = $this->settlementCalculator->buyerDiscountAmount(
             $shippingCost, $officialPrice, $totalWeight, $owApplied, $vatRate, $transCommission, $transVat
         );
-        $finalAmount = max(0, $grossPayable - $buyerDiscount);
+        $buyerDiscount = $isSelfPurchase
+            ? $this->settlementCalculator->buyerDiscountAmount(
+                $shippingCost, $officialPrice, $totalWeight, $ownerDiscount, $vatRate, $transCommission, $transVat
+            )
+            : $allDiscounts;
+        $eliteYARDiscount = max(0.0, $allDiscounts - $buyerDiscount);
+        $finalAmount = max(0, $grossPayable - $allDiscounts);
 
         return [
             'subtotal' => $subtotal,
@@ -428,6 +446,7 @@ class PlaceOrderAction
             'shipping_cost' => $shippingCost,
             'gross_payable' => $grossPayable,
             'buyer_discount_amount' => $buyerDiscount,
+            'elite_yar_discount_amount' => $eliteYARDiscount,
             'final_amount' => $finalAmount,
             'total_weight' => $totalWeight,
             'official_price' => $officialPrice,
@@ -599,6 +618,7 @@ class PlaceOrderAction
             Order::OFFICIAL_PRICE => $fins['official_price'],
             Order::SUPPLIER_PRICE => $fins['supplier_price'],
             Order::BUYER_DISCOUNT_AMOUNT => $fins['buyer_discount_amount'],
+            Order::ELITE_YAR_DISCOUNT_AMOUNT => $fins['elite_yar_discount_amount'],
         ]))->save();
 
         return $order;
@@ -856,6 +876,7 @@ class PlaceOrderAction
                 'unit_name' => $calc['unit_name'],
 
                 'unit_price' => $calc['unit_price'],
+                OrderItem::SUPPLIER_UNIT_PRICE => $calc['supplier_unit_price'] ?? null,
                 'total_price' => $calc['total_price'],
                 OrderItem::SHIPPING_COST => $calc['shipping_cost'] ?? 0,
             ]);

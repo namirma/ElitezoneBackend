@@ -120,6 +120,14 @@ return [
         'timeout' => (int) env('SAZE90_TIMEOUT', 5),
         'cache_ttl' => (int) env('SAZE90_CACHE_TTL', 1800),        // ثانیه؛ نتیجه‌ی «دارای نشان»
         'cache_ttl_none' => (int) env('SAZE90_CACHE_TTL_NONE', 300), // ثانیه؛ نتیجه‌ی «بدون نشان» (کوتاه‌تر)
+        // API لایسنس (مدیریت، دورِ پنجم، پرسشِ ۸): لایسنس‌ها + نشان + اعتبارِ SUM به‌ازای موبایل.
+        // تا سجاد API را تحویل ندهد خاموش است و get-certificate همان رفتارِ قبلی را دارد.
+        // قرارداد: docs/specs/SAZE90_LICENCE_API_FOR_SAJAD.md (ریشه‌ی ورک‌اسپیس).
+        'licence_api' => [
+            'enabled' => (bool) env('SAZE90_LICENCE_API_ENABLED', false),
+            'path' => env('SAZE90_LICENCE_API_PATH', '/api/elitezone/licences'),
+            'token' => env('SAZE90_LICENCE_API_TOKEN'),
+        ],
     ],
     /*
     |--------------------------------------------------------------------------

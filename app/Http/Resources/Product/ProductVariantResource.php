@@ -36,7 +36,9 @@ class ProductVariantResource extends BaseJsonResource
             ProductVariant::DISCOUNT_TYPE => $this->whenNotNull($this->{ProductVariant::DISCOUNT_TYPE}),
             ProductVariant::DISCOUNT_START_DATE => optional($this->{ProductVariant::DISCOUNT_START_DATE})->format('Y-m-d H:i:s'),
             ProductVariant::DISCOUNT_END_DATE => optional($this->{ProductVariant::DISCOUNT_END_DATE})->format('Y-m-d H:i:s'),
-            'active_discount_details' => $this->getActiveDiscountDetails(),
+            // تخفیفِ واریانت از دورِ پنجم اعمال نمی‌شود (`features.variant_discounts`)؛ نشان‌دادنش
+            // وعده‌ای بود که قیمت‌گذاری نگه نمی‌داشت (قاعده‌ی صداقت).
+            'active_discount_details' => config('features.variant_discounts') ? $this->getActiveDiscountDetails() : null,
             'min_price' => isset($this->min_price) ? (string) $this->min_price : null,
             // فقط `showVariant` این را ست می‌کند (دیپ‌لینک به واریانتِ در انتظارِ
             // تأیید قیمت)؛ فهرست‌ها چنین واریانتی را اصلاً برنمی‌گردانند.

@@ -191,7 +191,8 @@ class BuildCartPreInvoiceAction
         $buyerDiscount = $this->checkoutTotals->qualifiesForEliteYARDiscount($cart, $user)
             ? $this->checkoutTotals->buyerDiscountFor($cart, $goodsNet, $shippingCost)
             : 0.0;
-        $finalAmount = max(0.0, $subtotalBeforeDiscount - $discountAmount + $vatAmount + $shippingCost - $buyerDiscount);
+        $eliteYARDiscount = $this->checkoutTotals->eliteYARSelfDiscountFor($cart, $user, $goodsNet, $shippingCost, $buyerDiscount);
+        $finalAmount = max(0.0, $subtotalBeforeDiscount - $discountAmount + $vatAmount + $shippingCost - $buyerDiscount - $eliteYARDiscount);
 
         $order = new Order;
 
@@ -202,6 +203,7 @@ class BuildCartPreInvoiceAction
             Order::VAT_AMOUNT => $vatAmount,
             Order::SHIPPING_COST => $shippingCost,
             Order::BUYER_DISCOUNT_AMOUNT => $buyerDiscount,
+            Order::ELITE_YAR_DISCOUNT_AMOUNT => $eliteYARDiscount,
             Order::FINAL_AMOUNT => $finalAmount,
             // پیش‌فاکتور همیشه پرداخت‌نشده است — برچسبِ وضعیت روی سند از همین می‌آید.
             Order::PAYMENT_STATUS => Order::PAYMENT_PENDING,

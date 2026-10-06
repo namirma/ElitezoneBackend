@@ -378,6 +378,8 @@ class OrderResource extends BaseJsonResource
                     // final_amount = subtotal − discount + vat + shipping − buyer_discount − coupon.
                     Order::BUYER_DISCOUNT_AMOUNT => (string) ($this->{Order::BUYER_DISCOUNT_AMOUNT} ?? '0'),
                     'has_elite_yar_discount' => (float) ($this->{Order::BUYER_DISCOUNT_AMOUNT} ?? 0) > 0,
+                    // «تخفیف ویژه الیت یار» — فقط روی خریدِ خودِ الیت‌یار (مدیریت، دورِ پنجم، پرسشِ ۱).
+                    Order::ELITE_YAR_DISCOUNT_AMOUNT => (string) ($this->getAttribute(Order::ELITE_YAR_DISCOUNT_AMOUNT) ?? '0'),
                     Order::COUPON_DISCOUNT_AMOUNT => (string) ($this->{Order::COUPON_DISCOUNT_AMOUNT} ?? '0'),
                     'coupon_code' => $this->whenLoaded('coupon', fn () => $this->coupon?->code),
                     Order::VAT_AMOUNT => (string) $this->{Order::VAT_AMOUNT},

@@ -5,10 +5,6 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Product\PriceFilterResource;
 use App\Models\PriceFilter;
-use App\Models\PriceSetting;
-use App\Services\Financial\SettlementCalculatorService;
-use App\Support\Money;
-use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -43,14 +39,14 @@ class AdminPriceFilterController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        $filter = PriceFilter::create($request->validate($this->rules()));
+        $filter = PriceFilter::create($request->validate($this->rules(), $this->messages()));
 
         return created(new PriceFilterResource($filter), __('admin.filters.created'));
     }
 
     public function update(Request $request, PriceFilter $filter): JsonResponse
     {
-        $filter->update($request->validate($this->rules($filter->id)));
+        $filter->update($request->validate($this->rules($filter->id), $this->messages()));
 
         return success(new PriceFilterResource($filter), __('admin.filters.updated'));
     }
@@ -73,6 +69,12 @@ class AdminPriceFilterController extends Controller
         return success(new PriceFilterResource($filter), $message);
     }
 
+    /** @return array<string, string> */
+    private function messages(): array
+    {
+        return ['amount.min' => __('admin.filters.discount_not_allowed')];
+    }
+
     private function rules(?int $ignoreId = null): array
     {
         $req = $ignoreId ? 'sometimes' : 'required';
@@ -81,22 +83,9 @@ class AdminPriceFilterController extends Controller
             PriceFilter::PRICE_FILTER_TYPE_ID => [$req, 'integer', 'exists:price_filter_types,id'],
             PriceFilter::NAME => [$req, 'string', 'max:255'],
             PriceFilter::CODE => [$req, 'string', 'max:255', Rule::unique('price_filters', 'code')->ignore($ignoreId)],
-            PriceFilter::AMOUNT => [$req, 'numeric', function (string $attribute, $value, Closure $fail): void {
-                // کفِ قراردادی (پرسشِ ۶ مدیریت، ۱۴۰۵/۰۷/۱۳): قیمتِ خریدار پس از تخفیفِ ویژه‌اش
-                // نباید زیرِ «قیمتِ تأمین‌کننده منهای کارمزد» برود. یک فیلترِ **درصدیِ** منفی
-                // قیمت‌مستقل است، پس همین‌جا سنجیده می‌شود: حداکثر تخفیف = ۱ − (۱−TC)/(۱−OW).
-                // (فیلترِ مطلق به قیمت وابسته است و در پایپ‌لاین به کف برمی‌گردد.)
-                if (! request()->boolean(PriceFilter::IS_PERCENTAGE) || (float) $value >= 0) {
-                    return;
-                }
-                $tc = app(SettlementCalculatorService::class)->currentTcPercentage();
-                $owShare = PriceSetting::getValueAsFloat(PriceSetting::CODE_OW_SHARE, (float) PriceSetting::catalog()[PriceSetting::CODE_OW_SHARE]['default']);
-                $owFinal = (float) Money::mul($tc, Money::div($owShare, '100'));
-                $maxDiscount = 100 * (1 - (float) Money::div(Money::percentSub($tc), Money::percentSub($owFinal)));
-                if (abs((float) $value) > $maxDiscount + 1e-9) {
-                    $fail(__('admin.filters.discount_below_contract_floor', ['max' => number_format($maxDiscount, 3)]));
-                }
-            }],
+            // «هیچ تخفیفِ دیگری در سیستم وجود ندارد» (مدیریت، دورِ پنجم): فیلترِ قیمت فقط افزایش است؛
+            // تخفیفِ نقش‌محور با کوپن از «کیف پول کوپن‌های تخفیف» داده می‌شود.
+            PriceFilter::AMOUNT => [$req, 'numeric', 'min:0'],
             PriceFilter::IS_PERCENTAGE => ['boolean'],
             PriceFilter::IS_ACTIVE => ['boolean'],
             PriceFilter::SORT_ORDER => ['nullable', 'integer', 'min:0'],

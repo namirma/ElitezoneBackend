@@ -71,6 +71,17 @@ class WalletTransactionEngine
         $this->process('+', $amount, FinancialCodes::WALLET_ELITE_YAR, $status, $order, $description, $eliteYARId);
     }
 
+    /** کیف پول کوپن‌های تخفیف (WCPN) — سهمِ شرکت از کوپن (مدیریت، دورِ پنجم). */
+    public function debitCoupon(Order $order, float $amount, string $status, ?string $description = null): void
+    {
+        $this->process('-', $amount, FinancialCodes::WALLET_COUPON, $status, $order, $description, app(CouponWallet::class)->requireUserId());
+    }
+
+    public function creditCoupon(Order $order, float $amount, string $status, ?string $description = null): void
+    {
+        $this->process('+', $amount, FinancialCodes::WALLET_COUPON, $status, $order, $description, app(CouponWallet::class)->requireUserId());
+    }
+
     public function debitVat(Order $order, float $amount, string $status, ?string $description = null): void
     {
         $vatUserId = (int) config('financial.vat_user_id', config('financial.system_user_id', 1));

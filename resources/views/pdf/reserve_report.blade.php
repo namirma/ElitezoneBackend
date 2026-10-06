@@ -56,7 +56,8 @@
         @include('pdf.partials.items_section')
 
         {{-- ===== RESERVE EXPIRY ROW ===== --}}
-        @php $reserveAmount = $order->payment_to_reserve ?? $totals['final'] ?? 0; @endphp
+        {{-- سندِ تأمین‌کننده: مبلغِ قابل‌دریافتِ او پس از تکمیلِ خرید، نه سپرده‌ی خریدار (مدیریت، دورِ پنجم، پرسشِ ۷) --}}
+        @php $reserveAmount = $totals['final'] ?? 0; @endphp
         <tr class="bg-gray">
             <td colspan="3" class="lbl text-right font-bold" style="font-size: 8.5pt;">اعتبار رزرو تا:</td>
             <td colspan="8" class="val text-right font-bold" style="font-size: 8.5pt;">{{ enToFa($validity_shamsi ?? '-') }}</td>
@@ -64,7 +65,7 @@
 
         {{-- ===== PAYABLE (reserve amount) ===== --}}
         <tr class="bg-gray">
-            <td colspan="1" class="text-center font-bold" style="border-left: none; font-size: 9pt; padding: 6px;">مبلغ رزرو:</td>
+            <td colspan="1" class="text-center font-bold" style="border-left: none; font-size: 9pt; padding: 6px;">مبلغ قابل دریافت پس از تکمیل خرید:</td>
             <td colspan="7" class="text-center font-bold" style="border-right: none; border-left: none; font-size: 8.5pt; white-space: nowrap;">{{ $amount_words ?? 'صفر' }} ریال</td>
             <td colspan="3" class="text-center font-bold nowrap" style="border-right: none; font-size: 10pt;">{{ enToFa(number_format($reserveAmount)) }}</td>
         </tr>

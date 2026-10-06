@@ -10,6 +10,7 @@ use App\Models\SupplierProfile;
 use App\Models\User;
 use App\Services\Pricing\Pipes\ApplyPriceFilters;
 use App\Services\Pricing\PricingContext;
+use App\Services\PricingRoleResolver;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\Test;
@@ -135,7 +136,7 @@ class ApplyPriceFiltersTest extends TestCase
     {
         $cat = $this->makeFilterCategory();
         $type = $this->makeFilterType('special');
-        $this->makeFilter($cat, $type, amount: -50_000, isPercent: false);
+        $this->makeFilter($cat, $type, amount: 50_000, isPercent: false);
 
         $ctx = $this->makeContextWithContractCommission();
         $ctx->payablePrice = 1_000_000;
@@ -144,7 +145,7 @@ class ApplyPriceFiltersTest extends TestCase
 
         $this->pipe->handle($ctx, fn ($c) => $c);
 
-        $this->assertSame(950_000.0, $ctx->payablePrice, 'Special filter discounted payable by 50k');
+        $this->assertSame(1_050_000.0, $ctx->payablePrice, 'Special filter raised payable by 50k');
         $this->assertSame(1_200_000.0, $ctx->listPrice, 'List price untouched by special filter');
     }
 
@@ -166,19 +167,18 @@ class ApplyPriceFiltersTest extends TestCase
     }
 
     /**
-     * پاسخِ مدیریت به پرسشِ ۶ (۱۴۰۵/۰۷/۱۳): قیمتِ فروش هرگز از «قیمتِ ثبت‌شده‌ی
-     * تأمین‌کننده منهای کارمزدِ قراردادی» کمتر نمی‌شود. تأمین‌کننده P_s(1 − TC) می‌گیرد و
-     * خریدار پس از تخفیفِ ویژه‌اش (OW) باید دستِ‌کم همان را بپردازد:
-     * کف = P_s × (1 − TC) / (1 − OW). پیش از این فقط «منفی نشود» گارد بود.
+     * مدیریت، دورِ پنجم، پرسش‌های ۲ تا ۴ (۱۴۰۵/۰۷/۱۴): «قیمتِ فروش هرگز کمتر از قیمتِ اعلامیِ
+     * تأمین‌کننده منهای تخفیفِ خریدارِ دارای الیت‌یار نیست» و جز تخفیفِ الیت‌یاری و کوپن «هیچ
+     * تخفیفِ دیگری در سیستم وجود ندارد». فیلترِ قیمتِ منفی (تخفیفِ نقش‌محور) نادیده گرفته می‌شود.
      */
     #[Test]
-    public function payable_price_never_drops_below_the_supplier_contract_floor(): void
+    public function a_negative_role_filter_is_ignored_so_the_price_never_drops_below_the_supplier_price(): void
     {
         $cat = $this->makeFilterCategory();
         $type = $this->makeFilterType('special');
         $this->makeFilter($cat, $type, amount: -50_000_000, isPercent: false);
+        $this->makeFilter($cat, $type, amount: -30, isPercent: true, sortOrder: 2);
 
-        // TC قراردادی ۲۰٪، سهمِ OW ۴۰٪ ⇒ OW نهایی ۸٪ ⇒ کف = ۸۰۰٬۰۰۰ ÷ ۰٫۹۲
         $ctx = $this->makeContextWithContractCommission(20.0);
         $ctx->payablePrice = 1_000_000;
         $ctx->listPrice = 1_200_000;
@@ -186,27 +186,34 @@ class ApplyPriceFiltersTest extends TestCase
 
         $this->pipe->handle($ctx, fn ($c) => $c);
 
-        $this->assertEqualsWithDelta(800_000 / 0.92, $ctx->payablePrice, 0.01, 'به کفِ قراردادی برمی‌گردد، نه به صفر');
-        $this->assertTrue($ctx->priceFloorApplied);
-        $this->assertSame(1_000_000.0, $ctx->supplierPrice, 'قیمتِ تأمین‌کننده همان قیمتِ پیش از فیلتر می‌ماند');
+        $this->assertSame(1_000_000.0, $ctx->payablePrice, 'تخفیفِ نقش‌محور اعمال نمی‌شود');
+        $this->assertSame(1_200_000.0, $ctx->listPrice);
+        $this->assertSame(1_000_000.0, $ctx->supplierPrice);
     }
 
+    /**
+     * کارتِ محصول (پرسشِ ۱): درصدِ «تخفیف» فقط برای گروهِ «دارای الیت‌یار» — %TCِ قراردادِ همین
+     * تأمین‌کننده × سهمِ OW (۴۰٪). قیمت خودش دست نمی‌خورد؛ تخفیف سطرِ جدای سفارش است.
+     */
     #[Test]
-    public function the_floor_uses_the_global_commission_when_the_supplier_has_no_contract_rate(): void
+    public function the_buyer_discount_percent_is_exposed_only_for_the_with_elite_yar_group(): void
     {
-        $cat = $this->makeFilterCategory();
-        $type = $this->makeFilterType('special');
-        $this->makeFilter($cat, $type, amount: -50_000, isPercent: false);
-
-        // بی‌قرارداد ⇒ %TC سراسری ۱٪، OW ۰٫۴٪ ⇒ کف = ۹۹۰٬۰۰۰ ÷ ۰٫۹۹۶ ≈ ۹۹۳٬۹۷۶
-        $ctx = $this->makeContext();
+        $ctx = $this->makeContextWithContractCommission(20.0);
         $ctx->payablePrice = 1_000_000;
-        $ctx->filterCategoryIds = [$cat->id];
+        $ctx->filterCategoryCode = PricingRoleResolver::WITH_ELITE_YAR;
 
         $this->pipe->handle($ctx, fn ($c) => $c);
 
-        $this->assertEqualsWithDelta(990_000 / 0.996, $ctx->payablePrice, 0.01);
-        $this->assertTrue($ctx->priceFloorApplied);
+        $this->assertEqualsWithDelta(8.0, $ctx->buyerDiscountPercent, 0.0001, '۲۰٪ × ۴۰٪');
+        $this->assertSame(1_000_000.0, $ctx->payablePrice);
+
+        $without = $this->makeContextWithContractCommission(20.0);
+        $without->payablePrice = 1_000_000;
+        $without->filterCategoryCode = PricingRoleResolver::WITHOUT_ELITE_YAR;
+
+        $this->pipe->handle($without, fn ($c) => $c);
+
+        $this->assertSame(0.0, $without->buyerDiscountPercent);
     }
 
     #[Test]
@@ -233,9 +240,9 @@ class ApplyPriceFiltersTest extends TestCase
         $cat = $this->makeFilterCategory();
         $type = $this->makeFilterType('special');
 
-        // Apply +20% first (sort_order=1), then -100k (sort_order=2)
+        // Apply +20% first (sort_order=1), then +100k (sort_order=2)
         $this->makeFilter($cat, $type, amount: 20, isPercent: true, sortOrder: 1);
-        $this->makeFilter($cat, $type, amount: -100_000, isPercent: false, sortOrder: 2);
+        $this->makeFilter($cat, $type, amount: 100_000, isPercent: false, sortOrder: 2);
 
         $ctx = $this->makeContextWithContractCommission();
         $ctx->payablePrice = 1_000_000;
@@ -244,8 +251,8 @@ class ApplyPriceFiltersTest extends TestCase
 
         $this->pipe->handle($ctx, fn ($c) => $c);
 
-        // 1,000,000 × 1.20 = 1,200,000 then −100,000 = 1,100,000
-        $this->assertSame(1_100_000.0, $ctx->payablePrice);
+        // 1,000,000 × 1.20 = 1,200,000 then +100,000 = 1,300,000 (the reverse order would give 1,320,000)
+        $this->assertSame(1_300_000.0, $ctx->payablePrice);
     }
 
     #[Test]

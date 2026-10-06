@@ -143,6 +143,8 @@ class CheckoutController extends Controller
                 // `final_amount` = goods + shipping − buyer_discount − coupon_discount.
                 'buyer_discount' => (string) $breakdown['buyer_discount'],
                 'has_elite_yar_discount' => $breakdown['has_elite_yar_discount'],
+                // «تخفیف ویژه الیت یار» — فقط خریدِ خودِ الیت‌یار (مدیریت، دورِ پنجم، پرسشِ ۱).
+                'elite_yar_discount' => (string) $breakdown['elite_yar_discount'],
                 'coupon_discount' => (string) $breakdown['discount'],
                 'shipping_included' => $breakdown['shipping_included'],
                 // کوپنِ روی سبد که صفر شمرده شد، با دلیل — همان پیامی که `pay` می‌داد.

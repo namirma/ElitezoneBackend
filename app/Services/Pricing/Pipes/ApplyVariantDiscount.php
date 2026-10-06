@@ -9,6 +9,12 @@ class ApplyVariantDiscount implements PricingPipe
 {
     public function handle(PricingContext $context, Closure $next)
     {
+        // «به‌جز تخفیفِ خریدارِ دارای الیت‌یار و کوپن، هیچ تخفیفِ دیگری در سیستم وجود ندارد» —
+        // مدیریت، دورِ پنجم (۱۴۰۵/۰۷/۱۴). داده‌ی تخفیفِ واریانت می‌ماند (قانونِ یک)، فقط اعمال نمی‌شود.
+        if (! config('features.variant_discounts')) {
+            return $next($context);
+        }
+
         $discountDetails = $context->variant->getActiveDiscountDetails();
 
         if ($discountDetails) {

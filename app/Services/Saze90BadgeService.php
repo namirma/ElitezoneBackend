@@ -51,7 +51,9 @@ class Saze90BadgeService
 
         // «v2»: خواننده‌ی پیش از ۱۴۰۵/۰۶/۳۰ متنِ «no user found.» را به‌عنوان کد کش کرده
         // بود (TTL ۳۰ دقیقه)؛ کلیدِ تازه یعنی آن ورودی‌ها هرگز دوباره خوانده نمی‌شوند.
-        $cacheKey = "saze90_badge:v2:{$mobile}";
+        // «v3» = API لایسنس؛ جواب‌های دو منبع هرگز با هم قاطی نمی‌شوند.
+        $licenceApi = (bool) config('services.saze90.licence_api.enabled');
+        $cacheKey = ($licenceApi ? 'saze90_badge:v3:' : 'saze90_badge:v2:').$mobile;
         $cached = Cache::get($cacheKey);
         if ($cached !== null) {
             // '__none__' is the sentinel for a confirmed "no badge" (vs an outage we don't cache).
@@ -61,8 +63,12 @@ class Saze90BadgeService
         try {
             // Closure returns the lowercased code, or self::NONE for a confirmed no-badge.
             // A real HTTP/connection failure THROWS, so an outage is never memoised as "no badge".
-            $code = $this->executeProtected('saze90_badge', function () use ($mobile) {
+            $code = $this->executeProtected('saze90_badge', function () use ($mobile, $licenceApi) {
                 $base = rtrim((string) config('services.saze90.base_url'), '/');
+
+                if ($licenceApi) {
+                    return $this->codeFromLicenceApi($base, $mobile);
+                }
 
                 $resp = Http::timeout((int) config('services.saze90.timeout', 5))
                     ->acceptJson()
@@ -105,5 +111,65 @@ class Saze90BadgeService
         Cache::put($cacheKey, $code, (int) config('services.saze90.cache_ttl', 1800));
 
         return $code;
+    }
+
+    /**
+     * API لایسنس: «لایسنس‌های این موبایل» → کدِ نشانِ لایسنسِ برگزیده، یا NONE وقتی لایسنسی نیست.
+     * لایسنسِ بی‌نشان هم عضویت است ('saze90' — عضوِ بی‌سطح در `SyncUserBadgeAction`).
+     */
+    private function codeFromLicenceApi(string $base, string $mobile): string
+    {
+        $request = Http::timeout((int) config('services.saze90.timeout', 5))->acceptJson();
+        $token = (string) config('services.saze90.licence_api.token');
+        if ($token !== '') {
+            $request = $request->withToken($token);
+        }
+
+        $resp = $request->get($base.'/'.ltrim((string) config('services.saze90.licence_api.path'), '/'), ['mobile' => $mobile]);
+
+        if ($resp->status() === 404) {
+            return self::NONE;
+        }
+
+        $licences = $resp->successful() ? $resp->json('licences') : null;
+        if (! is_array($licences)) {
+            throw new \RuntimeException('saze90 licence API: HTTP '.$resp->status().' / bad shape');
+        }
+
+        $chosen = self::selectLicence($licences);
+        if ($chosen === null) {
+            return self::NONE;
+        }
+
+        $badge = strtolower(trim((string) ($chosen['badge'] ?? '')));
+
+        return isset(self::BADGE_RANK[$badge]) ? $badge : 'saze90';
+    }
+
+    /** طلایی > نقره‌ای > برنزی (> بی‌نشان). */
+    private const BADGE_RANK = ['gold' => 3, 'silver' => 2, 'bronze' => 1];
+
+    /**
+     * مدیریت، دورِ پنجم، پرسشِ ۸ (۱۴۰۵/۰۷/۱۴): یک لایسنس ⇒ همان؛ چند لایسنس ⇒ ۱) طلایی ۲) نقره‌ای
+     * ۳) برنزی ۴) دورترین تاریخِ اعتبارِ SUM. تاریخِ SUM جز همین گره‌گشایی اثری ندارد.
+     * تاریخ‌ها میلادیِ `YYYY-MM-DD` (قراردادِ API) — مقایسه‌ی رشته‌ای همان مقایسه‌ی تاریخ است.
+     *
+     * @param  array<int|string, mixed>  $licences
+     * @return array<string, mixed>|null
+     */
+    public static function selectLicence(array $licences): ?array
+    {
+        $valid = array_values(array_filter($licences, 'is_array'));
+        if ($valid === []) {
+            return null;
+        }
+
+        $key = fn (array $l): array => [
+            self::BADGE_RANK[strtolower(trim((string) ($l['badge'] ?? '')))] ?? 0,
+            (string) ($l['sum_expires_at'] ?? ''),
+        ];
+        usort($valid, fn (array $a, array $b): int => $key($b) <=> $key($a));
+
+        return $valid[0];
     }
 }

@@ -48,6 +48,9 @@ class PlaceOrderFinalAmountTest extends TestCase
         Cache::flush();
         Event::fake([OrderPlaced::class]);
         $this->setVatRate(10);
+        // تخفیفِ واریانت از دورِ پنجم (۱۴۰۵/۰۷/۱۴) خاموش است؛ این تست جمع‌زدنِ ثبتِ سفارش را
+        // وقتی ماژول روشن است پین می‌کند (همان‌طور که ApplyVariantDiscountTest ماژول را سالم نگه می‌دارد).
+        config(['features.variant_discounts' => true]);
 
         $supplier = User::factory()->create();
         $buyer = User::factory()->create();

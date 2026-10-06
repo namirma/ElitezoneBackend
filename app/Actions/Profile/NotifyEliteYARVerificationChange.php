@@ -3,6 +3,7 @@
 namespace App\Actions\Profile;
 
 use App\Jobs\Notification\SendSmsJob;
+use App\Models\EmployerEliteYAR;
 use App\Models\SmsTemplate;
 use App\Models\User;
 use App\Models\UserNotification;
@@ -29,7 +30,8 @@ class NotifyEliteYARVerificationChange
         }
 
         // «تأیید شدید» برای کسی که الیت یار نیست بی‌معنی است (کارفرمای عضوِ سازه ۹۰).
-        if (! $user->hasRole('elite_yar')) {
+        // `isEliteYAR()`، نه فقط نقشِ elite_yar: الیت‌یارهای قدیمیِ engineer/contractor هم هولد می‌شوند.
+        if (! $user->isEliteYAR()) {
             return;
         }
 
@@ -54,10 +56,55 @@ class NotifyEliteYARVerificationChange
             UserNotification::BODY => $body,
         ]);
 
+        $employerIds = $this->notifyEmployers($user, $isVerified);
+
         activity()
             ->performedOn($user)
             ->causedBy(auth()->user())
-            ->withProperties(['is_verified' => $isVerified, 'source' => $source])
+            ->withProperties(['is_verified' => $isVerified, 'source' => $source, 'notified_employer_ids' => $employerIds])
             ->log($log);
+    }
+
+    /**
+     * مدیریت، دورِ پنجم، پرسشِ ۶ (۱۴۰۵/۰۷/۱۴): هولد/رفعِ هولدِ الیت‌یار به کارفرماهای تأییدشده‌اش
+     * خبر داده می‌شود — هولد یعنی تخفیفِ خریدشان با این الیت‌یار از همین حالا قطع است.
+     *
+     * @return list<int> کارفرماهایی که خبر گرفتند (برای ردِ ممیزی)
+     */
+    private function notifyEmployers(User $eliteYAR, bool $isVerified): array
+    {
+        $employers = $eliteYAR->associatedEmployers()
+            ->wherePivot(EmployerEliteYAR::STATUS, EmployerEliteYAR::STATUS_APPROVED)
+            ->get();
+
+        if ($employers->isEmpty()) {
+            return [];
+        }
+
+        $eliteYAR->loadMissing('profile');
+        $params = ['elite_yar_name' => $eliteYAR->profile->name ?? $eliteYAR->{User::MOBILE}];
+
+        foreach ($employers as $employer) {
+            $mobile = (string) $employer->getAttribute(User::MOBILE);
+
+            // دو فراخوانیِ literal — `SmsCatalogCompletenessTest` کلیدها را با grep می‌بیند.
+            if ($isVerified) {
+                SendSmsJob::template($mobile, 'elite_yar_restored_employer', $params);
+                $body = SmsTemplate::text('elite_yar_restored_employer', $params);
+                $subject = __('global.eliteYARRestoredEmployerSubject');
+            } else {
+                SendSmsJob::template($mobile, 'elite_yar_hold_employer', $params);
+                $body = SmsTemplate::text('elite_yar_hold_employer', $params);
+                $subject = __('global.eliteYARHoldEmployerSubject');
+            }
+
+            UserNotification::create([
+                UserNotification::USER_ID => $employer->getKey(),
+                UserNotification::SUBJECT => $subject,
+                UserNotification::BODY => $body,
+            ]);
+        }
+
+        return $employers->pluck('id')->map(fn ($id) => (int) $id)->values()->all();
     }
 }

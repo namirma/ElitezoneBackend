@@ -87,7 +87,7 @@ final class CartCheckoutTotals
      * همان مبلغی که کسر می‌شود؛ تا پیش از این سطر وجود نداشت و خریدار عددی می‌دید که
      * از کیف پولش کمتر کم می‌شد.
      *
-     * @return array{final_amount: float, gross: float, shipping: float, shipping_included: bool, buyer_discount: float, has_elite_yar_discount: bool, discount: float, coupon_error: ?string}
+     * @return array{final_amount: float, gross: float, shipping: float, shipping_included: bool, buyer_discount: float, has_elite_yar_discount: bool, elite_yar_discount: float, discount: float, coupon_error: ?string}
      */
     public function breakdownFor(Cart $cart, ?User $user, ?int $addressId = null): array
     {
@@ -104,8 +104,12 @@ final class CartCheckoutTotals
 
         $hasEliteYARDiscount = $this->qualifiesForEliteYARDiscount($cart, $user);
         $buyerDiscount = $hasEliteYARDiscount ? $this->buyerDiscountFor($cart, $goodsNet, $shippingNet) : 0.0;
+        $eliteYARDiscount = $this->eliteYARSelfDiscountFor($cart, $user, $goodsNet, $shippingNet, $buyerDiscount);
 
-        $withShipping = Money::sub(Money::add((string) $gross, (string) $shipping), (string) $buyerDiscount);
+        $withShipping = Money::sub(
+            Money::add((string) $gross, (string) $shipping),
+            Money::add((string) $buyerDiscount, (string) $eliteYARDiscount),
+        );
         ['discount' => $discount, 'error' => $couponError] = $this->couponFor($cart, $user, Money::toFloat($withShipping));
 
         return [
@@ -114,6 +118,7 @@ final class CartCheckoutTotals
             'shipping_included' => $included,
             'buyer_discount' => $buyerDiscount,
             'has_elite_yar_discount' => $hasEliteYARDiscount,
+            'elite_yar_discount' => $eliteYARDiscount,
             'discount' => $discount,
             // چرا کوپنِ روی سبد صفر شمرده شد — تا فرانت به‌جای «۰ ریال» دلیل را بگوید.
             'coupon_error' => $couponError,
@@ -141,19 +146,41 @@ final class CartCheckoutTotals
     /** تخفیفِ ویژه روی ورودی‌های همین سبد — همان `SettlementCalculatorService::buyerDiscountAmount` که ثبت می‌زند. */
     public function buyerDiscountFor(Cart $cart, float $goodsNet, float $shippingNet): float
     {
+        // سهمِ OW به نشانِ الیت‌یار وابسته نیست؛ هر نشانی همان ow_final_rate را می‌دهد.
+        return $this->discountAt($cart, $goodsNet, $shippingNet, 'pioneer', false);
+    }
+
+    /**
+     * «تخفیف ویژه الیت یار» — فقط وقتی الیت‌یارِ تأییدشده برای خودش می‌خرد (مدیریت، دورِ پنجم،
+     * پرسشِ ۱): سهمِ الیت‌یار (%CO به نشانِ خودش) به‌جای کارمزد روی همان خرید کم می‌شود.
+     * همان تفریقِ `PlaceOrderAction`: تخفیف با OW+CO منهای سطرِ تخفیفِ خریدار.
+     */
+    public function eliteYARSelfDiscountFor(Cart $cart, ?User $user, float $goodsNet, float $shippingNet, float $buyerDiscount): float
+    {
+        if ($user === null || $cart->isForBeneficiary() || ! $user->isEliteYAR() || ! $user->isVerifiedEliteYAR()) {
+            return 0.0;
+        }
+
+        $badge = $user->badge;
+        $badgeCode = $badge ? ((string) $badge->getAttribute('code') ?: 'pioneer') : 'pioneer';
+
+        return max(0.0, $this->discountAt($cart, $goodsNet, $shippingNet, $badgeCode, true) - $buyerDiscount);
+    }
+
+    private function discountAt(Cart $cart, float $goodsNet, float $shippingNet, string $badgeCode, bool $withEliteYARShare): float
+    {
         $supplierId = $cart->{Cart::SUPPLIER_USER_ID}
             ?? $cart->items->first()?->factory?->supplier_user_id;
         $supplierId = $supplierId !== null ? (int) $supplierId : null;
 
         $tc = $this->settlement->tcPercentageForSupplier($supplierId);
-        // سهمِ OW به نشانِ الیت‌یار وابسته نیست؛ هر نشانی همان ow_final_rate را می‌دهد.
-        $rates = $this->settlement->getCommissionRatesForTc('pioneer', $tc);
+        $rates = $this->settlement->getCommissionRatesForTc($badgeCode, $tc);
 
         return $this->settlement->buyerDiscountAmount(
             $shippingNet,
             $goodsNet,
             1.0,
-            $rates['ow_final_rate'],
+            $rates['ow_final_rate'] + ($withEliteYARShare ? $rates['co_final_rate'] : 0.0),
             $this->settlement->currentVatRate(),
             $this->settlement->transCommissionFlagForSupplier($supplierId),
             $this->settlement->transVatFlagForSupplier($supplierId),

@@ -2622,9 +2622,9 @@ the «پروسه خرید» chart and every earlier guess. Pinned by `Order/Elit
   `WeighbridgeReconciler`, `couponFundingCaps`); `official_price` stays the buyer basis. Both are
   `decimal(20,4)` now. Commission %TC comes from `supplier_profiles.commission_percent`
   (`SettlementCalculatorService::tcPercentageForSupplier()`, cached, flushed on profile save) with the global
-  `tc_percentage` as fallback. Role price filters can raise the buyer price (the markup is the company's)
-  but never push it below the **contract floor** `P_s(1−TC)/(1−OW)` — `ApplyPriceFilters` clamps + logs,
-  the admin API refuses deeper percentage discounts.
+  `tc_percentage` as fallback. Role price filters can raise the buyer price (the markup is the company's).
+  ~~Contract floor `P_s(1−TC)/(1−OW)`~~ — **superseded by round 5** (below): negative filters are ignored
+  and the floor is the supplier price itself.
 - **Buyer discount (%OW) only with a verified EliteYAR on the order, and as its own line.** Placement snapshots
   the rates (`commission_rate`, `owner_discount_rate` = the APPLIED OW — 0 without an EliteYAR, shares, VAT,
   flags), writes `orders.buyer_discount_amount` and makes `final_amount` the exact amount charged: both
@@ -2635,14 +2635,58 @@ the «پروسه خرید» chart and every earlier guess. Pinned by `Order/Elit
 - **Weighbridge auto tolerance.** `PriceSetting weight_tolerance_percent` (default 0): under it the two-party
   consent is skipped, but only while `|Δweight| × official_price ≤` the company's net share of that order.
 - **Coupon campaign budget.** `coupons.budget_total/budget_used`: budgeted = reusable until the company's
-  share of the discounts reaches the budget (never `used_at`); the per-order `company_cap_exceeded` is gone —
-  a company share above the order's pool is funded from WSSG and refused up front
-  (`coupons.company_unfunded`) when the wallet cannot cover it.
+  share of the discounts reaches the budget (never `used_at`); the per-order `company_cap_exceeded` is gone.
+  ~~Funded from WSSG~~ — **superseded by round 5**: the company share comes only from the coupon wallet (WCPN).
 - **Lifetime payout cap OFF** by `features.elite_yar_lifetime_cap` (default false) until management decides.
 - **Small items.** `PUT /admin/orders/{order}/note` → `OrderResource.admin_note` (buyer/supplier/admin, only
   when non-empty); a cancelled order serves only `refund`/`cancel_report`
   (`OrderDocumentCatalog::slugsAllowedOnCancelledOrder`); LO/LS are both «سند L»;
   `GET /settings/public.wallet_deposit_methods`.
+
+### Management round-5 rules (1405/07/14 = 2026-10-06) — only two discounts exist
+
+Source: `docs/session/MANAGEMENT_ANSWERS_2026-10-06.md` (root workspace). Binding over round 4 where they
+differ. Pinned by `Financial/CouponWalletTest`, `Financial/CouponFundingTest`,
+`Financial/BuyerDiscountAndSupplierPriceTest`, `Pricing/ApplyPriceFiltersTest`,
+`Profile/EliteYARVerificationNotificationTest`, `Profile/Saze90LicenceSelectionTest`,
+`Marketing/WinBackOfferIsOffTest`.
+
+- **Only two discounts:** (1) the buyer-with-EliteYAR discount (%OW, by algorithm) and (2) coupons funded
+  from the **coupon wallet**. Everything else is off, with the code kept (rule one):
+  negative price filters are skipped in `ApplyPriceFilters` and refused by the admin API (`amount min:0`);
+  the migration deactivated the existing ones and recorded them in `round5_deactivations` (reversible
+  `down()`); variant discounts sit behind `features.variant_discounts` and win-back coupons behind
+  `features.win_back_coupons` (both default **false**; tests that pin the modules switch them on).
+- **Floor = the supplier's own price** before any role filter (`PricingContext::supplierPrice`); a positive
+  markup is still allowed. `PriceCalculationResult` exposes `buyer_discount_percent` +
+  `price_after_buyer_discount` for the product card (only for the `engineer_with_elite_yar` group).
+- **Coupon wallet (WCPN)** — `Services/Financial/CouponWallet`, owner = reserved system user `0990000003`
+  (or `financial.coupon_wallet_user_id`). The company share of every coupon is debited from it
+  (`WalletTransactionEngine::debitCoupon`, leg `coupon_funding_legs.wallet_code = 'WCPN'`) and refused up
+  front (`coupons.coupon_wallet_empty`) when its balance cannot cover it — **never from WSSG any more**.
+  Refunds and weighbridge deltas return to the wallet that paid (legacy legs with NULL `wallet_code` still
+  go to WSSG). Admin: `GET /admin/coupon-wallet` (manage-financial), `POST /fund|/defund` (level 1, note
+  required) move money WSSG↔WCPN with two ledger rows + activity log. Supplier/EliteYAR-funded coupon shares
+  are unchanged pending a round-6 question.
+- **EliteYAR self-purchase = two discounts, no commission.** When the order's EliteYAR is the payer,
+  `PlaceOrderAction` applies `%OW + %CO` (`owner_discount_rate` snapshots the sum, so the reconciler and the
+  weighbridge stay consistent), writes `buyer_discount_amount` (OW part) and the new
+  `orders.elite_yar_discount_amount` («تخفیف ویژه الیت یار», CO part = total − OW part).
+  `WeighbridgeVatRouter` already pays no commission when EliteYAR = payer, so CO is given exactly once.
+  Preview (`CartCheckoutTotals::eliteYARSelfDiscountFor`), payment-options, pre-invoice, `OrderResource` and
+  the PDF line all carry it.
+- **Hold → employers are told.** `NotifyEliteYARVerificationChange` uses `isEliteYAR()` (legacy
+  engineer/contractor too) and sends `elite_yar_hold_employer` / `elite_yar_restored_employer` (SMS +
+  in-app) to every **approved** employer; the audit log lists who was notified.
+- **Supplier documents show the supplier's money.** `InvoiceDataBuilder::SUPPLIER_DOCS` (B, F, H, j, LS, O):
+  lines at `order_items.supplier_unit_price` (new per-line snapshot; falls back to `orders.supplier_price`),
+  freight, «کسر کارمزد قراردادی» (= goods + freight − receivable, so the sum is exact) and
+  «مبلغ قابل دریافت» = PTS/PTSM (`calculatePTS` before payment). Buyer discounts/coupon/total never appear.
+  C and K are shared buyer+supplier and unchanged.
+- **Sazeh 90 licence API** — `Saze90BadgeService` has a licence-API mode behind
+  `services.saze90.licence_api.enabled` (default off; contract `docs/specs/SAZE90_LICENCE_API_FOR_SAJAD.md`):
+  `selectLicence()` picks gold > silver > bronze > farthest `sum_expires_at`; a licence without a badge is
+  still a member (`'saze90'`); a malformed answer is an outage, never "no licence".
 
 ### Order surveys — two independent documents (S / T) — FEATURE-FLAGGED OFF
 

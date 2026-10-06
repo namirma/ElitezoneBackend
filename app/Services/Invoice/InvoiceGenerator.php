@@ -234,6 +234,9 @@ class InvoiceGenerator
             // اسنادِ اصلاحیِ باسکول: مبلغِ اصلاح‌شده‌ی هر طرف (POOM خریدار / PTSM سوپلایر).
             FinancialCodes::DOC_MODIFIED_INVOICE_OWNER => $order->{Order::PAYMENT_OF_OWNER} ?? $order->final_amount,
             FinancialCodes::DOC_MODIFIED_INVOICE_SUPPLIER => $order->{Order::PAYMENT_TO_SUPPLIER} ?? $order->final_amount,
+            // گزارش‌های تأمین‌کننده: مبلغِ قابل‌دریافتِ او، نه مبلغِ خریدار (مدیریت، دورِ پنجم، پرسشِ ۷).
+            FinancialCodes::DOC_REPORT_SUPPLIER,
+            FinancialCodes::DOC_FINAL_REPORT_SUPPLIER => $order->{Order::PAYMENT_TO_SUPPLIER} ?? $order->final_amount,
             // فاکتورهای مودیان: مبلغی که هر فاکتور درباره‌ی آن است.
             FinancialCodes::DOC_TAX_INVOICE_SUPPLIER => $order->{Order::PAYMENT_TO_SUPPLIER} ?? $order->final_amount, // O
             FinancialCodes::DOC_TAX_INVOICE_BUYER => $order->{Order::PAYMENT_OF_OWNER} ?? $order->final_amount,        // P

@@ -24,6 +24,26 @@ class ApplyVariantDiscountTest extends TestCase
     {
         parent::setUp();
         $this->pipe = new ApplyVariantDiscount;
+        // مدیریت، دورِ پنجم (۱۴۰۵/۰۷/۱۴): تخفیفِ واریانت «تخفیفِ دیگری» است و خاموش است. ماژول
+        // نگه داشته شده (قانونِ یک)؛ این تست‌ها با پرچمِ روشن آن را سالم نگه می‌دارند.
+        config(['features.variant_discounts' => true]);
+    }
+
+    #[Test]
+    public function a_variant_discount_is_not_applied_while_the_feature_is_off(): void
+    {
+        config(['features.variant_discounts' => false]);
+        $variant = $this->makeVariant(null, [
+            'discount_type' => 'percentage',
+            'discount_value' => 10,
+        ]);
+        $ctx = $this->makeContext($variant);
+        $ctx->payablePrice = 1_000_000;
+
+        $this->pipe->handle($ctx, fn ($c) => $c);
+
+        $this->assertSame(1_000_000.0, $ctx->payablePrice);
+        $this->assertSame(0.0, $ctx->variantDiscountAmount);
     }
 
     #[Test]

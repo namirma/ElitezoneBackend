@@ -60,8 +60,11 @@ class PricingContext
      */
     public float $supplierPrice = 0.0;
 
-    /** آیا فیلترها قیمت را زیرِ کفِ قراردادی بردند و به کف برگردانده شد؟ (برای گزارش/لاگ) */
+    /** آیا فیلترها قیمت را زیرِ کف (قیمتِ تأمین‌کننده) بردند و به کف برگردانده شد؟ (برای گزارش/لاگ) */
     public bool $priceFloorApplied = false;
+
+    /** درصدِ تخفیفِ ویژه‌ی خریدارِ دارای الیت‌یار برای این مبدأ؛ صفر برای بقیه (کارتِ محصول). */
+    public float $buyerDiscountPercent = 0.0;
 
     /**
      * افزودن یک گزارش به لیست جزئیات
@@ -131,6 +134,7 @@ class PricingContext
             withVat: $this->withVat,
             supplierPrice: $this->supplierPrice > 0 ? $this->supplierPrice : $finalPrice,
             priceFloorApplied: $this->priceFloorApplied,
+            buyerDiscountPercent: $this->buyerDiscountPercent,
             variantDiscountType: $this->variantDiscountType,
             variantDiscountValue: $this->variantDiscountValue,
             variantDiscountAmount: $this->variantDiscountAmount,
