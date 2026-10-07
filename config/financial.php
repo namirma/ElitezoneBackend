@@ -89,6 +89,9 @@ return [
     */
     'coupon_wallet_user_id' => env('FINANCIAL_COUPON_WALLET_USER_ID'),
 
+    // مدیریت، دورِ ششم، پرسشِ ۵: هشدارِ «کیف پول کوپن‌ها کم است» به مدیرانِ مالی، حداکثر هر چند ساعت یک بار.
+    'coupon_wallet_alert_hours' => (int) env('FINANCIAL_COUPON_WALLET_ALERT_HOURS', 6),
+
     /*
     |--------------------------------------------------------------------------
     | EliteYAR lifetime commission cap multiplier

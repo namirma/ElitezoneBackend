@@ -120,6 +120,111 @@ class SmsTemplate extends Model
     /** کلیدهایی که خاموش‌شدنشان یعنی هیچ‌کس نمی‌تواند وارد شود. */
     const PROTECTED_KEYS = ['loginMessage', 'driver_verify', 'beneficiary_verification'];
 
+    /*
+     * دسته‌ی قالب — «استاندارد لحن و نگارش پیامک‌ها»ی مدیریت، بندِ ۱۸ (دورِ ششم، ۱۴۰۵/۰۷/۱۵):
+     * «تمام SMS Templateها باید حداقل در یکی از دسته‌های زیر قرار گیرند.»
+     */
+    const CATEGORY = 'category';
+
+    const CATEGORY_AUTH = 'AUTH';
+
+    const CATEGORY_TRANSACTION = 'TRANSACTION';
+
+    const CATEGORY_STATUS = 'STATUS';
+
+    const CATEGORY_ACTION_REQUIRED = 'ACTION_REQUIRED';
+
+    const CATEGORY_REMINDER = 'REMINDER';
+
+    const CATEGORY_SECURITY = 'SECURITY';
+
+    const CATEGORY_SUPPORT = 'SUPPORT';
+
+    const CATEGORY_MARKETING = 'MARKETING';
+
+    /** @var array<string, string> دسته => برچسبِ فارسی (همان توضیحِ دستورالعمل) */
+    const CATEGORIES = [
+        self::CATEGORY_AUTH => 'احراز هویت و کد یک‌بارمصرف',
+        self::CATEGORY_TRANSACTION => 'ثبت درخواست، سفارش، پرداخت و عملیات اصلی',
+        self::CATEGORY_STATUS => 'تغییر وضعیت درخواست یا سفارش',
+        self::CATEGORY_ACTION_REQUIRED => 'نیازمند اقدام کاربر',
+        self::CATEGORY_REMINDER => 'یادآوری',
+        self::CATEGORY_SECURITY => 'ورود، تغییر اطلاعات حساس یا هشدار امنیتی',
+        self::CATEGORY_SUPPORT => 'پشتیبانی',
+        self::CATEGORY_MARKETING => 'بازاریابی (جدا از پیام‌های عملیاتی)',
+    ];
+
+    /** @var array<string, string> کلیدِ قالبِ سیستمی => دسته */
+    private const CATEGORY_BY_KEY = [
+        'loginMessage' => self::CATEGORY_AUTH,
+        'beneficiary_verification' => self::CATEGORY_AUTH,
+        'driver_verify' => self::CATEGORY_AUTH,
+        'newRegisterUser' => self::CATEGORY_TRANSACTION,
+        'wallet_funded' => self::CATEGORY_TRANSACTION,
+        'wallet_deposited_podium' => self::CATEGORY_TRANSACTION,
+        'order_paid_buyer' => self::CATEGORY_TRANSACTION,
+        'order_paid_supplier' => self::CATEGORY_TRANSACTION,
+        'buyer_refund_released' => self::CATEGORY_TRANSACTION,
+        'order_cancelled_refunded' => self::CATEGORY_TRANSACTION,
+        'elite_yar_verified' => self::CATEGORY_STATUS,
+        'elite_yar_hold_employer' => self::CATEGORY_STATUS,
+        'elite_yar_restored_employer' => self::CATEGORY_STATUS,
+        'cart_payment_link_cancelled' => self::CATEGORY_STATUS,
+        'transaction_confirmed' => self::CATEGORY_STATUS,
+        'transaction_rejected' => self::CATEGORY_STATUS,
+        'order_cancelled' => self::CATEGORY_STATUS,
+        'cart_prices_updated' => self::CATEGORY_STATUS,
+        'overweight_rejected' => self::CATEGORY_STATUS,
+        'delivery_confirmed' => self::CATEGORY_STATUS,
+        'shipment_returned' => self::CATEGORY_STATUS,
+        'return_damage_settled' => self::CATEGORY_STATUS,
+        'return_damage_cap_reached' => self::CATEGORY_STATUS,
+        'reserve_extension_accepted' => self::CATEGORY_STATUS,
+        'reserve_extension_rejected' => self::CATEGORY_STATUS,
+        'order_cancel_accepted' => self::CATEGORY_STATUS,
+        'order_cancel_rejected' => self::CATEGORY_STATUS,
+        'order_cancel_escalated' => self::CATEGORY_STATUS,
+        'order_cancel_admin_approved' => self::CATEGORY_STATUS,
+        'order_cancel_admin_rejected' => self::CATEGORY_STATUS,
+        'price_change_expired' => self::CATEGORY_STATUS,
+        'product_change_approved' => self::CATEGORY_STATUS,
+        'product_change_rejected' => self::CATEGORY_STATUS,
+        'supplier_approved' => self::CATEGORY_STATUS,
+        'supplier_rejected' => self::CATEGORY_STATUS,
+        'coupon_funding_accepted' => self::CATEGORY_STATUS,
+        'coupon_funding_declined' => self::CATEGORY_STATUS,
+        'elite_yar_unverified' => self::CATEGORY_ACTION_REQUIRED,
+        'elite_yar_invitation' => self::CATEGORY_ACTION_REQUIRED,
+        'elite_yar_sms_invitation' => self::CATEGORY_ACTION_REQUIRED,
+        'employer_invitation' => self::CATEGORY_ACTION_REQUIRED,
+        'cart_payment_link' => self::CATEGORY_ACTION_REQUIRED,
+        'coupon_wallet_low_admin' => self::CATEGORY_ACTION_REQUIRED,
+        'order_placed' => self::CATEGORY_ACTION_REQUIRED,
+        'supplier_debt_notification' => self::CATEGORY_ACTION_REQUIRED,
+        'overweight_supplier_request' => self::CATEGORY_ACTION_REQUIRED,
+        'overweight_buyer_request' => self::CATEGORY_ACTION_REQUIRED,
+        'driver_assigned' => self::CATEGORY_ACTION_REQUIRED,
+        'driver_arrived' => self::CATEGORY_ACTION_REQUIRED,
+        'return_damage_awaiting_buyer' => self::CATEGORY_ACTION_REQUIRED,
+        'reserve_extension_proposed' => self::CATEGORY_ACTION_REQUIRED,
+        'order_cancel_requested' => self::CATEGORY_ACTION_REQUIRED,
+        'supplier_needs_correction' => self::CATEGORY_ACTION_REQUIRED,
+        'coupon_funding_requested' => self::CATEGORY_ACTION_REQUIRED,
+        'cart_expiring' => self::CATEGORY_REMINDER,
+        'delivery_expiring' => self::CATEGORY_REMINDER,
+        'ticket_admin_replied' => self::CATEGORY_SUPPORT,
+        'ticket_resolved' => self::CATEGORY_SUPPORT,
+        'ticket_closed' => self::CATEGORY_SUPPORT,
+    ];
+
+    public static function categoryFor(string $key): ?string
+    {
+        return self::CATEGORY_BY_KEY[$key] ?? null;
+    }
+
+    /** جانگهدارهایی که عدد نمایشی‌اند و با ارقامِ فارسی نوشته می‌شوند (دستورالعملِ پیامک، بندِ ۱۵). */
+    private const PERSIAN_DIGIT_PARAMS = ['amount', 'balance', 'minutes', 'hours', 'percent'];
+
     const COND_ROLES = 'roles';
 
     const COND_MIN_AMOUNT = 'min_amount';
@@ -153,6 +258,7 @@ class SmsTemplate extends Model
         self::SENDER,
         self::SCHEDULE,
         self::IS_CUSTOM,
+        self::CATEGORY,
     ];
 
     protected $casts = [
@@ -274,6 +380,8 @@ class SmsTemplate extends Model
                 self::SENDER => $kind === self::KIND_EVENT ? null : $target,
                 self::SCHEDULE => $schedule,
                 self::IS_CUSTOM => false,
+                // دسته‌ای که ادمین گذاشته می‌ماند؛ خالی ⇒ دسته‌ی پیش‌فرضِ کلید.
+                self::CATEGORY => $row->{self::CATEGORY} ?? static::categoryFor((string) $key),
             ]);
             // عمداً fillable نیست — فقط همین‌جا نوشته می‌شود، نه از بدنه‌ی درخواست.
             $row->{self::IS_PROTECTED} = static::isProtectedKey($key);
@@ -294,6 +402,7 @@ class SmsTemplate extends Model
     public static function render(string $key, array $params = [], ?string $mobile = null): ?string
     {
         $template = static::findCached($key);
+        $params = self::withFirstName($template !== null ? (string) $template->{self::BODY} : (string) __("sms.{$key}"), $params, $mobile);
 
         if ($template === null) {
             return self::fromLang($key, $params);
@@ -440,8 +549,23 @@ class SmsTemplate extends Model
      */
     public static function interpolate(string $body, array $params): string
     {
+        // دستورالعملِ پیامکِ مدیریت (دورِ ششم، پرسشِ ۷؛ docs/specs/SMS_STYLE_GUIDE.md بندِ ۲۱-۱۳): متغیرِ
+        // اختیاریِ خالی نباید جای خالی، ویرگولِ اضافه یا خطِ شکسته بگذارد — «:first_name عزیز،» کلاً حذف.
+        if (str_contains($body, ':first_name') && trim((string) ($params['first_name'] ?? '')) === '') {
+            $body = (string) preg_replace('/:first_name\s*عزیز،[ \t]*(\r?\n)?/u', '', $body);
+            $body = str_replace(':first_name', '', $body);
+            unset($params['first_name']);
+        }
+
         if ($params === []) {
             return $body;
+        }
+
+        // بندِ ۱۵ِ دستورالعمل: اعدادِ نمایشی با ارقامِ فارسی؛ کدِ یک‌بارمصرف و شماره‌ی سفارش لاتین می‌مانند.
+        foreach (self::PERSIAN_DIGIT_PARAMS as $name) {
+            if (isset($params[$name]) && is_scalar($params[$name])) {
+                $params[$name] = enToFa((string) $params[$name]);
+            }
         }
 
         uksort($params, fn ($a, $b) => mb_strlen((string) $b) <=> mb_strlen((string) $a));
@@ -462,6 +586,38 @@ class SmsTemplate extends Model
      */
     private static function fromLang(string $key, array $params): ?string
     {
-        return Lang::has("sms.{$key}") ? (string) __("sms.{$key}", $params) : null;
+        // متنِ خام + همان `interpolate` (نه جایگذاریِ مترجم) تا حذفِ «:first_name عزیز،»ِ خالی این‌جا هم برقرار باشد.
+        return Lang::has("sms.{$key}") ? self::interpolate((string) __("sms.{$key}"), $params) : null;
+    }
+
+    /**
+     * نامِ کوچکِ گیرنده برای «{first_name} عزیز،» — دستورالعملِ پیامکِ مدیریت، بندِ ۳. خالی یعنی خطاب حذف.
+     */
+    public static function firstNameFor(?string $mobile): string
+    {
+        if ($mobile === null || trim($mobile) === '') {
+            return '';
+        }
+
+        $profile = User::query()->where(User::MOBILE, PhoneNumber::to09($mobile))->with('profile')->first()?->profile;
+        $name = $profile instanceof UserProfile ? (string) $profile->{UserProfile::NAME} : '';
+
+        // نامِ استعلام‌شده از ثبت‌احوال اغلب «ي/ك»ِ عربی دارد («سيدعليرضا»)؛ پیامک فارسی است.
+        return trim(strtr($name, ['ي' => 'ی', 'ك' => 'ک']));
+    }
+
+    /**
+     * فرستنده‌ای که نام را نداده: اگر متن «:first_name» دارد، از موبایلِ گیرنده پیدایش کن.
+     *
+     * @param  array<string, mixed>  $params
+     * @return array<string, mixed>
+     */
+    private static function withFirstName(string $body, array $params, ?string $mobile): array
+    {
+        if (str_contains($body, ':first_name') && ! array_key_exists('first_name', $params)) {
+            $params['first_name'] = self::firstNameFor($mobile);
+        }
+
+        return $params;
     }
 }

@@ -67,6 +67,15 @@ trait ValidatesCouponFunders
                 return;
             }
 
+            // مدیریت، دورِ ششم، پرسشِ ۱: فقط شرکت کوپن صادر می‌کند — سهمِ تأمین‌کننده/الیت‌یار پذیرفته نیست.
+            if (! config('features.partner_coupons') && collect($funders)->contains(
+                fn ($row) => ! is_array($row) || ($row['funder_type'] ?? null) !== CouponFunder::TYPE_COMPANY
+            )) {
+                $v->errors()->add('funders', __('coupons.partner_coupons_off'));
+
+                return;
+            }
+
             $scalar = fn ($value, string $default = ''): string => is_scalar($value) ? (string) $value : $default;
 
             $resolved = [];

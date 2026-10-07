@@ -152,6 +152,14 @@ class StoreOrderRequest extends FormRequest
                         return;
                     }
 
+                    // مدیریت، دورِ ششم، پرسشِ ۶-ب: خرید برای کارفرما روی اکانتِ کارفرماست — الیت‌یار سبد را
+                    // با «لینک پرداخت» می‌فرستد و کارفرما می‌پردازد؛ پرداخت از کیف پولِ الیت‌یار برای کارفرما نیست.
+                    if (! config('features.elite_yar_pays_for_employer')) {
+                        $fail(__('orders.store_elite_yar_buys_for_employer_via_link'));
+
+                        return;
+                    }
+
                     $eliteYAR = Auth::user();
 
                     $isApprovedEmployer = $eliteYAR

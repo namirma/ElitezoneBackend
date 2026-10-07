@@ -7,6 +7,7 @@ namespace Tests\Feature\Financial;
 use App\Actions\Financial\ProcessWeighbridgeResultAction;
 use App\Constants\FinancialCodes;
 use App\Models\Address;
+use App\Models\Badge;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\FactoryStock;
@@ -385,6 +386,46 @@ class BuyerDiscountAndSupplierPriceTest extends TestCase
         $this->assertEqualsWithDelta(self::SUPPLIER_PRICE + 20_000, (float) $buyerDoc['line_items'][0]['unit_price'], 1.0);
         $this->assertEqualsWithDelta((float) $order->{Order::FINAL_AMOUNT}, (float) $buyerDoc['totals']['final'], 0.0);
         $this->assertNotEquals($buyerDoc['amount_words'], $supplierDoc['amount_words']);
+    }
+
+    // ── دورِ ششم، پرسشِ ۸: اسنادِ الیت‌یار ─────────────────────────────────────
+
+    /**
+     * «مبلغِ پرداختیِ خریدار در هیچ جا به الیت‌یار یا تأمین‌کننده نشان نده.» سندِ D (گزارشِ الیت‌یار)
+     * «مبلغ سفارش» را نشان می‌داد و هر دو سندِ D و Q کارمزد را با ضریبِ ثابتِ `final × 0.006` حساب
+     * می‌کردند — نه با فرمولِ واقعی (سهمِ CO از استخر). Q باید همان مبلغی باشد که به الیت‌یار پرداخت شد.
+     */
+    #[Test]
+    public function elite_yar_documents_show_the_real_commission_and_never_the_buyer_amount(): void
+    {
+        $buyer = $this->buyer(withEliteYAR: true);
+        $this->fillCart($buyer);
+        $this->pay($buyer)->assertOk();
+        $order = $this->lastOrderOf($buyer)->load('items');
+        $this->assertNotNull($order->{Order::ELITE_YAR_USER_ID});
+
+        // تخمینِ پیش از باسکول: استخر × CO/(CO+SSG) — پیش‌گام: ۲۵ / (۲۵ + ۳۵).
+        $pool = (float) $order->{Order::PAYMENT_OF_OWNER} - (float) $order->{Order::PAYMENT_TO_SUPPLIER};
+        $report = app(InvoiceDataBuilder::class)->build($order, FinancialCodes::DOC_ELITE_YAR_REPORT, 'T-D');
+        $this->assertTrue($report['elite_yar_view']);
+        $this->assertEqualsWithDelta($pool * 25 / 60, (float) $report['totals']['final'], 1.0);
+        $this->assertNotEqualsWithDelta((float) $order->{Order::FINAL_AMOUNT} * 0.006, (float) $report['totals']['final'], 1.0);
+        $this->assertArrayNotHasKey('gross', $report['totals'], 'هیچ مبلغی از خریدار در سندِ الیت‌یار نیست');
+
+        // سفارشِ قدیمی (بی‌اسنپ‌شاتِ سهم) با نشانِ الیت‌یار قیمت می‌خورد — طلایی: ۳۷٫۵ / (۳۷٫۵ + ۲۲٫۵).
+        $gold = Badge::firstOrCreate([Badge::CODE => 'gold'], [Badge::NAME => 'Gold']);
+        User::findOrFail($order->{Order::ELITE_YAR_USER_ID})->forceFill([User::BADGE_ID => $gold->id])->save();
+        // `fresh()`، نه `replicate()`: replicate رابطه‌ی eliteYARِ بی‌نشانِ بارشده را هم کپی می‌کند. ذخیره نمی‌شود.
+        $legacy = $order->fresh()->forceFill([Order::OW_SHARE_PERCENT => null, Order::CO_SHARE_PERCENT => null]);
+        $this->assertEqualsWithDelta($pool * 37.5 / 60, app(InvoiceDataBuilder::class)->eliteYARCommission($legacy), 1.0);
+
+        // پس از باسکول: سندِ Q همان کارمزدی است که واقعاً ثبت شد.
+        $order->forceFill([Order::STATUS => Order::STATUS_SHIPPED])->save();
+        app(ProcessWeighbridgeResultAction::class)->execute($order->fresh(), (float) self::KG);
+        $order = $order->fresh()->load('items');
+        $tax = app(InvoiceDataBuilder::class)->build($order, FinancialCodes::DOC_TAX_INVOICE_ELITE_YAR, 'T-Q');
+        $this->assertGreaterThan(0.0, (float) $order->{Order::PAYMENT_TO_ELITE_YAR});
+        $this->assertEqualsWithDelta((float) $order->{Order::PAYMENT_TO_ELITE_YAR}, (float) $tax['totals']['final'], 0.0);
     }
 
     // ── پرسش‌های ۴ و ۶ ───────────────────────────────────────────────────────

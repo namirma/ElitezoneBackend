@@ -46,6 +46,7 @@ class SmsTemplateSeeder extends Seeder
         $em = SmsTemplate::AUDIENCE_EMPLOYER;
         $d = SmsTemplate::AUDIENCE_DRIVER;
         $any = SmsTemplate::AUDIENCE_ANY;
+        $adm = SmsTemplate::AUDIENCE_ADMIN;
 
         $ev = SmsTemplate::KIND_EVENT;
         $ac = SmsTemplate::KIND_ACTION;
@@ -58,6 +59,7 @@ class SmsTemplateSeeder extends Seeder
             'beneficiary_verification' => ['کد تأیید ذی‌نفع (خرید به نام دیگری)', 'الیت‌یار برای «خرید به نام دیگری» شماره‌ی کارفرما را وارد می‌کند؛ کد تأیید به شماره‌ی کارفرما می‌رود. ارسال‌کننده: BeneficiaryController::requestVerification.', $em, ['name', 'code'], [$ac, 'BeneficiaryController::startVerification']],
             'elite_yar_verified' => ['تأیید الیت یار', 'حکمِ «الیت‌یارِ تأییدشده» برای کاربر true می‌شود — با تشخیصِ لایسنسِ سازه ۹۰ در همگام‌سازیِ پروفایل (SyncUserBadgeAction) یا با «تأیید مدارک» ادمین وقتی یکی از روش‌های مدرکی روشن است. همین متن به‌عنوان اعلانِ درون‌برنامه‌ای هم ثبت می‌شود. ارسال‌کننده: NotifyEliteYARVerificationChange.', $e, [], [$ac, 'NotifyEliteYARVerificationChange']],
             'elite_yar_unverified' => ['برداشته‌شدن تأیید الیت یار', 'حکمِ «الیت‌یارِ تأییدشده» برای کاربر false می‌شود — سازه ۹۰ لایسنسش را تأیید نکرد (حساب هولد می‌شود)، یا ادمین «لغو تأیید مدارک» زد. همین متن به‌عنوان اعلانِ درون‌برنامه‌ای هم ثبت می‌شود. ارسال‌کننده: NotifyEliteYARVerificationChange.', $e, [], [$ac, 'NotifyEliteYARVerificationChange']],
+            'coupon_wallet_low_admin' => ['کمبودِ کیف پول کوپن‌های تخفیف — مدیرِ مالی', 'یک کد تخفیف رد شد چون «کیف پول کوپن‌های تخفیف» سهمِ الیت‌زون را نمی‌پوشاند (مدیریت، دورِ ششم، پرسشِ ۵). به ادمین‌های فعالِ دارای مجوزِ مالی، حداکثر هر ۶ ساعت یک بار. همین متن به‌عنوان اعلانِ درون‌برنامه‌ای هم ثبت می‌شود. ارسال‌کننده: CouponWalletLowAlert.', $adm, ['first_name', 'amount', 'balance'], [$ac, 'CouponWalletLowAlert']],
             'elite_yar_hold_employer' => ['توقف موقت همکاری الیت یار — کارفرما', 'حکمِ «الیت‌یارِ تأییدشده» برای یک الیت‌یار false می‌شود (هولد) — به هر کارفرمایی که همکاری‌اش با این الیت‌یار تأییدشده است. متنِ مدیریت (دورِ پنجم، پرسشِ ۶). همین متن به‌عنوان اعلانِ درون‌برنامه‌ای هم ثبت می‌شود. ارسال‌کننده: NotifyEliteYARVerificationChange.', $em, ['elite_yar_name'], [$ac, 'NotifyEliteYARVerificationChange']],
             'elite_yar_restored_employer' => ['ازسرگیری همکاری الیت یار — کارفرما', 'حکمِ «الیت‌یارِ تأییدشده» دوباره true می‌شود (رفعِ هولد) — به کارفرماهای تأییدشده‌ی همان الیت‌یار. همین متن به‌عنوان اعلانِ درون‌برنامه‌ای هم ثبت می‌شود. ارسال‌کننده: NotifyEliteYARVerificationChange.', $em, ['elite_yar_name'], [$ac, 'NotifyEliteYARVerificationChange']],
             'elite_yar_invitation' => ['دعوت الیت‌یارِ ثبت‌نام‌شده', 'کارفرما یک الیت‌یارِ ثبت‌نام‌شده را به همکاری دعوت می‌کند (ثبتِ رابطه‌ی کارفرما–الیت‌یار در وضعیت «در انتظار»). همین متن به‌عنوان اعلانِ درون‌برنامه‌ای هم ثبت می‌شود. ارسال‌کننده: EliteYARRelationController::invite.', $e, ['employer_name'], [$ac, 'EliteYARRelationController::invite']],

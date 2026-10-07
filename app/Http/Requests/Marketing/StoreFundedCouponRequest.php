@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Marketing;
 
+use App\Exceptions\BusinessException;
 use App\Http\Requests\Concerns\ValidatesCouponFunders;
 use App\Models\Coupon;
 use App\Models\CouponFunder;
@@ -24,6 +25,17 @@ class StoreFundedCouponRequest extends FormRequest
     public function authorize(): bool
     {
         return in_array($this->actorType(), [CouponFunder::TYPE_SUPPLIER, CouponFunder::TYPE_ELITE_YAR], true);
+    }
+
+    /**
+     * مدیریت، دورِ ششم، پرسشِ ۱: صدورِ کوپن توسطِ تأمین‌کننده و الیت‌یار متوقف است — پیش از اعتبارسنجی،
+     * با پیامِ روشن (نه «اطلاعات ارسالی معتبر نیست»).
+     */
+    protected function prepareForValidation(): void
+    {
+        if (! config('features.partner_coupons')) {
+            throw new BusinessException(__('coupons.partner_coupons_off'), 422);
+        }
     }
 
     public function rules(): array

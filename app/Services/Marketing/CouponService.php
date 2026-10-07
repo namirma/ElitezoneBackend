@@ -74,7 +74,7 @@ class CouponService
 
         // کوپنِ کمپینی (پرسشِ ۱۰ مدیریت) چندمصرفه است و به‌جای used_at بودجه دارد.
         if ($coupon->isCampaign()) {
-            if ($coupon->budgetRemaining() <= 0.0) {
+            if ($coupon->hasBudgetCap() && $coupon->budgetRemaining() <= 0.0) {
                 throw new BusinessException(__('coupons.budget_exhausted'));
             }
         } elseif (! is_null($coupon->{Coupon::USED_AT})) {
@@ -92,6 +92,11 @@ class CouponService
         // سنجیده می‌شوند.
         if (! $coupon->isFundingReady()) {
             throw new BusinessException(__('coupons.funding_not_ready'), 422);
+        }
+
+        // کوپنِ مشترکِ قدیمی (سهمِ تأمین‌کننده/الیت‌یار) — مدیریت، دورِ ششم، پرسشِ ۱.
+        if (! config('features.partner_coupons') && $coupon->hasPartnerFunding()) {
+            throw new BusinessException(__('coupons.partner_coupons_off'), 422);
         }
 
         return $coupon;

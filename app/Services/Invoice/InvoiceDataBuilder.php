@@ -3,8 +3,10 @@
 namespace App\Services\Invoice;
 
 use App\Constants\FinancialCodes;
+use App\Models\Badge;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\User;
 use App\Models\UserProfile;
 use App\Services\Financial\SettlementCalculatorService;
 use App\Support\JalaliDate;
@@ -49,6 +51,15 @@ class InvoiceDataBuilder
         FinancialCodes::DOC_TAX_INVOICE_SUPPLIER,
     ];
 
+    /**
+     * اسنادِ الیت‌یار — مدیریت، دورِ ششم، پرسشِ ۸ (۱۴۰۵/۰۷/۱۵): «مبلغِ پرداختیِ خریدار در هیچ جا به
+     * الیت‌یار یا تأمین‌کننده نشان نده.» فقط کارمزدِ خودِ الیت‌یار.
+     */
+    private const ELITE_YAR_DOCS = [
+        FinancialCodes::DOC_ELITE_YAR_REPORT,
+        FinancialCodes::DOC_TAX_INVOICE_ELITE_YAR,
+    ];
+
     public function __construct(private readonly SettlementCalculatorService $settlement) {}
 
     /**
@@ -61,10 +72,19 @@ class InvoiceDataBuilder
     {
         $buyerProfile = $order->placer?->profile;
         $supplierView = in_array($docType, self::SUPPLIER_DOCS, true);
-        $lineItems = $supplierView ? $this->buildSupplierLineItems($order) : $this->buildLineItems($order);
-        $totals = $supplierView ? $this->buildSupplierTotals($order, $lineItems) : $this->buildTotals($order, $lineItems);
+        $eliteYarView = in_array($docType, self::ELITE_YAR_DOCS, true);
+        $lineItems = match (true) {
+            $supplierView => $this->buildSupplierLineItems($order),
+            $eliteYarView => [],
+            default => $this->buildLineItems($order),
+        };
+        $totals = match (true) {
+            $supplierView => $this->buildSupplierTotals($order, $lineItems),
+            $eliteYarView => $this->buildEliteYarTotals($order),
+            default => $this->buildTotals($order, $lineItems),
+        };
 
-        $amountToConvert = $supplierView ? (float) $totals['final'] : match ($docType) {
+        $amountToConvert = ($supplierView || $eliteYarView) ? (float) $totals['final'] : match ($docType) {
             FinancialCodes::DOC_RESERVE_RECEIPT => (float) $order->payment_to_reserve,
             default => (float) $order->final_amount,
         };
@@ -95,6 +115,7 @@ class InvoiceDataBuilder
             'totals' => $totals,
             'doc_type' => $docType,
             'supplier_view' => $supplierView,
+            'elite_yar_view' => $eliteYarView,
             'payable_label' => $supplierView ? 'مبلغ قابل دریافت:' : 'مبلغ قابل پرداخت:',
             'date_shamsi' => JalaliDate::format(now(), 'Y/m/d'),
             // اعتبار پیش‌فاکتور: تا انقضای رزرو سفارش، و در نبود آن، ۲ روز پس از صدور.
@@ -284,6 +305,50 @@ class InvoiceDataBuilder
             (bool) ($order->{Order::TRANS_COMMISSION} ?? true),
             (bool) ($order->{Order::TRANS_VAT} ?? true),
         );
+    }
+
+    /**
+     * فقط کارمزدِ الیت‌یار؛ هیچ عددی از خریدار (پرسشِ ۸ِ دورِ ششم).
+     *
+     * @return array{elite_yar_commission: float, is_estimate: bool, final: float}
+     */
+    private function buildEliteYarTotals(Order $order): array
+    {
+        $isEstimate = $order->{Order::WEIGHING_COMPLETED_AT} === null;
+        $commission = $this->eliteYARCommission($order);
+
+        return ['elite_yar_commission' => $commission, 'is_estimate' => $isEstimate, 'final' => $commission];
+    }
+
+    /**
+     * کارمزدِ ناخالصِ الیت‌یار (با مالیات). پس از باسکول همان `payment_to_elite_yar` که واقعاً ثبت شد؛
+     * پیش از آن تخمین با همان فرمولِ `WeighbridgeVatRouter`: (POO − PTS) × CO / (CO + SSG) با نرخ‌های
+     * اسنپ‌شاتِ سفارش. الیت‌یارِ پرداخت‌کننده (خریدِ خودش) کارمزد ندارد. پیش از این دو سندِ D و Q
+     * `final_amount × 0.006` می‌نوشتند — ضریبی ثابت که با قراردادِ تأمین‌کننده و نشان ربطی نداشت.
+     */
+    public function eliteYARCommission(Order $order): float
+    {
+        if ($order->{Order::WEIGHING_COMPLETED_AT} !== null) {
+            return (float) ($order->{Order::PAYMENT_TO_ELITE_YAR} ?? 0);
+        }
+
+        $eliteYarId = (int) ($order->{Order::ELITE_YAR_USER_ID} ?? 0);
+        if ($eliteYarId === 0 || $eliteYarId === (int) $order->payerUserId()) {
+            return 0.0;
+        }
+
+        $pool = (float) ($order->{Order::PAYMENT_OF_OWNER} ?? 0) - (float) ($order->{Order::PAYMENT_TO_SUPPLIER} ?? 0);
+        if ($pool <= 0) {
+            return 0.0;
+        }
+
+        // همان قاعده‌ی پرداخت و `WeighbridgeReconciler`: الیت‌یارِ بی‌نشان = pioneer.
+        $eliteYar = $order->eliteYAR;
+        $badge = $eliteYar instanceof User ? $eliteYar->badge : null;
+        $rates = $this->settlement->getCommissionRatesForOrder($order, $badge instanceof Badge ? (string) $badge->code : 'pioneer');
+        $coPlusSsg = $rates['co_final_rate'] + $rates['ssg_final_rate'];
+
+        return $coPlusSsg > 0 ? (float) round($pool * $rates['co_final_rate'] / $coPlusSsg) : 0.0;
     }
 
     /** وزنِ واقعی ÷ وزنِ سفارش پس از باسکول؛ پیش از آن ۱. */

@@ -207,7 +207,8 @@ class AccountSecurityController extends Controller
         // like the rest of the system — not the raw user input.
         Cache::put('pending_mobile_change_'.$user->id, $newMobile09, 120);
 
-        SendSmsJob::template($newMobile09, 'loginMessage', ['code' => $code]);
+        // «اعتبار کد: … دقیقه» (دستورالعملِ پیامک، بندِ ۱۳) — همان ۲ دقیقه‌ی بالا.
+        SendSmsJob::template($newMobile09, 'loginMessage', ['code' => $code, 'minutes' => 2]);
 
         return success([], __('auth.verification_code_sent_to_new_mobile'));
     }

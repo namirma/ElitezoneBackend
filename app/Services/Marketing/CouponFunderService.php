@@ -32,6 +32,13 @@ class CouponFunderService
             throw new BusinessException(__('coupons.used_locked'), 422);
         }
 
+        // مدیریت، دورِ ششم، پرسشِ ۱: فقط شرکت کوپن صادر می‌کند — همه‌ی مسیرهای ساخت/ویرایش
+        // (پنلِ تأمین‌کننده، الیت‌یار و ادمین) از همین‌جا می‌گذرند.
+        if (! config('features.partner_coupons')
+            && collect($rows)->contains(fn (array $row) => $row['funder_type'] !== CouponFunder::TYPE_COMPANY)) {
+            throw new BusinessException(__('coupons.partner_coupons_off'), 422);
+        }
+
         DB::transaction(function () use ($coupon, $rows, $actor, $actorIsAdmin) {
             $existing = $coupon->funders()->get()->keyBy(
                 fn (CouponFunder $f) => $f->{CouponFunder::FUNDER_TYPE}.':'.($f->{CouponFunder::FUNDER_USER_ID} ?? '')
@@ -90,6 +97,11 @@ class CouponFunderService
     {
         if (! $funder->isPending()) {
             throw new BusinessException(__('coupons.funder_already_responded'), 409);
+        }
+
+        // پذیرفتنِ سهمِ تأمین‌کننده/الیت‌یار کوپنِ مشترک را فعال می‌کند — دورِ ششم، پرسشِ ۱. ردکردن آزاد است.
+        if ($accept && ! $funder->isCompany() && ! config('features.partner_coupons')) {
+            throw new BusinessException(__('coupons.partner_coupons_off'), 422);
         }
 
         $funder->forceFill([

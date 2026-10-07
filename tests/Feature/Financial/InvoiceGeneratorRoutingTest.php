@@ -43,9 +43,11 @@ class InvoiceGeneratorRoutingTest extends TestCase
             ->shouldReceive('generate')
             ->andReturnUsing(fn () => 'TEST-'.uniqid());
 
-        $this->mock(InvoiceDataBuilder::class)
-            ->shouldReceive('build')
-            ->andReturn([]);
+        $this->mock(InvoiceDataBuilder::class, function ($mock) {
+            $mock->shouldReceive('build')->andReturn([]);
+            // مبلغِ رکوردِ سندِ D = کارمزدِ الیت‌یار (دورِ ششم، پرسشِ ۸) — از همان سازنده‌ی داده.
+            $mock->shouldReceive('eliteYARCommission')->andReturn(0.0);
+        });
 
         $this->mock(InvoicePdfRenderer::class)
             ->shouldReceive('renderAndSave')

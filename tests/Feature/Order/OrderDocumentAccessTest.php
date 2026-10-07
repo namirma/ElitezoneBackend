@@ -122,6 +122,28 @@ class OrderDocumentAccessTest extends TestCase
         $this->assertSame([], $failures, "دسترسی به اسناد با نقشه‌ی مخاطبان نمی‌خواند:\n".implode("\n", $failures));
     }
 
+    /**
+     * مدیریت، دورِ ششم (پرسش‌های ۶-ب و ۸): در خریدِ الیت‌یار برای کارفرما، خریدار کارفرماست؛ الیت‌یارِ
+     * ثبت‌کننده سندهای خریدار (که مبلغِ خریدار دارند) را نمی‌گیرد و فقط سندهای الیت‌یار را.
+     */
+    #[Test]
+    public function an_elite_yar_who_placed_the_order_for_an_employer_gets_only_elite_yar_documents(): void
+    {
+        $employer = User::factory()->create();
+        $this->order->forceFill([
+            Order::PLACER_USER_ID => $this->eliteYar->id,
+            Order::BENEFICIARY_USER_ID => $employer->id,
+        ])->save();
+
+        Sanctum::actingAs($this->eliteYar);
+        $this->get($this->url('receipt'))->assertForbidden();
+        $this->get($this->url('elite_yar_report'))->assertOk();
+
+        Sanctum::actingAs($employer);
+        $this->get($this->url('receipt'))->assertOk();
+        $this->get($this->url('elite_yar_report'))->assertForbidden();
+    }
+
     #[Test]
     public function a_supplier_can_download_the_documents_that_used_to_be_unreachable(): void
     {

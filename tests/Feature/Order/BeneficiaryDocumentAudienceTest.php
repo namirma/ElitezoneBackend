@@ -86,8 +86,9 @@ class BeneficiaryDocumentAudienceTest extends TestCase
         $roles = $this->order->partyRolesFor($this->eliteYar->id);
 
         $this->assertContains(OrderDocumentCatalog::AUDIENCE_ELITE_YAR, $roles);
-        // در این مسیر الیت‌یار ثبت‌کننده هم هست، پس خریدار هم حساب می‌شود.
-        $this->assertContains(OrderDocumentCatalog::AUDIENCE_BUYER, $roles);
+        // الیت‌یار ثبت‌کننده است ولی خریدار نیست: «مبلغِ پرداختیِ خریدار در هیچ جا به الیت‌یار یا
+        // تأمین‌کننده نشان نده» (مدیریت، دورِ ششم، پرسشِ ۸، ۱۴۰۵/۰۷/۱۵) — رسیدهای خریدار مالِ کارفرماست.
+        $this->assertNotContains(OrderDocumentCatalog::AUDIENCE_BUYER, $roles);
     }
 
     #[Test]

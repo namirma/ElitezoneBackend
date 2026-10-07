@@ -75,6 +75,12 @@ class Coupon extends Model
     /** سهمِ شرکت از تخفیف‌های مصرف‌شده‌ی این کمپین تا امروز (ریال). */
     const BUDGET_USED = 'budget_used';
 
+    /**
+     * چندبارمصرف (کدِ مشترکِ کمپین). مدیریت، دورِ ششم، پرسشِ ۴: بودجه‌ی کمپین حذف شد و تنها سقف کیف پولِ
+     * کوپن‌هاست؛ تا امروز «چندبارمصرف» فقط از وجودِ بودجه خوانده می‌شد.
+     */
+    const IS_MULTI_USE = 'is_multi_use';
+
     const REASON = 'reason';
 
     const IS_ACTIVE = 'is_active';
@@ -105,6 +111,7 @@ class Coupon extends Model
         self::IS_ACTIVE,
         self::CREATED_BY_USER_ID,
         self::BUDGET_TOTAL,
+        self::IS_MULTI_USE,
         // BUDGET_USED عمداً fillable نیست — فقط مسیرِ مصرف/آزادسازی می‌نویسدش.
     ];
 
@@ -115,12 +122,22 @@ class Coupon extends Model
         self::USED_AT => 'datetime',
         self::BUDGET_TOTAL => 'decimal:0',
         self::BUDGET_USED => 'decimal:0',
+        self::IS_MULTI_USE => 'boolean',
     ];
 
-    /** کوپنِ کمپینی (بودجه‌دار) = چندمصرفه تا پایانِ بودجه؛ بی‌بودجه = تک‌مصرفه. */
+    /**
+     * کوپنِ کمپینی = چندمصرفه (هرگز `used_at` نمی‌گیرد). از دورِ ششم پرچمِ صریحِ `is_multi_use`؛ کوپنِ
+     * بودجه‌دار هم چندمصرفه می‌ماند (ردیف‌های قدیمی و پنلِ فعلی که «بودجه» می‌فرستد).
+     */
     public function isCampaign(): bool
     {
-        return $this->{self::BUDGET_TOTAL} !== null;
+        return (bool) $this->{self::IS_MULTI_USE} || $this->{self::BUDGET_TOTAL} !== null;
+    }
+
+    /** سقفِ بودجه‌ی کمپین اعمال می‌شود؟ مدیریت، دورِ ششم، پرسشِ ۴: نه — تنها سقف کیف پولِ کوپن‌هاست. */
+    public function hasBudgetCap(): bool
+    {
+        return (bool) config('features.campaign_budget') && $this->{self::BUDGET_TOTAL} !== null;
     }
 
     /** باقی‌مانده‌ی بودجه‌ی کمپین (ریال)؛ برای کوپنِ غیرکمپینی null. */
@@ -193,6 +210,12 @@ class Coupon extends Model
             CouponFunder::SHARE_PERCENT => 100,
             CouponFunder::STATUS => CouponFunder::STATUS_ACCEPTED,
         ])]);
+    }
+
+    /** سهمی از این کوپن به تأمین‌کننده یا الیت‌یار سپرده شده؟ (دورِ ششم: فقط شرکت کوپن صادر می‌کند) */
+    public function hasPartnerFunding(): bool
+    {
+        return $this->fundingRows()->contains(fn (CouponFunder $f) => ! $f->isCompany());
     }
 
     /** کوپن فقط وقتی قابلِ استفاده است که **همه‌ی** تأمین‌کننده‌ها پذیرفته باشند. */

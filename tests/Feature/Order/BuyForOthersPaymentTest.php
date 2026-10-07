@@ -228,16 +228,41 @@ class BuyForOthersPaymentTest extends TestCase
         // موجودی الیت‌یار عمداً فراوان است: اگر گارد نباشد، پرداخت موفق می‌شود.
         // درخواست از هر جهتِ دیگری معتبر است تا ۴۲۲ نتواند از اعتبارسنجی بیاید،
         // و پیام هم صریح بررسی می‌شود چون هر دو حالت ۴۲۲ برمی‌گردانند.
+        // `beneficiary_user_id` عمداً فرستاده نمی‌شود: از دورِ ششم (پرسشِ ۶-ب) خودش در اعتبارسنجی رد
+        // می‌شود (تستِ بعدی)؛ این تست گاردِ «سبدِ بسته‌شده برای کارفرما» را جدا می‌سنجد.
         $response = $this->postJson('/api/checkout/pay', [
             'address_id' => $this->addressFor($this->eliteYar)->id,
             'shipping_method_id' => $this->shipping->id,
-            'beneficiary_user_id' => $this->employer->id,
         ])->assertStatus(422);
 
         $this->assertSame(
             __('checkout.elite_yar_cannot_pay_for_beneficiary'),
             $response->json('message')
         );
+        $this->assertSame(0, Order::query()->count());
+    }
+
+    /**
+     * مدیریت، دورِ ششم، پرسشِ ۶-ب (۱۴۰۵/۰۷/۱۵): «کلیه‌ی عملیاتِ مالی و سایرِ عملیاتِ مربوط به سفارش از
+     * طریقِ کارفرما و روی اکانتِ کارفرما انجام می‌شود.» گاردِ بالا فقط سبدِ لینک‌شده را می‌بست؛ الیت‌یار
+     * هنوز می‌توانست سبدِ عادی را با `beneficiary_user_id` از کیف پولِ خودش برای کارفرما بپردازد.
+     */
+    #[Test]
+    public function an_elite_yar_cannot_pay_an_ordinary_cart_for_an_employer_from_their_own_wallet(): void
+    {
+        $this->fillCart();
+        Wallet::updateOrCreate([Wallet::USER_ID => $this->eliteYar->id],
+            [Wallet::BALANCE => 900_000_000_000, Wallet::BALANCE_HOLD => 0]);
+
+        Sanctum::actingAs($this->eliteYar);
+
+        $this->postJson('/api/checkout/pay', [
+            'address_id' => $this->addressFor($this->eliteYar)->id,
+            'shipping_method_id' => $this->shipping->id,
+            'beneficiary_user_id' => $this->employer->id,
+        ])->assertStatus(422)
+            ->assertJsonValidationErrors(['beneficiary_user_id' => __('orders.store_elite_yar_buys_for_employer_via_link')]);
+
         $this->assertSame(0, Order::query()->count());
     }
 

@@ -40,6 +40,10 @@ class Notifier
      */
     public static function template(User $user, string $subject, string $key, array $params = []): void
     {
+        // «:first_name عزیز،» (دستورالعملِ پیامکِ مدیریت، دورِ ششم) — گیرنده را داریم، پس نامش را هم؛
+        // متنِ زنگوله هم همان خطابِ پیامک را می‌گیرد.
+        $params += ['first_name' => SmsTemplate::firstNameFor((string) $user->mobile)];
+
         $body = SmsTemplate::text($key, $params);
 
         if ($body === null) {

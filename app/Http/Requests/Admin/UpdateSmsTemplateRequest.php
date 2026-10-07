@@ -37,6 +37,7 @@ class UpdateSmsTemplateRequest extends FormRequest
         $rules = [
             SmsTemplate::BODY => ['sometimes', 'required', 'string', 'max:1000'],
             SmsTemplate::IS_ACTIVE => ['nullable', 'boolean'],
+            SmsTemplate::CATEGORY => ['sometimes', 'nullable', 'string', Rule::in(array_keys(SmsTemplate::CATEGORIES))],
             ...$this->conditionRules(),
         ];
 

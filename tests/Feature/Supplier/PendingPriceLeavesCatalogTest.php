@@ -267,7 +267,7 @@ class PendingPriceLeavesCatalogTest extends TestCase
             SendSmsJob::class,
             fn (SendSmsJob $job) => (fn () => $this->mobile === $mobile
                 && $this->templateKey !== null
-                && str_contains((string) SmsTemplate::render($this->templateKey, $this->params, $this->mobile), 'در مهلت 48 ساعته'))
+                && str_contains((string) SmsTemplate::render($this->templateKey, $this->params, $this->mobile), 'در مهلت ۴۸ ساعته'))
                 ->call($job)
         );
         $this->assertSame(

@@ -86,6 +86,11 @@ class CouponFundingController extends Controller
             return error(__('coupons.used_locked'), [], 422);
         }
 
+        // دورِ ششم، پرسشِ ۱: کوپنِ تأمین‌کننده/الیت‌یار دوباره فعال نمی‌شود؛ خاموش‌کردن آزاد است.
+        if (! $coupon->{Coupon::IS_ACTIVE} && ! config('features.partner_coupons')) {
+            return error(__('coupons.partner_coupons_off'), [], 422);
+        }
+
         $coupon->update([Coupon::IS_ACTIVE => ! $coupon->{Coupon::IS_ACTIVE}]);
 
         return success(new CouponResource($coupon->refresh()->load(self::WITH)), __('coupons.toggled'));

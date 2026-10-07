@@ -227,6 +227,8 @@ return [
     'store_beneficiary_prohibited_for_employer' => 'کارفرما نمی‌تواند فیلد گیرنده سفارش را مستقیم ارسال کند.',
     'store_beneficiary_required_for_elite_yar' => 'الیت یار باید کارفرمای گیرنده سفارش را مشخص کند.',
     'store_beneficiary_not_approved_employer' => 'کاربر انتخاب‌شده کارفرمای تأییدشده‌ی شما نیست.',
+    // مدیریت، دورِ ششم، پرسشِ ۶-ب: خرید برای کارفرما روی اکانتِ کارفرماست.
+    'store_elite_yar_buys_for_employer_via_link' => 'خرید برای کارفرما با «لینک پرداخت» انجام می‌شود؛ سفارش و پرداخت روی حسابِ خودِ کارفرماست.',
 
     // elite_yar_user_id validation (مسیر کارفرما)
     'store_elite_yar_integer' => 'فرمت الیت یار نامعتبر است.',

@@ -34,6 +34,7 @@ class StoreCouponRequest extends FormRequest
             Coupon::IS_ACTIVE => ['nullable', 'boolean'],
             // بودجه‌ی کمپین (ریال): پر = چندمصرفه تا پایانِ بودجه؛ خالی = تک‌مصرفه (پرسشِ ۱۰ مدیریت).
             Coupon::BUDGET_TOTAL => ['nullable', 'integer', 'min:0'],
+            Coupon::IS_MULTI_USE => ['sometimes', 'boolean'],
         ] + $this->funderRules(required: false);
     }
 

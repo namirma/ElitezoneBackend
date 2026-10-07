@@ -2637,6 +2637,7 @@ the «پروسه خرید» chart and every earlier guess. Pinned by `Order/Elit
 - **Coupon campaign budget.** `coupons.budget_total/budget_used`: budgeted = reusable until the company's
   share of the discounts reaches the budget (never `used_at`); the per-order `company_cap_exceeded` is gone.
   ~~Funded from WSSG~~ — **superseded by round 5**: the company share comes only from the coupon wallet (WCPN).
+  The budget itself is **off since round 6** (`features.campaign_budget`); reuse is `coupons.is_multi_use`.
 - **Lifetime payout cap OFF** by `features.elite_yar_lifetime_cap` (default false) until management decides.
 - **Small items.** `PUT /admin/orders/{order}/note` → `OrderResource.admin_note` (buyer/supplier/admin, only
   when non-empty); a cancelled order serves only `refund`/`cancel_report`
@@ -2666,8 +2667,8 @@ differ. Pinned by `Financial/CouponWalletTest`, `Financial/CouponFundingTest`,
   front (`coupons.coupon_wallet_empty`) when its balance cannot cover it — **never from WSSG any more**.
   Refunds and weighbridge deltas return to the wallet that paid (legacy legs with NULL `wallet_code` still
   go to WSSG). Admin: `GET /admin/coupon-wallet` (manage-financial), `POST /fund|/defund` (level 1, note
-  required) move money WSSG↔WCPN with two ledger rows + activity log. Supplier/EliteYAR-funded coupon shares
-  are unchanged pending a round-6 question.
+  required) move money WSSG↔WCPN with two ledger rows + activity log. ~~Supplier/EliteYAR-funded coupon
+  shares unchanged~~ — **superseded by round 6**: only the company issues coupons (below).
 - **EliteYAR self-purchase = two discounts, no commission.** When the order's EliteYAR is the payer,
   `PlaceOrderAction` applies `%OW + %CO` (`owner_discount_rate` snapshots the sum, so the reconciler and the
   weighbridge stay consistent), writes `buyer_discount_amount` (OW part) and the new
@@ -2687,6 +2688,68 @@ differ. Pinned by `Financial/CouponWalletTest`, `Financial/CouponFundingTest`,
   `services.saze90.licence_api.enabled` (default off; contract `docs/specs/SAZE90_LICENCE_API_FOR_SAJAD.md`):
   `selectLicence()` picks gold > silver > bronze > farthest `sum_expires_at`; a licence without a badge is
   still a member (`'saze90'`); a malformed answer is an outage, never "no licence".
+
+### Management round-6 rules (1405/07/15 = 2026-10-07) — company-only coupons, SMS style guide
+
+Source: `docs/session/MANAGEMENT_ANSWERS_2026-10-07.md` and `docs/specs/SMS_STYLE_GUIDE.md` (root workspace).
+Binding over rounds 4–5 where they differ. Every module that was switched off **stays in the code** behind a
+flag (rule one) — the tests that pin it switch the flag on in `setUp`.
+
+- **Only the company issues coupons** (`features.partner_coupons`, default **false**). Off means: a supplier
+  or EliteYAR cannot issue one (`StoreFundedCouponRequest` → 422 `coupons.partner_coupons_off`), an admin
+  coupon cannot name a non-company funder (`ValidatesCouponFunders` + `CouponFunderService::sync`), a funding
+  request cannot be accepted, `CouponFundingController::toggle` will not activate one, and
+  `CouponService` refuses an old mixed-funded coupon at checkout (`Coupon::hasPartnerFunding()`).
+  Migration `2026_10_07_100000` deactivated active, unused coupons that had a non-company funder and
+  recorded them in `round6_deactivations` (reversible `down()`). Pinned by `Financial/CompanyOnlyCouponsTest`.
+- **No campaign budget; the coupon wallet is the only limit** (`features.campaign_budget`, default false).
+  "Reusable" is now its own column, `coupons.is_multi_use` (backfilled from `budget_total`), so a
+  multi-use coupon no longer needs a budget. `Coupon::isCampaign()` = multi-use **or** budgeted;
+  `hasBudgetCap()` = flag on **and** budgeted — use the second for any budget *enforcement*.
+  `CouponResource` adds `is_multi_use` and `budget_cap_enforced`. Pinned by
+  `Financial/CouponWithoutCampaignBudgetTest`.
+- **Coupon wallet short ⇒ refuse AND tell finance.** `CouponWalletShortException` (a `BusinessException`, 422)
+  replaces the plain throw at both sites in `CouponFundingService`. Its `render()` calls
+  `CouponWalletLowAlert` **after** the transaction has rolled back — alerting inside it would roll the
+  notification back too; the checkout preview (`CartCheckoutTotals::couponFor`) alerts directly because it
+  catches the exception itself. The alert goes to active admins with `manage-financial` (SMS
+  `coupon_wallet_low_admin` + bell + activity + `financial` log), at most once per
+  `financial.coupon_wallet_alert_hours` (6) via `Cache::add`. Pinned by `Financial/CouponWalletLowAlertTest`.
+- **An EliteYAR buying for an employer goes through the employer** (`features.elite_yar_pays_for_employer`,
+  default false). A direct placement by an EliteYAR with `beneficiary_user_id` is 422
+  `orders.store_elite_yar_buys_for_employer_via_link`; the payment-link flow (`CartPaymentLinkService`, the
+  employer pays from their own wallet) is the only path. Pinned in `Order/BuyForOthersPaymentTest`.
+  ⚠️ Management's "an account is opened for an employer who has none" is **not** implemented as
+  account-creation-on-behalf — today the EliteYAR's SMS invitation (`EmployerSmsInvite`) leads the employer
+  to register themselves. Who opens the account is a round-7 question; do not build it on a guess.
+- **The buyer's amount is never shown to the EliteYAR or the supplier.** Documents are done:
+  `InvoiceDataBuilder::ELITE_YAR_DOCS` (D, Q) carry `elite_yar_view` and print the EliteYAR's commission
+  (`eliteYARCommission()`: after the weighbridge `payment_to_elite_yar`, before it the CO slice of the pool via
+  `getCommissionRatesForOrder` — no longer `final_amount × 0.006`), and the D record's amount is that
+  commission. `Order::partyRolesFor()` counts the placer as buyer **only when there is no different
+  beneficiary**, so an EliteYAR who placed for an employer no longer gets the buyer's receipts.
+  ⚠️ **The API/screens half is deliberately deferred to the new panel/site (Ali, 1405/07/15) and must not be
+  forgotten** — the field-by-field inventory lives in `FRONTEND_CONTRACT_FOR_REDESIGN_2026-10-05.md` §۶٫۵.
+- **SMS texts follow management's style guide** — all of `lang/fa/sms.php` was rewritten:
+  `:first_name عزیز،` salutation on account/action messages, the signature «الیت‌زون», Persian digits for
+  display numbers, no «کاربر گرامی». Mechanics live in `SmsTemplate`:
+  - `interpolate()` converts `PERSIAN_DIGIT_PARAMS` (`amount`, `balance`, `minutes`, `hours`, `percent`) to
+    Persian digits — **codes, order numbers and links stay Latin** — and drops the whole
+    «:first_name عزیز،» line when the name is empty, so a nameless SMS starts cleanly.
+  - `render()` fills `first_name` from the recipient's mobile when the sender did not
+    (`firstNameFor()`, Arabic «ي/ك» from the identity registry normalised to Persian); `Notifier` does the same.
+  - `sms_templates.category` (guide §18 — `CATEGORY_*`, labels in `CATEGORIES`) is filled by
+    `syncFromLang` from `categoryFor()`; editable from the panel.
+  - **`syncFromLang` never rewrites an existing body**, so the new texts reach a server only through data
+    migration `2026_10_07_100100`. It rewrites a row only when its body is still exactly one of the texts
+    this repo ever shipped (all git versions of `lang/fa/sms.php`, frozen inside the migration), keeps every
+    admin-edited row untouched and logs its key (`SMS style-guide rewrite: … left untouched`), and records
+    each change in `sms_template_rewrites` so `down()` restores it exactly. On dev 49 rows were rewritten and
+    5 hand-edited rows were left. **After running it on staging/production, read that log line** — those
+    keys need a person to apply the new text from the panel.
+  - Pinned by `Notification/SmsStyleGuideTest` (a sweep over every template: forbidden phrases, spelling of
+    «الیت‌زون»/«الیت‌یار», signature, category, nameless rendering) and `SmsSegmentBudgetTest` (a high-volume
+    text must stay in one segment — shorten the text, never raise the budget).
 
 ### Order surveys — two independent documents (S / T) — FEATURE-FLAGGED OFF
 

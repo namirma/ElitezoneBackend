@@ -80,6 +80,9 @@ class CouponFundingTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        // ماژولِ مشارکتِ تأمین‌کننده/الیت‌یار در کوپن از دورِ ششم (۱۴۰۵/۰۷/۱۵) خاموش است («فقط شرکت کوپن
+        // صادر می‌کند»)؛ کد مانده (قانونِ یک) و این تست‌ها با پرچمِ روشن سالم نگهش می‌دارند.
+        config(['features.partner_coupons' => true]);
 
         $this->mock(InvoiceGenerator::class, function ($mock) {
             $mock->shouldReceive('generateDirectPurchaseDocs')->andReturnNull();
@@ -352,6 +355,8 @@ class CouponFundingTest extends TestCase
     #[Test]
     public function a_campaign_coupon_is_reusable_until_its_budget_is_consumed(): void
     {
+        // سقفِ بودجه از دورِ ششم (پرسشِ ۴) خاموش است؛ این تست ماژولِ نگه‌داشته را با پرچمِ روشن می‌سنجد.
+        config(['features.campaign_budget' => true]);
         $coupon = $this->makeCoupon(400_000, [[CouponFunder::TYPE_COMPANY, null, 100]]);
         $coupon->forceFill([Coupon::BUDGET_TOTAL => 1_000_000])->save();
 

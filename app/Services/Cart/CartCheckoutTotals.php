@@ -7,6 +7,7 @@ namespace App\Services\Cart;
 use App\DataTransferObjects\Pricing\CartPricingResult;
 use App\DataTransferObjects\Pricing\PricingContextData;
 use App\Exceptions\BusinessException;
+use App\Exceptions\CouponWalletShortException;
 use App\Models\Cart;
 use App\Models\Coupon;
 use App\Models\PriceFilterCategory;
@@ -285,6 +286,11 @@ final class CartCheckoutTotals
 
             return ['discount' => $this->coupons->calculateDiscount($coupon, $payable), 'error' => null];
         } catch (BusinessException $e) {
+            // دورِ ششم، پرسشِ ۵: ردِ کوپن به‌خاطرِ کیف پولِ کوپن‌ها — همین‌جا هم به مالی خبر بده.
+            if ($e instanceof CouponWalletShortException) {
+                $e->alertFinance();
+            }
+
             return ['discount' => 0.0, 'error' => $e->getMessage()];
         } catch (\Throwable) {
             return ['discount' => 0.0, 'error' => null];

@@ -59,6 +59,9 @@ class CouponSourceOfTruthTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        // ماژولِ مشارکتِ تأمین‌کننده/الیت‌یار در کوپن از دورِ ششم (۱۴۰۵/۰۷/۱۵) خاموش است («فقط شرکت کوپن
+        // صادر می‌کند»)؛ کد مانده (قانونِ یک) و این تست‌ها با پرچمِ روشن سالم نگهش می‌دارند.
+        config(['features.partner_coupons' => true]);
 
         $this->mock(InvoiceGenerator::class, function ($mock) {
             $mock->shouldReceive('generateDirectPurchaseDocs')->andReturnNull();

@@ -241,6 +241,8 @@ class InvoiceGenerator
             FinancialCodes::DOC_TAX_INVOICE_SUPPLIER => $order->{Order::PAYMENT_TO_SUPPLIER} ?? $order->final_amount, // O
             FinancialCodes::DOC_TAX_INVOICE_BUYER => $order->{Order::PAYMENT_OF_OWNER} ?? $order->final_amount,        // P
             FinancialCodes::DOC_TAX_INVOICE_ELITE_YAR => $order->{Order::PAYMENT_TO_ELITE_YAR} ?? $order->final_amount, // Q
+            // سندِ D: کارمزدِ (تخمینیِ) الیت‌یار، نه مبلغِ خریدار — دورِ ششم، پرسشِ ۸.
+            FinancialCodes::DOC_ELITE_YAR_REPORT => $this->dataBuilder->eliteYARCommission($order),
             default => $order->final_amount,
         };
 

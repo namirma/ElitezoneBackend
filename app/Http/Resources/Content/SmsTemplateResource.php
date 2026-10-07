@@ -25,6 +25,9 @@ class SmsTemplateResource extends BaseJsonResource
             SmsTemplate::TITLE => $this->{SmsTemplate::TITLE},
             SmsTemplate::TRIGGER_DESCRIPTION => $this->{SmsTemplate::TRIGGER_DESCRIPTION},
             SmsTemplate::AUDIENCE => $this->{SmsTemplate::AUDIENCE},
+            // دستورالعملِ پیامکِ مدیریت، بندِ ۱۸ — AUTH / TRANSACTION / STATUS / ACTION_REQUIRED / …
+            SmsTemplate::CATEGORY => $this->{SmsTemplate::CATEGORY},
+            'category_label' => SmsTemplate::CATEGORIES[(string) $this->{SmsTemplate::CATEGORY}] ?? null,
             SmsTemplate::BODY => $this->{SmsTemplate::BODY},
             // [{name, meaning, example}] — نه فهرستِ خامِ نام‌ها؛ ادمین باید بداند چه چیزی جایش می‌نشیند
             SmsTemplate::PLACEHOLDERS => $this->resource->placeholderDetails(),

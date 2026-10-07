@@ -66,6 +66,9 @@ class PaymentBaseIncludesShippingTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        // ماژولِ مشارکتِ تأمین‌کننده/الیت‌یار در کوپن از دورِ ششم (۱۴۰۵/۰۷/۱۵) خاموش است («فقط شرکت کوپن
+        // صادر می‌کند»)؛ کد مانده (قانونِ یک) و این تست‌ها با پرچمِ روشن سالم نگهش می‌دارند.
+        config(['features.partner_coupons' => true]);
 
         Setting::updateOrCreate([Setting::KEY => 'shaparak_value'], [Setting::VALUE => '2000000000']);
         Setting::updateOrCreate([Setting::KEY => 'reserve_value'], [Setting::VALUE => '2000000000']);

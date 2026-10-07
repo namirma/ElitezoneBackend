@@ -59,13 +59,10 @@
             <td colspan="3" class="lbl text-right font-bold">شماره سفارش</td>
             <td colspan="8" class="val text-right">{{ enToFa($order->order_number ?? '-') }}</td>
         </tr>
+        {{-- «مبلغ سفارش» (مبلغِ خریدار) حذف شد — مدیریت، دورِ ششم، پرسشِ ۸: الیت‌یار مبلغِ خریدار را نمی‌بیند. --}}
         <tr>
-            <td colspan="3" class="lbl text-right font-bold">مبلغ سفارش (ریال)</td>
-            <td colspan="8" class="val text-right amount-cell">{{ enToFa(number_format($totals['final'] ?? 0)) }}</td>
-        </tr>
-        <tr>
-            <td colspan="3" class="lbl text-right font-bold">کارمزد الیت یار تخمینی (ریال)</td>
-            <td colspan="8" class="val text-right amount-cell">{{ enToFa(number_format((int)round(($totals['final'] ?? 0) * 0.006))) }}</td>
+            <td colspan="3" class="lbl text-right font-bold">کارمزد الیت یار {{ !empty($totals['is_estimate']) ? '(تخمینی، پیش از باسکول)' : '' }} (ریال)</td>
+            <td colspan="8" class="val text-right amount-cell">{{ enToFa(number_format($totals['elite_yar_commission'] ?? 0)) }}</td>
         </tr>
 
         {{-- ===== NOTES ===== --}}

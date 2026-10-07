@@ -650,7 +650,15 @@ class Order extends Model
 
         $roles = [];
 
-        if ((int) $this->{self::PLACER_USER_ID} === $userId) {
+        // ثبت‌کننده فقط وقتی «خریدار» است که سفارش برای کسِ دیگری نباشد. در خریدِ الیت‌یار برای کارفرما،
+        // ثبت‌کننده الیت‌یار است و خریدار کارفرماست — مدیریت، دورِ ششم: «کلیه‌ی عملیات… روی اکانتِ کارفرما»
+        // و «مبلغِ پرداختیِ خریدار در هیچ جا به الیت‌یار… نشان نده» (پرسش‌های ۶-ب و ۸). اسنادِ خریدار
+        // (که مبلغِ خریدار دارند) به الیت‌یار نمی‌رسند؛ او سندهای خودش را از نقشِ الیت‌یار می‌گیرد.
+        $placerId = (int) $this->{self::PLACER_USER_ID};
+        $forSomeoneElse = $this->getAttribute(self::BENEFICIARY_USER_ID) !== null
+            && (int) $this->getAttribute(self::BENEFICIARY_USER_ID) !== $placerId;
+
+        if ($placerId === $userId && ! $forSomeoneElse) {
             $roles[] = OrderDocumentCatalog::AUDIENCE_BUYER;
         }
 

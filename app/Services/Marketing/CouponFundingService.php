@@ -6,6 +6,7 @@ namespace App\Services\Marketing;
 
 use App\Constants\FinancialCodes;
 use App\Exceptions\BusinessException;
+use App\Exceptions\CouponWalletShortException;
 use App\Exceptions\InsufficientBalanceException;
 use App\Models\Coupon;
 use App\Models\CouponFunder;
@@ -94,7 +95,7 @@ class CouponFundingService
      */
     private function assertCompanyCanFund(Coupon $coupon, float $amount, float $poolShare): void
     {
-        if ($coupon->isCampaign() && $amount > $coupon->budgetRemaining()) {
+        if ($coupon->hasBudgetCap() && $amount > $coupon->budgetRemaining()) {
             throw new BusinessException(__('coupons.budget_exhausted_for_order', [
                 'amount' => number_format($amount),
                 'remaining' => number_format($coupon->budgetRemaining()),
@@ -109,9 +110,10 @@ class CouponFundingService
         $wallet->requireUserId();
 
         if ($wallet->balance() < $amount) {
-            throw new BusinessException(__('coupons.coupon_wallet_empty', [
+            // دورِ ششم، پرسشِ ۵: رد + خبر به مدیرانِ مالی (در `render`، پس از rollback).
+            throw new CouponWalletShortException(__('coupons.coupon_wallet_empty', [
                 'amount' => number_format($amount),
-            ]), 422);
+            ]), $amount);
         }
     }
 
@@ -201,9 +203,9 @@ class CouponFundingService
                 // سهمِ شرکت از «کیف پول کوپن‌های تخفیف» است (مدیریت، دورِ پنجم)؛ اگر بینِ ثبت و
                 // پرداخت خالی شد، پیام همان کیف پول را بگوید، نه «کیف پول شرکت سازه».
                 if ($funder->isCompany()) {
-                    throw new BusinessException(__('coupons.coupon_wallet_empty', [
+                    throw new CouponWalletShortException(__('coupons.coupon_wallet_empty', [
                         'amount' => number_format($amount),
-                    ]), 422);
+                    ]), $amount);
                 }
 
                 // پیامِ موتور «موجودی کیف پول کافی نیست» است و `CheckoutController` آن

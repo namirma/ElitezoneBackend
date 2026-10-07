@@ -162,7 +162,7 @@ class EliteYARVerificationNotificationTest extends TestCase
             ['09121234512', 'elite_yar_hold_employer'],
         ], $this->sentSms());
         $notice = UserNotification::where(UserNotification::USER_ID, $approved->id)->sole();
-        $this->assertStringContainsString('الیت یار جدید معرفی کنید', (string) $notice->{UserNotification::BODY});
+        $this->assertStringContainsString('الیت‌یار جدیدی معرفی کنید', (string) $notice->{UserNotification::BODY});
         $this->assertSame(0, UserNotification::where(UserNotification::USER_ID, $pending->id)->count());
     }
 

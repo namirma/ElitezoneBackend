@@ -67,7 +67,7 @@
         </tr>
         <tr>
             <td colspan="3" class="lbl text-right font-bold">مبلغ کارمزد الیت یار (ریال)</td>
-            <td colspan="8" class="val text-right amount-cell">{{ enToFa(number_format((int)round(($totals['final'] ?? 0) * 0.006))) }}</td>
+            <td colspan="8" class="val text-right amount-cell">{{ enToFa(number_format($totals['elite_yar_commission'] ?? 0)) }}</td>
         </tr>
 
         {{-- ===== NOTES ===== --}}
