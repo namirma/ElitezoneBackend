@@ -2747,6 +2747,10 @@ flag (rule one) — the tests that pin it switch the flag on in `setUp`.
     each change in `sms_template_rewrites` so `down()` restores it exactly. On dev 49 rows were rewritten and
     5 hand-edited rows were left. **After running it on staging/production, read that log line** — those
     keys need a person to apply the new text from the panel.
+  - ⚠️ **A placeholder you add to a text must also be added to that key's list in `SmsTemplateSeeder::catalog()`**
+    (`$meta[3]`). The panel rejects any undeclared placeholder, so the first cut of this rewrite made eleven
+    default texts impossible to re-save from the panel. `SmsCatalogCompletenessTest` now checks it, and also that
+    the overweight messages (which reach the supplier) can never be given the buyer's `amount`.
   - Pinned by `Notification/SmsStyleGuideTest` (a sweep over every template: forbidden phrases, spelling of
     «الیت‌زون»/«الیت‌یار», signature, category, nameless rendering) and `SmsSegmentBudgetTest` (a high-volume
     text must stay in one segment — shorten the text, never raise the budget).

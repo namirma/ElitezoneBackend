@@ -130,6 +130,36 @@ class SmsCatalogCompletenessTest extends TestCase
         }
     }
 
+    /**
+     * پنل هر جانگهدارِ اعلام‌نشده را رد می‌کند (`ValidatesSmsTemplate::assertPlaceholdersKnown`). بازنویسیِ دستورالعملِ مدیریت
+     * `:first_name` را به یازده متن اضافه کرد و فهرستِ seeder نه — ادمینی که متنِ پیش‌فرض را بی‌تغییر ذخیره می‌کرد ۴۲۲ می‌گرفت.
+     */
+    #[Test]
+    public function every_placeholder_a_default_text_uses_is_declared_so_the_panel_can_save_it(): void
+    {
+        $catalog = SmsTemplateSeeder::catalog();
+
+        foreach ((array) trans('sms', [], 'fa') as $key => $body) {
+            if (! is_string($body) || ! isset($catalog[$key])) {
+                continue;
+            }
+
+            $undeclared = array_diff(SmsTemplate::placeholdersIn($body), $catalog[$key][3]);
+            $this->assertSame([], array_values($undeclared), "«{$key}» از جانگهدارِ اعلام‌نشده استفاده می‌کند.");
+        }
+    }
+
+    /** مدیریت، دورِ ششم، پرسشِ ۸: مبلغِ خریدار (‎|ΔPOO|‎) حتی با ویرایشِ ادمین هم نباید به تأمین‌کننده برسد. */
+    #[Test]
+    public function overweight_messages_cannot_carry_the_buyers_amount(): void
+    {
+        $catalog = SmsTemplateSeeder::catalog();
+
+        foreach (['overweight_supplier_request', 'overweight_rejected'] as $key) {
+            $this->assertNotContains('amount', $catalog[$key][3], "«{$key}» به تأمین‌کننده می‌رود.");
+        }
+    }
+
     #[Test]
     public function every_placeholder_in_the_catalog_has_a_meaning(): void
     {
