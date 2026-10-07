@@ -50,7 +50,10 @@ final class PlaceholderCatalog
 
     /** @var array<string, array<string, array{0: string, 1: string}>> key => name => [meaning, example] */
     private const PER_KEY = [
-        'loginMessage' => ['code' => ['کد ورود (شش رقم)', '482913']],
+        'loginMessage' => [
+            'code' => ['کد ورود (شش رقم)', '482913'],
+            'minutes' => ['اعتبارِ کدِ ورود به دقیقه (همان مهلتی که کد پس از آن رد می‌شود)', '2'],
+        ],
         'driver_verify' => ['code' => ['کد تأیید شماره‌ی راننده (شش رقم)', '482913']],
         'beneficiary_verification' => [
             'code' => ['کد تأیید ذی‌نفع (شش رقم)', '482913'],
