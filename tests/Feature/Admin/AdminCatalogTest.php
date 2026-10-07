@@ -147,6 +147,8 @@ class AdminCatalogTest extends TestCase
     #[Test]
     public function admin_can_manage_price_filters_and_categories(): void
     {
+        // ماژولِ فیلترِ قیمت را می‌سنجد؛ از دورِ هفتم (پرسشِ ۷-۲) پشتِ پرچمِ خاموش است.
+        config(['features.role_price_filters' => true]);
         Sanctum::actingAs($this->admin());
         $u = $this->uid();
 
@@ -180,6 +182,8 @@ class AdminCatalogTest extends TestCase
     #[Test]
     public function a_negative_price_filter_is_rejected(): void
     {
+        // ماژولِ فیلترِ قیمت را می‌سنجد؛ از دورِ هفتم (پرسشِ ۷-۲) پشتِ پرچمِ خاموش است.
+        config(['features.role_price_filters' => true]);
         Sanctum::actingAs($this->admin());
         $u = $this->uid();
         $type = $this->postJson('/api/admin/price-filter-types', [

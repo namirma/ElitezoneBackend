@@ -185,6 +185,8 @@ class BuyerDiscountAndSupplierPriceTest extends TestCase
     /** یک فیلترِ مطلق روی گروهِ «با الیت‌یار» — همان گروهی که خریدارِ دارای الیت‌یار می‌گیرد. */
     private function addRoleFilter(float $amount): void
     {
+        // سناریوی «افزایشِ نقش‌محور» فقط با ماژولِ روشن وجود دارد — از دورِ هفتم (پرسشِ ۷-۲) پیش‌فرض خاموش است.
+        config(['features.role_price_filters' => true]);
         $category = PriceFilterCategory::firstOrCreate(
             [PriceFilterCategory::CODE => PricingRoleResolver::WITH_ELITE_YAR],
             [PriceFilterCategory::NAME => 'با الیت‌یار', 'is_active' => true]

@@ -7,6 +7,8 @@ namespace Tests\Feature\Notification;
 use App\Models\SmsTemplate;
 use App\Models\User;
 use App\Models\UserProfile;
+use App\Sms\PlaceholderCatalog;
+use Database\Seeders\SmsTemplateSeeder;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Lang;
 use PHPUnit\Framework\Attributes\Test;
@@ -95,6 +97,30 @@ class SmsStyleGuideTest extends TestCase
             $this->assertStringNotContainsString(':first_name', $rendered, $key);
             $this->assertStringNotContainsString('عزیز،', $rendered, $key);
             $this->assertSame(ltrim($rendered), $rendered, "{$key}: بی‌نام نباید با فاصله یا خطِ خالی شروع شود.");
+        }
+    }
+
+    /**
+     * نمونه‌مقدارهای `PlaceholderCatalog` همان چیزی است که پنل در «ارسالِ آزمایشی» و پیوستِ سندِ مدیریت می‌گذارد.
+     * نمونه‌ی `tracking_line` یک‌بار خطِ تازه را اولش داشت و امضا را به کدِ پیگیری می‌چسباند («8231الیت‌زون»).
+     */
+    #[Test]
+    public function every_template_rendered_with_the_panel_samples_ends_with_the_signature_on_its_own_line(): void
+    {
+        $catalog = SmsTemplateSeeder::catalog();
+
+        foreach ($this->templates() as $key => $body) {
+            if (SmsTemplate::categoryFor((string) $key) === SmsTemplate::CATEGORY_AUTH) {
+                continue;
+            }
+
+            $params = [];
+            foreach (PlaceholderCatalog::describe($catalog[$key][3] ?? [], (string) $key) as $d) {
+                $params[$d['name']] = $d['example'];
+            }
+
+            $lines = explode("\n", trim(SmsTemplate::interpolate($body, $params)));
+            $this->assertSame('الیت‌زون', trim((string) end($lines)), "«{$key}» با نمونه‌مقدارها امضا را در خطِ جدا ندارد.");
         }
     }
 

@@ -34,6 +34,8 @@ class ApplyPriceFiltersTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        // ماژولِ فیلتر را می‌سنجد؛ از دورِ هفتم (پرسشِ ۷-۲) پشتِ پرچمِ خاموش است — `RolePriceFiltersOffTest`.
+        config(['features.role_price_filters' => true]);
         $this->pipe = app(ApplyPriceFilters::class);
         PriceSetting::updateOrCreate([PriceSetting::CODE => PriceSetting::CODE_TC_PERCENTAGE], [PriceSetting::NAME => 'tc', PriceSetting::VALUE => '1']);
         PriceSetting::updateOrCreate([PriceSetting::CODE => PriceSetting::CODE_OW_SHARE], [PriceSetting::NAME => 'ow', PriceSetting::VALUE => '40']);

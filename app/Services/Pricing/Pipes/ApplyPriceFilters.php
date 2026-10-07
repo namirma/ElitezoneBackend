@@ -24,6 +24,11 @@ class ApplyPriceFilters implements PricingPipe
 
         $context->buyerDiscountPercent = $this->buyerDiscountPercent($context);
 
+        // مدیریت، دورِ هفتم، پرسشِ ۷-۲: «قیمتِ فروش برای همه برابرِ قیمتِ تأمین‌کننده» — هیچ فیلترِ نقش‌محوری.
+        if (! config('features.role_price_filters')) {
+            return $next($context);
+        }
+
         // ۱. دریافت فیلترهای فعال برای این کاربر/محصول — بدونِ فیلترهای تخفیف (مدیریت، دورِ پنجم).
         $filters = $this->withoutDiscounts($this->getFilters($context));
 
