@@ -111,7 +111,8 @@ class Agreement extends Model
 
     /**
      * اسلاگ‌های مرتبط با کاربر: دو سند عمومی برای همه + سند اختصاصی هر نقشی
-     * که دارد (الیت یار برای engineer/contractor). منبعِ واحد برای `AgreementController` و
+     * که دارد (الیت یار برای `User::isEliteYAR()` — نقشِ `elite_yar` یا نقش‌های قدیمیِ
+     * engineer/contractor). منبعِ واحد برای `AgreementController` و
      * `VirtualEmployerAccount` (پایانِ ثبت‌نامِ حسابِ مجازی = پذیرشِ همین‌ها).
      *
      * @return string[]
@@ -120,7 +121,7 @@ class Agreement extends Model
     {
         $slugs = [Agreement::SLUG_ELITEZONE_TERMS, Agreement::SLUG_PRIVACY_POLICY];
 
-        if ($user->hasRole('engineer') || $user->hasRole('contractor')) {
+        if ($user->isEliteYAR()) {
             $slugs[] = Agreement::SLUG_ELITE_YAR_TERMS;
         }
         if ($user->hasRole('employer')) {

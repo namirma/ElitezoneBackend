@@ -170,6 +170,45 @@ class AgreementAcceptanceTest extends TestCase
         );
     }
 
+    /**
+     * الیت‌یارِ تازه فقط نقشِ `elite_yar` (قصد) را دارد؛ `engineer`/`contractor` نقشِ مدرک‌اند
+     * و بعد از تأییدِ ادمین وصل می‌شوند. اسلاگِ نقش قبلاً فقط به آن دو نگاه می‌کرد، پس نسخه‌ی
+     * جدیدِ توافق‌نامه‌ی الیت یار هرگز از الیت‌یارِ تازه پرسیده نمی‌شد و پذیرشش ۴۲۲ می‌گرفت.
+     */
+    public function test_new_elite_yar_terms_version_is_asked_of_an_elite_yar_without_credential_roles(): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/profile/type', ['roles' => ['elite_yar'], 'terms_accepted' => true])->assertOk();
+        $this->assertSame(['elite_yar'], $user->fresh()->roles->pluck('name')->all());
+
+        $v1 = Agreement::where(Agreement::SLUG, Agreement::SLUG_ELITE_YAR_TERMS)->first();
+        Agreement::create([
+            Agreement::SLUG => Agreement::SLUG_ELITE_YAR_TERMS,
+            Agreement::TITLE => $v1->{Agreement::TITLE},
+            Agreement::VERSION => '2.0',
+            Agreement::CONTENT => $v1->{Agreement::CONTENT}."\n\n(اصلاحیه نسخه ۲)",
+            Agreement::CHECKBOXES => $v1->{Agreement::CHECKBOXES},
+            Agreement::CONTENT_SHA256 => hash('sha256', $v1->{Agreement::CONTENT}.'v2'),
+            Agreement::EFFECTIVE_AT => now(),
+            Agreement::IS_ACTIVE => true,
+            Agreement::IS_MANDATORY => true,
+        ]);
+
+        $pending = $this->getJson('/api/profile/agreements/pending')->assertOk()->json('data');
+        $this->assertTrue($pending['requires_acceptance']);
+        $this->assertSame([Agreement::SLUG_ELITE_YAR_TERMS], array_column($pending['agreements'], 'slug'));
+        $this->assertSame('2.0', $pending['agreements'][0]['version']);
+
+        $this->postJson('/api/profile/agreements/elite_yar_terms/accept', ['terms_accepted' => true])
+            ->assertOk()
+            ->assertJsonPath('data.version', '2.0');
+
+        $this->getJson('/api/profile/agreements/pending')->assertOk()
+            ->assertJsonPath('data.requires_acceptance', false);
+    }
+
     public function test_accepting_an_agreement_not_relevant_to_the_user_role_is_rejected(): void
     {
         $user = User::factory()->create();
