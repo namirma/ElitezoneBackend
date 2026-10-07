@@ -52,6 +52,16 @@ class User extends Authenticatable
      */
     public const IS_SAZE90_USER = 'is_saze90_user';
 
+    /**
+     * «حسابِ مجازیِ کارفرما» — مدیریت، دورِ هفتم، پرسشِ ۷-۵ (۱۴۰۵/۰۷/۱۵). الیت‌یاری که این حساب را با تأییدِ ذی‌نفع
+     * (پودیوم + کدِ پیامکیِ خودِ کارفرما) باز کرد. NULL = حسابی که صاحبش خودش ساخت. هر دو ستون فقط با
+     * `VirtualEmployerAccount` نوشته می‌شوند (`forceFill`) و عمداً در `$fillable` نیستند.
+     */
+    public const CREATED_BY_ELITE_YAR_ID = 'created_by_elite_yar_id';
+
+    /** کارفرما توافق‌نامه‌ها را پذیرفت و حسابِ مجازی «واقعی» شد. */
+    public const ACCOUNT_CLAIMED_AT = 'account_claimed_at';
+
     public const MOBILE = 'mobile';
 
     public const IS_ACTIVE = 'is_active';
@@ -175,6 +185,7 @@ class User extends Authenticatable
         self::SECRET_EXPIRES_AT => 'datetime',
         self::IS_ACTIVE => 'boolean',
         self::IS_SAZE90_USER => 'boolean',
+        self::ACCOUNT_CLAIMED_AT => 'datetime',
         self::COUPON_ENABLED => 'boolean',
         self::BADGE_PURCHASE_AMOUNT => 'decimal:0',
         self::DEBT_BALANCE => 'decimal:0',
@@ -212,6 +223,15 @@ class User extends Authenticatable
      * داشته باشند و اگر نداشته باشند وضعیت آن‌ها هولد می‌شود.»
      */
     public const ELITE_YAR_STATUS_ON_HOLD = 'on_hold';
+
+    /**
+     * حسابی که الیت‌یار برای کارفرما باز کرد و کارفرما هنوز با پذیرشِ توافق‌نامه‌ها تحویلش نگرفته (پرسشِ ۷-۵).
+     * سیستم با آن دقیقاً مثلِ حسابِ عادی رفتار می‌کند؛ این فقط وضعیتِ ثبت‌نام است.
+     */
+    public function isVirtualAccount(): bool
+    {
+        return $this->{self::CREATED_BY_ELITE_YAR_ID} !== null && $this->{self::ACCOUNT_CLAIMED_AT} === null;
+    }
 
     /**
      * «این کاربر الیت‌یار است» — به هر سه نامی که این نقش در تاریخِ پروژه داشته.

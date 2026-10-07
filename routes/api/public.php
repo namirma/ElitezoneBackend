@@ -17,6 +17,7 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\PurchaseParameterController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\ShippingMethodController;
+use App\Services\Profile\VirtualEmployerAccount;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -54,6 +55,13 @@ Route::controller(AuthController::class)->prefix('authenticate')->group(function
     Route::post('/change-password', 'changePassword')->middleware('throttle:otp-verify');
     Route::post('/send-code', 'sendVerificationCode')->middleware('throttle:sms');
     Route::middleware('auth:sanctum')->post('/logout', 'logout');
+
+    // حسابِ مجازیِ کارفرما (مدیریت، دورِ هفتم، ۷-۵) — لینکِ پیامکِ پس از پرداخت. امضای نسبی (میزبانِ پشتِ پروکسی امضا را
+    // نمی‌شکند)؛ GET فقط می‌خواند، POST وارد می‌کند. انقضا: `auth.virtual_account.claim_link_days`.
+    Route::get('/claim/{user}', 'showVirtualAccountClaim')->whereNumber('user')
+        ->middleware(['signed:relative', 'throttle:30,1'])->name(VirtualEmployerAccount::CLAIM_ROUTE);
+    Route::post('/claim/{user}', 'claimVirtualAccount')->whereNumber('user')
+        ->middleware(['signed:relative', 'throttle:30,1']);
 });
 
 // ── ورودِ دومرحله‌ای (TOTP) — مرحله‌ی دوم ────────────────────────────────────

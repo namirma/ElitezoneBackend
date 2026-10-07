@@ -198,6 +198,7 @@ class SmsTemplate extends Model
         'elite_yar_sms_invitation' => self::CATEGORY_ACTION_REQUIRED,
         'employer_invitation' => self::CATEGORY_ACTION_REQUIRED,
         'cart_payment_link' => self::CATEGORY_ACTION_REQUIRED,
+        'employer_account_claim' => self::CATEGORY_ACTION_REQUIRED,
         'coupon_wallet_low_admin' => self::CATEGORY_ACTION_REQUIRED,
         'order_placed' => self::CATEGORY_ACTION_REQUIRED,
         'supplier_debt_notification' => self::CATEGORY_ACTION_REQUIRED,

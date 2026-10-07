@@ -11,6 +11,7 @@ use App\Jobs\Auth\SyncIdentityToProfileJob;
 use App\Jobs\Notification\SendSmsJob;
 use App\Models\User;
 use App\Models\UserNotification;
+use App\Models\UserProfile;
 use App\Models\UserType;
 use App\Support\OtpSecret;
 use App\Support\PhoneNumber;
@@ -247,6 +248,45 @@ class AuthController extends Controller
             [],
             429
         );
+    }
+
+    // ── حسابِ مجازیِ کارفرما — مدیریت، دورِ هفتم، پرسشِ ۷-۵ ─────────────────────────
+
+    /**
+     * وضعیتِ لینکِ «تأیید حساب و ورود» ِ حسابِ مجازیِ کارفرما (بی‌تغییرِ داده).
+     */
+    public function showVirtualAccountClaim(User $user): JsonResponse
+    {
+        // هیچ چیزی عوض نمی‌شود: پیش‌نمایشِ پیام‌رسان‌ها و اسکنرها لینکِ پیامک را با GET باز می‌کنند
+        // (همان قاعده‌ی لینکِ تأییدِ تحویل). فقط POST وارد می‌کند.
+        return success([
+            'claimable' => $user->isVirtualAccount() && ! $this->isDisabled($user),
+            'first_name' => $user->profile instanceof UserProfile ? (string) $user->profile->{UserProfile::NAME} : '',
+        ], __('auth.virtual_account.claim_page'));
+    }
+
+    /**
+     * ورود با لینکِ «تأیید حساب و ورود» ِ حسابِ مجازیِ کارفرما. پس از ورود، توافق‌نامه‌های
+     * `GET /profile/agreements/pending` باید پذیرفته شوند؛ پس از آن این لینک ۴۱۰ می‌دهد.
+     */
+    public function claimVirtualAccount(Request $request, User $user): JsonResponse
+    {
+        // مدیریت، دورِ هفتم، ۷-۵: «در این پیامک یک لینک تایید حساب و لاگین وجود دارد که کارفرما با کلیک روی آن وارد
+        // حساب خود می شود.» هویت را الیت‌یار با پودیوم و کدِ پیامکیِ خودِ کارفرما تأیید کرده و نقش هم ثبت شده. از همان
+        // `finishLogin` رد می‌شود، پس ورودِ دومرحله‌ای (اگر روشن باشد) دور زده نمی‌شود.
+        if (! $user->isVirtualAccount()) {
+            return error(__('auth.virtual_account.already_claimed'), [], 410);
+        }
+
+        if ($this->isDisabled($user)) {
+            return error(__('auth.account_disabled'), [], 403);
+        }
+
+        activity('virtual_account')->performedOn($user)->causedBy($user)
+            ->withProperties(['ip' => $request->ip()])
+            ->log('کارفرما با لینکِ پیامکیِ تأییدِ حساب وارد شد.');
+
+        return $this->finishLogin($user, $request, __('auth.virtual_account.logged_in'));
     }
 
     /**

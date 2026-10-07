@@ -206,4 +206,15 @@ return [
 
     'otp_debug_code' => env('OTP_DEBUG_CODE'),
 
+    /*
+    | «حسابِ مجازیِ کارفرما» — مدیریت، دورِ هفتم، پرسشِ ۷-۵. پس از پرداخت، کارفرمای مجازی پیامکی با «لینک تایید حساب
+    | و لاگین» می‌گیرد. `claim_url` صفحه‌ی سایت است که امضا را به `POST /api/authenticate/claim/{user}` می‌فرستد؛
+    | **خالی = پیامک فرستاده نمی‌شود** (لینکِ مرده نمی‌فرستیم تا آن صفحه در سایت ساخته شود). ورود با رمزِ پیامکی
+    | (check-user) برای این حساب از قبل کار می‌کند؛ لینک فقط راهِ کوتاه است.
+    */
+    'virtual_account' => [
+        'claim_url' => (string) env('VIRTUAL_ACCOUNT_CLAIM_URL', ''),
+        'claim_link_days' => (int) env('VIRTUAL_ACCOUNT_CLAIM_LINK_DAYS', 7),
+    ],
+
 ];

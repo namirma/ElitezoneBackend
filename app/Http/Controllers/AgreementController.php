@@ -93,7 +93,7 @@ class AgreementController extends Controller
         /** @var User $user */
         $user = Auth::user();
 
-        $pendingSlugs = collect($this->relevantSlugsFor($user))
+        $pendingSlugs = collect(Agreement::relevantSlugsFor($user))
             ->filter(fn (string $slug) => ! $user->hasAcceptedLatestAgreement($slug))
             ->values();
 
@@ -127,7 +127,7 @@ class AgreementController extends Controller
 
         // فقط سندهای مرتبط با خود کاربر قابل پذیرش‌اند — پذیرش سند نقشی که
         // کاربر ندارد بی‌معناست و ردپای حقوقی گمراه‌کننده می‌سازد.
-        if (! in_array($slug, $this->relevantSlugsFor($user), true)) {
+        if (! in_array($slug, Agreement::relevantSlugsFor($user), true)) {
             return error(__('agreements.not_relevant'), [], 422);
         }
 
@@ -170,29 +170,6 @@ class AgreementController extends Controller
     // ─────────────────────────────────────────────────────────────────────────
     // Internals
     // ─────────────────────────────────────────────────────────────────────────
-
-    /**
-     * اسلاگ‌های مرتبط با کاربر: دو سند عمومی برای همه + سند اختصاصی هر نقشی
-     * که دارد (الیت یار برای engineer/contractor).
-     *
-     * @return string[]
-     */
-    private function relevantSlugsFor(User $user): array
-    {
-        $slugs = [Agreement::SLUG_ELITEZONE_TERMS, Agreement::SLUG_PRIVACY_POLICY];
-
-        if ($user->hasRole('engineer') || $user->hasRole('contractor')) {
-            $slugs[] = Agreement::SLUG_ELITE_YAR_TERMS;
-        }
-        if ($user->hasRole('employer')) {
-            $slugs[] = Agreement::SLUG_EMPLOYER_TERMS;
-        }
-        if ($user->hasRole('supplier')) {
-            $slugs[] = Agreement::SLUG_SUPPLIER_TERMS;
-        }
-
-        return $slugs;
-    }
 
     /**
      * رندر PDF سند (پرتره A4، راست‌به‌چپ). وقتی pivot پذیرش داده شود، بلوک

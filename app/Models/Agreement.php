@@ -109,6 +109,30 @@ class Agreement extends Model
         return $query->where(self::IS_ACTIVE, true);
     }
 
+    /**
+     * اسلاگ‌های مرتبط با کاربر: دو سند عمومی برای همه + سند اختصاصی هر نقشی
+     * که دارد (الیت یار برای engineer/contractor). منبعِ واحد برای `AgreementController` و
+     * `VirtualEmployerAccount` (پایانِ ثبت‌نامِ حسابِ مجازی = پذیرشِ همین‌ها).
+     *
+     * @return string[]
+     */
+    public static function relevantSlugsFor(User $user): array
+    {
+        $slugs = [Agreement::SLUG_ELITEZONE_TERMS, Agreement::SLUG_PRIVACY_POLICY];
+
+        if ($user->hasRole('engineer') || $user->hasRole('contractor')) {
+            $slugs[] = Agreement::SLUG_ELITE_YAR_TERMS;
+        }
+        if ($user->hasRole('employer')) {
+            $slugs[] = Agreement::SLUG_EMPLOYER_TERMS;
+        }
+        if ($user->hasRole('supplier')) {
+            $slugs[] = Agreement::SLUG_SUPPLIER_TERMS;
+        }
+
+        return $slugs;
+    }
+
     /** آخرین نسخه‌ی فعالِ یک اسلاگ — نسخه‌ی قابل پذیرش فعلی. */
     public static function latestActiveForSlug(string $slug): ?self
     {

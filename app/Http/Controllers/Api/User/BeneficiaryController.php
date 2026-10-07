@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\UserProfile;
 use App\Models\UserType;
 use App\Services\PodiumClient;
+use App\Services\Profile\VirtualEmployerAccount;
 use App\Support\OtpSecret;
 use App\Support\PhoneNumber;
 use Illuminate\Http\JsonResponse;
@@ -27,7 +28,7 @@ class BeneficiaryController extends Controller
         return "beneficiary_verification:{$buyerId}:{$beneficiaryUserId}";
     }
 
-    public function startVerification(Request $request, PodiumClient $client): JsonResponse
+    public function startVerification(Request $request, PodiumClient $client, VirtualEmployerAccount $virtualAccounts): JsonResponse
     {
         $data = $request->validate([
             'national_code' => ['required', 'regex:/^\d{10}$/'],
@@ -92,27 +93,36 @@ class BeneficiaryController extends Controller
 
         // الیت یار نمی‌تواند گیرنده‌ی سفارش باشد — او کمیسیون‌گیرِ سفارش است، نه
         // کارفرمای آن. (ذی‌نفع و الیت یار دو شخصِ متفاوت روی یک سفارش‌اند.)
-        //
-        // قبلاً این چک سه اسلاگِ user_type را به شناسه ترجمه می‌کرد؛ حالا نقشِ
-        // `elite_yar` تنها سیگنال است و engineer/contractor صرفاً وضعیتِ مدرک را
-        // می‌گویند، نه اینکه کاربر الیت یار است.
-        if ($beneficiaryUser->hasRole('elite_yar')) {
+        // `isEliteYAR()` و نه فقط نقشِ `elite_yar`: نقش‌های قدیمیِ مهندس/پیمانکار هم
+        // الیت‌یارند (مدیریت، دورِ چهارم، پرسشِ ۱).
+        if ($beneficiaryUser->isEliteYAR()) {
             return error(__('beneficiary.cannot_be_technical_role'), [], 422);
+        }
+
+        // حسابِ مجازیِ کارفرما (مدیریت، دورِ هفتم، ۷-۵) — فقط ردیفی که همین حالا ساخته شد. تا کارفرما کد را ندهد
+        // (`confirmVerification`) نه نقش می‌گیرد نه رابطه.
+        $isNew = $beneficiaryUser->wasRecentlyCreated;
+        if ($isNew && $virtualAccounts->canOpenFor($buyer)) {
+            $virtualAccounts->markCreatedBy($beneficiaryUser, $buyer);
         }
 
         $info = data_get($idenRes, 'result.identityInfo', []);
         $fname = (string) data_get($info, 'firstName', '');
         $lname = (string) data_get($info, 'lastName', '');
 
-        UserProfile::updateOrCreate(
-            [UserProfile::USER_ID => $beneficiaryUser->id],
-            [
-                UserProfile::NAME => $fname,
-                UserProfile::FAMILY => $lname,
-                UserProfile::NATIONAL_CODE => $nationalCode,
-                UserProfile::BIRTHDAY => substr($birthDate, 0, 4).'-'.substr($birthDate, 4, 2).'-'.substr($birthDate, 6, 2),
-            ]
-        );
+        // هویتِ پودیوم فقط روی ردیفی نوشته می‌شود که صاحبش هنوز خودش واردِ سایت نشده (تازه یا حسابِ مجازی). روی حسابِ
+        // واقعی، این مرحله پیش از رضایتِ او اجرا می‌شود و نام و کدِ ملیِ ثبت‌شده‌اش را بی‌صدا بازنویسی می‌کرد.
+        if ($isNew || $beneficiaryUser->isVirtualAccount()) {
+            UserProfile::updateOrCreate(
+                [UserProfile::USER_ID => $beneficiaryUser->id],
+                [
+                    UserProfile::NAME => $fname,
+                    UserProfile::FAMILY => $lname,
+                    UserProfile::NATIONAL_CODE => $nationalCode,
+                    UserProfile::BIRTHDAY => substr($birthDate, 0, 4).'-'.substr($birthDate, 4, 2).'-'.substr($birthDate, 6, 2),
+                ]
+            );
+        }
 
         $verifyCode = generateVerifyCode();
 
@@ -140,7 +150,7 @@ class BeneficiaryController extends Controller
         ], __('beneficiary.code_sent_successfully'));
     }
 
-    public function confirmVerification(Request $request): JsonResponse
+    public function confirmVerification(Request $request, VirtualEmployerAccount $virtualAccounts): JsonResponse
     {
         $data = $request->validate([
             'beneficiary_user_id' => 'required|exists:users,id',
@@ -168,6 +178,9 @@ class BeneficiaryController extends Controller
 
         // ثبت رابطه الیت یار–مشتری برای تب «ثبت‌شدگان من»
         Auth::user()->registeredClients()->syncWithoutDetaching([$beneficiaryUser->id]);
+
+        // کارفرما کد را به الیت‌یار داد — رضایت. حسابِ مجازی نقشِ کارفرما و الیت‌یارِ تأییدشده‌اش را می‌گیرد (۷-۵).
+        $virtualAccounts->establish($beneficiaryUser, Auth::user());
 
         $beneficiaryUser->load('profile');
 

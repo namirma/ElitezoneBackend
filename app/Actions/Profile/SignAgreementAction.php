@@ -5,6 +5,7 @@ namespace App\Actions\Profile;
 use App\Exceptions\BusinessException;
 use App\Models\Agreement;
 use App\Models\User;
+use App\Services\Profile\VirtualEmployerAccount;
 use Illuminate\Http\Request;
 
 /**
@@ -25,6 +26,8 @@ use Illuminate\Http\Request;
  */
 final class SignAgreementAction
 {
+    public function __construct(private readonly VirtualEmployerAccount $virtualAccounts) {}
+
     /**
      * @param  string  $roleSlug  One of 'elite_yar' | 'employer' | 'supplier'
      */
@@ -90,6 +93,9 @@ final class SignAgreementAction
                 ], JSON_UNESCAPED_UNICODE),
             ],
         ]);
+
+        // حسابِ مجازیِ کارفرما (مدیریت، دورِ هفتم، ۷-۵): «کارفرما تنها باید توافقنامه ها را بپذیرد و ثبت نام پایان می یابد».
+        $this->virtualAccounts->claimIfRegistrationComplete($user);
 
         return true;
     }

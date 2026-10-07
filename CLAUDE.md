@@ -2755,6 +2755,41 @@ flag (rule one) — the tests that pin it switch the flag on in `setUp`.
     «الیت‌زون»/«الیت‌یار», signature, category, nameless rendering) and `SmsSegmentBudgetTest` (a high-volume
     text must stay in one segment — shorten the text, never raise the budget).
 
+### Management round-7 rules (1405/07/15 = 2026-10-07) — no role prices, virtual employer accounts
+
+Source: `docs/session/MANAGEMENT_ANSWERS_2026-10-07_ROUND7.md` (root workspace). 7-1, 7-3, 7-4, 7-6, 7-7, 7-8 confirmed
+what round 6 built; two answers changed code.
+
+- **7-2 — no role price filters at all** (`features.role_price_filters`, default **false**): «قیمتِ فروش برای همه برابرِ
+  قیمتِ تأمین‌کننده». `ApplyPriceFilters` still records `supplierPrice` and `buyerDiscountPercent` (the buyer discount
+  is not a filter) and then applies nothing. The admin API refuses to switch a filter **on** (store — the column
+  defaults to true —, update, toggle → 422 `admin.filters.role_price_filters_off`); off/edit/delete stay open.
+  Migration `2026_10_07_100200` deactivated active non-zero filters into `round7_deactivations` (reversible).
+  Tests that pin the filter module switch the flag on. Pinned by `Pricing/RolePriceFiltersOffTest`.
+- **7-5 — the virtual employer account** (`features.virtual_employer_accounts`, default **true**). One class owns the
+  rules: `Services/Profile/VirtualEmployerAccount`.
+  - Opened by **beneficiary verification** when a **verified** EliteYAR enters an employer who has no account: the
+    row `startVerification` already created gets `users.created_by_elite_yar_id`. Nothing else until the employer
+    gives the SMS code (consent); then `establish()` adds the `employer` role, the EmployerProfile and an
+    **approved** `employer_elite_yar` row with that EliteYAR (+ `activity_log` `virtual_account`). That approved row
+    is what `CartPaymentLinkService::issue` checks — without it the payment link 422'd for a new employer.
+  - `User::isVirtualAccount()` = created by an EliteYAR and `account_claimed_at` NULL. The system treats it exactly
+    like any account; it is a registration state only (`UserResource.account_status` = `virtual|active`).
+  - **A real account is never taken over**: no role, no relation, and — fixed in passing — `startVerification` no
+    longer writes Podium's name/national code over an existing user's profile before that person has consented.
+  - After payment `SendOrderPaymentNotification` sends `employer_account_claim` with a signed link to the site's
+    page (`auth.virtual_account.claim_url`, **empty = no SMS**, so no dead link until the redesign builds it).
+    `GET|POST /api/authenticate/claim/{user}` (`signed:relative`, `throttle:30,1`): GET only reads, POST logs in
+    through `finishLogin` (2FA intact). Validity `auth.virtual_account.claim_link_days` (7).
+  - **Accepting the agreements finishes registration**: `SignAgreementAction::accept` calls
+    `claimIfRegistrationComplete()`; once `Agreement::relevantSlugsFor()` (moved from `AgreementController`, single
+    source) are all accepted, `account_claimed_at` is set and the link answers 410.
+  - ⚠️ **Not built on a guess:** management's flow pays *before* login, but paying needs a session and the wallet
+    today (no live gateway). Until management answers (round 8), the employer logs in with the normal mobile OTP from
+    the payment link to pay; check-user already works for these rows (national code + birth date are set).
+  - Pinned by `Profile/VirtualEmployerAccountTest` (8 cases incl. consent order, real-account protection, on-hold
+    EliteYAR, tampered signature, 410 after registration, no SMS without the claim page).
+
 ### Order surveys — two independent documents (S / T) — FEATURE-FLAGGED OFF
 
 > **The whole surveys feature is disabled** (`config/features.php` →

@@ -5,6 +5,7 @@ namespace App\Listeners\Order;
 use App\Events\Order\OrderPaid;
 use App\Models\User;
 use App\Services\Notifier;
+use App\Services\Profile\VirtualEmployerAccount;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Log;
@@ -47,6 +48,12 @@ class SendOrderPaymentNotification implements ShouldQueue
 
             if ($payer instanceof User && $payer->id !== $user->id) {
                 Notifier::template($payer, $subject, 'order_paid_buyer', $params);
+            }
+
+            // حسابِ مجازیِ کارفرما (مدیریت، دورِ هفتم، ۷-۵): «پس از پرداخت کارفرما یک پیامک برای او می رود … در این پیامک
+            // یک لینک تایید حساب و لاگین وجود دارد».
+            if ($payer instanceof User && $payer->isVirtualAccount()) {
+                app(VirtualEmployerAccount::class)->sendClaimLink($payer, $order);
             }
 
             //  در آینده ایمیل

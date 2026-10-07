@@ -35,6 +35,10 @@ class UserResource extends BaseJsonResource
                 : $this->maskMobile($this->{User::MOBILE}),
             // بک‌آفیس (لیست/جزئیات کاربران) به این فیلد نیاز دارد؛ قبلاً اصلاً برنمی‌گشت.
             User::IS_ACTIVE => $canSeeMobile ? (bool) $this->{User::IS_ACTIVE} : null,
+            // حسابِ مجازیِ کارفرما (مدیریت، دورِ هفتم، ۷-۵): `virtual` = الیت‌یار باز کرده و کارفرما هنوز توافق‌نامه‌ها را
+            // نپذیرفته (سایت: «ثبت‌نام را کامل کنید»؛ بک‌آفیس/پشتیبانی: این حساب را صاحبش هنوز تحویل نگرفته). همان گارد.
+            'account_status' => $canSeeMobile ? ($this->resource->isVirtualAccount() ? 'virtual' : 'active') : null,
+            User::CREATED_BY_ELITE_YAR_ID => $viewerIsAdmin ? $this->{User::CREATED_BY_ELITE_YAR_ID} : null,
             // بند ۳.۱۲ — سقف اعتبار و مانده‌ی بدهی. تا امروز هیچ‌جا برنمی‌گشتند،
             // پس بک‌آفیس نمی‌توانست سقفِ فعلی را **نشان** بدهد و در نتیجه فرمِ
             // تنظیمش هم ساخته نشده بود، هرچند اندپوینتِ نوشتنش
