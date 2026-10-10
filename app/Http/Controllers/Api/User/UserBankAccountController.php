@@ -143,6 +143,16 @@ class UserBankAccountController extends Controller
     }
 
     /**
+     * حذفِ حسابِ بانکی از سمتِ کاربر ممکن نیست؛ فقط پشتیبانی (بک‌آفیس) حذف می‌کند.
+     *
+     * همیشه ۴۰۳، برای مالک و ادمین هم. حذف: `DELETE /admin/users/{user}/bank-accounts/{bankAccount}`.
+     */
+    public function refuseDestroy(): JsonResponse
+    {
+        return error(__('bank.delete_support_only'), [], 403);
+    }
+
+    /**
      * حذف حساب بانکی
      */
     public function destroy(UserBankAccount $bankAccount): JsonResponse

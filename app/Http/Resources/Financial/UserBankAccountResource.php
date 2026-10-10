@@ -5,6 +5,7 @@ namespace App\Http\Resources\Financial;
 use App\Enums\Shared\StatusTone;
 use App\Http\Resources\BaseJsonResource;
 use App\Models\UserBankAccount;
+use App\Support\JalaliDate;
 use Illuminate\Http\Request;
 
 /**
@@ -47,6 +48,13 @@ class UserBankAccountResource extends BaseJsonResource
 
             UserBankAccount::REJECTION_REASON => $this->whenNotNull($this->{UserBankAccount::REJECTION_REASON}),
             UserBankAccount::IS_DEFAULT => $this->{UserBankAccount::IS_DEFAULT},
+
+            // فقط ادمین — فهرستِ بک‌آفیس حذف‌شده‌ها را هم نشان می‌دهد؛ null = حسابِ زنده.
+            // سمتِ کاربر حسابِ حذف‌شده اصلاً برنمی‌گردد، پس کلید هم لازم ندارد.
+            $this->mergeWhen((bool) $request->user()?->hasRole('admin'), fn () => [
+                'deleted_at' => $this->deleted_at?->format('Y-m-d H:i:s'),
+                'deleted_at_p' => $this->deleted_at ? JalaliDate::format($this->deleted_at, 'Y/m/d H:i') : null,
+            ]),
         ];
     }
 

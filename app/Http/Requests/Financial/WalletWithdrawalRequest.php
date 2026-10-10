@@ -28,10 +28,12 @@ class WalletWithdrawalRequest extends FormRequest
             'user_bank_account_id' => [
                 'required',
                 'integer',
+                // `withoutTrashed`: این قاعده کوئریِ خامِ DB است و scopeِ SoftDeletes را ندارد —
+                // بدونِ آن حسابی که بک‌آفیس حذف کرده از این‌جا رد می‌شد (اکشن بعداً ۴۰۴ می‌داد).
                 Rule::exists('user_bank_accounts', 'id')->where(function ($query) {
                     $query->where(UserBankAccount::USER_ID, Auth::id())
                         ->where(UserBankAccount::STATUS, UserBankAccount::STATUS_APPROVED);
-                }),
+                })->withoutTrashed(),
             ],
         ];
     }

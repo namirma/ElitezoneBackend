@@ -55,6 +55,7 @@ use App\Http\Controllers\Api\Admin\AdminSupplierController;
 use App\Http\Controllers\Api\Admin\AdminSupplierRequestController;
 use App\Http\Controllers\Api\Admin\AdminSystemHealthController;
 use App\Http\Controllers\Api\Admin\AdminTicketController;
+use App\Http\Controllers\Api\Admin\AdminUserBankAccountController;
 use App\Http\Controllers\Api\Admin\AdminUserController;
 use App\Http\Controllers\Api\Admin\AdminWalletController;
 use App\Http\Controllers\Api\DebugController;
@@ -172,6 +173,15 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
         Route::post('/{user}/verify-elite-yar', 'verifyEliteYAR');
         Route::post('/{user}/unverify-elite-yar', 'unverifyEliteYAR');
     });
+
+    // حساب‌های بانکیِ کاربر — تنها جایی که حساب حذف می‌شود (علی ۱۴۰۵/۰۷/۱۹).
+    // manage-financial چون مقصدِ پولِ برداشت است؛ حذف سطح ۲، همان سقفِ تأییدِ برداشت.
+    // scopeBindings: حسابِ کاربرِ دیگر زیرِ این {user} ۴۰۴ است.
+    Route::controller(AdminUserBankAccountController::class)->prefix('users/{user}/bank-accounts')
+        ->middleware('admin.permission:manage-financial')->scopeBindings()->group(function () {
+            Route::get('/', 'index');
+            Route::delete('/{bankAccount}', 'destroy')->whereNumber('bankAccount')->middleware('admin.level:2');
+        });
 
     // صفِ درخواست‌های تأمین‌کننده (لغوِ سفارش، افزودنِ کالا).
     //

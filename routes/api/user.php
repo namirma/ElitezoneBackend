@@ -451,9 +451,14 @@ Route::middleware(['auth:sanctum'])->group(function () {
             // تبدیلِ کارت→شبا (یا استعلامِ شبا) به Podium می‌زند، هر کدام یک
             // فراخوانِ HTTP همزمان با timeout ۳۰ ثانیه. همان شکلی که برای
             // `/education/fetch` و `/profile/legal/fetch` بسته شد؛ این یکی جا
-            // مانده بود. `index`/`destroy` استعلامی ندارند و آزادند.
+            // مانده بود. `index` استعلامی ندارد و آزاد است.
             Route::apiResource('accounts', UserBankAccountController::class)
-                ->except(['show', 'update', 'store']);
+                ->only(['index']);
+            // علی ۱۴۰۵/۰۷/۱۹: کاربر حسابِ ثبت‌شده را به هیچ راهی حذف نمی‌کند — فقط
+            // بک‌آفیس (`/admin/users/{user}/bank-accounts`). مسیر و نامش می‌ماند تا
+            // کلاینت ۴۰۳ِ روشن بگیرد، نه ۴۰۵. (`destroy`ِ کنترلر دیگر مسیری ندارد.)
+            Route::delete('accounts/{account}', [UserBankAccountController::class, 'refuseDestroy'])
+                ->name('accounts.destroy');
             Route::post('accounts', [UserBankAccountController::class, 'store'])
                 ->middleware('throttle:5,1')
                 ->name('accounts.store');

@@ -32,6 +32,15 @@ final class RequestWithdrawalAction
         protected DebtEngine $debtEngine,
     ) {}
 
+    /**
+     * قفلِ برداشتِ هر کاربر. حذفِ حسابِ بانکی در بک‌آفیس (`DeleteUserBankAccountAction`)
+     * همین قفل را می‌گیرد تا بینِ «برداشتِ در انتظار ندارد» و حذف، برداشتی به آن حساب ثبت نشود.
+     */
+    public static function lockKey(int $userId): string
+    {
+        return "wallet_withdraw_lock:user:{$userId}";
+    }
+
     public function execute(User $user, float $amount, int $bankAccountId): WalletTransaction
     {
         // بدهکار برداشت نمی‌کند — بند ۳.۱۲، برای **هر دو** نقش خریدار و
@@ -42,7 +51,7 @@ final class RequestWithdrawalAction
             throw new BusinessException(__('wallet.withdrawal_blocked_by_debt'), 422);
         }
 
-        $lockKey = "wallet_withdraw_lock:user:{$user->id}";
+        $lockKey = self::lockKey((int) $user->id);
 
         $transaction = Cache::lock($lockKey, 10)->block(10, function () use ($user, $amount, $bankAccountId) {
             // Re-assert ownership AND approval here (defence in depth — the FormRequest

@@ -398,6 +398,9 @@ class User extends Authenticatable
         return $this->hasMany(Address::class, Address::USER_ID);
     }
 
+    /**
+     * @return HasMany<UserBankAccount, $this>
+     */
     public function bankAccounts(): HasMany
     {
         return $this->hasMany(UserBankAccount::class, UserBankAccount::USER_ID);

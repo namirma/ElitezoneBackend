@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Models\Activity;
@@ -23,6 +24,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
  * @property bool $is_default
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
+ * @property Carbon|null $deleted_at
  * @property-read Collection<int, Activity> $activities
  * @property-read int|null $activities_count
  * @property-read User $user
@@ -46,7 +48,10 @@ use Spatie\Activitylog\Traits\LogsActivity;
  */
 class UserBankAccount extends Model
 {
-    use HasFactory, LogsActivity;
+    // SoftDeletes: فقط بک‌آفیس حذف می‌کند و حذف نرم است (علی ۱۴۰۵/۰۷/۱۹) — همه‌ی
+    // کوئری‌های Eloquent (فهرستِ کاربر، برداشت، تطبیقِ واریز) حسابِ حذف‌شده را نمی‌بینند.
+    // `Rule::exists`/`Rule::unique` خامِ DB هستند و این scope را ندارند؛ جدا بسته شده‌اند.
+    use HasFactory, LogsActivity, SoftDeletes;
 
     public const ID = 'id';
 
