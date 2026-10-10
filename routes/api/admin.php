@@ -277,7 +277,8 @@ Route::middleware(['auth:sanctum', 'role.admin', 'admin.ip'])->prefix('admin')->
         // مثل /history باید پیش از wildcard /{order} بیاید.
         Route::get('/{order}/timeline', 'timeline');
         Route::get('/{order}', 'show');
-        Route::post('/{order}/status', 'changeStatus');
+        // همان لغوِ اجباری (`changeStatus` → `forceCancel`)، پس همان سقفِ سطح ۲ (BE7).
+        Route::post('/{order}/status', 'changeStatus')->middleware('admin.level:2');
 
         // §۷.۶ — لغو اجباری با نامِ صریح. `changeStatus` همین کار را می‌کرد ولی
         // پشت یک اندپوینتِ عمومیِ «تغییر وضعیت» پنهان بود، در حالی که بند ۵.۳

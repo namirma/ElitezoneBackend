@@ -155,6 +155,40 @@ class AdminForceCancelTest extends TestCase
         $this->assertSame(Order::STATUS_PROCESSING, $this->order->refresh()->{Order::STATUS});
     }
 
+    /**
+     * BE7 — `POST /orders/{order}/status` همان لغوِ اجباری است، پس همان سقفِ سطح ۲.
+     * پیش‌تر فقط تیکتِ اجباری جلویش را می‌گرفت؛ کارشناسِ سطح ۳ با تیکت و دلیل لغو می‌کرد.
+     */
+    #[Test]
+    public function an_agent_cannot_cancel_through_the_legacy_status_route(): void
+    {
+        $this->setAdminLevel($this->admin, User::ADMIN_LEVEL_AGENT);
+        Sanctum::actingAs($this->admin);
+
+        $this->postJson("/api/admin/orders/{$this->order->id}/status", [
+            'status' => Order::STATUS_CANCELLED,
+            'ticket_id' => $this->ticket->id,
+            'reason' => 'دلیلی که به‌اندازه‌ی کافی بلند است.',
+        ])->assertForbidden()->assertJsonPath('code', 'ADMIN_LEVEL_TOO_LOW');
+
+        $this->assertSame(Order::STATUS_PROCESSING, $this->order->refresh()->{Order::STATUS});
+    }
+
+    #[Test]
+    public function a_manager_still_cancels_through_the_legacy_status_route(): void
+    {
+        $this->setAdminLevel($this->admin, User::ADMIN_LEVEL_MANAGER);
+        Sanctum::actingAs($this->admin);
+
+        $this->postJson("/api/admin/orders/{$this->order->id}/status", [
+            'status' => Order::STATUS_CANCELLED,
+            'ticket_id' => $this->ticket->id,
+            'reason' => 'دلیلی که به‌اندازه‌ی کافی بلند است.',
+        ])->assertOk();
+
+        $this->assertSame(Order::STATUS_CANCELLED, $this->order->refresh()->{Order::STATUS});
+    }
+
     #[Test]
     public function the_reason_and_ticket_are_recorded_in_the_activity_log(): void
     {
