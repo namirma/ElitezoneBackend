@@ -27,7 +27,7 @@ class ShipmentResource extends BaseJsonResource
                 'address_id' => $this->address_id,
                 'province' => $this->whenLoaded('destinationAddress', fn () => $this->destinationAddress?->province?->name),
                 'city' => $this->whenLoaded('destinationAddress', fn () => $this->destinationAddress?->city?->name),
-                'full_address' => $this->whenLoaded('destinationAddress', fn () => $this->destinationAddress?->address),
+                'full_address' => $this->whenLoaded('destinationAddress', fn () => $this->destinationAddress?->postal_address),
                 'receiver' => $this->whenLoaded('destinationAddress', fn () => $this->destinationAddress?->receiver_name),
             ],
 

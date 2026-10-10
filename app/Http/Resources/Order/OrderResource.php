@@ -436,7 +436,7 @@ class OrderResource extends BaseJsonResource
                 return [
                     'province' => $this->address->province->name ?? '',
                     'city' => $this->address->city->name ?? '',
-                    'full_address' => $this->address->address,
+                    'full_address' => $this->address->postal_address,
                     'postal_code' => $this->address->postal_code,
                     'receiver' => $this->address->receiver_name,
                     'phone' => $this->address->receiver_mobile,

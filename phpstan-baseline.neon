@@ -817,7 +817,7 @@ parameters:
 			path: app/Http/Resources/Order/OrderResource.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$address\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$postal_address\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Http/Resources/Order/OrderResource.php
