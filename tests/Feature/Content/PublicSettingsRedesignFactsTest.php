@@ -75,7 +75,6 @@ class PublicSettingsRedesignFactsTest extends TestCase
         config([
             'financial.deposit_min' => 12_345,
             'financial.deposit_max_podium' => 3_000_000_000,
-            'financial.deposit_max_shaparak' => 150_000_000,
             'financial.withdrawal_min' => 70_000,
         ]);
 
@@ -86,7 +85,8 @@ class PublicSettingsRedesignFactsTest extends TestCase
         $this->assertNull($methods['bank_transfer']['max']);
         $this->assertSame(12_345, $methods['podium']['min']);
         $this->assertSame(3_000_000_000, $methods['podium']['max']);
-        $this->assertSame(150_000_000, $methods['shaparak']['max']);
+        // سقفِ درگاه کارت از `shaparak_value`ِ تنظیماتِ فروش است (BE3)، نه از config/financial.php.
+        $this->assertSame(2_000_000_000, $methods['shaparak']['max']);
         $this->assertSame(70_000, $data['wallet_withdrawal_min']);
 
         // عددی که سایت نشان می‌دهد همان است که درخواستِ برداشت اعمال می‌کند.

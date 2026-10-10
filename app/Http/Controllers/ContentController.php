@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Financial\WalletDepositRequest;
 use App\Http\Resources\Content\ArticleResource;
 use App\Http\Resources\Content\BannerResource;
 use App\Http\Resources\Content\FaqCategoryResource;
@@ -202,7 +203,7 @@ class ContentController extends Controller
             // `min`/`max` همان مرزهای `WalletDepositRequest` (ریال)؛ `max: null` = بی‌سقف.
             ['key' => 'bank_transfer', 'available' => true, 'coming_soon' => false, 'min' => $min, 'max' => null],
             ['key' => 'podium', 'available' => $podium, 'coming_soon' => ! $podium, 'min' => $min, 'max' => (int) config('financial.deposit_max_podium')],
-            ['key' => 'shaparak', 'available' => $shaparak, 'coming_soon' => ! $shaparak, 'min' => $min, 'max' => (int) config('financial.deposit_max_shaparak')],
+            ['key' => 'shaparak', 'available' => $shaparak, 'coming_soon' => ! $shaparak, 'min' => $min, 'max' => WalletDepositRequest::shaparakCap()],
         ];
     }
 

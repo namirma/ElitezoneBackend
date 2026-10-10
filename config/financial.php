@@ -120,6 +120,8 @@ return [
     */
     'deposit_min' => (int) env('DEPOSIT_MIN_RIALS', 10_000),
 
+    // ⚠️ دیگر خوانده نمی‌شود (BE3، علی ۱۴۰۵/۰۷/۱۹): سقفِ شارژ با درگاه کارت = `shaparak_value`ِ تنظیماتِ
+    // فروش (`WalletDepositRequest::shaparakCap()`، پیش‌فرض ۲ میلیارد ریال). ردیفِ پاک‌سازی در cleanup-BE3.
     'deposit_max_shaparak' => (int) env('DEPOSIT_MAX_SHAPARAK_RIALS', 200_000_000),
 
     'deposit_max_podium' => (int) env('DEPOSIT_MAX_PODIUM_RIALS', 2_000_000_000),

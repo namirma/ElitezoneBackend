@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Financial;
 
+use App\Services\Sales\SalesSettings;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -29,7 +30,7 @@ class WalletDepositRequest extends FormRequest
         $method = $this->input('payment_method');
 
         if ($method === 'shaparak') {
-            $rules['amount'][] = 'max:'.(int) config('financial.deposit_max_shaparak', 200_000_000);
+            $rules['amount'][] = 'max:'.self::shaparakCap();
         } elseif ($method === 'podium') {
             $rules['amount'][] = 'max:'.(int) config('financial.deposit_max_podium', 2_000_000_000);
         }
@@ -47,7 +48,7 @@ class WalletDepositRequest extends FormRequest
 
         if ($method === 'shaparak') {
             $maxMessage = __('auth.deposit_amount_max_shaparak', [
-                'max' => number_format((int) config('financial.deposit_max_shaparak', 200_000_000)),
+                'max' => number_format(self::shaparakCap()),
             ]);
         } elseif ($method === 'podium') {
             $maxMessage = __('auth.deposit_amount_max_podium', [
@@ -60,5 +61,15 @@ class WalletDepositRequest extends FormRequest
             'amount.max' => $maxMessage,
             'payment_method.in' => __('auth.payment_method_invalid'),
         ];
+    }
+
+    /**
+     * سقفِ یک شارژ با درگاه کارت = سقفِ تراکنشِ درگاه در تنظیماتِ فروش (`shaparak_value`، علی
+     * ۱۴۰۵/۰۷/۱۹: ۲ میلیارد ریال). یک منبع برای این درخواست و `GET /settings/public`؛
+     * `financial.deposit_max_shaparak` دیگر خوانده نمی‌شود.
+     */
+    public static function shaparakCap(): int
+    {
+        return (int) app(SalesSettings::class)->shaparakValue();
     }
 }

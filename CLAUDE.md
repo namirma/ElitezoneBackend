@@ -507,7 +507,7 @@ All financial constants live in `config/financial.php` — **never hardcode amou
 | `financial.reservation_validity_hours` | `RESERVATION_VALIDITY_HOURS` | `2` | Hours a paid reservation stays valid before it must be completed/extended |
 | ~~`financial.hold_fee_extension_hours`~~ | — | — | **DELETED** with the hold fee. |
 | `financial.deposit_min` | `DEPOSIT_MIN_RIALS` | `10_000` | Min per wallet deposit (read by `WalletDepositRequest`) |
-| `financial.deposit_max_shaparak` | `DEPOSIT_MAX_SHAPARAK_RIALS` | `200_000_000` | Max per Shaparak-gateway deposit (bank-set) |
+| ~~`financial.deposit_max_shaparak`~~ | `DEPOSIT_MAX_SHAPARAK_RIALS` | `200_000_000` | **Not read since BE3.** The card-gateway deposit cap is `SalesSettings::shaparakValue()` (admin `shaparak_value`, default 2B Rials) via `WalletDepositRequest::shaparakCap()` — same number in `/settings/public`. |
 | `financial.deposit_max_podium` | `DEPOSIT_MAX_PODIUM_RIALS` | `2_000_000_000` | Max per Podium direct deposit |
 | `financial.weighbridge_tolerance` | `WEIGHBRIDGE_TOLERANCE_RIALS` | `1_000` | Below this abs POO/PTS delta, post-weighbridge difference is rounding noise (`ProcessWeighbridgeResultAction`) |
 
