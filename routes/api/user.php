@@ -346,6 +346,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
                 });
 
                 Route::get('/', 'index')->middleware('track:orders');
+                // شمارنده‌ی تب‌ها: `meta.total`ِ هر شش فهرستِ بالا در یک درخواست.
+                Route::get('/counts', 'counts');
             });
 
             // Financial operations on an order

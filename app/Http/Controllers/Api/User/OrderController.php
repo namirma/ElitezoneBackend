@@ -62,18 +62,33 @@ class OrderController extends Controller
     }
 
     /**
+     * Order-list tab counters: one `total` per list, equal to that list's `meta.total`.
+     */
+    public function counts(): JsonResponse
+    {
+        $userId = (int) Auth::id();
+
+        // همان دو scope و همان گروه‌هایی که شش فهرست می‌خوانند، تا عدد و فهرست از هم جدا نشوند.
+        $mine = fn (string $group): int => Order::query()->buyerSideOf($userId)->inStatusGroup($group)->count();
+        $others = fn (string $group): int => Order::query()->placedForOthersBy($userId)->inStatusGroup($group)->count();
+
+        return success([
+            'buy_myself' => ['current' => (int) $mine('current'), 'delivered' => (int) $mine('delivered'), 'cancelled' => (int) $mine('cancelled')],
+            'buy_others' => ['current' => (int) $others('current'), 'delivered' => (int) $others('delivered'), 'cancelled' => (int) $others('cancelled')],
+        ]);
+    }
+
+    /**
      * متد کمکی برای لیست سفارش‌های "دیگران" (Buy Others)
      */
     public function otherOrders(Request $request, string $type)
     {
         $userId = Auth::id();
 
+        // scopeها داخلِ closure، تا زنجیره‌ی بیرونی Eloquentِ استاندارد بماند و Scramble
+        // پاکتِ صفحه‌بندی (meta/links) را در api.json ببیند.
         $orders = Order::query()
-            ->where(Order::PLACER_USER_ID, $userId)
-            ->whereNotNull(Order::BENEFICIARY_USER_ID)
-            ->when($type === 'current', fn ($q) => $q->current())
-            ->when($type === 'delivered', fn ($q) => $q->delivered())
-            ->when($type === 'cancelled', fn ($q) => $q->cancelled())
+            ->where(fn ($q) => $q->placedForOthersBy($userId)->inStatusGroup($type))
             ->with(Order::resourceRelations())
             ->latest()
             ->paginate($this->perPage(10));

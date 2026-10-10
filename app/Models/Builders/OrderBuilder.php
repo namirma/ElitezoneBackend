@@ -42,6 +42,45 @@ class OrderBuilder extends Builder
     }
 
     /**
+     * «سفارش‌های من» (خرید برای خودم) = هر سفارشی که در سمتِ خریدارش طرف هستم.
+     *
+     * پیش از این یعنی `placer = me AND (beneficiary IS NULL OR = me)`، که در
+     * خرید-برای-دیگری **هیچ‌کدام از دو طرف** را برنمی‌گرداند: الیت‌یار با شرطِ
+     * ذی‌نفع بیرون می‌افتاد و کارفرما با شرطِ ثبت‌کننده. پس سفارشی که الیت‌یار
+     * برای کارفرما بسته در لیستِ هیچ‌کس نبود، و چون تأییدِ تحویل payer-only است،
+     * تنها راهِ باقی‌مانده برای پرداخت‌کننده لینکِ امضاشده‌ی پیامکی بود.
+     *
+     * همان مجموعه‌ای است که `OrderPolicy::view` سمتِ خریدار مجاز می‌داند. فهرست و
+     * شمارنده‌ی تب (`GET /profile/orders/counts`) هر دو از همین می‌خوانند.
+     */
+    public function buyerSideOf(int $userId): self
+    {
+        return $this->where(function ($q) use ($userId) {
+            $q->where(Order::PLACER_USER_ID, $userId)
+                ->orWhere(Order::BENEFICIARY_USER_ID, $userId)
+                ->orWhere(Order::PAYER_USER_ID, $userId);
+        });
+    }
+
+    /** «خرید برای دیگران» = ثبت‌شده توسطِ من برای ذی‌نفعِ دیگر. */
+    public function placedForOthersBy(int $userId): self
+    {
+        return $this->where(Order::PLACER_USER_ID, $userId)
+            ->whereNotNull(Order::BENEFICIARY_USER_ID);
+    }
+
+    /** گروهِ وضعیتِ فهرست‌های پروفایل؛ گروهِ ناشناخته فیلتری نمی‌زند (رفتارِ قبلیِ فهرست‌ها). */
+    public function inStatusGroup(string $group): self
+    {
+        return match ($group) {
+            'current' => $this->current(),
+            'delivered' => $this->delivered(),
+            'cancelled' => $this->cancelled(),
+            default => $this,
+        };
+    }
+
+    /**
      * سفارش‌های منقضی شده (جهت جاب‌های سیستمی)
      */
     public function expired(): self
