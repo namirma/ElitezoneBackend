@@ -83,7 +83,12 @@ class AdminSettingController extends Controller
     private function validateSalesSettings(array $settings): ?JsonResponse
     {
         // روش‌های تأیید الیت یار هم تایپ‌دارند («1»/«0») — همان مسیر، بدون کنترلرِ دوم.
-        $rules = SalesSettings::validationRules() + EliteYARVerificationMethods::validationRules();
+        $rules = SalesSettings::validationRules() + EliteYARVerificationMethods::validationRules() + [
+            // سقف = عمرِ توکنِ Sanctum: تایمرِ بی‌کاریِ بلندتر از آن دروغ می‌گفت (توکن زودتر می‌میرد).
+            'session_idle_logout_minutes' => config('sanctum.expiration')
+                ? ['integer', 'min:1', 'max:'.(int) config('sanctum.expiration')]
+                : ['integer', 'min:1'],
+        ];
         $subject = array_intersect_key($settings, $rules);
 
         if ($subject === []) {

@@ -95,6 +95,13 @@ return [
         'elite_yar_verify_education',
         'elite_yar_verify_job',
         'elite_yar_verify_saze90',
+
+        /*
+        | خروجِ خودکار پس از بی‌کاری، به دقیقه (اعتبارسنجیِ عددی در PUT).
+        | ⚠️ عمداً در `public_keys` نیست: سایت مقدارِ **حل‌شده** (با پیش‌فرضِ
+        | `auth.session_idle_logout_minutes`) را از `GET /settings/public` می‌گیرد.
+        */
+        'session_idle_logout_minutes',
     ],
 
     /*

@@ -187,6 +187,13 @@ return [
     'role_selection_window_hours' => (int) env('ROLE_SELECTION_WINDOW_HOURS', 2),
 
     /*
+    | خروجِ خودکار پس از بی‌کاری (تایمرِ سمتِ سایت) — علی ۱۴۰۵/۰۷/۱۷: یک هفته.
+    | فقط پیش‌فرض است؛ ادمین با کلیدِ `session_idle_logout_minutes` در «تنظیمات سیستم»
+    | عوضش می‌کند و سایت مقدارِ حل‌شده را از `GET /settings/public` می‌خواند.
+    */
+    'session_idle_logout_minutes' => (int) env('SESSION_IDLE_LOGOUT_MINUTES', 10080),
+
+    /*
     |--------------------------------------------------------------------------
     | Non-Production OTP Shortcut
     |--------------------------------------------------------------------------

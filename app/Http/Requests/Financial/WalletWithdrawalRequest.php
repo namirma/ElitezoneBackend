@@ -22,7 +22,7 @@ class WalletWithdrawalRequest extends FormRequest
             'amount' => [
                 'required',
                 'integer',
-                'min:50000',
+                'min:'.(int) config('financial.withdrawal_min'),
                 'max:'.$availableBalance,
             ],
             'user_bank_account_id' => [
@@ -39,7 +39,7 @@ class WalletWithdrawalRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'amount.min' => __('auth.withdrawal_amount_min', ['min' => number_format(50000)]),
+            'amount.min' => __('auth.withdrawal_amount_min', ['min' => number_format((int) config('financial.withdrawal_min'))]),
             'amount.max' => __('auth.withdrawal_amount_max'),
             'user_bank_account_id.exists' => __('auth.bank_account_invalid'),
         ];

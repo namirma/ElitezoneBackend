@@ -124,6 +124,10 @@ return [
 
     'deposit_max_podium' => (int) env('DEPOSIT_MAX_PODIUM_RIALS', 2_000_000_000),
 
+    /* Min per wallet withdrawal (Rials). Read by WalletWithdrawalRequest and exposed in
+       GET /settings/public — was a literal 50000 in the request. */
+    'withdrawal_min' => (int) env('WITHDRAWAL_MIN_RIALS', 50_000),
+
     /*
     |--------------------------------------------------------------------------
     | Weighbridge financial tolerance (Rials)

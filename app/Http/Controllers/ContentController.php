@@ -181,10 +181,12 @@ class ContentController extends Controller
     }
 
     /**
-     * @return list<array{key: string, available: bool, coming_soon: bool}>
+     * @return list<array{key: string, available: bool, coming_soon: bool, min: int, max: int|null}>
      */
     private function walletDepositMethods(): array
     {
+        $min = (int) config('financial.deposit_min');
+
         $configured = function (string $gateway): bool {
             try {
                 return app(PaymentGatewayFactory::class)->make($gateway)->isConfigured();
@@ -197,9 +199,10 @@ class ContentController extends Controller
         $shaparak = $configured((string) config('payment.online_gateway', 'pasargad'));
 
         return [
-            ['key' => 'bank_transfer', 'available' => true, 'coming_soon' => false],
-            ['key' => 'podium', 'available' => $podium, 'coming_soon' => ! $podium],
-            ['key' => 'shaparak', 'available' => $shaparak, 'coming_soon' => ! $shaparak],
+            // `min`/`max` همان مرزهای `WalletDepositRequest` (ریال)؛ `max: null` = بی‌سقف.
+            ['key' => 'bank_transfer', 'available' => true, 'coming_soon' => false, 'min' => $min, 'max' => null],
+            ['key' => 'podium', 'available' => $podium, 'coming_soon' => ! $podium, 'min' => $min, 'max' => (int) config('financial.deposit_max_podium')],
+            ['key' => 'shaparak', 'available' => $shaparak, 'coming_soon' => ! $shaparak, 'min' => $min, 'max' => (int) config('financial.deposit_max_shaparak')],
         ];
     }
 
@@ -222,6 +225,8 @@ class ContentController extends Controller
         $values['features'] = [
             'product_reviews' => (bool) config('features.product_reviews'),
             'order_surveys' => (bool) config('features.order_surveys'),
+            // کوپنِ تأمین‌کننده/الیت‌یار (مدیریت، دورِ ششم) — خاموش = سایت آن بخش را نمی‌سازد.
+            'partner_coupons' => (bool) config('features.partner_coupons'),
         ];
 
         // روش‌های تأیید الیت یار — تنظیمِ ادمین، حل‌شده به بولی (پیش‌فرض اعمال‌شده)
@@ -233,6 +238,11 @@ class ContentController extends Controller
         // «به‌زودی»** — همان الگوی روش‌های تأییدِ الیت‌یار. فرانت نباید فهرست را هاردکد کند؛
         // روزی که درگاه در .env پیکربندی شود همین پاسخ آن را فعال نشان می‌دهد.
         $values['wallet_deposit_methods'] = $this->walletDepositMethods();
+        $values['wallet_withdrawal_min'] = (int) config('financial.withdrawal_min');
+
+        // خروجِ خودکار پس از بی‌کاری (علی ۱۴۰۵/۰۷/۱۷) — تنظیمِ ادمین، حل‌شده با پیش‌فرض.
+        $values['session_idle_logout_minutes'] = (int) (Setting::allCached()['session_idle_logout_minutes'] ?? '')
+            ?: (int) config('auth.session_idle_logout_minutes');
 
         return success($values, __('content.settings_received'));
     }
