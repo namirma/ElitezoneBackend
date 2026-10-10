@@ -29,6 +29,7 @@ use App\Services\PriceCalculationService;
 use App\Services\Pricing\VariantPriceHydrator;
 use App\Services\Product\AttributeFilterResolver;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 
@@ -66,6 +67,8 @@ class ProductController extends Controller
      */
     public function show(Product $product): JsonResponse
     {
+        $this->abortUnlessPublic($product);
+
         // ۱. بارگذاری روابط (Eager Loading) برای جلوگیری از کوئری‌های اضافی
         $product->loadMissing([
             'category',
@@ -100,6 +103,8 @@ class ProductController extends Controller
      */
     public function variants(ProductVariantFilterRequest $request, Product $product, FilterProductVariantsAction $action): JsonResponse
     {
+        $this->abortUnlessPublic($product);
+
         $activeCode = $this->cartResolver->activeCode();
 
         $filters = $request->validated();
@@ -154,6 +159,8 @@ class ProductController extends Controller
 
     public function showVariant(ProductVariant $variant, VariantPriceHydrator $priceHydrator): JsonResponse
     {
+        $this->abortUnlessPublic($variant->product, $variant);
+
         $variant->load([
             'prices' => fn ($q) => $q->fromLiveSuppliers(),
             'prices.factory',
@@ -190,22 +197,22 @@ class ProductController extends Controller
      */
     public function filters(Product $product): JsonResponse
     {
+        $this->abortUnlessPublic($product);
+
+        // فقط واریانت‌های فعال: گزینه‌ای که فقط به واریانتِ پنهان می‌رسد کنترلِ مرده است.
+        $ofThisProduct = fn ($q) => $q->where('product_id', $product->id)
+            ->where('product_variants.'.ProductVariant::IS_ACTIVE, true);
+
         $attributeTypes = AttributeType::query()
             // فقط دسته‌بندی ویژگی‌هایی را بیاور که این محصول حداقل یک واریانت با آن ویژگی دارد
-            ->whereHas('attributes.productVariants', function ($q) use ($product) {
-                $q->where('product_id', $product->id);
-            })
+            ->whereHas('attributes.productVariants', $ofThisProduct)
             ->with([
-                'attributes' => function ($q) use ($product) {
+                'attributes' => function ($q) use ($ofThisProduct) {
                     // ۱. فیلتر خود ویژگی‌ها (Attributes) بر اساس موجود بودن در واریانت‌های این محصول
-                    $q->whereHas('productVariants', function ($q2) use ($product) {
-                        $q2->where('product_id', $product->id);
-                    })
+                    $q->whereHas('productVariants', $ofThisProduct)
                         // ۲. لود کردن مقادیر (Values) منحصر به فردی که برای این محصول وجود دارد
-                        ->with(['values' => function ($q3) use ($product) {
-                            $q3->whereHas('productVariants', function ($q4) use ($product) {
-                                $q4->where('product_id', $product->id);
-                            })->distinct(); // جلوگیری از مقادیر تکراری
+                        ->with(['values' => function ($q3) use ($ofThisProduct) {
+                            $q3->whereHas('productVariants', $ofThisProduct)->distinct(); // جلوگیری از مقادیر تکراری
                         }]);
                 },
             ])
@@ -226,6 +233,7 @@ class ProductController extends Controller
         $cart = $this->cartResolver->resolve($request);
 
         $variant = ProductVariant::findOrFail($data['variant_id']);
+        $this->abortUnlessPublic($variant->product, $variant);
         $factory = Factory::findOrFail($data['factory_id']);
         $location = FactoryLocation::findOrFail($data['location_id']);
 
@@ -267,5 +275,21 @@ class ProductController extends Controller
             'offers' => OfferResource::collection($result['offers']),
             ...$result['financials'],
         ], 'global.received_successfully');
+    }
+
+    /**
+     * محصول/واریانتِ غیرفعال برای سایت وجود ندارد (علی ۱۴۰۵/۰۷/۱۹) — همان ۴۰۴ِ
+     * شناسه‌ی ناموجود، تا سایت «یافت نشد» بنویسد نه یک صفحه‌ی نیمه‌کاره.
+     * سبد و سفارش از این مسیرها نمی‌خوانند و دست نمی‌خورند.
+     */
+    private function abortUnlessPublic(?Product $product, ?ProductVariant $variant = null): void
+    {
+        if ($variant !== null && ! $variant->{ProductVariant::IS_ACTIVE}) {
+            throw (new ModelNotFoundException)->setModel(ProductVariant::class, [$variant->getKey()]);
+        }
+
+        if ($product === null || ! $product->{Product::IS_ACTIVE}) {
+            throw (new ModelNotFoundException)->setModel(Product::class);
+        }
     }
 }

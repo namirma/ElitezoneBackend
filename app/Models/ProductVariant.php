@@ -236,10 +236,13 @@ class ProductVariant extends Model
      * برمی‌گردد — چون قیمتِ ردیف تا تأیید دست نخورده، با همان قیمتِ قبلی.
      * مسیرِ سبد جداگانه گارد دارد (`AddToCartAction`, `PlaceOrderAction`): این
      * scope فقط نمایش را می‌بندد، شناسه‌ی واریانت از یک تبِ باز هنوز می‌رسد.
+     *
+     * واریانتِ غیرفعال هم (علی ۱۴۰۵/۰۷/۱۹) — هر سه مصرف‌کننده (فهرستِ محصول، فهرستِ
+     * واریانت، جست‌وجوی سایت) عمومی‌اند؛ سبد و سفارش از این scope نمی‌خوانند.
      */
     public function scopeCatalogVisible(Builder $query): Builder
     {
-        return $query->whereDoesntHave('pendingPriceChanges');
+        return $query->where(self::IS_ACTIVE, true)->whereDoesntHave('pendingPriceChanges');
     }
 
     /** آیا این واریانت به‌خاطرِ درخواستِ قیمتِ باز از کاتالوگ بیرون است؟ */

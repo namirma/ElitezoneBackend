@@ -49,7 +49,8 @@ class FilterProductsAction
             'orderUnits',
         ];
 
-        $query = Product::query()->with($relations);
+        // محصولِ غیرفعال در کاتالوگِ عمومی نیست (علی ۱۴۰۵/۰۷/۱۹)؛ واریانت‌ها با `catalogVisible`.
+        $query = Product::query()->active()->with($relations);
 
         $query->when($filters->categoryId, fn ($q) => $q->where('category_id', $filters->categoryId));
 
