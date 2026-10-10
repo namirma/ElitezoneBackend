@@ -8,7 +8,8 @@ use Illuminate\Support\Facades\Response;
 function faToEn($string): array|string
 {
     $persian = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
-    $arabic = ['٩', '٨', '٧', '٦', '٥', '٤', '٣', '٢', '١', '٠'];
+    // ترتیبِ ۰ تا ۹ — قبلاً وارونه بود (۹…۰)، پس «٩» به 0 و «٠» به 9 تبدیل می‌شد.
+    $arabic = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
 
     $num = range(0, 9);
     $convertedPersianNums = str_replace($persian, $num, $string);

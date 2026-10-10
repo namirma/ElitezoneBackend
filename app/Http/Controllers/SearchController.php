@@ -4,9 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Product\SearchRequest;
 use App\Http\Resources\Product\SearchResource;
+use App\Models\Faq;
+use App\Models\Page;
+use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\Search;
 use App\Models\SupplierActivityCategory;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 
@@ -42,6 +48,76 @@ class SearchController extends Controller
             'related_searches' => $relatedSearches,
             'latest_searches' => $latestSearches,
             'popular_searches' => $popularSearches,
+        ]);
+    }
+
+    /** سقفِ نتیجه در هر گروه. */
+    private const SITE_LIMIT = 20;
+
+    /**
+     * Site-wide search: published products/variants, active CMS pages and FAQ questions.
+     */
+    public function site(Request $request): JsonResponse
+    {
+        $request->validate(['q' => ['required', 'string', 'min:2', 'max:100']]);
+
+        // ارقامِ فارسی/عربی → لاتین و «ي/ك/ى» → «ی/ک»؛ بعد هر ترکیبِ حروف × ارقام، چون
+        // داده‌ی ذخیره‌شده هر شکلی می‌تواند باشد («میلگرد ۱۲» یا «ميلگرد 12»).
+        // ponytail: رشته‌ای که هر دو شکلِ حروف را با هم دارد پیدا نمی‌شود؛ اگر لازم شد، ستونِ نرمال‌شده.
+        $q = trim((string) preg_replace('/\s+/u', ' ', strtr(faToEn((string) $request->input('q')), ['ي' => 'ی', 'ك' => 'ک', 'ى' => 'ی'])));
+        $patterns = collect([$q, strtr($q, ['ی' => 'ي', 'ک' => 'ك'])])
+            ->flatMap(fn (string $v) => [$v, enToFa($v)])
+            ->unique()
+            ->map(fn (string $v) => '%'.addcslashes($v, '%_\\').'%')
+            ->all();
+
+        $matching = fn (string $column) => function (Builder $w) use ($column, $patterns) {
+            foreach ($patterns as $pattern) {
+                $w->orWhere($column, 'like', $pattern);
+            }
+        };
+
+        $variants = ProductVariant::query()
+            ->active()
+            ->catalogVisible()
+            ->whereHas('product', fn ($p) => $p->where(Product::IS_ACTIVE, true))
+            ->where($matching(ProductVariant::NAME))
+            ->with('product:id,cuid,name')
+            ->orderBy(ProductVariant::ID)
+            ->limit(self::SITE_LIMIT)
+            ->get();
+
+        return success([
+            'query' => $q,
+            'products' => Product::query()
+                ->active()
+                ->where($matching(Product::NAME))
+                ->orderBy(Product::ID)
+                ->limit(self::SITE_LIMIT)
+                ->get()
+                ->map(fn (Product $p) => ['cuid' => $p->cuid, 'name' => $p->name]),
+            'variants' => $variants->map(fn (ProductVariant $v) => [
+                'id' => $v->id,
+                'name' => $v->name,
+                'product_cuid' => $v->product->cuid,
+                'product_name' => $v->product->name,
+            ]),
+            'pages' => Page::query()
+                ->where(Page::IS_ACTIVE, true)
+                ->where($matching(Page::TITLE))
+                ->orderBy(Page::ID)
+                ->limit(self::SITE_LIMIT)
+                ->get()
+                // همان قاعده‌ی `Page::blockPages()`: صفحه‌ی بی‌مسیرِ اختصاصی زیرِ `/p/` است.
+                ->map(fn (Page $p) => ['slug' => $p->slug, 'title' => $p->title, 'route' => $p->route ?: '/p/'.$p->slug]),
+            'faqs' => Faq::query()
+                ->where(Faq::IS_ACTIVE, true)
+                ->where($matching(Faq::QUESTION))
+                ->orderBy(Faq::SORT_ORDER)
+                ->orderBy(Faq::ID)
+                ->limit(self::SITE_LIMIT)
+                ->get()
+                ->map(fn (Faq $f) => ['id' => $f->id, 'question' => $f->question, 'faq_category_id' => $f->faq_category_id]),
         ]);
     }
 
