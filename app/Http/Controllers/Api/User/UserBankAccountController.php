@@ -121,6 +121,28 @@ class UserBankAccountController extends Controller
     }
 
     /**
+     * انتخابِ حسابِ پیش‌فرض — دقیقاً یک پیش‌فرض برای هر کاربر.
+     */
+    public function setDefault(UserBankAccount $bankAccount): JsonResponse
+    {
+        // فقط مالک — عمداً نه `authorize()`، چون `before()`ِ policy ادمین را هم راه می‌دهد
+        // و پیش‌فرض ترجیحِ شخصیِ خودِ مالک است، نه عملیاتِ پشتیبانی.
+        if ($bankAccount->{UserBankAccount::USER_ID} !== Auth::id()) {
+            return error(__('bank.default_forbidden'), [], 403);
+        }
+
+        DB::transaction(function () use ($bankAccount) {
+            UserBankAccount::query()
+                ->where(UserBankAccount::USER_ID, $bankAccount->{UserBankAccount::USER_ID})
+                ->whereKeyNot($bankAccount->getKey())
+                ->update([UserBankAccount::IS_DEFAULT => false]);
+            $bankAccount->update([UserBankAccount::IS_DEFAULT => true]);
+        });
+
+        return success(new UserBankAccountResource($bankAccount), __('bank.set_default_success'));
+    }
+
+    /**
      * حذف حساب بانکی
      */
     public function destroy(UserBankAccount $bankAccount): JsonResponse

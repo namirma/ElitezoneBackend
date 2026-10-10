@@ -455,6 +455,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::post('accounts', [UserBankAccountController::class, 'store'])
                 ->middleware('throttle:5,1')
                 ->name('accounts.store');
+            // نامِ پارامتر `bankAccount` = نامِ آرگومانِ کنترلر، وگرنه model binding اجرا نمی‌شود.
+            Route::post('accounts/{bankAccount}/default', [UserBankAccountController::class, 'setDefault'])
+                ->whereNumber('bankAccount')
+                ->name('accounts.default');
         });
 
         // Addresses
