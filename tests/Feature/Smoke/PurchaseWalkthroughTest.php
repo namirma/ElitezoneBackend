@@ -211,6 +211,8 @@ class PurchaseWalkthroughTest extends TestCase
             Address::PROVINCE_ID => $province->id,
             Address::CITY_ID => $city->id,
             Address::POSTAL_ADDRESS => 'خیابان تست، پلاک ۱',
+            Address::BUILDING_NUMBER => '1',
+            Address::POSTAL_CODE => '1234567890',
             Address::RECEIVER_NAME => 'آقای تست',
             Address::RECEIVER_MOBILE => $mobile,
             Address::IS_DEFAULT => true,

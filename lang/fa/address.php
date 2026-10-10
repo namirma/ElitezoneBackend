@@ -6,6 +6,8 @@ return [
     'receiver_mobile_required' => '.وارد کردن موبایل گیرنده الزامی است',
     'receiver_mobile_regex' => '.فرمت موبایل گیرنده نامعتبر است',
     'postal_code_regex' => '.کد پستی باید 10 رقمی باشد',
+    'building_number_required' => '.وارد کردن پلاک الزامی است',
+    'postal_code_required' => '.وارد کردن کد پستی الزامی است',
     'province_id_exists' => '.استان انتخاب شده معتبر نیست',
     'city_id_exists' => '.شهر انتخاب شده معتبر نیست',
     'set_default_success' => '.آدرس با موفقیت به عنوان پیش‌فرض تنظیم شد',
