@@ -10,6 +10,7 @@ use App\Models\UserBankAccount;
 use App\Services\PodiumServices\CardInquiryService;
 use App\Services\PodiumServices\CardToIbanService;
 use App\Services\PodiumServices\ShebaInquiryService;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -46,42 +47,39 @@ class UserBankAccountController extends Controller
         }
 
         $data = $request->validated();
-        $shaba = $data['shaba'] ?? null;
+        $inputShaba = $data['shaba'] ?? null;
         $cardNumber = $data['card_number'] ?? null;
+        $shaba = $inputShaba;
         $bankName = __('bank.unknown_bank');
 
-        // ۲. استعلام و احراز هویت (شبا یا کارت)
+        // ۲. استعلام و احراز هویت — **پیش از هر بررسیِ تکراری‌بودن** (علی ۱۴۰۵/۰۷/۱۹): کسی که صاحبِ این
+        // شبا/کارت نیست باید همان پاسخِ عادیِ «به نامِ شما نیست» را بگیرد، نه اینکه بفهمد قبلاً کسی
+        // ثبتش کرده یا بک‌آفیس حذفش کرده. شبایی که همراهِ کارت آمده هم جدا استعلام می‌شود — قبلاً
+        // بی‌استعلام می‌نشست.
         try {
             if ($cardNumber) {
                 // الف) استعلام کارت
-                $isMatched = $cardService->verify($cardNumber, $user->{User::NATIONAL_CODE}, $user->{User::BIRTH_DATE});
-
-                if (! $isMatched) {
-                    throw ValidationException::withMessages([
-                        'card_number' => [__('bank.card_mismatch')],
-                    ]);
+                if (! $cardService->verify($cardNumber, $user->{User::NATIONAL_CODE}, $user->{User::BIRTH_DATE})) {
+                    throw $this->notYours(UserBankAccount::CARD_NUMBER);
                 }
 
                 $bankName = $this->getBankNameFromCard($cardNumber);
+            }
 
+            if ($inputShaba) {
+                // ب) استعلام شبا
+                if (! $shebaService->verify($inputShaba, $user->{User::NATIONAL_CODE}, $user->{User::BIRTH_DATE})) {
+                    throw $this->notYours(UserBankAccount::SHABA);
+                }
+
+                if (! $cardNumber) {
+                    $bankName = $this->getBankNameFromIban($inputShaba);
+                }
+            } elseif ($cardNumber) {
                 // تکمیل خودکار شبا از روی کارت (رفتار استاندارد بانکی) — شکست این
                 // استعلام ثبت حساب را متوقف نمی‌کند، فقط شبا خالی می‌ماند.
                 // عکس این عملیات (شبا → کارت) در شبکه بانکی سرویس استعلام ندارد.
-                if (! $shaba) {
-                    $shaba = $cardToIbanService->convert($cardNumber);
-                }
-
-            } elseif ($shaba) {
-                // ب) استعلام شبا
-                $isMatched = $shebaService->verify($shaba, $user->{User::NATIONAL_CODE}, $user->{User::BIRTH_DATE});
-
-                if (! $isMatched) {
-                    throw ValidationException::withMessages([
-                        'shaba' => [__('bank.shaba_mismatch')],
-                    ]);
-                }
-
-                $bankName = $this->getBankNameFromIban($shaba);
+                $shaba = $cardToIbanService->convert($cardNumber);
             }
         } catch (ValidationException $e) {
             throw $e;
@@ -97,27 +95,146 @@ class UserBankAccountController extends Controller
         // ۳. دریافت نام صاحب حساب
         $holderName = $this->resolveHolderName($user);
 
-        // ۴. ذخیره در دیتابیس
-        $bankAccount = DB::transaction(function () use ($user, $data, $bankName, $holderName, $shaba, $cardNumber) {
-            // اگر حساب پیش‌فرض است، بقیه را از حالت پیش‌فرض خارج کن
-            if (! empty($data['is_default'])) {
-                $user->bankAccounts()->update(['is_default' => false]);
-            }
+        // ۴. پس از استعلام: تکراری، یا بازگردانیِ حسابِ حذف‌شده‌ی خودِ همین کاربر.
+        $restored = $this->restoreOrRefuseExisting($user, $inputShaba, $cardNumber, $data, $bankName, $holderName);
+        if ($restored !== null) {
+            return success(new UserBankAccountResource($restored), __('bank.restored_success'));
+        }
 
-            $account = $user->bankAccounts()->create([
-                UserBankAccount::BANK_NAME => $bankName,
-                UserBankAccount::ACCOUNT_HOLDER_NAME => $holderName,
-                UserBankAccount::SHABA => $shaba,
-                UserBankAccount::CARD_NUMBER => $cardNumber,
-                UserBankAccount::IS_DEFAULT => $data['is_default'] ?? false,
-            ]);
-            $account->{UserBankAccount::STATUS} = UserBankAccount::STATUS_APPROVED;
-            $account->save();
+        // شبای ساخته‌شده از کارت که جای دیگری (هر کاربری، حذف‌شده هم) ثبت است، کنار گذاشته می‌شود — همان
+        // رفتارِ «تبدیل نشد». قبلاً روی ایندکسِ یکتا ۵۰۰ می‌داد.
+        if ($shaba !== null && $shaba !== $inputShaba
+            && UserBankAccount::withTrashed()->where(UserBankAccount::SHABA, $shaba)->exists()) {
+            $shaba = null;
+        }
 
-            return $account;
-        });
+        // ۵. ذخیره در دیتابیس
+        try {
+            $bankAccount = DB::transaction(function () use ($user, $data, $bankName, $holderName, $shaba, $cardNumber) {
+                // اگر حساب پیش‌فرض است، بقیه را از حالت پیش‌فرض خارج کن
+                if (! empty($data['is_default'])) {
+                    $user->bankAccounts()->update(['is_default' => false]);
+                }
+
+                $account = $user->bankAccounts()->create([
+                    UserBankAccount::BANK_NAME => $bankName,
+                    UserBankAccount::ACCOUNT_HOLDER_NAME => $holderName,
+                    UserBankAccount::SHABA => $shaba,
+                    UserBankAccount::CARD_NUMBER => $cardNumber,
+                    UserBankAccount::IS_DEFAULT => $data['is_default'] ?? false,
+                ]);
+                $account->{UserBankAccount::STATUS} = UserBankAccount::STATUS_APPROVED;
+                $account->save();
+
+                return $account;
+            });
+        } catch (UniqueConstraintViolationException) {
+            // دو ثبتِ هم‌زمانِ یک شماره: دومی حالا ردیفِ اولی را می‌بیند و همان پاسخِ بالا را می‌گیرد.
+            $restored = $this->restoreOrRefuseExisting($user, $inputShaba, $cardNumber, $data, $bankName, $holderName);
+
+            return $restored !== null
+                ? success(new UserBankAccountResource($restored), __('bank.restored_success'))
+                : throw $this->notYours($cardNumber ? UserBankAccount::CARD_NUMBER : UserBankAccount::SHABA);
+        }
 
         return success(new UserBankAccountResource($bankAccount), __('bank.store_success'));
+    }
+
+    /**
+     * شبا/کارتی که قبلاً ثبت شده — فقط **پس از** استعلامِ موفق صدا زده می‌شود.
+     *
+     * - ردیفِ کاربرِ دیگر (زنده یا حذف‌شده) → همان «به نامِ شما نیست»ِ استعلامِ ناموفق؛ هیچ نشانه‌ای از
+     *   ثبت یا حذف بیرون نمی‌رود (پیش‌تر کاربرِ دوم ۵۰۰ می‌گرفت).
+     * - ردیفِ زنده‌ی خودش → «قبلاً توسط شما ثبت شده».
+     * - ردیفِ حذف‌شده‌ی خودش (حذفِ بک‌آفیس، BE2) → **همان ردیف** بازمی‌گردد، با ردِ ممیزی. واریزِ پادیومِ آن
+     *   شبا تا این لحظه دستی می‌ماند و از این به بعد دوباره خودکار می‌نشیند.
+     *
+     * `null` یعنی هیچ ردیفی نیست و ثبتِ تازه آزاد است.
+     */
+    private function restoreOrRefuseExisting(User $user, ?string $shaba, ?string $card, array $data, string $bankName, string $holderName): ?UserBankAccount
+    {
+        $matches = UserBankAccount::withTrashed()
+            ->where(function ($q) use ($shaba, $card) {
+                $q->when($shaba, fn ($q) => $q->orWhere(UserBankAccount::SHABA, $shaba))
+                    ->when($card, fn ($q) => $q->orWhere(UserBankAccount::CARD_NUMBER, $card));
+            })
+            ->orderByDesc(UserBankAccount::ID)
+            ->get();
+
+        if ($matches->isEmpty()) {
+            return null;
+        }
+
+        $fieldOf = fn (UserBankAccount $a) => $card !== null && $a->{UserBankAccount::CARD_NUMBER} === $card
+            ? UserBankAccount::CARD_NUMBER
+            : UserBankAccount::SHABA;
+
+        $foreign = $matches->first(fn (UserBankAccount $a) => (int) $a->{UserBankAccount::USER_ID} !== (int) $user->id);
+        if ($foreign !== null) {
+            Log::warning('Bank account registration matched another user\'s account after a passing inquiry', [
+                'user_id' => $user->id,
+                'existing_account_id' => $foreign->getKey(),
+            ]);
+
+            throw $this->notYours($fieldOf($foreign));
+        }
+
+        $live = $matches->first(fn (UserBankAccount $a) => ! $a->trashed());
+        if ($live !== null) {
+            $field = $fieldOf($live);
+
+            throw ValidationException::withMessages([
+                $field => [$field === UserBankAccount::CARD_NUMBER ? __('bank.validation.card_unique') : __('auth.shaba_unique')],
+            ]);
+        }
+
+        $row = ($card !== null ? $matches->firstWhere(UserBankAccount::CARD_NUMBER, $card) : null) ?? $matches->first();
+
+        return DB::transaction(function () use ($user, $row, $matches, $shaba, $card, $data, $bankName, $holderName) {
+            if (! empty($data['is_default'])) {
+                $user->bankAccounts()->update([UserBankAccount::IS_DEFAULT => false]);
+            }
+
+            $row->restore();
+
+            $fill = [
+                UserBankAccount::BANK_NAME => $bankName,
+                UserBankAccount::ACCOUNT_HOLDER_NAME => $holderName,
+                UserBankAccount::IS_DEFAULT => (bool) ($data['is_default'] ?? false),
+                UserBankAccount::STATUS => UserBankAccount::STATUS_APPROVED,
+            ];
+            // جای خالیِ ردیف فقط وقتی پر می‌شود که هیچ ردیفِ دیگری آن شماره را ندارد (یک تطابق).
+            if ($matches->count() === 1) {
+                if ($row->{UserBankAccount::SHABA} === null && $shaba !== null) {
+                    $fill[UserBankAccount::SHABA] = $shaba;
+                }
+                if ($row->{UserBankAccount::CARD_NUMBER} === null && $card !== null) {
+                    $fill[UserBankAccount::CARD_NUMBER] = $card;
+                }
+            }
+            $row->forceFill($fill)->save();
+
+            activity()
+                ->performedOn($user)
+                ->causedBy($user)
+                ->withProperties([
+                    'bank_account_id' => $row->getKey(),
+                    'bank_name' => $bankName,
+                    'last4' => substr((string) ($row->{UserBankAccount::SHABA} ?? $row->{UserBankAccount::CARD_NUMBER}), -4),
+                    'inquired_by' => $card !== null ? 'card' : 'shaba',
+                ])
+                ->log('حساب بانکی حذف‌شده پس از استعلام دوباره‌ی مالکیت، به درخواست خود کاربر بازگردانده شد.');
+
+            return $row;
+        });
+    }
+
+    /** پاسخِ استعلامِ ناموفق — برای «مال کسِ دیگر است» هم عیناً همین. */
+    private function notYours(string $field): ValidationException
+    {
+        return ValidationException::withMessages([
+            $field => [__($field === UserBankAccount::CARD_NUMBER ? 'bank.card_mismatch' : 'bank.shaba_mismatch')],
+        ]);
     }
 
     /**

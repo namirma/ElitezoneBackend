@@ -6,8 +6,6 @@ use App\Http\Requests\Concerns\ReadsScalarInput;
 use App\Models\UserBankAccount;
 use App\Support\IranIban;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\Rule;
 
 class StoreUserBankAccountRequest extends FormRequest
 {
@@ -26,7 +24,6 @@ class StoreUserBankAccountRequest extends FormRequest
                 'nullable',
                 'string',
                 'regex:/^IR\d{24}$/',
-                Rule::unique('user_bank_accounts', 'shaba')->where('user_id', Auth::id()),
             ],
 
             UserBankAccount::CARD_NUMBER => [
@@ -34,7 +31,8 @@ class StoreUserBankAccountRequest extends FormRequest
                 'nullable',
                 'string',
                 'digits:16',
-                Rule::unique('user_bank_accounts', 'card_number')->where('user_id', Auth::id()),
+                // تکراری‌بودن عمداً این‌جا نیست (BE3): پس از استعلامِ مالکیت در کنترلر بررسی می‌شود تا
+                // کسی که صاحبِ این شبا/کارت نیست نفهمد قبلاً ثبت یا حذف شده است.
             ],
 
             UserBankAccount::IS_DEFAULT => ['nullable', 'boolean'],
