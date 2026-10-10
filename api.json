@@ -1293,6 +1293,7 @@
                     }
                 ],
                 "requestBody": {
+                    "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
@@ -45533,6 +45534,90 @@
                 }
             }
         },
+        "/profile/orders/counts": {
+            "get": {
+                "operationId": "order.counts",
+                "summary": "Order-list tab counters: one `total` per list, equal to that list's `meta.total`",
+                "tags": [
+                    "Order"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "buy_myself": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "current": {
+                                                            "type": "integer"
+                                                        },
+                                                        "delivered": {
+                                                            "type": "integer"
+                                                        },
+                                                        "cancelled": {
+                                                            "type": "integer"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "current",
+                                                        "delivered",
+                                                        "cancelled"
+                                                    ]
+                                                },
+                                                "buy_others": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "current": {
+                                                            "type": "integer"
+                                                        },
+                                                        "delivered": {
+                                                            "type": "integer"
+                                                        },
+                                                        "cancelled": {
+                                                            "type": "integer"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "current",
+                                                        "delivered",
+                                                        "cancelled"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "buy_myself",
+                                                "buy_others"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "status",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
         "/profile/orders/{order}": {
             "get": {
                 "operationId": "order.show",
@@ -50098,6 +50183,168 @@
                                         }
                                     },
                                     "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/search/site": {
+            "get": {
+                "operationId": "search.site",
+                "summary": "Site-wide search: published products/variants, active CMS pages and FAQ questions",
+                "tags": [
+                    "Search"
+                ],
+                "parameters": [
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "minLength": 2,
+                            "maxLength": 100
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "query": {
+                                                    "type": "string"
+                                                },
+                                                "products": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "cuid": {
+                                                                "type": "string"
+                                                            },
+                                                            "name": {
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "cuid",
+                                                            "name"
+                                                        ]
+                                                    }
+                                                },
+                                                "variants": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "integer"
+                                                            },
+                                                            "name": {
+                                                                "type": "string"
+                                                            },
+                                                            "product_cuid": {
+                                                                "type": "string"
+                                                            },
+                                                            "product_name": {
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "id",
+                                                            "name",
+                                                            "product_cuid",
+                                                            "product_name"
+                                                        ]
+                                                    }
+                                                },
+                                                "pages": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "slug": {
+                                                                "type": "string"
+                                                            },
+                                                            "title": {
+                                                                "type": "string"
+                                                            },
+                                                            "route": {
+                                                                "anyOf": [
+                                                                    {
+                                                                        "type": "string"
+                                                                    },
+                                                                    {
+                                                                        "type": "null"
+                                                                    }
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "slug",
+                                                            "title",
+                                                            "route"
+                                                        ]
+                                                    }
+                                                },
+                                                "faqs": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "integer"
+                                                            },
+                                                            "question": {
+                                                                "type": "string"
+                                                            },
+                                                            "faq_category_id": {
+                                                                "type": [
+                                                                    "integer",
+                                                                    "null"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "id",
+                                                            "question",
+                                                            "faq_category_id"
+                                                        ]
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "query",
+                                                "products",
+                                                "variants",
+                                                "pages",
+                                                "faqs"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "status",
+                                        "message",
                                         "data"
                                     ]
                                 }
@@ -57721,6 +57968,96 @@
                     },
                     "403": {
                         "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/profile/financial/accounts/{bankAccount}/default": {
+            "post": {
+                "operationId": "accounts.default",
+                "summary": "\u0627\u0646\u062a\u062e\u0627\u0628\u0650 \u062d\u0633\u0627\u0628\u0650 \u067e\u06cc\u0634\u200c\u0641\u0631\u0636 \u2014 \u062f\u0642\u06cc\u0642\u0627\u064b \u06cc\u06a9 \u067e\u06cc\u0634\u200c\u0641\u0631\u0636 \u0628\u0631\u0627\u06cc \u0647\u0631 \u06a9\u0627\u0631\u0628\u0631",
+                "tags": [
+                    "UserBankAccount"
+                ],
+                "parameters": [
+                    {
+                        "name": "bankAccount",
+                        "in": "path",
+                        "required": true,
+                        "description": "The bank account ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/UserBankAccountResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "status",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "null"
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            },
+                                            "minItems": 0,
+                                            "maxItems": 0,
+                                            "additionalItems": false
+                                        }
+                                    },
+                                    "required": [
+                                        "status",
+                                        "message",
+                                        "data",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
@@ -66441,10 +66778,8 @@
                         "maxLength": 1000
                     },
                     "building_number": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
+                        "type": "string",
+                        "description": "\u067e\u0644\u0627\u06a9 \u0648 \u06a9\u062f \u067e\u0633\u062a\u06cc\u0650 \u06f1\u06f0 \u0631\u0642\u0645\u06cc \u0627\u062c\u0628\u0627\u0631\u06cc\u200c\u0627\u0646\u062f (\u062a\u0635\u0645\u06cc\u0645\u0650 \u0639\u0644\u06cc \u06f1\u06f4\u06f0\u06f5/\u06f0\u06f7/\u06f1\u06f7\u060c \u0647\u0645 \u0641\u0631\u0645 \u0648 \u0647\u0645 \u0633\u0631\u0648\u0631).",
                         "maxLength": 10
                     },
                     "unit": {
@@ -66455,10 +66790,7 @@
                         "maxLength": 10
                     },
                     "postal_code": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
+                        "type": "string",
                         "pattern": "^\\d{10}$"
                     },
                     "receiver_name": {
@@ -66480,6 +66812,8 @@
                     "province_id",
                     "city_id",
                     "postal_address",
+                    "building_number",
+                    "postal_code",
                     "receiver_name",
                     "receiver_mobile"
                 ],
@@ -69009,10 +69343,7 @@
                         "maxLength": 1000
                     },
                     "building_number": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
+                        "type": "string",
                         "maxLength": 10
                     },
                     "unit": {
@@ -69023,10 +69354,7 @@
                         "maxLength": 10
                     },
                     "postal_code": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
+                        "type": "string",
                         "pattern": "^\\d{10}$"
                     },
                     "receiver_name": {
@@ -69044,6 +69372,10 @@
                         ]
                     }
                 },
+                "required": [
+                    "building_number",
+                    "postal_code"
+                ],
                 "title": "UpdateAddressRequest"
             },
             "UpdateAdminRequest": {
