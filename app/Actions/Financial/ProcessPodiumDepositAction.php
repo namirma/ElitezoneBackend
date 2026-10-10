@@ -307,7 +307,8 @@ class ProcessPodiumDepositAction
         $mobile = $user->{User::MOBILE};
         if ($mobile) {
             SendSmsJob::template($mobile, 'wallet_deposited_podium', [
-                'amount' => number_format((int) ($amount / 10)), // ریال → تومان
+                // ریال؛ پیامک با واحدِ پنلِ گیرنده می‌نویسدش (`:unit`، BE3) — قبلاً همیشه تومان بود.
+                'amount' => number_format((int) $amount),
             ]);
         }
 

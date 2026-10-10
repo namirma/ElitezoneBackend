@@ -46,7 +46,7 @@ return [
         ],
         'wallet_deposit' => [
             'title' => 'شارژ کیف پول',
-            'body' => ':amount ریال به کیف پول واریز شد.',
+            'body' => ':amount به کیف پول واریز شد.',
             'cta' => 'تراکنش‌ها',
         ],
         'invite_received' => [

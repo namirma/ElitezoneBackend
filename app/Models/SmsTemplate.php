@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Sms\EventCatalog;
 use App\Sms\PlaceholderCatalog;
+use App\Support\Money;
 use App\Support\PhoneNumber;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
@@ -226,6 +227,9 @@ class SmsTemplate extends Model
     /** جانگهدارهایی که عدد نمایشی‌اند و با ارقامِ فارسی نوشته می‌شوند (دستورالعملِ پیامک، بندِ ۱۵). */
     private const PERSIAN_DIGIT_PARAMS = ['amount', 'balance', 'minutes', 'hours', 'percent'];
 
+    /** پارامترهای پولی (ریال در ورودی) که `:unit` واحدشان را می‌گوید — `withMoneyUnit()`. */
+    private const MONEY_PARAMS = ['amount', 'balance'];
+
     const COND_ROLES = 'roles';
 
     const COND_MIN_AMOUNT = 'min_amount';
@@ -403,21 +407,23 @@ class SmsTemplate extends Model
     public static function render(string $key, array $params = [], ?string $mobile = null): ?string
     {
         $template = static::findCached($key);
-        $params = self::withFirstName($template !== null ? (string) $template->{self::BODY} : (string) __("sms.{$key}"), $params, $mobile);
+        $body = $template !== null ? (string) $template->{self::BODY} : (string) __("sms.{$key}");
+        $params = self::withFirstName($body, $params, $mobile);
 
         if ($template === null) {
-            return self::fromLang($key, $params);
+            return self::fromLang($key, self::withMoneyUnit($body, $params, null, $mobile));
         }
 
         if (! $template->{self::IS_ACTIVE}) {
             return null;
         }
 
+        // شرط‌ها (`min_amount`) با ریالِ خام سنجیده می‌شوند — تبدیلِ واحد فقط برای متن، و بعد از آن.
         if (! $template->conditionsPass($params, $mobile)) {
             return null;
         }
 
-        return static::interpolate((string) $template->{self::BODY}, $params);
+        return static::interpolate($body, self::withMoneyUnit($body, $params, $template->{self::AUDIENCE}, $mobile));
     }
 
     /**
@@ -425,13 +431,56 @@ class SmsTemplate extends Model
      *
      * @param  array<string, mixed>  $params
      */
-    public static function text(string $key, array $params = []): ?string
+    public static function text(string $key, array $params = [], ?string $mobile = null): ?string
     {
         $template = static::findCached($key);
+        $body = $template !== null ? (string) $template->{self::BODY} : (string) __("sms.{$key}");
+        $params = self::withMoneyUnit($body, $params, $template?->{self::AUDIENCE}, $mobile);
 
         return $template === null
             ? self::fromLang($key, $params)
-            : self::interpolate((string) $template->{self::BODY}, $params);
+            : self::interpolate($body, $params);
+    }
+
+    /**
+     * مبلغ با واحدِ پنلِ گیرنده (علی ۱۴۰۵/۰۷/۱۹): مشتری ← سایت، تأمین‌کننده ← پنلِ تأمین‌کننده، کارمند ←
+     * بک‌آفیس. فرستنده‌ها `amount`/`balance` را مثلِ همیشه ریالیِ `number_format` می‌دهند.
+     *
+     * فقط وقتی متن `:unit` دارد اجرا می‌شود: متنی که ادمین با «ریال»ِ لفظی نوشته (پیش از مهاجرتِ BE3)
+     * عددِ ریالی می‌گیرد، نه عددِ تومانی کنارِ کلمه‌ی «ریال». `unit`ِ فرستاده‌شده یعنی فرستنده خودش
+     * تبدیل کرده.
+     *
+     * @param  array<string, mixed>  $params
+     * @return array<string, mixed>
+     */
+    private static function withMoneyUnit(string $body, array $params, ?string $audience, ?string $mobile): array
+    {
+        if (! str_contains($body, ':unit') || array_key_exists('unit', $params)) {
+            return $params;
+        }
+
+        $app = match ($audience) {
+            self::AUDIENCE_SUPPLIER => Money::APP_SUPPLIER,
+            self::AUDIENCE_ADMIN => Money::APP_BACKOFFICE,
+            self::AUDIENCE_BUYER, self::AUDIENCE_ELITE_YAR, self::AUDIENCE_EMPLOYER, self::AUDIENCE_DRIVER => Money::APP_SITE,
+            default => Money::appForUser($mobile === null || trim($mobile) === ''
+                ? null
+                : User::query()->where(User::MOBILE, PhoneNumber::to09($mobile))->first()),
+        };
+        $unit = Money::unitFor($app);
+
+        foreach (self::MONEY_PARAMS as $name) {
+            if (! isset($params[$name]) || ! is_scalar($params[$name])) {
+                continue;
+            }
+            $rials = str_replace(',', '', (string) faToEn((string) $params[$name]));
+            if (is_numeric($rials)) {
+                $params[$name] = Money::amountIn($rials, $unit);
+            }
+        }
+        $params['unit'] = Money::unitLabel($unit);
+
+        return $params;
     }
 
     /**

@@ -54,7 +54,7 @@ return [
     'shaba_unique' => '.این شماره شبا قبلا توسط شما ثبت شده است',
     'shaba_invalid_algorithm' => '.شماره شبا نامعتبر است (الگوریتم شبا صحیح نیست)',
     'payment_method_invalid' => '.متد پرداخت انتخاب شده نامعتبر است',
-    'withdrawal_amount_min' => '.حداقل مبلغ برداشت :min ریال است',
+    'withdrawal_amount_min' => '.حداقل مبلغ برداشت :min است',
     'withdrawal_amount_max' => '.مبلغ درخواستی از موجودی قابل برداشت شما بیشتر است',
     'bank_account_invalid' => '.حساب بانکی انتخاب شده نامعتبر است یا هنوز تایید نشده است',
     'employer' => 'کارفرما',
@@ -108,9 +108,9 @@ return [
     'mobile_format_invalid' => 'فرمت شماره موبایل وارد شده صحیح نیست.',
 
     // سقف/کف مبلغ شارژ کیف پول — مقادیر از config/financial.php می‌آیند
-    'deposit_amount_min' => 'حداقل مبلغ شارژ کیف پول :min ریال است.',
-    'deposit_amount_max_shaparak' => 'حداکثر مبلغ هر تراکنش از درگاه شاپرک :max ریال است.',
-    'deposit_amount_max_podium' => 'حداکثر مبلغ هر واریز مستقیم :max ریال است.',
+    'deposit_amount_min' => 'حداقل مبلغ شارژ کیف پول :min است.',
+    'deposit_amount_max_shaparak' => 'حداکثر مبلغ هر تراکنش از درگاه شاپرک :max است.',
+    'deposit_amount_max_podium' => 'حداکثر مبلغ هر واریز مستقیم :max است.',
 
     // ── ورودِ دومرحله‌ای (TOTP) — تصمیمِ مدیریت شماره‌ی ۸ ─────────────────────
     'two_factor_required' => 'کد ورود دومرحله‌ای را از برنامه‌ی احراز هویت وارد کنید.',

@@ -49,7 +49,7 @@ class CouponWalletLowAlert
             UserNotification::create([
                 UserNotification::USER_ID => $admin->id,
                 UserNotification::SUBJECT => __('coupons.coupon_wallet_low_subject'),
-                UserNotification::BODY => (string) SmsTemplate::text('coupon_wallet_low_admin', $personal),
+                UserNotification::BODY => (string) SmsTemplate::text('coupon_wallet_low_admin', $personal, (string) $admin->{User::MOBILE}),
             ]);
         }
 

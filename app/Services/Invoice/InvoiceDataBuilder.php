@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\UserProfile;
 use App\Services\Financial\SettlementCalculatorService;
 use App\Support\JalaliDate;
+use App\Support\Money;
 use App\Traits\ConvertNumberToWord;
 
 /**
@@ -60,6 +61,19 @@ class InvoiceDataBuilder
         FinancialCodes::DOC_TAX_INVOICE_ELITE_YAR,
     ];
 
+    /**
+     * فاکتورهای خریدار — با واحدِ پولِ سایت (علی ۱۴۰۵/۰۷/۱۹: «فاکتور رسمی PDF تابع تنظیم سایت»): پیش‌فاکتور،
+     * فاکتور فروش، فاکتور نهایی و فاکتور اصلاحی. بقیه‌ی اسناد ریالی می‌مانند — اسنادِ مالیاتی (O/P/Q) نسخه‌ی
+     * کاغذیِ صورتحسابِ مودیان‌اند و مودیان همیشه ریال می‌گیرد؛ اسنادِ تأمین‌کننده/الیت‌یار/مشترک تصمیمِ
+     * جدایی می‌خواهند (رکوردِ BE3).
+     */
+    private const SITE_UNIT_DOCS = [
+        FinancialCodes::DOC_PRE_INVOICE,
+        FinancialCodes::DOC_RECEIPT_OWNER,
+        FinancialCodes::DOC_FINAL_RECEIPT_OWNER,
+        FinancialCodes::DOC_MODIFIED_INVOICE_OWNER,
+    ];
+
     public function __construct(private readonly SettlementCalculatorService $settlement) {}
 
     /**
@@ -89,8 +103,12 @@ class InvoiceDataBuilder
             default => (float) $order->final_amount,
         };
 
+        $moneyUnit = in_array($docType, self::SITE_UNIT_DOCS, true) ? Money::unitFor(Money::APP_SITE) : Money::RIAL;
+
         return [
             'invoice_number' => $invoiceNumber,
+            // واحدِ مبالغِ سند — `pdf/partials/items_section` و `payable_row` با همین می‌نویسند.
+            'money_unit' => $moneyUnit,
             'order' => $order,
             'seller' => self::SELLER_INFO,
             // Brand artwork from the UI/UX design (embedded so the PDF is self-contained).
@@ -120,7 +138,7 @@ class InvoiceDataBuilder
             'date_shamsi' => JalaliDate::format(now(), 'Y/m/d'),
             // اعتبار پیش‌فاکتور: تا انقضای رزرو سفارش، و در نبود آن، ۲ روز پس از صدور.
             'validity_shamsi' => JalaliDate::format($order->reservation_expires_at ?? now()->addDays(2), 'Y/m/d'),
-            'amount_words' => $this->numberToWords((int) round($amountToConvert)),
+            'amount_words' => $this->amountWords($amountToConvert, $moneyUnit),
             'payment_label' => match ($order->payment_status) {
                 Order::PAYMENT_PAID => 'پرداخت شده',
                 Order::PAYMENT_FAILED => 'ناموفق',
@@ -129,6 +147,31 @@ class InvoiceDataBuilder
             },
             'payment_status_class' => $order->payment_status === Order::PAYMENT_PAID ? 'paid' : 'unpaid',
         ];
+    }
+
+    /**
+     * مبلغ به حروف، بی‌واحد (قالب واحد را کنارش می‌نویسد). تومان دقیق است: «… و پنج دهم» وقتی ریال بر ۱۰
+     * بخش‌پذیر نیست — همان قاعده‌ی `Money::amountIn`.
+     */
+    private function amountWords(float $amount, string $unit): string
+    {
+        $rials = (int) round($amount);
+
+        if ($unit !== Money::TOMAN) {
+            return $this->numberToWords($rials);
+        }
+
+        $whole = intdiv($rials, 10);
+        $tenth = abs($rials % 10);
+        $parts = [];
+        if ($whole !== 0 || $tenth === 0) {
+            $parts[] = $this->numberToWords($whole);
+        }
+        if ($tenth !== 0) {
+            $parts[] = $this->numberToWords($tenth).' دهم';
+        }
+
+        return implode(' و ', $parts);
     }
 
     /**

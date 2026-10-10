@@ -10,6 +10,7 @@ use App\Http\Requests\Order\PayFullOrderRequest;
 use App\Http\Requests\Order\UploadOrderReceiptRequest;
 use App\Http\Resources\Order\OrderResource;
 use App\Models\Order;
+use App\Support\Money;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -85,7 +86,7 @@ class OrderPaymentController extends Controller
         $shortage = $requiredAmount - $currentBalance;
 
         return error(
-            __('wallet.insufficient_balance_with_shortage', ['shortage' => number_format($shortage)]),
+            __('wallet.insufficient_balance_with_shortage', ['shortage' => Money::format($shortage)]),
             [
                 'error_code' => 'insufficient_balance',
                 'current_balance' => $currentBalance,

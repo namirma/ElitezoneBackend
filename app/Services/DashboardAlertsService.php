@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Order;
 use App\Models\ProductVariant;
 use App\Models\User;
+use App\Support\Money;
 
 /**
  * Collects contextual alert notifications for the user's dashboard.
@@ -131,7 +132,7 @@ class DashboardAlertsService
             ->where('created_at', '>=', now()->subDay())->latest()->first();
 
         if ($deposit) {
-            $alerts[] = $this->makeAlert('wallet_deposit', 'success', 'wallet', '/profile/finance/wallet', ['amount' => number_format($deposit->amount)], $deposit->id);
+            $alerts[] = $this->makeAlert('wallet_deposit', 'success', 'wallet', '/profile/finance/wallet', ['amount' => Money::format($deposit->amount)], $deposit->id);
         }
 
         return $alerts;

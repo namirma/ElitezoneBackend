@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use App\Models\Setting;
+use App\Models\User;
+
 /**
  * Arbitrary-precision money arithmetic (bcmath).
  *
@@ -15,6 +18,14 @@ namespace App\Support;
  * where the storage layer (decimal columns) rounds deterministically.
  *
  * Inputs may be int|float|string; everything is normalised to a numeric string.
+ *
+ * ## Display unit (BE3, Ali 1405/07/19)
+ *
+ * Data and the API stay in Rials. Each app (site / supplier panel / back office) shows money in the
+ * unit its admin chose (`currency_unit_{app}` ∈ rial|toman, default rial). Every user-facing backend
+ * text that carries an amount goes through `format()` with the app that will read it: the request's
+ * `X-Client-App` header for responses, the recipient's panel for SMS and notifications. Toman =
+ * Rials / 10, exact — one decimal only when it is not zero. Moadian payloads never come here.
  */
 final class Money
 {
@@ -114,5 +125,117 @@ final class Money
 
         // sprintf avoids float scientific notation (e.g. 1.0E+9) that bcmath rejects.
         return rtrim(rtrim(sprintf('%.10F', $v), '0'), '.') ?: '0';
+    }
+
+    // ── Display unit ─────────────────────────────────────────────────────────
+
+    public const RIAL = 'rial';
+
+    public const TOMAN = 'toman';
+
+    public const UNITS = [self::RIAL, self::TOMAN];
+
+    public const APP_SITE = 'site';
+
+    public const APP_SUPPLIER = 'supplier';
+
+    public const APP_BACKOFFICE = 'backoffice';
+
+    public const APPS = [self::APP_SITE, self::APP_SUPPLIER, self::APP_BACKOFFICE];
+
+    /** Header the three frontends send on every API call. */
+    public const CLIENT_APP_HEADER = 'X-Client-App';
+
+    /** `settings` key holding one app's unit — also its name in `GET /settings/public`. */
+    public static function settingKey(string $app): string
+    {
+        return "currency_unit_{$app}";
+    }
+
+    /**
+     * The app that made the current HTTP request, or null (no request, no/unknown header).
+     */
+    public static function requestApp(): ?string
+    {
+        if (! app()->bound('request')) {
+            return null;
+        }
+
+        $app = strtolower(trim((string) request()->header(self::CLIENT_APP_HEADER)));
+
+        return in_array($app, self::APPS, true) ? $app : null;
+    }
+
+    /**
+     * The panel a person reads their messages in: staff → back office, supplier → supplier panel,
+     * everyone else → site.
+     */
+    public static function appForUser(?User $user): string
+    {
+        return match (true) {
+            $user === null => self::APP_SITE,
+            $user->hasRole('admin') => self::APP_BACKOFFICE,
+            $user->hasRole('supplier') => self::APP_SUPPLIER,
+            default => self::APP_SITE,
+        };
+    }
+
+    /**
+     * The unit `$app` shows money in; `null` = the requesting app. An unknown app, a missing header
+     * or an unset/invalid setting all fall back to Rials — the unit the numbers are stored in.
+     */
+    public static function unitFor(?string $app = null): string
+    {
+        $app ??= self::requestApp();
+
+        if ($app === null || ! in_array($app, self::APPS, true)) {
+            return self::RIAL;
+        }
+
+        $unit = Setting::allCached()[self::settingKey($app)] ?? null;
+
+        return in_array($unit, self::UNITS, true) ? $unit : self::RIAL;
+    }
+
+    /** @return array<string, string> app => unit, for all three apps. */
+    public static function units(): array
+    {
+        return array_combine(self::APPS, array_map(fn (string $app) => self::unitFor($app), self::APPS));
+    }
+
+    /** «ریال» / «تومان». */
+    public static function unitLabel(string $unit): string
+    {
+        return $unit === self::TOMAN ? 'تومان' : 'ریال';
+    }
+
+    /** The unit label `$app` shows (`null` = the requesting app). */
+    public static function label(?string $app = null): string
+    {
+        return self::unitLabel(self::unitFor($app));
+    }
+
+    /**
+     * The number only, in `$unit`, Latin digits with thousands separators. Rials are rounded to a whole
+     * Rial first (as every Rial display already was); Toman = that / 10, with one decimal only when the
+     * Rial amount is not divisible by ten.
+     */
+    public static function amountIn(int|float|string $rials, string $unit): string
+    {
+        $r = (int) round((float) self::s($rials));
+
+        if ($unit !== self::TOMAN) {
+            return number_format($r);
+        }
+
+        return $r % 10 === 0 ? number_format(intdiv($r, 10)) : number_format($r / 10, 1);
+    }
+
+    /** «۱۲٬۳۴۵ تومان»-style text (Latin digits) in the unit of `$app` (`null` = the requesting app). */
+    public static function format(int|float|string $rials, ?string $app = null): string
+    {
+        $unit = self::unitFor($app);
+
+        return self::amountIn($rials, $unit).' '.self::unitLabel($unit);
     }
 }

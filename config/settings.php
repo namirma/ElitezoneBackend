@@ -102,6 +102,16 @@ return [
         | `auth.session_idle_logout_minutes`) را از `GET /settings/public` می‌گیرد.
         */
         'session_idle_logout_minutes',
+
+        /*
+        | واحدِ نمایشِ پول در هر اپ — «rial»/«toman» (اعتبارسنجیِ `in` در PUT؛ علی ۱۴۰۵/۰۷/۱۹). داده و API
+        | همیشه ریال‌اند. تنها خواننده: `App\Support\Money::unitFor()` (پیش‌فرضِ ریال همان‌جاست).
+        | ⚠️ عمداً در `public_keys` نیستند: `GET /settings/public` مقدارِ **حل‌شده** را با همین سه نام
+        | می‌دهد، تا کلیدِ ذخیره‌نشده هم «rial» برگردد نه غایب.
+        */
+        'currency_unit_site',
+        'currency_unit_supplier',
+        'currency_unit_backoffice',
     ],
 
     /*

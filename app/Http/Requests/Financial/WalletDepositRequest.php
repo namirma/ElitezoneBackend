@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Financial;
 
 use App\Services\Sales\SalesSettings;
+use App\Support\Money;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -48,16 +49,16 @@ class WalletDepositRequest extends FormRequest
 
         if ($method === 'shaparak') {
             $maxMessage = __('auth.deposit_amount_max_shaparak', [
-                'max' => number_format(self::shaparakCap()),
+                'max' => Money::format(self::shaparakCap()),
             ]);
         } elseif ($method === 'podium') {
             $maxMessage = __('auth.deposit_amount_max_podium', [
-                'max' => number_format((int) config('financial.deposit_max_podium', 2_000_000_000)),
+                'max' => Money::format((int) config('financial.deposit_max_podium', 2_000_000_000)),
             ]);
         }
 
         return [
-            'amount.min' => __('auth.deposit_amount_min', ['min' => number_format((int) config('financial.deposit_min', 10_000))]),
+            'amount.min' => __('auth.deposit_amount_min', ['min' => Money::format((int) config('financial.deposit_min', 10_000))]),
             'amount.max' => $maxMessage,
             'payment_method.in' => __('auth.payment_method_invalid'),
         ];

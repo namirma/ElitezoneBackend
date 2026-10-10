@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use App\Support\JalaliDate;
+use App\Support\Money;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -212,7 +213,7 @@ final class OrderTimelineService
     {
         $code = $txn->{WalletTransaction::META}['code'] ?? null;
         $party = self::WALLET_PARTIES[$code] ?? 'کیف پول';
-        $amount = $this->number($txn->{WalletTransaction::AMOUNT}).' ریال';
+        $amount = Money::format($txn->{WalletTransaction::AMOUNT});
 
         if ($txn->{WalletTransaction::TYPE} === WalletTransaction::TYPE_HOLD_RELEASE) {
             return "آزادسازی هولد {$party}: {$amount}";

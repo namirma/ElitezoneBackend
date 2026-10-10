@@ -20,6 +20,7 @@ use App\Models\PageBlock;
 use App\Models\Setting;
 use App\Services\Payment\PaymentGatewayFactory;
 use App\Services\Profile\EliteYARVerificationMethods;
+use App\Support\Money;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -239,6 +240,11 @@ class ContentController extends Controller
         // «به‌زودی»** — همان الگوی روش‌های تأییدِ الیت‌یار. فرانت نباید فهرست را هاردکد کند؛
         // روزی که درگاه در .env پیکربندی شود همین پاسخ آن را فعال نشان می‌دهد.
         $values['wallet_deposit_methods'] = $this->walletDepositMethods();
+
+        // واحدِ نمایشِ پولِ هر اپ (BE3)، حل‌شده: `currency_unit_site|supplier|backoffice` ∈ rial|toman.
+        foreach (Money::units() as $app => $unit) {
+            $values[Money::settingKey($app)] = $unit;
+        }
         $values['wallet_withdrawal_min'] = (int) config('financial.withdrawal_min');
 
         // خروجِ خودکار پس از بی‌کاری (علی ۱۴۰۵/۰۷/۱۷) — تنظیمِ ادمین، حل‌شده با پیش‌فرض.

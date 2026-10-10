@@ -2,6 +2,7 @@
 
 namespace App\Exceptions;
 
+use App\Support\Money;
 use Symfony\Component\HttpFoundation\Response;
 
 class InsufficientBalanceException extends BusinessException
@@ -16,7 +17,7 @@ class InsufficientBalanceException extends BusinessException
         $this->available = $available;
         $shortage = $required - $available;
         parent::__construct(
-            __('wallet.insufficient_balance_with_shortage', ['shortage' => number_format($shortage)]),
+            __('wallet.insufficient_balance_with_shortage', ['shortage' => Money::format($shortage)]),
             Response::HTTP_PAYMENT_REQUIRED
         );
     }

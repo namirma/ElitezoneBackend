@@ -5,7 +5,7 @@
             <td rowspan="2" style="border-bottom: 1.5pt solid #000;">ردیف</td>
             <td rowspan="2" style="border-bottom: 1.5pt solid #000;">شرح کالا یا خدمات</td>
             <td colspan="2" class="text-muted" style="border-bottom: none;">واحد(کیلوگرم)</td>
-            <td colspan="6" class="text-muted" style="border-bottom: none;">واحد مبالغ (ریال)</td>
+            <td colspan="6" class="text-muted" style="border-bottom: none;">واحد مبالغ ({{ \App\Support\Money::unitLabel(($money_unit ?? 'rial')) }})</td>
             <td rowspan="2" style="border-bottom: 1.5pt solid #000;">توضیحات کالا</td>
         </tr>
         <tr class="items-head bg-white">
@@ -26,12 +26,12 @@
                     <td class="amount-cell">{{ enToFa($line['row'] ?? $loop->iteration) }}</td>
                     <td class="text-right val">{{ $line['name'] ?? '-' }}</td>
                     <td colspan="2" class="amount-cell">{{ enToFa($qf) }}</td>
-                    <td class="amount-cell">{{ enToFa(number_format($line['unit_price'] ?? 0)) }}</td>
-                    <td class="amount-cell">{{ enToFa(number_format($line['gross'] ?? 0)) }}</td>
-                    <td class="amount-cell">{{ enToFa(number_format($line['discount'] ?? 0)) }}</td>
-                    <td class="amount-cell">{{ enToFa(number_format($line['after_discount'] ?? 0)) }}</td>
-                    <td class="amount-cell">{{ enToFa(number_format($line['tax'] ?? 0)) }}</td>
-                    <td class="amount-cell font-bold">{{ enToFa(number_format($line['final'] ?? 0)) }}</td>
+                    <td class="amount-cell">{{ enToFa(\App\Support\Money::amountIn($line['unit_price'] ?? 0, ($money_unit ?? 'rial'))) }}</td>
+                    <td class="amount-cell">{{ enToFa(\App\Support\Money::amountIn($line['gross'] ?? 0, ($money_unit ?? 'rial'))) }}</td>
+                    <td class="amount-cell">{{ enToFa(\App\Support\Money::amountIn($line['discount'] ?? 0, ($money_unit ?? 'rial'))) }}</td>
+                    <td class="amount-cell">{{ enToFa(\App\Support\Money::amountIn($line['after_discount'] ?? 0, ($money_unit ?? 'rial'))) }}</td>
+                    <td class="amount-cell">{{ enToFa(\App\Support\Money::amountIn($line['tax'] ?? 0, ($money_unit ?? 'rial'))) }}</td>
+                    <td class="amount-cell font-bold">{{ enToFa(\App\Support\Money::amountIn($line['final'] ?? 0, ($money_unit ?? 'rial'))) }}</td>
                     <td class="amount-cell" style="font-size: 6pt;">{{ $line['note'] ?? '-' }}</td>
                 </tr>
             @endforeach
@@ -48,12 +48,12 @@
             <td colspan="2" class="text-center font-bold" style="font-size: 9pt;">جمع کل :</td>
             <td colspan="2" class="amount-cell font-bold">{{ enToFa($tqf) }}</td>
             <td class="amount-cell font-bold">-</td>
-            <td class="amount-cell font-bold">{{ enToFa(number_format($totals['gross'] ?? 0)) }}</td>
-            <td class="amount-cell font-bold">{{ enToFa(number_format($totals['discount'] ?? 0)) }}</td>
-            <td class="amount-cell font-bold">{{ enToFa(number_format($totals['after_discount'] ?? 0)) }}</td>
-            <td class="amount-cell font-bold">{{ enToFa(number_format($totals['tax'] ?? 0)) }}</td>
+            <td class="amount-cell font-bold">{{ enToFa(\App\Support\Money::amountIn($totals['gross'] ?? 0, ($money_unit ?? 'rial'))) }}</td>
+            <td class="amount-cell font-bold">{{ enToFa(\App\Support\Money::amountIn($totals['discount'] ?? 0, ($money_unit ?? 'rial'))) }}</td>
+            <td class="amount-cell font-bold">{{ enToFa(\App\Support\Money::amountIn($totals['after_discount'] ?? 0, ($money_unit ?? 'rial'))) }}</td>
+            <td class="amount-cell font-bold">{{ enToFa(\App\Support\Money::amountIn($totals['tax'] ?? 0, ($money_unit ?? 'rial'))) }}</td>
             {{-- جمعِ ستونِ «مبلغ کل» = کالا + مالیات (بدونِ کرایه و تخفیف‌های سطحِ سفارش که در سطرهای بعد می‌آیند) --}}
-            <td class="amount-cell font-bold" style="font-size: 8.5pt;">{{ enToFa(number_format($totals['goods_total'] ?? ($totals['final'] ?? 0))) }}</td>
+            <td class="amount-cell font-bold" style="font-size: 8.5pt;">{{ enToFa(\App\Support\Money::amountIn($totals['goods_total'] ?? ($totals['final'] ?? 0), ($money_unit ?? 'rial'))) }}</td>
             <td class="text-center font-bold">-</td>
         </tr>
         {{-- سطرِ کارمزد فقط در اسنادِ تأمین‌کننده مقدار دارد (مدیریت، دورِ پنجم، پرسشِ ۷). --}}
@@ -68,7 +68,7 @@
             @if ($row['value'] > 0)
                 <tr>
                     <td colspan="8" class="text-left font-bold" style="font-size: 8.5pt; padding-left: 6px;">{{ $row['label'] }}</td>
-                    <td colspan="3" class="amount-cell font-bold" style="font-size: 8.5pt;">{{ $row['sign'] }} {{ enToFa(number_format($row['value'])) }}</td>
+                    <td colspan="3" class="amount-cell font-bold" style="font-size: 8.5pt;">{{ $row['sign'] }} {{ enToFa(\App\Support\Money::amountIn($row['value'], ($money_unit ?? 'rial'))) }}</td>
                 </tr>
             @endif
         @endforeach

@@ -4,7 +4,7 @@ return [
     'balance_received' => 'موجودی کیف پول دریافت شد',
     'transactions_received' => 'تاریخچه تراکنش‌ها دریافت شد',
     'deposit_created' => 'درخواست واریز با موفقیت ثبت شد',
-    'deposit_manual_info' => 'درخواست شما ثبت شد. لطفا مبلغ :amount ریال را واریز و رسید را بارگذاری نمایید',
+    'deposit_manual_info' => 'درخواست شما ثبت شد. لطفا مبلغ :amount را واریز و رسید را بارگذاری نمایید',
     'redirect_to_gateway' => 'در حال انتقال به درگاه پرداخت',
     'invalid_payment_method' => 'روش پرداخت انتخاب شده نامعتبر است',
     'invalid_upload_transaction' => 'امکان بارگذاری رسید برای این تراکنش وجود ندارد',
@@ -65,6 +65,6 @@ return [
     'deposit' => 'افزایش موجودی کیف پول',
     'wallet_not_activated' => 'کیف پول برای حساب کاربری شما فعال نشده است.',
     'receipt_file_not_found' => 'فایل رسید یافت نشد.',
-    'insufficient_balance_with_shortage' => 'موجودی کیف پول کافی نیست. لطفا جهت ادامه، مبلغ :shortage ریال را شارژ نمایید.',
+    'insufficient_balance_with_shortage' => 'موجودی کیف پول کافی نیست. لطفا جهت ادامه، مبلغ :shortage را شارژ نمایید.',
 
 ];

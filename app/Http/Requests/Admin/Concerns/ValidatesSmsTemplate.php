@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin\Concerns;
 
 use App\Models\SmsTemplate;
+use App\Support\Money;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
@@ -43,8 +44,8 @@ trait ValidatesSmsTemplate
             'body.max' => __('admin.sms.body_too_long'),
             'conditions.array' => __('admin.sms.conditions_invalid'),
             'conditions.roles.*.in' => __('admin.sms.role_invalid'),
-            'conditions.min_amount.integer' => __('admin.sms.min_amount_invalid'),
-            'conditions.min_amount.min' => __('admin.sms.min_amount_invalid'),
+            'conditions.min_amount.integer' => __('admin.sms.min_amount_invalid', ['unit' => Money::label()]),
+            'conditions.min_amount.min' => __('admin.sms.min_amount_invalid', ['unit' => Money::label()]),
             'conditions.quiet_hours.array' => __('admin.sms.quiet_hours_invalid'),
             'conditions.quiet_hours.from.required_with' => __('admin.sms.quiet_hours_invalid'),
             'conditions.quiet_hours.from.date_format' => __('admin.sms.quiet_hours_invalid'),

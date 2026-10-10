@@ -554,7 +554,7 @@ return [
         'placeholder_unknown' => 'این جانگهدارها برای این پیامک شناخته‌شده نیستند و خام به گوشی مشتری می‌رسند: :placeholders',
         'conditions_invalid' => 'شرط‌های ارسال معتبر نیستند.',
         'role_invalid' => 'نقش انتخاب‌شده معتبر نیست.',
-        'min_amount_invalid' => 'حداقل مبلغ باید یک عدد صحیح غیرمنفی (ریال) باشد.',
+        'min_amount_invalid' => 'حداقل مبلغ باید یک عدد صحیح غیرمنفی (:unit) باشد.',
         'quiet_hours_invalid' => 'ساعت سکوت باید دو زمان متفاوت به شکل HH:MM باشد.',
         'mobile_invalid' => 'شماره‌ی موبایل معتبر نیست (۰۹xxxxxxxxx).',
         'protected_cannot_deactivate' => 'این پیامک برای احراز هویت حیاتی است و نمی‌تواند خاموش شود.',

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Financial;
 
+use App\Support\Money;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreDepositReceiptRequest extends FormRequest
@@ -30,8 +31,8 @@ class StoreDepositReceiptRequest extends FormRequest
         return [
             'amount.required' => 'مبلغ الزامی است.',
             'amount.integer' => 'مبلغ باید عدد صحیح باشد.',
-            // مبلغ‌ها ریال‌اند؛ این پیام «تومان» می‌گفت (۱۰ برابر کمتر از حدِ واقعی).
-            'amount.min' => __('auth.deposit_amount_min', ['min' => number_format($min)]),
+            // عدد ریال است؛ متن با واحدِ اپِ درخواست‌دهنده (BE3).
+            'amount.min' => __('auth.deposit_amount_min', ['min' => Money::format($min)]),
 
             'receipt_number.required' => 'شماره رسید الزامی است.',
             'bank_name.required' => 'نام بانک الزامی است.',

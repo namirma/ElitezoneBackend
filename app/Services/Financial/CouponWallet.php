@@ -95,8 +95,8 @@ class CouponWallet
 
             if (Money::lt((string) $from->balance, Money::s($amount))) {
                 throw new BusinessException(__($toCoupon ? 'coupons.coupon_wallet_system_insufficient' : 'coupons.coupon_wallet_insufficient', [
-                    'amount' => number_format($amount),
-                    'balance' => number_format((float) $from->balance),
+                    'amount' => Money::format($amount),
+                    'balance' => Money::format((float) $from->balance),
                 ]), 422);
             }
 

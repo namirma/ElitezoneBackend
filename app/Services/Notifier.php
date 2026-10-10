@@ -44,7 +44,7 @@ class Notifier
         // متنِ زنگوله هم همان خطابِ پیامک را می‌گیرد.
         $params += ['first_name' => SmsTemplate::firstNameFor((string) $user->mobile)];
 
-        $body = SmsTemplate::text($key, $params);
+        $body = SmsTemplate::text($key, $params, (string) $user->mobile);
 
         if ($body === null) {
             return;

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use App\Services\Profile\EliteYARVerificationMethods;
 use App\Services\Sales\SalesSettings;
+use App\Support\Money;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -89,6 +90,10 @@ class AdminSettingController extends Controller
                 ? ['integer', 'min:1', 'max:'.(int) config('sanctum.expiration')]
                 : ['integer', 'min:1'],
         ];
+        // واحدِ پولِ هر اپ (BE3) — غلطِ تایپی نباید بی‌صدا به «ریال» برگردد.
+        foreach (Money::APPS as $app) {
+            $rules[Money::settingKey($app)] = ['in:'.implode(',', Money::UNITS)];
+        }
         $subject = array_intersect_key($settings, $rules);
 
         if ($subject === []) {

@@ -15,6 +15,7 @@ use App\Models\Order;
 use App\Models\Wallet;
 use App\Services\Financial\CouponWallet;
 use App\Services\Financial\WalletTransactionEngine;
+use App\Support\Money;
 use Illuminate\Support\Collection;
 
 /**
@@ -69,8 +70,8 @@ class CouponFundingService
                     if ($amount > $caps['elite_yar']) {
                         throw new BusinessException(__('coupons.elite_yar_cap_exceeded', [
                             'funder' => $name,
-                            'amount' => number_format($amount),
-                            'cap' => number_format($caps['elite_yar']),
+                            'amount' => Money::format($amount),
+                            'cap' => Money::format($caps['elite_yar']),
                         ]), 422);
                     }
                     $this->assertWalletCovers($funder, $amount, $name, $share);
@@ -97,8 +98,8 @@ class CouponFundingService
     {
         if ($coupon->hasBudgetCap() && $amount > $coupon->budgetRemaining()) {
             throw new BusinessException(__('coupons.budget_exhausted_for_order', [
-                'amount' => number_format($amount),
-                'remaining' => number_format($coupon->budgetRemaining()),
+                'amount' => Money::format($amount),
+                'remaining' => Money::format($coupon->budgetRemaining()),
             ]), 422);
         }
 
@@ -112,7 +113,7 @@ class CouponFundingService
         if ($wallet->balance() < $amount) {
             // دورِ ششم، پرسشِ ۵: رد + خبر به مدیرانِ مالی (در `render`، پس از rollback).
             throw new CouponWalletShortException(__('coupons.coupon_wallet_empty', [
-                'amount' => number_format($amount),
+                'amount' => Money::format($amount),
             ]), $amount);
         }
     }
@@ -204,7 +205,7 @@ class CouponFundingService
                 // پرداخت خالی شد، پیام همان کیف پول را بگوید، نه «کیف پول شرکت سازه».
                 if ($funder->isCompany()) {
                     throw new CouponWalletShortException(__('coupons.coupon_wallet_empty', [
-                        'amount' => number_format($amount),
+                        'amount' => Money::format($amount),
                     ]), $amount);
                 }
 
@@ -213,7 +214,7 @@ class CouponFundingService
                 throw new BusinessException(__('coupons.funder_wallet_insufficient', [
                     'funder' => $funder->displayName(),
                     'share' => $this->percentLabel($funder),
-                    'amount' => number_format($amount),
+                    'amount' => Money::format($amount),
                 ]), 422);
             }
 
@@ -445,7 +446,7 @@ class CouponFundingService
             throw new BusinessException(__('coupons.funder_wallet_insufficient', [
                 'funder' => $name,
                 'share' => $share,
-                'amount' => number_format($amount),
+                'amount' => Money::format($amount),
             ]), 422);
         }
     }

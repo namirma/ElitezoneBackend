@@ -16,6 +16,7 @@ use App\Models\User;
 use App\Models\UserBankAccount;
 use App\Models\WalletTransaction;
 use App\Services\Financial\ShenasehVarizService;
+use App\Support\Money;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
@@ -159,7 +160,7 @@ class WalletController extends Controller
         return success([
             'transaction_id' => $transaction->id,
             'type' => 'manual_payment',
-            'message' => __('wallet.deposit_manual_info', ['amount' => number_format($data['amount'])]),
+            'message' => __('wallet.deposit_manual_info', ['amount' => Money::format($data['amount'])]),
         ], __('wallet.deposit_created'));
     }
 
