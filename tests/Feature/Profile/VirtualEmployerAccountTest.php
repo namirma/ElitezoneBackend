@@ -213,4 +213,22 @@ class VirtualEmployerAccountTest extends TestCase
 
         Queue::assertNotPushed(SendSmsJob::class, fn (SendSmsJob $job) => (fn () => $this->templateKey === 'employer_account_claim')->call($job));
     }
+
+    /**
+     * BE3: پیش‌فرضِ `claim_url` صفحه‌ی `/claim`ِ سایت است (S4 ساختش)، نه رشته‌ی خالی — وگرنه روی سروری
+     * که `VIRTUAL_ACCOUNT_CLAIM_URL` نگذاشته، پیامکِ «تأیید حساب و ورود» اصلاً نمی‌رفت.
+     */
+    #[Test]
+    public function the_claim_link_defaults_to_the_sites_claim_page(): void
+    {
+        $default = (require config_path('auth.php'))['virtual_account']['claim_url'];
+        $this->assertSame(rtrim((string) config('app.front_url'), '/').'/claim', $default);
+
+        config(['auth.virtual_account.claim_url' => $default]);
+        $virtual = $this->verifyBeneficiary($this->verifiedEliteYAR());
+
+        $link = (string) app(VirtualEmployerAccount::class)->claimLink($virtual);
+        $this->assertStringStartsWith($default.'?u='.$virtual->id.'&expires=', $link);
+        $this->assertStringContainsString('&signature=', $link);
+    }
 }
