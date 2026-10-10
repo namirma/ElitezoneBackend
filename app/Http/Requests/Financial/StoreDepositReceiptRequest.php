@@ -30,7 +30,8 @@ class StoreDepositReceiptRequest extends FormRequest
         return [
             'amount.required' => 'مبلغ الزامی است.',
             'amount.integer' => 'مبلغ باید عدد صحیح باشد.',
-            'amount.min' => "مبلغ باید حداقل {$min} تومان باشد.",
+            // مبلغ‌ها ریال‌اند؛ این پیام «تومان» می‌گفت (۱۰ برابر کمتر از حدِ واقعی).
+            'amount.min' => __('auth.deposit_amount_min', ['min' => number_format($min)]),
 
             'receipt_number.required' => 'شماره رسید الزامی است.',
             'bank_name.required' => 'نام بانک الزامی است.',

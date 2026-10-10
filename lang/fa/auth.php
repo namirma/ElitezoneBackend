@@ -54,7 +54,7 @@ return [
     'shaba_unique' => '.این شماره شبا قبلا توسط شما ثبت شده است',
     'shaba_invalid_algorithm' => '.شماره شبا نامعتبر است (الگوریتم شبا صحیح نیست)',
     'payment_method_invalid' => '.متد پرداخت انتخاب شده نامعتبر است',
-    'withdrawal_amount_min' => '.حداقل مبلغ برداشت :min تومان است',
+    'withdrawal_amount_min' => '.حداقل مبلغ برداشت :min ریال است',
     'withdrawal_amount_max' => '.مبلغ درخواستی از موجودی قابل برداشت شما بیشتر است',
     'bank_account_invalid' => '.حساب بانکی انتخاب شده نامعتبر است یا هنوز تایید نشده است',
     'employer' => 'کارفرما',

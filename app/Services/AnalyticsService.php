@@ -54,7 +54,7 @@ class AnalyticsService
                 'labels' => $labels,
                 'datasets' => [
                     [
-                        'label' => 'فروش (تومان)',
+                        'label' => 'فروش (ریال)',
                         'data' => $values,
                         'fill' => true,
                         'borderColor' => '#4F46E5',
