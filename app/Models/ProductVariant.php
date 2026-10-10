@@ -251,9 +251,8 @@ class ProductVariant extends Model
      */
     public function isPurchasable(): bool
     {
-        $product = $this->product;
-
-        return (bool) $this->{self::IS_ACTIVE} && $product instanceof Product && (bool) $product->{Product::IS_ACTIVE};
+        // `product_variants.product_id` NOT NULL است — محصول همیشه هست.
+        return (bool) $this->{self::IS_ACTIVE} && (bool) $this->product->{Product::IS_ACTIVE};
     }
 
     /** آیا این واریانت به‌خاطرِ درخواستِ قیمتِ باز از کاتالوگ بیرون است؟ */
