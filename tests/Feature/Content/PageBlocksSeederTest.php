@@ -26,14 +26,14 @@ class PageBlocksSeederTest extends TestCase
     #[Test]
     public function home_gets_every_block_the_page_renders_today(): void
     {
+        // ریدیزاین v276: ترتیبِ طرح؛ سه کارتِ داستانیِ نقش‌ها به `hero_media.roleCards` رفتند.
         $this->seed(PageBlocksSeeder::class);
 
         $types = PageBlock::where(PageBlock::PAGE, PageBlock::PAGE_HOME)
             ->orderBy(PageBlock::SORT_ORDER)->pluck(PageBlock::TYPE)->all();
 
         $this->assertSame([
-            'hero_media', 'video', 'story_card', 'story_card', 'story_card',
-            'image_glass_band', 'callout_list', 'glass_cards',
+            'hero_media', 'image_glass_band', 'video', 'callout_list', 'glass_cards',
             'story_card', 'story_card', 'faq',
         ], $types);
     }
@@ -151,46 +151,33 @@ class PageBlocksSeederTest extends TestCase
     }
 
     /**
-     * ✅ بستنِ گپِ بولد: `SkStory` (`latin_media_text`) و `SkProducts`
-     * (`feature_cards`) تازه به قراردادِ ران‌ایندکسیِ `bodyStrong` تبدیل
-     * شده‌اند؛ پیش از این هر دو فقط با ثابتِ هاردکدِ خودشان درست به‌نظر
-     * می‌رسیدند. این تست خودِ منطقِ `resolveBodyRuns` را (هم نسخه‌ی
-     * پاراگراف/رانِ `SkStory`، هم نسخه‌ی تخت/رانِ `SkProducts`) در PHP
-     * تکرار می‌کند تا کلمه‌های واقعاً بولدشده را — نه فقط حضورِ فیلد را —
-     * با خروجیِ کامپوننت‌ها مقایسه کند.
+     * D-1 (ریدیزاین v276): بدنه دیگر «پاراگراف → ران + اندیسِ bodyStrong» نیست، چون ویجتِ textareaِ
+     * بک‌آفیس نمی‌توانست آن را ویرایش کند؛ هر پاراگراف یک رشته است و بخشِ پررنگ بینِ ** و ** می‌آید.
+     * این سه تست همان کلمه‌های پررنگِ قبلی را روی شکلِ تازه پین می‌کنند.
      */
+    private function boldIn(string $paragraph): array
+    {
+        preg_match_all('/\*\*(.+?)\*\*/u', $paragraph, $m);
+
+        return $m[1];
+    }
+
     #[Test]
-    public function sk_why_body_strong_bolds_exactly_the_four_phrases_the_frontend_default_bolds(): void
+    public function sk_why_bolds_exactly_the_four_phrases_the_frontend_default_bolds(): void
     {
         $this->seed(PageBlocksSeeder::class);
 
-        $why = PageBlock::where(PageBlock::PAGE, PageBlock::PAGE_STEEL_KAVIR)
-            ->whereJsonContains(PageBlock::DATA.'->id', 'why')->firstOrFail();
+        $data = PageBlock::where(PageBlock::PAGE, PageBlock::PAGE_STEEL_KAVIR)
+            ->whereJsonContains(PageBlock::DATA.'->id', 'why')->firstOrFail()->{PageBlock::DATA};
 
-        $data = $why->{PageBlock::DATA};
-        $this->assertSame([0, 2, 4, 6], $data['bodyStrong']);
-
-        // `SkStory/resolveBodyRuns.js`: یک پاراگراف، هشت ران — اندیس روی
-        // ران‌های تخت‌شده‌ی همه‌ی پاراگراف‌ها شمرده می‌شود.
-        $flatRuns = $data['body'][0];
-        $this->assertCount(8, $flatRuns);
-
-        $boldWords = array_intersect_key($flatRuns, array_flip($data['bodyStrong']));
-
-        $this->assertSame([
-            0 => 'فولاد کویر',
-            2 => 'نزدیک به دو دهه ',
-            4 => 'نگاه توسعه‌محور',
-            6 => 'عملکرد، تداوم تأمین و ارزش بلندمدت',
-        ], $boldWords);
-
-        // الحاقِ هر هشت ران باید عیناً همان متنِ کاملی باشد که پیش از این
-        // به‌صورتِ یک رشته‌ی تخت سید می‌شد — یعنی هیچ کاراکتری در تقسیمِ
-        // ران‌ها گم یا دوبار نشده.
+        $this->assertArrayNotHasKey('bodyStrong', $data);
+        $this->assertCount(1, $data['body']);
+        $this->assertIsString($data['body'][0]);
         $this->assertSame(
-            'فولاد کویر تنها به ظرفیت بالای تولید متکی نیست؛ ترکیب توان صنعتی، تنوع گسترده محصولات، کنترل مستمر کیفیت و تجربه نزدیک به دو دهه تولید، این مجموعه را به یکی از نام‌های شاخص صنعت فولاد کشور تبدیل کرده است. ظرفیت سالانه ۹۰۰ هزار تن تولید میلگرد، تولید ۴۰ گرید فولادی و سبدی شامل ۴۵۰ ترکیب گرید–سایز، امکان پاسخ‌گویی به طیف گسترده‌ای از نیازهای ساختمانی و صنعتی را فراهم کرده است. آنچه این توان تولیدی را ارزشمندتر می‌کند، نگاه توسعه‌محور فولاد کویر است؛ از سرمایه‌گذاری در فناوری و کنترل کیفیت تا توسعه محصولات تخصصی‌تر و حرکت به سوی تولید فولادهای ویژه. این مجموعه تلاش کرده است در کنار افزایش ظرفیت، کیفیت پایدار، تنوع انتخاب و قابلیت اطمینان در تولید را نیز حفظ کند؛ ویژگی‌هایی که فولاد کویر را به گزینه‌ای قابل اعتماد برای پروژه‌هایی تبدیل می‌کند که در انتخاب فولاد، تنها به محصول امروز فکر نمی‌کنند، بلکه عملکرد، تداوم تأمین و ارزش بلندمدت را نیز در نظر دارند.',
-            implode('', $flatRuns)
+            ['فولاد کویر', 'نزدیک به دو دهه ', 'نگاه توسعه‌محور', 'عملکرد، تداوم تأمین و ارزش بلندمدت'],
+            $this->boldIn($data['body'][0])
         );
+        $this->assertStringStartsWith('فولاد کویر تنها به ظرفیت بالای تولید متکی نیست؛', str_replace('**', '', $data['body'][0]));
     }
 
     #[Test]
@@ -198,44 +185,33 @@ class PageBlocksSeederTest extends TestCase
     {
         $this->seed(PageBlocksSeeder::class);
 
-        $products = PageBlock::where(PageBlock::PAGE, PageBlock::PAGE_STEEL_KAVIR)
-            ->whereJsonContains(PageBlock::DATA.'->id', 'products')->firstOrFail();
-
-        $cards = $products->{PageBlock::DATA}['cards'];
+        $cards = PageBlock::where(PageBlock::PAGE, PageBlock::PAGE_STEEL_KAVIR)
+            ->whereJsonContains(PageBlock::DATA.'->id', 'products')->firstOrFail()->{PageBlock::DATA}['cards'];
         $this->assertCount(2, $cards);
 
-        // `SkProducts/resolveBodyRuns.js`: یک کارت یک پاراگرافِ تخت است —
-        // اندیس مستقیماً روی فهرستِ رانِ همان کارت، نه رانِ تخت‌شده‌ی چند کارت.
         $expected = [
-            'industrial' => [0 => 'محصولات صنعتی فولاد کویر', 2 => 'وایرراد و کلاف‌های صنعتی تا مفتول و محصولات مناسب فرآیندهای بعدی'],
-            'structural' => [0 => 'محصولات ساختمانی فولاد کویر', 2 => 'از میلگردهای شاخه تا کلاف'],
+            'industrial' => ['محصولات صنعتی فولاد کویر', 'وایرراد و کلاف‌های صنعتی تا مفتول و محصولات مناسب فرایندهای بعدی'],
+            'structural' => ['محصولات ساختمانی فولاد کویر', 'از میلگردهای شاخه تا کلاف'],
         ];
 
         foreach ($cards as $card) {
-            $this->assertSame([0, 2], $card['bodyStrong'], "کارتِ «{$card['id']}» باید bodyStrong=[0,2] داشته باشد");
-
-            $boldWords = array_intersect_key($card['body'], array_flip($card['bodyStrong']));
-            $this->assertSame($expected[$card['id']], $boldWords, "کارتِ «{$card['id']}» کلماتِ بولدِ نادرست دارد");
+            $this->assertIsString($card['body'], "کارتِ «{$card['id']}»");
+            $this->assertSame($expected[$card['id']], $this->boldIn($card['body']), "کارتِ «{$card['id']}» کلماتِ بولدِ نادرست دارد");
         }
     }
 
     #[Test]
-    public function sk_transport_has_no_bold_and_its_body_stays_paragraph_shaped(): void
+    public function sk_transport_has_no_bold_and_its_body_is_four_plain_paragraphs(): void
     {
         $this->seed(PageBlocksSeeder::class);
 
-        $transport = PageBlock::where(PageBlock::PAGE, PageBlock::PAGE_STEEL_KAVIR)
-            ->whereJsonContains(PageBlock::DATA.'->id', 'transport')->firstOrFail();
+        $data = PageBlock::where(PageBlock::PAGE, PageBlock::PAGE_STEEL_KAVIR)
+            ->whereJsonContains(PageBlock::DATA.'->id', 'transport')->firstOrFail()->{PageBlock::DATA};
 
-        $data = $transport->{PageBlock::DATA};
-
-        $this->assertSame([], $data['bodyStrong']);
-        // چهار پاراگراف، هرکدام دقیقاً یک ران — فهرستِ تختِ چهار رشته
-        // `paragraph.map` را روی یک رشته صدا می‌زد و کلِ بلوک را می‌شکست.
         $this->assertCount(4, $data['body']);
         foreach ($data['body'] as $paragraph) {
-            $this->assertIsArray($paragraph);
-            $this->assertCount(1, $paragraph);
+            $this->assertIsString($paragraph);
+            $this->assertStringNotContainsString('**', $paragraph);
         }
     }
 }
