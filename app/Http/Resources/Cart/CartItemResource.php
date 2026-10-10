@@ -44,6 +44,11 @@ class CartItemResource extends BaseJsonResource
 
             CartItem::QUANTITIES => (object) ($quantities ?? []),
 
+            // قلمِ غیرفعال (واریانت یا محصولش) در سبد می‌ماند ولی سفارش‌دادنی نیست (BE3) — سایت پیام را
+            // نشان می‌دهد و فقط «حذف» می‌گذارد. `unavailable_reason` فقط وقتی پر است که قلم در دسترس نیست.
+            'is_available' => $available = $this->productVariant->isPurchasable(),
+            'unavailable_reason' => $available ? null : __('cart.item_unavailable'),
+
             // واحدهای سفارشِ محصولِ والد — همان شکلی که `ProductResource` می‌دهد.
             // `CartResponseBuilder` رابطه‌ی `items.productVariant.product.orderUnits` را از
             // قبل eager-load می‌کرد ولی هیچ‌جا serialize نمی‌شد (یک eager-loadِ هدررفته)،

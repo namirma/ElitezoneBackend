@@ -37,6 +37,12 @@ class AddToCartAction
         $variant = ProductVariant::with(['product.orderUnits', 'product.aggregateLimitOrderUnit', 'limitOrderUnit'])
             ->findOrFail($data['product_variant_id']);
 
+        // کالای غیرفعال (واریانت یا محصولش) فروخته نمی‌شود — علی ۱۴۰۵/۰۷/۱۹. BE2 فقط از کاتالوگ
+        // پنهانش کرد؛ شناسه از یک تبِ باز یا علاقه‌مندی هنوز به این‌جا می‌رسد.
+        if (! $variant->isPurchasable()) {
+            throw new BusinessException(__('cart.item_unavailable_add'), 422);
+        }
+
         $orderUnitsMap = $this->getOrderUnitsMap();
 
         return DB::transaction(function () use ($cart, $variant, $data, $orderUnitsMap) {

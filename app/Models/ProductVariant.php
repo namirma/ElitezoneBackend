@@ -245,6 +245,17 @@ class ProductVariant extends Model
         return $query->where(self::IS_ACTIVE, true)->whereDoesntHave('pendingPriceChanges');
     }
 
+    /**
+     * فروختنی است؟ واریانت **و** محصولش هر دو فعال (علی ۱۴۰۵/۰۷/۱۹). تنها تعریفِ «کالای غیرفعال» برای
+     * افزودن به سبد، ثبتِ سفارش و پرچمِ قلمِ سبد — سه جا یک پاسخ.
+     */
+    public function isPurchasable(): bool
+    {
+        $product = $this->product;
+
+        return (bool) $this->{self::IS_ACTIVE} && $product instanceof Product && (bool) $product->{Product::IS_ACTIVE};
+    }
+
     /** آیا این واریانت به‌خاطرِ درخواستِ قیمتِ باز از کاتالوگ بیرون است؟ */
     public function isPriceUnderReview(): bool
     {

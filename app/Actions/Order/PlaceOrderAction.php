@@ -90,6 +90,7 @@ class PlaceOrderAction
             // ۱.۵ گاردِ تک‌تأمین‌کننده — پیش از هر نوشتنی.
             $this->assertSingleSupplier($cart);
             $this->assertNoPriceUnderReview($cart);
+            $this->assertAllPurchasable($cart);
 
             // ۱.۶ یک سفارش = یک مبدأ و یک مقصد (تصمیم مدیریت، بند ۳).
             $this->assertSingleOriginAndDestination($cart, $data->addressId);
@@ -741,6 +742,20 @@ class PlaceOrderAction
 
         if ($destinations->count() > 1) {
             throw new BusinessException(__('orders.multiple_destinations_not_supported'), 422);
+        }
+    }
+
+    /**
+     * کالای غیرفعال (واریانت یا محصولش) سفارش داده نمی‌شود — علی ۱۴۰۵/۰۷/۱۹. `AddToCartAction` ورودِ تازه را
+     * می‌بندد؛ این گارد قلمی را می‌گیرد که **پیش از** غیرفعال‌شدن در سبد نشسته بود. سبد دست نمی‌خورد:
+     * قلم در `GET /cart` با `is_available: false` می‌ماند تا خریدار خودش حذفش کند.
+     */
+    private function assertAllPurchasable(Cart $cart): void
+    {
+        foreach ($cart->items as $item) {
+            if (! $item->productVariant->isPurchasable()) {
+                throw new BusinessException(__('orders.errors.cart_has_unavailable_items'), 422);
+            }
         }
     }
 
