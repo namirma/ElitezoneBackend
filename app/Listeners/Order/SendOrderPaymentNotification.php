@@ -3,7 +3,8 @@
 namespace App\Listeners\Order;
 
 use App\Events\Order\OrderPaid;
-use App\Jobs\Notification\SendSmsJob;
+use App\Models\User;
+use App\Services\Notifier;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Log;
@@ -22,7 +23,10 @@ class SendOrderPaymentNotification implements ShouldQueue
         $order = $event->order;
         $user = $order->placer;
 
-        if (! $user) {
+        // `instanceof` و نه فقط `! $user`: رابطهٔ `placer` روی شاخهٔ L13 از
+        // دیدِ larastan `Model` است، و این گارد هم null و هم نوعِ اشتباه را
+        // با هم رد می‌کند — بدونِ cast و بدونِ حاشیه‌نویسیِ شاخه‌به‌شاخه.
+        if (! $user instanceof User) {
             Log::error("OrderPaid Event: Order {$order->id} has no placer user.");
 
             return;
@@ -32,8 +36,9 @@ class SendOrderPaymentNotification implements ShouldQueue
 
         try {
             // متن از lang می‌آید، نه هاردکد در PHP — قاعدهٔ صریحِ پروژه.
-            SendSmsJob::dispatch(
-                $user->mobile,
+            Notifier::toUser(
+                $user,
+                __('notifications.order_paid_subject'),
                 __('sms.order_paid_buyer', ['order_number' => $order->order_number])
             );
 

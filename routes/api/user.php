@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\User\CartController;
 use App\Http\Controllers\Api\User\CheckoutController;
 use App\Http\Controllers\Api\User\ContractorController;
 use App\Http\Controllers\Api\User\DashboardController;
+use App\Http\Controllers\Api\User\DeviceTokenController;
 use App\Http\Controllers\Api\User\EduixController;
 use App\Http\Controllers\Api\User\EliteYARInviteController;
 use App\Http\Controllers\Api\User\EliteYARRelationController;
@@ -241,6 +242,16 @@ Route::middleware(['auth:sanctum'])->group(function () {
             // throttle:otp-verify — کدِ ۶ رقمی brute-force پذیر است؛ هم‌ردیفِ
             // verify-code / password/verify / beneficiaries/confirm که همگی داشتند.
             Route::post('/confirm', 'confirmChangeMobile')->middleware('throttle:otp-verify');
+        });
+
+        // توکنِ پوشِ دستگاه (اپ موبایل / PWA). اپ در هر اجرا store را می‌زند،
+        // پس idempotent است؛ حذف فقط توکنِ خودِ کاربر را برمی‌دارد.
+        // throttle: هر فراخوانی یک ردیف می‌سازد و endpoint از کلاینت می‌آید،
+        // پس بدونِ سقف یک کلاینتِ بدخواه می‌تواند جدول را پر کند. اپ در هر
+        // اجرا یک بار ثبت می‌کند، ۲۰ در دقیقه دست‌ودل‌بازانه است.
+        Route::prefix('devices')->controller(DeviceTokenController::class)->group(function () {
+            Route::post('/', 'store')->middleware('throttle:20,1');
+            Route::delete('/', 'destroy')->middleware('throttle:20,1');
         });
 
         // Notifications

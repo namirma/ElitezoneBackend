@@ -183,6 +183,12 @@ class ContentController extends Controller
 
         $values = array_intersect_key(Setting::allCached(), array_flip($publicKeys));
 
+        // کلیدِ عمومیِ VAPID از config می‌آید، نه از جدولِ settings: جفتِ
+        // خصوصی‌اش در .env است و این دو باید کنار هم بمانند. فرانت برای
+        // `applicationServerKey` در `pushManager.subscribe()` لازمش دارد و
+        // بدون آن اصلاً نمی‌تواند اشتراک بسازد.
+        $values['vapid_public_key'] = (string) config('services.push.vapid.public_key');
+
         return success($values, __('content.settings_received'));
     }
 }

@@ -3,8 +3,8 @@
 namespace App\Listeners\Financial;
 
 use App\Events\Financial\TransactionProcessed;
-use App\Jobs\Notification\SendSmsJob;
 use App\Models\WalletTransaction;
+use App\Services\Notifier;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
 
@@ -36,6 +36,6 @@ class SendTransactionNotification implements ShouldQueue
         }
 
         // ارسال به صف پیامک
-        SendSmsJob::dispatch($user->mobile, $msg);
+        Notifier::toUser($user, __('notifications.transaction_subject'), $msg);
     }
 }
