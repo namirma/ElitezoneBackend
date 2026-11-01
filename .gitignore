@@ -23,3 +23,8 @@ yarn-error.log
 
 # AI context files
 backend-context.txt
+
+# Generated IDE helper files (barryvdh/laravel-ide-helper; regenerate with: composer ide-helper)
+_ide_helper.php
+_ide_helper_models.php
+.phpstorm.meta.php
