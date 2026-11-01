@@ -2,7 +2,7 @@
 
 [![Laravel](https://img.shields.io/badge/Laravel-13.x-FF2D20?style=for-the-badge&logo=laravel&logoColor=white)](https://laravel.com)
 [![PHP](https://img.shields.io/badge/PHP-8.4-777BB4?style=for-the-badge&logo=php&logoColor=white)](https://php.net)
-[![Tests](https://img.shields.io/badge/Tests-268%20Passed-brightgreen?style=for-the-badge)](https://phpunit.de)
+[![Tests](https://img.shields.io/badge/Tests-PHPUnit%2011-brightgreen?style=for-the-badge)](https://phpunit.de)
 [![Sanctum](https://img.shields.io/badge/Auth-Sanctum%20OTP-red?style=for-the-badge)](https://laravel.com/docs/sanctum)
 [![Laratrust](https://img.shields.io/badge/RBAC-Laratrust-blue?style=for-the-badge)](https://laratrust.santigarcor.me)
 [![License](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
@@ -49,7 +49,7 @@
 | **Authentication** | Laravel Sanctum (OTP-based SMS authentication) |
 | **Authorization** | Laratrust (Multi-role, permissions & team guards) |
 | **Database** | MySQL / MariaDB with optimized indexing |
-| **Testing** | PHPUnit 11 (268 unit and feature tests) |
+| **Testing** | PHPUnit 11 (unit and feature tests) |
 | **Code Style** | Laravel Pint |
 | **API Documentation** | Scramble OpenAPI |
 | **Date & Localization** | Verta (Jalali calendar support for Iranian enterprise standards) |
@@ -58,7 +58,7 @@
 
 ## 🧪 Testing & Quality Assurance
 
-The codebase includes an extensive automated test suite with **268 passing tests**:
+The codebase includes an automated test suite:
 
 ```bash
 # Run all automated tests
@@ -121,3 +121,9 @@ php artisan test
 **Navid Mirtorabi**  
 - GitHub: [@namirma](https://github.com/namirma)  
 - Email: [navidm632@gmail.com](mailto:navidm632@gmail.com)
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License — see [LICENSE](LICENSE).

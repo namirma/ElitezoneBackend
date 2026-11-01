@@ -1,8 +1,8 @@
 {
-    "name": "laravel/laravel",
+    "name": "elitezone/elitezone-backend",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
-    "keywords": ["laravel", "framework"],
+    "description": "EliteZone (Ario Elite) — B2B construction materials marketplace API",
+    "keywords": ["laravel", "framework", "marketplace"],
     "license": "MIT",
     "require": {
         "php": "^8.4",
